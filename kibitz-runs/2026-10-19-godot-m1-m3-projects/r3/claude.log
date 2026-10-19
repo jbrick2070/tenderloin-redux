@@ -1,0 +1,19 @@
+STDOUT:
+I wrote the review to `kibitz-runs\2026-10-19-godot-m1-m3-projects\r3\claude.md`. The file tools worked, and the review is based on the real code in `godot/main.gd`, both test files and the browser modules in `public/`. I didn't run any tests.
+
+**Verdict: no, not build-ready.** The five must-fix items:
+
+1. **Hosting values differ between the browser and Godot.** The browser offers story choices `memory`/`future`, tile palettes `warm`/`cool`, quiet setups `arc`/`pairs`, and beat patterns from 0 to 255. Godot uses a different set: `welcome`/`thanks`, `sea`/`dusk`, `tea`/`stretch`/`listen`, and beats from 1 to 255. A real browser save that uses any browser-only value loses hosting progress on import without any message. For example, 4/4 hosted can arrive as 0/4.
+2. **The test's "browser save" isn't one.** The fixture in `study_test.gd:657-663` uses Godot-only values the browser can never produce, so item 1 passes the tests. The browser test seeds a save with no M1/M3 data at all.
+3. **The Programme signboard reads the wrong field.** Godot always draws `programme_published`. The browser draws the hosting order once hosting starts (`public/world.js:221`). If the player re-publishes mid-hosting, which a test explicitly allows, the Godot board shows an order nobody is hosting. The fix is one line at `main.gd:967`.
+4. **Godot accepts keepsake photos the browser would reject.** On import, it marks a photo "taken" if any one participant is valid. It fills a missing mural, palette or layout from the current live values, creating a "frozen" keepsake that never existed.
+5. **Many player actions have no key or button.** Skipping the photo, choosing photo guests, editing the programme, and every hosting choice exist only as functions. Only Y and Z reach M1/M3 in play, so every player gets the same photo, default programme and default hosting values. Either the brief should say these are test-only, or they need controls. That decision also decides whether item 1 matters to players.
+
+The review also has 10 should-fix items, including:
+- Pressing Z replaces an invalid user draft with the default order without saying so.
+- Import from an empty localStorage reports an error to screen readers while the file picker is still open.
+- Godot test saves stay separate from the real save only because the test file's name is checked in code.
+
+It also suggests cutting two functions nothing calls (`set_programme_draft` and `programme_remove`) and one import fallback that has no browser equivalent.
+
+The Asana, Atlassian, Datadog, GitHub, Linear, Notion, PagerDuty, Slack, Box and Runway connectors need authorizing before they can be used. This review didn't need any of them. Authorize claude.ai connectors in your claude.ai connector settings, and the others via `/mcp` in an interactive session.

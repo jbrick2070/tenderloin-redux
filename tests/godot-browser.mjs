@@ -1,6 +1,7 @@
 import { mkdir, stat, writeFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
+import { initialState, applyAction, serializeSave } from '../public/core.js';
 const [pckStat, ...sourceStats] = await Promise.all([
   stat('artifacts/godot-web/index.pck'),
   stat('godot/main.gd'),
@@ -183,6 +184,28 @@ try {
     await page.waitForTimeout(250);
     const blackhawkShot = await page.screenshot({ path: `artifacts/godot-${size.width}-blackhawk.png` });
     assert.notDeepEqual(blockShot, blackhawkShot, `Walking west along Turk St to Black Hawk at Turk & Hyde must visibly update view at ${size.width}`);
+    // Round 7: Press KeyY (5x) to take keepsake photo with consenting neighbors, start packing, and return all 3 borrowed neighbor loans
+    for (let yStep = 0; yStep < 5; yStep++) {
+      await page.keyboard.press('KeyY');
+      await page.waitForTimeout(80);
+    }
+    await page.waitForFunction(() => {
+      const raw = window.localStorage.getItem('tenderloin-redux.godot.save.v1');
+      if (!raw) return false;
+      const ep = JSON.parse(raw).epilogue;
+      return ep && ep.photo?.status === 'taken' && ep.packing === true && Array.isArray(ep.returned) && ep.returned.length === 3;
+    }, null, { timeout: 10000 });
+    // Press KeyZ (6x) to publish the 4-segment afternoon programme, start hosting, and complete all 4 hosted segments
+    for (let zStep = 0; zStep < 6; zStep++) {
+      await page.keyboard.press('KeyZ');
+      await page.waitForTimeout(80);
+    }
+    await page.waitForFunction(() => {
+      const raw = window.localStorage.getItem('tenderloin-redux.godot.save.v1');
+      if (!raw) return false;
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed.programme?.published) && parsed.programme.published.length === 4 && Array.isArray(parsed.hosting?.results) && parsed.hosting.results.length === 4;
+    }, null, { timeout: 10000 });
     // Press KeyC to toggle Transgender Cultural District boundary (DataSF 5xmc-5bjj) and KeyL for wide 188-building Tenderloin overview
     await page.keyboard.press('KeyC');
     await page.waitForFunction(() => {
@@ -213,11 +236,13 @@ try {
     assert.equal(a11yDom.livePolite, 'polite', 'DOM #godot-a11y-status must have aria-live="polite"');
     assert.ok((a11yDom.snapshot?.seq || 0) > 0 && a11yDom.liveText.includes('188 city footprints across 7 streets'), 'DOM #godot-a11y-status must announce wide 188-footprint Tenderloin overview');
     assert.equal(a11yDom.summaryRole, 'region', 'DOM #godot-a11y-summary must have role="region"');
-    assert.ok(a11yDom.summaryText.includes('Neighbors 5/5') && a11yDom.summaryText.includes('Mural 3/3') && a11yDom.summaryText.includes('Block Opened') && a11yDom.summaryText.includes("Compton's Read") && a11yDom.summaryText.includes('Black Hawk Found') && a11yDom.summaryText.includes('District Hidden'), 'DOM #godot-a11y-summary must reflect 5/5 neighbors, 3/3 mural, Block Opened, Compton\'s Read, Black Hawk Found, and District Hidden');
+    assert.ok(a11yDom.summaryText.includes('Neighbors 5/5') && a11yDom.summaryText.includes('Mural 3/3') && a11yDom.summaryText.includes('Block Opened') && a11yDom.summaryText.includes("Compton's Read") && a11yDom.summaryText.includes('Black Hawk Found') && a11yDom.summaryText.includes('District Hidden') && a11yDom.summaryText.includes('Keepsake taken') && a11yDom.summaryText.includes('Loans 3/3') && a11yDom.summaryText.includes('Hosted 4/4'), 'DOM #godot-a11y-summary must reflect 5/5 neighbors, 3/3 mural, Block Opened, Compton\'s Read, Black Hawk Found, District Hidden, Keepsake taken, Loans 3/3, and Hosted 4/4');
     assert.equal(a11yDom.savePickerReady, true, 'Web JSON save file picker fallback input and queue bridge must be initialized');
-    assert.equal(a11yDom.snapshot?.music_playing, false, 'Block opening and wider Tenderloin completion must succeed with music_playing === false (sound-independent completion)');
+    assert.equal(a11yDom.snapshot?.music_playing, false, 'Block opening, wider Tenderloin, and M1/M3 completion must succeed with music_playing === false (sound-independent completion)');
     assert.equal(a11yDom.snapshot?.total_buildings, 188, 'A11y snapshot must report 188 total measured Tenderloin buildings');
     assert.equal(a11yDom.snapshot?.wider_buildings_count, 130, 'A11y snapshot must report 130 wider Tenderloin buildings');
+    assert.equal(a11yDom.snapshot?.epilogue_done, true, 'A11y snapshot must report epilogue_done === true');
+    assert.equal(a11yDom.snapshot?.hosting_done, true, 'A11y snapshot must report hosting_done === true');
     const storageBeforeReload = await page.evaluate(() => ({
       godotSave: window.localStorage.getItem('tenderloin-redux.godot.save.v1'),
       browserSave: window.localStorage.getItem('tenderloin-redux.save.v1')
@@ -240,7 +265,7 @@ try {
     const parsedSave = JSON.parse(storageBeforeReload.godotSave);
     assert.equal(parsedSave.schema, 'tenderloin-redux.godot.save');
     assert.equal(parsedSave.version, 1);
-    assert.ok(parsedSave.save_seq >= 12, 'save_seq must increment across talk, 3 motif placements, palette change, Rook soundcheck, Dez/Thanh visits, block opening, Compton\'s Corner, Black Hawk, and district boundary toggle');
+    assert.ok(parsedSave.save_seq >= 22, 'save_seq must increment across talk, 3 motif placements, palette change, Rook soundcheck, Dez/Thanh visits, block opening, Compton\'s Corner, Black Hawk, M1 keepsake/loan returns, M3 programme/hosting, and district boundary toggle');
     assert.equal(parsedSave.celeste_talk_count, 1);
     assert.equal(parsedSave.mural_palette, 'sunset');
     assert.equal(parsedSave.rook_soundcheck_done, true);
@@ -248,6 +273,11 @@ try {
     assert.equal(parsedSave.history_read, true);
     assert.equal(parsedSave.blackhawk_discovered, true);
     assert.equal(parsedSave.district_boundary_visible, false);
+    assert.equal(parsedSave.epilogue?.photo?.status, 'taken');
+    assert.deepEqual(parsedSave.epilogue?.photo?.participants, ['bea', 'celeste', 'dez', 'thanh']);
+    assert.deepEqual(parsedSave.epilogue?.returned, ['table', 'paint-case', 'speaker']);
+    assert.deepEqual(parsedSave.programme?.published, ['stories', 'beats', 'pause', 'art']);
+    assert.equal(parsedSave.hosting?.results?.length, 4);
     assert.deepEqual(parsedSave.visited_neighbors, ['bea', 'celeste', 'dez', 'rook', 'thanh']);
     assert.deepEqual(Object.keys(parsedSave.mural_placements).sort(), ['rise', 'sun', 'wave']);
     await page.reload();
@@ -275,24 +305,64 @@ try {
     assert.equal(postReloadSave.history_read, true, 'Post-reload save must preserve restored history_read');
     assert.equal(postReloadSave.blackhawk_discovered, true, 'Post-reload save must preserve restored blackhawk_discovered');
     assert.equal(postReloadSave.district_boundary_visible, false, 'Post-reload save must preserve restored district_boundary_visible');
+    assert.deepEqual(postReloadSave.epilogue, parsedSave.epilogue, 'Post-reload save must preserve restored M1 epilogue keepsake and returned loans');
+    assert.deepEqual(postReloadSave.programme, parsedSave.programme, 'Post-reload save must preserve restored M3 programme');
+    assert.deepEqual(postReloadSave.hosting, parsedSave.hosting, 'Post-reload save must preserve restored M3 hosting results');
     assert.deepEqual(postReloadSave.mural_placements, parsedSave.mural_placements, 'Post-reload save must preserve all 3 restored motif placements');
-    // Seed a valid public/core.js v1 save with ocean palette, press KeyI to import explicitly, and verify read-only preservation
-    const seededBrowserSave = JSON.stringify({
-      version: 1,
-      core: {
-        greeted: true,
-        layout: 'table',
-        furniture: { table: { col: 1, row: 0 }, seats: { col: 4, row: 0 }, speaker: { col: 1, row: 3 } },
-        litter: ['cup', 'offcuts', 'wrapper'],
-        mural: { sun: { col: 0, row: 0 }, wave: { col: 2, row: 1 }, rise: { col: 4, row: 2 } },
-        palette: 'ocean',
-        soundcheck: true,
-        opened: true,
-        history: true,
-        blackhawk: true
-      }
-    });
-    await page.evaluate((raw) => window.localStorage.setItem('tenderloin-redux.save.v1', raw), seededBrowserSave);
+    // Build a genuine public/core.js v1 save via applyAction + serializeSave with ocean palette, M1 keepsake + loans, and M3 hosting (future, 0 listening round, cool, pairs)
+    let bState = initialState();
+    for (const act of [
+      { type: 'greet' },
+      { type: 'layout', value: 'table' },
+      { type: 'furniture', id: 'table', col: 1, row: 0 },
+      { type: 'furniture', id: 'seats', col: 4, row: 0 },
+      { type: 'furniture', id: 'speaker', col: 1, row: 3 },
+      { type: 'tidy', id: 'cup' },
+      { type: 'tidy', id: 'offcuts' },
+      { type: 'tidy', id: 'wrapper' },
+      { type: 'palette', value: 'ocean' },
+      { type: 'mural', id: 'sun', col: 0, row: 0 },
+      { type: 'mural', id: 'wave', col: 2, row: 1 },
+      { type: 'mural', id: 'rise', col: 4, row: 2 },
+      { type: 'soundcheck' },
+      { type: 'history' },
+      { type: 'discover-blackhawk' },
+      { type: 'open' },
+      { type: 'photo', participants: ['dez', 'bea'] },
+      { type: 'pack' },
+      { type: 'return-loan', id: 'table' },
+      { type: 'return-loan', id: 'paint-case' },
+      { type: 'return-loan', id: 'speaker' },
+      { type: 'programme-add', id: 'beats' },
+      { type: 'programme-add', id: 'pause' },
+      { type: 'programme-add', id: 'stories' },
+      { type: 'programme-add', id: 'art' },
+      { type: 'programme-publish' },
+      { type: 'host-start' },
+      { type: 'host-beat', step: 0 },
+      { type: 'host-beat', step: 2 },
+      { type: 'host-beat', step: 4 },
+      { type: 'host-beat', step: 6 },
+      { type: 'host-complete', id: 'beats' },
+      { type: 'host-quiet', value: 'pairs' },
+      { type: 'host-complete', id: 'pause' },
+      { type: 'host-story', value: 'future' },
+      { type: 'host-complete', id: 'stories' },
+      { type: 'host-palette', value: 'cool' },
+      { type: 'host-tile', cell: 0 },
+      { type: 'host-complete', id: 'art' }
+    ]) {
+      bState = applyAction(bState, act);
+    }
+    const seededBrowserSave = serializeSave(bState);
+    // Clear Godot save and reload so Godot starts at 0/4 hosted, proving KeyI imports all 4/4 browser hosting segments from scratch
+    await page.evaluate((raw) => {
+      window.localStorage.removeItem('tenderloin-redux.godot.save.v1');
+      window.localStorage.setItem('tenderloin-redux.save.v1', raw);
+    }, seededBrowserSave);
+    await page.reload();
+    await page.locator('#status').waitFor({ state: 'hidden', timeout: 60000 });
+    await page.waitForTimeout(500);
     await page.keyboard.press('KeyI');
     await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.browser_import_status === 'imported', null, { timeout: 10000 });
     const afterValidImport = await page.evaluate(() => ({
@@ -305,7 +375,15 @@ try {
     assert.equal(afterValidImport.godotSave.block_opened, true, 'Explicit KeyI import of complete browser v1 save must set block_opened === true');
     assert.equal(afterValidImport.godotSave.history_read, true, 'Explicit KeyI import must map browser v1 history flag');
     assert.equal(afterValidImport.godotSave.blackhawk_discovered, true, 'Explicit KeyI import must map browser v1 blackhawk flag');
-    // Queue a partial browser save via the cross-origin .json file picker bridge and verify monotonic merge preserves 5/5 neighbors, 3/3 ocean mural, block_opened, history_read, and blackhawk_discovered
+    assert.deepEqual(afterValidImport.godotSave.epilogue?.photo?.participants, ['bea', 'dez'], 'Explicit KeyI import must map browser keepsake photo participants in canonical order');
+    assert.deepEqual(afterValidImport.godotSave.epilogue?.returned, ['table', 'paint-case', 'speaker'], 'Explicit KeyI import must map all 3 returned neighbor loans');
+    assert.equal(afterValidImport.godotSave.hosting?.results?.length, 4, 'Explicit KeyI import must preserve all 4/4 browser-produced M3 hosted segments (beats=0, pause=pairs, stories=future, art=cool)');
+    assert.deepEqual(afterValidImport.godotSave.hosting?.results?.map(r => r.id), ['beats', 'pause', 'stories', 'art']);
+    assert.equal(afterValidImport.godotSave.hosting?.results?.[0]?.value, 0, 'Imported beats segment must preserve 0 listening round value');
+    assert.equal(afterValidImport.godotSave.hosting?.results?.[1]?.value, 'pairs', 'Imported pause segment must preserve pairs value');
+    assert.equal(afterValidImport.godotSave.hosting?.results?.[2]?.value, 'future', 'Imported stories segment must preserve future value');
+    assert.equal(afterValidImport.godotSave.hosting?.results?.[3]?.value?.palette, 'cool', 'Imported art segment must preserve cool palette');
+    // Queue a partial browser save via the cross-origin .json file picker bridge and verify monotonic merge preserves 5/5 neighbors, 3/3 ocean mural, block_opened, history_read, blackhawk_discovered, M1 epilogue, and M3 hosting
     const prevSaveSeq = afterValidImport.godotSave.save_seq;
     await page.evaluate(() => window.__tenderloinQueueBrowserSaveJson(JSON.stringify({
       version: 1,
@@ -321,11 +399,13 @@ try {
     assert.equal(afterFileBridgeMerge.block_opened, true, 'File picker bridge monotonic merge must preserve block_opened state');
     assert.equal(afterFileBridgeMerge.history_read, true, 'File picker bridge monotonic merge must preserve history_read state');
     assert.equal(afterFileBridgeMerge.blackhawk_discovered, true, 'File picker bridge monotonic merge must preserve blackhawk_discovered state');
-    runs.push({ viewport: size, overviewBytes: before.length, selectedBytes: after.length, neighborBytes: neighbor.length, muralBytes: muralShot.length, musicBytes: musicShot.length, blockBytes: blockShot.length, blackhawkBytes: blackhawkShot.length, wideBytes: wideShot.length, keyboardActivationVerified: true, neighborWalkVerified: true, muralSaveReloadVerified: true, rookMusicAuditionVerified: true, blockCompletionVerified: true, widerTenderloinVerified: true, browserSaveImportVerified: true, domA11yLiveVerified: true });
+    assert.deepEqual(afterFileBridgeMerge.epilogue?.returned, ['table', 'paint-case', 'speaker'], 'File picker bridge monotonic merge must preserve M1 returned loans');
+    assert.equal(afterFileBridgeMerge.hosting?.results?.length, 4, 'File picker bridge monotonic merge must preserve M3 completed hosting segments');
+    runs.push({ viewport: size, overviewBytes: before.length, selectedBytes: after.length, neighborBytes: neighbor.length, muralBytes: muralShot.length, musicBytes: musicShot.length, blockBytes: blockShot.length, blackhawkBytes: blackhawkShot.length, wideBytes: wideShot.length, keyboardActivationVerified: true, neighborWalkVerified: true, muralSaveReloadVerified: true, rookMusicAuditionVerified: true, blockCompletionVerified: true, widerTenderloinVerified: true, m1EpilogueVerified: true, m3HostingVerified: true, browserSaveImportVerified: true, domA11yLiveVerified: true });
     await context.close();
   }
   assert.deepEqual(external, []);
   assert.deepEqual(errors, []);
-  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
+  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
   console.log(JSON.stringify({ runs, errors, external }));
 } finally { await browser.close(); }

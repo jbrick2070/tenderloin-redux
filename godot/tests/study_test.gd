@@ -567,6 +567,157 @@ func run() -> void:
 	require(study.handle_scene_tap(wide_street_screen) and study.selected_neighbor == -1 and not study.current_path.is_empty(), "zoomed-out wide_overview tap ~23m from Bea routes to street point rather than selecting neighbor (world_d <= 8.5 bound)")
 	require(not study.walk_to_point(Vector2(-350.0, -350.0)) and study.current_path.is_empty(), "unreachable point far from any street is rejected without routing back to PLAYER_START")
 
+	# Round 7: M1 Afternoon Keepsake & Loan Returns + M3 Second Afternoon Programme Planning & Hosting
+	study.block_opened = false
+	require(not study.take_keepsake_photo(["bea"]) and not study.start_packing_epilogue() and not study.return_loan("table"), "M1 keepsake photo, packing, and loan returns are rejected while block_opened is false")
+	require(not study.programme_add("stories") and not study.programme_publish() and not study.host_start(), "M3 programme planning, publishing, and hosting are rejected while block_opened is false")
+	study.block_opened = true
+	study.keepsake_photo = study.default_keepsake_photo()
+	study.epilogue_packing = false
+	study.epilogue_returned.clear()
+	study.programme_order.clear()
+	study.programme_published.clear()
+	study.hosting_order.clear()
+	study.hosting_results.clear()
+	study.hosting_draft = study.default_hosting_draft()
+	study.update_block_3d()
+	require(not study.keepsake_frame_node.visible and not study.programme_board_node.visible and not study.hosting_tile_panel_node.visible, "3D keepsake easel, programme signboard, and hosting tile panel start hidden before M1/M3 completion")
+	require(not study.take_keepsake_photo([]) and not study.take_keepsake_photo(["bea", "rook"]), "take_keepsake_photo rejects empty guest list and non-consenting Rook")
+	require(study.skip_keepsake_photo() and String(study.keepsake_photo.get("status", "")) == "skipped", "skip_keepsake_photo marks status as skipped")
+	study.set_mural_palette("sunset")
+	study.place_mural_motif("sun", 0, 0)
+	study.place_mural_motif("wave", 2, 1)
+	study.place_mural_motif("rise", 4, 2)
+	require(study.take_keepsake_photo(["thanh", "bea", "celeste"]) and String(study.keepsake_photo.get("status", "")) == "taken", "skipped keepsake can be reconsidered before packing starts")
+	require(study.keepsake_photo.get("participants", []) == ["bea", "celeste", "thanh"], "keepsake participants are stored in canonical PHOTO_GUESTS order")
+	require(study.keepsake_frame_node.visible and study.keepsake_guest_pips["bea"].visible and not study.keepsake_guest_pips["dez"].visible, "3D keepsake easel and consenting guest pips reflect keepsake photo")
+	# Mutate live mural after taking photo to prove keepsake snapshot is immutable
+	study.set_mural_palette("ocean")
+	study.place_mural_motif("sun", 1, 2)
+	require(String(study.keepsake_photo.get("palette", "")) == "sunset" and int(study.keepsake_photo["mural"]["sun"]["col"]) == 0, "keepsake photo snapshot stays frozen when live mural or palette changes later")
+	require(not study.take_keepsake_photo(["bea"]) and not study.skip_keepsake_photo(), "taken keepsake photo cannot be retaken or skipped")
+	require(not study.return_loan("table"), "cannot return loan before start_packing_epilogue")
+	require(study.start_packing_epilogue() and study.epilogue_packing, "start_packing_epilogue enables loan returns")
+	require(study.loan_return_beacons["table"].visible and not study.is_epilogue_done(), "loan return 3D beacons become visible during packing")
+	require(study.return_loan("speaker") and study.return_loan("table") and not study.return_loan("table") and study.return_loan("paint-case"), "all 3 neighbor loans return once without duplicates")
+	require(study.epilogue_returned == ["table", "paint-case", "speaker"] and study.is_epilogue_done(), "returned loans are stored in canonical order and complete M1 epilogue")
+
+	# M3 Second Afternoon Programme Planning & Hosting
+	require(study.programme_add("beats") and study.programme_add("stories") and study.programme_add("art") and study.programme_add("pause"), "all 4 afternoon programme segments can be added")
+	require(study.programme_issue() != "" and not study.programme_publish(), "programme_publish rejects order where Beats precedes Stories without Quiet interval in between")
+	require(study.advance_programme_and_hosting_step() == "programme_blocked" and study.programme_order == ["beats", "stories", "art", "pause"], "advance_programme_and_hosting_step blocks without overwriting non-empty invalid draft")
+	require(study.programme_move("pause", -1) and study.programme_move("pause", -1) and study.programme_order == ["beats", "pause", "stories", "art"], "programme_move places Quiet interval between Beats and Stories")
+	require(study.programme_issue() == "" and study.programme_publish() and study.programme_published == ["beats", "pause", "stories", "art"], "valid 4-segment programme publishes cleanly")
+	require(study.programme_board_node.visible, "3D ProgrammeSignboard becomes visible on publish")
+	require(study.programme_move("art", -1) and study.programme_order == ["beats", "pause", "art", "stories"] and study.programme_published == ["beats", "pause", "stories", "art"], "draft programme edits after publish do not mutate programme_published")
+	require(study.host_start() and study.hosting_order == ["beats", "pause", "stories", "art"] and study.current_hosting_activity() == "beats", "host_start freezes published order and begins at first segment")
+	require(study.programme_publish() and study.programme_published == ["beats", "pause", "art", "stories"] and study.hosting_order == ["beats", "pause", "stories", "art"], "re-publishing draft order does not overwrite already-started hosting_order")
+	require(study.get_a11y_status_snapshot().get("hosting_order", []) == ["beats", "pause", "stories", "art"], "a11y snapshot exposes active hosting_order distinct from programme_published")
+	# Toggle all 4 default active beats (0, 2, 4, 6 -> 85) down to 0 (Dez listening round)
+	require(study.host_toggle_beat(0) and study.host_toggle_beat(2) and study.host_toggle_beat(4) and study.host_toggle_beat(6) and int(study.hosting_draft.get("pattern", -1)) == 0 and study.host_complete_current(), "completing Rhythm workshop commits 0 listening round pattern")
+	require(int(study.get_hosted_segment_value("beats")) == 0, "hosted beats segment preserves 0 listening round value")
+	require(study.current_hosting_activity() == "pause" and study.host_set_quiet("pairs") and study.host_complete_current(), "completing Quiet interval commits pairs seating option")
+	require(study.current_hosting_activity() == "stories" and study.host_set_story("future") and study.host_complete_current(), "completing Story circle commits future prompt")
+	require(study.current_hosting_activity() == "art" and study.host_set_palette("cool") and study.host_cycle_tile(0) and study.host_complete_current(), "completing Shared art panel commits cool palette and 6 tiles")
+	require(study.is_hosting_done() and study.current_hosting_activity() == "" and study.hosting_tile_panel_node.visible, "4/4 hosted segments complete M3 and reveal 3D HostingArtTilePanel")
+	var saved_m1_m3_json := FileAccess.get_file_as_string(study.save_path)
+	study.reset_mural_state_to_defaults("fresh")
+	require(not study.is_epilogue_done() and not study.is_hosting_done() and not study.keepsake_frame_node.visible and not study.hosting_tile_panel_node.visible, "reset clears M1 and M3 state and hides 3D props")
+	require(study.apply_save_envelope(saved_m1_m3_json) and study.is_epilogue_done() and study.is_hosting_done(), "apply_save_envelope restores full M1 epilogue and M3 programme/hosting state")
+	require(study.keepsake_frame_node.visible and study.programme_board_node.visible and study.hosting_tile_panel_node.visible, "restoring M1/M3 save restores all 3D scene props")
+	# Corrupt M1/M3 save rejection
+	var bad_rook_photo: Dictionary = JSON.parse_string(saved_m1_m3_json)
+	bad_rook_photo["epilogue"]["photo"]["participants"] = ["bea", "rook"]
+	require(not study.apply_save_envelope(JSON.stringify(bad_rook_photo)) and study.save_load_status == "recovered", "Godot save with non-consenting Rook in keepsake photo is rejected")
+	var bad_missing_photo: Dictionary = JSON.parse_string(saved_m1_m3_json)
+	bad_missing_photo["epilogue"].erase("photo")
+	require(not study.apply_save_envelope(JSON.stringify(bad_missing_photo)) and study.save_load_status == "recovered", "Godot save with packing=true and missing photo key is rejected")
+	var bad_non_array_parts: Dictionary = JSON.parse_string(saved_m1_m3_json)
+	bad_non_array_parts["epilogue"]["photo"]["status"] = "skipped"
+	bad_non_array_parts["epilogue"]["photo"]["participants"] = "bea"
+	require(not study.apply_save_envelope(JSON.stringify(bad_non_array_parts)) and study.save_load_status == "recovered", "Godot save with non-Array participants on skipped photo is rejected")
+	var bad_prog_save: Dictionary = JSON.parse_string(saved_m1_m3_json)
+	bad_prog_save["programme"]["published"] = ["beats", "stories", "pause", "art"]
+	require(not study.apply_save_envelope(JSON.stringify(bad_prog_save)) and study.save_load_status == "recovered", "Godot save with published programme violating Quiet interval rule is rejected")
+	var bad_host_save: Dictionary = JSON.parse_string(saved_m1_m3_json)
+	bad_host_save["hosting"]["results"][0]["id"] = "stories"
+	require(not study.apply_save_envelope(JSON.stringify(bad_host_save)) and study.save_load_status == "recovered", "Godot save with out-of-order hosting result is rejected")
+	# Browser v1 save inspection rejects incomplete keepsake photo and invalid hosting.order
+	var browser_bad_photo_and_host := JSON.stringify({
+		"version": 1,
+		"core": {
+			"greeted": true,
+			"layout": "floor",
+			"furniture": {"table": {"col": 1, "row": 0}, "seats": {"col": 4, "row": 0}, "speaker": {"col": 1, "row": 3}},
+			"litter": ["cup", "offcuts", "wrapper"],
+			"mural": {"sun": {"col": 0, "row": 0}, "wave": {"col": 2, "row": 1}, "rise": {"col": 4, "row": 2}},
+			"palette": "sunset",
+			"soundcheck": true,
+			"opened": true,
+			"epilogue": {
+				"photo": {"status": "taken", "participants": ["bea", "rook"], "layout": "floor", "palette": "sunset", "mural": {"sun": {"col": 0, "row": 0}, "wave": {"col": 2, "row": 1}, "rise": {"col": 4, "row": 2}}},
+				"packing": false,
+				"returned": []
+			},
+			"programme": {"order": ["stories", "beats", "pause", "art"], "published": ["stories", "beats", "pause", "art"]},
+			"hosting": {"order": [], "results": [{"id": "stories", "value": "future"}], "draft": {"story": "future", "pattern": 0, "tiles": [0, 1, 2, 2, 1, 0], "palette": "cool", "quiet": "pairs"}}
+		}
+	})
+	var bad_insp: Dictionary = study.inspect_browser_save_json(browser_bad_photo_and_host)
+	require(String(bad_insp["epilogue"]["photo"]["status"]) == "unasked" and (bad_insp["hosting"]["order"] as Array).is_empty() and (bad_insp["hosting"]["results"] as Array).is_empty(), "inspect_browser_save_json matches core.js/hosting.js by rejecting photo with Rook and rejecting hosting with empty order")
+	# Browser v1 save import with genuine public/core.js + public/hosting.js values
+	var browser_m1_m3_save := JSON.stringify({
+		"version": 1,
+		"core": {
+			"greeted": true,
+			"layout": "floor",
+			"furniture": {"table": {"col": 1, "row": 0}, "seats": {"col": 4, "row": 0}, "speaker": {"col": 1, "row": 3}},
+			"litter": ["cup", "offcuts", "wrapper"],
+			"mural": {"sun": {"col": 0, "row": 0}, "wave": {"col": 2, "row": 1}, "rise": {"col": 4, "row": 2}},
+			"palette": "sunset",
+			"soundcheck": true,
+			"opened": true,
+			"history": true,
+			"blackhawk": true,
+			"epilogue": {
+				"photo": {"status": "taken", "participants": ["dez", "bea"], "mural": {"sun": {"col": 0, "row": 0}, "wave": {"col": 2, "row": 1}, "rise": {"col": 4, "row": 2}}, "palette": "sunset", "layout": "floor"},
+				"packing": true,
+				"returned": ["speaker", "table"]
+			},
+			"programme": {
+				"order": ["stories", "beats", "pause", "art"],
+				"published": ["stories", "beats", "pause", "art"]
+			},
+			"hosting": {
+				"order": ["stories", "beats", "pause", "art"],
+				"results": [
+					{"id": "stories", "value": "future"},
+					{"id": "beats", "value": 0}
+				],
+				"draft": {"story": "future", "pattern": 0, "tiles": [1, 2, 0, 0, 2, 1], "palette": "cool", "quiet": "pairs"}
+			}
+		}
+	})
+	require(study.import_browser_save_json(browser_m1_m3_save) and study.keepsake_photo.get("participants", []) == ["bea", "dez"] and study.epilogue_returned == ["table", "speaker"], "import_browser_save_json maps browser v1 epilogue keepsake and returned loans")
+	require(study.programme_published == ["stories", "beats", "pause", "art"] and study.hosting_results.size() == 2 and String(study.get_hosted_segment_value("stories")) == "future" and int(study.get_hosted_segment_value("beats")) == 0 and study.current_hosting_activity() == "pause", "import_browser_save_json maps browser v1 future story, 0 listening round beats, and partial hosting progress")
+	var key_y := InputEventKey.new()
+	key_y.pressed = true
+	key_y.keycode = KEY_Y
+	study._unhandled_input(key_y)
+	require(study.is_epilogue_done(), "KEY_Y advances remaining loan return to complete M1 epilogue")
+	var shift_z := InputEventKey.new()
+	shift_z.pressed = true
+	shift_z.shift_pressed = true
+	shift_z.keycode = KEY_Z
+	study._unhandled_input(shift_z)
+	require(String(study.hosting_draft.get("quiet", "")) == "arc", "Shift+Z cycles active Quiet interval choice between pairs and arc")
+	var key_z := InputEventKey.new()
+	key_z.pressed = true
+	key_z.keycode = KEY_Z
+	study._unhandled_input(key_z)
+	study._unhandled_input(key_z)
+	require(study.is_hosting_done() and study.hosting_tile_panel_node.visible, "KEY_Z advances remaining hosted segments to complete M3")
+
 	study.overview()
 	var street_screen: Vector2 = study.camera.unproject_position(Vector3(45.0, 0.0, -7.2))
 	require(study.handle_scene_tap(street_screen) and study.selected_neighbor == -1, "tapping projected street point in overview starts street route")
@@ -712,7 +863,7 @@ func run() -> void:
 		await process_frame
 		await process_frame
 		require(study.block_panel.visible and not study.mural_panel.visible and not study.music_panel.visible, "show_block_panel opens BlockPanel and hides MuralPanel/MusicPanel")
-		require(study.block_buttons.size() == 8, "BlockPanel has all 8 interactive buttons")
+		require(study.block_buttons.size() == 10, "BlockPanel has all 10 interactive buttons")
 		var blk_rect: Rect2 = study.block_panel.get_global_rect()
 		var blk_header_end_y: float = study.header_panel.get_global_rect().end.y
 		var blk_controls_pos_y: float = study.controls.get_global_rect().position.y
@@ -743,7 +894,7 @@ func run() -> void:
 		print("GODOT_STUDY_FAIL")
 		quit(1)
 	else:
-		print("GODOT_STUDY_PASS:188 meshes (58 opening + 130 wider), measured heights, collision/courtyards, walking/sliding, 5 neighbors, Celeste portable mural, Rook speaker/music/local-audition, opening-block readiness/banner, wider Tenderloin walk (Compton's Corner + Black Hawk at Turk & Hyde + Transgender Cultural District boundary), browser-save adapter, save/reload, cutaway, focus-rings, 44px and ui_accept at 1100/390/320")
+		print("GODOT_STUDY_PASS:188 meshes (58 opening + 130 wider), measured heights, collision/courtyards, walking/sliding, 5 neighbors, Celeste portable mural, Rook speaker/music/local-audition, opening-block readiness/banner, wider Tenderloin walk (Compton's Corner + Black Hawk at Turk & Hyde + Transgender Cultural District boundary), M1 keepsake photo & loan returns, M3 afternoon programme & hosting, browser-save adapter, save/reload, cutaway, focus-rings, 44px and ui_accept at 1100/390/320")
 		quit(0)
 
 

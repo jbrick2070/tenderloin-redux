@@ -4,7 +4,8 @@ extends Node3D
 ## 7 ODbL OSM streets (Turk, Taylor, Mason, Jones, Leavenworth, Hyde, Eddy),
 ## Transgender Cultural District boundary layer (DataSF 5xmc-5bjj, PDDL 1.0, founded 2017),
 ## Compton's Corner & Former Black Hawk Jazz Club history stops, Celeste's portable mural board,
-## Rook's soundcheck + procedural/local music, opening-block completion, and browser-save adapter.
+## Rook's soundcheck + procedural/local music, opening-block completion, M1 keepsake photo &
+## loan returns, M3 second-afternoon programme planning & hosting, and browser-save adapter.
 
 const WALK_SPEED_M_PER_S := 4.8
 const WALK_CORRIDOR_SPEED_M_PER_S := 24.0
@@ -43,6 +44,25 @@ const MURAL_DEFAULT_CELLS: Dictionary = {
 	"wave": Vector2i(3, 1),
 	"rise": Vector2i(5, 2)
 }
+const PHOTO_GUESTS: Array[String] = ["bea", "celeste", "dez", "thanh"]
+const LOAN_IDS: Array[String] = ["table", "paint-case", "speaker"]
+const LOAN_TITLES: Dictionary = {
+	"table": "Thanh's folding table",
+	"paint-case": "Celeste's paint case",
+	"speaker": "Rook's speaker"
+}
+const PROGRAMME_SEGMENTS: Array[String] = ["stories", "beats", "art", "pause"]
+const PROGRAMME_DEFAULT_ORDER: Array[String] = ["stories", "beats", "pause", "art"]
+const PROGRAMME_TITLES: Dictionary = {
+	"stories": "Story circle",
+	"beats": "Rhythm workshop",
+	"art": "Shared art panel",
+	"pause": "Quiet interval"
+}
+const HOSTING_STORIES: Array[String] = ["memory", "future"]
+const HOSTING_PALETTES: Array[String] = ["warm", "cool"]
+const HOSTING_QUIETS: Array[String] = ["arc", "pairs"]
+const HOSTING_DEFAULT_TILES: Array[int] = [0, 1, 2, 2, 1, 0]
 const MUSIC_STEM_ORDER: Array[String] = ["bass", "brush", "chords", "lead"]
 const MUSIC_VOL_STEPS: Array[float] = [0.70, 1.0, 0.35, 0.0]
 const MUSIC_MIX_RATE := 22050.0
@@ -174,6 +194,22 @@ var cached_speaker_normal := Vector2.ZERO
 
 var block_banner_node: Node3D
 var block_opened := false
+var keepsake_photo: Dictionary = {"status": "unasked", "participants": [], "mural": {}, "palette": "garden", "layout": "table"}
+var epilogue_packing := false
+var epilogue_returned: Array[String] = []
+var keepsake_frame_node: Node3D
+var keepsake_canvas_mesh: MeshInstance3D
+var keepsake_guest_pips: Dictionary = {}
+var loan_return_beacons: Dictionary = {}
+var programme_order: Array[String] = []
+var programme_published: Array[String] = []
+var hosting_order: Array[String] = []
+var hosting_results: Array[Dictionary] = []
+var hosting_draft: Dictionary = {"story": "memory", "pattern": 85, "tiles": [0, 1, 2, 2, 1, 0], "palette": "warm", "quiet": "arc"}
+var programme_board_node: Node3D
+var programme_segment_bars: Array[MeshInstance3D] = []
+var hosting_tile_panel_node: Node3D
+var hosting_tile_meshes: Array[MeshInstance3D] = []
 var district_boundary_node: MeshInstance3D
 var district_boundary_visible := true
 var west_intersection_nodes: Array[Node3D] = []
@@ -191,6 +227,8 @@ var block_rook_btn: Button
 var block_west_btn: Button
 var block_district_btn: Button
 var block_open_btn: Button
+var block_epilogue_btn: Button
+var block_programme_btn: Button
 var block_import_btn: Button
 var browser_import_status := "none"
 var browser_import_message := ""
@@ -740,6 +778,27 @@ func update_speaker_3d() -> void:
 		else:
 			speaker_beacon_mesh.material_override = mural_material(Color("e8b95a"))
 
+func programme_segment_color(segment_id: String, hosted: bool) -> Color:
+	match segment_id:
+		"stories":
+			return Color("f8cc58") if hosted else Color("e5b66d")
+		"beats":
+			return Color("b8e6ee") if hosted else Color("91bac2")
+		"art":
+			return Color("f1bed0") if hosted else Color("d9a2b2")
+		_:
+			return Color("c6deb0") if hosted else Color("a3b48c")
+
+func hosting_tile_color(palette_id: String, tile_val: int) -> Color:
+	var idx := clampi(tile_val, 0, 2)
+	match palette_id:
+		"cool":
+			var cool_cols: Array[Color] = [Color("91bac2"), Color("a3b48c"), Color("987b9e")]
+			return cool_cols[idx]
+		_:
+			var warm_cols: Array[Color] = [Color("e5b66d"), Color("d9a2b2"), Color("75907c")]
+			return warm_cols[idx]
+
 func build_block_banner() -> void:
 	block_banner_node = Node3D.new()
 	block_banner_node.name = "BlockGatheringBanner"
@@ -747,7 +806,8 @@ func build_block_banner() -> void:
 	block_banner_node.position = banner_pos
 	var st := nearest_street_tangent(Vector2(banner_pos.x, banner_pos.z))
 	var street_t := -st if st.x < 0.0 else st
-	block_banner_node.rotation.y = atan2(-street_t.y, street_t.x)
+	var banner_rot_y := atan2(-street_t.y, street_t.x)
+	block_banner_node.rotation.y = banner_rot_y
 	var arch_beam := MeshInstance3D.new()
 	arch_beam.name = "ArchBeam"
 	var beam_box := BoxMesh.new()
@@ -770,11 +830,156 @@ func build_block_banner() -> void:
 		block_banner_node.add_child(lantern)
 	block_banner_node.visible = false
 	add_child(block_banner_node)
+
+	keepsake_frame_node = Node3D.new()
+	keepsake_frame_node.name = "KeepsakePhotoEasel"
+	keepsake_frame_node.position = neighbors[0].pos + Vector3(1.85, 0.0, -0.45)
+	keepsake_frame_node.rotation.y = banner_rot_y
+	var k_frame := MeshInstance3D.new()
+	var k_frame_box := BoxMesh.new()
+	k_frame_box.size = Vector3(1.10, 0.86, 0.10)
+	k_frame.mesh = k_frame_box
+	k_frame.position = Vector3(0.0, 1.18, 0.0)
+	k_frame.material_override = material(Color("5a402d"))
+	keepsake_frame_node.add_child(k_frame)
+	keepsake_canvas_mesh = MeshInstance3D.new()
+	keepsake_canvas_mesh.name = "KeepsakePhotoCanvas"
+	var k_canvas_box := BoxMesh.new()
+	k_canvas_box.size = Vector3(0.94, 0.70, 0.12)
+	keepsake_canvas_mesh.mesh = k_canvas_box
+	keepsake_canvas_mesh.position = Vector3(0.0, 1.18, 0.02)
+	keepsake_canvas_mesh.material_override = mural_material(mural_palette_color("garden", true))
+	keepsake_frame_node.add_child(keepsake_canvas_mesh)
+	keepsake_guest_pips.clear()
+	for g_idx in range(PHOTO_GUESTS.size()):
+		var g_id := PHOTO_GUESTS[g_idx]
+		var pip := MeshInstance3D.new()
+		pip.name = "KeepsakeGuestPip_%s" % g_id
+		var pip_cyl := CylinderMesh.new()
+		pip_cyl.top_radius = 0.07
+		pip_cyl.bottom_radius = 0.07
+		pip_cyl.height = 0.14
+		pip.mesh = pip_cyl
+		pip.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+		pip.position = Vector3(-0.30 + float(g_idx) * 0.20, 0.96, 0.05)
+		pip.material_override = mural_material(Color("f8cc58"))
+		keepsake_frame_node.add_child(pip)
+		keepsake_guest_pips[g_id] = pip
+	keepsake_frame_node.visible = false
+	add_child(keepsake_frame_node)
+
+	loan_return_beacons.clear()
+	var loan_positions: Dictionary = {
+		"table": neighbors[4].pos + Vector3(0.95, 0.32, 0.0),
+		"paint-case": neighbors[1].pos + Vector3(-0.95, 0.32, 0.0),
+		"speaker": ROOK_SPEAKER_POS + Vector3(0.62, 0.32, 0.0)
+	}
+	for lid in LOAN_IDS:
+		var l_beacon := MeshInstance3D.new()
+		l_beacon.name = "LoanBeacon_%s" % lid
+		var l_box := BoxMesh.new()
+		l_box.size = Vector3(0.38, 0.32, 0.30)
+		l_beacon.mesh = l_box
+		l_beacon.position = loan_positions[lid]
+		l_beacon.material_override = material(Color("8a7964"))
+		l_beacon.visible = false
+		add_child(l_beacon)
+		loan_return_beacons[lid] = l_beacon
+
+	programme_board_node = Node3D.new()
+	programme_board_node.name = "ProgrammeSignboard"
+	programme_board_node.position = neighbors[0].pos + Vector3(-1.85, 0.0, -0.45)
+	programme_board_node.rotation.y = banner_rot_y
+	var p_board := MeshInstance3D.new()
+	var p_box := BoxMesh.new()
+	p_box.size = Vector3(1.06, 1.32, 0.10)
+	p_board.mesh = p_box
+	p_board.position = Vector3(0.0, 1.24, 0.0)
+	p_board.material_override = material(Color("4a3d33"))
+	programme_board_node.add_child(p_board)
+	programme_segment_bars.clear()
+	for s_idx in range(PROGRAMME_SEGMENTS.size()):
+		var s_bar := MeshInstance3D.new()
+		s_bar.name = "ProgrammeSegmentBar%d" % s_idx
+		var s_bar_box := BoxMesh.new()
+		s_bar_box.size = Vector3(0.88, 0.18, 0.12)
+		s_bar.mesh = s_bar_box
+		s_bar.position = Vector3(0.0, 1.62 - float(s_idx) * 0.25, 0.02)
+		s_bar.material_override = mural_material(programme_segment_color(PROGRAMME_DEFAULT_ORDER[s_idx], false))
+		programme_board_node.add_child(s_bar)
+		programme_segment_bars.append(s_bar)
+	programme_board_node.visible = false
+	add_child(programme_board_node)
+
+	hosting_tile_panel_node = Node3D.new()
+	hosting_tile_panel_node.name = "HostingArtTilePanel"
+	hosting_tile_panel_node.position = MURAL_POS + Vector3(2.35, 0.0, 0.0)
+	var m_t := mural_tangent()
+	hosting_tile_panel_node.rotation.y = atan2(-m_t.y, m_t.x)
+	var h_frame := MeshInstance3D.new()
+	var h_frame_box := BoxMesh.new()
+	h_frame_box.size = Vector3(1.24, 0.92, 0.10)
+	h_frame.mesh = h_frame_box
+	h_frame.position = Vector3(0.0, 1.32, 0.0)
+	h_frame.material_override = material(Color("5a402d"))
+	hosting_tile_panel_node.add_child(h_frame)
+	hosting_tile_meshes.clear()
+	for t_idx in range(6):
+		var t_mesh := MeshInstance3D.new()
+		t_mesh.name = "HostingTile%d" % t_idx
+		var t_box := BoxMesh.new()
+		t_box.size = Vector3(0.30, 0.30, 0.12)
+		t_mesh.mesh = t_box
+		var tc := t_idx % 3
+		var tr := int(t_idx / 3)
+		t_mesh.position = Vector3(-0.36 + float(tc) * 0.36, 1.50 - float(tr) * 0.36, 0.02)
+		t_mesh.material_override = mural_material(hosting_tile_color("warm", HOSTING_DEFAULT_TILES[t_idx]))
+		hosting_tile_panel_node.add_child(t_mesh)
+		hosting_tile_meshes.append(t_mesh)
+	hosting_tile_panel_node.visible = false
+	add_child(hosting_tile_panel_node)
 	update_block_3d()
 
 func update_block_3d() -> void:
 	if block_banner_node != null:
 		block_banner_node.visible = block_opened
+	if keepsake_frame_node != null:
+		var photo_taken := block_opened and String(keepsake_photo.get("status", "unasked")) == "taken"
+		keepsake_frame_node.visible = photo_taken
+		if photo_taken and keepsake_canvas_mesh != null:
+			var k_pal := String(keepsake_photo.get("palette", "garden"))
+			keepsake_canvas_mesh.material_override = mural_material(mural_palette_color(k_pal, true))
+			var parts: Array = keepsake_photo.get("participants", [])
+			for g_id in PHOTO_GUESTS:
+				if keepsake_guest_pips.has(g_id):
+					var pip_mesh: MeshInstance3D = keepsake_guest_pips[g_id]
+					pip_mesh.visible = parts.has(g_id)
+	for lid in LOAN_IDS:
+		if loan_return_beacons.has(lid):
+			var l_beacon: MeshInstance3D = loan_return_beacons[lid]
+			var returned := epilogue_returned.has(lid)
+			l_beacon.visible = block_opened and (epilogue_packing or returned)
+			l_beacon.material_override = mural_material(Color("f8cc58")) if returned else material(Color("8a7964"))
+	if programme_board_node != null:
+		var board_order: Array[String] = hosting_order if not hosting_order.is_empty() else programme_published
+		var pub_ready := block_opened and board_order.size() == PROGRAMME_SEGMENTS.size()
+		programme_board_node.visible = pub_ready
+		if pub_ready:
+			for s_idx in range(mini(programme_segment_bars.size(), board_order.size())):
+				var seg_id := board_order[s_idx]
+				var hosted := has_hosted_segment(seg_id)
+				programme_segment_bars[s_idx].material_override = mural_material(programme_segment_color(seg_id, hosted))
+	if hosting_tile_panel_node != null:
+		var art_val: Variant = get_hosted_segment_value("art")
+		var art_done := block_opened and (art_val is Dictionary)
+		hosting_tile_panel_node.visible = art_done
+		if art_done:
+			var art_dict: Dictionary = art_val
+			var h_pal := String(art_dict.get("palette", "warm"))
+			var h_tiles: Array = art_dict.get("tiles", HOSTING_DEFAULT_TILES)
+			for t_idx in range(hosting_tile_meshes.size()):
+				var tv := int(h_tiles[t_idx]) if t_idx < h_tiles.size() else 0
+				hosting_tile_meshes[t_idx].material_override = mural_material(hosting_tile_color(h_pal, tv))
 
 func build_audio_players() -> void:
 	sketch_generator = AudioStreamGenerator.new()
@@ -2031,6 +2236,417 @@ func open_block_gathering() -> bool:
 	announce_a11y_status(line)
 	return true
 
+func default_keepsake_photo() -> Dictionary:
+	return {"status": "unasked", "participants": [], "mural": {}, "palette": "garden", "layout": "table"}
+
+func default_hosting_draft() -> Dictionary:
+	return {"story": "memory", "pattern": 85, "tiles": [0, 1, 2, 2, 1, 0], "palette": "warm", "quiet": "arc"}
+
+func take_keepsake_photo(participants: Array = PHOTO_GUESTS) -> bool:
+	if not block_opened or epilogue_packing or String(keepsake_photo.get("status", "unasked")) == "taken":
+		return false
+	if mural_placements.size() < MURAL_MOTIFS.size() or participants.is_empty():
+		return false
+	for raw_p in participants:
+		if not (raw_p is String) or not (String(raw_p) in PHOTO_GUESTS):
+			return false
+	var canonical: Array[String] = []
+	for guest_id in PHOTO_GUESTS:
+		if participants.has(guest_id):
+			canonical.append(guest_id)
+	if canonical.is_empty():
+		return false
+	var frozen_mural: Dictionary = {}
+	for m_id in MURAL_MOTIFS:
+		var cell: Dictionary = mural_placements[m_id]
+		frozen_mural[m_id] = {"col": int(cell.get("col", 0)), "row": int(cell.get("row", 0))}
+	var cur_layout := String(keepsake_photo.get("layout", "table"))
+	keepsake_photo = {
+		"status": "taken",
+		"participants": canonical,
+		"mural": frozen_mural,
+		"palette": mural_palette,
+		"layout": cur_layout if cur_layout in ["table", "floor"] else "table"
+	}
+	browser_import_message = ""
+	update_block_3d()
+	save_godot_state()
+	trigger_progress_cue("keepsake_photo", "%d guests" % canonical.size())
+	update_block_ui()
+	var guest_names: Array[String] = []
+	for g_id in canonical:
+		guest_names.append(g_id.capitalize())
+	var summary := "Keepsake photo taken with %s (%s mural frozen · Rook declines without penalty)" % [", ".join(guest_names), mural_palette.capitalize()]
+	info.text = "%s\nM1 Afternoon Keepsake · Press Y to pack & return neighbor loans\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % summary
+	announce_a11y_status(summary)
+	return true
+
+func skip_keepsake_photo() -> bool:
+	if not block_opened or String(keepsake_photo.get("status", "unasked")) == "taken":
+		return false
+	var cur_layout := String(keepsake_photo.get("layout", "table"))
+	keepsake_photo = {
+		"status": "skipped",
+		"participants": [],
+		"mural": {},
+		"palette": mural_palette,
+		"layout": cur_layout if cur_layout in ["table", "floor"] else "table"
+	}
+	browser_import_message = ""
+	update_block_3d()
+	save_godot_state()
+	update_block_ui()
+	var summary := "Keepsake photo skipped for now (can still take photo before packing starts)."
+	info.text = "%s\nM1 Afternoon Keepsake · Press Y to start packing neighbor loans\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % summary
+	announce_a11y_status(summary)
+	return true
+
+func start_packing_epilogue() -> bool:
+	if not block_opened:
+		return false
+	if not epilogue_packing:
+		epilogue_packing = true
+		if String(keepsake_photo.get("status", "unasked")) == "unasked":
+			var cur_layout := String(keepsake_photo.get("layout", "table"))
+			keepsake_photo = {
+				"status": "skipped",
+				"participants": [],
+				"mural": {},
+				"palette": mural_palette,
+				"layout": cur_layout if cur_layout in ["table", "floor"] else "table"
+			}
+	browser_import_message = ""
+	update_block_3d()
+	save_godot_state()
+	trigger_progress_cue("epilogue_packing", "Packing loans")
+	update_block_ui()
+	var summary := "Started packing borrowed neighbor gear (%d/3 loans returned)." % epilogue_returned.size()
+	info.text = "%s\nReturn Thanh's folding table, Celeste's paint case, and Rook's speaker (Y)\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % summary
+	announce_a11y_status(summary)
+	return true
+
+func return_loan(loan_id: String) -> bool:
+	if not block_opened or not epilogue_packing or not (loan_id in LOAN_IDS):
+		return false
+	if epilogue_returned.has(loan_id):
+		return false
+	var next_returned: Array[String] = []
+	for lid in LOAN_IDS:
+		if lid == loan_id or epilogue_returned.has(lid):
+			next_returned.append(lid)
+	epilogue_returned = next_returned
+	browser_import_message = ""
+	update_block_3d()
+	save_godot_state()
+	trigger_progress_cue("loan_returned", loan_id)
+	update_block_ui()
+	var title := String(LOAN_TITLES.get(loan_id, loan_id))
+	var summary := "Returned %s (%d/3 loans returned)%s" % [title, epilogue_returned.size(), " — Afternoon Epilogue Complete!" if is_epilogue_done() else ""]
+	info.text = "%s\nM1 Afternoon Keepsake & Loan Returns · Sound-independent\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % summary
+	announce_a11y_status(summary)
+	return true
+
+func return_next_loan() -> String:
+	if not block_opened:
+		return ""
+	if not epilogue_packing:
+		start_packing_epilogue()
+	for lid in LOAN_IDS:
+		if not epilogue_returned.has(lid):
+			if return_loan(lid):
+				return lid
+	return ""
+
+func is_epilogue_done() -> bool:
+	return block_opened and epilogue_packing and epilogue_returned.size() == LOAN_IDS.size()
+
+func advance_epilogue_step() -> String:
+	show_block_panel(true)
+	if not block_opened:
+		var msg := "Open the Turk Street block gathering (O) before taking the keepsake photo or returning loans."
+		info.text = "%s\nVisit all 5 neighbors, complete 3/3 mural motifs, and soundcheck with Rook\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % msg
+		announce_a11y_status(msg)
+		return "locked"
+	if String(keepsake_photo.get("status", "unasked")) == "unasked" and not epilogue_packing:
+		return "photo_taken" if take_keepsake_photo(PHOTO_GUESTS) else "photo_blocked"
+	if not epilogue_packing:
+		return "packing_started" if start_packing_epilogue() else "packing_blocked"
+	if epilogue_returned.size() < LOAN_IDS.size():
+		var lid := return_next_loan()
+		return ("returned_" + lid) if not lid.is_empty() else "loan_blocked"
+	var done_msg := "Afternoon epilogue complete: keepsake %s and 3/3 neighbor loans returned." % String(keepsake_photo.get("status", "skipped"))
+	info.text = "%s\nUse Z to plan & host the Second Afternoon Programme\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % done_msg
+	announce_a11y_status(done_msg)
+	return "epilogue_complete"
+
+func programme_title(segment_id: String) -> String:
+	return String(PROGRAMME_TITLES.get(segment_id, segment_id))
+
+func programme_issue(order: Array = programme_order) -> String:
+	var seen: Dictionary = {}
+	for raw_id in order:
+		if not (raw_id is String):
+			return "Each segment can only appear once in the afternoon programme."
+		var sid := String(raw_id)
+		if not (sid in PROGRAMME_SEGMENTS) or seen.has(sid):
+			return "Each segment can only appear once in the afternoon programme."
+		seen[sid] = true
+	if order.size() < PROGRAMME_SEGMENTS.size():
+		var missing_titles: Array[String] = []
+		for sid in PROGRAMME_SEGMENTS:
+			if not seen.has(sid):
+				missing_titles.append(programme_title(sid))
+		return "Add all 4 segments to publish (%s remaining)." % ", ".join(missing_titles)
+	var beats_at := -1
+	var stories_at := -1
+	var pause_at := -1
+	for i in range(order.size()):
+		var sid := String(order[i])
+		if sid == "beats":
+			beats_at = i
+		elif sid == "stories":
+			stories_at = i
+		elif sid == "pause":
+			pause_at = i
+	if beats_at < stories_at and not (beats_at < pause_at and pause_at < stories_at):
+		return "Place Quiet interval between Rhythm workshop and Story circle when Beats comes before Stories."
+	return ""
+
+func programme_add(segment_id: String) -> bool:
+	if not block_opened or not (segment_id in PROGRAMME_SEGMENTS) or programme_order.has(segment_id):
+		return false
+	programme_order.append(segment_id)
+	browser_import_message = ""
+	save_godot_state()
+	update_block_ui()
+	return true
+
+func programme_move(segment_id: String, delta: int) -> bool:
+	if not block_opened:
+		return false
+	var at := programme_order.find(segment_id)
+	var to := at + (-1 if delta < 0 else 1)
+	if at < 0 or to < 0 or to >= programme_order.size():
+		return false
+	var tmp := programme_order[at]
+	programme_order[at] = programme_order[to]
+	programme_order[to] = tmp
+	browser_import_message = ""
+	save_godot_state()
+	update_block_ui()
+	return true
+
+func programme_publish() -> bool:
+	if not block_opened:
+		return false
+	if programme_issue(programme_order) != "":
+		return false
+	if programme_order == programme_published:
+		return false
+	programme_published = programme_order.duplicate()
+	browser_import_message = ""
+	update_block_3d()
+	save_godot_state()
+	trigger_progress_cue("programme_published", "4 segments")
+	update_block_ui()
+	var titles: Array[String] = []
+	for sid in programme_published:
+		titles.append(programme_title(sid))
+	var summary := "Published Second Afternoon Programme: %s" % " -> ".join(titles)
+	info.text = "%s\n3D Programme Signboard posted by Bea · Press Z to start hosting\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % summary
+	announce_a11y_status(summary)
+	return true
+
+func is_hosting_ready_to_start() -> bool:
+	return block_opened and hosting_order.is_empty() and programme_published.size() == PROGRAMME_SEGMENTS.size() and programme_issue(programme_published) == ""
+
+func current_hosting_activity() -> String:
+	if hosting_order.size() != PROGRAMME_SEGMENTS.size() or hosting_results.size() >= hosting_order.size():
+		return ""
+	return hosting_order[hosting_results.size()]
+
+func is_hosting_done() -> bool:
+	return hosting_order.size() == PROGRAMME_SEGMENTS.size() and hosting_results.size() == PROGRAMME_SEGMENTS.size()
+
+func has_hosted_segment(segment_id: String) -> bool:
+	for entry in hosting_results:
+		if String(entry.get("id", "")) == segment_id:
+			return true
+	return false
+
+func get_hosted_segment_value(segment_id: String) -> Variant:
+	for entry in hosting_results:
+		if String(entry.get("id", "")) == segment_id:
+			return entry.get("value", null)
+	return null
+
+func host_start() -> bool:
+	if not is_hosting_ready_to_start():
+		return false
+	hosting_order = programme_published.duplicate()
+	hosting_results.clear()
+	hosting_draft = default_hosting_draft()
+	browser_import_message = ""
+	update_block_3d()
+	save_godot_state()
+	trigger_progress_cue("hosting_started", hosting_order[0])
+	update_block_ui()
+	var first_title := programme_title(hosting_order[0])
+	var summary := "Started hosting Second Afternoon Programme (1/4: %s)." % first_title
+	info.text = "%s\nPress Z to complete each hosted activity across the block (Shift+Z to customize)\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % summary
+	announce_a11y_status(summary)
+	return true
+
+func host_set_story(story_id: String) -> bool:
+	if current_hosting_activity() != "stories" or not (story_id in HOSTING_STORIES) or String(hosting_draft.get("story", "memory")) == story_id:
+		return false
+	hosting_draft["story"] = story_id
+	save_godot_state()
+	update_block_ui()
+	return true
+
+func host_toggle_beat(step: int) -> bool:
+	if current_hosting_activity() != "beats" or step < 0 or step > 7:
+		return false
+	var pat := clampi(int(hosting_draft.get("pattern", 85)), 0, 255)
+	var next_pat := (pat ^ (1 << step)) & 255
+	hosting_draft["pattern"] = next_pat
+	save_godot_state()
+	update_block_ui()
+	return true
+
+func host_cycle_tile(index: int) -> bool:
+	if current_hosting_activity() != "art" or index < 0 or index > 5:
+		return false
+	var raw_tiles: Array = hosting_draft.get("tiles", HOSTING_DEFAULT_TILES)
+	var next_tiles: Array[int] = []
+	for i in range(6):
+		var v := int(raw_tiles[i]) if i < raw_tiles.size() else HOSTING_DEFAULT_TILES[i]
+		next_tiles.append((clampi(v, 0, 2) + 1) % 3 if i == index else clampi(v, 0, 2))
+	hosting_draft["tiles"] = next_tiles
+	save_godot_state()
+	update_block_ui()
+	return true
+
+func host_set_palette(pal_id: String) -> bool:
+	if current_hosting_activity() != "art" or not (pal_id in HOSTING_PALETTES) or String(hosting_draft.get("palette", "warm")) == pal_id:
+		return false
+	hosting_draft["palette"] = pal_id
+	save_godot_state()
+	update_block_ui()
+	return true
+
+func host_set_quiet(quiet_id: String) -> bool:
+	if current_hosting_activity() != "pause" or not (quiet_id in HOSTING_QUIETS) or String(hosting_draft.get("quiet", "arc")) == quiet_id:
+		return false
+	hosting_draft["quiet"] = quiet_id
+	save_godot_state()
+	update_block_ui()
+	return true
+
+func host_complete_current() -> bool:
+	var active := current_hosting_activity()
+	if active == "":
+		return false
+	var entry: Dictionary = {"id": active}
+	if active == "stories":
+		var st := String(hosting_draft.get("story", "memory"))
+		entry["value"] = st if st in HOSTING_STORIES else "memory"
+	elif active == "beats":
+		var pat := clampi(int(hosting_draft.get("pattern", 85)), 0, 255)
+		entry["value"] = pat
+	elif active == "art":
+		var raw_t: Array = hosting_draft.get("tiles", HOSTING_DEFAULT_TILES)
+		var clean_t: Array[int] = []
+		for i in range(6):
+			var v := int(raw_t[i]) if i < raw_t.size() else HOSTING_DEFAULT_TILES[i]
+			clean_t.append(clampi(v, 0, 2))
+		var pal := String(hosting_draft.get("palette", "warm"))
+		entry["value"] = {
+			"palette": pal if pal in HOSTING_PALETTES else "warm",
+			"tiles": clean_t
+		}
+	elif active == "pause":
+		var q := String(hosting_draft.get("quiet", "arc"))
+		entry["value"] = q if q in HOSTING_QUIETS else "arc"
+	hosting_results.append(entry)
+	browser_import_message = ""
+	update_block_3d()
+	save_godot_state()
+	if is_hosting_done():
+		trigger_progress_cue("hosting_complete", "4/4 hosted")
+	else:
+		trigger_progress_cue("hosting_segment", active)
+	update_block_ui()
+	var next_act := current_hosting_activity()
+	var summary := "Completed %s (%d/4 hosted)%s" % [programme_title(active), hosting_results.size(), " — Second Afternoon Complete!" if next_act == "" else (" · Next: " + programme_title(next_act))]
+	info.text = "%s\nM3 Second Afternoon Programme & Hosting · Sound-independent\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % summary
+	announce_a11y_status(summary)
+	return true
+
+func cycle_programme_or_hosting_choice() -> String:
+	show_block_panel(true)
+	if not block_opened:
+		return "locked"
+	var active := current_hosting_activity()
+	if active == "stories":
+		var next_st := "future" if String(hosting_draft.get("story", "memory")) == "memory" else "memory"
+		host_set_story(next_st)
+		announce_a11y_status("Story circle invitation set to %s." % next_st)
+		return "story_" + next_st
+	elif active == "beats":
+		host_toggle_beat(0)
+		var pat := int(hosting_draft.get("pattern", 85))
+		announce_a11y_status("Rhythm workshop pattern set to %d." % pat)
+		return "beats_%d" % pat
+	elif active == "art":
+		var next_pal := "cool" if String(hosting_draft.get("palette", "warm")) == "warm" else "warm"
+		host_set_palette(next_pal)
+		host_cycle_tile(0)
+		announce_a11y_status("Shared art panel palette set to %s." % next_pal)
+		return "art_" + next_pal
+	elif active == "pause":
+		var next_q := "pairs" if String(hosting_draft.get("quiet", "arc")) == "arc" else "arc"
+		host_set_quiet(next_q)
+		announce_a11y_status("Quiet interval seating set to %s." % next_q)
+		return "pause_" + next_q
+	if programme_order.size() < PROGRAMME_SEGMENTS.size():
+		for sid in PROGRAMME_DEFAULT_ORDER:
+			if not programme_order.has(sid):
+				programme_add(sid)
+				return "added_" + sid
+	if programme_order.size() == PROGRAMME_SEGMENTS.size():
+		programme_move("stories", 1 if programme_order[0] == "stories" else -1)
+		return "moved_stories"
+	return "noop"
+
+func advance_programme_and_hosting_step() -> String:
+	show_block_panel(true)
+	if not block_opened:
+		var msg := "Open the Turk Street block gathering (O) before publishing or hosting the Second Afternoon Programme."
+		info.text = "%s\nVisit all 5 neighbors, complete 3/3 mural motifs, and soundcheck with Rook\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % msg
+		announce_a11y_status(msg)
+		return "locked"
+	if programme_published.size() < PROGRAMME_SEGMENTS.size():
+		if programme_order.is_empty():
+			for sid in PROGRAMME_DEFAULT_ORDER:
+				programme_add(sid)
+		var issue := programme_issue(programme_order)
+		if issue != "":
+			info.text = "%s\nAdjust programme draft before publishing\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % issue
+			announce_a11y_status(issue)
+			return "programme_blocked"
+		return "programme_published" if programme_publish() else "programme_blocked"
+	if hosting_order.is_empty():
+		return "hosting_started" if host_start() else "hosting_blocked"
+	if not is_hosting_done():
+		var act := current_hosting_activity()
+		return ("hosted_" + act) if host_complete_current() else "hosting_blocked"
+	var done_msg := "Second Afternoon Programme complete: 4/4 activities hosted across Turk Street."
+	info.text = "%s\nStory circle, Rhythm workshop, Quiet interval, and Shared art panel complete\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % done_msg
+	announce_a11y_status(done_msg)
+	return "hosting_complete"
+
 func recompute_music_stems() -> void:
 	var mask := 1 # "bass" always active
 	if visited_neighbors.size() >= 1 or celeste_talk_count > 0 or rook_soundcheck_done:
@@ -2461,7 +3077,9 @@ func setup_web_a11y_bridge() -> void:
 				}
 				var s = document.getElementById('godot-a11y-summary');
 				if (s) {
-					s.textContent = "Neighbors " + data.visited_count + "/5 · Mural " + data.mural_count + "/3 (" + data.mural_palette + ") · Soundcheck " + (data.soundcheck_done ? "Done" : "Pending") + " · Block " + (data.block_opened ? "Opened" : (data.block_ready ? "Ready" : "In progress")) + " · Compton's " + (data.history_read ? "Read" : "Unread") + " · Black Hawk " + (data.blackhawk_discovered ? "Found" : "Unvisited") + " · District " + (data.district_boundary_visible ? "Shown" : "Hidden");
+					var progLen = Array.isArray(data.programme_published) ? data.programme_published.length : 0;
+					var hostCur = data.hosting_current ? (" (" + data.hosting_current + ")") : "";
+					s.textContent = "Neighbors " + data.visited_count + "/5 · Mural " + data.mural_count + "/3 (" + data.mural_palette + ") · Soundcheck " + (data.soundcheck_done ? "Done" : "Pending") + " · Block " + (data.block_opened ? "Opened" : (data.block_ready ? "Ready" : "In progress")) + " · Compton's " + (data.history_read ? "Read" : "Unread") + " · Black Hawk " + (data.blackhawk_discovered ? "Found" : "Unvisited") + " · District " + (data.district_boundary_visible ? "Shown" : "Hidden") + " · Keepsake " + (data.keepsake_status || "unasked") + " · Loans " + (data.loans_returned_count || 0) + "/3 · Programme " + progLen + "/4 · Hosted " + (data.hosting_completed_count || 0) + "/4" + hostCur;
 				}
 				return true;
 			} catch (_e) {
@@ -2486,7 +3104,7 @@ func setup_web_a11y_bridge() -> void:
 			saveInput.addEventListener('change', function() {
 				var f = saveInput.files && saveInput.files[0];
 				if (!f) return;
-				if (f.size <= 0 || f.size > 65536) {
+				if (f.size <= 0 || f.size > %d) {
 					window.__tenderloinQueueBrowserSaveJson('', 'size');
 					saveInput.value = '';
 					return;
@@ -2509,7 +3127,7 @@ func setup_web_a11y_bridge() -> void:
 			return true;
 		};
 	})();
-	"""
+	""" % BROWSER_SAVE_MAX_BYTES
 	JavaScriptBridge.eval(js_a11y, true)
 
 func get_a11y_status_snapshot() -> Dictionary:
@@ -2533,6 +3151,16 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"history_read": history_read,
 		"blackhawk_discovered": blackhawk_discovered,
 		"district_boundary_visible": district_boundary_visible,
+		"keepsake_status": String(keepsake_photo.get("status", "unasked")),
+		"keepsake_participants": keepsake_photo.get("participants", []).duplicate(),
+		"epilogue_packing": epilogue_packing,
+		"loans_returned_count": epilogue_returned.size(),
+		"epilogue_done": is_epilogue_done(),
+		"programme_published": programme_published.duplicate(),
+		"hosting_order": hosting_order.duplicate(),
+		"hosting_completed_count": hosting_results.size(),
+		"hosting_current": current_hosting_activity(),
+		"hosting_done": is_hosting_done(),
 		"total_buildings": all_buildings.size(),
 		"wider_buildings_count": wider_meshes.size(),
 		"music_playing": music_playing,
@@ -2570,9 +3198,18 @@ func poll_web_audio() -> void:
 		return
 	var has_save_pending: Variant = JavaScriptBridge.eval("Boolean(window.__tenderloinWebSavePending);", true)
 	if bool(has_save_pending):
+		var save_err_var: Variant = JavaScriptBridge.eval("window.__tenderloinWebSavePending ? String(window.__tenderloinWebSavePending.err || '') : '';", true)
 		var save_raw_var: Variant = JavaScriptBridge.eval("var sp = window.__tenderloinWebSavePending; window.__tenderloinWebSavePending = null; (sp && !sp.err) ? String(sp.raw || '') : '';", true)
+		var save_err := String(save_err_var) if save_err_var is String else ""
 		var save_raw := String(save_raw_var) if save_raw_var is String else ""
-		import_browser_save_json(save_raw)
+		if not save_err.is_empty():
+			browser_import_status = "error"
+			browser_import_message = "Browser save file exceeds 64 KB limit; Godot progress kept." if save_err == "size" else "Browser save file could not be read; Godot progress kept."
+			update_block_ui()
+			info.text = "%s\nBrowser save ('%s') is read-only and never overwritten by Godot\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [browser_import_message, BROWSER_WEB_STORAGE_KEY]
+			announce_a11y_status(browser_import_message)
+		else:
+			import_browser_save_json(save_raw)
 	var has_pending: Variant = JavaScriptBridge.eval("Boolean(window.__tenderloinWebAudioPending);", true)
 	if not bool(has_pending):
 		return
@@ -2720,8 +3357,10 @@ func resolve_save_path() -> String:
 			var custom := arg.trim_prefix("--godot-save-path=").strip_edges()
 			if not custom.is_empty():
 				return custom
+		if arg == "--test-suite":
+			return GODOT_TEST_SAVE_PATH
 	for arg in OS.get_cmdline_args():
-		if arg.ends_with("study_test.gd"):
+		if arg.ends_with("study_test.gd") or arg == "--test-suite":
 			return GODOT_TEST_SAVE_PATH
 	return GODOT_SAVE_PATH
 
@@ -2758,7 +3397,21 @@ func build_save_envelope() -> Dictionary:
 		"block_opened": block_opened,
 		"history_read": history_read,
 		"blackhawk_discovered": blackhawk_discovered,
-		"district_boundary_visible": district_boundary_visible
+		"district_boundary_visible": district_boundary_visible,
+		"epilogue": {
+			"photo": keepsake_photo.duplicate(true),
+			"packing": epilogue_packing,
+			"returned": epilogue_returned.duplicate()
+		},
+		"programme": {
+			"order": programme_order.duplicate(),
+			"published": programme_published.duplicate()
+		},
+		"hosting": {
+			"order": hosting_order.duplicate(),
+			"results": hosting_results.duplicate(true),
+			"draft": hosting_draft.duplicate(true)
+		}
 	}
 
 func save_godot_state() -> bool:
@@ -2785,6 +3438,14 @@ func reset_mural_state_to_defaults(status_label: String) -> void:
 	rook_soundcheck_done = false
 	visited_neighbors.clear()
 	block_opened = false
+	keepsake_photo = default_keepsake_photo()
+	epilogue_packing = false
+	epilogue_returned.clear()
+	programme_order.clear()
+	programme_published.clear()
+	hosting_order.clear()
+	hosting_results.clear()
+	hosting_draft = default_hosting_draft()
 	history_read = false
 	blackhawk_discovered = false
 	district_boundary_visible = true
@@ -2812,6 +3473,266 @@ func reset_mural_state_to_defaults(status_label: String) -> void:
 	update_music_ui()
 	update_block_ui()
 	sync_web_a11y_status()
+
+func validate_mural_dict(raw_val: Variant, require_full: bool) -> Dictionary:
+	if not (raw_val is Dictionary):
+		return {"ok": false, "placements": {}}
+	var raw_dict: Dictionary = raw_val
+	var clean_placements: Dictionary = {}
+	var occupied: Dictionary = {}
+	for k in raw_dict.keys():
+		var motif_key := String(k)
+		if not (motif_key in MURAL_MOTIFS):
+			return {"ok": false, "placements": {}}
+		var cell_val: Variant = raw_dict[k]
+		if not (cell_val is Dictionary):
+			return {"ok": false, "placements": {}}
+		var cell_dict: Dictionary = cell_val
+		var c_val: Variant = cell_dict.get("col", null)
+		var r_val: Variant = cell_dict.get("row", null)
+		if not is_whole_json_number(c_val) or not is_whole_json_number(r_val):
+			return {"ok": false, "placements": {}}
+		var c_int := int(roundf(float(c_val)))
+		var r_int := int(roundf(float(r_val)))
+		if not is_valid_mural_cell(c_int, r_int):
+			return {"ok": false, "placements": {}}
+		var cell_key := "%d,%d" % [c_int, r_int]
+		if occupied.has(cell_key):
+			return {"ok": false, "placements": {}}
+		occupied[cell_key] = true
+		clean_placements[motif_key] = {"col": c_int, "row": r_int}
+	if require_full and clean_placements.size() != MURAL_MOTIFS.size():
+		return {"ok": false, "placements": {}}
+	return {"ok": true, "placements": clean_placements}
+
+func validate_godot_epilogue(raw_ep: Variant, allow_opened: bool, fallback_palette: String) -> Dictionary:
+	if not (raw_ep is Dictionary):
+		return {"ok": false}
+	var ep: Dictionary = raw_ep
+	var packing := false
+	if ep.has("packing"):
+		var pk_val: Variant = ep.get("packing")
+		if not (pk_val is bool):
+			return {"ok": false}
+		packing = bool(pk_val)
+	var clean_ret: Array[String] = []
+	if ep.has("returned"):
+		var ret_val: Variant = ep.get("returned")
+		if not (ret_val is Array):
+			return {"ok": false}
+		var seen_ret: Dictionary = {}
+		for item in ret_val:
+			if not (item is String):
+				return {"ok": false}
+			var lid := String(item)
+			if not (lid in LOAN_IDS) or seen_ret.has(lid):
+				return {"ok": false}
+			seen_ret[lid] = true
+		if not packing and not seen_ret.is_empty():
+			return {"ok": false}
+		for lid in LOAN_IDS:
+			if seen_ret.has(lid):
+				clean_ret.append(lid)
+	if packing and not ep.has("photo"):
+		return {"ok": false}
+	var clean_photo := default_keepsake_photo()
+	clean_photo["palette"] = fallback_palette
+	if ep.has("photo"):
+		var ph_val: Variant = ep.get("photo")
+		if not (ph_val is Dictionary):
+			return {"ok": false}
+		var ph: Dictionary = ph_val
+		var st_val: Variant = ph.get("status", "unasked")
+		if not (st_val is String) or not (String(st_val) in ["unasked", "taken", "skipped"]):
+			return {"ok": false}
+		var st := String(st_val)
+		if packing and st == "unasked":
+			return {"ok": false}
+		var lay_id := "table"
+		if ph.has("layout"):
+			var lay_val: Variant = ph.get("layout")
+			if not (lay_val is String) or not (String(lay_val) in ["table", "floor"]):
+				return {"ok": false}
+			lay_id = String(lay_val)
+		if st == "taken":
+			var p_val: Variant = ph.get("participants", null)
+			if not (p_val is Array) or p_val.is_empty():
+				return {"ok": false}
+			var seen_p: Dictionary = {}
+			for item in p_val:
+				if not (item is String):
+					return {"ok": false}
+				var gid := String(item)
+				if not (gid in PHOTO_GUESTS) or seen_p.has(gid):
+					return {"ok": false}
+				seen_p[gid] = true
+			var canon_p: Array[String] = []
+			for gid in PHOTO_GUESTS:
+				if seen_p.has(gid):
+					canon_p.append(gid)
+			var k_pal_val: Variant = ph.get("palette", "")
+			if not (k_pal_val is String) or not (String(k_pal_val) in MURAL_PALETTES):
+				return {"ok": false}
+			var m_res := validate_mural_dict(ph.get("mural", null), true)
+			if not bool(m_res.get("ok", false)):
+				return {"ok": false}
+			clean_photo = {
+				"status": "taken",
+				"participants": canon_p,
+				"mural": m_res.get("placements", {}),
+				"palette": String(k_pal_val),
+				"layout": lay_id
+			}
+		else:
+			if ph.has("participants"):
+				var non_taken_p: Variant = ph.get("participants")
+				if not (non_taken_p is Array) or not (non_taken_p as Array).is_empty():
+					return {"ok": false}
+			clean_photo = {
+				"status": st,
+				"participants": [],
+				"mural": {},
+				"palette": fallback_palette,
+				"layout": lay_id
+			}
+	if not allow_opened:
+		return {"ok": true, "photo": default_keepsake_photo(), "packing": false, "returned": [] as Array[String]}
+	return {"ok": true, "photo": clean_photo, "packing": packing, "returned": clean_ret}
+
+func validate_godot_programme(raw_prog: Variant, allow_opened: bool) -> Dictionary:
+	if not (raw_prog is Dictionary):
+		return {"ok": false}
+	var prog: Dictionary = raw_prog
+	var clean_order: Array[String] = []
+	if prog.has("order"):
+		var ord_val: Variant = prog.get("order")
+		if not (ord_val is Array) or ord_val.size() > PROGRAMME_SEGMENTS.size():
+			return {"ok": false}
+		for item in ord_val:
+			if not (item is String):
+				return {"ok": false}
+			var sid := String(item)
+			if not (sid in PROGRAMME_SEGMENTS) or clean_order.has(sid):
+				return {"ok": false}
+			clean_order.append(sid)
+	var clean_pub: Array[String] = []
+	if prog.has("published"):
+		var pub_val: Variant = prog.get("published")
+		if not (pub_val is Array):
+			return {"ok": false}
+		if not pub_val.is_empty():
+			if pub_val.size() != PROGRAMME_SEGMENTS.size() or programme_issue(pub_val) != "":
+				return {"ok": false}
+			for item in pub_val:
+				clean_pub.append(String(item))
+	if not allow_opened:
+		return {"ok": true, "order": [] as Array[String], "published": [] as Array[String]}
+	return {"ok": true, "order": clean_order, "published": clean_pub}
+
+func validate_godot_hosting(raw_host: Variant, allow_opened: bool) -> Dictionary:
+	if not (raw_host is Dictionary):
+		return {"ok": false}
+	var host: Dictionary = raw_host
+	var clean_order: Array[String] = []
+	if host.has("order"):
+		var ord_val: Variant = host.get("order")
+		if not (ord_val is Array):
+			return {"ok": false}
+		if not ord_val.is_empty():
+			if ord_val.size() != PROGRAMME_SEGMENTS.size() or programme_issue(ord_val) != "":
+				return {"ok": false}
+			for item in ord_val:
+				clean_order.append(String(item))
+	var clean_results: Array[Dictionary] = []
+	if host.has("results"):
+		var res_val: Variant = host.get("results")
+		if not (res_val is Array) or res_val.size() > PROGRAMME_SEGMENTS.size():
+			return {"ok": false}
+		if clean_order.is_empty() and not res_val.is_empty():
+			return {"ok": false}
+		for i in range(res_val.size()):
+			var entry_val: Variant = res_val[i]
+			if not (entry_val is Dictionary):
+				return {"ok": false}
+			var entry: Dictionary = entry_val
+			var expected_id := clean_order[i]
+			if String(entry.get("id", "")) != expected_id:
+				return {"ok": false}
+			var v: Variant = entry.get("value", null)
+			if expected_id == "stories":
+				if not (v is String) or not (String(v) in HOSTING_STORIES):
+					return {"ok": false}
+				clean_results.append({"id": "stories", "value": String(v)})
+			elif expected_id == "beats":
+				if not is_whole_json_number(v):
+					return {"ok": false}
+				var pat_i := int(roundf(float(v)))
+				if pat_i < 0 or pat_i > 255:
+					return {"ok": false}
+				clean_results.append({"id": "beats", "value": pat_i})
+			elif expected_id == "art":
+				if not (v is Dictionary):
+					return {"ok": false}
+				var art_d: Dictionary = v
+				var a_pal: Variant = art_d.get("palette", "")
+				var a_tiles: Variant = art_d.get("tiles", null)
+				if not (a_pal is String) or not (String(a_pal) in HOSTING_PALETTES) or not (a_tiles is Array) or a_tiles.size() != 6:
+					return {"ok": false}
+				var clean_t: Array[int] = []
+				for tv in a_tiles:
+					if not is_whole_json_number(tv):
+						return {"ok": false}
+					var ti := int(roundf(float(tv)))
+					if ti < 0 or ti > 2:
+						return {"ok": false}
+					clean_t.append(ti)
+				clean_results.append({"id": "art", "value": {"palette": String(a_pal), "tiles": clean_t}})
+			elif expected_id == "pause":
+				if not (v is String) or not (String(v) in HOSTING_QUIETS):
+					return {"ok": false}
+				clean_results.append({"id": "pause", "value": String(v)})
+	var clean_draft := default_hosting_draft()
+	if host.has("draft"):
+		var dr_val: Variant = host.get("draft")
+		if not (dr_val is Dictionary):
+			return {"ok": false}
+		var dr: Dictionary = dr_val
+		if dr.has("story"):
+			if not (dr.get("story") is String) or not (String(dr.get("story")) in HOSTING_STORIES):
+				return {"ok": false}
+			clean_draft["story"] = String(dr.get("story"))
+		if dr.has("pattern"):
+			var p_v: Variant = dr.get("pattern")
+			if not is_whole_json_number(p_v):
+				return {"ok": false}
+			var p_i := int(roundf(float(p_v)))
+			if p_i < 0 or p_i > 255:
+				return {"ok": false}
+			clean_draft["pattern"] = p_i
+		if dr.has("palette"):
+			if not (dr.get("palette") is String) or not (String(dr.get("palette")) in HOSTING_PALETTES):
+				return {"ok": false}
+			clean_draft["palette"] = String(dr.get("palette"))
+		if dr.has("quiet"):
+			if not (dr.get("quiet") is String) or not (String(dr.get("quiet")) in HOSTING_QUIETS):
+				return {"ok": false}
+			clean_draft["quiet"] = String(dr.get("quiet"))
+		if dr.has("tiles"):
+			var dt_val: Variant = dr.get("tiles")
+			if not (dt_val is Array) or dt_val.size() != 6:
+				return {"ok": false}
+			var dt_clean: Array[int] = []
+			for tv in dt_val:
+				if not is_whole_json_number(tv):
+					return {"ok": false}
+				var ti := int(roundf(float(tv)))
+				if ti < 0 or ti > 2:
+					return {"ok": false}
+				dt_clean.append(ti)
+			clean_draft["tiles"] = dt_clean
+	if not allow_opened:
+		return {"ok": true, "order": [] as Array[String], "results": [] as Array[Dictionary], "draft": default_hosting_draft()}
+	return {"ok": true, "order": clean_order, "results": clean_results, "draft": clean_draft}
 
 func apply_save_envelope(raw_json: String) -> bool:
 	var trimmed := raw_json.strip_edges()
@@ -2889,39 +3810,30 @@ func apply_save_envelope(raw_json: String) -> bool:
 				reset_mural_state_to_defaults("recovered")
 				return false
 			clean_visited[String(item)] = true
-	var raw_placements: Variant = env.get("mural_placements", null)
-	if not raw_placements is Dictionary:
+	var m_check := validate_mural_dict(env.get("mural_placements", null), false)
+	if not bool(m_check.get("ok", false)):
 		reset_mural_state_to_defaults("recovered")
 		return false
-	var raw_dict: Dictionary = raw_placements
-	var clean_placements: Dictionary = {}
-	var occupied: Dictionary = {}
-	for k in raw_dict.keys():
-		var motif_key := String(k)
-		if not motif_key in MURAL_MOTIFS:
+	var clean_placements: Dictionary = m_check.get("placements", {})
+	var will_open := bo_done and clean_visited.size() >= neighbors.size() and clean_placements.size() == MURAL_MOTIFS.size() and sc_done
+	var ep_res := {"ok": true, "photo": default_keepsake_photo(), "packing": false, "returned": [] as Array[String]}
+	if env.has("epilogue"):
+		ep_res = validate_godot_epilogue(env.get("epilogue"), will_open, pal_id)
+		if not bool(ep_res.get("ok", false)):
 			reset_mural_state_to_defaults("recovered")
 			return false
-		var cell_val: Variant = raw_dict[k]
-		if not cell_val is Dictionary:
+	var prog_res := {"ok": true, "order": [] as Array[String], "published": [] as Array[String]}
+	if env.has("programme"):
+		prog_res = validate_godot_programme(env.get("programme"), will_open)
+		if not bool(prog_res.get("ok", false)):
 			reset_mural_state_to_defaults("recovered")
 			return false
-		var cell_dict: Dictionary = cell_val
-		var c_val: Variant = cell_dict.get("col", null)
-		var r_val: Variant = cell_dict.get("row", null)
-		if not is_whole_json_number(c_val) or not is_whole_json_number(r_val):
+	var host_res := {"ok": true, "order": [] as Array[String], "results": [] as Array[Dictionary], "draft": default_hosting_draft()}
+	if env.has("hosting"):
+		host_res = validate_godot_hosting(env.get("hosting"), will_open)
+		if not bool(host_res.get("ok", false)):
 			reset_mural_state_to_defaults("recovered")
 			return false
-		var c_int := int(roundf(float(c_val)))
-		var r_int := int(roundf(float(r_val)))
-		if not is_valid_mural_cell(c_int, r_int):
-			reset_mural_state_to_defaults("recovered")
-			return false
-		var cell_key := "%d,%d" % [c_int, r_int]
-		if occupied.has(cell_key):
-			reset_mural_state_to_defaults("recovered")
-			return false
-		occupied[cell_key] = true
-		clean_placements[motif_key] = {"col": c_int, "row": r_int}
 	var seq_val: Variant = env.get("save_seq", 0)
 	if is_whole_json_number(seq_val):
 		save_seq = maxi(save_seq, int(roundf(float(seq_val))))
@@ -2935,6 +3847,15 @@ func apply_save_envelope(raw_json: String) -> bool:
 	history_read = hr_done
 	blackhawk_discovered = bh_done
 	district_boundary_visible = db_vis
+	block_opened = will_open
+	keepsake_photo = ep_res.get("photo", default_keepsake_photo())
+	epilogue_packing = bool(ep_res.get("packing", false))
+	epilogue_returned = ep_res.get("returned", [] as Array[String])
+	programme_order = prog_res.get("order", [] as Array[String])
+	programme_published = prog_res.get("published", [] as Array[String])
+	hosting_order = host_res.get("order", [] as Array[String])
+	hosting_results = host_res.get("results", [] as Array[Dictionary])
+	hosting_draft = host_res.get("draft", default_hosting_draft())
 	stop_music_playback()
 	sketch_tick = 0
 	sketch_phase = 0.0
@@ -2946,7 +3867,6 @@ func apply_save_envelope(raw_json: String) -> bool:
 		local_audio_player.stream = null
 	save_load_status = "restored"
 	update_mural_3d()
-	block_opened = bo_done and is_block_ready()
 	update_speaker_3d()
 	update_block_3d()
 	update_district_boundary_3d()
@@ -3054,6 +3974,134 @@ func inspect_browser_save_json(raw_json: String) -> Dictionary:
 	var opened_done := (saved.get("opened", false) is bool) and bool(saved.get("opened", false)) and layout_ready and tidy_ready and mural_ready and sc_done
 	var history_flag := (saved.get("history", false) is bool) and bool(saved.get("history", false))
 	var blackhawk_flag := (saved.get("blackhawk", false) is bool) and bool(saved.get("blackhawk", false))
+	var clean_epilogue := {"photo": default_keepsake_photo(), "packing": false, "returned": [] as Array[String]}
+	clean_epilogue["photo"]["palette"] = pal_id
+	clean_epilogue["photo"]["layout"] = layout_id if layout_id != "" else "table"
+	if opened_done and (saved.get("epilogue", null) is Dictionary):
+		var raw_ep: Dictionary = saved.get("epilogue")
+		var pk := (raw_ep.get("packing", false) is bool) and bool(raw_ep.get("packing", false))
+		var ret_list: Array[String] = []
+		if pk and (raw_ep.get("returned", null) is Array):
+			var raw_ret: Array = raw_ep.get("returned")
+			for lid in LOAN_IDS:
+				for r_item in raw_ret:
+					if (r_item is String) and String(r_item) == lid:
+						ret_list.append(lid)
+						break
+		var ph_status := "skipped" if pk else "unasked"
+		var ph_parts: Array[String] = []
+		var ph_mural: Dictionary = {}
+		var ph_pal := pal_id
+		var ph_lay := layout_id if layout_id != "" else "table"
+		if raw_ep.get("photo", null) is Dictionary:
+			var raw_ph: Dictionary = raw_ep.get("photo")
+			var cand_st := String(raw_ph.get("status", "")) if (raw_ph.get("status", null) is String) else ""
+			if cand_st == "skipped":
+				ph_status = "skipped"
+			elif cand_st == "taken":
+				var raw_p_val: Variant = raw_ph.get("participants", null)
+				var raw_lay_val: Variant = raw_ph.get("layout", null)
+				var raw_pal_val: Variant = raw_ph.get("palette", null)
+				var m_chk := validate_mural_dict(raw_ph.get("mural", null), true)
+				var all_p_valid := (raw_p_val is Array) and not (raw_p_val as Array).is_empty()
+				if all_p_valid:
+					for p_item in (raw_p_val as Array):
+						if not (p_item is String) or not (String(p_item) in PHOTO_GUESTS):
+							all_p_valid = false
+							break
+				if all_p_valid and (raw_lay_val is String) and (String(raw_lay_val) in ["table", "floor"]) and (raw_pal_val is String) and (String(raw_pal_val) in MURAL_PALETTES) and bool(m_chk.get("ok", false)):
+					var raw_p_arr: Array = raw_p_val
+					for gid in PHOTO_GUESTS:
+						if raw_p_arr.has(gid):
+							ph_parts.append(gid)
+					ph_mural = m_chk.get("placements", {})
+					ph_pal = String(raw_pal_val)
+					ph_lay = String(raw_lay_val)
+					ph_status = "taken"
+			if pk and ph_status == "unasked":
+				ph_status = "skipped"
+		clean_epilogue = {
+			"photo": {
+				"status": ph_status,
+				"participants": ph_parts if ph_status == "taken" else ([] as Array[String]),
+				"mural": ph_mural if ph_status == "taken" else {},
+				"palette": ph_pal,
+				"layout": ph_lay
+			},
+			"packing": pk,
+			"returned": ret_list
+		}
+	var clean_prog_order: Array[String] = []
+	var clean_prog_pub: Array[String] = []
+	if opened_done and (saved.get("programme", null) is Dictionary):
+		var raw_pr: Dictionary = saved.get("programme")
+		if raw_pr.get("order", null) is Array:
+			for item in raw_pr.get("order"):
+				if (item is String) and (String(item) in PROGRAMME_SEGMENTS) and not clean_prog_order.has(String(item)):
+					clean_prog_order.append(String(item))
+		if raw_pr.get("published", null) is Array:
+			var cand_pub: Array = raw_pr.get("published")
+			if cand_pub.size() == PROGRAMME_SEGMENTS.size() and programme_issue(cand_pub) == "":
+				for item in cand_pub:
+					clean_prog_pub.append(String(item))
+	var clean_host_order: Array[String] = []
+	var clean_host_results: Array[Dictionary] = []
+	var clean_host_draft := default_hosting_draft()
+	if opened_done and (saved.get("hosting", null) is Dictionary):
+		var raw_ho: Dictionary = saved.get("hosting")
+		if raw_ho.get("order", null) is Array:
+			var cand_ho: Array = raw_ho.get("order")
+			if cand_ho.size() == PROGRAMME_SEGMENTS.size() and programme_issue(cand_ho) == "":
+				for item in cand_ho:
+					clean_host_order.append(String(item))
+		if not clean_host_order.is_empty():
+			if raw_ho.get("results", null) is Array:
+				var raw_res: Array = raw_ho.get("results")
+				for i in range(mini(raw_res.size(), clean_host_order.size())):
+					var r_item: Variant = raw_res[i]
+					var exp_id := clean_host_order[i]
+					if not (r_item is Dictionary) or String(r_item.get("id", "")) != exp_id:
+						break
+					var rv: Variant = r_item.get("value", null)
+					if exp_id == "stories" and (rv is String) and (String(rv) in HOSTING_STORIES):
+						clean_host_results.append({"id": "stories", "value": String(rv)})
+					elif exp_id == "beats" and is_whole_json_number(rv) and int(roundf(float(rv))) >= 0 and int(roundf(float(rv))) <= 255:
+						clean_host_results.append({"id": "beats", "value": int(roundf(float(rv)))})
+					elif exp_id == "art" and (rv is Dictionary) and (rv.get("palette", null) is String) and (String(rv.get("palette")) in HOSTING_PALETTES) and (rv.get("tiles", null) is Array) and rv.get("tiles").size() == 6:
+						var ok_tiles := true
+						var ct: Array[int] = []
+						for tv in rv.get("tiles"):
+							if not is_whole_json_number(tv) or int(roundf(float(tv))) < 0 or int(roundf(float(tv))) > 2:
+								ok_tiles = false
+								break
+							ct.append(int(roundf(float(tv))))
+						if not ok_tiles:
+							break
+						clean_host_results.append({"id": "art", "value": {"palette": String(rv.get("palette")), "tiles": ct}})
+					elif exp_id == "pause" and (rv is String) and (String(rv) in HOSTING_QUIETS):
+						clean_host_results.append({"id": "pause", "value": String(rv)})
+					else:
+						break
+			if raw_ho.get("draft", null) is Dictionary:
+				var dr: Dictionary = raw_ho.get("draft")
+				if (dr.get("story", null) is String) and String(dr.get("story")) in HOSTING_STORIES:
+					clean_host_draft["story"] = String(dr.get("story"))
+				if is_whole_json_number(dr.get("pattern", null)) and int(roundf(float(dr.get("pattern")))) >= 0 and int(roundf(float(dr.get("pattern")))) <= 255:
+					clean_host_draft["pattern"] = int(roundf(float(dr.get("pattern"))))
+				if (dr.get("palette", null) is String) and String(dr.get("palette")) in HOSTING_PALETTES:
+					clean_host_draft["palette"] = String(dr.get("palette"))
+				if (dr.get("quiet", null) is String) and String(dr.get("quiet")) in HOSTING_QUIETS:
+					clean_host_draft["quiet"] = String(dr.get("quiet"))
+				if (dr.get("tiles", null) is Array) and dr.get("tiles").size() == 6:
+					var dt: Array[int] = []
+					var ok_dt := true
+					for tv in dr.get("tiles"):
+						if not is_whole_json_number(tv) or int(roundf(float(tv))) < 0 or int(roundf(float(tv))) > 2:
+							ok_dt = false
+							break
+						dt.append(int(roundf(float(tv))))
+					if ok_dt:
+						clean_host_draft["tiles"] = dt
 	return {
 		"valid": true,
 		"greeted": greeted,
@@ -3069,7 +4117,10 @@ func inspect_browser_save_json(raw_json: String) -> Dictionary:
 		"soundcheck": sc_done,
 		"opened": opened_done,
 		"history": history_flag,
-		"blackhawk": blackhawk_flag
+		"blackhawk": blackhawk_flag,
+		"epilogue": clean_epilogue,
+		"programme": {"order": clean_prog_order, "published": clean_prog_pub},
+		"hosting": {"order": clean_host_order, "results": clean_host_results, "draft": clean_host_draft}
 	}
 
 func import_browser_save_json(raw_json: String) -> bool:
@@ -3106,8 +4157,50 @@ func import_browser_save_json(raw_json: String) -> bool:
 		for nid in valid_neighbor_ids():
 			next_visited[nid] = true
 	visited_neighbors = next_visited
+	block_opened = (block_opened or bool(res.get("opened", false))) and (visited_neighbors.size() >= neighbors.size() and mural_placements.size() == MURAL_MOTIFS.size() and rook_soundcheck_done)
+	if block_opened:
+		var imp_ep: Dictionary = res.get("epilogue", {})
+		var imp_ph: Dictionary = imp_ep.get("photo", {})
+		var cur_st := String(keepsake_photo.get("status", "unasked"))
+		var imp_st := String(imp_ph.get("status", "unasked"))
+		if cur_st != "taken" and imp_st == "taken":
+			keepsake_photo = imp_ph.duplicate(true)
+		elif cur_st == "unasked" and imp_st == "skipped":
+			keepsake_photo = imp_ph.duplicate(true)
+		epilogue_packing = epilogue_packing or bool(imp_ep.get("packing", false))
+		if epilogue_packing and String(keepsake_photo.get("status", "unasked")) == "unasked":
+			keepsake_photo["status"] = "skipped"
+		var imp_ret: Array = imp_ep.get("returned", [])
+		var merged_ret: Array[String] = []
+		for lid in LOAN_IDS:
+			if epilogue_returned.has(lid) or imp_ret.has(lid):
+				merged_ret.append(lid)
+		epilogue_returned = merged_ret
+		var imp_pr: Dictionary = res.get("programme", {})
+		var imp_pr_ord: Array = imp_pr.get("order", [])
+		var imp_pr_pub: Array = imp_pr.get("published", [])
+		if imp_pr_ord.size() > programme_order.size():
+			programme_order.clear()
+			for sid in imp_pr_ord:
+				programme_order.append(String(sid))
+		if programme_published.is_empty() and imp_pr_pub.size() == PROGRAMME_SEGMENTS.size():
+			programme_published.clear()
+			for sid in imp_pr_pub:
+				programme_published.append(String(sid))
+		var imp_ho: Dictionary = res.get("hosting", {})
+		var imp_ho_ord: Array = imp_ho.get("order", [])
+		var imp_ho_res: Array = imp_ho.get("results", [])
+		if hosting_order.is_empty() and imp_ho_ord.size() == PROGRAMME_SEGMENTS.size():
+			for sid in imp_ho_ord:
+				hosting_order.append(String(sid))
+		if imp_ho_res.size() > hosting_results.size() and imp_ho_ord.size() == PROGRAMME_SEGMENTS.size():
+			hosting_order.clear()
+			for sid in imp_ho_ord:
+				hosting_order.append(String(sid))
+			hosting_results = imp_ho_res.duplicate(true)
+			if imp_ho.get("draft", null) is Dictionary:
+				hosting_draft = imp_ho.get("draft").duplicate(true)
 	update_mural_3d()
-	block_opened = (block_opened or bool(res.get("opened", false))) and is_block_ready()
 	update_speaker_3d()
 	update_block_3d()
 	update_history_stops_3d()
@@ -3138,6 +4231,12 @@ func import_browser_save_from_web_storage() -> bool:
 		raw_str = String(web_val)
 	if raw_str.strip_edges().is_empty():
 		JavaScriptBridge.eval("window.__tenderloinOpenSavePicker && window.__tenderloinOpenSavePicker();", true)
+		browser_import_status = "picker"
+		browser_import_message = "Choose a browser v1 save JSON file to import."
+		update_block_ui()
+		info.text = "%s\nBrowser save ('%s') is read-only and never overwritten by Godot\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [browser_import_message, BROWSER_WEB_STORAGE_KEY]
+		announce_a11y_status(browser_import_message)
+		return false
 	return import_browser_save_json(raw_str)
 
 func extract_candidate_save_seq(raw_json: String) -> int:
@@ -3559,6 +4658,17 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_O:
 				show_block_panel(true)
 				open_block_gathering()
+			KEY_Y:
+				if event.shift_pressed:
+					show_block_panel(true)
+					skip_keepsake_photo()
+				else:
+					advance_epilogue_step()
+			KEY_Z:
+				if event.shift_pressed:
+					cycle_programme_or_hosting_choice()
+				else:
+					advance_programme_and_hosting_step()
 			KEY_I:
 				import_browser_save_from_web_storage()
 			KEY_J:
@@ -3876,7 +4986,9 @@ func update_block_ui() -> void:
 	if block_detail_label != null:
 		var west_tag := "BH:Found" if blackhawk_discovered else "BH:West"
 		var comp_tag := "CC:Read" if history_read else "CC:1966"
-		var base_detail := "%s · %s · %s" % [get_block_missing_summary(), comp_tag, west_tag]
+		var m1_tag := "Loans:%d/3" % epilogue_returned.size() if epilogue_packing else ("Photo:OK" if String(keepsake_photo.get("status", "unasked")) == "taken" else "M1:Ready")
+		var m3_tag := "Host:%d/4" % hosting_results.size()
+		var base_detail := "%s · %s · %s · %s · %s" % [get_block_missing_summary(), comp_tag, west_tag, m1_tag, m3_tag]
 		block_detail_label.text = base_detail if browser_import_message.is_empty() else ("%s · %s" % [base_detail, browser_import_message])
 	if block_open_btn != null:
 		if block_opened:
@@ -3888,6 +5000,24 @@ func update_block_ui() -> void:
 	if block_next_btn != null:
 		var remaining := maxi(0, n_total - v_count)
 		block_next_btn.text = "Visit Next (%d left)" % remaining if remaining > 0 else "Cycle Neighbor"
+	if block_epilogue_btn != null:
+		if is_epilogue_done():
+			block_epilogue_btn.text = "Loans: 3/3"
+		elif epilogue_packing:
+			block_epilogue_btn.text = "Loan: %d/3" % epilogue_returned.size()
+		elif String(keepsake_photo.get("status", "unasked")) != "unasked":
+			block_epilogue_btn.text = "Pack Loans"
+		else:
+			block_epilogue_btn.text = "Keepsake"
+	if block_programme_btn != null:
+		if is_hosting_done():
+			block_programme_btn.text = "Hosted: 4/4"
+		elif not hosting_order.is_empty():
+			block_programme_btn.text = "Host: %d/4" % hosting_results.size()
+		elif programme_published.size() == PROGRAMME_SEGMENTS.size():
+			block_programme_btn.text = "Start Host"
+		else:
+			block_programme_btn.text = "Programme"
 	if block_mural_btn != null:
 		block_mural_btn.text = "Mural: 3/3" if mural_completed else ("Mural: %d/3" % mural_placements.size())
 	if block_rook_btn != null:
@@ -4027,6 +5157,8 @@ func make_ui() -> void:
 	block_vbox.add_child(b_row1)
 	block_open_btn = block_button(b_row1, "Open Block", func(): open_block_gathering())
 	block_next_btn = block_button(b_row1, "Visit Next (5 left)", func(): visit_next_unvisited_neighbor())
+	block_epilogue_btn = block_button(b_row1, "Keepsake", func(): advance_epilogue_step())
+	block_programme_btn = block_button(b_row1, "Programme", func(): advance_programme_and_hosting_step())
 	var b_row2 := HBoxContainer.new()
 	b_row2.add_theme_constant_override("separation", 4)
 	block_vbox.add_child(b_row2)

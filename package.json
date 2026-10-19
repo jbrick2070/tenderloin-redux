@@ -15,7 +15,7 @@
     "test:film": "node tests/film-browser.mjs",
     "godot:data": "node scripts/build-godot-data.mjs",
     "godot:import": "node scripts/run-godot.mjs --headless --path godot --editor --import --quit",
-    "godot:test": "node scripts/run-godot.mjs --headless --path godot --script res://tests/study_test.gd",
+    "godot:test": "node scripts/run-godot.mjs --headless --path godot --script res://tests/study_test.gd -- --test-suite",
     "godot:export": "node scripts/run-godot.mjs --headless --path godot --export-release Web",
     "godot:serve": "node scripts/serve-godot.mjs",
     "godot:browser": "node tests/godot-browser.mjs",
