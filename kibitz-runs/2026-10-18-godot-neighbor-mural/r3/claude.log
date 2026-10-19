@@ -1,0 +1,17 @@
+STDOUT:
+I've written the review to `C:\tenderloin-redux\kibitz-runs\2026-10-18-godot-neighbor-mural\r3\claude.md`. The tool check passed. I only read files and didn't run the Godot or browser tests, so a few findings are marked as assumptions with a "verify" step.
+
+**Verdict: yes-with-fixes.** The startup order and the save round-trip are wired correctly. Four things should be fixed before build:
+
+1. **The web reload check doesn't test restoring.** `tests/godot-browser.mjs:66-74` only compares the saved blob before and after the reload. Nothing writes a save on startup, so it passes even if loading does nothing.
+2. **The "never touch the browser game's save" check can't fail.** The Godot export is served alone on port 4174, so `tenderloin-redux.save.v1` is always empty there. The fix is to seed that key before loading the page and check it's unchanged afterwards.
+3. **Talking to Celeste happens before you reach her.** Pressing E or T (`main.gd:1503-1506`) starts the walk and runs the talk on the same frame, up to ~100 m away. It also runs when no route exists. The browser test goes through exactly this path.
+4. **The mural board isn't an obstacle.** Routes and the player walk through the 3.56 m frame, and the arrival point likely overlaps a leg. `study_test.gd:49` even asserts that the board's centre is walkable.
+
+The review also has 11 should-fixes, a few optional items and 3 suggested cuts. The most practical ones:
+- `npm run godot:test` deletes your real Godot save, because the test uses the same save file as the editor.
+- Celeste is hard-coded as `neighbors[1]` in five places.
+- The keyboard shortcuts are gated inconsistently: `0` wipes saved progress from anywhere.
+- On Web, there's no rule for which of the two save stores wins.
+
+Separately: several connectors in this session (Box, Runway, and the engineering plugins such as GitHub and Slack) need authorizing. Do that in claude.ai connector settings or with `/mcp` before they can be used. This review didn't need them.

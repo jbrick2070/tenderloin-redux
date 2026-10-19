@@ -1,0 +1,19 @@
+﻿{
+    "godot/data/source_receipt.json":  "f639557e0404c2d937e345de31ded0e123e7dbc79e9d4c1a5bdeb661f6fd6d42",
+    "docs/BUILD_STATUS.md":  "b2a76fb2818db8876ebad3feaa81677db7fe1a26a20d23d7809a98fb685f75ff",
+    "scripts/serve-godot.mjs":  "e7f9c39cc9ed96a70b7e60861adaa8fca1a7f080aad98385b98feb88f4776943",
+    "godot/tests/study_test.gd":  "b59351a2b9cef9c7b3466c26020c827e5b27f3447901c572f9444b58621b14e8",
+    "scripts/build-godot-data.mjs":  "24be08fb677121a86260fa02b6cb781ec76311021591c2d94c05a6cfccd23b0e",
+    "godot/export_presets.cfg":  "7a6cb5a7fa5c838f87c8c67af020c27a28a06e8a9a4ed12d013c5c73dbd65c0e",
+    "scripts/run-godot.mjs":  "4b03b63f1762db8294ea6bba67dddf0026287acb57888a0f43f7a1fa7ae1dacb",
+    "godot/data/buildings.json":  "d9fe35b9b98d580884b30fdad5accca00cb9f0a8a5e04f98ba5f836997ce0d04",
+    "docs/ROADMAP.md":  "57bf6336f75cb26891179306350c379eefdb82352202ac40b1cb1d833478901d",
+    "docs/BUILD_GODOT_MURAL_REVIEW.md":  "df92dc8aa094119de5680212f00a44e2bd851a673218957bd4ff12b31c24f1dd",
+    "package.json":  "711f8a25e5bd2cbbb3cb77ee4e6306d763318bea47f28d63732c769b6f8f5ee4",
+    "godot/project.godot":  "17b7d3433d8317601597ea14d319816873d64a3fac5e2315f04212c983292a14",
+    "docs/GODOT_APPROACH.md":  "508b808daf9a12616d1d6e7f7c80cb6bfcce6b7e556cb5a00a1f7289d48d7225",
+    "godot/main.tscn":  "4ab415614d976aa070ccf83cd51bfcfd36f15bcd1e9b69aa1dafa3104b348fea",
+    "tests/godot-data.test.mjs":  "1ddcbacee477ceca028a917f9cddb15b661edb46a1017ab6d1211910ff60416a",
+    "godot/main.gd":  "cbf5ea7fc3550d5afa2fcf331e0333a9b1f5be4a78ad196b1a1d75aa8981c7cd",
+    "tests/godot-browser.mjs":  "ebcf886447c15cc4044e8a6d13b4c2ba93216ae9679f05f004c123d1dcb43cef"
+}

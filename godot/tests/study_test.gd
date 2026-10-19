@@ -42,6 +42,18 @@ func run() -> void:
 		require(study.building_containing_point(n_xz) == "", "neighbor %s outside all building footprints" % study.neighbors[i].name)
 		require(study.min_wall_distance(n_xz) >= 2.35, "neighbor %s has sidewalk clearance >= 2.35m" % study.neighbors[i].name)
 		require(study.is_walkable_point(n_xz), "neighbor %s position is walkable" % study.neighbors[i].name)
+	require(study.save_path == study.GODOT_TEST_SAVE_PATH, "study_test uses isolated test save path")
+	var m_xz: Vector2 = study.mural_xz()
+	require(study.mural_node != null and study.mural_canvas_mesh != null, "3D Portable Mural Board node and canvas mesh exist")
+	require(study.mural_node.get_node_or_null("StaticBody3D") != null, "Portable Mural Board has StaticBody3D collision")
+	require(study.building_containing_point(m_xz) == "", "portable mural board is outside all 58 building footprints")
+	var m_nb: Dictionary = study.nearest_building_info(m_xz)
+	require(m_nb.id == "201006.0003465" and study.min_wall_distance(m_xz) >= 3.40, "portable mural board is >= 3.40m clear of nearest measured building 201006.0003465")
+	for corner in study.mural_corner_points():
+		require(study.building_containing_point(corner) == "" and study.min_wall_distance(corner) >= 2.35, "all 4 mural board corners are outside all building footprints with >= 2.35m wall clearance")
+	require(not study.is_walkable_point(m_xz), "portable mural board footprint center is solid/non-walkable")
+	require(study.is_walkable_point(study.mural_stand_xz()), "portable mural board stand position in front of canvas is walkable")
+	study.clear_godot_save()
 	study.choose_next(-1)
 	require(study.selected == 57, "first Previous selects last building")
 	study.overview()
@@ -106,6 +118,8 @@ func run() -> void:
 		var final_d: float = study.player_xz().distance_to(study.neighbor_xz(i))
 		require(final_d <= study.ARRIVAL_DISTANCE_M + 1e-3 and final_d >= 0.70, "arrival stops within <= 1.35m without overlapping neighbor")
 		require(study.info.text.contains(study.neighbors[i].name), "arrival updates info with neighbor name")
+		if study.neighbors[i].id == "celeste":
+			require(study.mural_panel.visible, "arriving at Celeste opens portable mural panel")
 		if study.neighbors[i].id == "rook":
 			rook_occluded = not study.occluded_buildings.is_empty()
 			for occ_idx in study.occluded_buildings:
@@ -150,13 +164,103 @@ func run() -> void:
 	study.follow_player()
 	require(study.following_player, "follow_player re-enables camera follow")
 
+	# Test tapping and walking to the 3D Portable Mural Board
+	study.overview()
+	var mural_screen: Vector2 = study.camera.unproject_position(study.MURAL_POS + Vector3(0.0, 1.4, 0.0))
+	require(study.handle_scene_tap(mural_screen), "tapping projected 3D Portable Mural Board starts route")
+	require(study.walking_to_mural and not study.current_path.is_empty(), "mural tap sets walking_to_mural route")
+	var mural_guard := 0
+	while not study.current_path.is_empty() and mural_guard < 400:
+		study.advance_walk(0.2)
+		mural_guard += 1
+	require(mural_guard < 400 and study.arrived_mural, "player arrives at Portable Mural Board within bounded steps")
+	require(study.player_xz().distance_to(m_xz) <= 2.2 and not study.is_point_in_mural_footprint(study.player_xz()), "player stands in front of Portable Mural Board outside board footprint")
+	require(study.mural_panel.visible, "arriving at Portable Mural Board opens mural panel")
+
+	# Test deferred KEY_E talk when starting far from Celeste, and shortcut gating when away from mural
+	study.clear_godot_save()
+	study.player.position = study.PLAYER_START
+	study.overview()
+	var key6_ev := InputEventKey.new()
+	key6_ev.pressed = true
+	key6_ev.keycode = KEY_6
+	study._unhandled_input(key6_ev)
+	require(study.mural_placements.is_empty(), "KEY_6 is ignored while away from Celeste/mural in overview")
+	var keye_ev := InputEventKey.new()
+	keye_ev.pressed = true
+	keye_ev.keycode = KEY_E
+	study._unhandled_input(keye_ev)
+	require(study.selected_neighbor == study.celeste_index and study.pending_celeste_talk and study.celeste_talk_count == 0, "KEY_E when away starts walking to Celeste and defers talk until arrival")
+	var talk_guard := 0
+	while not study.current_path.is_empty() and talk_guard < 400:
+		study.advance_walk(0.2)
+		talk_guard += 1
+	require(study.arrived_neighbor == study.celeste_index and not study.pending_celeste_talk and study.celeste_talk_count == 1 and study.info.text.contains("Celeste:"), "deferred KEY_E talk fires upon arriving at Celeste")
+
+	# Test talking with Celeste, 6x3 motif placement/movement, 3D visual consequence, and separate Godot save/reload
+	study.clear_godot_save()
+	var line1: String = study.talk_with_celeste()
+	var line2: String = study.talk_with_celeste()
+	require(study.celeste_talk_count == 2 and line1 != line2, "talking with Celeste advances original portable board dialogue")
+	require(not study.place_mural_motif("bogus", 0, 0), "invalid motif ID rejected")
+	require(not study.place_mural_motif("sun", -1, 0) and not study.place_mural_motif("sun", 6, 0) and not study.place_mural_motif("sun", 0, 3), "out-of-bounds 6x3 board cells rejected")
+	require(study.place_mural_motif("sun", 1, 0), "place Sun motif at (1,0)")
+	var sun_node: Node3D = study.mural_motif_nodes["sun"]
+	var wave_node: Node3D = study.mural_motif_nodes["wave"]
+	var rise_node: Node3D = study.mural_motif_nodes["rise"]
+	require(sun_node.visible and not wave_node.visible and not rise_node.visible, "placing Sun makes 3D MotifSun visible on board")
+	require(not study.place_mural_motif("wave", 1, 0), "occupied board cell (1,0) rejects overlapping motif")
+	require(study.place_mural_motif("wave", 3, 1), "place Wave motif at (3,1)")
+	require(study.place_mural_motif("rise", 5, 2), "place Rise motif at (5,2)")
+	require(study.mural_completed and study.mural_banner_mesh.visible, "placing all 3 motifs completes mural and shows 3D completion banner")
+	var sun_pos_before: Vector3 = sun_node.position
+	study.active_motif = "sun"
+	require(study.move_active_motif(1, 0), "move_active_motif shifts Sun to (2,0)")
+	require(not sun_node.position.is_equal_approx(sun_pos_before), "moving motif visibly updates 3D motif position on board")
+	var canvas_mat_before: StandardMaterial3D = study.mural_canvas_mesh.material_override
+	var color_before: Color = canvas_mat_before.albedo_color
+	require(study.set_mural_palette("sunset"), "set_mural_palette switches to sunset")
+	var canvas_mat_after: StandardMaterial3D = study.mural_canvas_mesh.material_override
+	require(canvas_mat_after.albedo_color != color_before, "changing palette updates 3D canvas material color")
+	require(FileAccess.file_exists(study.save_path), "separate Godot save file written")
+	var raw_saved: String = FileAccess.get_file_as_string(study.save_path)
+	require(raw_saved.contains("\"schema\":\"tenderloin-redux.godot.save\"") and not raw_saved.contains("tenderloin-redux.save.v1"), "Godot save uses isolated schema namespace")
+
+	# Instantiate a fresh scene to prove reload persistence from save_path
+	var reloaded = load("res://main.tscn").instantiate()
+	root.add_child(reloaded)
+	await process_frame
+	await process_frame
+	require(reloaded.save_load_status == "restored", "fresh scene restores saved Godot mural state on load")
+	require(reloaded.celeste_talk_count == 2 and reloaded.active_motif == "sun", "reloaded scene restores celeste_talk_count and active_motif")
+	require(reloaded.mural_palette == "sunset" and reloaded.mural_completed and reloaded.mural_banner_mesh.visible, "reloaded scene restores palette, completion, and 3D banner")
+	var rel_sun: Node3D = reloaded.mural_motif_nodes["sun"]
+	var rel_wave: Node3D = reloaded.mural_motif_nodes["wave"]
+	var rel_rise: Node3D = reloaded.mural_motif_nodes["rise"]
+	require(rel_sun.visible and rel_wave.visible and rel_rise.visible, "reloaded scene restores all 3 visible 3D motif meshes")
+	require(rel_sun.position.is_equal_approx(sun_node.position), "reloaded scene restores moved 3D Sun motif coordinates")
+	reloaded.queue_free()
+	await process_frame
+
+	# Test corrupt save recovery without crashing
+	require(not study.apply_save_envelope("{corrupt-json"), "corrupt JSON save returns false")
+	require(study.save_load_status == "recovered" and study.mural_placements.is_empty() and not study.mural_banner_mesh.visible, "corrupt JSON resets cleanly to recovered defaults")
+	require(not study.apply_save_envelope("{\"schema\":\"wrong\",\"version\":1}"), "wrong schema save rejected cleanly")
+	require(not study.apply_save_envelope("{\"schema\":\"tenderloin-redux.godot.save\",\"version\":2,\"mural_palette\":\"garden\",\"celeste_talk_count\":1,\"mural_placements\":{}}"), "wrong integer version rejected cleanly")
+	require(not study.apply_save_envelope("{\"schema\":\"tenderloin-redux.godot.save\",\"version\":1.5,\"mural_palette\":\"garden\",\"celeste_talk_count\":1,\"mural_placements\":{}}"), "fractional version rejected cleanly")
+	require(not study.apply_save_envelope("{\"schema\":\"tenderloin-redux.godot.save\",\"version\":1,\"mural_palette\":\"garden\",\"celeste_talk_count\":1,\"mural_placements\":[]}"), "non-dictionary placements rejected cleanly")
+	require(not study.apply_save_envelope("{\"schema\":\"tenderloin-redux.godot.save\",\"version\":1,\"mural_palette\":\"garden\",\"celeste_talk_count\":1,\"mural_placements\":{\"moon\":{\"col\":0,\"row\":0}}}"), "unknown motif key rejected cleanly")
+	require(not study.apply_save_envelope("{\"schema\":\"tenderloin-redux.godot.save\",\"version\":1,\"mural_palette\":\"garden\",\"celeste_talk_count\":1,\"mural_placements\":{\"sun\":{\"col\":1.7,\"row\":0}}}"), "fractional cell coordinate rejected cleanly")
+	require(not study.apply_save_envelope("{\"schema\":\"tenderloin-redux.godot.save\",\"version\":1,\"mural_palette\":\"garden\",\"celeste_talk_count\":1,\"mural_placements\":{\"sun\":{\"col\":1,\"row\":0},\"wave\":{\"col\":1,\"row\":0}}}"), "duplicate cell collision in save rejected cleanly")
+	require(not study.apply_save_envelope("{\"schema\":\"tenderloin-redux.godot.save\",\"version\":1,\"mural_palette\":\"garden\",\"celeste_talk_count\":1,\"mural_placements\":{\"sun\":{\"col\":99,\"row\":0}}}"), "out-of-bounds saved cell rejected cleanly")
+
 	study.overview()
 	var street_screen: Vector2 = study.camera.unproject_position(Vector3(45.0, 0.0, -7.2))
 	require(study.handle_scene_tap(street_screen), "tapping projected street point starts route")
 	require(not study.current_path.is_empty(), "street tap produces walkable path")
 
 	study.overview()
-	require(study.occluded_buildings.is_empty() and study.selected_neighbor == -1, "overview clears cutaway and neighbor selection state")
+	require(study.occluded_buildings.is_empty() and study.selected_neighbor == -1 and not study.mural_panel.visible, "overview clears cutaway, neighbor selection, and mural panel")
 	for i in range(58):
 		require(study.meshes[i].material_override == study.building_materials[i], "overview restores solid neutral building materials")
 
@@ -214,13 +318,49 @@ func run() -> void:
 		await process_frame
 		var expected_neighbor: int = 0 if prev_neighbor < 0 else (prev_neighbor + 1) % study.neighbors.size()
 		require(study.selected_neighbor == expected_neighbor and (not study.current_path.is_empty() or study.arrived_neighbor == expected_neighbor), "ui_accept on Walk to neighbor activates neighbor route")
+		study.clear_mural_board()
+		study.show_mural_panel(true)
+		await process_frame
+		await process_frame
+		require(study.mural_buttons.size() == 8, "MuralPanel has all 8 interactive buttons")
+		var mp_rect: Rect2 = study.mural_panel.get_global_rect()
+		require(mp_rect.position.x >= 0 and mp_rect.end.x <= size.x and mp_rect.position.y >= top - 2 and mp_rect.end.y <= bottom + 2, "mural panel fits cleanly between header and bottom controls")
+		for m_btn in study.mural_buttons:
+			var mr: Rect2 = m_btn.get_global_rect()
+			require(mr.size.x >= 44 and mr.size.y >= 44, "44px minimum mural panel buttons")
+			require(mr.position.x >= 0 and mr.end.x <= size.x and mr.position.y >= 0 and mr.end.y <= size.y, "mural buttons within viewport")
+		study.mural_sun_btn.grab_focus()
+		require(study.mural_sun_btn.has_focus(), "mural Sun button focus available")
+		accept = InputEventAction.new()
+		accept.action = "ui_accept"
+		accept.pressed = true
+		Input.parse_input_event(accept)
+		await process_frame
+		accept = InputEventAction.new()
+		accept.action = "ui_accept"
+		accept.pressed = false
+		Input.parse_input_event(accept)
+		await process_frame
+		require(study.mural_placements.has("sun"), "ui_accept on mural Sun button places Sun motif")
+		study.place_mural_motif("wave", 3, 1)
+		study.place_mural_motif("rise", 5, 2)
+		study.talk_with_celeste()
+		await process_frame
+		await process_frame
+		var header_end_y: float = study.header_panel.get_global_rect().end.y
+		var mural_pos_y: float = study.mural_panel.get_global_rect().position.y
+		var mural_end_y: float = study.mural_panel.get_global_rect().end.y
+		var controls_pos_y: float = study.controls.get_global_rect().position.y
+		require(header_end_y <= mural_pos_y and mural_end_y <= controls_pos_y, "3-line Celeste dialogue header, MuralPanel, and bottom controls do not overlap at %s" % str(size))
 		study.overview()
+	study.clear_godot_save()
 	if "--force-failure" in OS.get_cmdline_user_args():
 		require(false, "harness failure sentinel")
 	if failed:
 		print("GODOT_STUDY_FAIL")
 		quit(1)
 	else:
-		print("GODOT_STUDY_PASS:58 meshes, measured heights, collision/courtyards, walking/sliding, 5 neighbors, cutaway, 44px and ui_accept at 1100/390/320")
+		print("GODOT_STUDY_PASS:58 meshes, measured heights, collision/courtyards, walking/sliding, 5 neighbors, Celeste portable mural, save/reload, cutaway, 44px and ui_accept at 1100/390/320")
 		quit(0)
+
 
