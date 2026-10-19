@@ -6,6 +6,10 @@
 
 A peaceful neighborhood adventure set on an accurate map of San Francisco's Tenderloin. Help neighbors with shared projects, create community art, explore local history, and bring a block together through original jazz and hip-hop.
 
+**Play Online (GitHub Pages):**
+- 🎮 **[3D Godot Web Edition](https://jbrick2070.github.io/tenderloin-redux/)** — Isometric/2.5D 188-building measured neighborhood walk & block party (`artifacts/godot-web/`)
+- 🗺️ **[2D Browser Edition](https://jbrick2070.github.io/tenderloin-redux/browser/)** — Illustrated block adventure (`public/`)
+
 The project began as a constructive response to the Tenderloin-set shooter reported as Night Shift by SFist and Tenderloin Night Shift by the San Francisco Chronicle, with the belief that games can inspire care, creativity, and greatness.
 
 **Status:** first local playable in development. The full game remains in progress; see [build status](docs/BUILD_STATUS.md) and [roadmap](docs/ROADMAP.md).
