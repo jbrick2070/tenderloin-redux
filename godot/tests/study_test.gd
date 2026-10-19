@@ -873,6 +873,64 @@ func run() -> void:
 	study.clear_godot_settings()
 	require(not study.voices_enabled and study.voices_status == "off", "clear_godot_settings resets M5 Neighborhood Voices to default-off")
 
+	# M6 Original SVG builders, consent-aware keepsake export, Dodge Alley Block Concert 3D stage, 145 Leavenworth / 361 Turk 'So What' Easter Egg, and measured local performance
+	require(study.get_node_or_null("StreetLifeDecor/DodgeAlleyConcert") != null and study.get_node_or_null("StreetLifeDecor/DodgeAlleyConcert/ConcertHornPlayer") != null and study.get_node_or_null("StreetLifeDecor/DodgeAlleyConcert/ConcertBannerLabel") != null, "Dodge Alley Block Concert 3D stage, jazz combo, and banner label are built in StreetLifeDecor")
+	require(study.get_node_or_null("StreetLifeDecor/SoWhatEasterEgg/SoWhatAwning_361Turk") != null and study.get_node_or_null("StreetLifeDecor/SoWhatEasterEgg/EighthFloor_145Leavenworth/EighthFloorWindow") != null, "145 Leavenworth (8th Floor) & 361 Turk 'So What' Musical Awning 3D Easter Egg nodes exist in StreetLifeDecor")
+	var shift_h_ev := InputEventKey.new()
+	shift_h_ev.pressed = true
+	shift_h_ev.shift_pressed = true
+	shift_h_ev.keycode = KEY_H
+	study._unhandled_input(shift_h_ev)
+	require(study.last_a11y_announcement.contains("145 Leavenworth (8th Floor") and study.last_a11y_announcement.contains("361 Turk St") and study.last_a11y_announcement.contains("So What"), "Shift+H inspects 145 Leavenworth (8th Floor) & 361 Turk 'So What' Musical Awning Easter Egg")
+	require(study.apply_save_envelope(saved_m4_json) and String(study.keepsake_photo.get("status", "")) == "taken", "restore full M1-M4 save state before M6 SVG and performance tests")
+	require(study.xml_escape("<script>&\"'</script>") == "&lt;script&gt;&amp;&quot;&apos;&lt;/script&gt;", "xml_escape escapes all 5 XML special characters")
+	require(study.build_keepsake_svg({"status": "unasked", "participants": ["bea"], "mural": study.mural_placements, "palette": "garden", "layout": "table"}) == "", "build_keepsake_svg rejects unasked status")
+	require(study.build_keepsake_svg({"status": "taken", "participants": [], "mural": study.mural_placements, "palette": "garden", "layout": "table"}) == "", "build_keepsake_svg rejects empty participants")
+	require(study.build_keepsake_svg({"status": "taken", "participants": ["bea", "rook"], "mural": study.mural_placements, "palette": "garden", "layout": "table"}) == "", "build_keepsake_svg rejects non-consenting Rook")
+	require(study.build_keepsake_svg({"status": "taken", "participants": ["bea", "bea"], "mural": study.mural_placements, "palette": "garden", "layout": "table"}) == "", "build_keepsake_svg rejects duplicate consenting participant IDs")
+	require(study.build_keepsake_svg({"status": "taken", "participants": [123], "mural": study.mural_placements, "palette": "garden", "layout": "table"}) == "", "build_keepsake_svg rejects non-String participant IDs")
+	require(study.build_keepsake_svg({"status": "taken", "participants": ["bea"], "mural": study.mural_placements, "palette": "neon", "layout": "table"}) == "", "build_keepsake_svg rejects invalid palette")
+	require(study.build_keepsake_svg({"status": "taken", "participants": ["bea"], "mural": study.mural_placements, "palette": "garden", "layout": "roof"}) == "", "build_keepsake_svg rejects invalid layout")
+	require(study.build_keepsake_svg({"status": "taken", "participants": ["bea"], "mural": {"sun": {"col": 0, "row": 0}}, "palette": "garden", "layout": "table"}) == "", "build_keepsake_svg rejects incomplete mural")
+	var valid_keepsake_svg: String = study.build_keepsake_svg()
+	require(valid_keepsake_svg.begins_with("<svg ") and valid_keepsake_svg.ends_with("</svg>") and valid_keepsake_svg.contains("Rook is not pictured.") and valid_keepsake_svg.contains("data-guest=\"bea\"") and valid_keepsake_svg.contains("data-guest=\"dez\"") and not valid_keepsake_svg.contains("data-guest=\"rook\"") and valid_keepsake_svg.contains("86.75204712999698"), "build_keepsake_svg generates consent-aware 640x480 postcard SVG matching public/keepsake.js without Rook")
+	require(not bool(study.get_a11y_status_snapshot().get("keepsake_exported", true)) and study.export_keepsake_svg() and study.last_exported_keepsake_svg == valid_keepsake_svg and bool(study.get_a11y_status_snapshot().get("keepsake_exported", false)), "export_keepsake_svg exports keepsake SVG and updates snapshot")
+	study.last_exported_keepsake_svg = ""
+	var shift_y_ev := InputEventKey.new()
+	shift_y_ev.pressed = true
+	shift_y_ev.shift_pressed = true
+	shift_y_ev.keycode = KEY_Y
+	study._unhandled_input(shift_y_ev)
+	require(study.last_exported_keepsake_svg == valid_keepsake_svg, "Shift+Y triggers export_keepsake_svg when keepsake_photo status is taken")
+	study.keepsake_photo["status"] = "skipped"
+	study.keepsake_photo["participants"] = []
+	study.epilogue_packing = true
+	study.last_exported_keepsake_svg = ""
+	var seq_before_skipped_shift_y: int = study.save_seq
+	study._unhandled_input(shift_y_ev)
+	require(study.last_exported_keepsake_svg == "" and study.save_seq == seq_before_skipped_shift_y and study.last_a11y_announcement == "No keepsake photo to export.", "Shift+Y when keepsake is skipped and packing announces No keepsake photo to export without mutating save_seq")
+	require(study.apply_save_envelope(saved_m4_json), "restore saved_m4_json after Shift+Y skipped check")
+	var prog_svg: String = study.build_programme_svg(["stories", "beats", "pause", "art"])
+	require(prog_svg.begins_with("<svg ") and prog_svg.contains("Stories open the afternoon") and study.build_programme_svg(["beats", "stories", "pause", "art"]) == "", "build_programme_svg generates programme poster SVG and rejects invalid order")
+	var tile_svg: String = study.build_tile_panel_svg({"palette": "cool", "tiles": [0, 1, 2, 2, 1, 0]})
+	require(tile_svg.begins_with("<svg ") and tile_svg.contains("cool palette") and study.build_tile_panel_svg({"palette": "cool", "tiles": [0, 9, 2, 2, 1, 0]}) == "", "build_tile_panel_svg generates six-tile panel SVG and rejects out-of-range tiles")
+	var civic_circle_svg: String = study.build_civic_plan_svg({"topic": "repairs", "format": "circle", "notes": "themes"})
+	var civic_dropin_svg: String = study.build_civic_plan_svg({"topic": "access", "format": "dropin", "notes": "none"})
+	require(civic_circle_svg.contains("Small listening circle") and civic_dropin_svg.contains("Drop-in notice table") and civic_circle_svg.contains("Clear route") and study.build_civic_plan_svg({"topic": "bad", "format": "circle", "notes": "themes"}) == "", "build_civic_plan_svg generates circle and dropin shared-space plans and rejects invalid plan")
+	var film_wide_svg: String = study.build_film_frame_svg({"framing": "wide", "plan": "later", "order": ["seat", "paint", "welcome"]}, "seat")
+	var film_close_svg: String = study.build_film_frame_svg({"framing": "close", "plan": "quiet", "order": ["seat", "paint", "welcome"]}, "paint")
+	require(film_wide_svg.contains("#c38c65") and not film_close_svg.contains("#c38c65") and study.build_film_frame_svg({"framing": "wide", "plan": "later", "order": ["seat", "paint", "welcome"]}, "invalid") == "", "build_film_frame_svg renders volunteer hands only in wide framing and rejects invalid shot")
+
+	study.set_voices_enabled(true, false)
+	require(study.suspend_voices() and study.last_voices_teardown_usec > 0 and study.last_voices_teardown_usec < 50000, "suspend_voices records measured teardown latency under 50ms")
+	study.set_voices_enabled(false, false)
+	var perf: Dictionary = study.measure_local_performance()
+	print("PERF_CHECK ", JSON.stringify(perf))
+	require(int(perf.get("opening_buildings_count", 0)) == 58 and int(perf.get("wider_buildings_count", 0)) == 130 and int(perf.get("total_buildings_count", 0)) == 188 and int(perf.get("street_ways_count", 0)) == 20 and int(perf.get("wider_street_ways_count", 0)) == 41 and bool(perf.get("district_boundary_present", false)), "measure_local_performance verifies 188 buildings, 20 opening / 41 wider street ways, and cultural district mesh")
+	require(int(perf.get("pathfind_blackhawk_waypoints", 0)) >= 2 and bool(perf.get("pathfind_cold_cache", false)) and bool(perf.get("astar_used", false)) and int(perf.get("astar_expanded_cells", 0)) > 0 and int(perf.get("pathfind_blackhawk_usec", 999999)) < 250000, "measure_local_performance verifies cold-cache A* Taylor-to-Hyde pathfinding latency under 250ms")
+	require(int(perf.get("save_bytes", 0)) > 0 and int(perf.get("save_bytes", 99999)) <= 4096 and int(perf.get("save_roundtrip_usec", 999999)) < 50000, "measure_local_performance verifies full M1-M4 save payload <= 4096 bytes and roundtrip under 50ms")
+	require(bool(perf.get("voices_teardown_measured", false)) and int(perf.get("voices_teardown_usec", 0)) > 0 and int(perf.get("voices_teardown_usec", 999999)) < 50000 and bool(perf.get("within_budget", false)), "measure_local_performance verifies M5 teardown and overall M6 performance budget")
+
 	study.overview()
 	var street_screen: Vector2 = study.camera.unproject_position(Vector3(45.0, 0.0, -7.2))
 	require(study.handle_scene_tap(street_screen) and study.selected_neighbor == -1, "tapping projected street point in overview starts street route")
@@ -1050,7 +1108,7 @@ func run() -> void:
 		print("GODOT_STUDY_FAIL")
 		quit(1)
 	else:
-		print("GODOT_STUDY_PASS:188 meshes (58 opening + 130 wider), measured heights, collision/courtyards, walking/sliding, 5 neighbors, Celeste portable mural, Rook speaker/music/local-audition, opening-block readiness/banner, wider Tenderloin walk (Compton's Corner + Black Hawk at Turk & Hyde + Transgender Cultural District boundary), M1 keepsake photo & loan returns, M3 afternoon programme & hosting, M4 civic listening hour & three-shot film short (The Open Seat), M5 default-off neighborhood voices & isolated settings, browser-save adapter, save/reload, cutaway, focus-rings, 44px and ui_accept at 1100/390/320")
+		print("GODOT_STUDY_PASS:188 meshes (58 opening + 130 wider), measured heights, collision/courtyards, walking/sliding, 5 neighbors, Celeste portable mural, Rook speaker/music/local-audition, opening-block readiness/banner, wider Tenderloin walk (Compton's Corner + Black Hawk at Turk & Hyde + Transgender Cultural District boundary), M1 keepsake photo & loan returns, M3 afternoon programme & hosting, M4 civic listening hour & three-shot film short (The Open Seat), M5 default-off neighborhood voices & isolated settings, M6 original SVG builders/export & measured local performance, browser-save adapter, save/reload, cutaway, focus-rings, 44px and ui_accept at 1100/390/320")
 		quit(0)
 
 

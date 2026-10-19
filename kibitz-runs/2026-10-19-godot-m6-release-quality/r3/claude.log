@@ -1,0 +1,17 @@
+STDOUT:
+I wrote the review to `kibitz-runs/2026-10-19-godot-m6-release-quality/r3/claude.md`. The tool check passed, and I changed no other files.
+
+**Verdict: no, not ready to build.** Five things need fixing first:
+
+1. **Wrong earcut path.** `docs/ASSETS.md` names `scripts/vendor/earcut-3.0.2.mjs`, but the file is `scripts/vendor/earcut.js`. `tests/godot-data.test.mjs:164` only checks that the doc contains the wrong string, so the test locks the mistake in.
+2. **Wrong source filenames.** `ASSETS.md:51` lists `ynuv-fyni.metadata.json` and `SF_BldgFoot_2017-05_description.pdf`. The real files are `metadata.json` and `method.pdf`, which leaves them out of the inventory.
+3. **Pathfinding is timed with a warm cache.** `cell_walkable_cache` is never cleared, and both test runs walk to Black Hawk before taking the measurement. So the 250 ms budget is never tested on a cold A* run. The route may also take the straight-line shortcut at `main.gd:1665`, which skips A* entirely. I couldn't confirm that without running Godot.
+4. **The Voices teardown number can be fake.** If Voices were never turned off, `measure_local_performance` times clearing a three-item array instead and counts that toward `within_budget`.
+5. **Shift+Y after a skipped photo changes the save.** It calls `skip_keepsake_photo()`, which writes the save again and announces a false message ("can still take photo before packing starts").
+
+Among the should-fix items:
+- The brief names JS functions like `buildKeepsakeSvg` that don't exist; the real ones are `postcardSVG`, `programmeSVG` and so on.
+- The keepsake SVG isn't byte-identical to the JS version, because the bunting numbers are formatted differently.
+- The JS and Godot sides count the exported SVG's size differently and disagree by 2 bytes.
+- The browser test never exercises the real download.
+- `static_memory_bytes` probably always reads 0 in release builds. That's an assumption I flagged for checking against the Godot docs.

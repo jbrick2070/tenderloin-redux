@@ -149,3 +149,62 @@ test('godot/data/neighborhood_voices.json matches public/experiments/neighborhoo
   assert.deepEqual(parsed.records.map(r => r.id), ['tndc', 'glide', 'larkin']);
 });
 
+test('M6 release quality: docs/ASSETS.md, godot/data/SOURCES.md, export_presets.cfg, and license files cover all Godot shipped assets with zero external network or legacy media', async () => {
+  const { existsSync } = await import('node:fs');
+  const assetsDoc = await readFile(new URL('../docs/ASSETS.md', import.meta.url), 'utf8');
+  const sourcesDoc = await readFile(new URL('../godot/data/SOURCES.md', import.meta.url), 'utf8');
+  const exportCfg = await readFile(new URL('../godot/export_presets.cfg', import.meta.url), 'utf8');
+  const engineLicense = await readFile(new URL('../godot/ENGINE_LICENSE.txt', import.meta.url), 'utf8');
+  const earcutLicense = await readFile(new URL('../scripts/vendor/earcut.LICENSE', import.meta.url), 'utf8');
+  const mainGd = await readFile(new URL('../godot/main.gd', import.meta.url), 'utf8');
+
+  for (const requiredAssetToken of [
+    'godot/main.gd',
+    'godot/data/buildings.json',
+    'godot/data/SOURCES.md',
+    'godot/data/source_receipt.json',
+    'godot/data/source/metadata.json',
+    'godot/data/source/method.pdf',
+    'godot/data/neighborhood_voices.json',
+    'scripts/vendor/earcut.js',
+    'scripts/vendor/earcut.LICENSE',
+    'godot/ENGINE_LICENSE.txt',
+    'tenderloin-redux-godot-afternoon.svg',
+    'PDDL 1.0',
+    'ODbL 1.0',
+    'ISC'
+  ]) {
+    assert.ok(assetsDoc.includes(requiredAssetToken), `docs/ASSETS.md must document ${requiredAssetToken}`);
+  }
+
+  const godotSection = assetsDoc.slice(assetsDoc.indexOf('| Godot 4.7.2 track'));
+  const backtickPaths = [...godotSection.matchAll(/`((?:godot|scripts)\/[^`\s*]+)`/g)].map(m => m[1]);
+  assert.ok(backtickPaths.length >= 15, 'docs/ASSETS.md Godot section must list concrete godot/ and scripts/ paths');
+  for (const relPath of backtickPaths) {
+    if (relPath.endsWith('/')) continue;
+    const fullUrl = new URL('../' + relPath, import.meta.url);
+    assert.ok(existsSync(fullUrl), `Documented path ${relPath} in docs/ASSETS.md must exist on disk`);
+  }
+
+  assert.ok(sourcesDoc.includes('ynuv-fyni') && sourcesDoc.includes('5xmc-5bjj') && sourcesDoc.includes('ODbL 1.0'), 'godot/data/SOURCES.md must document ynuv-fyni, 5xmc-5bjj, and ODbL 1.0');
+  assert.ok(engineLicense.includes('Godot Engine') && engineLicense.includes('MIT'), 'godot/ENGINE_LICENSE.txt must retain Godot MIT license');
+  assert.ok(earcutLicense.includes('ISC License') && earcutLicense.includes('Mapbox'), 'scripts/vendor/earcut.LICENSE must retain Mapbox ISC license');
+
+  const incMatch = exportCfg.match(/include_filter="([^"]+)"/);
+  const excMatch = exportCfg.match(/exclude_filter="([^"]+)"/);
+  assert.ok(incMatch, 'export_presets.cfg must declare include_filter');
+  assert.ok(excMatch, 'export_presets.cfg must declare exclude_filter');
+  const includedFiles = incMatch[1].split(',').map(s => s.trim()).filter(Boolean);
+  assert.deepEqual(includedFiles, ['data/buildings.json', 'data/neighborhood_voices.json', 'ENGINE_LICENSE.txt']);
+  for (const relPath of includedFiles) {
+    const buf = await readFile(new URL('../godot/' + relPath, import.meta.url));
+    assert.ok(buf.byteLength > 0, `godot/${relPath} must exist and be non-empty`);
+  }
+  assert.ok(excMatch[1].includes('data/source/*') && excMatch[1].includes('tests/*'), 'export_presets.cfg must exclude raw source and test files from runtime Web export');
+
+  assert.ok(
+    !/HTTPRequest|HTTPClient|WebSocketPeer|StreamPeerTCP|PacketPeerUDP|ENetMultiplayerPeer|WebRTCPeerConnection|OS\.shell_open|fetch\s*\(|XMLHttpRequest|sendBeacon|new\s+WebSocket|EventSource/.test(mainGd),
+    'godot/main.gd must not use runtime network client classes or browser network calls'
+  );
+  assert.ok(!/TenderVoice/i.test(mainGd), 'godot/main.gd must not reference legacy TenderVoice');
+});

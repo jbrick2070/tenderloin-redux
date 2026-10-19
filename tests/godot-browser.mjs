@@ -2,6 +2,11 @@ import { mkdir, stat, writeFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 import { initialState, applyAction, serializeSave } from '../public/core.js';
+import { postcardSVG } from '../public/keepsake.js';
+import { programmeSVG } from '../public/programme.js';
+import { tilePanelSVG } from '../public/hosting.js';
+import { civicPlanSVG } from '../public/civic.js';
+import { filmFrameSVG } from '../public/film.js';
 const [pckStat, ...sourceStats] = await Promise.all([
   stat('artifacts/godot-web/index.pck'),
   stat('godot/main.gd'),
@@ -9,11 +14,13 @@ const [pckStat, ...sourceStats] = await Promise.all([
   stat('godot/project.godot'),
   stat('godot/export_presets.cfg'),
   stat('godot/data/buildings.json'),
-  stat('godot/data/neighborhood_voices.json')
+  stat('godot/data/neighborhood_voices.json'),
+  stat('godot/ENGINE_LICENSE.txt')
 ]);
 for (const srcStat of sourceStats) {
   assert.ok(pckStat.mtimeMs >= srcStat.mtimeMs, 'artifacts/godot-web/index.pck is older than Godot project sources; run npm run godot:export first');
 }
+assert.ok(pckStat.size > 0 && pckStat.size <= 2 * 1024 * 1024, `artifacts/godot-web/index.pck (${pckStat.size} bytes) must stay within 2 MB release budget`);
 const BROWSER_SAVE_SENTINEL = JSON.stringify({ schema: 'tenderloin-redux.save', version: 1, sentinel: 'preserve-browser-save-v1' });
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : 'playwright');
 const base = 'http://127.0.0.1:' + (process.env.GODOT_PORT || 4174) + '/';
@@ -196,6 +203,28 @@ try {
       const ep = JSON.parse(raw).epilogue;
       return ep && ep.photo?.status === 'taken' && ep.packing === true && Array.isArray(ep.returned) && ep.returned.length === 3;
     }, null, { timeout: 10000 });
+    // Round 9: Verify real <a download> path at 1100px, and byte-for-byte SVG parity against public/keepsake.js across all viewports
+    if (size.width === 1100) {
+      const downloadPromise = page.waitForEvent('download', { timeout: 10000 });
+      await page.keyboard.press('Shift+KeyY');
+      const download = await downloadPromise;
+      assert.equal(download.suggestedFilename(), 'tenderloin-redux-godot-afternoon.svg', 'Real browser download event must suggest tenderloin-redux-godot-afternoon.svg');
+      await page.evaluate(() => { window.__tenderloinSuppressDownload = true; });
+    } else {
+      await page.evaluate(() => { window.__tenderloinSuppressDownload = true; });
+      await page.keyboard.press('Shift+KeyY');
+    }
+    await page.waitForFunction(() => Boolean(window.__tenderloinLastExportedSvg?.svg), null, { timeout: 10000 });
+    const exportedKeepsake = await page.evaluate(() => ({
+      exported: window.__tenderloinLastExportedSvg,
+      snapshotExported: window.__tenderloinGodotA11ySnapshot?.keepsake_exported,
+      saveRaw: window.localStorage.getItem('tenderloin-redux.godot.save.v1')
+    }));
+    const savedPhotoForParity = JSON.parse(exportedKeepsake.saveRaw).epilogue.photo;
+    assert.equal(exportedKeepsake.exported?.filename, 'tenderloin-redux-godot-afternoon.svg', 'Shift+KeyY must export tenderloin-redux-godot-afternoon.svg');
+    assert.equal(exportedKeepsake.exported?.svg, postcardSVG(savedPhotoForParity), 'Exported Godot keepsake SVG must be 100% byte-for-byte identical to public/keepsake.js postcardSVG()');
+    assert.equal(exportedKeepsake.exported?.bytes, Buffer.byteLength(exportedKeepsake.exported.svg, 'utf8'), 'Exported keepsake SVG byte count must match UTF-8 byte length');
+    assert.equal(exportedKeepsake.snapshotExported, true, 'A11y snapshot must report keepsake_exported === true after Shift+KeyY');
     // Press KeyZ (6x) to publish the 4-segment afternoon programme, start hosting, and complete all 4 hosted segments
     for (let zStep = 0; zStep < 6; zStep++) {
       await page.keyboard.press('KeyZ');
@@ -253,6 +282,54 @@ try {
     assert.equal(pausedSnap.voices_count, 0, 'Web pagehide suspend must clear voices_records');
     await page.evaluate(() => { window.__tenderloinWebVoicesLifecyclePending = 'resume'; });
     await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.voices_status === 'ready' && window.__tenderloinGodotA11ySnapshot?.voices_count === 3, null, { timeout: 10000 });
+    // Request M6 local performance measurement inside running Godot Wasm instance
+    await page.evaluate(() => window.__tenderloinRequestPerfSnapshot());
+    await page.waitForFunction(() => Boolean(window.__tenderloinLastPerfSnapshot), null, { timeout: 10000 });
+    const perfSnap = await page.evaluate(() => window.__tenderloinLastPerfSnapshot);
+    assert.equal(perfSnap.within_budget, true, 'Godot Web Wasm runtime performance snapshot must meet all M6 budgets');
+    assert.equal(perfSnap.total_buildings_count, 188);
+    assert.equal(perfSnap.pathfind_cold_cache, true, 'Pathfinding benchmark must run with cold cell_walkable_cache');
+    assert.equal(perfSnap.astar_used, true, 'Pathfinding benchmark from Thanh (Taylor St) to Black Hawk (Turk & Hyde) must exercise A* search');
+    assert.ok(perfSnap.astar_expanded_cells > 0, 'Pathfinding benchmark must expand > 0 A* cells');
+    assert.ok(perfSnap.save_bytes > 0 && perfSnap.save_bytes <= 4096, `Godot save payload (${perfSnap.save_bytes} bytes) must stay <= 4096 bytes`);
+    assert.ok(perfSnap.pathfind_blackhawk_usec < 250000, `Black Hawk A* pathfinding (${perfSnap.pathfind_blackhawk_usec} us) must stay < 250ms`);
+    assert.equal(perfSnap.voices_teardown_measured, true, 'M5 Voices teardown must be genuinely measured after suspend');
+    assert.ok(perfSnap.voices_teardown_usec > 0 && perfSnap.voices_teardown_usec < 50000, `M5 Voices teardown (${perfSnap.voices_teardown_usec} us) must stay < 50ms`);
+    // Verify byte-for-byte parity for all 5 M6 SVG builders against public/*.js reference functions
+    for (const [sampleName, svgStr] of Object.entries(perfSnap.svg_samples || {})) {
+      assert.ok(typeof svgStr === 'string' && svgStr.startsWith('<svg '), `svg_samples.${sampleName} must be non-empty SVG`);
+    }
+    assert.equal(
+      perfSnap.svg_samples?.keepsake,
+      postcardSVG({
+        status: 'taken',
+        participants: ['bea', 'celeste', 'dez', 'thanh'],
+        mural: { sun: { col: 0, row: 0 }, wave: { col: 2, row: 1 }, rise: { col: 4, row: 2 } },
+        palette: 'garden',
+        layout: 'table'
+      }),
+      'build_keepsake_svg sample must match public/keepsake.js postcardSVG byte-for-byte'
+    );
+    assert.equal(
+      perfSnap.svg_samples?.programme,
+      programmeSVG(['stories', 'beats', 'pause', 'art']),
+      'build_programme_svg sample must match public/programme.js programmeSVG byte-for-byte'
+    );
+    assert.equal(
+      perfSnap.svg_samples?.tile_panel,
+      tilePanelSVG({ palette: 'warm', tiles: [0, 1, 2, 2, 1, 0] }),
+      'build_tile_panel_svg sample must match public/hosting.js tilePanelSVG byte-for-byte'
+    );
+    assert.equal(
+      perfSnap.svg_samples?.civic_plan,
+      civicPlanSVG({ topic: 'repairs', format: 'circle', notes: 'themes' }),
+      'build_civic_plan_svg sample must match public/civic.js civicPlanSVG byte-for-byte'
+    );
+    assert.equal(
+      perfSnap.svg_samples?.film_frame,
+      filmFrameSVG({ framing: 'close', plan: 'quiet', order: ['seat', 'paint', 'welcome'] }, 'seat'),
+      'build_film_frame_svg sample must match public/film.js filmFrameSVG byte-for-byte'
+    );
     // Press KeyC to toggle Transgender Cultural District boundary (DataSF 5xmc-5bjj) and KeyL for wide 188-building Tenderloin overview
     await page.keyboard.press('KeyC');
     await page.waitForFunction(() => {
@@ -493,11 +570,11 @@ try {
     assert.equal(afterFileBridgeMerge.hosting?.results?.length, 4, 'File picker bridge monotonic merge must preserve M3 completed hosting segments');
     assert.equal(afterFileBridgeMerge.civic?.phase, 'done', 'File picker bridge monotonic merge must preserve M4 civic done state');
     assert.equal(afterFileBridgeMerge.film?.phase, 'done', 'File picker bridge monotonic merge must preserve M4 film done state');
-    runs.push({ viewport: size, overviewBytes: before.length, selectedBytes: after.length, neighborBytes: neighbor.length, muralBytes: muralShot.length, musicBytes: musicShot.length, blockBytes: blockShot.length, blackhawkBytes: blackhawkShot.length, wideBytes: wideShot.length, keyboardActivationVerified: true, neighborWalkVerified: true, muralSaveReloadVerified: true, rookMusicAuditionVerified: true, blockCompletionVerified: true, widerTenderloinVerified: true, m1EpilogueVerified: true, m3HostingVerified: true, m4CivicFilmVerified: true, m5VoicesIsolatedVerified: true, browserSaveImportVerified: true, domA11yLiveVerified: true });
+    runs.push({ viewport: size, overviewBytes: before.length, selectedBytes: after.length, neighborBytes: neighbor.length, muralBytes: muralShot.length, musicBytes: musicShot.length, blockBytes: blockShot.length, blackhawkBytes: blackhawkShot.length, wideBytes: wideShot.length, keyboardActivationVerified: true, neighborWalkVerified: true, muralSaveReloadVerified: true, rookMusicAuditionVerified: true, blockCompletionVerified: true, widerTenderloinVerified: true, m1EpilogueVerified: true, m3HostingVerified: true, m4CivicFilmVerified: true, m5VoicesIsolatedVerified: true, m6KeepsakeSvgExportVerified: true, m6PerfBudgetVerified: true, perfSnapshot: perfSnap, browserSaveImportVerified: true, domA11yLiveVerified: true });
     await context.close();
   }
   assert.deepEqual(external, []);
   assert.deepEqual(errors, []);
-  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
+  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
   console.log(JSON.stringify({ runs, errors, external }));
 } finally { await browser.close(); }

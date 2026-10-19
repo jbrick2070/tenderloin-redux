@@ -45,6 +45,18 @@ const MURAL_DEFAULT_CELLS: Dictionary = {
 	"rise": Vector2i(5, 2)
 }
 const PHOTO_GUESTS: Array[String] = ["bea", "celeste", "dez", "thanh"]
+const KEEPSAKE_EXPORT_FILENAME := "tenderloin-redux-godot-afternoon.svg"
+const KEEPSAKE_PALETTE_HEX: Dictionary = {
+	"garden": ["#c37e71", "#276a5a", "#d6a449"],
+	"sunset": ["#cb7752", "#975a7c", "#dfb75f"],
+	"ocean": ["#508a9b", "#28665f", "#d3ab77"]
+}
+const KEEPSAKE_BUNTING_Y: Array[String] = [
+	"72", "79.5657117545147", "86.75204712999698", "93.19865326319695",
+	"98.58227040391301", "102.63294150868225", "105.147549014182", "106",
+	"105.147549014182", "102.63294150868225", "98.58227040391301", "93.19865326319695",
+	"86.75204712999698", "79.5657117545147", "72"
+]
 const LOAN_IDS: Array[String] = ["table", "paint-case", "speaker"]
 const LOAN_TITLES: Dictionary = {
 	"table": "Thanh's folding table",
@@ -59,10 +71,24 @@ const PROGRAMME_TITLES: Dictionary = {
 	"art": "Shared art panel",
 	"pause": "Quiet interval"
 }
+const PROGRAMME_SEGMENT_COLORS: Dictionary = {
+	"stories": "#e5b66d",
+	"beats": "#91bac2",
+	"art": "#d9a2b2",
+	"pause": "#a3b48c"
+}
 const HOSTING_STORIES: Array[String] = ["memory", "future"]
 const HOSTING_PALETTES: Array[String] = ["warm", "cool"]
+const HOSTING_TILE_HEX: Dictionary = {
+	"warm": ["#e5b66d", "#d9a2b2", "#75907c"],
+	"cool": ["#91bac2", "#a3b48c", "#987b9e"]
+}
 const HOSTING_QUIETS: Array[String] = ["arc", "pairs"]
 const HOSTING_DEFAULT_TILES: Array[int] = [0, 1, 2, 2, 1, 0]
+const SAVE_BUDGET_MAX_BYTES := 4096
+const PATHFIND_BUDGET_MAX_USEC := 250000
+const SAVE_SERIALIZE_BUDGET_MAX_USEC := 50000
+const VOICES_TEARDOWN_BUDGET_MAX_USEC := 50000
 const GODOT_SETTINGS_PATH := "user://godot_block_settings_v1.json"
 const GODOT_TEST_SETTINGS_PATH := "user://godot_block_settings_test_v1.json"
 const GODOT_SETTINGS_WEB_STORAGE_KEY := "tenderloin-redux.godot.settings.v1"
@@ -185,6 +211,7 @@ var occluded_buildings: Array[int] = []
 var occluded_wider_buildings: Array[int] = []
 var following_player := false
 var cell_walkable_cache: Dictionary = {}
+var last_astar_expanded_cells := 0
 var last_occlusion_pos := Vector2(INF, INF)
 var last_occlusion_neighbor := -2
 var last_ribbon_pos := Vector2(INF, INF)
@@ -327,6 +354,8 @@ var last_a11y_announcement := ""
 var a11y_announcement_seq := 0
 var last_synced_a11y_json := ""
 var button_focus_style: StyleBoxFlat
+var last_exported_keepsake_svg := ""
+var last_voices_teardown_usec := 0
 
 func make_building_mesh_and_rect(building: Dictionary, mat: StandardMaterial3D) -> Dictionary:
 	var surface := SurfaceTool.new()
@@ -454,6 +483,7 @@ func _ready() -> void:
 	build_mural_board()
 	build_rook_speaker()
 	build_block_banner()
+	build_street_life_decor()
 	build_audio_players()
 	camera = Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
@@ -565,11 +595,25 @@ func update_district_boundary_3d() -> void:
 	if district_boundary_node != null:
 		district_boundary_node.visible = district_boundary_visible
 
+func make_label_3d(node_name: String, text_str: String, pos: Vector3, tint: Color = Color("fff6df"), pixel_sz: float = 0.0115, font_sz: int = 24) -> Label3D:
+	var lbl := Label3D.new()
+	lbl.name = node_name
+	lbl.text = text_str
+	lbl.position = pos
+	lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	lbl.pixel_size = pixel_sz
+	lbl.font_size = font_sz
+	lbl.outline_size = 7
+	lbl.modulate = tint
+	lbl.outline_modulate = Color(0.08, 0.14, 0.16, 0.94)
+	return lbl
+
 func build_west_intersections() -> void:
 	west_intersection_nodes.clear()
 	var list: Array = data.get("west_intersections", [])
 	for item in list:
 		var int_id := String(item.get("id", ""))
+		var int_label := String(item.get("label", int_id.replace("turk-", "Turk & ").capitalize()))
 		var pt: Array = item.get("point", [0.0, 0.0])
 		var root_n := Node3D.new()
 		root_n.name = "WestIntersection_%s" % int_id
@@ -598,6 +642,7 @@ func build_west_intersections() -> void:
 		blade_inst.position = Vector3(4.2, 3.12, -4.2)
 		blade_inst.material_override = mural_material(Color("75bbb2"))
 		root_n.add_child(blade_inst)
+		root_n.add_child(make_label_3d("StreetSignLabel", int_label, Vector3(4.2, 3.68, -4.2), Color("d6f5ef"), 0.011, 22))
 		add_child(root_n)
 		west_intersection_nodes.append(root_n)
 
@@ -644,6 +689,9 @@ func build_history_stops() -> void:
 		beacon.mesh = b_cyl
 		beacon.position = Vector3(0.0, 1.76, 0.0)
 		s_node.add_child(beacon)
+		var stop_label := "Compton's Cafeteria (1966)" if stop_id == "comptons" else "The Black Hawk (1949–63)"
+		var stop_tint := Color("ffe394") if stop_id == "comptons" else Color("9ef5e5")
+		s_node.add_child(make_label_3d("HistoryStopLabel", stop_label, Vector3(0.0, 2.32, 0.0), stop_tint, 0.0115, 23))
 		history_stop_nodes[stop_id] = s_node
 		history_beacon_meshes[stop_id] = beacon
 		add_child(s_node)
@@ -660,6 +708,115 @@ func update_history_stops_3d() -> void:
 		else:
 			beacon.material_override = material(Color("8a7964"))
 
+func attach_neighbor_signature_prop(n_node: Node3D, n_id: String) -> void:
+	var prop := Node3D.new()
+	prop.name = "NeighborProp"
+	match n_id:
+		"bea":
+			# Rollator walker (#496557 frame + dark wheels) matching public/keepsake.js
+			var bar := MeshInstance3D.new()
+			var bar_box := BoxMesh.new()
+			bar_box.size = Vector3(0.50, 0.05, 0.05)
+			bar.mesh = bar_box
+			bar.position = Vector3(0.0, 0.78, 0.34)
+			bar.material_override = material(Color("496557"))
+			prop.add_child(bar)
+			for side_x in [-0.22, 0.22]:
+				var leg := MeshInstance3D.new()
+				var leg_box := BoxMesh.new()
+				leg_box.size = Vector3(0.05, 0.72, 0.05)
+				leg.mesh = leg_box
+				leg.position = Vector3(side_x, 0.40, 0.34)
+				leg.material_override = material(Color("496557"))
+				prop.add_child(leg)
+				var wheel := MeshInstance3D.new()
+				var w_cyl := CylinderMesh.new()
+				w_cyl.top_radius = 0.08
+				w_cyl.bottom_radius = 0.08
+				w_cyl.height = 0.04
+				wheel.mesh = w_cyl
+				wheel.rotation_degrees = Vector3(0.0, 0.0, 90.0)
+				wheel.position = Vector3(side_x, 0.08, 0.36)
+				wheel.material_override = material(Color("24312b"))
+				prop.add_child(wheel)
+		"celeste":
+			# Painter palette with 3 bright motif paint dabs + brush
+			var pal := MeshInstance3D.new()
+			var pal_box := BoxMesh.new()
+			pal_box.size = Vector3(0.32, 0.04, 0.24)
+			pal.mesh = pal_box
+			pal.position = Vector3(0.34, 0.96, 0.18)
+			pal.material_override = material(Color("d8b48a"))
+			prop.add_child(pal)
+			var dab_cols: Array[Color] = [Color("f8cc58"), Color("5fd4ba"), Color("ee835c")]
+			for d_i in range(dab_cols.size()):
+				var dab := MeshInstance3D.new()
+				var dab_box := BoxMesh.new()
+				dab_box.size = Vector3(0.06, 0.03, 0.06)
+				dab.mesh = dab_box
+				dab.position = Vector3(0.26 + float(d_i) * 0.08, 0.99, 0.18)
+				dab.material_override = mural_material(dab_cols[d_i])
+				prop.add_child(dab)
+		"rook":
+			# Sunburst archtop guitar slung at Rook's side
+			var body_m := MeshInstance3D.new()
+			var body_cyl := CylinderMesh.new()
+			body_cyl.top_radius = 0.19
+			body_cyl.bottom_radius = 0.19
+			body_cyl.height = 0.07
+			body_m.mesh = body_cyl
+			body_m.rotation_degrees = Vector3(90.0, 0.0, -18.0)
+			body_m.position = Vector3(0.24, 0.90, 0.20)
+			body_m.material_override = material(Color("c87d44"))
+			prop.add_child(body_m)
+			var neck_m := MeshInstance3D.new()
+			var neck_box := BoxMesh.new()
+			neck_box.size = Vector3(0.06, 0.44, 0.04)
+			neck_m.mesh = neck_box
+			neck_m.rotation_degrees = Vector3(0.0, 0.0, -28.0)
+			neck_m.position = Vector3(0.08, 1.12, 0.22)
+			neck_m.material_override = material(Color("4a3525"))
+			prop.add_child(neck_m)
+		"dez":
+			# Golden studio headphones (#dfc57f) matching public/keepsake.js + field notebook
+			for ear_x in [-0.20, 0.20]:
+				var cup := MeshInstance3D.new()
+				var cup_cyl := CylinderMesh.new()
+				cup_cyl.top_radius = 0.06
+				cup_cyl.bottom_radius = 0.06
+				cup_cyl.height = 0.04
+				cup.mesh = cup_cyl
+				cup.rotation_degrees = Vector3(0.0, 0.0, 90.0)
+				cup.position = Vector3(ear_x, 1.48, 0.0)
+				cup.material_override = mural_material(Color("dfc57f"))
+				prop.add_child(cup)
+			var notebook := MeshInstance3D.new()
+			var nb_box := BoxMesh.new()
+			nb_box.size = Vector3(0.18, 0.24, 0.04)
+			notebook.mesh = nb_box
+			notebook.position = Vector3(-0.32, 0.96, 0.18)
+			notebook.material_override = material(Color("5fb8a6"))
+			prop.add_child(notebook)
+		"thanh":
+			# Cedar tea & folding-stool supply crate beside Thanh
+			var crate := MeshInstance3D.new()
+			var crate_box := BoxMesh.new()
+			crate_box.size = Vector3(0.42, 0.34, 0.32)
+			crate.mesh = crate_box
+			crate.position = Vector3(0.46, 0.17, 0.14)
+			crate.material_override = material(Color("a9784d"))
+			prop.add_child(crate)
+			var thermos := MeshInstance3D.new()
+			var t_cyl := CylinderMesh.new()
+			t_cyl.top_radius = 0.07
+			t_cyl.bottom_radius = 0.07
+			t_cyl.height = 0.22
+			thermos.mesh = t_cyl
+			thermos.position = Vector3(0.46, 0.45, 0.14)
+			thermos.material_override = material(Color("6a8d73"))
+			prop.add_child(thermos)
+	n_node.add_child(prop)
+
 func build_neighbors_and_player() -> void:
 	route_mesh = MeshInstance3D.new()
 	route_mesh.name = "RouteRibbon"
@@ -674,6 +831,8 @@ func build_neighbors_and_player() -> void:
 			rook_index = i
 		var n_node := make_person_node(n.name, n.coat, n.skin, n.hair, 1.70, false)
 		n_node.position = n.pos
+		attach_neighbor_signature_prop(n_node, n_id)
+		n_node.add_child(make_label_3d("Nameplate", "%s · %s" % [n.name, String(n.get("role", "")).split(" ")[0]], Vector3(0.0, 2.06, 0.0), Color("fff6df"), 0.011, 22))
 		add_child(n_node)
 		neighbor_nodes.append(n_node)
 	player = CharacterBody3D.new()
@@ -687,6 +846,7 @@ func build_neighbors_and_player() -> void:
 	col.position = Vector3(0.0, PLAYER_HEIGHT_M * 0.5, 0.0)
 	player.add_child(col)
 	player_visual = make_person_node("PlayerVisual", Color("f0ce77"), Color("b67f5d"), Color("34392f"), PLAYER_HEIGHT_M, true)
+	player_visual.add_child(make_label_3d("PlayerNameplate", "You", Vector3(0.0, 2.08, 0.0), Color("fff3b0"), 0.011, 22))
 	player.add_child(player_visual)
 	add_child(player)
 
@@ -1285,39 +1445,356 @@ func make_person_node(node_name: String, coat: Color, skin: Color, hair: Color, 
 	ring.position = Vector3(0.0, 0.02, 0.0)
 	ring.material_override = material(Color("f8f0d5") if is_player else Color("d6cbb5"))
 	root_node.add_child(ring)
-	var legs := MeshInstance3D.new()
-	var legs_mesh := BoxMesh.new()
-	var legs_h := total_height * 0.42
-	legs_mesh.size = Vector3(0.42, legs_h, 0.28)
-	legs.mesh = legs_mesh
-	legs.position = Vector3(0.0, legs_h * 0.5, 0.0)
-	legs.material_override = material(Color("34463f"))
-	root_node.add_child(legs)
+	var shoe_h := total_height * 0.06
+	var leg_h := total_height * 0.36
+	var legs_top := shoe_h + leg_h
+	for leg_side in [-0.11, 0.11]:
+		var shoe := MeshInstance3D.new()
+		var shoe_mesh := BoxMesh.new()
+		shoe_mesh.size = Vector3(0.16, shoe_h, 0.28)
+		shoe.mesh = shoe_mesh
+		shoe.position = Vector3(leg_side, shoe_h * 0.5, 0.03)
+		shoe.material_override = material(Color("232c29"))
+		root_node.add_child(shoe)
+		var leg := MeshInstance3D.new()
+		var leg_mesh := BoxMesh.new()
+		leg_mesh.size = Vector3(0.16, leg_h, 0.22)
+		leg.mesh = leg_mesh
+		leg.position = Vector3(leg_side, shoe_h + leg_h * 0.5, 0.0)
+		leg.material_override = material(Color("34463f"))
+		root_node.add_child(leg)
 	var torso := MeshInstance3D.new()
 	var torso_mesh := BoxMesh.new()
 	var torso_h := total_height * 0.36
-	torso_mesh.size = Vector3(0.54, torso_h, 0.34)
+	torso_mesh.size = Vector3(0.46, torso_h, 0.28)
 	torso.mesh = torso_mesh
-	torso.position = Vector3(0.0, legs_h + torso_h * 0.5, 0.0)
+	torso.position = Vector3(0.0, legs_top + torso_h * 0.5, 0.0)
 	torso.material_override = material(coat)
 	root_node.add_child(torso)
+	var collar := MeshInstance3D.new()
+	var collar_mesh := BoxMesh.new()
+	var collar_h := total_height * 0.045
+	collar_mesh.size = Vector3(0.48, collar_h, 0.30)
+	collar.mesh = collar_mesh
+	collar.position = Vector3(0.0, legs_top + torso_h - collar_h * 0.5, 0.0)
+	collar.material_override = material(coat.lightened(0.22))
+	root_node.add_child(collar)
+	var arm_h := torso_h * 0.82
+	var hand_h := torso_h * 0.16
+	for arm_side in [-0.30, 0.30]:
+		var arm := MeshInstance3D.new()
+		var arm_mesh := BoxMesh.new()
+		arm_mesh.size = Vector3(0.12, arm_h, 0.16)
+		arm.mesh = arm_mesh
+		arm.position = Vector3(arm_side, legs_top + torso_h - arm_h * 0.5 - 0.02, 0.0)
+		arm.material_override = material(coat.darkened(0.06))
+		root_node.add_child(arm)
+		var hand := MeshInstance3D.new()
+		var hand_mesh := BoxMesh.new()
+		hand_mesh.size = Vector3(0.10, hand_h, 0.12)
+		hand.mesh = hand_mesh
+		hand.position = Vector3(arm_side, legs_top + hand_h * 0.5 + 0.02, 0.02)
+		hand.material_override = material(skin)
+		root_node.add_child(hand)
 	var head := MeshInstance3D.new()
 	var head_mesh := BoxMesh.new()
 	var head_h := total_height * 0.16
-	head_mesh.size = Vector3(0.34, head_h, 0.34)
+	head_mesh.size = Vector3(0.32, head_h, 0.32)
 	head.mesh = head_mesh
-	head.position = Vector3(0.0, legs_h + torso_h + head_h * 0.5, 0.0)
+	head.position = Vector3(0.0, legs_top + torso_h + head_h * 0.5, 0.0)
 	head.material_override = material(skin)
 	root_node.add_child(head)
 	var cap := MeshInstance3D.new()
 	var cap_mesh := BoxMesh.new()
-	var cap_h := total_height - (legs_h + torso_h + head_h)
-	cap_mesh.size = Vector3(0.36, cap_h, 0.36)
+	var cap_h := total_height - (legs_top + torso_h + head_h)
+	cap_mesh.size = Vector3(0.35, cap_h, 0.35)
 	cap.mesh = cap_mesh
 	cap.position = Vector3(0.0, total_height - cap_h * 0.5, 0.0)
 	cap.material_override = material(hair)
 	root_node.add_child(cap)
 	return root_node
+
+func build_street_life_decor() -> void:
+	var decor_root := Node3D.new()
+	decor_root.name = "StreetLifeDecor"
+	# 1. Dodge Alley Block Concert (Dodge Place off north side of 400 block of Turk St near Hyde)
+	var concert := Node3D.new()
+	concert.name = "DodgeAlleyConcert"
+	concert.position = Vector3(-414.0, 0.0, 56.0)
+	var stage_deck := MeshInstance3D.new()
+	stage_deck.name = "StageDeck"
+	var deck_box := BoxMesh.new()
+	deck_box.size = Vector3(4.6, 0.26, 2.8)
+	stage_deck.mesh = deck_box
+	stage_deck.position = Vector3(0.0, 0.13, 0.0)
+	stage_deck.material_override = material(Color("7a563c"))
+	concert.add_child(stage_deck)
+	var stage_trim := MeshInstance3D.new()
+	var trim_box := BoxMesh.new()
+	trim_box.size = Vector3(4.64, 0.08, 2.84)
+	stage_trim.mesh = trim_box
+	stage_trim.position = Vector3(0.0, 0.24, 0.0)
+	stage_trim.material_override = mural_material(Color("f5d57a"))
+	concert.add_child(stage_trim)
+	var backdrop := MeshInstance3D.new()
+	backdrop.name = "StageBackdrop"
+	var back_box := BoxMesh.new()
+	back_box.size = Vector3(4.4, 2.35, 0.16)
+	backdrop.mesh = back_box
+	backdrop.position = Vector3(0.0, 1.44, -1.32)
+	backdrop.material_override = material(Color("23474b"))
+	concert.add_child(backdrop)
+	for slat_i in range(5):
+		var slat := MeshInstance3D.new()
+		var slat_box := BoxMesh.new()
+		slat_box.size = Vector3(0.18, 1.85, 0.08)
+		slat.mesh = slat_box
+		slat.position = Vector3(-1.60 + float(slat_i) * 0.80, 1.44, -1.21)
+		slat.material_override = mural_material(Color("f8cc58") if slat_i % 2 == 0 else Color("ee835c"))
+		concert.add_child(slat)
+	for post_x in [-2.15, 2.15]:
+		var post := MeshInstance3D.new()
+		var post_box := BoxMesh.new()
+		post_box.size = Vector3(0.12, 3.10, 0.12)
+		post.mesh = post_box
+		post.position = Vector3(post_x, 1.55, 1.25)
+		post.material_override = material(Color("3b494c"))
+		concert.add_child(post)
+		var mon := MeshInstance3D.new()
+		var mon_box := BoxMesh.new()
+		mon_box.size = Vector3(0.56, 0.34, 0.42)
+		mon.mesh = mon_box
+		mon.position = Vector3(post_x * 0.65, 0.43, 1.05)
+		mon.material_override = material(Color("2e3538"))
+		concert.add_child(mon)
+	var arch_bar := MeshInstance3D.new()
+	arch_bar.name = "ConcertLightArch"
+	var arch_box := BoxMesh.new()
+	arch_box.size = Vector3(4.50, 0.14, 0.14)
+	arch_bar.mesh = arch_box
+	arch_bar.position = Vector3(0.0, 3.12, 1.25)
+	arch_bar.material_override = mural_material(Color("5fd4ba"))
+	concert.add_child(arch_bar)
+	var bulb_cols: Array[Color] = [Color("ffe394"), Color("ee835c"), Color("5fd4ba"), Color("f8cc58"), Color("ffe394")]
+	for b_i in range(bulb_cols.size()):
+		var bulb := MeshInstance3D.new()
+		var b_sphere := SphereMesh.new()
+		b_sphere.radius = 0.13
+		b_sphere.height = 0.26
+		bulb.mesh = b_sphere
+		bulb.position = Vector3(-1.76 + float(b_i) * 0.88, 2.94, 1.25)
+		bulb.material_override = mural_material(bulb_cols[b_i])
+		concert.add_child(bulb)
+	concert.add_child(make_label_3d("ConcertBannerLabel", "Dodge Alley Block Concert · Live Jazz", Vector3(0.0, 3.65, 0.60), Color("ffe394"), 0.012, 24))
+	# 3-piece Dodge Alley jazz combo on stage
+	var bassist := make_person_node("ConcertBassist", Color("c86d51"), Color("8d5b3e"), Color("222629"), 1.68, false)
+	bassist.position = Vector3(-1.35, 0.26, -0.20)
+	var bass_body := MeshInstance3D.new()
+	var bb_box := BoxMesh.new()
+	bb_box.size = Vector3(0.36, 0.88, 0.20)
+	bass_body.mesh = bb_box
+	bass_body.position = Vector3(0.30, 0.62, 0.22)
+	bass_body.material_override = material(Color("8c4b2b"))
+	bassist.add_child(bass_body)
+	concert.add_child(bassist)
+	var horn_player := make_person_node("ConcertHornPlayer", Color("49877a"), Color("b9825f"), Color("2f251e"), 1.70, false)
+	horn_player.position = Vector3(0.0, 0.26, -0.05)
+	var sax := MeshInstance3D.new()
+	var sax_box := BoxMesh.new()
+	sax_box.size = Vector3(0.12, 0.46, 0.22)
+	sax.mesh = sax_box
+	sax.position = Vector3(0.14, 1.04, 0.28)
+	sax.material_override = mural_material(Color("f8cc58"))
+	horn_player.add_child(sax)
+	concert.add_child(horn_player)
+	var drummer := make_person_node("ConcertDrummer", Color("d49b4b"), Color("6e4730"), Color("1e2224"), 1.66, false)
+	drummer.position = Vector3(1.35, 0.26, -0.25)
+	var drum_shell := MeshInstance3D.new()
+	var ds_cyl := CylinderMesh.new()
+	ds_cyl.top_radius = 0.28
+	ds_cyl.bottom_radius = 0.28
+	ds_cyl.height = 0.36
+	drum_shell.mesh = ds_cyl
+	drum_shell.position = Vector3(-0.10, 0.42, 0.42)
+	drum_shell.material_override = material(Color("d96b43"))
+	drummer.add_child(drum_shell)
+	var cymbal := MeshInstance3D.new()
+	var cym_cyl := CylinderMesh.new()
+	cym_cyl.top_radius = 0.24
+	cym_cyl.bottom_radius = 0.24
+	cym_cyl.height = 0.03
+	cymbal.mesh = cym_cyl
+	cymbal.position = Vector3(-0.38, 0.92, 0.42)
+	cymbal.material_override = mural_material(Color("f5d57a"))
+	drummer.add_child(cymbal)
+	concert.add_child(drummer)
+	# Two sidewalk listeners in the Dodge Alley apron (north of z=58.05, clear of Turk St route)
+	var listener_a := make_person_node("ConcertListener1", Color("6b8e78"), Color("c48f6b"), Color("322822"), 1.66, false)
+	listener_a.position = Vector3(-2.15, 0.0, 2.00)
+	listener_a.rotation.y = PI
+	concert.add_child(listener_a)
+	var listener_b := make_person_node("ConcertListener2", Color("b56c82"), Color("825439"), Color("23272a"), 1.68, false)
+	listener_b.position = Vector3(2.15, 0.0, 2.00)
+	listener_b.rotation.y = PI
+	concert.add_child(listener_b)
+	decor_root.add_child(concert)
+
+	# 2. Warm sidewalk globe streetlamps & timber planter trees along Turk & Taylor and West Turk
+	var lamp_coords: Array[Vector3] = [
+		Vector3(36.0, 0.0, 4.2),
+		Vector3(62.0, 0.0, 4.2),
+		Vector3(96.0, 0.0, 4.2),
+		Vector3(19.5, 0.0, 20.0),
+		Vector3(-92.0, 0.0, 22.0),
+		Vector3(-232.0, 0.0, 40.0),
+		Vector3(-398.0, 0.0, 58.2)
+	]
+	for l_idx in range(lamp_coords.size()):
+		var lamp := Node3D.new()
+		lamp.name = "StreetLamp_%d" % l_idx
+		lamp.position = lamp_coords[l_idx]
+		var pole := MeshInstance3D.new()
+		var pole_cyl := CylinderMesh.new()
+		pole_cyl.top_radius = 0.06
+		pole_cyl.bottom_radius = 0.09
+		pole_cyl.height = 3.4
+		pole.mesh = pole_cyl
+		pole.position = Vector3(0.0, 1.7, 0.0)
+		pole.material_override = material(Color("384649"))
+		lamp.add_child(pole)
+		var globe := MeshInstance3D.new()
+		var g_sphere := SphereMesh.new()
+		g_sphere.radius = 0.22
+		g_sphere.height = 0.44
+		globe.mesh = g_sphere
+		globe.position = Vector3(0.0, 3.52, 0.0)
+		globe.material_override = mural_material(Color("ffe8a3"))
+		lamp.add_child(globe)
+		decor_root.add_child(lamp)
+
+	var planter_coords: Array[Vector3] = [
+		Vector3(44.0, 0.0, 4.0),
+		Vector3(82.0, 0.0, 4.0),
+		Vector3(19.8, 0.0, 32.0),
+		Vector3(-156.0, 0.0, 30.5),
+		Vector3(-406.0, 0.0, 57.6)
+	]
+	for p_idx in range(planter_coords.size()):
+		var planter := Node3D.new()
+		planter.name = "StreetPlanter_%d" % p_idx
+		planter.position = planter_coords[p_idx]
+		var box_inst := MeshInstance3D.new()
+		var p_box := BoxMesh.new()
+		p_box.size = Vector3(0.92, 0.46, 0.92)
+		box_inst.mesh = p_box
+		box_inst.position = Vector3(0.0, 0.23, 0.0)
+		box_inst.material_override = material(Color("6d4f38"))
+		planter.add_child(box_inst)
+		var trunk := MeshInstance3D.new()
+		var t_cyl := CylinderMesh.new()
+		t_cyl.top_radius = 0.08
+		t_cyl.bottom_radius = 0.11
+		t_cyl.height = 1.35
+		trunk.mesh = t_cyl
+		trunk.position = Vector3(0.0, 1.10, 0.0)
+		trunk.material_override = material(Color("5a402d"))
+		planter.add_child(trunk)
+		var canopy := MeshInstance3D.new()
+		var c_sphere := SphereMesh.new()
+		c_sphere.radius = 0.78
+		c_sphere.height = 1.42
+		canopy.mesh = c_sphere
+		canopy.position = Vector3(0.0, 2.15, 0.0)
+		canopy.material_override = material(Color("4e7d5c") if p_idx % 2 == 0 else Color("5c8d67"))
+		planter.add_child(canopy)
+		decor_root.add_child(planter)
+
+	var so_what_root := Node3D.new()
+	so_what_root.name = "SoWhatEasterEgg"
+	var turk_awning := Node3D.new()
+	turk_awning.name = "SoWhatAwning_361Turk"
+	turk_awning.position = Vector3(-350.0, 0.0, 65.8)
+	var canopy_frame := MeshInstance3D.new()
+	var c_box := BoxMesh.new()
+	c_box.size = Vector3(6.4, 0.22, 1.8)
+	canopy_frame.mesh = c_box
+	canopy_frame.position = Vector3(0.0, 3.55, 0.0)
+	canopy_frame.material_override = mural_material(Color("1c2842"))
+	turk_awning.add_child(canopy_frame)
+	for post_x in [-2.85, 2.85]:
+		var post := MeshInstance3D.new()
+		var p_cyl := CylinderMesh.new()
+		p_cyl.top_radius = 0.06
+		p_cyl.bottom_radius = 0.07
+		p_cyl.height = 3.5
+		post.mesh = p_cyl
+		post.position = Vector3(post_x, 1.75, -0.78)
+		post.material_override = mural_material(Color("d6a848"))
+		turk_awning.add_child(post)
+	var so_what_heights: Array[float] = [0.42, 0.56, 0.72, 0.64, 0.96, 0.82, 1.08, 0.92]
+	var so_what_y_offsets: Array[float] = [3.62, 3.68, 3.76, 3.72, 3.92, 3.84, 4.02, 3.90]
+	for b_idx in range(so_what_heights.size()):
+		var bar := MeshInstance3D.new()
+		bar.name = "SoWhatChordBar_%d" % b_idx
+		var b_mesh := BoxMesh.new()
+		var is_horn_chord := b_idx in [4, 6]
+		b_mesh.size = Vector3(0.54 if is_horn_chord else 0.34, so_what_heights[b_idx], 0.16)
+		bar.mesh = b_mesh
+		bar.position = Vector3(-2.45 + float(b_idx) * 0.70, so_what_y_offsets[b_idx], -0.88)
+		bar.material_override = mural_material(Color("f3c458") if is_horn_chord else Color("5ec2c6"))
+		turk_awning.add_child(bar)
+	var turk_lbl := make_label_3d("AwningLabel361Turk", "361 Turk · 'So What' Awning", Vector3(0.0, 4.7, -0.85), Color("ffe699"), 0.012, 22)
+	turk_awning.add_child(turk_lbl)
+	so_what_root.add_child(turk_awning)
+
+	var leav_node := Node3D.new()
+	leav_node.name = "EighthFloor_145Leavenworth"
+	leav_node.position = Vector3(-290.8, 0.0, 99.4)
+	var leav_canopy := MeshInstance3D.new()
+	var lc_box := BoxMesh.new()
+	lc_box.size = Vector3(1.6, 0.20, 4.2)
+	leav_canopy.mesh = lc_box
+	leav_canopy.position = Vector3(0.0, 3.55, 0.0)
+	leav_canopy.material_override = mural_material(Color("1c2842"))
+	leav_node.add_child(leav_canopy)
+	for chord_idx in range(2):
+		var l_bar := MeshInstance3D.new()
+		var lb_box := BoxMesh.new()
+		lb_box.size = Vector3(0.16, 0.88 if chord_idx == 0 else 1.02, 0.56)
+		l_bar.mesh = lb_box
+		l_bar.position = Vector3(0.82, 3.85 + float(chord_idx) * 0.10, -0.55 + float(chord_idx) * 1.10)
+		l_bar.material_override = mural_material(Color("f3c458") if chord_idx == 1 else Color("5ec2c6"))
+		leav_node.add_child(l_bar)
+	var eighth_win := MeshInstance3D.new()
+	eighth_win.name = "EighthFloorWindow"
+	var ew_box := BoxMesh.new()
+	ew_box.size = Vector3(1.15, 2.15, 2.65)
+	eighth_win.mesh = ew_box
+	eighth_win.position = Vector3(0.35, 24.6, 0.0)
+	eighth_win.material_override = mural_material(Color("ffe082"))
+	leav_node.add_child(eighth_win)
+	var balcony := MeshInstance3D.new()
+	var bal_box := BoxMesh.new()
+	bal_box.size = Vector3(1.38, 0.46, 2.85)
+	balcony.mesh = bal_box
+	balcony.position = Vector3(0.45, 23.65, 0.0)
+	balcony.material_override = mural_material(Color("2b3648"))
+	leav_node.add_child(balcony)
+	var turntable_lamp := MeshInstance3D.new()
+	var tl_cyl := CylinderMesh.new()
+	tl_cyl.top_radius = 0.36
+	tl_cyl.bottom_radius = 0.24
+	tl_cyl.height = 0.45
+	turntable_lamp.mesh = tl_cyl
+	turntable_lamp.position = Vector3(0.65, 24.35, 0.0)
+	turntable_lamp.material_override = mural_material(Color("ff9e5e"))
+	leav_node.add_child(turntable_lamp)
+	var leav_lbl := make_label_3d("EighthFloorLabel", "145 Leavenworth · 8th Floor ★ ('So What')", Vector3(1.2, 26.6, 0.0), Color("ffe8a3"), 0.012, 24)
+	leav_node.add_child(leav_lbl)
+	so_what_root.add_child(leav_node)
+	decor_root.add_child(so_what_root)
+
+	add_child(decor_root)
 
 func player_height_m() -> float:
 	var min_y := INF
@@ -1500,10 +1977,13 @@ func rect_distance_2d(rect: Rect2, pt: Vector2) -> float:
 	var cy := clampf(pt.y, rect.position.y, rect.end.y)
 	return pt.distance_to(Vector2(cx, cy))
 
-func min_wall_distance(pt: Vector2) -> float:
-	var best := INF
+func min_wall_distance(pt: Vector2, cutoff: float = INF) -> float:
+	var best := cutoff
 	for idx in range(all_buildings.size()):
-		if rect_distance_2d(all_building_rects[idx], pt) >= best:
+		if best < INF:
+			if not all_building_rects[idx].grow(best).has_point(pt):
+				continue
+		elif rect_distance_2d(all_building_rects[idx], pt) >= best:
 			continue
 		var b: Dictionary = all_buildings[idx]
 		for polygon in b.polygons:
@@ -1515,6 +1995,8 @@ func min_wall_distance(pt: Vector2) -> float:
 					var d := dist_to_segment_2d(pt, Vector2(p0[0], p0[1]), Vector2(p1[0], p1[1]))
 					if d < best:
 						best = d
+						if cutoff < INF:
+							return best
 	return best
 
 func nearest_building_info(pt: Vector2) -> Dictionary:
@@ -1542,10 +2024,15 @@ func nearest_building_info(pt: Vector2) -> Dictionary:
 							best_tangent = seg.normalized()
 	return {"id": best_id, "distance": best, "tangent": best_tangent}
 
-func min_street_distance(pt: Vector2) -> float:
+func min_street_distance(pt: Vector2, cutoff: float = INF) -> float:
+	# When a finite cutoff is supplied, returns on the first street segment within cutoff.
 	var best := INF
+	var bound := cutoff
 	for w_idx in range(street_ways.size()):
-		if rect_distance_2d(street_way_rects[w_idx], pt) >= best:
+		if bound < INF:
+			if not street_way_rects[w_idx].grow(bound).has_point(pt):
+				continue
+		elif rect_distance_2d(street_way_rects[w_idx], pt) >= best:
 			continue
 		var pts: Array = street_ways[w_idx].points
 		for i in range(1, pts.size()):
@@ -1554,6 +2041,10 @@ func min_street_distance(pt: Vector2) -> float:
 			var d := dist_to_segment_2d(pt, Vector2(p0[0], p0[1]), Vector2(p1[0], p1[1]))
 			if d < best:
 				best = d
+				if d < bound:
+					bound = d
+				if cutoff < INF and best <= cutoff:
+					return best
 	return best
 
 func nearest_street_tangent(pt: Vector2) -> Vector2:
@@ -1579,7 +2070,7 @@ func nearest_street_tangent(pt: Vector2) -> Vector2:
 func is_walkable_point(pt: Vector2, clearance: float = WALK_CLEARANCE_M) -> bool:
 	if not walk_bounds.has_point(pt):
 		return false
-	if min_street_distance(pt) > MAX_STREET_CORRIDOR_M:
+	if min_street_distance(pt, MAX_STREET_CORRIDOR_M) > MAX_STREET_CORRIDOR_M:
 		return false
 	if building_containing_point(pt) != "":
 		return false
@@ -1587,7 +2078,7 @@ func is_walkable_point(pt: Vector2, clearance: float = WALK_CLEARANCE_M) -> bool
 		return false
 	if is_point_in_speaker_footprint(pt, PLAYER_RADIUS_M):
 		return false
-	if min_wall_distance(pt) < clearance:
+	if min_wall_distance(pt, clearance) < clearance:
 		return false
 	return true
 
@@ -1597,9 +2088,11 @@ func segment_walkable(a: Vector2, b: Vector2, clearance: float = WALK_CLEARANCE_
 		if not is_walkable_point(a.lerp(b, 0.5), clearance):
 			return false
 		if dist > 4.0:
-			if not is_walkable_point(a.lerp(b, 0.25), clearance) or not is_walkable_point(a.lerp(b, 0.75), clearance):
-				return false
-	var steps := maxi(1, int(ceil(dist / 0.20)))
+			for frac in [0.25, 0.75, 0.125, 0.375, 0.625, 0.875, 0.05, 0.95]:
+				if not is_walkable_point(a.lerp(b, frac), clearance):
+					return false
+	var step_sz := 0.45 if dist > 16.0 else 0.20
+	var steps := maxi(1, int(ceil(dist / step_sz)))
 	for i in range(steps + 1):
 		var t := float(i) / float(steps)
 		if not is_walkable_point(a.lerp(b, t), clearance):
@@ -1631,6 +2124,7 @@ func nearest_walkable_point(pt: Vector2, clearance: float = WALK_CLEARANCE_M) ->
 	return Vector2(PLAYER_START.x, PLAYER_START.z)
 
 func find_path(start_xz: Vector2, goal_xz: Vector2) -> Array[Vector2]:
+	last_astar_expanded_cells = 0
 	var safe_goal := nearest_walkable_point(goal_xz, WALK_CLEARANCE_M)
 	var safe_start := nearest_walkable_point(start_xz, WALK_CLEARANCE_M)
 	if safe_start.distance_to(safe_goal) < 0.05:
@@ -1708,6 +2202,7 @@ func find_path(start_xz: Vector2, goal_xz: Vector2) -> Array[Vector2]:
 				if not in_open.has(nxt):
 					open_set.append(nxt)
 					in_open[nxt] = true
+	last_astar_expanded_cells = expanded
 	if not found:
 		return []
 	var raw: Array[Vector2] = [safe_goal]
@@ -1716,16 +2211,32 @@ func find_path(start_xz: Vector2, goal_xz: Vector2) -> Array[Vector2]:
 		raw.push_front(cell_to_world.call(cursor))
 		cursor = parent[cursor]
 	raw[0] = safe_start
-	var smooth: Array[Vector2] = [raw[0]]
+	var corners: Array[Vector2] = [raw[0]]
+	var corner_raw_idx: Array[int] = [0]
+	for i in range(1, raw.size() - 1):
+		var d0 := (raw[i] - raw[i - 1]).normalized()
+		var d1 := (raw[i + 1] - raw[i]).normalized()
+		if d0.dot(d1) < 0.999:
+			corners.append(raw[i])
+			corner_raw_idx.append(i)
+	if raw.size() > 1:
+		corners.append(raw.back())
+		corner_raw_idx.append(raw.size() - 1)
+	var smooth: Array[Vector2] = [corners[0]]
 	var idx := 0
-	while idx < raw.size() - 1:
-		var next_idx := idx + 1
-		for probe in range(raw.size() - 1, idx + 1, -1):
-			if segment_walkable(raw[idx], raw[probe]):
+	while idx < corners.size() - 1:
+		var next_idx := -1
+		for probe in range(corners.size() - 1, idx, -1):
+			if segment_walkable(corners[idx], corners[probe]):
 				next_idx = probe
 				break
-		smooth.append(raw[next_idx])
-		idx = next_idx
+		if next_idx > idx:
+			smooth.append(corners[next_idx])
+			idx = next_idx
+		else:
+			for r_i in range(corner_raw_idx[idx] + 1, corner_raw_idx[idx + 1] + 1):
+				smooth.append(raw[r_i])
+			idx += 1
 	return smooth
 
 func update_route_ribbon(force: bool = false) -> void:
@@ -1784,6 +2295,8 @@ func walk_step(input_dir: Vector2, delta: float) -> bool:
 		meshes[selected].material_override = building_materials[selected]
 		selected = -1
 	var dir := input_dir.normalized()
+	if player_visual != null:
+		player_visual.rotation.y = atan2(dir.x, dir.y)
 	var total_dist := WALK_SPEED_M_PER_S * delta
 	var steps := maxi(1, int(ceil(total_dist / 0.20)))
 	var step_len := total_dist / float(steps)
@@ -2084,8 +2597,9 @@ func read_history_stop(stop_id: String) -> bool:
 		trigger_progress_cue("history_" + stop_id, title_str)
 	update_block_ui()
 	var yr := int(rec.get("year", 1949 if stop_id == "blackhawk" else 1966))
-	info.text = "%s (%d)\n%s\nCity 2010 survey & 5xmc-5bjj (2017) / PDDL · Streets © OpenStreetMap / ODbL" % [title_str, yr, note_str]
-	announce_a11y_status("%s: %s" % [title_str, note_str])
+	var extra_stage := " · Dodge Alley Block Concert live next door at Dodge Place" if stop_id == "blackhawk" else ""
+	info.text = "%s (%d)%s\n%s\nCity 2010 survey & 5xmc-5bjj (2017) / PDDL · Streets © OpenStreetMap / ODbL" % [title_str, yr, extra_stage, note_str]
+	announce_a11y_status("%s%s: %s" % [title_str, extra_stage, note_str])
 	return true
 
 func walk_to_or_read_history_stop(stop_id: String) -> bool:
@@ -2098,6 +2612,24 @@ func walk_to_comptons_corner() -> bool:
 
 func walk_to_black_hawk() -> bool:
 	return walk_to_history_stop("blackhawk")
+
+func inspect_so_what_easter_egg() -> bool:
+	in_overview = false
+	in_wide_overview = false
+	following_player = false
+	if selected >= 0:
+		meshes[selected].material_override = building_materials[selected]
+		selected = -1
+	target = Vector3(-320.0, 14.0, 82.6)
+	view_size = 84.0
+	update_camera()
+	update_occlusion(true)
+	var line := "145 Leavenworth (8th Floor ★) & 361 Turk St — 'So What' Musical Awning Easter Egg"
+	var sub := "Dual-address Tenderloin complex (footprints 201006.0001527 & 201006.0003855) · Entrance awning arranged after Miles Davis's 'So What' (Live at the Black Hawk, 1961)"
+	if info != null:
+		info.text = "%s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, sub]
+	announce_a11y_status("%s: %s" % [line, sub])
+	return true
 
 func toggle_district_boundary() -> bool:
 	district_boundary_visible = not district_boundary_visible
@@ -2537,7 +3069,7 @@ func take_keepsake_photo(participants: Array = PHOTO_GUESTS) -> bool:
 	return true
 
 func skip_keepsake_photo() -> bool:
-	if not block_opened or String(keepsake_photo.get("status", "unasked")) == "taken":
+	if not block_opened or epilogue_packing or String(keepsake_photo.get("status", "unasked")) != "unasked":
 		return false
 	var cur_layout := String(keepsake_photo.get("layout", "table"))
 	keepsake_photo = {
@@ -2629,10 +3161,230 @@ func advance_epilogue_step() -> String:
 	if epilogue_returned.size() < LOAN_IDS.size():
 		var lid := return_next_loan()
 		return ("returned_" + lid) if not lid.is_empty() else "loan_blocked"
-	var done_msg := "Afternoon epilogue complete: keepsake %s and 3/3 neighbor loans returned." % String(keepsake_photo.get("status", "skipped"))
-	info.text = "%s\nUse Z to plan & host the Second Afternoon Programme\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % done_msg
+	var kp_status := String(keepsake_photo.get("status", "skipped"))
+	var done_msg := "Afternoon epilogue complete: keepsake %s and 3/3 neighbor loans returned." % kp_status
+	var export_hint := " (Shift+Y exports keepsake SVG)" if kp_status == "taken" else ""
+	info.text = "%s\nUse Z to plan & host the Second Afternoon Programme%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [done_msg, export_hint]
 	announce_a11y_status(done_msg)
 	return "epilogue_complete"
+
+func xml_escape(raw_val: String) -> String:
+	return raw_val.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&apos;")
+
+func build_keepsake_svg(photo_dict: Dictionary = {}) -> String:
+	var src: Dictionary = keepsake_photo if photo_dict.is_empty() else photo_dict
+	if String(src.get("status", "")) != "taken":
+		return ""
+	var p_val: Variant = src.get("participants", null)
+	if not (p_val is Array) or (p_val as Array).is_empty():
+		return ""
+	var seen_p: Dictionary = {}
+	for raw_id in (p_val as Array):
+		if not (raw_id is String):
+			return ""
+		var gid := String(raw_id)
+		if not (gid in PHOTO_GUESTS) or seen_p.has(gid):
+			return ""
+		seen_p[gid] = true
+	var pal_id := String(src.get("palette", ""))
+	var lay_id := String(src.get("layout", ""))
+	if not (pal_id in MURAL_PALETTES) or not (lay_id in ["table", "floor"]):
+		return ""
+	var m_check := validate_mural_dict(src.get("mural", null), true)
+	if not bool(m_check.get("ok", false)):
+		return ""
+	var clean_mural: Dictionary = m_check.get("placements", {})
+	var colors: Array = KEEPSAKE_PALETTE_HEX.get(pal_id, KEEPSAKE_PALETTE_HEX["garden"])
+	var motifs_svg := ""
+	for i in range(MURAL_MOTIFS.size()):
+		var mid := MURAL_MOTIFS[i]
+		var cell: Dictionary = clean_mural[mid]
+		var mx := 135 + int(cell.get("col", 0)) * 68
+		var my := 155 + int(cell.get("row", 0)) * 43
+		var m_col := String(colors[i])
+		if mid == "sun":
+			motifs_svg += "<g transform=\"translate(%d %d)\" stroke=\"%s\" stroke-width=\"5\" stroke-linecap=\"round\"><path d=\"M-15 0h30M0-15v30M-11-11l22 22M-11 11l22-22\"/></g>" % [mx, my, m_col]
+		elif mid == "wave":
+			motifs_svg += "<path d=\"M%d %dq12-17 24 0t24 0M%d %dq12-17 24 0t24 0\" stroke=\"%s\" stroke-width=\"4\" fill=\"none\"/>" % [mx - 23, my, mx - 23, my + 11, m_col]
+		else:
+			motifs_svg += "<text x=\"%d\" y=\"%d\" text-anchor=\"middle\" font-family=\"Georgia,serif\" font-size=\"24\" fill=\"%s\">RISE</text>" % [mx, my + 6, m_col]
+	var guest_meta: Dictionary = {
+		"bea": {"name": "Bea", "coat": "#c5874f", "skin": "#966345", "hair": "#dad7c6", "rollator": true, "headphones": false},
+		"celeste": {"name": "Celeste", "coat": "#c87d82", "skin": "#8b5b3f", "hair": "#383c32", "rollator": false, "headphones": false},
+		"dez": {"name": "Dez", "coat": "#978aaf", "skin": "#704b37", "hair": "#292f2b", "rollator": false, "headphones": true},
+		"thanh": {"name": "Thanh", "coat": "#b59b5d", "skin": "#c38c65", "hair": "#454236", "rollator": false, "headphones": false}
+	}
+	var guests: Array[String] = []
+	var guest_names: Array[String] = []
+	for gid in PHOTO_GUESTS:
+		if seen_p.has(gid):
+			guests.append(gid)
+			guest_names.append(String(guest_meta[gid]["name"]))
+	var people_svg := ""
+	for i in range(guests.size()):
+		var gid := guests[i]
+		var gm: Dictionary = guest_meta[gid]
+		var gx := 320 + i * 106 - (guests.size() - 1) * 53
+		var walker := "<g stroke=\"#496557\" stroke-width=\"4\" fill=\"none\"><path d=\"M-31 10l-8 39h68l-6-39\"/><path d=\"M-35 33h61\"/></g><circle cx=\"-37\" cy=\"52\" r=\"5\" fill=\"#496557\"/><circle cx=\"29\" cy=\"52\" r=\"5\" fill=\"#496557\"/>" if bool(gm.get("rollator", false)) else ""
+		var headphones := "<path d=\"M-20-50a20 20 0 0 1 40 0\" fill=\"none\" stroke=\"#dfc57f\" stroke-width=\"4\"/><rect x=\"-23\" y=\"-54\" width=\"6\" height=\"17\" rx=\"2\" fill=\"#dfc57f\"/><rect x=\"17\" y=\"-54\" width=\"6\" height=\"17\" rx=\"2\" fill=\"#dfc57f\"/>" if bool(gm.get("headphones", false)) else ""
+		people_svg += "<g data-guest=\"%s\" transform=\"translate(%d 321)\"><ellipse cx=\"3\" cy=\"47\" rx=\"34\" ry=\"7\" fill=\"#64735b22\"/><path d=\"M-10 10v33M10 10v33\" stroke=\"#3d5149\" stroke-width=\"10\" stroke-linecap=\"round\"/><rect x=\"-22\" y=\"-30\" width=\"44\" height=\"50\" rx=\"12\" fill=\"%s\"/><path d=\"M-25-19v35M25-19v35\" stroke=\"%s\" stroke-width=\"8\" stroke-linecap=\"round\"/><circle cy=\"-49\" r=\"18\" fill=\"%s\"/><path d=\"M-18-52a18 18 0 0 1 36 0\" fill=\"%s\"/>%s%s<text y=\"76\" text-anchor=\"middle\" font-size=\"15\" fill=\"#41594e\">%s</text></g>" % [
+			gid,
+			gx,
+			String(gm["coat"]),
+			String(gm["skin"]),
+			String(gm["skin"]),
+			String(gm["hair"]),
+			headphones,
+			walker,
+			xml_escape(String(gm["name"]))
+		]
+	var bunting_svg := ""
+	for i in range(15):
+		var bx := 55 + i * 37
+		bunting_svg += "<path d=\"M%d %sh20l-10 22z\" fill=\"%s\"/>" % [bx, KEEPSAKE_BUNTING_Y[i], String(colors[i % 3])]
+	var title_str := "Stories around the Long Table" if lay_id == "table" else "A little room on the Open Floor"
+	var escaped_title := xml_escape(title_str)
+	var escaped_guests := xml_escape(", ".join(guest_names))
+	return "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 640 480\" role=\"img\" aria-labelledby=\"title desc\"><title id=\"title\">%s</title><desc id=\"desc\">Fictional gathering keepsake with %s. Rook is not pictured. An original illustration, not a photograph of a real place or person.</desc><rect width=\"640\" height=\"480\" rx=\"8\" fill=\"#faf3df\"/><rect x=\"20\" y=\"20\" width=\"600\" height=\"395\" rx=\"3\" fill=\"#dce2cc\"/><path d=\"M20 105h600M20 282h600\" stroke=\"#c3cdb6\" stroke-width=\"2\"/><path d=\"M45 69Q320 138 595 69\" fill=\"none\" stroke=\"#647b62\" stroke-width=\"2\"/>%s<rect x=\"91\" y=\"123\" width=\"455\" height=\"145\" rx=\"4\" fill=\"#f4e3ba\" stroke=\"#b58e5d\" stroke-width=\"8\"/>%s%s<text x=\"320\" y=\"438\" text-anchor=\"middle\" font-family=\"Georgia,serif\" font-size=\"22\" fill=\"#294f44\">%s</text><text x=\"320\" y=\"461\" text-anchor=\"middle\" font-family=\"sans-serif\" font-size=\"9\" letter-spacing=\"1.5\" fill=\"#6b7b68\">TENDERLOIN REDUX · FICTIONAL GATHERING · ORIGINAL ILLUSTRATION</text></svg>" % [
+		escaped_title,
+		escaped_guests,
+		bunting_svg,
+		motifs_svg,
+		people_svg,
+		escaped_title
+	]
+
+func export_keepsake_svg() -> bool:
+	var svg := build_keepsake_svg(keepsake_photo)
+	if svg.is_empty():
+		return false
+	last_exported_keepsake_svg = svg
+	if OS.has_feature("web"):
+		var js_svg := JSON.stringify(svg)
+		var js_name := JSON.stringify(KEEPSAKE_EXPORT_FILENAME)
+		JavaScriptBridge.eval("window.__tenderloinExportKeepsakeSvg && window.__tenderloinExportKeepsakeSvg(%s, %s);" % [js_svg, js_name], true)
+	var summary := "Exported illustrated keepsake SVG (%s · %d bytes · Rook not pictured)." % [KEEPSAKE_EXPORT_FILENAME, svg.to_utf8_buffer().size()]
+	if info != null:
+		info.text = "%s\nOriginal consent-aware illustration · Tab-local SVG export\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % summary
+	announce_a11y_status(summary)
+	sync_web_a11y_status()
+	return true
+
+func programme_poster_heading(order: Array = programme_published) -> String:
+	if order.size() != PROGRAMME_SEGMENTS.size() or programme_issue(order) != "":
+		return "Another afternoon, taking shape"
+	if String(order[0]) == "stories":
+		return "Stories open the afternoon"
+	if order.find("stories") < order.find("beats"):
+		return "Stories before the rhythm"
+	return "A rhythm, a pause, a story"
+
+func build_programme_svg(order: Array = programme_published) -> String:
+	if order.size() != PROGRAMME_SEGMENTS.size() or programme_issue(order) != "":
+		return ""
+	var heading := xml_escape(programme_poster_heading(order))
+	var desc_parts: Array[String] = []
+	var rows_svg := ""
+	for i in range(order.size()):
+		var sid := String(order[i])
+		var s_name := xml_escape(programme_title(sid))
+		var s_col := String(PROGRAMME_SEGMENT_COLORS.get(sid, "#e5b66d"))
+		desc_parts.append("%d. %s." % [i + 1, s_name])
+		rows_svg += "<g transform=\"translate(32 %d)\"><rect width=\"576\" height=\"61\" rx=\"9\" fill=\"%s\"/><text x=\"18\" y=\"39\" font-family=\"sans-serif\" font-size=\"22\" fill=\"#253c33\">%d. %s</text><circle cx=\"546\" cy=\"30\" r=\"12\" fill=\"#f8ecd9\"/></g>" % [
+			110 + i * 73,
+			s_col,
+			i + 1,
+			s_name
+		]
+	return "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"640\" height=\"460\" viewBox=\"0 0 640 460\" role=\"img\" aria-labelledby=\"title desc\"><title id=\"title\">%s</title><desc id=\"desc\">Fictional future gathering. %s</desc><rect width=\"640\" height=\"460\" rx=\"18\" fill=\"#f8ecd9\"/><text x=\"32\" y=\"44\" font-family=\"sans-serif\" font-size=\"15\" fill=\"#425547\">OUR NEXT AFTERNOON · A FICTIONAL PLAN</text><text x=\"32\" y=\"82\" font-family=\"sans-serif\" font-size=\"25\" fill=\"#253c33\">%s</text>%s<text x=\"32\" y=\"435\" font-family=\"sans-serif\" font-size=\"14\" fill=\"#425547\">Come and go. Listening counts. No date or real event is announced.</text></svg>" % [
+		heading,
+		" ".join(desc_parts),
+		heading,
+		rows_svg
+	]
+
+func build_tile_panel_svg(art_dict: Dictionary = {}) -> String:
+	var src := art_dict
+	if src.is_empty():
+		var hosted_art: Variant = get_hosted_segment_value("art")
+		if hosted_art is Dictionary:
+			src = hosted_art as Dictionary
+		else:
+			src = hosting_draft
+	var pal_val: Variant = src.get("palette", "")
+	var tiles_val: Variant = src.get("tiles", null)
+	if not (pal_val is String) or not (String(pal_val) in HOSTING_PALETTES) or not (tiles_val is Array) or (tiles_val as Array).size() != 6:
+		return ""
+	var pal_id := String(pal_val)
+	var pal_hex: Array = HOSTING_TILE_HEX[pal_id]
+	var tiles_svg := ""
+	var t_arr: Array = tiles_val
+	for i in range(6):
+		var tv: Variant = t_arr[i]
+		if not is_whole_json_number(tv):
+			return ""
+		var ti := int(roundf(float(tv)))
+		if ti < 0 or ti > 2:
+			return ""
+		var tx := 24 + (i % 3) * 106
+		var ty := 20 + int(i / 3) * 106
+		var shape_svg := "<circle cx=\"49\" cy=\"49\" r=\"24\" fill=\"#f8ecd9\"/>" if ti == 0 else ("<path d=\"M12 64 Q32 20 50 50 T86 36\" stroke=\"#f8ecd9\" stroke-width=\"10\" fill=\"none\"/>" if ti == 1 else "<path d=\"M20 76 L49 22 L78 76Z\" fill=\"#f8ecd9\"/>")
+		tiles_svg += "<g transform=\"translate(%d %d)\"><rect width=\"98\" height=\"98\" rx=\"7\" fill=\"%s\"/>%s</g>" % [tx, ty, String(pal_hex[ti]), shape_svg]
+	return "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"360\" height=\"240\" viewBox=\"0 0 360 240\" role=\"img\" aria-labelledby=\"title desc\"><title id=\"title\">Our six-tile portable panel</title><desc id=\"desc\">Original abstract neighbor-made panel, %s palette. Tiles numbered left to right, top to bottom.</desc><rect width=\"360\" height=\"240\" rx=\"14\" fill=\"#f8ecd9\"/>%s</svg>" % [
+		xml_escape(pal_id),
+		tiles_svg
+	]
+
+func build_civic_plan_svg(plan_dict: Dictionary = {}) -> String:
+	var src: Variant = plan_dict
+	if (src as Dictionary).is_empty():
+		src = civic_result if is_valid_civic_plan(civic_result) else civic_draft
+	if not is_valid_civic_plan(src):
+		return ""
+	var p := copy_civic_plan(src as Dictionary)
+	var fmt := String(p.get("format", "circle"))
+	var fmt_label := xml_escape(civic_format_title(fmt))
+	var shapes_svg := ""
+	if fmt == "circle":
+		var pts := [[100, 42], [145, 30], [190, 42], [100, 158], [145, 170], [190, 158]]
+		for pt in pts:
+			shapes_svg += "<circle cx=\"%d\" cy=\"%d\" r=\"10\" fill=\"#75907c\"/>" % [pt[0], pt[1]]
+		shapes_svg += "<rect x=\"260\" y=\"30\" width=\"75\" height=\"32\" rx=\"4\" fill=\"#d9a2b2\"/>"
+	else:
+		shapes_svg = "<rect x=\"80\" y=\"30\" width=\"150\" height=\"30\" rx=\"4\" fill=\"#d9a2b2\"/><circle cx=\"100\" cy=\"165\" r=\"10\" fill=\"#75907c\"/><circle cx=\"155\" cy=\"165\" r=\"10\" fill=\"#75907c\"/>"
+	return "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"420\" height=\"210\" viewBox=\"0 0 420 210\"><title>%s: schematic shared-space plan</title><rect width=\"420\" height=\"210\" rx=\"12\" fill=\"#f3eedf\"/><path d=\"M20 100H400\" stroke=\"#91bac2\" stroke-width=\"32\"/><path d=\"M20 100H400\" stroke=\"#fffdf5\" stroke-width=\"2\" stroke-dasharray=\"7 6\"/>%s<text x=\"310\" y=\"105\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#253f35\">Clear route</text><text x=\"22\" y=\"199\" font-family=\"sans-serif\" font-size=\"11\" fill=\"#253f35\">Fictional setup · schematic, not surveyed access widths</text></svg>" % [
+		fmt_label,
+		shapes_svg
+	]
+
+func build_film_frame_svg(plan_dict: Dictionary = {}, shot_id: String = "") -> String:
+	var src: Variant = plan_dict
+	if (src as Dictionary).is_empty():
+		src = film_result if is_valid_film_plan(film_result) else film_draft
+	if not is_valid_film_plan(src):
+		return ""
+	var p := copy_film_plan(src as Dictionary)
+	var ord: Array = p.get("order", FILM_SHOTS)
+	var target_shot := shot_id
+	if target_shot.is_empty():
+		var idx := clampi(film_screen_frame, 0, ord.size() - 1)
+		target_shot = String(ord[idx])
+	if not (target_shot in FILM_SHOTS):
+		return ""
+	var chair := "<path d=\"M155 143V103H220V143M157 119H218M159 143V167M216 143V167\" fill=\"none\" stroke=\"#276a5a\" stroke-width=\"8\" stroke-linecap=\"round\"/>"
+	var panel := "<rect x=\"95\" y=\"54\" width=\"100\" height=\"68\" rx=\"4\" fill=\"#f3eedf\" stroke=\"#276a5a\" stroke-width=\"3\"/><circle cx=\"124\" cy=\"87\" r=\"16\" fill=\"#d9a2b2\"/><path d=\"M146 98Q160 68 180 98\" fill=\"none\" stroke=\"#91bac2\" stroke-width=\"7\"/>"
+	var scene_svg := chair if target_shot == "seat" else (panel if target_shot == "paint" else (chair + "<circle cx=\"270\" cy=\"116\" r=\"28\" fill=\"none\" stroke=\"#d9a2b2\" stroke-width=\"7\"/><path d=\"M254 116H286M270 100V132\" stroke=\"#276a5a\" stroke-width=\"4\"/>"))
+	var framing := String(p.get("framing", "close"))
+	var hands_svg := "<path d=\"M20 167L65 135Q79 129 84 142L57 165L93 163Q108 169 94 180H20M400 167L355 135Q341 129 336 142L363 165L327 163Q312 169 326 180H400\" fill=\"#c38c65\"/>" if framing == "wide" else ""
+	var table_edge := "<rect x=\"64\" y=\"176\" width=\"292\" height=\"7\" rx=\"3\" fill=\"#b59b5d\"/>" if framing == "wide" else ""
+	var group_attr := " transform=\"translate(-30 -8) scale(1.2)\"" if framing == "close" else ""
+	return "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"420\" height=\"236\" viewBox=\"0 0 420 236\"><title>%s — original illustrated frame</title><rect width=\"420\" height=\"236\" rx=\"12\" fill=\"#253f35\"/><rect x=\"12\" y=\"17\" width=\"396\" height=\"202\" rx=\"5\" fill=\"#ecebdc\"/><path d=\"M20 190H400\" stroke=\"#91bac2\" stroke-width=\"6\"/>%s<g%s>%s</g>%s<path d=\"M25 9H395M25 227H395\" stroke=\"#f3eedf\" stroke-width=\"4\" stroke-dasharray=\"8 10\"/></svg>" % [
+		xml_escape(film_shot_title(target_shot)),
+		table_edge,
+		group_attr,
+		scene_svg,
+		hands_svg
+	]
 
 func programme_title(segment_id: String) -> String:
 	return String(PROGRAMME_TITLES.get(segment_id, segment_id))
@@ -3472,9 +4224,11 @@ func validate_voices_payload(raw_json: String) -> Dictionary:
 	return {"ok": true, "checked_at": String(checked_val), "records": clean_records}
 
 func voices_release_resources() -> void:
+	var t0 := Time.get_ticks_usec()
 	voices_records.clear()
 	voices_checked_at = ""
 	voices_release_count += 1
+	last_voices_teardown_usec = maxi(1, Time.get_ticks_usec() - t0)
 
 func present_voices_summary() -> String:
 	if not voices_enabled or voices_status != "ready" or voices_records.is_empty():
@@ -3591,6 +4345,7 @@ func retry_voices_load() -> bool:
 func suspend_voices() -> bool:
 	if not voices_enabled:
 		return false
+	var t0 := Time.get_ticks_usec()
 	var had_error := (voices_status == "error" or not voices_error.is_empty())
 	voices_generation += 1
 	voices_release_resources()
@@ -3598,6 +4353,7 @@ func suspend_voices() -> bool:
 	voices_status = "error" if had_error else "paused"
 	update_block_ui()
 	sync_web_a11y_status()
+	last_voices_teardown_usec = maxi(1, Time.get_ticks_usec() - t0)
 	return true
 
 func resume_voices() -> bool:
@@ -4055,6 +4811,10 @@ func setup_web_a11y_bridge() -> void:
 		window.__tenderloinWebVoicesLifecyclePending = '';
 		window.addEventListener('pagehide', function() {
 			window.__tenderloinWebVoicesLifecyclePending = 'suspend';
+			if (window.__tenderloinLastExportUrl) {
+				try { URL.revokeObjectURL(window.__tenderloinLastExportUrl); } catch (_e) {}
+				window.__tenderloinLastExportUrl = '';
+			}
 		});
 		window.addEventListener('pageshow', function(e) {
 			if (e && e.persisted) {
@@ -4101,9 +4861,122 @@ func setup_web_a11y_bridge() -> void:
 			saveInput.click();
 			return true;
 		};
+		window.__tenderloinLastExportedSvg = null;
+		window.__tenderloinLastExportUrl = '';
+		window.__tenderloinExportKeepsakeSvg = function(svgText, fileName) {
+			var cleanSvg = String(svgText || '');
+			var cleanName = String(fileName || 'tenderloin-redux-godot-afternoon.svg');
+			if (!cleanSvg) return false;
+			var utf8Bytes = (typeof TextEncoder !== 'undefined') ? (new TextEncoder().encode(cleanSvg).length) : cleanSvg.length;
+			window.__tenderloinLastExportedSvg = {
+				filename: cleanName,
+				svg: cleanSvg,
+				bytes: utf8Bytes
+			};
+			if (!window.__tenderloinSuppressDownload) {
+				try {
+					if (window.__tenderloinLastExportUrl) {
+						URL.revokeObjectURL(window.__tenderloinLastExportUrl);
+						window.__tenderloinLastExportUrl = '';
+					}
+					var blob = new Blob([cleanSvg], { type: 'image/svg+xml;charset=utf-8' });
+					var url = URL.createObjectURL(blob);
+					window.__tenderloinLastExportUrl = url;
+					var a = document.createElement('a');
+					a.href = url;
+					a.download = cleanName;
+					a.style.display = 'none';
+					document.body.appendChild(a);
+					a.click();
+					document.body.removeChild(a);
+				} catch (_e) {}
+			}
+			return true;
+		};
+		window.__tenderloinLastPerfSnapshot = null;
+		window.__tenderloinWebPerfRequestPending = false;
+		window.__tenderloinRequestPerfSnapshot = function() {
+			window.__tenderloinLastPerfSnapshot = null;
+			window.__tenderloinWebPerfRequestPending = true;
+			return true;
+		};
 	})();
 	""" % BROWSER_SAVE_MAX_BYTES
 	JavaScriptBridge.eval(js_a11y, true)
+
+func measure_local_performance() -> Dictionary:
+	var saved_walk_cache := cell_walkable_cache.duplicate()
+	cell_walkable_cache.clear()
+	var t_path0 := Time.get_ticks_usec()
+	var bh_path := find_path(neighbor_xz(4), blackhawk_xz())
+	var path_usec := maxi(1, Time.get_ticks_usec() - t_path0)
+	var path_astar_cells := last_astar_expanded_cells
+	cell_walkable_cache = saved_walk_cache
+	var t_save0 := Time.get_ticks_usec()
+	var env := build_save_envelope()
+	var raw_json := JSON.stringify(env)
+	var parsed_back: Variant = JSON.parse_string(raw_json)
+	var save_usec := maxi(1, Time.get_ticks_usec() - t_save0)
+	var save_bytes := raw_json.to_utf8_buffer().size()
+	var save_parse_ok := (parsed_back is Dictionary) and String((parsed_back as Dictionary).get("schema", "")) == "tenderloin-redux.godot.save"
+	var teardown_measured := last_voices_teardown_usec > 0
+	var teardown_usec := last_voices_teardown_usec if teardown_measured else -1
+	var teardown_budget_ok := (not teardown_measured) or (teardown_usec < VOICES_TEARDOWN_BUDGET_MAX_USEC)
+	var street_count := int((data.get("streets", []) as Array).size())
+	var wider_street_count := street_ways.size()
+	var district_ok := district_boundary_node != null and district_boundary_node.mesh != null
+	var budget_ok := (
+		meshes.size() == 58
+		and wider_meshes.size() == 130
+		and all_buildings.size() == 188
+		and street_count == 20
+		and wider_street_count == 41
+		and district_ok
+		and bh_path.size() >= 2
+		and path_astar_cells > 0
+		and path_usec < PATHFIND_BUDGET_MAX_USEC
+		and save_parse_ok
+		and save_bytes > 0
+		and save_bytes <= SAVE_BUDGET_MAX_BYTES
+		and save_usec < SAVE_SERIALIZE_BUDGET_MAX_USEC
+		and teardown_budget_ok
+	)
+	return {
+		"opening_buildings_count": meshes.size(),
+		"wider_buildings_count": wider_meshes.size(),
+		"total_buildings_count": all_buildings.size(),
+		"street_ways_count": street_count,
+		"wider_street_ways_count": wider_street_count,
+		"district_boundary_present": district_ok,
+		"pathfind_blackhawk_waypoints": bh_path.size(),
+		"pathfind_blackhawk_usec": path_usec,
+		"pathfind_budget_max_usec": PATHFIND_BUDGET_MAX_USEC,
+		"pathfind_cold_cache": true,
+		"astar_used": path_astar_cells > 0,
+		"astar_expanded_cells": path_astar_cells,
+		"save_bytes": save_bytes,
+		"save_budget_max_bytes": SAVE_BUDGET_MAX_BYTES,
+		"save_roundtrip_usec": save_usec,
+		"save_budget_max_usec": SAVE_SERIALIZE_BUDGET_MAX_USEC,
+		"voices_teardown_measured": teardown_measured,
+		"voices_teardown_usec": teardown_usec,
+		"voices_teardown_budget_max_usec": VOICES_TEARDOWN_BUDGET_MAX_USEC,
+		"object_node_count": int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)),
+		"svg_samples": {
+			"keepsake": build_keepsake_svg({
+				"status": "taken",
+				"participants": ["bea", "celeste", "dez", "thanh"],
+				"mural": {"sun": {"col": 0, "row": 0}, "wave": {"col": 2, "row": 1}, "rise": {"col": 4, "row": 2}},
+				"palette": "garden",
+				"layout": "table"
+			}),
+			"programme": build_programme_svg(["stories", "beats", "pause", "art"]),
+			"tile_panel": build_tile_panel_svg({"palette": "warm", "tiles": [0, 1, 2, 2, 1, 0]}),
+			"civic_plan": build_civic_plan_svg({"topic": "repairs", "format": "circle", "notes": "themes"}),
+			"film_frame": build_film_frame_svg({"framing": "close", "plan": "quiet", "order": ["seat", "paint", "welcome"]}, "seat")
+		},
+		"within_budget": budget_ok
+	}
 
 func get_a11y_status_snapshot() -> Dictionary:
 	var active_panel := "none"
@@ -4128,6 +5001,7 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"district_boundary_visible": district_boundary_visible,
 		"keepsake_status": String(keepsake_photo.get("status", "unasked")),
 		"keepsake_participants": keepsake_photo.get("participants", []).duplicate(),
+		"keepsake_exported": not last_exported_keepsake_svg.is_empty(),
 		"epilogue_packing": epilogue_packing,
 		"loans_returned_count": epilogue_returned.size(),
 		"epilogue_done": is_epilogue_done(),
@@ -4146,6 +5020,7 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"voices_status": voices_status,
 		"voices_count": voices_records.size(),
 		"voices_generation": voices_generation,
+		"last_voices_teardown_usec": last_voices_teardown_usec,
 		"total_buildings": all_buildings.size(),
 		"wider_buildings_count": wider_meshes.size(),
 		"music_playing": music_playing,
@@ -4181,6 +5056,10 @@ func prompt_local_music_file() -> void:
 func poll_web_audio() -> void:
 	if not OS.has_feature("web"):
 		return
+	var perf_req: Variant = JavaScriptBridge.eval("var pr = Boolean(window.__tenderloinWebPerfRequestPending); window.__tenderloinWebPerfRequestPending = false; pr;", true)
+	if bool(perf_req):
+		var perf_json := JSON.stringify(measure_local_performance())
+		JavaScriptBridge.eval("window.__tenderloinLastPerfSnapshot = JSON.parse(%s);" % JSON.stringify(perf_json), true)
 	var voices_lc_var: Variant = JavaScriptBridge.eval("var vlc = window.__tenderloinWebVoicesLifecyclePending || ''; window.__tenderloinWebVoicesLifecyclePending = ''; String(vlc);", true)
 	var voices_lc := String(voices_lc_var) if voices_lc_var is String else ""
 	if voices_lc == "suspend":
@@ -4443,6 +5322,7 @@ func reset_mural_state_to_defaults(status_label: String) -> void:
 	visited_neighbors.clear()
 	block_opened = false
 	keepsake_photo = default_keepsake_photo()
+	last_exported_keepsake_svg = ""
 	epilogue_packing = false
 	epilogue_returned.clear()
 	programme_order.clear()
@@ -5007,6 +5887,7 @@ func apply_save_envelope(raw_json: String) -> bool:
 	district_boundary_visible = db_vis
 	block_opened = will_open
 	keepsake_photo = ep_res.get("photo", default_keepsake_photo())
+	last_exported_keepsake_svg = ""
 	epilogue_packing = bool(ep_res.get("packing", false))
 	epilogue_returned = ep_res.get("returned", [] as Array[String])
 	programme_order = prog_res.get("order", [] as Array[String])
@@ -5607,6 +6488,8 @@ func advance_walk(delta: float) -> bool:
 			current_path.clear()
 			break
 		player.position = Vector3(nxt.x, 0.0, nxt.y)
+		if player_visual != null and to_wp.length_squared() > 1e-4:
+			player_visual.rotation.y = atan2(to_wp.x, to_wp.y)
 		remaining -= step
 		if selected_neighbor >= 0 and nxt.distance_to(goal_xz) <= ARRIVAL_DISTANCE_M:
 			finish_neighbor_arrival(selected_neighbor)
@@ -5762,8 +6645,12 @@ func update_occlusion(force: bool = true) -> void:
 		focus_points.append(neighbor_xz(rook_index))
 	if not walking_to_history_stop.is_empty():
 		focus_points.append(history_stop_xz(walking_to_history_stop))
+		if walking_to_history_stop == "blackhawk":
+			focus_points.append(Vector2(-414.0, 56.0))
 	elif not arrived_history_stop.is_empty():
 		focus_points.append(history_stop_xz(arrived_history_stop))
+		if arrived_history_stop == "blackhawk":
+			focus_points.append(Vector2(-414.0, 56.0))
 	for idx in range(data.buildings.size()):
 		for fp in focus_points:
 			if building_occludes_point(idx, fp, 1.0):
@@ -5866,6 +6753,10 @@ func handle_scene_tap(screen_pos: Vector2) -> bool:
 	var bh_world_d := blackhawk_xz().distance_to(ground_xz)
 	if ((bh_screen_d <= 36.0 and bh_world_d <= 8.5) or bh_world_d <= 3.5) and bh_screen_d < best_screen_d:
 		return walk_to_history_stop("blackhawk")
+	var turk_ee_screen := camera.unproject_position(Vector3(-350.0, 3.6, 65.8))
+	var leav_ee_screen := camera.unproject_position(Vector3(-290.8, 24.6, 99.4))
+	if turk_ee_screen.distance_to(screen_pos) <= 28.0 or leav_ee_screen.distance_to(screen_pos) <= 28.0:
+		return inspect_so_what_easter_egg()
 	if best_idx >= 0:
 		return walk_to_neighbor(best_idx)
 	return walk_to_point(ground_xz)
@@ -5937,7 +6828,15 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_Y:
 				if event.shift_pressed:
 					show_block_panel(true)
-					skip_keepsake_photo()
+					var kp_st := String(keepsake_photo.get("status", "unasked"))
+					if kp_st == "taken":
+						export_keepsake_svg()
+					elif not epilogue_packing and kp_st == "unasked":
+						skip_keepsake_photo()
+					else:
+						var no_kp_msg := "No keepsake photo to export."
+						info.text = "%s\nTake the M1 Keepsake Photo (Y) when the block gathering opens to export a keepsake SVG\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % no_kp_msg
+						announce_a11y_status(no_kp_msg)
 				else:
 					advance_epilogue_step()
 			KEY_Z:
@@ -5968,7 +6867,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_J:
 				walk_to_or_read_history_stop("comptons")
 			KEY_H:
-				walk_to_or_read_history_stop("blackhawk")
+				if event.shift_pressed:
+					inspect_so_what_easter_egg()
+				else:
+					walk_to_or_read_history_stop("blackhawk")
 			KEY_C:
 				toggle_district_boundary()
 			KEY_L:
