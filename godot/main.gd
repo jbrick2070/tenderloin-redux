@@ -431,7 +431,21 @@ var portal_lens_mesh: MeshInstance3D
 var portal_ring_meshes: Array[MeshInstance3D] = []
 var eatery_guide_idx := -1
 
-func make_building_mesh_and_rect(building: Dictionary, mat: StandardMaterial3D) -> Dictionary:
+func colored_quad(surface: SurfaceTool, p00: Vector3, p10: Vector3, p11: Vector3, p01: Vector3, col: Color) -> void:
+	surface.set_color(col)
+	surface.add_vertex(p00)
+	surface.set_color(col)
+	surface.add_vertex(p10)
+	surface.set_color(col)
+	surface.add_vertex(p11)
+	surface.set_color(col)
+	surface.add_vertex(p00)
+	surface.set_color(col)
+	surface.add_vertex(p11)
+	surface.set_color(col)
+	surface.add_vertex(p01)
+
+func make_building_mesh_and_rect(building: Dictionary, mat: StandardMaterial3D, base_col: Color = Color("d49a6a")) -> Dictionary:
 	var surface := SurfaceTool.new()
 	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
 	surface.set_smooth_group(-1)
@@ -439,8 +453,18 @@ func make_building_mesh_and_rect(building: Dictionary, mat: StandardMaterial3D) 
 	var h: float = building.height_m
 	var b_rect := Rect2()
 	var has_rect := false
+	var plinth_col := base_col.darkened(0.28)
+	var spandrel_col := base_col.darkened(0.12)
+	var cornice_col := base_col.lightened(0.28)
+	var roof_col := base_col.darkened(0.36)
+	var b_hash: int = absi(String(building.get("id", "")).hash())
+	var glass_warm := Color("ffe494")
+	var glass_amber := Color("f5b562")
+	var glass_sky := Color("88c6d8")
+	var storefront_glow := Color("ffe08a") if (b_hash % 2 == 0) else Color("8ce0e6")
 	for polygon in building.polygons:
-		for ring in polygon.rings:
+		for r_idx in range(polygon.rings.size()):
+			var ring: Array = polygon.rings[r_idx]
 			for i in range(ring.size()):
 				var p0: Array = ring[i]
 				var v2 := Vector2(p0[0], p0[1])
@@ -453,13 +477,66 @@ func make_building_mesh_and_rect(building: Dictionary, mat: StandardMaterial3D) 
 				var b := point(ring[(i + 1) % ring.size()], 0)
 				var bu := b + Vector3.UP * h
 				var au := a + Vector3.UP * h
-				triangle(surface, a, b, bu)
-				triangle(surface, a, bu, au)
 				wall_faces.append_array([a, b, bu, a, bu, au])
+				var seg_len := a.distance_to(b)
+				var plinth_h := minf(3.6, h * 0.30)
+				var cornice_y := maxf(plinth_h, h - minf(0.95, h * 0.12))
+				if r_idx > 0 or h < 5.0 or seg_len < 2.8:
+					colored_quad(surface, a, b, b + Vector3.UP * plinth_h, a + Vector3.UP * plinth_h, plinth_col)
+					if cornice_y > plinth_h:
+						colored_quad(surface, a + Vector3.UP * plinth_h, b + Vector3.UP * plinth_h, b + Vector3.UP * cornice_y, a + Vector3.UP * cornice_y, base_col)
+					if h > cornice_y:
+						colored_quad(surface, a + Vector3.UP * cornice_y, b + Vector3.UP * cornice_y, bu, au, cornice_col)
+				else:
+					# Ground-floor storefront / masonry plinth
+					if seg_len >= 4.2 and plinth_h >= 2.6:
+						var s_a := a.lerp(b, 0.16)
+						var s_b := a.lerp(b, 0.84)
+						var sill_y := 0.65
+						var head_y := plinth_h - 0.42
+						colored_quad(surface, a, s_a, s_a + Vector3.UP * plinth_h, a + Vector3.UP * plinth_h, plinth_col)
+						colored_quad(surface, s_b, b, b + Vector3.UP * plinth_h, s_b + Vector3.UP * plinth_h, plinth_col)
+						colored_quad(surface, s_a, s_b, s_b + Vector3.UP * sill_y, s_a + Vector3.UP * sill_y, plinth_col)
+						colored_quad(surface, s_a + Vector3.UP * sill_y, s_b + Vector3.UP * sill_y, s_b + Vector3.UP * head_y, s_a + Vector3.UP * head_y, storefront_glow)
+						colored_quad(surface, s_a + Vector3.UP * head_y, s_b + Vector3.UP * head_y, s_b + Vector3.UP * plinth_h, s_a + Vector3.UP * plinth_h, cornice_col)
+					else:
+						colored_quad(surface, a, b, b + Vector3.UP * plinth_h, a + Vector3.UP * plinth_h, plinth_col)
+					# Upper stories with windows and spandrel bands
+					var mid_h := cornice_y - plinth_h
+					var num_stories := maxi(1, int(floor(mid_h / 3.2)))
+					var story_h := mid_h / float(num_stories)
+					var num_bays := clampi(int(floor(seg_len / 3.2)), 1, 7)
+					for s_i in range(num_stories):
+						var sy0 := plinth_h + float(s_i) * story_h
+						var sy1 := sy0 + story_h
+						var wy0 := sy0 + story_h * 0.22
+						var wy1 := sy0 + story_h * 0.78
+						colored_quad(surface, a + Vector3.UP * sy0, b + Vector3.UP * sy0, b + Vector3.UP * wy0, a + Vector3.UP * wy0, spandrel_col)
+						colored_quad(surface, a + Vector3.UP * wy1, b + Vector3.UP * wy1, b + Vector3.UP * sy1, a + Vector3.UP * sy1, base_col)
+						for bay_i in range(num_bays):
+							var t0 := float(bay_i) / float(num_bays)
+							var t1 := float(bay_i + 1) / float(num_bays)
+							var wt0 := lerpf(t0, t1, 0.22)
+							var wt1 := lerpf(t0, t1, 0.78)
+							var p_t0 := a.lerp(b, t0)
+							var p_wt0 := a.lerp(b, wt0)
+							var p_wt1 := a.lerp(b, wt1)
+							var p_t1 := a.lerp(b, t1)
+							colored_quad(surface, p_t0 + Vector3.UP * wy0, p_wt0 + Vector3.UP * wy0, p_wt0 + Vector3.UP * wy1, p_t0 + Vector3.UP * wy1, base_col)
+							var w_pick: int = (b_hash + i * 7 + s_i * 13 + bay_i * 5) % 5
+							var win_col := glass_warm if w_pick <= 1 else (glass_amber if w_pick == 2 else glass_sky)
+							colored_quad(surface, p_wt0 + Vector3.UP * wy0, p_wt1 + Vector3.UP * wy0, p_wt1 + Vector3.UP * wy1, p_wt0 + Vector3.UP * wy1, win_col)
+							colored_quad(surface, p_wt1 + Vector3.UP * wy0, p_t1 + Vector3.UP * wy0, p_t1 + Vector3.UP * wy1, p_wt1 + Vector3.UP * wy1, base_col)
+					# Top cornice crown
+					if h > cornice_y:
+						colored_quad(surface, a + Vector3.UP * cornice_y, b + Vector3.UP * cornice_y, bu, au, cornice_col)
 		for i in range(0, polygon.triangles.size(), 3):
-			triangle(surface, point(polygon.vertices[polygon.triangles[i]], h),
-				point(polygon.vertices[polygon.triangles[i + 1]], h),
-				point(polygon.vertices[polygon.triangles[i + 2]], h))
+			surface.set_color(roof_col)
+			surface.add_vertex(point(polygon.vertices[polygon.triangles[i]], h))
+			surface.set_color(roof_col)
+			surface.add_vertex(point(polygon.vertices[polygon.triangles[i + 1]], h))
+			surface.set_color(roof_col)
+			surface.add_vertex(point(polygon.vertices[polygon.triangles[i + 2]], h))
 	surface.generate_normals()
 	var building_mesh := MeshInstance3D.new()
 	building_mesh.name = building.id
@@ -488,31 +565,39 @@ func _ready() -> void:
 	data = parsed
 	wall_material = material(Color("c4b6a1"))
 	chosen_material = material(Color("75bbb2"))
-	cutaway_material = translucent_material(Color(0.77, 0.71, 0.63, 0.28))
+	cutaway_material = translucent_material(Color(0.77, 0.71, 0.63, 0.22))
 	var palette: Array[Color] = [
-		Color("c4b6a1"),
-		Color("ccb89e"),
-		Color("b8afa0"),
-		Color("c9ab97")
+		Color("cf6d51"), # Brick Terracotta
+		Color("dfb360"), # Warm Golden Ochre
+		Color("589a9c"), # Victorian Bay Teal
+		Color("e3d1b0"), # Edwardian Cream & Gold
+		Color("c8766c"), # Mission Coral Rose
+		Color("62849e"), # Classic Bay Slate Blue
+		Color("d98e4e"), # Sunlit Amber Stucco
+		Color("739c82")  # Sage Patina
 	]
 	var wider_palette: Array[Color] = [
-		Color("b7aa96"),
-		Color("bfb09b"),
-		Color("ada496"),
-		Color("bca28f")
+		Color("c4684e"), # Terracotta Masonry
+		Color("d4a85a"), # Sandstone Gold
+		Color("528e91"), # Seafoam Victorian
+		Color("d8c5a4"), # Edwardian Buff
+		Color("ba6e65"), # Rose Sienna
+		Color("5c7b94"), # Slate Blue
+		Color("cc8549"), # Warm Copper Ochre
+		Color("6c9179")  # Bay Laurel Green
 	]
 	var environment := WorldEnvironment.new()
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color("172a2e")
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color("e9e1cf")
-	env.ambient_light_energy = 0.65
+	env.ambient_light_color = Color("f2ead8")
+	env.ambient_light_energy = 0.72
 	environment.environment = env
 	add_child(environment)
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-55, -25, 0)
-	sun.light_energy = 1.2
+	sun.light_energy = 1.25
 	add_child(sun)
 	var ground := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
@@ -525,9 +610,11 @@ func _ready() -> void:
 	build_district_boundary()
 	for idx in range(data.buildings.size()):
 		var building: Dictionary = data.buildings[idx]
-		var b_mat := material(palette[idx % palette.size()])
+		var base_c: Color = palette[idx % palette.size()]
+		var b_mat := material(Color.WHITE)
+		b_mat.vertex_color_use_as_albedo = true
 		building_materials.append(b_mat)
-		var built := make_building_mesh_and_rect(building, b_mat)
+		var built := make_building_mesh_and_rect(building, b_mat, base_c)
 		var b_mesh: MeshInstance3D = built.mesh
 		var b_rect: Rect2 = built.rect
 		meshes.append(b_mesh)
@@ -537,9 +624,11 @@ func _ready() -> void:
 	var wider_list: Array = data.get("wider_buildings", [])
 	for w_idx in range(wider_list.size()):
 		var w_building: Dictionary = wider_list[w_idx]
-		var w_mat := material(wider_palette[w_idx % wider_palette.size()])
+		var w_base_c: Color = wider_palette[w_idx % wider_palette.size()]
+		var w_mat := material(Color.WHITE)
+		w_mat.vertex_color_use_as_albedo = true
 		wider_building_materials.append(w_mat)
-		var w_built := make_building_mesh_and_rect(w_building, w_mat)
+		var w_built := make_building_mesh_and_rect(w_building, w_mat, w_base_c)
 		var w_mesh: MeshInstance3D = w_built.mesh
 		var w_rect: Rect2 = w_built.rect
 		wider_meshes.append(w_mesh)
@@ -675,11 +764,13 @@ func make_label_3d(node_name: String, text_str: String, pos: Vector3, tint: Colo
 	lbl.text = text_str
 	lbl.position = pos
 	lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	lbl.no_depth_test = true
+	lbl.render_priority = 12
 	lbl.pixel_size = pixel_sz
 	lbl.font_size = font_sz
-	lbl.outline_size = 7
+	lbl.outline_size = 10
 	lbl.modulate = tint
-	lbl.outline_modulate = Color(0.08, 0.14, 0.16, 0.94)
+	lbl.outline_modulate = Color(0.06, 0.11, 0.13, 0.98)
 	return lbl
 
 func build_west_intersections() -> void:
@@ -894,7 +985,7 @@ func attach_neighbor_signature_prop(n_node: Node3D, n_id: String) -> void:
 func build_neighbors_and_player() -> void:
 	route_mesh = MeshInstance3D.new()
 	route_mesh.name = "RouteRibbon"
-	route_mesh.material_override = material(Color("f5d57a"))
+	route_mesh.material_override = mural_material(Color("f5d57a"))
 	add_child(route_mesh)
 	for i in range(neighbors.size()):
 		var n: Dictionary = neighbors[i]
@@ -905,8 +996,9 @@ func build_neighbors_and_player() -> void:
 			rook_index = i
 		var n_node := make_person_node(n.name, n.coat, n.skin, n.hair, 1.70, false)
 		n_node.position = n.pos
+		n_node.scale = Vector3(2.85, 2.85, 2.85)
 		attach_neighbor_signature_prop(n_node, n_id)
-		n_node.add_child(make_label_3d("Nameplate", "%s · %s" % [n.name, String(n.get("role", "")).split(" ")[0]], Vector3(0.0, 2.06, 0.0), Color("fff6df"), 0.011, 22))
+		n_node.add_child(make_label_3d("Nameplate", "[%d] %s · %s" % [i + 1, n.name, String(n.get("role", "")).split(" ")[0]], Vector3(0.0, 2.28, 0.0), Color("fff6df"), 0.0052, 26))
 		add_child(n_node)
 		neighbor_nodes.append(n_node)
 	player = CharacterBody3D.new()
@@ -920,7 +1012,8 @@ func build_neighbors_and_player() -> void:
 	col.position = Vector3(0.0, PLAYER_HEIGHT_M * 0.5, 0.0)
 	player.add_child(col)
 	player_visual = make_person_node("PlayerVisual", Color("f0ce77"), Color("b67f5d"), Color("34392f"), PLAYER_HEIGHT_M, true)
-	player_visual.add_child(make_label_3d("PlayerNameplate", "You", Vector3(0.0, 2.08, 0.0), Color("fff3b0"), 0.011, 22))
+	player_visual.scale = Vector3(2.85, 2.85, 2.85)
+	player_visual.add_child(make_label_3d("PlayerNameplate", "★ YOU (WASD / Tap)", Vector3(0.0, 2.32, 0.0), Color("ffe866"), 0.0054, 26))
 	player.add_child(player_visual)
 	add_child(player)
 
@@ -1035,6 +1128,7 @@ func build_mural_board() -> void:
 	rise_node.visible = false
 	mural_node.add_child(rise_node)
 	mural_motif_nodes["rise"] = rise_node
+	mural_node.add_child(make_label_3d("MuralBoardLabel", "★ Portable Mural (M)", Vector3(0.0, 3.25, 0.0), Color("ffe394"), 0.012, 22))
 	add_child(mural_node)
 	update_mural_3d()
 
@@ -1087,6 +1181,7 @@ func build_rook_speaker() -> void:
 	speaker_beacon_mesh.mesh = beacon_box
 	speaker_beacon_mesh.position = Vector3(0.0, 1.30, 0.0)
 	speaker_node.add_child(speaker_beacon_mesh)
+	speaker_node.add_child(make_label_3d("RookSpeakerLabel", "♪ Rook's Speaker (R / K)", Vector3(0.0, 2.25, 0.0), Color("9ef5e5"), 0.012, 22))
 	add_child(speaker_node)
 	update_speaker_3d()
 
@@ -1507,17 +1602,32 @@ func update_mural_3d() -> void:
 	recompute_music_stems()
 	update_block_ui()
 
+func person_material(color: Color) -> StandardMaterial3D:
+	var result := material(color)
+	result.emission_enabled = true
+	result.emission = color
+	result.emission_energy_multiplier = 0.28
+	var xray := StandardMaterial3D.new()
+	xray.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	xray.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	xray.no_depth_test = true
+	xray.cull_mode = BaseMaterial3D.CULL_DISABLED
+	xray.render_priority = 6
+	xray.albedo_color = Color(color.r, color.g, color.b, 0.62)
+	result.next_pass = xray
+	return result
+
 func make_person_node(node_name: String, coat: Color, skin: Color, hair: Color, total_height: float, is_player: bool) -> Node3D:
 	var root_node := Node3D.new()
 	root_node.name = node_name
 	var ring := MeshInstance3D.new()
 	var ring_mesh := CylinderMesh.new()
-	ring_mesh.top_radius = 0.62 if is_player else 0.52
+	ring_mesh.top_radius = 0.78 if is_player else 0.68
 	ring_mesh.bottom_radius = ring_mesh.top_radius
 	ring_mesh.height = 0.04
 	ring.mesh = ring_mesh
 	ring.position = Vector3(0.0, 0.02, 0.0)
-	ring.material_override = material(Color("f8f0d5") if is_player else Color("d6cbb5"))
+	ring.material_override = person_material(Color("ffe866") if is_player else coat.lightened(0.28))
 	root_node.add_child(ring)
 	var shoe_h := total_height * 0.06
 	var leg_h := total_height * 0.36
@@ -1528,14 +1638,14 @@ func make_person_node(node_name: String, coat: Color, skin: Color, hair: Color, 
 		shoe_mesh.size = Vector3(0.16, shoe_h, 0.28)
 		shoe.mesh = shoe_mesh
 		shoe.position = Vector3(leg_side, shoe_h * 0.5, 0.03)
-		shoe.material_override = material(Color("232c29"))
+		shoe.material_override = person_material(Color("232c29"))
 		root_node.add_child(shoe)
 		var leg := MeshInstance3D.new()
 		var leg_mesh := BoxMesh.new()
 		leg_mesh.size = Vector3(0.16, leg_h, 0.22)
 		leg.mesh = leg_mesh
 		leg.position = Vector3(leg_side, shoe_h + leg_h * 0.5, 0.0)
-		leg.material_override = material(Color("34463f"))
+		leg.material_override = person_material(Color("34463f"))
 		root_node.add_child(leg)
 	var torso := MeshInstance3D.new()
 	var torso_mesh := BoxMesh.new()
@@ -1543,7 +1653,7 @@ func make_person_node(node_name: String, coat: Color, skin: Color, hair: Color, 
 	torso_mesh.size = Vector3(0.46, torso_h, 0.28)
 	torso.mesh = torso_mesh
 	torso.position = Vector3(0.0, legs_top + torso_h * 0.5, 0.0)
-	torso.material_override = material(coat)
+	torso.material_override = person_material(coat)
 	root_node.add_child(torso)
 	var collar := MeshInstance3D.new()
 	var collar_mesh := BoxMesh.new()
@@ -1551,7 +1661,7 @@ func make_person_node(node_name: String, coat: Color, skin: Color, hair: Color, 
 	collar_mesh.size = Vector3(0.48, collar_h, 0.30)
 	collar.mesh = collar_mesh
 	collar.position = Vector3(0.0, legs_top + torso_h - collar_h * 0.5, 0.0)
-	collar.material_override = material(coat.lightened(0.22))
+	collar.material_override = person_material(coat.lightened(0.22))
 	root_node.add_child(collar)
 	var arm_h := torso_h * 0.82
 	var hand_h := torso_h * 0.16
@@ -1561,14 +1671,14 @@ func make_person_node(node_name: String, coat: Color, skin: Color, hair: Color, 
 		arm_mesh.size = Vector3(0.12, arm_h, 0.16)
 		arm.mesh = arm_mesh
 		arm.position = Vector3(arm_side, legs_top + torso_h - arm_h * 0.5 - 0.02, 0.0)
-		arm.material_override = material(coat.darkened(0.06))
+		arm.material_override = person_material(coat.darkened(0.06))
 		root_node.add_child(arm)
 		var hand := MeshInstance3D.new()
 		var hand_mesh := BoxMesh.new()
 		hand_mesh.size = Vector3(0.10, hand_h, 0.12)
 		hand.mesh = hand_mesh
 		hand.position = Vector3(arm_side, legs_top + hand_h * 0.5 + 0.02, 0.02)
-		hand.material_override = material(skin)
+		hand.material_override = person_material(skin)
 		root_node.add_child(hand)
 	var head := MeshInstance3D.new()
 	var head_mesh := BoxMesh.new()
@@ -1576,7 +1686,7 @@ func make_person_node(node_name: String, coat: Color, skin: Color, hair: Color, 
 	head_mesh.size = Vector3(0.32, head_h, 0.32)
 	head.mesh = head_mesh
 	head.position = Vector3(0.0, legs_top + torso_h + head_h * 0.5, 0.0)
-	head.material_override = material(skin)
+	head.material_override = person_material(skin)
 	root_node.add_child(head)
 	var cap := MeshInstance3D.new()
 	var cap_mesh := BoxMesh.new()
@@ -1584,8 +1694,21 @@ func make_person_node(node_name: String, coat: Color, skin: Color, hair: Color, 
 	cap_mesh.size = Vector3(0.35, cap_h, 0.35)
 	cap.mesh = cap_mesh
 	cap.position = Vector3(0.0, total_height - cap_h * 0.5, 0.0)
-	cap.material_override = material(hair)
+	cap.material_override = person_material(hair)
 	root_node.add_child(cap)
+	# Overhead floating plumbob beacon inside a Node3D holder so player_height_m() stays exact
+	var beacon_holder := Node3D.new()
+	beacon_holder.name = "BeaconHolder"
+	var plumbob := MeshInstance3D.new()
+	plumbob.name = "CharacterBeacon"
+	var p_box := BoxMesh.new()
+	p_box.size = Vector3(0.24, 0.24, 0.24)
+	plumbob.mesh = p_box
+	plumbob.position = Vector3(0.0, total_height + 0.26, 0.0)
+	plumbob.rotation_degrees = Vector3(45.0, 45.0, 0.0)
+	plumbob.material_override = person_material(Color("ffe866") if is_player else coat.lightened(0.32))
+	beacon_holder.add_child(plumbob)
+	root_node.add_child(beacon_holder)
 	return root_node
 
 func build_street_life_decor() -> void:
@@ -1595,6 +1718,7 @@ func build_street_life_decor() -> void:
 	var concert := Node3D.new()
 	concert.name = "DodgeAlleyConcert"
 	concert.position = Vector3(-414.0, 0.0, 56.0)
+	concert.scale = Vector3(1.85, 1.85, 1.85)
 	var stage_deck := MeshInstance3D.new()
 	stage_deck.name = "StageDeck"
 	var deck_box := BoxMesh.new()
@@ -1873,6 +1997,7 @@ func build_street_life_decor() -> void:
 	var museum_root := Node3D.new()
 	museum_root.name = "TenderloinMuseumHub"
 	museum_root.position = MUSEUM_HUB_POS
+	museum_root.scale = Vector3(1.75, 1.75, 1.75)
 	var museum_marquee := MeshInstance3D.new()
 	museum_marquee.name = "MuseumMarquee"
 	var mm_box := BoxMesh.new()
@@ -1900,6 +2025,7 @@ func build_street_life_decor() -> void:
 		museum_root.add_child(gal_win)
 	var docent_node := make_person_node("MuseumDocent", Color("3b6e75"), Color("c68b63"), Color("2a2623"), 1.69, false)
 	docent_node.position = Vector3(-1.4, 0.0, 1.15)
+	docent_node.scale = Vector3(1.45, 1.45, 1.45)
 	museum_root.add_child(docent_node)
 	var kiosk := MeshInstance3D.new()
 	kiosk.name = "MuseumInfoKiosk"
@@ -6832,8 +6958,8 @@ func follow_player() -> void:
 	if selected >= 0:
 		meshes[selected].material_override = building_materials[selected]
 		selected = -1
-	if view_size > 110.0:
-		view_size = 75.0
+	if view_size > 90.0:
+		view_size = 58.0
 	target = Vector3(player.position.x, 1.0, player.position.z)
 	update_camera()
 	update_occlusion(true)
@@ -6898,6 +7024,9 @@ func update_occlusion(force: bool = true) -> void:
 	last_occlusion_pos = p_xz
 	last_occlusion_neighbor = occ_tag
 	var focus_points: Array[Vector2] = [p_xz]
+	if p_xz.x > -60.0:
+		for n_i in range(neighbors.size()):
+			focus_points.append(neighbor_xz(n_i))
 	if selected_neighbor >= 0 and selected_neighbor < neighbors.size():
 		focus_points.append(neighbor_xz(selected_neighbor))
 	if selected_neighbor == celeste_index or arrived_neighbor == celeste_index or walking_to_mural or arrived_mural:
