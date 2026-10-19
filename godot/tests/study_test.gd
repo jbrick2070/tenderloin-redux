@@ -962,6 +962,18 @@ func run() -> void:
 	study.overview()
 	require(is_zero_approx(study.camera_yaw) and is_equal_approx(study.camera_pitch_scale, 1.0), "overview resets camera orbit yaw and pitch")
 
+	# Verify 3D street corridor banners, corner signs, and character stride/gesture animation
+	require(study.street_signs_root != null and study.street_signs_root.get_node_or_null("StreetBanner_TurkOpening") != null and study.street_signs_root.get_node_or_null("CornerSign_TurkTaylor") != null, "3D StreetNameSigns corridor banners and opening corner signs exist")
+	require(study.nearest_street_name(Vector2(20.0, -9.0)) == "Turk Street", "nearest_street_name identifies Turk Street")
+	study.animate_person_node(study.player_visual, 1.2, 1.0, 0.0)
+	var l_leg_node := study.player_visual.get_node_or_null("LeftLeg") as MeshInstance3D
+	require(l_leg_node != null and not is_zero_approx(l_leg_node.rotation.x), "animate_person_node swings character legs during walking stride")
+	study.animate_person_node(study.player_visual, 0.0, 0.0, 0.0)
+	require(is_equal_approx(study.player_height_m(), study.PLAYER_HEIGHT_M), "animate_person_node preserves exact 1.72m player height")
+	var bea_nameplate_screen: Vector2 = study.camera.unproject_position(study.neighbors[0].pos + Vector3(0.0, 4.0, 0.0))
+	require(study.handle_scene_tap(bea_nameplate_screen) and study.selected_neighbor == 0, "tapping neighbor upper body / nameplate selects neighbor")
+	study.overview()
+
 	for size in [Vector2i(1100, 760), Vector2i(390, 667), Vector2i(320, 667)]:
 		root.size = size
 		await process_frame

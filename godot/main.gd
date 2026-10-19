@@ -437,6 +437,13 @@ var orbit_last_pos := Vector2.ZERO
 var button_normal_style: StyleBoxFlat
 var button_hover_style: StyleBoxFlat
 var panel_bg_style: StyleBoxFlat
+var walk_anim_clock := 0.0
+var player_stride_blend := 0.0
+var last_player_anim_xz := Vector2(INF, INF)
+var last_proximity_neighbor := -1
+var street_signs_root: Node3D
+var concert_musician_nodes: Array[Node3D] = []
+var concert_crowd_nodes: Array[Node3D] = []
 
 func colored_quad(surface: SurfaceTool, p00: Vector3, p10: Vector3, p11: Vector3, p01: Vector3, col: Color) -> void:
 	surface.set_color(col)
@@ -727,6 +734,58 @@ func build_streets() -> void:
 		stripe.mesh = stripe_surface.commit()
 		stripe.material_override = material(Color("cbbd9d"))
 		add_child(stripe)
+	build_street_name_signs()
+
+func build_street_name_signs() -> void:
+	street_signs_root = Node3D.new()
+	street_signs_root.name = "StreetNameSigns"
+	var corridor_banners: Array[Dictionary] = [
+		{"name": "StreetBanner_TurkOpening", "text": "═ TURK STREET (Opening Block) ═", "pos": Vector3(52.0, 2.8, -11.5), "tint": Color("b8f8eb")},
+		{"name": "StreetBanner_TurkEast", "text": "═ TURK STREET (at Mason) ═", "pos": Vector3(118.0, 2.8, -21.0), "tint": Color("b8f8eb")},
+		{"name": "StreetBanner_Turk100", "text": "═ TURK STREET (100 Block) ═", "pos": Vector3(-72.0, 2.8, 11.5), "tint": Color("b8f8eb")},
+		{"name": "StreetBanner_Turk200", "text": "═ TURK STREET (200–300 Block) ═", "pos": Vector3(-225.0, 2.8, 34.5), "tint": Color("b8f8eb")},
+		{"name": "StreetBanner_Turk400", "text": "═ TURK STREET (400 Block) ═", "pos": Vector3(-372.0, 2.8, 57.5), "tint": Color("b8f8eb")},
+		{"name": "StreetBanner_TaylorSouth", "text": "║ TAYLOR STREET ║", "pos": Vector3(4.5, 2.8, 19.0), "tint": Color("ffe999")},
+		{"name": "StreetBanner_TaylorNorth", "text": "║ TAYLOR STREET ║", "pos": Vector3(-12.0, 2.8, -52.0), "tint": Color("ffe999")},
+		{"name": "StreetBanner_Mason", "text": "║ MASON STREET ║", "pos": Vector3(136.0, 2.8, -10.0), "tint": Color("ffe999")},
+		{"name": "StreetBanner_EddyEast", "text": "═ EDDY STREET (East) ═", "pos": Vector3(42.0, 2.8, -96.0), "tint": Color("b8f8eb")},
+		{"name": "StreetBanner_EddyWest", "text": "═ EDDY STREET (300 Block · Museum Row) ═", "pos": Vector3(-235.0, 2.8, -68.0), "tint": Color("b8f8eb")},
+		{"name": "StreetBanner_Jones", "text": "║ JONES STREET ║", "pos": Vector3(-156.0, 2.8, -22.0), "tint": Color("ffe999")},
+		{"name": "StreetBanner_Leavenworth", "text": "║ LEAVENWORTH STREET ║", "pos": Vector3(-302.0, 2.8, -12.0), "tint": Color("ffe999")},
+		{"name": "StreetBanner_Hyde", "text": "║ HYDE STREET ║", "pos": Vector3(-442.0, 2.8, 12.0), "tint": Color("ffe999")},
+		{"name": "StreetBanner_DodgeAlley", "text": "♪ DODGE ALLEY (Dodge Pl) ♪", "pos": Vector3(-414.0, 2.8, 42.0), "tint": Color("ffd97d")}
+	]
+	for item in corridor_banners:
+		var lbl := make_label_3d(String(item.name), String(item.text), item.pos, item.tint, 0.0155, 30)
+		lbl.outline_size = 14
+		street_signs_root.add_child(lbl)
+	var opening_corners: Array[Dictionary] = [
+		{"name": "CornerSign_TurkTaylor", "label": "Turk & Taylor", "pos": Vector3(3.8, 0.0, -4.2)},
+		{"name": "CornerSign_TurkMason", "label": "Turk & Mason", "pos": Vector3(132.0, 0.0, -24.5)}
+	]
+	for corner in opening_corners:
+		var c_node := Node3D.new()
+		c_node.name = String(corner.name)
+		c_node.position = corner.pos
+		var post_inst := MeshInstance3D.new()
+		var post_box := BoxMesh.new()
+		post_box.size = Vector3(0.16, 3.2, 0.16)
+		post_inst.mesh = post_box
+		post_inst.position = Vector3(0.0, 1.6, 0.0)
+		post_inst.material_override = material(Color("455357"))
+		c_node.add_child(post_inst)
+		var blade_inst := MeshInstance3D.new()
+		var blade_box := BoxMesh.new()
+		blade_box.size = Vector3(2.1, 0.38, 0.18)
+		blade_inst.mesh = blade_box
+		blade_inst.position = Vector3(0.0, 3.3, 0.0)
+		blade_inst.material_override = mural_material(Color("2f8f83"))
+		c_node.add_child(blade_inst)
+		var sign_lbl := make_label_3d("CornerSignLabel", String(corner.label), Vector3(0.0, 3.95, 0.0), Color("d6fff6"), 0.015, 28)
+		sign_lbl.outline_size = 14
+		c_node.add_child(sign_lbl)
+		street_signs_root.add_child(c_node)
+	add_child(street_signs_root)
 
 func build_district_boundary() -> void:
 	district_boundary_node = MeshInstance3D.new()
@@ -775,9 +834,9 @@ func make_label_3d(node_name: String, text_str: String, pos: Vector3, tint: Colo
 	lbl.render_priority = 12
 	lbl.pixel_size = pixel_sz
 	lbl.font_size = font_sz
-	lbl.outline_size = 10
+	lbl.outline_size = 12
 	lbl.modulate = tint
-	lbl.outline_modulate = Color(0.06, 0.11, 0.13, 0.98)
+	lbl.outline_modulate = Color(0.05, 0.09, 0.12, 0.98)
 	return lbl
 
 func build_west_intersections() -> void:
@@ -801,20 +860,22 @@ func build_west_intersections() -> void:
 		root_n.add_child(ring_inst)
 		var post_inst := MeshInstance3D.new()
 		var post_box := BoxMesh.new()
-		post_box.size = Vector3(0.14, 3.0, 0.14)
+		post_box.size = Vector3(0.16, 3.2, 0.16)
 		post_inst.mesh = post_box
-		post_inst.position = Vector3(4.2, 1.5, -4.2)
+		post_inst.position = Vector3(4.2, 1.6, -4.2)
 		post_inst.material_override = material(Color("455357"))
 		root_n.add_child(post_inst)
 		var blade_inst := MeshInstance3D.new()
 		blade_inst.name = "StreetSignBlade"
 		var blade_box := BoxMesh.new()
-		blade_box.size = Vector3(1.85, 0.34, 0.16)
+		blade_box.size = Vector3(2.15, 0.38, 0.18)
 		blade_inst.mesh = blade_box
-		blade_inst.position = Vector3(4.2, 3.12, -4.2)
-		blade_inst.material_override = mural_material(Color("75bbb2"))
+		blade_inst.position = Vector3(4.2, 3.3, -4.2)
+		blade_inst.material_override = mural_material(Color("2f8f83"))
 		root_n.add_child(blade_inst)
-		root_n.add_child(make_label_3d("StreetSignLabel", int_label, Vector3(4.2, 3.68, -4.2), Color("d6f5ef"), 0.011, 22))
+		var west_lbl := make_label_3d("StreetSignLabel", int_label, Vector3(4.2, 3.95, -4.2), Color("d6fff6"), 0.015, 28)
+		west_lbl.outline_size = 14
+		root_n.add_child(west_lbl)
 		add_child(root_n)
 		west_intersection_nodes.append(root_n)
 
@@ -1620,7 +1681,9 @@ func person_material(color: Color) -> StandardMaterial3D:
 func make_person_node(node_name: String, coat: Color, skin: Color, hair: Color, total_height: float, is_player: bool) -> Node3D:
 	var root_node := Node3D.new()
 	root_node.name = node_name
+	root_node.set_meta("total_height", total_height)
 	var ring := MeshInstance3D.new()
+	ring.name = "GroundRing"
 	var ring_mesh := CylinderMesh.new()
 	ring_mesh.top_radius = 0.65 if is_player else 0.55
 	ring_mesh.bottom_radius = ring_mesh.top_radius
@@ -1633,7 +1696,9 @@ func make_person_node(node_name: String, coat: Color, skin: Color, hair: Color, 
 	var leg_h := total_height * 0.36
 	var legs_top := shoe_h + leg_h
 	for leg_side in [-0.10, 0.10]:
+		var is_left_leg: bool = leg_side < 0.0
 		var shoe := MeshInstance3D.new()
+		shoe.name = "LeftShoe" if is_left_leg else "RightShoe"
 		var shoe_cyl := CylinderMesh.new()
 		shoe_cyl.top_radius = 0.075
 		shoe_cyl.bottom_radius = 0.085
@@ -1643,6 +1708,7 @@ func make_person_node(node_name: String, coat: Color, skin: Color, hair: Color, 
 		shoe.material_override = person_material(Color("232c29"))
 		root_node.add_child(shoe)
 		var leg := MeshInstance3D.new()
+		leg.name = "LeftLeg" if is_left_leg else "RightLeg"
 		var leg_cyl := CylinderMesh.new()
 		leg_cyl.top_radius = 0.082
 		leg_cyl.bottom_radius = 0.068
@@ -1653,6 +1719,7 @@ func make_person_node(node_name: String, coat: Color, skin: Color, hair: Color, 
 		root_node.add_child(leg)
 	# Tapered rounded jacket/coat torso
 	var torso := MeshInstance3D.new()
+	torso.name = "Torso"
 	var torso_cyl := CylinderMesh.new()
 	var torso_h := total_height * 0.36
 	torso_cyl.top_radius = 0.21
@@ -1664,6 +1731,7 @@ func make_person_node(node_name: String, coat: Color, skin: Color, hair: Color, 
 	root_node.add_child(torso)
 	# Rounded collar / scarf ring
 	var collar := MeshInstance3D.new()
+	collar.name = "Collar"
 	var collar_cyl := CylinderMesh.new()
 	var collar_h := total_height * 0.05
 	collar_cyl.top_radius = 0.165
@@ -1676,17 +1744,20 @@ func make_person_node(node_name: String, coat: Color, skin: Color, hair: Color, 
 	var arm_h := torso_h * 0.80
 	var hand_r := 0.055
 	for arm_side in [-0.24, 0.24]:
+		var is_left_arm: bool = arm_side < 0.0
 		var arm := MeshInstance3D.new()
+		arm.name = "LeftArm" if is_left_arm else "RightArm"
 		var arm_cyl := CylinderMesh.new()
 		arm_cyl.top_radius = 0.062
 		arm_cyl.bottom_radius = 0.052
 		arm_cyl.height = arm_h
 		arm.mesh = arm_cyl
 		arm.position = Vector3(arm_side, legs_top + torso_h - arm_h * 0.5 - 0.03, 0.0)
-		arm.rotation_degrees = Vector3(0.0, 0.0, 7.0 if arm_side < 0.0 else -7.0)
+		arm.rotation_degrees = Vector3(0.0, 0.0, 7.0 if is_left_arm else -7.0)
 		arm.material_override = person_material(coat.darkened(0.06))
 		root_node.add_child(arm)
 		var hand := MeshInstance3D.new()
+		hand.name = "LeftHand" if is_left_arm else "RightHand"
 		var hand_sph := SphereMesh.new()
 		hand_sph.radius = hand_r
 		hand_sph.height = hand_r * 2.0
@@ -1696,6 +1767,7 @@ func make_person_node(node_name: String, coat: Color, skin: Color, hair: Color, 
 		root_node.add_child(hand)
 	# Smooth rounded head (SphereMesh)
 	var head := MeshInstance3D.new()
+	head.name = "Head"
 	var head_sph := SphereMesh.new()
 	var head_h := total_height * 0.165
 	head_sph.radius = head_h * 0.52
@@ -1705,7 +1777,7 @@ func make_person_node(node_name: String, coat: Color, skin: Color, hair: Color, 
 	head.position = Vector3(0.0, head_cy, 0.0)
 	head.material_override = person_material(skin)
 	root_node.add_child(head)
-	# Expressive eyes & warm smile on face inside a Node3D child so player_height_m() is unaffected
+	# Expressive eyes on face inside a Node3D child so player_height_m() is unaffected
 	var face_node := Node3D.new()
 	face_node.name = "FaceFeatures"
 	for eye_x in [-0.052, 0.052]:
@@ -1720,6 +1792,7 @@ func make_person_node(node_name: String, coat: Color, skin: Color, hair: Color, 
 	root_node.add_child(face_node)
 	# Sculpted rounded hair dome / cap reaching exact total_height
 	var cap := MeshInstance3D.new()
+	cap.name = "HairCap"
 	var cap_sph := SphereMesh.new()
 	var cap_h := total_height - (legs_top + torso_h + head_h * 0.62)
 	cap_sph.radius = head_h * 0.56
@@ -1730,7 +1803,85 @@ func make_person_node(node_name: String, coat: Color, skin: Color, hair: Color, 
 	root_node.add_child(cap)
 	return root_node
 
+func animate_person_node(p_node: Node3D, phase: float, stride_amt: float, gesture_amt: float) -> void:
+	if p_node == null:
+		return
+	var total_h: float = float(p_node.get_meta("total_height", 1.70))
+	var shoe_h := total_h * 0.06
+	var leg_h := total_h * 0.36
+	var legs_top := shoe_h + leg_h
+	var torso_h := total_h * 0.36
+	var arm_h := torso_h * 0.80
+	var hand_r := 0.055
+	var shoulder_y := legs_top + torso_h - 0.03
+	var leg_swing := sin(phase) * 0.44 * stride_amt
+	var l_leg := p_node.get_node_or_null("LeftLeg") as MeshInstance3D
+	var r_leg := p_node.get_node_or_null("RightLeg") as MeshInstance3D
+	var l_shoe := p_node.get_node_or_null("LeftShoe") as MeshInstance3D
+	var r_shoe := p_node.get_node_or_null("RightShoe") as MeshInstance3D
+	if l_leg != null and l_shoe != null:
+		l_leg.rotation.x = leg_swing
+		l_leg.position = Vector3(-0.10, legs_top - cos(leg_swing) * (leg_h * 0.5), -sin(leg_swing) * (leg_h * 0.5))
+		l_shoe.rotation.x = leg_swing
+		l_shoe.position = Vector3(-0.10, legs_top - cos(leg_swing) * (leg_h + shoe_h * 0.5), -sin(leg_swing) * (leg_h + shoe_h * 0.5) + 0.02)
+	if r_leg != null and r_shoe != null:
+		var r_swing := -leg_swing
+		r_leg.rotation.x = r_swing
+		r_leg.position = Vector3(0.10, legs_top - cos(r_swing) * (leg_h * 0.5), -sin(r_swing) * (leg_h * 0.5))
+		r_shoe.rotation.x = r_swing
+		r_shoe.position = Vector3(0.10, legs_top - cos(r_swing) * (leg_h + shoe_h * 0.5), -sin(r_swing) * (leg_h + shoe_h * 0.5) + 0.02)
+	var l_arm := p_node.get_node_or_null("LeftArm") as MeshInstance3D
+	var r_arm := p_node.get_node_or_null("RightArm") as MeshInstance3D
+	var l_hand := p_node.get_node_or_null("LeftHand") as MeshInstance3D
+	var r_hand := p_node.get_node_or_null("RightHand") as MeshInstance3D
+	var l_arm_ang := -sin(phase) * 0.38 * stride_amt + sin(phase * 0.5) * 0.08 * gesture_amt
+	var r_arm_ang := sin(phase) * 0.38 * stride_amt - (0.34 + sin(phase * 1.4) * 0.22) * gesture_amt
+	if l_arm != null and l_hand != null:
+		l_arm.rotation = Vector3(l_arm_ang, 0.0, deg_to_rad(7.0))
+		l_arm.position = Vector3(-0.24, shoulder_y - cos(l_arm_ang) * (arm_h * 0.5), -sin(l_arm_ang) * (arm_h * 0.5))
+		l_hand.position = Vector3(-0.24 * 1.06, shoulder_y - cos(l_arm_ang) * (arm_h + hand_r * 0.35), -sin(l_arm_ang) * (arm_h + hand_r * 0.35) + 0.02)
+	if r_arm != null and r_hand != null:
+		r_arm.rotation = Vector3(r_arm_ang, 0.0, deg_to_rad(-7.0 - 12.0 * gesture_amt))
+		r_arm.position = Vector3(0.24, shoulder_y - cos(r_arm_ang) * (arm_h * 0.5), -sin(r_arm_ang) * (arm_h * 0.5))
+		r_hand.position = Vector3(0.24 * 1.06, shoulder_y - cos(r_arm_ang) * (arm_h + hand_r * 0.35), -sin(r_arm_ang) * (arm_h + hand_r * 0.35) + 0.02)
+
+func update_people_animation(delta: float) -> void:
+	if player == null or player_visual == null:
+		return
+	var cur_xz := player_xz()
+	var moved_dist := 0.0 if last_player_anim_xz.x == INF else cur_xz.distance_to(last_player_anim_xz)
+	last_player_anim_xz = cur_xz
+	var is_moving := moved_dist > 0.002 or not current_path.is_empty()
+	var target_stride := 1.0 if is_moving else 0.0
+	player_stride_blend = move_toward(player_stride_blend, target_stride, delta * 8.0)
+	walk_anim_clock = wrapf(walk_anim_clock + delta * (9.5 if is_moving else 3.2), 0.0, TAU * 20.0)
+	var player_talk_gesture := 0.55 if (arrived_neighbor >= 0 or arrived_mural or arrived_speaker) and not is_moving else 0.0
+	animate_person_node(player_visual, walk_anim_clock, player_stride_blend, player_talk_gesture)
+	for i in range(neighbor_nodes.size()):
+		var n_node := neighbor_nodes[i]
+		if n_node == null:
+			continue
+		var n_xz := neighbor_xz(i)
+		var d_player := cur_xz.distance_to(n_xz)
+		var engaged := (arrived_neighbor == i) or (selected_neighbor == i) or (d_player <= 6.5)
+		if engaged and d_player > 0.05:
+			var to_p := cur_xz - n_xz
+			var desired_yaw := atan2(to_p.x, to_p.y)
+			n_node.rotation.y = lerp_angle(n_node.rotation.y, desired_yaw, clampf(delta * 6.5, 0.0, 1.0))
+		var n_gesture := 0.85 if arrived_neighbor == i else (0.45 if engaged else 0.14)
+		animate_person_node(n_node, walk_anim_clock * 0.65 + float(i) * 1.3, 0.0, n_gesture)
+	for m_i in range(concert_musician_nodes.size()):
+		var m_node := concert_musician_nodes[m_i]
+		if m_node != null:
+			animate_person_node(m_node, walk_anim_clock * 1.15 + float(m_i) * 1.1, 0.22, 0.65)
+	for c_i in range(concert_crowd_nodes.size()):
+		var c_node := concert_crowd_nodes[c_i]
+		if c_node != null:
+			animate_person_node(c_node, walk_anim_clock * 0.95 + float(c_i) * 1.7, 0.18, 0.45)
+
 func build_street_life_decor() -> void:
+	concert_musician_nodes.clear()
+	concert_crowd_nodes.clear()
 	var decor_root := Node3D.new()
 	decor_root.name = "StreetLifeDecor"
 	# 1. Dodge Alley Block Concert (Dodge Place off north side of 400 block of Turk St near Hyde)
@@ -1814,6 +1965,7 @@ func build_street_life_decor() -> void:
 	bass_body.material_override = material(Color("8c4b2b"))
 	bassist.add_child(bass_body)
 	concert.add_child(bassist)
+	concert_musician_nodes.append(bassist)
 	var horn_player := make_person_node("ConcertHornPlayer", Color("49877a"), Color("b9825f"), Color("2f251e"), 1.70, false)
 	horn_player.position = Vector3(0.0, 0.26, -0.05)
 	var sax := MeshInstance3D.new()
@@ -1824,6 +1976,7 @@ func build_street_life_decor() -> void:
 	sax.material_override = mural_material(Color("f8cc58"))
 	horn_player.add_child(sax)
 	concert.add_child(horn_player)
+	concert_musician_nodes.append(horn_player)
 	var drummer := make_person_node("ConcertDrummer", Color("d49b4b"), Color("6e4730"), Color("1e2224"), 1.66, false)
 	drummer.position = Vector3(1.35, 0.26, -0.25)
 	var drum_shell := MeshInstance3D.new()
@@ -1845,15 +1998,18 @@ func build_street_life_decor() -> void:
 	cymbal.material_override = mural_material(Color("f5d57a"))
 	drummer.add_child(cymbal)
 	concert.add_child(drummer)
+	concert_musician_nodes.append(drummer)
 	# Two sidewalk listeners in the Dodge Alley apron (north of z=58.05, clear of Turk St route)
 	var listener_a := make_person_node("ConcertListener1", Color("6b8e78"), Color("c48f6b"), Color("322822"), 1.66, false)
 	listener_a.position = Vector3(-2.15, 0.0, 2.00)
 	listener_a.rotation.y = PI
 	concert.add_child(listener_a)
+	concert_crowd_nodes.append(listener_a)
 	var listener_b := make_person_node("ConcertListener2", Color("b56c82"), Color("825439"), Color("23272a"), 1.68, false)
 	listener_b.position = Vector3(2.15, 0.0, 2.00)
 	listener_b.rotation.y = PI
 	concert.add_child(listener_b)
+	concert_crowd_nodes.append(listener_b)
 	decor_root.add_child(concert)
 
 	# 2. Warm sidewalk globe streetlamps & timber planter trees along Turk & Taylor and West Turk
@@ -2382,6 +2538,22 @@ func min_street_distance(pt: Vector2, cutoff: float = INF) -> float:
 					return best
 	return best
 
+func nearest_street_name(pt: Vector2) -> String:
+	var best := INF
+	var best_name := "Turk Street"
+	for w_idx in range(street_ways.size()):
+		if rect_distance_2d(street_way_rects[w_idx], pt) >= best:
+			continue
+		var pts: Array = street_ways[w_idx].points
+		for i in range(1, pts.size()):
+			var p0: Array = pts[i - 1]
+			var p1: Array = pts[i]
+			var d := dist_to_segment_2d(pt, Vector2(p0[0], p0[1]), Vector2(p1[0], p1[1]))
+			if d < best:
+				best = d
+				best_name = String(street_ways[w_idx].get("name", "Turk Street"))
+	return best_name
+
 func nearest_street_tangent(pt: Vector2) -> Vector2:
 	var best := INF
 	var best_tangent := Vector2(1.0, 0.0)
@@ -2682,7 +2854,8 @@ func update_walking_status() -> void:
 	var nb := nearest_building_info(p)
 	var occ_total := occluded_buildings.size() + occluded_wider_buildings.size()
 	var cut_note := " · %d cutaway" % occ_total if occ_total > 0 else ""
-	info.text = "Pos (%.1f, %.1f) m · %.2f m from %s%s\nWASD/Arrows or tap street to walk · 1–5 neighbors · M mural · R/K music · G block · H/J/C west\nCity 2010 PDDL footprints · Streets © OpenStreetMap / ODbL" % [p.x, p.y, nb.distance, nb.id, cut_note]
+	var st_name := nearest_street_name(p)
+	info.text = "On %s · Pos (%.1f, %.1f) m · %.2f m from %s%s\nWASD/Arrows or tap street to walk · 1–5 neighbors · M mural · R/K music · G block · H/J/C west\nCity 2010 PDDL footprints · Streets © OpenStreetMap / ODbL" % [st_name, p.x, p.y, nb.distance, nb.id, cut_note]
 
 func choose_next_neighbor(direction: int = 1) -> bool:
 	if selected_neighbor >= 0:
@@ -3096,6 +3269,17 @@ func walk_to_point(goal_xz: Vector2) -> bool:
 	announce_a11y_status("Walking to street point (%.1f, %.1f) m." % [safe_goal.x, safe_goal.y])
 	return true
 
+func neighbor_greeting_line(n_id: String) -> String:
+	match n_id:
+		"bea":
+			return "Bea: \"Welcome to Turk & Taylor! Greet all 5 neighbors, add 3 mural motifs, and run Rook's soundcheck to open our block.\""
+		"dez":
+			return "Dez: \"80 BPM pocket is locked in near Mason—use the Block Panel below to visit anyone left or host our afternoon.\""
+		"thanh":
+			return "Thanh: \"Hot tea and folding stools are stacked on Taylor Street—once all 5 neighbors, mural & soundcheck are ready, tap Open Block!\""
+		_:
+			return "Opening block checklist below · Press G for Block Panel"
+
 func finish_neighbor_arrival(index: int) -> void:
 	var n: Dictionary = neighbors[index]
 	var goal := neighbor_xz(index)
@@ -3106,6 +3290,12 @@ func finish_neighbor_arrival(index: int) -> void:
 		var stand_pos := goal + away * 0.95
 		if is_walkable_point(stand_pos):
 			player.position = Vector3(stand_pos.x, 0.0, stand_pos.y)
+	cur = player_xz()
+	var to_n := goal - cur
+	if player_visual != null and to_n.length_squared() > 1e-4:
+		player_visual.rotation.y = atan2(to_n.x, to_n.y)
+	if index >= 0 and index < neighbor_nodes.size() and neighbor_nodes[index] != null and to_n.length_squared() > 1e-4:
+		neighbor_nodes[index].rotation.y = atan2(-to_n.x, -to_n.y)
 	current_path.clear()
 	arrived_neighbor = index
 	walking_to_mural = false
@@ -3166,26 +3356,15 @@ func finish_neighbor_arrival(index: int) -> void:
 		var sub_r := mem_line if not mem_line.is_empty() else ("Turk St speaker %.1f m clear of wall · Explicit play/audition below" % min_wall_distance(speaker_xz()))
 		info.text = "With %s — %s (%s · %.2f m from %s%s)\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, sc_tag, nb.distance, nb.id, cut_note, sub_r]
 		announce_a11y_status("Arrived at %s (%s). %s.%s" % [n.name, n.role, sc_tag, mem_a11y])
-	elif index >= 3 or (index == 0 and not newly_visited):
+	else:
 		pending_celeste_talk = false
 		pending_rook_talk = false
 		if newly_visited:
 			save_godot_state()
 		show_block_panel(true)
 		update_block_ui()
-		var sub_b := mem_line if not mem_line.is_empty() else "Opening block checklist below · Press G for Block Panel"
+		var sub_b := mem_line if not mem_line.is_empty() else neighbor_greeting_line(n_id)
 		info.text = "With %s — %s (%d/5 neighbors · %.2f m from %s%s)\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, visited_neighbors.size(), nb.distance, nb.id, cut_note, sub_b]
-		announce_a11y_status("Arrived at %s (%s). Visited %d/5 neighbors.%s" % [n.name, n.role, visited_neighbors.size(), mem_a11y])
-	else:
-		pending_celeste_talk = false
-		pending_rook_talk = false
-		if newly_visited:
-			save_godot_state()
-		show_mural_panel(false)
-		show_music_panel(false)
-		show_block_panel(false)
-		var sub_o := mem_line if not mem_line.is_empty() else "WASD/Arrows or tap street to walk · Walk to neighbor for next · Press G for Block"
-		info.text = "With %s — %s (%.2f m from %s%s)\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, nb.distance, nb.id, cut_note, sub_o]
 		announce_a11y_status("Arrived at %s (%s). Visited %d/5 neighbors.%s" % [n.name, n.role, visited_neighbors.size(), mem_a11y])
 
 func finish_mural_arrival() -> void:
@@ -7094,6 +7273,7 @@ func _process(delta: float) -> void:
 	poll_web_audio()
 	if music_playing:
 		advance_music_clock(delta)
+	update_people_animation(delta)
 
 func _physics_process(delta: float) -> void:
 	var shift_held := Input.is_key_pressed(KEY_SHIFT) or Input.is_physical_key_pressed(KEY_SHIFT)
@@ -7135,6 +7315,17 @@ func _physics_process(delta: float) -> void:
 		if absf(camera_yaw) > 1e-4:
 			input_vec = input_vec.rotated(-camera_yaw)
 		walk_step(input_vec, delta)
+		var p_now := player_xz()
+		if last_proximity_neighbor >= 0 and last_proximity_neighbor < neighbors.size():
+			if p_now.distance_to(neighbor_xz(last_proximity_neighbor)) > ARRIVAL_DISTANCE_M + 0.75:
+				last_proximity_neighbor = -1
+		for n_i in range(neighbors.size()):
+			if p_now.distance_to(neighbor_xz(n_i)) <= ARRIVAL_DISTANCE_M:
+				if last_proximity_neighbor != n_i:
+					last_proximity_neighbor = n_i
+					selected_neighbor = n_i
+					finish_neighbor_arrival(n_i)
+				break
 	elif not current_path.is_empty():
 		advance_walk(delta)
 
@@ -7160,6 +7351,15 @@ func screen_to_ground_xz(screen_pos: Vector2) -> Vector2:
 	var hit := origin + normal * t
 	return Vector2(hit.x, hit.z)
 
+func neighbor_screen_distance(index: int, screen_pos: Vector2) -> float:
+	var base_pos: Vector3 = neighbors[index].pos
+	var best_d := INF
+	for h_off in [0.9, 2.3, 4.1]:
+		var d := camera.unproject_position(base_pos + Vector3(0.0, h_off, 0.0)).distance_to(screen_pos)
+		if d < best_d:
+			best_d = d
+	return best_d
+
 func handle_scene_tap(screen_pos: Vector2) -> bool:
 	if is_screen_point_in_ui(screen_pos):
 		return false
@@ -7167,11 +7367,9 @@ func handle_scene_tap(screen_pos: Vector2) -> bool:
 	var best_idx := -1
 	var best_screen_d := INF
 	for i in range(neighbors.size()):
-		var n_pos: Vector3 = neighbors[i].pos + Vector3(0.0, 0.9, 0.0)
-		var n_screen := camera.unproject_position(n_pos)
-		var screen_d := n_screen.distance_to(screen_pos)
+		var screen_d := neighbor_screen_distance(i, screen_pos)
 		var world_d := neighbor_xz(i).distance_to(ground_xz)
-		if (screen_d <= 36.0 and world_d <= 8.5) or world_d <= 4.5:
+		if (screen_d <= 48.0 and world_d <= 14.0) or world_d <= 4.5:
 			if screen_d < best_screen_d:
 				best_screen_d = screen_d
 				best_idx = i
@@ -7208,6 +7406,13 @@ func handle_scene_tap(screen_pos: Vector2) -> bool:
 		if e_screen.distance_to(screen_pos) <= 24.0:
 			return cycle_eatery_guide(e_i)
 	if best_idx >= 0:
+		if arrived_neighbor == best_idx and player_xz().distance_to(neighbor_xz(best_idx)) <= ARRIVAL_DISTANCE_M + 0.5:
+			if best_idx == celeste_index:
+				talk_with_celeste()
+				return true
+			elif best_idx == rook_index:
+				check_sound_with_rook()
+				return true
 		return walk_to_neighbor(best_idx)
 	return walk_to_point(ground_xz)
 
