@@ -356,6 +356,80 @@ var last_synced_a11y_json := ""
 var button_focus_style: StyleBoxFlat
 var last_exported_keepsake_svg := ""
 var last_voices_teardown_usec := 0
+const MUSEUM_HUB_POS := Vector3(-293.5, 0.0, -64.5)
+const NEIGHBORHOOD_EATERIES: Array[Dictionary] = [
+	{
+		"id": "golden_lotus_pho",
+		"name": "Golden Lotus Pho & Noodle House",
+		"kind": "Eatery",
+		"rating": "★ 4.8",
+		"street": "400 block of Turk St",
+		"specialty": "24-hour simmered lemongrass beef & mushroom pho, crispy imperial rolls, and iced Thai tea",
+		"pos": Vector3(-384.0, 0.0, 63.8),
+		"canopy_color": "b83b2b",
+		"label_color": "ffe699"
+	},
+	{
+		"id": "saffron_clay_oven",
+		"name": "Saffron Clay-Oven Naan & Curry",
+		"kind": "Eatery",
+		"rating": "★ 4.6",
+		"street": "Jones St near Eddy",
+		"specialty": "Tandoori clay-oven garlic naan, smoky chana masala, and mango lassi served late",
+		"pos": Vector3(-152.0, 0.0, -28.0),
+		"canopy_color": "d47a27",
+		"label_color": "ffe8a3"
+	},
+	{
+		"id": "blue_valve_hifi",
+		"name": "The Blue Valve Vinyl & Hi-Fi Bar",
+		"kind": "Bar & Lounge",
+		"rating": "★ 4.7",
+		"street": "300 block of Eddy St (near Cadillac Hotel)",
+		"specialty": "Warm tube-amp jazz LPs, zero-proof botanical highballs, and classic neighborhood cocktails",
+		"pos": Vector3(-258.0, 0.0, -71.5),
+		"canopy_color": "224868",
+		"label_color": "8de4e8"
+	},
+	{
+		"id": "morning_star_banh_mi",
+		"name": "Morning Star Banh Mi & Coffee",
+		"kind": "Eatery",
+		"rating": "★ 4.8",
+		"street": "100 block of Turk St",
+		"specialty": "Crackling warm baguettes with pickled daikon-carrot, jalapeño, cilantro, and condensed-milk iced coffee",
+		"pos": Vector3(-54.0, 0.0, 11.2),
+		"canopy_color": "2f6e4e",
+		"label_color": "ffe699"
+	},
+	{
+		"id": "brass_owl_tavern",
+		"name": "The Brass Owl Neon Tavern & Billiards",
+		"kind": "Corner Bar",
+		"rating": "★ 4.5",
+		"street": "Leavenworth St between Turk & Eddy",
+		"specialty": "Vintage neon booths, neighborhood pool table, jukebox soul 45s, and cold draft pours",
+		"pos": Vector3(-312.0, 0.0, -22.0),
+		"canopy_color": "5a3463",
+		"label_color": "f5c2ff"
+	},
+	{
+		"id": "midnight_sun_diner",
+		"name": "Midnight Sun Diner & Pie Counter",
+		"kind": "Eatery",
+		"rating": "★ 4.7",
+		"street": "Taylor St opening block",
+		"specialty": "Sourdough griddle cakes, hash browns, counter stools, and warm olallieberry pie",
+		"pos": Vector3(10.5, 0.0, 26.0),
+		"canopy_color": "356873",
+		"label_color": "ffe8a3"
+	}
+]
+var museum_hub_step := 0
+var active_time_era := "present"
+var portal_lens_mesh: MeshInstance3D
+var portal_ring_meshes: Array[MeshInstance3D] = []
+var eatery_guide_idx := -1
 
 func make_building_mesh_and_rect(building: Dictionary, mat: StandardMaterial3D) -> Dictionary:
 	var surface := SurfaceTool.new()
@@ -1794,6 +1868,122 @@ func build_street_life_decor() -> void:
 	so_what_root.add_child(leav_node)
 	decor_root.add_child(so_what_root)
 
+	# Tenderloin Museum at the Cadillac Hotel (398 Eddy St, footprint 201006.0001559)
+	# Central Adventure Info Hub & Living Archive Time-Travel Portal
+	var museum_root := Node3D.new()
+	museum_root.name = "TenderloinMuseumHub"
+	museum_root.position = MUSEUM_HUB_POS
+	var museum_marquee := MeshInstance3D.new()
+	museum_marquee.name = "MuseumMarquee"
+	var mm_box := BoxMesh.new()
+	mm_box.size = Vector3(5.8, 0.24, 1.8)
+	museum_marquee.mesh = mm_box
+	museum_marquee.position = Vector3(0.0, 3.65, 0.0)
+	museum_marquee.material_override = mural_material(Color("f4d06f"))
+	museum_root.add_child(museum_marquee)
+	var blade_sign := MeshInstance3D.new()
+	blade_sign.name = "MuseumBladeSign"
+	var bs_box := BoxMesh.new()
+	bs_box.size = Vector3(0.45, 2.6, 0.95)
+	blade_sign.mesh = bs_box
+	blade_sign.position = Vector3(-2.6, 4.8, 0.6)
+	blade_sign.material_override = mural_material(Color("4fc3c7"))
+	museum_root.add_child(blade_sign)
+	for g_idx in range(2):
+		var gal_win := MeshInstance3D.new()
+		gal_win.name = "GalleryWindow_%d" % g_idx
+		var gw_box := BoxMesh.new()
+		gw_box.size = Vector3(1.9, 1.8, 0.18)
+		gal_win.mesh = gw_box
+		gal_win.position = Vector3(-1.3 + float(g_idx) * 2.6, 1.75, -0.35)
+		gal_win.material_override = mural_material(Color("ffe699") if g_idx == 0 else Color("8de4e8"))
+		museum_root.add_child(gal_win)
+	var docent_node := make_person_node("MuseumDocent", Color("3b6e75"), Color("c68b63"), Color("2a2623"), 1.69, false)
+	docent_node.position = Vector3(-1.4, 0.0, 1.15)
+	museum_root.add_child(docent_node)
+	var kiosk := MeshInstance3D.new()
+	kiosk.name = "MuseumInfoKiosk"
+	var k_box := BoxMesh.new()
+	k_box.size = Vector3(0.75, 1.15, 0.55)
+	kiosk.mesh = k_box
+	kiosk.position = Vector3(-0.35, 0.58, 1.2)
+	kiosk.material_override = mural_material(Color("e6b35a"))
+	museum_root.add_child(kiosk)
+	var portal_root := Node3D.new()
+	portal_root.name = "ArchiveTimePortal"
+	portal_root.position = Vector3(2.3, 0.0, 0.8)
+	portal_ring_meshes.clear()
+	var ring_colors: Array[Color] = [Color("f3c458"), Color("d884b8"), Color("5ec2c6")]
+	var ring_radii: Array[float] = [1.55, 1.22, 0.88]
+	for r_idx in range(3):
+		var ring_mesh := MeshInstance3D.new()
+		ring_mesh.name = "PortalRing_%d" % r_idx
+		var cyl := CylinderMesh.new()
+		cyl.top_radius = ring_radii[r_idx]
+		cyl.bottom_radius = ring_radii[r_idx]
+		cyl.height = 0.12 + float(r_idx) * 0.04
+		ring_mesh.mesh = cyl
+		ring_mesh.position = Vector3(0.0, 1.75, float(r_idx) * 0.06)
+		ring_mesh.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+		ring_mesh.material_override = mural_material(ring_colors[r_idx])
+		portal_root.add_child(ring_mesh)
+		portal_ring_meshes.append(ring_mesh)
+	portal_lens_mesh = MeshInstance3D.new()
+	portal_lens_mesh.name = "PortalLens"
+	var lens_cyl := CylinderMesh.new()
+	lens_cyl.top_radius = 0.72
+	lens_cyl.bottom_radius = 0.72
+	lens_cyl.height = 0.22
+	portal_lens_mesh.mesh = lens_cyl
+	portal_lens_mesh.position = Vector3(0.0, 1.75, 0.16)
+	portal_lens_mesh.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+	portal_lens_mesh.material_override = mural_material(Color("7be0e6"))
+	portal_root.add_child(portal_lens_mesh)
+	museum_root.add_child(portal_root)
+	var museum_lbl := make_label_3d("MuseumHubLabel", "Tenderloin Museum & Info Hub · 398 Eddy (Cadillac Hotel)", Vector3(0.0, 5.2, 0.4), Color("ffe8a3"), 0.012, 23)
+	museum_root.add_child(museum_lbl)
+	var portal_lbl := make_label_3d("TimePortalLabel", "Living Archive Time-Portal · 1961 / 1966 / 1907", Vector3(2.3, 3.9, 0.8), Color("8de4e8"), 0.011, 20)
+	museum_root.add_child(portal_lbl)
+	decor_root.add_child(museum_root)
+
+	# Fictionalized Neighborhood Bars & Eateries with Google-style Star Ratings
+	var eateries_root := Node3D.new()
+	eateries_root.name = "NeighborhoodEateries"
+	for e_idx in range(NEIGHBORHOOD_EATERIES.size()):
+		var e_rec: Dictionary = NEIGHBORHOOD_EATERIES[e_idx]
+		var e_node := Node3D.new()
+		e_node.name = "Eatery_%s" % String(e_rec.get("id", str(e_idx)))
+		e_node.position = e_rec.get("pos", Vector3.ZERO)
+		var awning := MeshInstance3D.new()
+		awning.name = "StorefrontAwning"
+		var aw_box := BoxMesh.new()
+		aw_box.size = Vector3(3.8, 0.20, 1.4)
+		awning.mesh = aw_box
+		awning.position = Vector3(0.0, 3.25, 0.0)
+		awning.material_override = mural_material(Color(String(e_rec.get("canopy_color", "d97736"))))
+		e_node.add_child(awning)
+		var win_glow := MeshInstance3D.new()
+		win_glow.name = "WarmStorefrontWindow"
+		var wg_box := BoxMesh.new()
+		wg_box.size = Vector3(2.8, 1.6, 0.18)
+		win_glow.mesh = wg_box
+		win_glow.position = Vector3(0.0, 1.65, -0.35)
+		win_glow.material_override = mural_material(Color(String(e_rec.get("label_color", "ffd899"))))
+		e_node.add_child(win_glow)
+		var bistro_tbl := MeshInstance3D.new()
+		var bt_cyl := CylinderMesh.new()
+		bt_cyl.top_radius = 0.42
+		bt_cyl.bottom_radius = 0.32
+		bt_cyl.height = 0.78
+		bistro_tbl.mesh = bt_cyl
+		bistro_tbl.position = Vector3(1.3, 0.39, 0.65)
+		bistro_tbl.material_override = mural_material(Color("4a3b32"))
+		e_node.add_child(bistro_tbl)
+		var e_lbl := make_label_3d("EateryLabel_%d" % e_idx, "%s · %s" % [String(e_rec.get("name", "")), String(e_rec.get("rating", ""))], Vector3(0.0, 4.15, 0.0), Color(String(e_rec.get("label_color", "ffd899"))), 0.0115, 21)
+		e_node.add_child(e_lbl)
+		eateries_root.add_child(e_node)
+	decor_root.add_child(eateries_root)
+
 	add_child(decor_root)
 
 func player_height_m() -> float:
@@ -2626,6 +2816,79 @@ func inspect_so_what_easter_egg() -> bool:
 	update_occlusion(true)
 	var line := "145 Leavenworth (8th Floor ★) & 361 Turk St — 'So What' Musical Awning Easter Egg"
 	var sub := "Dual-address Tenderloin complex (footprints 201006.0001527 & 201006.0003855) · Entrance awning arranged after Miles Davis's 'So What' (Live at the Black Hawk, 1961)"
+	if info != null:
+		info.text = "%s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, sub]
+	announce_a11y_status("%s: %s" % [line, sub])
+	return true
+
+func inspect_tenderloin_museum_hub() -> bool:
+	in_overview = false
+	in_wide_overview = false
+	following_player = false
+	if selected >= 0:
+		meshes[selected].material_override = building_materials[selected]
+		selected = -1
+	target = MUSEUM_HUB_POS + Vector3(0.0, 2.2, 0.0)
+	view_size = 64.0
+	update_camera()
+	update_occlusion(true)
+	var step := museum_hub_step % 4
+	museum_hub_step = (museum_hub_step + 1) % 4
+	var line := ""
+	var sub := ""
+	var lens_col := Color("7be0e6")
+	match step:
+		0:
+			active_time_era = "present"
+			lens_col = Color("7be0e6")
+			line = "Tenderloin Museum & Central Info Hub — 398 Eddy St (Cadillac Hotel, 1907)"
+			sub = "Cultural center & adventure base (footprint 201006.0001559) · Offers walking tours, live performances & the Living Archive Time-Portal (press Shift+M again to channel past eras!)"
+		1:
+			active_time_era = "1961_jazz"
+			lens_col = Color("f3c458")
+			line = "Tenderloin Museum Time-Portal → 1961: Black Hawk & 'So What' Jazz Era"
+			sub = "Archive Portal tuned to April 1961 · Miles Davis sextet live at Turk & Hyde + the 145 Leavenworth / 361 Turk 'So What' brass-and-teal canopy!"
+		2:
+			active_time_era = "1966_comptons"
+			lens_col = Color("d884b8")
+			line = "Tenderloin Museum Time-Portal → 1966: Compton's Cafeteria Midnight Neon"
+			sub = "Archive Portal tuned to August 1966 · Late-night jukebox, coffee cups & neon solidarity at Taylor & Turk in the heart of the Tenderloin."
+		3:
+			active_time_era = "1907_cadillac"
+			lens_col = Color("5ec2c6")
+			line = "Tenderloin Museum Time-Portal → 1907: Cadillac Hotel & Great White Way"
+			sub = "Archive Portal tuned to 1907 · Grand reopening of the 4-story Cadillac Hotel at Eddy & Leavenworth with theater-district marquees and supper clubs."
+	if portal_lens_mesh != null:
+		portal_lens_mesh.material_override = mural_material(lens_col)
+	for r_i in range(portal_ring_meshes.size()):
+		if portal_ring_meshes[r_i] != null:
+			portal_ring_meshes[r_i].rotation_degrees = Vector3(90.0, float(museum_hub_step * 30 + r_i * 25), 0.0)
+	if info != null:
+		info.text = "%s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, sub]
+	announce_a11y_status("%s: %s" % [line, sub])
+	return true
+
+func cycle_eatery_guide(target_idx: int = -1) -> bool:
+	if NEIGHBORHOOD_EATERIES.is_empty():
+		return false
+	if target_idx >= 0 and target_idx < NEIGHBORHOOD_EATERIES.size():
+		eatery_guide_idx = target_idx
+	else:
+		eatery_guide_idx = (eatery_guide_idx + 1) % NEIGHBORHOOD_EATERIES.size()
+	var rec: Dictionary = NEIGHBORHOOD_EATERIES[eatery_guide_idx]
+	var e_pos: Vector3 = rec.get("pos", Vector3.ZERO)
+	in_overview = false
+	in_wide_overview = false
+	following_player = false
+	if selected >= 0:
+		meshes[selected].material_override = building_materials[selected]
+		selected = -1
+	target = e_pos + Vector3(0.0, 2.0, 0.0)
+	view_size = 56.0
+	update_camera()
+	update_occlusion(true)
+	var line := "%s (%s) — %s" % [String(rec.get("name", "")), String(rec.get("rating", "")), String(rec.get("kind", ""))]
+	var sub := "%s · Specialty: %s (Stop %d/%d · Shift+E for next fictionalized neighborhood spot)" % [String(rec.get("street", "")), String(rec.get("specialty", "")), eatery_guide_idx + 1, NEIGHBORHOOD_EATERIES.size()]
 	if info != null:
 		info.text = "%s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, sub]
 	announce_a11y_status("%s: %s" % [line, sub])
@@ -6757,6 +7020,14 @@ func handle_scene_tap(screen_pos: Vector2) -> bool:
 	var leav_ee_screen := camera.unproject_position(Vector3(-290.8, 24.6, 99.4))
 	if turk_ee_screen.distance_to(screen_pos) <= 28.0 or leav_ee_screen.distance_to(screen_pos) <= 28.0:
 		return inspect_so_what_easter_egg()
+	var museum_screen := camera.unproject_position(MUSEUM_HUB_POS + Vector3(0.0, 2.2, 0.0))
+	if museum_screen.distance_to(screen_pos) <= 28.0:
+		return inspect_tenderloin_museum_hub()
+	for e_i in range(NEIGHBORHOOD_EATERIES.size()):
+		var e_pos: Vector3 = NEIGHBORHOOD_EATERIES[e_i].get("pos", Vector3.ZERO)
+		var e_screen := camera.unproject_position(e_pos + Vector3(0.0, 2.2, 0.0))
+		if e_screen.distance_to(screen_pos) <= 24.0:
+			return cycle_eatery_guide(e_i)
 	if best_idx >= 0:
 		return walk_to_neighbor(best_idx)
 	return walk_to_point(ground_xz)
@@ -6797,9 +7068,15 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_0, KEY_KP_0:
 				if can_interact_with_mural():
 					clear_mural_board()
-			KEY_M: walk_to_mural()
+			KEY_M:
+				if event.shift_pressed:
+					inspect_tenderloin_museum_hub()
+				else:
+					walk_to_mural()
 			KEY_E, KEY_T:
-				if arrived_neighbor == celeste_index or arrived_mural:
+				if k == KEY_E and event.shift_pressed:
+					cycle_eatery_guide()
+				elif arrived_neighbor == celeste_index or arrived_mural:
 					talk_with_celeste()
 				elif selected_neighbor == celeste_index or walking_to_mural:
 					pending_celeste_talk = true
