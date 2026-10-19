@@ -1,0 +1,18 @@
+STDOUT:
+My verdict is **no, not build-ready**: the browser-save import can never find a real browser save in the documented setup, and a valid import overwrites Godot progress. The full review is in `kibitz-runs/2026-10-19-godot-block-validation/r3/claude.md`. I only read the repo and changed nothing else.
+
+The three must-fix items:
+
+1. **The import can't reach the browser save.** The docs run the existing game on port 4173 and the Godot export on port 4174 (`docs/GODOT_APPROACH.md:40`, `scripts/serve.mjs:8`, `scripts/serve-godot.mjs:20`). Browsers keep a separate localStorage per port, so pressing I in Godot never sees `tenderloin-redux.save.v1` from the game. `tests/godot-browser.mjs` only passes because it writes that key straight into the Godot page's own storage (lines 24-28 and 254). The smallest fix is to serve the Godot export from the same server as the game, e.g. under `/godot/`. That works because threads are off in the export, so no extra security headers are needed.
+2. **A valid import overwrites Godot progress and saves it.** `import_browser_save_json` (`godot/main.gd:2567-2596`) replaces neighbors, mural, soundcheck and block-opened with the browser save's values, then writes the Godot save. One I press with a less-advanced browser save loses progress, with no backup. `study_test.gd:442-445` asserts that loss (3 mural motifs become 2, soundcheck goes from true to false). The fix is to merge, keeping whichever side has more, or to ask for confirmation before applying.
+3. **Tapping Bea closes the block panel instead of opening it.** The spec says it should open, but arriving at Bea (index 0) runs the branch that hides the panel (`main.gd:1373-1380`). The panel's "Cycle Neighbor" button also walks to Bea, so it closes its own panel. The fix is a one-line change at `main.gd:1364`.
+
+The main should-fix items:
+- **Repeated announcements are silent.** The screen-reader status only updates when the text changes, so pressing O twice on an unfinished block says nothing the second time.
+- **Status sync runs every physics tick during WASD walking.** It sends the full status to the page about 60 times a second.
+- **Resetting the mural silently un-opens the block.** It also saves that change. In the browser game, opening the block is permanent.
+- **One failed import hides the block checklist.** The panel shows the import error for the rest of the session instead of what's still missing.
+
+The review also covers test races, an undocumented mapping from browser progress to Godot neighbors, and dead code that can be cut.
+
+Several connected services (Asana, Atlassian, Datadog, GitHub, Linear, Notion, PagerDuty, Slack, Box, Runway) need sign-in before they can be used, through your claude.ai connector settings or `/mcp`. This review didn't need any of them.

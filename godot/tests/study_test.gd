@@ -347,13 +347,49 @@ func run() -> void:
 	study.stop_music_playback()
 	require(not study.music_playing and is_equal_approx(study.last_sample_rms, 0.0), "stop_music_playback pauses audio and zeroes RMS")
 
+	# Round 5: Opening-block readiness, sound-independent completion, and 3D BlockGatheringBanner
+	require(study.block_banner_node != null and study.block_banner_node.name == "BlockGatheringBanner", "3D BlockGatheringBanner node exists")
+	require(not study.block_opened and not study.block_banner_node.visible, "block gathering starts closed with banner hidden")
+	require(study.visited_neighbors.size() == 3 and not study.is_block_ready(), "block is not ready when only 3/5 neighbors visited")
+	require(study.get_block_missing_summary() == "3/5 neighbors", "get_block_missing_summary reports 3/5 neighbors when mural and soundcheck are done")
+	require(not study.open_block_gathering() and not study.block_opened and not study.block_banner_node.visible and study.block_panel.visible, "open_block_gathering rejects incomplete block and opens BlockPanel with missing summary")
+
+	# Visit remaining 2 neighbors (Dez and Thanh) via visit_next_unvisited_neighbor()
+	require(study.visit_next_unvisited_neighbor(), "visit_next_unvisited_neighbor routes to Dez (index 3)")
+	require(study.selected_neighbor == 3, "Dez selected as next unvisited neighbor")
+	for _step in range(160):
+		if study.arrived_neighbor == 3:
+			break
+		study.advance_walk(0.25)
+	require(study.arrived_neighbor == 3 and study.visited_neighbors.has("dez") and study.block_panel.visible, "player arrives at Dez and opens BlockPanel")
+	require(not study.is_block_ready() and study.get_block_missing_summary() == "4/5 neighbors", "block still needs 5th neighbor before opening")
+
+	require(study.visit_next_unvisited_neighbor(), "visit_next_unvisited_neighbor routes to Thanh (index 4)")
+	require(study.selected_neighbor == 4, "Thanh selected as final unvisited neighbor")
+	for _step in range(200):
+		if study.arrived_neighbor == 4:
+			break
+		study.advance_walk(0.25)
+	require(study.arrived_neighbor == 4 and study.visited_neighbors.has("thanh") and study.visited_neighbors.size() == 5, "player arrives at Thanh and completes 5/5 neighbor visits")
+	require(study.is_block_ready() and study.get_block_missing_summary() == "Ready to open", "is_block_ready becomes true when 5/5 neighbors, 3/3 mural, and Rook soundcheck are done")
+
+	# Prove 100% sound-independent completion (music paused)
+	study.stop_music_playback()
+	require(not study.music_playing, "music playback is paused before opening block gathering")
+	require(study.open_block_gathering(), "open_block_gathering succeeds with music paused (sound-independent completion)")
+	require(study.block_opened and study.block_banner_node.visible and not study.music_playing, "open_block_gathering reveals 3D BlockGatheringBanner without forcing audio playback")
+	require(study.last_music_cue == "block_opened", "open_block_gathering records block_opened progress cue")
+	var a11y_snap: Dictionary = study.get_a11y_status_snapshot()
+	require(bool(a11y_snap.get("block_ready", false)) and bool(a11y_snap.get("block_opened", false)) and int(a11y_snap.get("visited_count", 0)) == 5, "get_a11y_status_snapshot reflects opened block state")
+	require(study.a11y_announcement_seq > 0 and study.last_a11y_announcement.contains("block gathering is open"), "announce_a11y_status records block opening announcement")
+
 	# Load local track again before save/reload check to prove local tracks are tab-local and never persisted
 	require(study.load_local_music_bytes("suno-tl-sketch.wav", valid_wav), "re-load local track before save check")
 	study.save_godot_state()
 	require(FileAccess.file_exists(study.save_path), "separate Godot save file written")
 	var raw_saved: String = FileAccess.get_file_as_string(study.save_path)
 	require(raw_saved.contains("\"schema\":\"tenderloin-redux.godot.save\"") and not raw_saved.contains("tenderloin-redux.save.v1"), "Godot save uses isolated schema namespace")
-	require(raw_saved.contains("\"rook_soundcheck_done\":true") and not raw_saved.contains("suno-tl-sketch.wav"), "Godot save persists rook_soundcheck_done and never stores local audio filenames")
+	require(raw_saved.contains("\"rook_soundcheck_done\":true") and raw_saved.contains("\"block_opened\":true") and not raw_saved.contains("suno-tl-sketch.wav"), "Godot save persists rook_soundcheck_done and block_opened and never stores local audio filenames")
 	study.stop_music_playback()
 
 	# Instantiate a fresh scene to prove reload persistence from save_path
@@ -361,10 +397,11 @@ func run() -> void:
 	root.add_child(reloaded)
 	await process_frame
 	await process_frame
-	require(reloaded.save_load_status == "restored", "fresh scene restores saved Godot mural and soundcheck state on load")
+	require(reloaded.save_load_status == "restored", "fresh scene restores saved Godot mural, soundcheck, and block state on load")
 	require(reloaded.celeste_talk_count == 2 and reloaded.active_motif == "sun", "reloaded scene restores celeste_talk_count and active_motif")
 	require(reloaded.mural_palette == "sunset" and reloaded.mural_completed and reloaded.mural_banner_mesh.visible, "reloaded scene restores palette, completion, and 3D banner")
 	require(reloaded.rook_soundcheck_done and reloaded.speaker_beacon_mesh.visible and reloaded.unlocked_stems().size() == 4, "reloaded scene restores Rook soundcheck, 3D speaker beacon, and all 4 unlocked stems")
+	require(reloaded.visited_neighbors.size() == 5 and reloaded.is_block_ready() and reloaded.block_opened and reloaded.block_banner_node.visible, "reloaded scene restores 5/5 visited neighbors, block_opened, and 3D BlockGatheringBanner")
 	require(not reloaded.music_playing and reloaded.music_mode == "sketch" and reloaded.local_music_name == "", "reloaded scene starts silent in sketch mode without local track")
 	var rel_sun: Node3D = reloaded.mural_motif_nodes["sun"]
 	var rel_wave: Node3D = reloaded.mural_motif_nodes["wave"]
@@ -374,9 +411,9 @@ func run() -> void:
 	reloaded.queue_free()
 	await process_frame
 
-	# Test corrupt save recovery without crashing
+	# Test corrupt save recovery and forged block_opened guard without crashing
 	require(not study.apply_save_envelope("{corrupt-json"), "corrupt JSON save returns false")
-	require(study.save_load_status == "recovered" and study.mural_placements.is_empty() and not study.mural_banner_mesh.visible and not study.rook_soundcheck_done, "corrupt JSON resets cleanly to recovered defaults")
+	require(study.save_load_status == "recovered" and study.mural_placements.is_empty() and not study.mural_banner_mesh.visible and not study.rook_soundcheck_done and not study.block_opened and not study.block_banner_node.visible, "corrupt JSON resets cleanly to recovered defaults")
 	require(not study.apply_save_envelope("{\"schema\":\"wrong\",\"version\":1}"), "wrong schema save rejected cleanly")
 	require(not study.apply_save_envelope("{\"schema\":\"tenderloin-redux.godot.save\",\"version\":2,\"mural_palette\":\"garden\",\"celeste_talk_count\":1,\"mural_placements\":{}}"), "wrong integer version rejected cleanly")
 	require(not study.apply_save_envelope("{\"schema\":\"tenderloin-redux.godot.save\",\"version\":1.5,\"mural_palette\":\"garden\",\"celeste_talk_count\":1,\"mural_placements\":{}}"), "fractional version rejected cleanly")
@@ -386,7 +423,56 @@ func run() -> void:
 	require(not study.apply_save_envelope("{\"schema\":\"tenderloin-redux.godot.save\",\"version\":1,\"mural_palette\":\"garden\",\"celeste_talk_count\":1,\"mural_placements\":{\"sun\":{\"col\":1,\"row\":0},\"wave\":{\"col\":1,\"row\":0}}}"), "duplicate cell collision in save rejected cleanly")
 	require(not study.apply_save_envelope("{\"schema\":\"tenderloin-redux.godot.save\",\"version\":1,\"mural_palette\":\"garden\",\"celeste_talk_count\":1,\"mural_placements\":{\"sun\":{\"col\":99,\"row\":0}}}"), "out-of-bounds saved cell rejected cleanly")
 	require(not study.apply_save_envelope("{\"schema\":\"tenderloin-redux.godot.save\",\"version\":1,\"mural_palette\":\"garden\",\"celeste_talk_count\":1,\"rook_soundcheck_done\":\"yes\",\"mural_placements\":{}}"), "non-bool rook_soundcheck_done rejected cleanly")
+	require(not study.apply_save_envelope("{\"schema\":\"tenderloin-redux.godot.save\",\"version\":1,\"mural_palette\":\"garden\",\"celeste_talk_count\":1,\"block_opened\":\"yes\",\"mural_placements\":{}}"), "non-bool block_opened rejected cleanly")
 	require(not study.apply_save_envelope("{\"schema\":\"tenderloin-redux.godot.save\",\"version\":1,\"mural_palette\":\"garden\",\"celeste_talk_count\":1,\"visited_neighbors\":[\"unknown\"],\"mural_placements\":{}}"), "unknown neighbor ID in visited_neighbors rejected cleanly")
+	require(study.apply_save_envelope("{\"schema\":\"tenderloin-redux.godot.save\",\"version\":1,\"mural_palette\":\"garden\",\"celeste_talk_count\":1,\"rook_soundcheck_done\":true,\"block_opened\":true,\"visited_neighbors\":[\"bea\",\"celeste\"],\"mural_placements\":{\"sun\":{\"col\":1,\"row\":0},\"wave\":{\"col\":3,\"row\":1},\"rise\":{\"col\":5,\"row\":2}}}"), "partial save with forged block_opened=true loads valid partial state")
+	require(not study.block_opened and not study.block_banner_node.visible, "forged block_opened=true is clamped to false when prerequisites are incomplete")
+
+	# Round 5: Explicit opt-in browser-save adapter (inspect_browser_save_json / import_browser_save_json / import_browser_save_from_web_storage)
+	study.set_mural_palette("ocean")
+	require(not study.import_browser_save_from_web_storage() and study.browser_import_status == "error" and study.browser_import_message.contains("only available in the Web build"), "import_browser_save_from_web_storage rejects non-Web call cleanly")
+	require(not study.import_browser_save_json("{\"schema\":\"tenderloin-redux.save\",\"version\":1,\"sentinel\":\"preserve-browser-save-v1\"}"), "browser save sentinel without core object rejected cleanly on explicit import")
+	require(study.browser_import_status == "error" and study.mural_palette == "ocean" and study.mural_placements.size() == 3, "rejected browser save import preserves existing Godot state untouched")
+	require(not bool(study.inspect_browser_save_json("{\"version\":2,\"core\":{}}").get("valid", false)), "wrong browser save version rejected")
+	var row2_res: Dictionary = study.inspect_browser_save_json("{\"version\":1,\"core\":{\"greeted\":true,\"layout\":\"table\",\"furniture\":{\"table\":{\"col\":1,\"row\":2}},\"litter\":[],\"mural\":{},\"palette\":\"garden\",\"soundcheck\":false,\"opened\":false}}")
+	require(bool(row2_res.get("valid", false)) and int(row2_res.get("furniture_count", -1)) == 0 and not bool(row2_res.get("layout_ready", true)), "browser furniture on clear route row 2 is filtered out by can_place_browser_furniture")
+	var overlap_res: Dictionary = study.inspect_browser_save_json("{\"version\":1,\"core\":{\"greeted\":true,\"layout\":\"table\",\"furniture\":{\"table\":{\"col\":1,\"row\":0},\"seats\":{\"col\":2,\"row\":0}},\"litter\":[],\"mural\":{},\"palette\":\"garden\",\"soundcheck\":false,\"opened\":false}}")
+	require(bool(overlap_res.get("valid", false)) and int(overlap_res.get("furniture_count", -1)) == 1 and not bool(overlap_res.get("layout_ready", true)), "overlapping 2-cell horizontal browser furniture is filtered out by can_place_browser_furniture")
+	var floor_res: Dictionary = study.inspect_browser_save_json("{\"version\":1,\"core\":{\"greeted\":true,\"layout\":\"floor\",\"furniture\":{\"table\":{\"col\":1,\"row\":0},\"seats\":{\"col\":2,\"row\":0},\"speaker\":{\"col\":5,\"row\":3}},\"litter\":[],\"mural\":{},\"palette\":\"garden\",\"soundcheck\":false,\"opened\":false}}")
+	require(bool(floor_res.get("valid", false)) and int(floor_res.get("furniture_count", -1)) == 3 and bool(floor_res.get("layout_ready", false)), "vertical table in floor layout at (1,0)+(1,1) does not collide with seats at (2,0)+(3,0)")
+	study.clear_godot_save()
+	var partial_browser_json := "{\"version\":1,\"core\":{\"greeted\":true,\"layout\":\"table\",\"furniture\":{\"table\":{\"col\":1,\"row\":0}},\"litter\":[\"cup\"],\"mural\":{\"sun\":{\"col\":1,\"row\":0},\"wave\":{\"col\":3,\"row\":1}},\"palette\":\"sunset\",\"soundcheck\":true,\"opened\":true}}"
+	require(study.import_browser_save_json(partial_browser_json), "partial browser v1 save imports cleanly into fresh state")
+	require(study.visited_neighbors.size() == 4 and study.mural_placements.size() == 2 and study.mural_palette == "sunset", "partial browser save maps greeted/mural/litter/layout neighbors, 2 mural motifs, and sunset palette")
+	require(not study.rook_soundcheck_done and not study.block_opened, "browser soundcheck and opened flags are gated on valid 3-piece furniture layout and full readiness")
+	var complete_browser_json := "{\"version\":1,\"core\":{\"greeted\":true,\"layout\":\"table\",\"furniture\":{\"table\":{\"col\":1,\"row\":0},\"seats\":{\"col\":4,\"row\":0},\"speaker\":{\"col\":1,\"row\":3}},\"litter\":[\"cup\",\"offcuts\",\"wrapper\"],\"mural\":{\"sun\":{\"col\":1,\"row\":0},\"wave\":{\"col\":3,\"row\":1},\"rise\":{\"col\":5,\"row\":2}},\"palette\":\"ocean\",\"soundcheck\":true,\"opened\":true}}"
+	require(study.import_browser_save_json(complete_browser_json), "complete browser v1 save imports via import_browser_save_json()")
+	require(study.browser_import_status == "imported" and study.visited_neighbors.size() == 5 and study.mural_completed and study.mural_palette == "ocean" and study.rook_soundcheck_done and study.block_opened and study.block_banner_node.visible, "complete browser v1 save maps full opening block completion and reveals 3D BlockGatheringBanner")
+	require(study.import_browser_save_json(partial_browser_json), "importing partial browser save after complete state succeeds as monotonic merge")
+	require(study.visited_neighbors.size() == 5 and study.mural_completed and study.mural_palette == "ocean" and study.rook_soundcheck_done and study.block_opened and study.block_banner_node.visible, "monotonic browser save import never downgrades existing Godot progress")
+	study.clear_mural_board()
+	require(study.block_opened and study.mural_completed and study.mural_placements.size() == 3 and study.block_banner_node.visible, "clear_mural_board keeps 3/3 mural and block_opened intact once block gathering is open")
+	study.show_block_panel(false)
+	study.finish_neighbor_arrival(0)
+	require(study.block_panel.visible, "re-arriving at Bea after initial greeting opens BlockPanel")
+	var key_g := InputEventKey.new()
+	key_g.pressed = true
+	key_g.keycode = KEY_G
+	study._unhandled_input(key_g)
+	require(not study.block_panel.visible, "KEY_G toggles BlockPanel closed")
+	study._unhandled_input(key_g)
+	require(study.block_panel.visible, "KEY_G toggles BlockPanel open")
+	var seq_before_o: int = study.save_seq
+	var key_o := InputEventKey.new()
+	key_o.pressed = true
+	key_o.keycode = KEY_O
+	study._unhandled_input(key_o)
+	require(study.block_opened and study.save_seq == seq_before_o, "KEY_O on already-opened block is idempotent and does not increment save_seq")
+	var key_i := InputEventKey.new()
+	key_i.pressed = true
+	key_i.keycode = KEY_I
+	study._unhandled_input(key_i)
+	require(study.browser_import_status == "error" and study.block_opened, "KEY_I in headless mode reports non-Web error without losing opened block state")
 
 	study.overview()
 	var street_screen: Vector2 = study.camera.unproject_position(Vector3(45.0, 0.0, -7.2))
@@ -394,7 +480,7 @@ func run() -> void:
 	require(not study.current_path.is_empty(), "street tap produces walkable path")
 
 	study.overview()
-	require(study.occluded_buildings.is_empty() and study.selected_neighbor == -1 and not study.mural_panel.visible and not study.music_panel.visible, "overview clears cutaway, neighbor selection, mural panel, and music panel")
+	require(study.occluded_buildings.is_empty() and study.selected_neighbor == -1 and not study.mural_panel.visible and not study.music_panel.visible and not study.block_panel.visible, "overview clears cutaway, neighbor selection, mural panel, music panel, and block panel")
 	for i in range(58):
 		require(study.meshes[i].material_override == study.building_materials[i], "overview restores solid neutral building materials")
 
@@ -416,6 +502,7 @@ func run() -> void:
 			require(r.size.x >= 44 and r.size.y >= 44, "44px minimum controls")
 			require(r.position.x >= 0 and r.end.x <= size.x, "buttons within viewport")
 			require(r.position.y >= 0 and r.end.y <= size.y, "buttons vertically visible")
+			require(control.focus_mode == Control.FOCUS_ALL and control.has_theme_stylebox_override("focus"), "bottom control buttons have keyboard focus ring stylebox")
 		var fitted: float = study.view_size
 		study.zoom(1.25)
 		require(study.view_size > fitted, "Zoom out from mobile overview must zoom out")
@@ -452,6 +539,7 @@ func run() -> void:
 		await process_frame
 		var expected_neighbor: int = 0 if prev_neighbor < 0 else (prev_neighbor + 1) % study.neighbors.size()
 		require(study.selected_neighbor == expected_neighbor and (not study.current_path.is_empty() or study.arrived_neighbor == expected_neighbor), "ui_accept on Walk to neighbor activates neighbor route")
+		study.block_opened = false
 		study.clear_mural_board()
 		study.show_mural_panel(true)
 		await process_frame
@@ -463,6 +551,7 @@ func run() -> void:
 			var mr: Rect2 = m_btn.get_global_rect()
 			require(mr.size.x >= 44 and mr.size.y >= 44, "44px minimum mural panel buttons")
 			require(mr.position.x >= 0 and mr.end.x <= size.x and mr.position.y >= 0 and mr.end.y <= size.y, "mural buttons within viewport")
+			require(m_btn.focus_mode == Control.FOCUS_ALL and m_btn.has_theme_stylebox_override("focus"), "mural buttons have keyboard focus ring stylebox")
 		study.mural_sun_btn.grab_focus()
 		require(study.mural_sun_btn.has_focus(), "mural Sun button focus available")
 		accept = InputEventAction.new()
@@ -489,7 +578,7 @@ func run() -> void:
 		study.check_sound_with_rook()
 		await process_frame
 		await process_frame
-		require(study.music_panel.visible and not study.mural_panel.visible, "check_sound_with_rook opens MusicPanel and hides MuralPanel")
+		require(study.music_panel.visible and not study.mural_panel.visible and not study.block_panel.visible, "check_sound_with_rook opens MusicPanel and hides MuralPanel/BlockPanel")
 		require(study.music_buttons.size() == 6, "MusicPanel has all 6 interactive buttons")
 		var mus_rect: Rect2 = study.music_panel.get_global_rect()
 		var mus_header_end_y: float = study.header_panel.get_global_rect().end.y
@@ -499,6 +588,7 @@ func run() -> void:
 			var br: Rect2 = mus_btn.get_global_rect()
 			require(br.size.x >= 44 and br.size.y >= 44, "44px minimum music panel buttons")
 			require(br.position.x >= 0 and br.end.x <= size.x and br.position.y >= 0 and br.end.y <= size.y, "music buttons within viewport")
+			require(mus_btn.focus_mode == Control.FOCUS_ALL and mus_btn.has_theme_stylebox_override("focus"), "music buttons have keyboard focus ring stylebox")
 		study.stop_music_playback()
 		study.music_play_btn.grab_focus()
 		require(study.music_play_btn.has_focus(), "music Play button focus available")
@@ -514,6 +604,37 @@ func run() -> void:
 		await process_frame
 		require(study.music_playing, "ui_accept on music Play button starts playback")
 		study.stop_music_playback()
+		for n_item in study.neighbors:
+			study.visited_neighbors[String(n_item.get("id", ""))] = true
+		study.block_opened = false
+		study.update_block_3d()
+		study.show_block_panel(true)
+		await process_frame
+		await process_frame
+		require(study.block_panel.visible and not study.mural_panel.visible and not study.music_panel.visible, "show_block_panel opens BlockPanel and hides MuralPanel/MusicPanel")
+		require(study.block_buttons.size() == 6, "BlockPanel has all 6 interactive buttons")
+		var blk_rect: Rect2 = study.block_panel.get_global_rect()
+		var blk_header_end_y: float = study.header_panel.get_global_rect().end.y
+		var blk_controls_pos_y: float = study.controls.get_global_rect().position.y
+		require(blk_rect.position.x >= 0 and blk_rect.end.x <= size.x and blk_header_end_y <= blk_rect.position.y and blk_rect.end.y <= blk_controls_pos_y, "header, BlockPanel, and bottom controls do not overlap at %s" % str(size))
+		for blk_btn in study.block_buttons:
+			var bkr: Rect2 = blk_btn.get_global_rect()
+			require(bkr.size.x >= 44 and bkr.size.y >= 44, "44px minimum block panel buttons")
+			require(bkr.position.x >= 0 and bkr.end.x <= size.x and bkr.position.y >= 0 and bkr.end.y <= size.y, "block buttons within viewport")
+			require(blk_btn.focus_mode == Control.FOCUS_ALL and blk_btn.has_theme_stylebox_override("focus"), "block buttons have keyboard focus ring stylebox")
+		study.block_open_btn.grab_focus()
+		require(study.block_open_btn.has_focus(), "block Open button focus available")
+		accept = InputEventAction.new()
+		accept.action = "ui_accept"
+		accept.pressed = true
+		Input.parse_input_event(accept)
+		await process_frame
+		accept = InputEventAction.new()
+		accept.action = "ui_accept"
+		accept.pressed = false
+		Input.parse_input_event(accept)
+		await process_frame
+		require(study.block_opened and study.block_banner_node.visible, "ui_accept on block Open button opens block gathering and reveals 3D banner at %s" % str(size))
 		study.overview()
 	study.clear_godot_save()
 	if "--force-failure" in OS.get_cmdline_user_args():
@@ -522,7 +643,8 @@ func run() -> void:
 		print("GODOT_STUDY_FAIL")
 		quit(1)
 	else:
-		print("GODOT_STUDY_PASS:58 meshes, measured heights, collision/courtyards, walking/sliding, 5 neighbors, Celeste portable mural, Rook speaker/music/local-audition, save/reload, cutaway, 44px and ui_accept at 1100/390/320")
+		print("GODOT_STUDY_PASS:58 meshes, measured heights, collision/courtyards, walking/sliding, 5 neighbors, Celeste portable mural, Rook speaker/music/local-audition, opening-block readiness/banner, browser-save adapter, save/reload, cutaway, focus-rings, 44px and ui_accept at 1100/390/320")
 		quit(0)
+
 
 

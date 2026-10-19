@@ -1,7 +1,8 @@
 extends Node3D
 ## Measured-building block with actual-metre walking, footprint/courtyard collision,
 ## camera sightline cutaway, keyboard/touch neighbor navigation, Celeste's
-## portable sidewalk mural board, and Rook's soundcheck + procedural/local music.
+## portable sidewalk mural board, Rook's soundcheck + procedural/local music,
+## opening-block completion validation, opt-in browser-save adapter, and DOM a11y status bridge.
 ## Real DataSF 2010 PDDL rings and median heights; ODbL OSM street centerlines;
 ## original neutral materials, flat presentation ground and schematic street widths.
 
@@ -20,11 +21,16 @@ const MURAL_BOARD_ROWS := 3
 const CELESTE_ID := "celeste"
 const ROOK_ID := "rook"
 const ROOK_SPEAKER_POS := Vector3(117.10, 0.0, -15.95)
+const BLOCK_BANNER_OFFSET := Vector3(0.0, 0.0, -0.55)
 const MURAL_HALF_EXTENTS := Vector2(1.78, 0.18)
 const SPEAKER_HALF_EXTENTS := Vector2(0.34, 0.28)
 const GODOT_SAVE_PATH := "user://godot_block_save_v1.json"
 const GODOT_TEST_SAVE_PATH := "user://godot_block_save_test_v1.json"
 const GODOT_WEB_STORAGE_KEY := "tenderloin-redux.godot.save.v1"
+const BROWSER_WEB_STORAGE_KEY := "tenderloin-redux.save.v1"
+const BROWSER_SAVE_MAX_BYTES := 65536
+const BROWSER_FURNITURE_IDS: Array[String] = ["table", "seats", "speaker"]
+const BROWSER_LITTER_IDS: Array[String] = ["cup", "offcuts", "wrapper"]
 const GODOT_SAVE_VERSION := 1
 const MURAL_PALETTES: Array[String] = ["garden", "sunset", "ocean"]
 const MURAL_MOTIFS: Array[String] = ["sun", "wave", "rise"]
@@ -151,6 +157,24 @@ var cached_mural_normal := Vector2.ZERO
 var cached_speaker_tangent := Vector2.ZERO
 var cached_speaker_normal := Vector2.ZERO
 
+var block_banner_node: Node3D
+var block_opened := false
+var block_panel: PanelContainer
+var block_label: Label
+var block_detail_label: Label
+var block_buttons: Array[Button] = []
+var block_next_btn: Button
+var block_mural_btn: Button
+var block_rook_btn: Button
+var block_open_btn: Button
+var block_import_btn: Button
+var browser_import_status := "none"
+var browser_import_message := ""
+var last_a11y_announcement := ""
+var a11y_announcement_seq := 0
+var last_synced_a11y_json := ""
+var button_focus_style: StyleBoxFlat
+
 func _ready() -> void:
 	save_path = resolve_save_path()
 	var parsed = JSON.parse_string(FileAccess.get_file_as_string("res://data/buildings.json"))
@@ -246,6 +270,7 @@ func _ready() -> void:
 	build_neighbors_and_player()
 	build_mural_board()
 	build_rook_speaker()
+	build_block_banner()
 	build_audio_players()
 	camera = Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
@@ -255,6 +280,7 @@ func _ready() -> void:
 	update_camera()
 	make_ui()
 	setup_web_audio_bridge()
+	setup_web_a11y_bridge()
 	load_godot_state()
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -518,6 +544,42 @@ func update_speaker_3d() -> void:
 		else:
 			speaker_beacon_mesh.material_override = mural_material(Color("e8b95a"))
 
+func build_block_banner() -> void:
+	block_banner_node = Node3D.new()
+	block_banner_node.name = "BlockGatheringBanner"
+	var banner_pos: Vector3 = neighbors[0].pos + BLOCK_BANNER_OFFSET
+	block_banner_node.position = banner_pos
+	var st := nearest_street_tangent(Vector2(banner_pos.x, banner_pos.z))
+	var street_t := -st if st.x < 0.0 else st
+	block_banner_node.rotation.y = atan2(-street_t.y, street_t.x)
+	var arch_beam := MeshInstance3D.new()
+	arch_beam.name = "ArchBeam"
+	var beam_box := BoxMesh.new()
+	beam_box.size = Vector3(2.80, 0.24, 0.18)
+	arch_beam.mesh = beam_box
+	arch_beam.position = Vector3(0.0, 2.55, 0.0)
+	arch_beam.material_override = mural_material(Color("f5d57a"))
+	block_banner_node.add_child(arch_beam)
+	var lantern_colors: Array[Color] = [Color("ee835c"), Color("5fd4ba"), Color("f8cc58")]
+	for i in range(3):
+		var lantern := MeshInstance3D.new()
+		lantern.name = "GatheringLantern%d" % i
+		var cyl := CylinderMesh.new()
+		cyl.top_radius = 0.16
+		cyl.bottom_radius = 0.16
+		cyl.height = 0.24
+		lantern.mesh = cyl
+		lantern.position = Vector3((float(i) - 1.0) * 0.95, 2.28, 0.0)
+		lantern.material_override = mural_material(lantern_colors[i])
+		block_banner_node.add_child(lantern)
+	block_banner_node.visible = false
+	add_child(block_banner_node)
+	update_block_3d()
+
+func update_block_3d() -> void:
+	if block_banner_node != null:
+		block_banner_node.visible = block_opened
+
 func build_audio_players() -> void:
 	sketch_generator = AudioStreamGenerator.new()
 	sketch_generator.mix_rate = MUSIC_MIX_RATE
@@ -561,7 +623,9 @@ func update_mural_3d() -> void:
 			m_node.visible = false
 	if mural_banner_mesh != null:
 		mural_banner_mesh.visible = mural_completed
+	update_block_3d()
 	recompute_music_stems()
+	update_block_ui()
 
 func make_person_node(node_name: String, coat: Color, skin: Color, hair: Color, total_height: float, is_player: bool) -> Node3D:
 	var root_node := Node3D.new()
@@ -1003,6 +1067,7 @@ func walk_step(input_dir: Vector2, delta: float) -> bool:
 	pending_rook_talk = false
 	show_mural_panel(false)
 	show_music_panel(false)
+	show_block_panel(false)
 	update_route_ribbon(true)
 	in_overview = false
 	following_player = true
@@ -1059,7 +1124,7 @@ func update_walking_status() -> void:
 	var p := player_xz()
 	var nb := nearest_building_info(p)
 	var cut_note := " · %d cutaway" % occluded_buildings.size() if not occluded_buildings.is_empty() else ""
-	info.text = "Pos (%.1f, %.1f) m · %.2f m from %s%s\nWASD/Arrows or tap street to walk · 1–5 neighbors · M mural · R/K music\nCity 2010 PDDL footprints · Streets © OpenStreetMap / ODbL" % [p.x, p.y, nb.distance, nb.id, cut_note]
+	info.text = "Pos (%.1f, %.1f) m · %.2f m from %s%s\nWASD/Arrows or tap street to walk · 1–5 neighbors · M mural · R/K music · G block\nCity 2010 PDDL footprints · Streets © OpenStreetMap / ODbL" % [p.x, p.y, nb.distance, nb.id, cut_note]
 
 func choose_next_neighbor(direction: int = 1) -> bool:
 	if selected_neighbor >= 0:
@@ -1084,6 +1149,8 @@ func walk_to_neighbor(index: int) -> bool:
 		show_mural_panel(false)
 	if index != rook_index:
 		show_music_panel(false)
+	if index in [celeste_index, rook_index]:
+		show_block_panel(false)
 	in_overview = false
 	following_player = true
 	if selected >= 0:
@@ -1100,6 +1167,7 @@ func walk_to_neighbor(index: int) -> bool:
 	if current_path.is_empty():
 		update_route_ribbon(true)
 		info.text = "No walkable route to %s\nWASD/Arrows or tap street to walk\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % n.name
+		announce_a11y_status("No walkable route to %s." % n.name)
 		return false
 	if view_size > 110.0:
 		view_size = 75.0
@@ -1108,6 +1176,7 @@ func walk_to_neighbor(index: int) -> bool:
 	update_occlusion(true)
 	update_route_ribbon(true)
 	info.text = "Walking to %s (%s) · %.1f m\nCollision route outside %d city footprints · Press Esc to stop\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, dist, data.buildings.size()]
+	announce_a11y_status("Walking to %s (%s), %.1f m." % [n.name, n.role, dist])
 	return true
 
 func walk_to_mural() -> bool:
@@ -1120,6 +1189,7 @@ func walk_to_mural() -> bool:
 	arrived_speaker = false
 	pending_rook_talk = false
 	show_music_panel(false)
+	show_block_panel(false)
 	in_overview = false
 	following_player = true
 	if selected >= 0:
@@ -1137,6 +1207,7 @@ func walk_to_mural() -> bool:
 		walking_to_mural = false
 		update_route_ribbon(true)
 		info.text = "No walkable route to Portable Mural Board\nWASD/Arrows or tap street to walk\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL"
+		announce_a11y_status("No walkable route to Portable Mural Board.")
 		return false
 	if view_size > 110.0:
 		view_size = 75.0
@@ -1145,6 +1216,7 @@ func walk_to_mural() -> bool:
 	update_occlusion(true)
 	update_route_ribbon(true)
 	info.text = "Walking to Portable Mural Board (with Celeste) · %.1f m\nFreestanding sidewalk easel outside %d city footprints\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [dist, data.buildings.size()]
+	announce_a11y_status("Walking to Portable Mural Board with Celeste, %.1f m." % dist)
 	return true
 
 func walk_to_speaker() -> bool:
@@ -1157,6 +1229,7 @@ func walk_to_speaker() -> bool:
 	arrived_speaker = false
 	pending_rook_talk = false
 	show_mural_panel(false)
+	show_block_panel(false)
 	in_overview = false
 	following_player = true
 	if selected >= 0:
@@ -1174,6 +1247,7 @@ func walk_to_speaker() -> bool:
 		walking_to_speaker = false
 		update_route_ribbon(true)
 		info.text = "No walkable route to Rook's Speaker\nWASD/Arrows or tap street to walk\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL"
+		announce_a11y_status("No walkable route to Rook's Speaker.")
 		return false
 	if view_size > 110.0:
 		view_size = 75.0
@@ -1182,6 +1256,7 @@ func walk_to_speaker() -> bool:
 	update_occlusion(true)
 	update_route_ribbon(true)
 	info.text = "Walking to Rook's Turk St Speaker · %.1f m\nFreestanding sidewalk monitor outside %d city footprints\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [dist, data.buildings.size()]
+	announce_a11y_status("Walking to Rook's Turk Street Speaker, %.1f m." % dist)
 	return true
 
 func walk_to_point(goal_xz: Vector2) -> bool:
@@ -1196,6 +1271,7 @@ func walk_to_point(goal_xz: Vector2) -> bool:
 	pending_rook_talk = false
 	show_mural_panel(false)
 	show_music_panel(false)
+	show_block_panel(false)
 	in_overview = false
 	following_player = true
 	if selected >= 0:
@@ -1207,6 +1283,7 @@ func walk_to_point(goal_xz: Vector2) -> bool:
 	if current_path.is_empty():
 		update_route_ribbon(true)
 		info.text = "No walkable route to point (%.1f, %.1f) m\nWASD/Arrows or tap street to walk\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [safe_goal.x, safe_goal.y]
+		announce_a11y_status("No walkable route to street point.")
 		return false
 	if view_size > 110.0:
 		view_size = 75.0
@@ -1215,6 +1292,7 @@ func walk_to_point(goal_xz: Vector2) -> bool:
 	update_occlusion(true)
 	update_route_ribbon(true)
 	info.text = "Walking to street point (%.1f, %.1f) m · %.1f m\nCollision route outside %d city footprints\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [safe_goal.x, safe_goal.y, player_xz().distance_to(safe_goal), data.buildings.size()]
+	announce_a11y_status("Walking to street point (%.1f, %.1f) m." % [safe_goal.x, safe_goal.y])
 	return true
 
 func finish_neighbor_arrival(index: int) -> void:
@@ -1238,7 +1316,10 @@ func finish_neighbor_arrival(index: int) -> void:
 	if not n_id.is_empty() and not visited_neighbors.has(n_id):
 		visited_neighbors[n_id] = true
 		newly_visited = true
+		browser_import_message = ""
 	recompute_music_stems()
+	update_block_3d()
+	update_block_ui()
 	trigger_progress_cue("neighbor_visit", n.name)
 	update_route_ribbon(true)
 	if following_player:
@@ -1263,6 +1344,7 @@ func finish_neighbor_arrival(index: int) -> void:
 		show_mural_panel(true)
 		update_mural_ui()
 		info.text = "With %s — %s (%d/3 mural motifs · %.2f m from %s%s)\nPortable sidewalk easel ready · Place Sun, Wave & Rise below\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, mural_placements.size(), nb.distance, nb.id, cut_note]
+		announce_a11y_status("Arrived at %s (%s). Portable Mural Board %d/3 motifs." % [n.name, n.role, mural_placements.size()])
 	elif index == rook_index:
 		pending_celeste_talk = false
 		var trigger_rook := pending_rook_talk
@@ -1276,6 +1358,16 @@ func finish_neighbor_arrival(index: int) -> void:
 		update_music_ui()
 		var sc_tag := "Soundcheck ready" if rook_soundcheck_done else "Tap Soundcheck below"
 		info.text = "With %s — %s (%s · %.2f m from %s%s)\nTurk St speaker %.1f m clear of wall · Explicit play/audition below\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, sc_tag, nb.distance, nb.id, cut_note, min_wall_distance(speaker_xz())]
+		announce_a11y_status("Arrived at %s (%s). %s." % [n.name, n.role, sc_tag])
+	elif index >= 3 or (index == 0 and not newly_visited):
+		pending_celeste_talk = false
+		pending_rook_talk = false
+		if newly_visited:
+			save_godot_state()
+		show_block_panel(true)
+		update_block_ui()
+		info.text = "With %s — %s (%d/5 neighbors · %.2f m from %s%s)\nOpening block checklist below · Press G for Block Panel\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, visited_neighbors.size(), nb.distance, nb.id, cut_note]
+		announce_a11y_status("Arrived at %s (%s). Visited %d/5 neighbors." % [n.name, n.role, visited_neighbors.size()])
 	else:
 		pending_celeste_talk = false
 		pending_rook_talk = false
@@ -1283,7 +1375,9 @@ func finish_neighbor_arrival(index: int) -> void:
 			save_godot_state()
 		show_mural_panel(false)
 		show_music_panel(false)
-		info.text = "With %s — %s (%.2f m from %s%s)\nWASD/Arrows or tap street to walk · Walk to neighbor for next\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, nb.distance, nb.id, cut_note]
+		show_block_panel(false)
+		info.text = "With %s — %s (%.2f m from %s%s)\nWASD/Arrows or tap street to walk · Walk to neighbor for next · Press G for Block\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, nb.distance, nb.id, cut_note]
+		announce_a11y_status("Arrived at %s (%s). Visited %d/5 neighbors." % [n.name, n.role, visited_neighbors.size()])
 
 func finish_mural_arrival() -> void:
 	var stand_pt := mural_stand_xz()
@@ -1316,6 +1410,7 @@ func finish_mural_arrival() -> void:
 	update_mural_ui()
 	var nb := nearest_building_info(player_xz())
 	info.text = "At Portable Mural Board with Celeste (%d/3 motifs · %s palette · %.2f m from %s)\nFreestanding sidewalk easel — no building façade painted\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [mural_placements.size(), mural_palette.capitalize(), nb.distance, nb.id]
+	announce_a11y_status("At Portable Mural Board with Celeste (%d/3 motifs, %s palette)." % [mural_placements.size(), mural_palette.capitalize()])
 
 func finish_speaker_arrival() -> void:
 	var stand_pt := speaker_stand_xz()
@@ -1345,6 +1440,7 @@ func finish_speaker_arrival() -> void:
 	var nb := nearest_building_info(player_xz())
 	var sc_tag := active_stem_summary() if rook_soundcheck_done else "Tap Soundcheck below"
 	info.text = "At Rook's Turk St Speaker (%s · %.2f m from %s)\nFreestanding sidewalk monitor · Play sketch or audition local Suno file\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [sc_tag, nb.distance, nb.id]
+	announce_a11y_status("At Rook's Turk Street Speaker (%s)." % sc_tag)
 
 func celeste_dialogue_text() -> String:
 	if mural_completed:
@@ -1394,17 +1490,36 @@ func focus_speaker_camera() -> void:
 		update_camera()
 	update_occlusion(true)
 
+func focus_block_camera() -> void:
+	in_overview = false
+	following_player = false
+	if selected >= 0:
+		meshes[selected].material_override = building_materials[selected]
+		selected = -1
+	var b_pos: Vector3 = neighbors[0].pos
+	target = Vector3(b_pos.x, 1.35, b_pos.z)
+	view_size = 45.0
+	update_camera()
+	if get_viewport() != null and get_viewport().get_visible_rect().size.x < 600:
+		target -= camera.global_basis.y * 4.2
+		update_camera()
+	update_occlusion(true)
+
 func talk_with_celeste() -> String:
 	celeste_talk_count += 1
 	visited_neighbors[CELESTE_ID] = true
+	browser_import_message = ""
 	recompute_music_stems()
+	update_block_3d()
 	show_mural_panel(true)
 	focus_mural_camera()
 	save_godot_state()
 	update_mural_ui()
+	update_block_ui()
 	trigger_progress_cue("celeste_talk", "Celeste talk")
 	var line := celeste_dialogue_text()
 	info.text = "%s\nPortable Mural Board: %d/3 motifs (%s palette) · Separate Godot save\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, mural_placements.size(), mural_palette.capitalize()]
+	announce_a11y_status(line)
 	return line
 
 func request_rook_soundcheck() -> bool:
@@ -1425,16 +1540,76 @@ func request_rook_soundcheck() -> bool:
 func check_sound_with_rook() -> String:
 	visited_neighbors[ROOK_ID] = true
 	rook_soundcheck_done = true
+	browser_import_message = ""
 	recompute_music_stems()
 	update_speaker_3d()
+	update_block_3d()
 	show_music_panel(true)
 	focus_speaker_camera()
 	save_godot_state()
 	trigger_progress_cue("rook_soundcheck", "Rook soundcheck")
 	update_music_ui()
+	update_block_ui()
 	var line := rook_dialogue_text()
 	info.text = "%s\nRook's Speaker: %s · Explicit Play/Pause & local Suno audition\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, active_stem_summary()]
+	announce_a11y_status(line)
 	return line
+
+func is_block_ready() -> bool:
+	return visited_neighbors.size() >= neighbors.size() and mural_placements.size() == MURAL_MOTIFS.size() and rook_soundcheck_done
+
+func get_block_missing_summary() -> String:
+	var missing: Array[String] = []
+	if visited_neighbors.size() < neighbors.size():
+		missing.append("%d/5 neighbors" % visited_neighbors.size())
+	if mural_placements.size() < MURAL_MOTIFS.size():
+		missing.append("%d/3 mural motifs" % mural_placements.size())
+	if not rook_soundcheck_done:
+		missing.append("Rook soundcheck")
+	if missing.is_empty():
+		return "Ready to open"
+	return ", ".join(missing)
+
+func visit_next_unvisited_neighbor() -> bool:
+	for i in range(neighbors.size()):
+		var nid := String(neighbors[i].get("id", ""))
+		if not visited_neighbors.has(nid):
+			return walk_to_neighbor(i)
+	return choose_next_neighbor(1)
+
+func open_mural_from_block_panel() -> void:
+	if arrived_neighbor == celeste_index or arrived_mural:
+		show_mural_panel(true)
+		focus_mural_camera()
+	else:
+		walk_to_mural()
+
+func open_block_gathering() -> bool:
+	if not is_block_ready():
+		show_block_panel(true)
+		var missing := get_block_missing_summary()
+		info.text = "Turk St block gathering needs: %s\nVisit all 5 neighbors (1–5), place 3/3 mural motifs (M), and soundcheck with Rook (R)\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % missing
+		update_block_ui()
+		announce_a11y_status("Block gathering needs: %s." % missing)
+		return false
+	if block_opened:
+		show_block_panel(true)
+		focus_block_camera()
+		update_block_ui()
+		announce_a11y_status("Block gathering already open.")
+		return true
+	block_opened = true
+	browser_import_message = ""
+	update_block_3d()
+	show_block_panel(true)
+	focus_block_camera()
+	save_godot_state()
+	trigger_progress_cue("block_opened", "Turk St Gathering")
+	update_block_ui()
+	var line := "Bea: \"Everyone's here, Celeste's 3/3 board is glowing, and Rook's speaker is set—our Turk Street block gathering is open!\""
+	info.text = "%s\nOpening Block Complete (5/5 neighbors · 3/3 mural · Soundcheck ready · Sound-independent)\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % line
+	announce_a11y_status(line)
+	return true
 
 func recompute_music_stems() -> void:
 	var mask := 1 # "bass" always active
@@ -1518,6 +1693,8 @@ func start_music_playback() -> bool:
 				advance_music_clock(sketch_generator.buffer_length)
 	update_speaker_3d()
 	update_music_ui()
+	var mode_tag := ("Local: " + local_music_name) if music_mode == "local" else ("80 BPM Sketch (" + active_stem_summary() + ")")
+	announce_a11y_status("Music playing: %s." % mode_tag)
 	return music_playing
 
 func stop_music_playback() -> void:
@@ -1536,6 +1713,7 @@ func stop_music_playback() -> void:
 func toggle_music_playback() -> bool:
 	if music_playing:
 		stop_music_playback()
+		announce_a11y_status("Music paused.")
 		return false
 	return start_music_playback()
 
@@ -1550,6 +1728,7 @@ func cycle_music_volume() -> float:
 	music_volume = MUSIC_VOL_STEPS[posmod(best_idx + 1, MUSIC_VOL_STEPS.size())]
 	apply_music_volume_db()
 	update_music_ui()
+	announce_a11y_status("Music volume %d%%." % int(round(music_volume * 100.0)))
 	return music_volume
 
 func advance_music_clock(delta: float) -> int:
@@ -1709,10 +1888,12 @@ func load_local_music_bytes(file_name: String, raw_bytes: PackedByteArray) -> bo
 	if clean_name.is_empty() or not (ext in ["mp3", "wav", "ogg"]):
 		music_error = MUSIC_FILE_ERROR
 		update_music_ui()
+		announce_a11y_status(MUSIC_FILE_ERROR)
 		return false
 	if raw_bytes.is_empty() or raw_bytes.size() > MUSIC_MAX_LOCAL_BYTES:
 		music_error = MUSIC_FILE_ERROR
 		update_music_ui()
+		announce_a11y_status(MUSIC_FILE_ERROR)
 		return false
 	var stream: AudioStream = null
 	if ext == "wav":
@@ -1733,6 +1914,7 @@ func load_local_music_bytes(file_name: String, raw_bytes: PackedByteArray) -> bo
 	if stream == null:
 		music_error = MUSIC_DECODE_ERROR
 		update_music_ui()
+		announce_a11y_status(MUSIC_DECODE_ERROR)
 		return false
 	if local_audio_player != null:
 		local_audio_player.stream = stream
@@ -1742,6 +1924,7 @@ func load_local_music_bytes(file_name: String, raw_bytes: PackedByteArray) -> bo
 	start_music_playback()
 	trigger_progress_cue("local_audition", clean_name)
 	info.text = "Auditioning local track: %s (Rook's Turk St speaker)\nTab-local only — never uploaded or saved · Use Sketch to return\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % clean_name
+	announce_a11y_status("Auditioning local track %s." % clean_name)
 	return true
 
 func use_synth_sketch() -> void:
@@ -1755,6 +1938,7 @@ func use_synth_sketch() -> void:
 		update_speaker_3d()
 		update_music_ui()
 	info.text = "Switched Rook's Turk St Speaker to 80 BPM Synth Sketch (%s)\nExplicit Play/Pause below · Load Suno File for local audition\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % active_stem_summary()
+	announce_a11y_status("Switched Rook's Speaker to 80 BPM Synth Sketch (%s)." % active_stem_summary())
 
 func setup_web_audio_bridge() -> void:
 	if not OS.has_feature("web"):
@@ -1817,6 +2001,138 @@ func setup_web_audio_bridge() -> void:
 	"""
 	JavaScriptBridge.eval(js_init, true)
 
+func setup_web_a11y_bridge() -> void:
+	if not OS.has_feature("web"):
+		return
+	var js_a11y := """
+	(function() {
+		if (window.__tenderloinWebA11yReady) return;
+		window.__tenderloinWebA11yReady = true;
+		var srStyle = 'position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;';
+		var live = document.getElementById('godot-a11y-status');
+		if (!live) {
+			live = document.createElement('div');
+			live.id = 'godot-a11y-status';
+			live.setAttribute('role', 'status');
+			live.setAttribute('aria-live', 'polite');
+			live.setAttribute('aria-atomic', 'true');
+			live.style.cssText = srStyle;
+			document.body.appendChild(live);
+		}
+		var summary = document.getElementById('godot-a11y-summary');
+		if (!summary) {
+			summary = document.createElement('div');
+			summary.id = 'godot-a11y-summary';
+			summary.setAttribute('role', 'region');
+			summary.setAttribute('aria-label', 'Tenderloin Block Status');
+			summary.style.cssText = srStyle;
+			document.body.appendChild(summary);
+		}
+		window.__tenderloinGodotA11ySnapshot = null;
+		window.__tenderloinLastA11ySeq = 0;
+		window.__tenderloinUpdateA11yDOM = function(payloadJson) {
+			try {
+				var data = JSON.parse(payloadJson);
+				window.__tenderloinGodotA11ySnapshot = data;
+				var l = document.getElementById('godot-a11y-status');
+				if (l && data.announcement && data.seq !== window.__tenderloinLastA11ySeq) {
+					window.__tenderloinLastA11ySeq = data.seq;
+					l.textContent = (l.textContent === data.announcement) ? (data.announcement + '\\u00a0') : data.announcement;
+				}
+				var s = document.getElementById('godot-a11y-summary');
+				if (s) {
+					s.textContent = 'Neighbors ' + data.visited_count + '/5 · Mural ' + data.mural_count + '/3 (' + data.mural_palette + ') · Soundcheck ' + (data.soundcheck_done ? 'Done' : 'Pending') + ' · Block ' + (data.block_opened ? 'Opened' : (data.block_ready ? 'Ready' : 'In progress'));
+				}
+				return true;
+			} catch (_e) {
+				return false;
+			}
+		};
+		window.__tenderloinWebSavePending = null;
+		window.__tenderloinQueueBrowserSaveJson = function(rawText, errMsg) {
+			window.__tenderloinWebSavePending = {
+				raw: String(rawText || ''),
+				err: String(errMsg || '')
+			};
+			return true;
+		};
+		var saveInput = document.getElementById('tenderloin-godot-save-input');
+		if (!saveInput) {
+			saveInput = document.createElement('input');
+			saveInput.type = 'file';
+			saveInput.id = 'tenderloin-godot-save-input';
+			saveInput.accept = '.json,application/json';
+			saveInput.style.display = 'none';
+			saveInput.addEventListener('change', function() {
+				var f = saveInput.files && saveInput.files[0];
+				if (!f) return;
+				if (f.size <= 0 || f.size > 65536) {
+					window.__tenderloinQueueBrowserSaveJson('', 'size');
+					saveInput.value = '';
+					return;
+				}
+				var reader = new FileReader();
+				reader.onload = function() {
+					window.__tenderloinQueueBrowserSaveJson(typeof reader.result === 'string' ? reader.result : '', '');
+					saveInput.value = '';
+				};
+				reader.onerror = function() {
+					window.__tenderloinQueueBrowserSaveJson('', 'read');
+					saveInput.value = '';
+				};
+				reader.readAsText(f);
+			});
+			document.body.appendChild(saveInput);
+		}
+		window.__tenderloinOpenSavePicker = function() {
+			saveInput.click();
+			return true;
+		};
+	})();
+	"""
+	JavaScriptBridge.eval(js_a11y, true)
+
+func get_a11y_status_snapshot() -> Dictionary:
+	var active_panel := "none"
+	if block_panel != null and block_panel.visible:
+		active_panel = "block"
+	elif mural_panel != null and mural_panel.visible:
+		active_panel = "mural"
+	elif music_panel != null and music_panel.visible:
+		active_panel = "music"
+	return {
+		"seq": a11y_announcement_seq,
+		"announcement": last_a11y_announcement,
+		"active_panel": active_panel,
+		"visited_count": visited_neighbors.size(),
+		"mural_count": mural_placements.size(),
+		"mural_palette": mural_palette,
+		"soundcheck_done": rook_soundcheck_done,
+		"block_ready": is_block_ready(),
+		"block_opened": block_opened,
+		"music_playing": music_playing,
+		"music_mode": music_mode,
+		"browser_import_status": browser_import_status
+	}
+
+func announce_a11y_status(msg: String) -> void:
+	var clean := msg.replace("\n", " ").strip_edges()
+	if clean.is_empty():
+		return
+	a11y_announcement_seq += 1
+	last_a11y_announcement = clean
+	sync_web_a11y_status()
+
+func sync_web_a11y_status() -> void:
+	if not OS.has_feature("web"):
+		return
+	var payload := JSON.stringify(get_a11y_status_snapshot())
+	if payload == last_synced_a11y_json:
+		return
+	last_synced_a11y_json = payload
+	var js_lit := JSON.stringify(payload)
+	JavaScriptBridge.eval("window.__tenderloinUpdateA11yDOM && window.__tenderloinUpdateA11yDOM(%s);" % js_lit, true)
+
 func prompt_local_music_file() -> void:
 	show_music_panel(true)
 	if OS.has_feature("web"):
@@ -1827,6 +2143,11 @@ func prompt_local_music_file() -> void:
 func poll_web_audio() -> void:
 	if not OS.has_feature("web"):
 		return
+	var has_save_pending: Variant = JavaScriptBridge.eval("Boolean(window.__tenderloinWebSavePending);", true)
+	if bool(has_save_pending):
+		var save_raw_var: Variant = JavaScriptBridge.eval("var sp = window.__tenderloinWebSavePending; window.__tenderloinWebSavePending = null; (sp && !sp.err) ? String(sp.raw || '') : '';", true)
+		var save_raw := String(save_raw_var) if save_raw_var is String else ""
+		import_browser_save_json(save_raw)
 	var has_pending: Variant = JavaScriptBridge.eval("Boolean(window.__tenderloinWebAudioPending);", true)
 	if not bool(has_pending):
 		return
@@ -1839,6 +2160,7 @@ func poll_web_audio() -> void:
 	if not err.is_empty() or raw.is_empty():
 		music_error = MUSIC_FILE_ERROR
 		update_music_ui()
+		announce_a11y_status(MUSIC_FILE_ERROR)
 		return
 	load_local_music_bytes(fname, raw)
 
@@ -1877,17 +2199,20 @@ func place_mural_motif(motif_id: String, col: int, row: int) -> bool:
 		return false
 	if cell_occupied_by_other(col, row, motif_id):
 		return false
+	browser_import_message = ""
 	var was_completed := mural_completed
 	active_motif = motif_id
 	mural_placements[motif_id] = {"col": col, "row": row}
 	update_mural_3d()
 	save_godot_state()
 	update_mural_ui()
+	update_block_ui()
 	if mural_completed and not was_completed:
 		trigger_progress_cue("mural_complete", "3/3 motifs")
 	else:
 		trigger_progress_cue("mural_motif", motif_id)
 	info.text = "Placed %s motif at (%d, %d) on Portable Mural Board with Celeste (%d/3 motifs)\nFreestanding sidewalk easel · %s palette · Saved to Godot storage\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [motif_id.capitalize(), col, row, mural_placements.size(), mural_palette.capitalize()]
+	announce_a11y_status("Placed %s motif at (%d, %d) on Portable Mural Board (%d/3 motifs)." % [motif_id.capitalize(), col, row, mural_placements.size()])
 	return true
 
 func activate_or_advance_motif(motif_id: String) -> bool:
@@ -1939,6 +2264,7 @@ func set_mural_palette(palette_id: String) -> bool:
 	update_mural_ui()
 	trigger_progress_cue("mural_palette", palette_id)
 	info.text = "Portable Mural Board palette set to %s with Celeste (%d/3 motifs)\nFreestanding sidewalk easel · Saved to Godot storage\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [mural_palette.capitalize(), mural_placements.size()]
+	announce_a11y_status("Portable Mural Board palette set to %s (%d/3 motifs)." % [mural_palette.capitalize(), mural_placements.size()])
 	return true
 
 func cycle_mural_palette() -> String:
@@ -1949,12 +2275,19 @@ func cycle_mural_palette() -> String:
 	return mural_palette
 
 func clear_mural_board() -> void:
+	browser_import_message = ""
+	if block_opened:
+		info.text = "Block gathering is open — Portable Mural Board stays on display with Celeste (3/3 motifs · %s palette)\nAdjust motif positions or cycle palette freely\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % mural_palette.capitalize()
+		announce_a11y_status("Block gathering is open; Portable Mural Board stays on display.")
+		return
 	mural_placements.clear()
 	mural_completed = false
 	update_mural_3d()
 	save_godot_state()
 	update_mural_ui()
+	update_block_ui()
 	info.text = "Cleared Portable Mural Board with Celeste (0/3 motifs · %s palette)\nPlace Sun, Wave, and Rise on the 6×3 freestanding board\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % mural_palette.capitalize()
+	announce_a11y_status("Cleared Portable Mural Board (0/3 motifs).")
 
 func resolve_save_path() -> String:
 	for arg in OS.get_cmdline_user_args():
@@ -1996,7 +2329,8 @@ func build_save_envelope() -> Dictionary:
 		"active_motif": active_motif,
 		"mural_placements": mural_placements.duplicate(true),
 		"rook_soundcheck_done": rook_soundcheck_done,
-		"visited_neighbors": v_list
+		"visited_neighbors": v_list,
+		"block_opened": block_opened
 	}
 
 func save_godot_state() -> bool:
@@ -2022,6 +2356,9 @@ func reset_mural_state_to_defaults(status_label: String) -> void:
 	mural_completed = false
 	rook_soundcheck_done = false
 	visited_neighbors.clear()
+	block_opened = false
+	browser_import_status = "none"
+	browser_import_message = ""
 	stop_music_playback()
 	sketch_tick = 0
 	sketch_phase = 0.0
@@ -2034,8 +2371,11 @@ func reset_mural_state_to_defaults(status_label: String) -> void:
 	save_load_status = status_label
 	update_mural_3d()
 	update_speaker_3d()
+	update_block_3d()
 	update_mural_ui()
 	update_music_ui()
+	update_block_ui()
+	sync_web_a11y_status()
 
 func apply_save_envelope(raw_json: String) -> bool:
 	var trimmed := raw_json.strip_edges()
@@ -2072,6 +2412,13 @@ func apply_save_envelope(raw_json: String) -> bool:
 			reset_mural_state_to_defaults("recovered")
 			return false
 		sc_done = bool(sc_val)
+	var bo_done := false
+	if env.has("block_opened"):
+		var bo_val: Variant = env.get("block_opened")
+		if not (bo_val is bool):
+			reset_mural_state_to_defaults("recovered")
+			return false
+		bo_done = bool(bo_val)
 	var clean_visited: Dictionary = {}
 	if env.has("visited_neighbors"):
 		var vn_val: Variant = env.get("visited_neighbors")
@@ -2139,10 +2486,190 @@ func apply_save_envelope(raw_json: String) -> bool:
 		local_audio_player.stream = null
 	save_load_status = "restored"
 	update_mural_3d()
+	block_opened = bo_done and is_block_ready()
 	update_speaker_3d()
+	update_block_3d()
 	update_mural_ui()
 	update_music_ui()
+	update_block_ui()
+	sync_web_a11y_status()
 	return true
+
+func browser_furniture_cells(item_id: String, col: int, row: int, layout_id: String) -> Array[Vector2i]:
+	var vertical := (item_id == "table" and layout_id == "floor")
+	return [
+		Vector2i(col, row),
+		Vector2i(col + (0 if vertical else 1), row + (1 if vertical else 0))
+	]
+
+func can_place_browser_furniture(placed: Dictionary, item_id: String, col: int, row: int, layout_id: String) -> bool:
+	if not (layout_id in ["table", "floor"]) or not (item_id in BROWSER_FURNITURE_IDS):
+		return false
+	var cells := browser_furniture_cells(item_id, col, row, layout_id)
+	for c in cells:
+		if c.x < 0 or c.x > 7 or c.y < 0 or c.y > 4 or c.y == 2:
+			return false
+	for other_key in placed.keys():
+		var other_id := String(other_key)
+		if other_id == item_id:
+			continue
+		var other_pos: Dictionary = placed[other_key]
+		var other_cells := browser_furniture_cells(other_id, int(other_pos.get("col", -1)), int(other_pos.get("row", -1)), layout_id)
+		for a in cells:
+			for b in other_cells:
+				if a == b:
+					return false
+	return true
+
+func inspect_browser_save_json(raw_json: String) -> Dictionary:
+	if raw_json.is_empty() or raw_json.length() > BROWSER_SAVE_MAX_BYTES:
+		return {"valid": false, "error": "empty_or_too_large"}
+	var trimmed := raw_json.strip_edges()
+	if not trimmed.begins_with("{") or not trimmed.ends_with("}"):
+		return {"valid": false, "error": "malformed_json"}
+	var parsed: Variant = JSON.parse_string(trimmed)
+	if not (parsed is Dictionary):
+		return {"valid": false, "error": "malformed_json"}
+	var env: Dictionary = parsed
+	var ver_val: Variant = env.get("version", null)
+	var core_val: Variant = env.get("core", null)
+	if not is_whole_json_number(ver_val) or int(roundf(float(ver_val))) != 1 or not (core_val is Dictionary):
+		return {"valid": false, "error": "unsupported_envelope"}
+	var saved: Dictionary = core_val
+	var greeted := (saved.get("greeted", false) is bool) and bool(saved.get("greeted", false))
+	var layout_id := ""
+	if greeted and (saved.get("layout", null) is String):
+		var cand_layout := String(saved.get("layout", ""))
+		if cand_layout in ["table", "floor"]:
+			layout_id = cand_layout
+	var clean_furniture: Dictionary = {}
+	if saved.get("furniture", null) is Dictionary:
+		var raw_furn: Dictionary = saved.get("furniture")
+		for f_id in BROWSER_FURNITURE_IDS:
+			var fp: Variant = raw_furn.get(f_id, null)
+			if fp is Dictionary:
+				var f_dict: Dictionary = fp
+				var fc: Variant = f_dict.get("col", null)
+				var fr: Variant = f_dict.get("row", null)
+				if is_whole_json_number(fc) and is_whole_json_number(fr):
+					var c_i := int(roundf(float(fc)))
+					var r_i := int(roundf(float(fr)))
+					if can_place_browser_furniture(clean_furniture, f_id, c_i, r_i, layout_id):
+						clean_furniture[f_id] = {"col": c_i, "row": r_i}
+	var layout_ready := (layout_id != "" and clean_furniture.size() == BROWSER_FURNITURE_IDS.size())
+	var clean_litter: Array[String] = []
+	if saved.get("litter", null) is Array:
+		var raw_lit: Array = saved.get("litter")
+		for lit_id in BROWSER_LITTER_IDS:
+			for item in raw_lit:
+				if (item is String) and String(item) == lit_id:
+					clean_litter.append(lit_id)
+					break
+	var tidy_ready := (clean_litter.size() == BROWSER_LITTER_IDS.size())
+	var clean_mural: Dictionary = {}
+	var occ_mural: Dictionary = {}
+	if saved.get("mural", null) is Dictionary:
+		var raw_mural: Dictionary = saved.get("mural")
+		for m_id in MURAL_MOTIFS:
+			var mp: Variant = raw_mural.get(m_id, null)
+			if mp is Dictionary:
+				var m_dict: Dictionary = mp
+				var mc: Variant = m_dict.get("col", null)
+				var mr: Variant = m_dict.get("row", null)
+				if is_whole_json_number(mc) and is_whole_json_number(mr):
+					var mc_i := int(roundf(float(mc)))
+					var mr_i := int(roundf(float(mr)))
+					if is_valid_mural_cell(mc_i, mr_i):
+						var m_key := "%d,%d" % [mc_i, mr_i]
+						if not occ_mural.has(m_key):
+							occ_mural[m_key] = true
+							clean_mural[m_id] = {"col": mc_i, "row": mr_i}
+	var mural_ready := (clean_mural.size() == MURAL_MOTIFS.size())
+	var pal_id := "garden"
+	if (saved.get("palette", null) is String) and String(saved.get("palette")) in MURAL_PALETTES:
+		pal_id = String(saved.get("palette"))
+	var sc_done := (saved.get("soundcheck", false) is bool) and bool(saved.get("soundcheck", false)) and layout_ready
+	var opened_done := (saved.get("opened", false) is bool) and bool(saved.get("opened", false)) and layout_ready and tidy_ready and mural_ready and sc_done
+	return {
+		"valid": true,
+		"greeted": greeted,
+		"layout": layout_id,
+		"furniture_count": clean_furniture.size(),
+		"layout_ready": layout_ready,
+		"tidy_count": clean_litter.size(),
+		"tidy_ready": tidy_ready,
+		"mural": clean_mural,
+		"mural_count": clean_mural.size(),
+		"mural_ready": mural_ready,
+		"palette": pal_id,
+		"soundcheck": sc_done,
+		"opened": opened_done
+	}
+
+func import_browser_save_json(raw_json: String) -> bool:
+	var res := inspect_browser_save_json(raw_json)
+	if not bool(res.get("valid", false)):
+		browser_import_status = "error"
+		browser_import_message = "Browser save not imported (invalid or absent v1 save); Godot progress kept."
+		update_block_ui()
+		info.text = "%s\nBrowser save ('%s') is read-only and never overwritten by Godot\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [browser_import_message, BROWSER_WEB_STORAGE_KEY]
+		announce_a11y_status(browser_import_message)
+		return false
+	var imported_mural: Dictionary = res.get("mural", {})
+	if imported_mural.size() >= mural_placements.size():
+		if not imported_mural.is_empty():
+			mural_placements = imported_mural.duplicate(true)
+		mural_palette = String(res.get("palette", "garden"))
+	if not mural_placements.is_empty():
+		celeste_talk_count = maxi(1, celeste_talk_count)
+	rook_soundcheck_done = rook_soundcheck_done or bool(res.get("soundcheck", false))
+	var next_visited: Dictionary = visited_neighbors.duplicate()
+	if bool(res.get("greeted", false)):
+		next_visited["bea"] = true
+	if not mural_placements.is_empty():
+		next_visited["celeste"] = true
+	if rook_soundcheck_done:
+		next_visited["rook"] = true
+	if int(res.get("tidy_count", 0)) > 0:
+		next_visited["dez"] = true
+	if String(res.get("layout", "")) != "" or int(res.get("furniture_count", 0)) > 0:
+		next_visited["thanh"] = true
+	if bool(res.get("opened", false)):
+		for nid in valid_neighbor_ids():
+			next_visited[nid] = true
+	visited_neighbors = next_visited
+	update_mural_3d()
+	block_opened = (block_opened or bool(res.get("opened", false))) and is_block_ready()
+	update_speaker_3d()
+	update_block_3d()
+	browser_import_status = "imported"
+	var state_tag := "Gathering Open" if block_opened else ("Ready" if is_block_ready() else "In progress")
+	browser_import_message = "Imported browser v1 save: %d/5 neighbors · %d/3 mural (%s) · %s" % [visited_neighbors.size(), mural_placements.size(), mural_palette.capitalize(), state_tag]
+	save_godot_state()
+	trigger_progress_cue("browser_save_import", "Browser v1 save")
+	update_mural_ui()
+	update_music_ui()
+	update_block_ui()
+	info.text = "%s\nBrowser save ('%s') preserved untouched · Saved to Godot storage\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [browser_import_message, BROWSER_WEB_STORAGE_KEY]
+	announce_a11y_status(browser_import_message)
+	return true
+
+func import_browser_save_from_web_storage() -> bool:
+	show_block_panel(true)
+	if not OS.has_feature("web"):
+		browser_import_status = "error"
+		browser_import_message = "Browser save localStorage import is only available in the Web build."
+		update_block_ui()
+		info.text = "%s\nCall import_browser_save_json(raw_json) in native/headless tests\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % browser_import_message
+		announce_a11y_status(browser_import_message)
+		return false
+	var raw_str := ""
+	var web_val: Variant = JavaScriptBridge.eval("try { window.localStorage.getItem('%s') || ''; } catch (_e) { ''; }" % BROWSER_WEB_STORAGE_KEY, true)
+	if web_val is String:
+		raw_str = String(web_val)
+	if raw_str.strip_edges().is_empty():
+		JavaScriptBridge.eval("window.__tenderloinOpenSavePicker && window.__tenderloinOpenSavePicker();", true)
+	return import_browser_save_json(raw_str)
 
 func extract_candidate_save_seq(raw_json: String) -> int:
 	var trimmed := raw_json.strip_edges()
@@ -2276,6 +2803,7 @@ func advance_walk(delta: float) -> bool:
 				pending_rook_talk = false
 				update_route_ribbon(true)
 				info.text = "Route blocked to %s (%.1f m remaining)\nUse WASD/Arrows or tap another street point\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [dest_name, dist_after]
+				announce_a11y_status("Route blocked to %s." % dest_name)
 	elif current_path.is_empty():
 		update_route_ribbon(true)
 		update_walking_status()
@@ -2405,6 +2933,8 @@ func is_screen_point_in_ui(screen_pos: Vector2) -> bool:
 		return true
 	if music_panel and music_panel.visible and music_panel.get_global_rect().has_point(screen_pos):
 		return true
+	if block_panel and block_panel.visible and block_panel.get_global_rect().has_point(screen_pos):
+		return true
 	if controls and controls.get_global_rect().has_point(screen_pos):
 		return true
 	return false
@@ -2505,6 +3035,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_U:
 				show_music_panel(true)
 				use_synth_sketch()
+			KEY_G:
+				toggle_block_panel()
+			KEY_O:
+				show_block_panel(true)
+				open_block_gathering()
+			KEY_I:
+				import_browser_save_from_web_storage()
 			KEY_P:
 				if can_interact_with_mural():
 					cycle_mural_palette()
@@ -2552,6 +3089,7 @@ func choose_next(direction: int) -> void:
 	pending_rook_talk = false
 	show_mural_panel(false)
 	show_music_panel(false)
+	show_block_panel(false)
 	current_path.clear()
 	update_route_ribbon(true)
 	clear_occlusion()
@@ -2570,6 +3108,7 @@ func choose_next(direction: int) -> void:
 	view_size = 100
 	info.text = "%s  •  median height %.2f m\nCity: 2010 survey / PDDL\nStreets © OpenStreetMap contributors / ODbL\nFlat terrain; façades and current changes unverified" % [building.id, building.height_m]
 	update_camera()
+	announce_a11y_status("Building %s selected, median height %.2f meters." % [building.id, building.height_m])
 
 func overview() -> void:
 	in_overview = true
@@ -2584,6 +3123,7 @@ func overview() -> void:
 	pending_rook_talk = false
 	show_mural_panel(false)
 	show_music_panel(false)
+	show_block_panel(false)
 	current_path.clear()
 	update_route_ribbon(true)
 	if selected >= 0:
@@ -2609,6 +3149,7 @@ func overview() -> void:
 	var offset := bounds.get_center() - available.get_center()
 	target += camera.global_basis.x * offset.x / pixels_per_metre - camera.global_basis.y * offset.y / pixels_per_metre
 	update_camera()
+	announce_a11y_status("Overview: %d city footprints." % data.buildings.size())
 
 func projected_bounds() -> Rect2:
 	var bounds := Rect2()
@@ -2632,7 +3173,7 @@ func zoom(factor: float) -> void:
 	update_occlusion(true)
 
 func overview_text() -> String:
-	return "%d city footprints · 2010 survey · PDDL\nStreets © OpenStreetMap contributors / ODbL\nWASD/tap street to walk · Walk to neighbor (1–5) · Flat terrain" % data.buildings.size()
+	return "%d city footprints · 2010 survey · PDDL\nStreets © OpenStreetMap contributors / ODbL\nWASD/tap street to walk · Walk to neighbor (1–5) · Block status (G)" % data.buildings.size()
 
 func refit_after_layout() -> void:
 	await get_tree().process_frame
@@ -2641,20 +3182,45 @@ func refit_after_layout() -> void:
 		overview()
 
 func show_mural_panel(visible_flag: bool) -> void:
-	if visible_flag and music_panel != null:
-		music_panel.visible = false
+	if visible_flag:
+		if music_panel != null:
+			music_panel.visible = false
+		if block_panel != null:
+			block_panel.visible = false
 	if mural_panel != null:
 		mural_panel.visible = visible_flag
 		if visible_flag:
 			update_mural_ui()
 
 func show_music_panel(visible_flag: bool) -> void:
-	if visible_flag and mural_panel != null:
-		mural_panel.visible = false
+	if visible_flag:
+		if mural_panel != null:
+			mural_panel.visible = false
+		if block_panel != null:
+			block_panel.visible = false
 	if music_panel != null:
 		music_panel.visible = visible_flag
 		if visible_flag:
 			update_music_ui()
+
+func show_block_panel(visible_flag: bool) -> void:
+	if visible_flag:
+		if mural_panel != null:
+			mural_panel.visible = false
+		if music_panel != null:
+			music_panel.visible = false
+	if block_panel != null:
+		block_panel.visible = visible_flag
+		if visible_flag:
+			update_block_ui()
+
+func toggle_block_panel() -> void:
+	var next_vis := true
+	if block_panel != null:
+		next_vis = not block_panel.visible
+	show_block_panel(next_vis)
+	if next_vis:
+		announce_a11y_status("Block readiness panel open. %s" % get_block_missing_summary())
 
 func motif_button_text(motif_id: String, label_prefix: String) -> String:
 	var prefix := "> " if active_motif == motif_id else ""
@@ -2700,7 +3266,41 @@ func update_music_ui() -> void:
 	if music_sketch_btn != null:
 		music_sketch_btn.text = "> Sketch (80 BPM)" if music_mode == "sketch" else "Use Sketch"
 
+func update_block_ui() -> void:
+	if block_label == null:
+		return
+	var v_count := visited_neighbors.size()
+	var n_total := neighbors.size() if not neighbors.is_empty() else 5
+	var m_state := "3/3" if mural_completed else "%d/3" % mural_placements.size()
+	var sc_state := "Sound OK" if rook_soundcheck_done else "Sound Pending"
+	var open_tag := "OPEN" if block_opened else ("READY" if is_block_ready() else "PREP")
+	block_label.text = "Block · %s · %d/%d Nbrs · %s Mural · %s" % [open_tag, v_count, n_total, m_state, sc_state]
+	if block_detail_label != null:
+		block_detail_label.text = get_block_missing_summary() if browser_import_message.is_empty() else ("%s · %s" % [get_block_missing_summary(), browser_import_message])
+	if block_open_btn != null:
+		if block_opened:
+			block_open_btn.text = "Block Opened"
+		elif is_block_ready():
+			block_open_btn.text = "Open Block!"
+		else:
+			block_open_btn.text = "Open Block"
+	if block_next_btn != null:
+		var remaining := maxi(0, n_total - v_count)
+		block_next_btn.text = "Visit Next (%d left)" % remaining if remaining > 0 else "Cycle Neighbor"
+	if block_mural_btn != null:
+		block_mural_btn.text = "Mural: 3/3" if mural_completed else ("Mural: %d/3" % mural_placements.size())
+	if block_rook_btn != null:
+		block_rook_btn.text = "Rook: Checked" if rook_soundcheck_done else "Rook: Soundcheck"
+	if block_import_btn != null:
+		block_import_btn.text = "Browser Save: Ready" if browser_import_status == "imported" else "Import Browser Save"
+
 func make_ui() -> void:
+	button_focus_style = StyleBoxFlat.new()
+	button_focus_style.bg_color = Color(0.95, 0.72, 0.19, 0.18)
+	button_focus_style.border_color = Color(0.98, 0.78, 0.22, 1.0)
+	button_focus_style.set_border_width_all(3)
+	button_focus_style.set_corner_radius_all(4)
+
 	var layer := CanvasLayer.new()
 	add_child(layer)
 	header_panel = PanelContainer.new()
@@ -2796,6 +3396,44 @@ func make_ui() -> void:
 	music_button(m_row3, "Close", func(): show_music_panel(false))
 	update_music_ui()
 
+	block_panel = PanelContainer.new()
+	block_panel.name = "BlockPanel"
+	block_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	block_panel.offset_left = 12
+	block_panel.offset_right = -12
+	block_panel.offset_top = -302
+	block_panel.offset_bottom = -130
+	block_panel.visible = false
+	layer.add_child(block_panel)
+	var block_vbox := VBoxContainer.new()
+	block_vbox.add_theme_constant_override("separation", 2)
+	block_panel.add_child(block_vbox)
+	block_label = Label.new()
+	block_label.clip_text = true
+	block_label.add_theme_font_size_override("font_size", 13)
+	block_vbox.add_child(block_label)
+	block_detail_label = Label.new()
+	block_detail_label.clip_text = true
+	block_detail_label.add_theme_font_size_override("font_size", 12)
+	block_vbox.add_child(block_detail_label)
+	block_buttons.clear()
+	var b_row1 := HBoxContainer.new()
+	b_row1.add_theme_constant_override("separation", 4)
+	block_vbox.add_child(b_row1)
+	block_open_btn = block_button(b_row1, "Open Block", func(): open_block_gathering())
+	block_next_btn = block_button(b_row1, "Visit Next (5 left)", func(): visit_next_unvisited_neighbor())
+	var b_row2 := HBoxContainer.new()
+	b_row2.add_theme_constant_override("separation", 4)
+	block_vbox.add_child(b_row2)
+	block_mural_btn = block_button(b_row2, "Mural: 0/3", func(): open_mural_from_block_panel())
+	block_rook_btn = block_button(b_row2, "Rook: Soundcheck", func(): request_rook_soundcheck())
+	var b_row3 := HBoxContainer.new()
+	b_row3.add_theme_constant_override("separation", 4)
+	block_vbox.add_child(b_row3)
+	block_import_btn = block_button(b_row3, "Import Browser Save", func(): import_browser_save_from_web_storage())
+	block_button(b_row3, "Close", func(): show_block_panel(false))
+	update_block_ui()
+
 	controls = GridContainer.new()
 	controls.columns = 3
 	controls.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
@@ -2827,6 +3465,9 @@ func make_ui() -> void:
 		if is_instance_valid(music_panel):
 			music_panel.offset_bottom = -180 if narrow else -130
 			music_panel.offset_top = -352 if narrow else -302
+		if is_instance_valid(block_panel):
+			block_panel.offset_bottom = -180 if narrow else -130
+			block_panel.offset_top = -352 if narrow else -302
 		if in_overview:
 			refit_after_layout()
 	vp.size_changed.connect(resize_controls)
@@ -2847,6 +3488,9 @@ func button(parent: Node, text: String, action: Callable) -> void:
 	control.text = text
 	control.custom_minimum_size = Vector2(0, 50)
 	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	control.focus_mode = Control.FOCUS_ALL
+	if button_focus_style != null:
+		control.add_theme_stylebox_override("focus", button_focus_style)
 	control.add_theme_font_size_override("font_size", 16)
 	control.pressed.connect(action)
 	parent.add_child(control)
@@ -2856,6 +3500,9 @@ func mural_button(parent: Node, text: String, action: Callable) -> Button:
 	control.text = text
 	control.custom_minimum_size = Vector2(44, 44)
 	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	control.focus_mode = Control.FOCUS_ALL
+	if button_focus_style != null:
+		control.add_theme_stylebox_override("focus", button_focus_style)
 	control.add_theme_font_size_override("font_size", 13)
 	control.pressed.connect(action)
 	parent.add_child(control)
@@ -2867,9 +3514,27 @@ func music_button(parent: Node, text: String, action: Callable) -> Button:
 	control.text = text
 	control.custom_minimum_size = Vector2(44, 44)
 	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	control.focus_mode = Control.FOCUS_ALL
+	if button_focus_style != null:
+		control.add_theme_stylebox_override("focus", button_focus_style)
 	control.add_theme_font_size_override("font_size", 13)
 	control.pressed.connect(action)
 	parent.add_child(control)
 	music_buttons.append(control)
 	return control
+
+func block_button(parent: Node, text: String, action: Callable) -> Button:
+	var control := Button.new()
+	control.text = text
+	control.custom_minimum_size = Vector2(44, 44)
+	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	control.focus_mode = Control.FOCUS_ALL
+	if button_focus_style != null:
+		control.add_theme_stylebox_override("focus", button_focus_style)
+	control.add_theme_font_size_override("font_size", 13)
+	control.pressed.connect(action)
+	parent.add_child(control)
+	block_buttons.append(control)
+	return control
+
 
