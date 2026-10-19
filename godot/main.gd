@@ -1,7 +1,7 @@
 extends Node3D
 ## Measured-building block with actual-metre walking, footprint/courtyard collision,
-## camera sightline cutaway, keyboard/touch neighbor navigation, and Celeste's
-## portable sidewalk mural board with separate Godot save persistence.
+## camera sightline cutaway, keyboard/touch neighbor navigation, Celeste's
+## portable sidewalk mural board, and Rook's soundcheck + procedural/local music.
 ## Real DataSF 2010 PDDL rings and median heights; ODbL OSM street centerlines;
 ## original neutral materials, flat presentation ground and schematic street widths.
 
@@ -18,6 +18,10 @@ const MURAL_POS := Vector3(76.50, 0.0, -18.70)
 const MURAL_BOARD_COLS := 6
 const MURAL_BOARD_ROWS := 3
 const CELESTE_ID := "celeste"
+const ROOK_ID := "rook"
+const ROOK_SPEAKER_POS := Vector3(117.10, 0.0, -15.95)
+const MURAL_HALF_EXTENTS := Vector2(1.78, 0.18)
+const SPEAKER_HALF_EXTENTS := Vector2(0.34, 0.28)
 const GODOT_SAVE_PATH := "user://godot_block_save_v1.json"
 const GODOT_TEST_SAVE_PATH := "user://godot_block_save_test_v1.json"
 const GODOT_WEB_STORAGE_KEY := "tenderloin-redux.godot.save.v1"
@@ -29,6 +33,13 @@ const MURAL_DEFAULT_CELLS: Dictionary = {
 	"wave": Vector2i(3, 1),
 	"rise": Vector2i(5, 2)
 }
+const MUSIC_STEM_ORDER: Array[String] = ["bass", "brush", "chords", "lead"]
+const MUSIC_VOL_STEPS: Array[float] = [0.70, 1.0, 0.35, 0.0]
+const MUSIC_MIX_RATE := 22050.0
+const MUSIC_STEP_SEC := 0.375
+const MUSIC_MAX_LOCAL_BYTES := 40 * 1024 * 1024
+const MUSIC_DECODE_ERROR := "Could not decode audio file. Sketch remains available."
+const MUSIC_FILE_ERROR := "Invalid audio file. Choose an MP3, WAV, or OGG track."
 
 var data: Dictionary
 var camera: Camera3D
@@ -59,12 +70,16 @@ var neighbors: Array[Dictionary] = [
 ]
 var neighbor_nodes: Array[Node3D] = []
 var celeste_index := 1
+var rook_index := 2
 var route_mesh: MeshInstance3D
 var selected_neighbor := -1
 var arrived_neighbor := -1
 var walking_to_mural := false
 var arrived_mural := false
 var pending_celeste_talk := false
+var walking_to_speaker := false
+var arrived_speaker := false
+var pending_rook_talk := false
 var current_path: Array[Vector2] = []
 var occluded_buildings: Array[int] = []
 var following_player := false
@@ -97,6 +112,44 @@ var mural_palette := "garden"
 var mural_placements: Dictionary = {}
 var mural_completed := false
 var save_load_status := "fresh"
+
+var speaker_node: Node3D
+var speaker_cone_mesh: MeshInstance3D
+var speaker_beacon_mesh: MeshInstance3D
+var rook_soundcheck_done := false
+var visited_neighbors: Dictionary = {}
+var music_panel: PanelContainer
+var music_label: Label
+var music_stem_label: Label
+var music_buttons: Array[Button] = []
+var music_play_btn: Button
+var music_vol_btn: Button
+var music_rook_btn: Button
+var music_load_btn: Button
+var music_sketch_btn: Button
+var sketch_generator: AudioStreamGenerator
+var sketch_playback: AudioStreamGeneratorPlayback
+var sketch_player: AudioStreamPlayer
+var local_audio_player: AudioStreamPlayer
+var music_mode := "sketch"
+var music_playing := false
+var music_volume := 0.70
+var local_music_name := ""
+var music_error := ""
+var sketch_tick := 0
+var sketch_phase := 0.0
+var sketch_frames_pushed := 0
+var last_pre_gain_rms := 0.0
+var last_sample_rms := 0.0
+var cue_chime_timer := 0.0
+var cue_chime_freq := 523.25
+var cue_history: Array[Dictionary] = []
+var last_music_cue := "ready"
+var unlocked_stem_mask := 1
+var cached_mural_tangent := Vector2.ZERO
+var cached_mural_normal := Vector2.ZERO
+var cached_speaker_tangent := Vector2.ZERO
+var cached_speaker_normal := Vector2.ZERO
 
 func _ready() -> void:
 	save_path = resolve_save_path()
@@ -192,6 +245,8 @@ func _ready() -> void:
 		walk_bounds = b_union.grow(12.0)
 	build_neighbors_and_player()
 	build_mural_board()
+	build_rook_speaker()
+	build_audio_players()
 	camera = Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 	camera.far = 2000
@@ -199,6 +254,7 @@ func _ready() -> void:
 	camera.current = true
 	update_camera()
 	make_ui()
+	setup_web_audio_bridge()
 	load_godot_state()
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -258,8 +314,11 @@ func build_neighbors_and_player() -> void:
 	add_child(route_mesh)
 	for i in range(neighbors.size()):
 		var n: Dictionary = neighbors[i]
-		if String(n.get("id", "")) == CELESTE_ID:
+		var n_id := String(n.get("id", ""))
+		if n_id == CELESTE_ID:
 			celeste_index = i
+		elif n_id == ROOK_ID:
+			rook_index = i
 		var n_node := make_person_node(n.name, n.coat, n.skin, n.hair, 1.70, false)
 		n_node.position = n.pos
 		add_child(n_node)
@@ -392,6 +451,89 @@ func build_mural_board() -> void:
 	add_child(mural_node)
 	update_mural_3d()
 
+func build_rook_speaker() -> void:
+	speaker_node = Node3D.new()
+	speaker_node.name = "RookSpeaker"
+	speaker_node.position = ROOK_SPEAKER_POS
+	var street_t := speaker_tangent()
+	speaker_node.rotation.y = atan2(-street_t.y, street_t.x)
+	var spk_body := StaticBody3D.new()
+	spk_body.name = "StaticBody3D"
+	var spk_col := CollisionShape3D.new()
+	var spk_shape := BoxShape3D.new()
+	spk_shape.size = Vector3(SPEAKER_HALF_EXTENTS.x * 2.0, 1.38, SPEAKER_HALF_EXTENTS.y * 2.0)
+	spk_col.shape = spk_shape
+	spk_col.position = Vector3(0.0, 0.69, 0.0)
+	spk_body.add_child(spk_col)
+	speaker_node.add_child(spk_body)
+	var base_ring := MeshInstance3D.new()
+	var ring_mesh := CylinderMesh.new()
+	ring_mesh.top_radius = 0.50
+	ring_mesh.bottom_radius = 0.50
+	ring_mesh.height = 0.04
+	base_ring.mesh = ring_mesh
+	base_ring.position = Vector3(0.0, 0.02, 0.0)
+	base_ring.material_override = material(Color("e6d7b8"))
+	speaker_node.add_child(base_ring)
+	var cabinet := MeshInstance3D.new()
+	cabinet.name = "SpeakerCabinet"
+	var cab_mesh := BoxMesh.new()
+	cab_mesh.size = Vector3(SPEAKER_HALF_EXTENTS.x * 2.0, 1.18, SPEAKER_HALF_EXTENTS.y * 2.0)
+	cabinet.mesh = cab_mesh
+	cabinet.position = Vector3(0.0, 0.61, 0.0)
+	cabinet.material_override = material(Color("3a322c"))
+	speaker_node.add_child(cabinet)
+	speaker_cone_mesh = MeshInstance3D.new()
+	speaker_cone_mesh.name = "SpeakerCone"
+	var cone_cyl := CylinderMesh.new()
+	cone_cyl.top_radius = 0.21
+	cone_cyl.bottom_radius = 0.21
+	cone_cyl.height = 0.06
+	speaker_cone_mesh.mesh = cone_cyl
+	speaker_cone_mesh.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+	speaker_cone_mesh.position = Vector3(0.0, 0.72, 0.29)
+	speaker_node.add_child(speaker_cone_mesh)
+	speaker_beacon_mesh = MeshInstance3D.new()
+	speaker_beacon_mesh.name = "SpeakerBeacon"
+	var beacon_box := BoxMesh.new()
+	beacon_box.size = Vector3(0.56, 0.16, 0.22)
+	speaker_beacon_mesh.mesh = beacon_box
+	speaker_beacon_mesh.position = Vector3(0.0, 1.30, 0.0)
+	speaker_node.add_child(speaker_beacon_mesh)
+	add_child(speaker_node)
+	update_speaker_3d()
+
+func update_speaker_3d() -> void:
+	if speaker_cone_mesh != null:
+		if music_playing:
+			speaker_cone_mesh.material_override = mural_material(Color("f5d57a") if music_mode == "sketch" else Color("5fd4ba"))
+		elif rook_soundcheck_done:
+			speaker_cone_mesh.material_override = mural_material(Color("d6a85a"))
+		else:
+			speaker_cone_mesh.material_override = material(Color("7d7264"))
+	if speaker_beacon_mesh != null:
+		speaker_beacon_mesh.visible = music_playing or rook_soundcheck_done
+		if music_playing:
+			speaker_beacon_mesh.material_override = mural_material(Color("5fd4ba") if music_mode == "local" else Color("f8cc58"))
+		else:
+			speaker_beacon_mesh.material_override = mural_material(Color("e8b95a"))
+
+func build_audio_players() -> void:
+	sketch_generator = AudioStreamGenerator.new()
+	sketch_generator.mix_rate = MUSIC_MIX_RATE
+	sketch_generator.buffer_length = 0.25
+	sketch_player = AudioStreamPlayer.new()
+	sketch_player.name = "SketchAudioPlayer"
+	sketch_player.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
+	sketch_player.stream = sketch_generator
+	add_child(sketch_player)
+	local_audio_player = AudioStreamPlayer.new()
+	local_audio_player.name = "LocalAudioPlayer"
+	local_audio_player.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
+	add_child(local_audio_player)
+	apply_music_volume_db()
+	recompute_music_stems()
+
 func mural_palette_color(palette_id: String, completed: bool) -> Color:
 	match palette_id:
 		"sunset":
@@ -419,6 +561,7 @@ func update_mural_3d() -> void:
 			m_node.visible = false
 	if mural_banner_mesh != null:
 		mural_banner_mesh.visible = mural_completed
+	recompute_music_stems()
 
 func make_person_node(node_name: String, coat: Color, skin: Color, hair: Color, total_height: float, is_player: bool) -> Node3D:
 	var root_node := Node3D.new()
@@ -487,12 +630,16 @@ func mural_xz() -> Vector2:
 	return Vector2(MURAL_POS.x, MURAL_POS.z)
 
 func mural_tangent() -> Vector2:
-	var st := nearest_street_tangent(mural_xz())
-	return -st if st.x < 0.0 else st
+	if cached_mural_tangent.length_squared() < 1e-4:
+		var st := nearest_street_tangent(mural_xz())
+		cached_mural_tangent = -st if st.x < 0.0 else st
+	return cached_mural_tangent
 
 func mural_normal() -> Vector2:
-	var t := mural_tangent()
-	return Vector2(-t.y, t.x)
+	if cached_mural_normal.length_squared() < 1e-4:
+		var t := mural_tangent()
+		cached_mural_normal = Vector2(-t.y, t.x)
+	return cached_mural_normal
 
 func mural_stand_xz() -> Vector2:
 	return mural_xz() + mural_normal() * 1.45
@@ -502,8 +649,8 @@ func mural_corner_points() -> Array[Vector2]:
 	var t := mural_tangent()
 	var n := mural_normal()
 	var corners: Array[Vector2] = []
-	for sx in [-1.78, 1.78]:
-		for sz in [-0.18, 0.18]:
+	for sx in [-MURAL_HALF_EXTENTS.x, MURAL_HALF_EXTENTS.x]:
+		for sz in [-MURAL_HALF_EXTENTS.y, MURAL_HALF_EXTENTS.y]:
 			corners.append(c + t * sx + n * sz)
 	return corners
 
@@ -511,7 +658,41 @@ func is_point_in_mural_footprint(pt: Vector2, clearance: float = PLAYER_RADIUS_M
 	var rel := pt - mural_xz()
 	var lx := absf(rel.dot(mural_tangent()))
 	var lz := absf(rel.dot(mural_normal()))
-	return lx < (1.78 + clearance) and lz < (0.18 + clearance)
+	return lx < (MURAL_HALF_EXTENTS.x + clearance) and lz < (MURAL_HALF_EXTENTS.y + clearance)
+
+func speaker_xz() -> Vector2:
+	return Vector2(ROOK_SPEAKER_POS.x, ROOK_SPEAKER_POS.z)
+
+func speaker_tangent() -> Vector2:
+	if cached_speaker_tangent.length_squared() < 1e-4:
+		var st := nearest_street_tangent(speaker_xz())
+		cached_speaker_tangent = -st if st.x < 0.0 else st
+	return cached_speaker_tangent
+
+func speaker_normal() -> Vector2:
+	if cached_speaker_normal.length_squared() < 1e-4:
+		var t := speaker_tangent()
+		cached_speaker_normal = Vector2(-t.y, t.x)
+	return cached_speaker_normal
+
+func speaker_stand_xz() -> Vector2:
+	return speaker_xz() + speaker_normal() * 1.25
+
+func speaker_corner_points() -> Array[Vector2]:
+	var c := speaker_xz()
+	var t := speaker_tangent()
+	var n := speaker_normal()
+	var corners: Array[Vector2] = []
+	for sx in [-SPEAKER_HALF_EXTENTS.x, SPEAKER_HALF_EXTENTS.x]:
+		for sz in [-SPEAKER_HALF_EXTENTS.y, SPEAKER_HALF_EXTENTS.y]:
+			corners.append(c + t * sx + n * sz)
+	return corners
+
+func is_point_in_speaker_footprint(pt: Vector2, clearance: float = PLAYER_RADIUS_M) -> bool:
+	var rel := pt - speaker_xz()
+	var lx := absf(rel.dot(speaker_tangent()))
+	var lz := absf(rel.dot(speaker_normal()))
+	return lx < (SPEAKER_HALF_EXTENTS.x + clearance) and lz < (SPEAKER_HALF_EXTENTS.y + clearance)
 
 func material(color: Color) -> StandardMaterial3D:
 	var result := StandardMaterial3D.new()
@@ -665,6 +846,8 @@ func is_walkable_point(pt: Vector2, clearance: float = WALK_CLEARANCE_M) -> bool
 		return false
 	if is_point_in_mural_footprint(pt, PLAYER_RADIUS_M):
 		return false
+	if is_point_in_speaker_footprint(pt, PLAYER_RADIUS_M):
+		return false
 	if min_wall_distance(pt) < clearance:
 		return false
 	return true
@@ -815,7 +998,11 @@ func walk_step(input_dir: Vector2, delta: float) -> bool:
 	walking_to_mural = false
 	arrived_mural = false
 	pending_celeste_talk = false
+	walking_to_speaker = false
+	arrived_speaker = false
+	pending_rook_talk = false
 	show_mural_panel(false)
+	show_music_panel(false)
 	update_route_ribbon(true)
 	in_overview = false
 	following_player = true
@@ -872,7 +1059,7 @@ func update_walking_status() -> void:
 	var p := player_xz()
 	var nb := nearest_building_info(p)
 	var cut_note := " · %d cutaway" % occluded_buildings.size() if not occluded_buildings.is_empty() else ""
-	info.text = "Pos (%.1f, %.1f) m · %.2f m from %s%s\nWASD/Arrows or tap street to walk · 1–5 neighbors · M mural\nCity 2010 PDDL footprints · Streets © OpenStreetMap / ODbL" % [p.x, p.y, nb.distance, nb.id, cut_note]
+	info.text = "Pos (%.1f, %.1f) m · %.2f m from %s%s\nWASD/Arrows or tap street to walk · 1–5 neighbors · M mural · R/K music\nCity 2010 PDDL footprints · Streets © OpenStreetMap / ODbL" % [p.x, p.y, nb.distance, nb.id, cut_note]
 
 func choose_next_neighbor(direction: int = 1) -> bool:
 	if selected_neighbor >= 0:
@@ -890,8 +1077,13 @@ func walk_to_neighbor(index: int) -> bool:
 	walking_to_mural = false
 	arrived_mural = false
 	pending_celeste_talk = false
+	walking_to_speaker = false
+	arrived_speaker = false
+	pending_rook_talk = false
 	if index != celeste_index:
 		show_mural_panel(false)
+	if index != rook_index:
+		show_music_panel(false)
 	in_overview = false
 	following_player = true
 	if selected >= 0:
@@ -924,6 +1116,10 @@ func walk_to_mural() -> bool:
 	walking_to_mural = true
 	arrived_mural = false
 	pending_celeste_talk = false
+	walking_to_speaker = false
+	arrived_speaker = false
+	pending_rook_talk = false
+	show_music_panel(false)
 	in_overview = false
 	following_player = true
 	if selected >= 0:
@@ -951,6 +1147,43 @@ func walk_to_mural() -> bool:
 	info.text = "Walking to Portable Mural Board (with Celeste) · %.1f m\nFreestanding sidewalk easel outside %d city footprints\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [dist, data.buildings.size()]
 	return true
 
+func walk_to_speaker() -> bool:
+	selected_neighbor = -1
+	arrived_neighbor = -1
+	walking_to_mural = false
+	arrived_mural = false
+	pending_celeste_talk = false
+	walking_to_speaker = true
+	arrived_speaker = false
+	pending_rook_talk = false
+	show_mural_panel(false)
+	in_overview = false
+	following_player = true
+	if selected >= 0:
+		meshes[selected].material_override = building_materials[selected]
+		selected = -1
+	var goal := speaker_stand_xz()
+	var dist := player_xz().distance_to(goal)
+	if dist <= ARRIVAL_DISTANCE_M or player_xz().distance_to(speaker_xz()) <= 1.8:
+		finish_speaker_arrival()
+		return true
+	current_path = find_path(player_xz(), goal)
+	if current_path.size() > 1 and current_path[0].distance_to(player_xz()) < 0.20:
+		current_path.remove_at(0)
+	if current_path.is_empty():
+		walking_to_speaker = false
+		update_route_ribbon(true)
+		info.text = "No walkable route to Rook's Speaker\nWASD/Arrows or tap street to walk\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL"
+		return false
+	if view_size > 110.0:
+		view_size = 75.0
+	target = Vector3(player.position.x, 1.0, player.position.z)
+	update_camera()
+	update_occlusion(true)
+	update_route_ribbon(true)
+	info.text = "Walking to Rook's Turk St Speaker · %.1f m\nFreestanding sidewalk monitor outside %d city footprints\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [dist, data.buildings.size()]
+	return true
+
 func walk_to_point(goal_xz: Vector2) -> bool:
 	var safe_goal := nearest_walkable_point(goal_xz, WALK_CLEARANCE_M)
 	selected_neighbor = -1
@@ -958,7 +1191,11 @@ func walk_to_point(goal_xz: Vector2) -> bool:
 	walking_to_mural = false
 	arrived_mural = false
 	pending_celeste_talk = false
+	walking_to_speaker = false
+	arrived_speaker = false
+	pending_rook_talk = false
 	show_mural_panel(false)
+	show_music_panel(false)
 	in_overview = false
 	following_player = true
 	if selected >= 0:
@@ -994,6 +1231,15 @@ func finish_neighbor_arrival(index: int) -> void:
 	arrived_neighbor = index
 	walking_to_mural = false
 	arrived_mural = false
+	walking_to_speaker = false
+	arrived_speaker = false
+	var n_id := String(n.get("id", ""))
+	var newly_visited := false
+	if not n_id.is_empty() and not visited_neighbors.has(n_id):
+		visited_neighbors[n_id] = true
+		newly_visited = true
+	recompute_music_stems()
+	trigger_progress_cue("neighbor_visit", n.name)
 	update_route_ribbon(true)
 	if following_player:
 		target = Vector3(player.position.x, 1.0, player.position.z)
@@ -1002,6 +1248,7 @@ func finish_neighbor_arrival(index: int) -> void:
 	var nb := nearest_building_info(player_xz())
 	var cut_note := " · %d cutaway" % occluded_buildings.size() if not occluded_buildings.is_empty() else ""
 	if index == celeste_index:
+		pending_rook_talk = false
 		var trigger_talk := pending_celeste_talk
 		pending_celeste_talk = false
 		if trigger_talk:
@@ -1009,13 +1256,33 @@ func finish_neighbor_arrival(index: int) -> void:
 			return
 		if celeste_talk_count == 0:
 			celeste_talk_count = 1
+			recompute_music_stems()
+			save_godot_state()
+		elif newly_visited:
 			save_godot_state()
 		show_mural_panel(true)
 		update_mural_ui()
 		info.text = "With %s — %s (%d/3 mural motifs · %.2f m from %s%s)\nPortable sidewalk easel ready · Place Sun, Wave & Rise below\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, mural_placements.size(), nb.distance, nb.id, cut_note]
+	elif index == rook_index:
+		pending_celeste_talk = false
+		var trigger_rook := pending_rook_talk
+		pending_rook_talk = false
+		if trigger_rook:
+			check_sound_with_rook()
+			return
+		if newly_visited:
+			save_godot_state()
+		show_music_panel(true)
+		update_music_ui()
+		var sc_tag := "Soundcheck ready" if rook_soundcheck_done else "Tap Soundcheck below"
+		info.text = "With %s — %s (%s · %.2f m from %s%s)\nTurk St speaker %.1f m clear of wall · Explicit play/audition below\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, sc_tag, nb.distance, nb.id, cut_note, min_wall_distance(speaker_xz())]
 	else:
 		pending_celeste_talk = false
+		pending_rook_talk = false
+		if newly_visited:
+			save_godot_state()
 		show_mural_panel(false)
+		show_music_panel(false)
 		info.text = "With %s — %s (%.2f m from %s%s)\nWASD/Arrows or tap street to walk · Walk to neighbor for next\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, nb.distance, nb.id, cut_note]
 
 func finish_mural_arrival() -> void:
@@ -1027,7 +1294,10 @@ func finish_mural_arrival() -> void:
 	current_path.clear()
 	walking_to_mural = false
 	arrived_mural = true
+	walking_to_speaker = false
+	arrived_speaker = false
 	arrived_neighbor = -1
+	pending_rook_talk = false
 	var trigger_talk := pending_celeste_talk
 	pending_celeste_talk = false
 	update_route_ribbon(true)
@@ -1040,11 +1310,41 @@ func finish_mural_arrival() -> void:
 		return
 	if celeste_talk_count == 0:
 		celeste_talk_count = 1
+		recompute_music_stems()
 		save_godot_state()
 	show_mural_panel(true)
 	update_mural_ui()
 	var nb := nearest_building_info(player_xz())
 	info.text = "At Portable Mural Board with Celeste (%d/3 motifs · %s palette · %.2f m from %s)\nFreestanding sidewalk easel — no building façade painted\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [mural_placements.size(), mural_palette.capitalize(), nb.distance, nb.id]
+
+func finish_speaker_arrival() -> void:
+	var stand_pt := speaker_stand_xz()
+	var cur := player_xz()
+	if is_point_in_speaker_footprint(cur, PLAYER_RADIUS_M) or cur.distance_to(stand_pt) > 0.65:
+		if is_walkable_point(stand_pt):
+			player.position = Vector3(stand_pt.x, 0.0, stand_pt.y)
+	current_path.clear()
+	walking_to_speaker = false
+	arrived_speaker = true
+	walking_to_mural = false
+	arrived_mural = false
+	arrived_neighbor = -1
+	pending_celeste_talk = false
+	var trigger_rook := pending_rook_talk
+	pending_rook_talk = false
+	update_route_ribbon(true)
+	if following_player:
+		target = Vector3(player.position.x, 1.0, player.position.z)
+		update_camera()
+	update_occlusion(true)
+	if trigger_rook:
+		check_sound_with_rook()
+		return
+	show_music_panel(true)
+	update_music_ui()
+	var nb := nearest_building_info(player_xz())
+	var sc_tag := active_stem_summary() if rook_soundcheck_done else "Tap Soundcheck below"
+	info.text = "At Rook's Turk St Speaker (%s · %.2f m from %s)\nFreestanding sidewalk monitor · Play sketch or audition local Suno file\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [sc_tag, nb.distance, nb.id]
 
 func celeste_dialogue_text() -> String:
 	if mural_completed:
@@ -1056,6 +1356,13 @@ func celeste_dialogue_text() -> String:
 			return "Celeste: \"Cycle Garden, Sunset, or Ocean, or tap Move tile to shift your active motif on the 6×3 board.\""
 		_:
 			return "Celeste: \"Every motif stays on our portable sidewalk board in its own Godot save—no façade is altered.\""
+
+func rook_dialogue_text() -> String:
+	if music_mode == "local" and not local_music_name.is_empty():
+		return "Rook: \"Spinning your local cut (%s) on the Turk Street monitor—tab-local only, never uploaded.\"" % local_music_name
+	if mural_completed:
+		return "Rook: \"Celeste's 3/3 mural unlocked the full 4-stem 80 BPM sketch—hit Play or load a local Suno bounce.\""
+	return "Rook: \"Turk Street speaker is %.1f m clear of the wall—soundcheck locked in (%s).\"" % [min_wall_distance(speaker_xz()), active_stem_summary()]
 
 func focus_mural_camera() -> void:
 	in_overview = false
@@ -1072,15 +1379,468 @@ func focus_mural_camera() -> void:
 		update_camera()
 	update_occlusion(true)
 
+func focus_speaker_camera() -> void:
+	in_overview = false
+	following_player = false
+	if selected >= 0:
+		meshes[selected].material_override = building_materials[selected]
+		selected = -1
+	var r_pos: Vector3 = neighbors[rook_index].pos
+	target = Vector3((r_pos.x + ROOK_SPEAKER_POS.x) * 0.5, 1.2, (r_pos.z + ROOK_SPEAKER_POS.z) * 0.5)
+	view_size = 45.0
+	update_camera()
+	if get_viewport() != null and get_viewport().get_visible_rect().size.x < 600:
+		target -= camera.global_basis.y * 4.2
+		update_camera()
+	update_occlusion(true)
+
 func talk_with_celeste() -> String:
 	celeste_talk_count += 1
+	visited_neighbors[CELESTE_ID] = true
+	recompute_music_stems()
 	show_mural_panel(true)
 	focus_mural_camera()
 	save_godot_state()
 	update_mural_ui()
+	trigger_progress_cue("celeste_talk", "Celeste talk")
 	var line := celeste_dialogue_text()
 	info.text = "%s\nPortable Mural Board: %d/3 motifs (%s palette) · Separate Godot save\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, mural_placements.size(), mural_palette.capitalize()]
 	return line
+
+func request_rook_soundcheck() -> bool:
+	if arrived_neighbor == rook_index or arrived_speaker:
+		check_sound_with_rook()
+		return true
+	if selected_neighbor == rook_index or walking_to_speaker:
+		pending_rook_talk = true
+		return true
+	if walk_to_neighbor(rook_index):
+		if arrived_neighbor == rook_index:
+			check_sound_with_rook()
+		else:
+			pending_rook_talk = true
+		return true
+	return false
+
+func check_sound_with_rook() -> String:
+	visited_neighbors[ROOK_ID] = true
+	rook_soundcheck_done = true
+	recompute_music_stems()
+	update_speaker_3d()
+	show_music_panel(true)
+	focus_speaker_camera()
+	save_godot_state()
+	trigger_progress_cue("rook_soundcheck", "Rook soundcheck")
+	update_music_ui()
+	var line := rook_dialogue_text()
+	info.text = "%s\nRook's Speaker: %s · Explicit Play/Pause & local Suno audition\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, active_stem_summary()]
+	return line
+
+func recompute_music_stems() -> void:
+	var mask := 1 # "bass" always active
+	if visited_neighbors.size() >= 1 or celeste_talk_count > 0 or rook_soundcheck_done:
+		mask |= 2 # "brush"
+	if mural_placements.size() >= 1 or celeste_talk_count > 0:
+		mask |= 4 # "chords"
+	if mural_completed or rook_soundcheck_done:
+		mask |= 8 # "lead"
+	unlocked_stem_mask = mask
+	update_music_ui()
+
+func unlocked_stems() -> Array[String]:
+	var result: Array[String] = []
+	for i in range(MUSIC_STEM_ORDER.size()):
+		if (unlocked_stem_mask & (1 << i)) != 0:
+			result.append(MUSIC_STEM_ORDER[i])
+	return result
+
+func active_stem_summary() -> String:
+	var stems := unlocked_stems()
+	return "%s (%d/%d stems)" % ["+".join(stems), stems.size(), MUSIC_STEM_ORDER.size()]
+
+func trigger_progress_cue(cue_id: String, reason: String) -> void:
+	recompute_music_stems()
+	var stems := unlocked_stems()
+	last_music_cue = cue_id
+	cue_history.append({
+		"id": cue_id,
+		"reason": reason,
+		"stems": stems.duplicate()
+	})
+	if cue_history.size() > 32:
+		cue_history.pop_front()
+	if music_playing and music_mode == "sketch":
+		cue_chime_timer = 0.32
+		match cue_id:
+			"mural_complete":
+				cue_chime_freq = 783.99
+			"rook_soundcheck":
+				cue_chime_freq = 659.25
+			"mural_motif":
+				cue_chime_freq = 587.33
+			_:
+				cue_chime_freq = 523.25
+	update_music_ui()
+
+func apply_music_volume_db() -> void:
+	var db := -80.0 if music_volume <= 0.0001 else linear_to_db(music_volume)
+	if sketch_player != null:
+		sketch_player.volume_db = db
+	if local_audio_player != null:
+		local_audio_player.volume_db = db
+	if music_playing and music_mode == "sketch":
+		last_sample_rms = last_pre_gain_rms * music_volume
+	else:
+		last_sample_rms = 0.0
+
+func start_music_playback() -> bool:
+	music_playing = true
+	var has_audio_device := AudioServer.get_driver_name() != "Dummy"
+	if music_mode == "local" and local_audio_player != null and local_audio_player.stream != null:
+		if sketch_player != null and sketch_player.playing:
+			sketch_player.stop()
+		sketch_playback = null
+		apply_music_volume_db()
+		if has_audio_device:
+			local_audio_player.play()
+		last_pre_gain_rms = 0.0
+		last_sample_rms = 0.0
+	else:
+		music_mode = "sketch"
+		if local_audio_player != null and local_audio_player.playing:
+			local_audio_player.stop()
+		apply_music_volume_db()
+		if sketch_player != null and has_audio_device:
+			if not sketch_player.playing:
+				sketch_player.play()
+			sketch_playback = sketch_player.get_stream_playback() as AudioStreamGeneratorPlayback
+			if sketch_playback != null:
+				advance_music_clock(sketch_generator.buffer_length)
+	update_speaker_3d()
+	update_music_ui()
+	return music_playing
+
+func stop_music_playback() -> void:
+	music_playing = false
+	if sketch_player != null and sketch_player.playing:
+		sketch_player.stop()
+	if local_audio_player != null and local_audio_player.playing:
+		local_audio_player.stop()
+	sketch_playback = null
+	cue_chime_timer = 0.0
+	last_pre_gain_rms = 0.0
+	last_sample_rms = 0.0
+	update_speaker_3d()
+	update_music_ui()
+
+func toggle_music_playback() -> bool:
+	if music_playing:
+		stop_music_playback()
+		return false
+	return start_music_playback()
+
+func cycle_music_volume() -> float:
+	var best_idx := 0
+	var best_diff := INF
+	for i in range(MUSIC_VOL_STEPS.size()):
+		var d := absf(MUSIC_VOL_STEPS[i] - music_volume)
+		if d < best_diff:
+			best_diff = d
+			best_idx = i
+	music_volume = MUSIC_VOL_STEPS[posmod(best_idx + 1, MUSIC_VOL_STEPS.size())]
+	apply_music_volume_db()
+	update_music_ui()
+	return music_volume
+
+func advance_music_clock(delta: float) -> int:
+	if not music_playing or delta <= 0.0:
+		return 0
+	var has_audio_device := AudioServer.get_driver_name() != "Dummy"
+	if music_mode == "local":
+		if has_audio_device and local_audio_player != null and local_audio_player.stream != null and not local_audio_player.playing:
+			local_audio_player.play()
+		last_pre_gain_rms = 0.0
+		last_sample_rms = 0.0
+		return 0
+	if cue_chime_timer > 0.0:
+		cue_chime_timer = maxf(0.0, cue_chime_timer - delta)
+	if has_audio_device and sketch_playback == null and sketch_player != null and sketch_player.playing:
+		sketch_playback = sketch_player.get_stream_playback() as AudioStreamGeneratorPlayback
+	var frames_to_gen := 0
+	if sketch_playback != null:
+		frames_to_gen = sketch_playback.get_frames_available()
+	else:
+		frames_to_gen = maxi(1, int(round(delta * MUSIC_MIX_RATE)))
+	if frames_to_gen <= 0:
+		last_sample_rms = last_pre_gain_rms * music_volume
+		return 0
+	var bass_freqs: Array[float] = [110.0, 110.0, 130.81, 98.0, 123.47, 123.47, 146.83, 98.0]
+	var lead_freqs: Array[float] = [440.0, 523.25, 587.33, 659.25, 587.33, 523.25, 493.88, 392.0]
+	var inv_rate := 1.0 / MUSIC_MIX_RATE
+	var samples_per_step := maxi(1, int(round(MUSIC_STEP_SEC * MUSIC_MIX_RATE)))
+	var sum_sq := 0.0
+	for i in range(frames_to_gen):
+		var sample_idx := sketch_frames_pushed + i
+		var t := float(sample_idx) * inv_rate
+		var step_total := int(sample_idx / samples_per_step)
+		var step_idx := posmod(step_total, 8)
+		var step_t := float(sample_idx % samples_per_step) * inv_rate
+		var c0 := 220.0 if step_idx < 4 else 196.0
+		var c1 := 261.63 if step_idx < 4 else 246.94
+		var c2 := 329.63 if step_idx < 4 else 293.66
+		var bass_f: float = bass_freqs[step_idx]
+		var lead_f: float = lead_freqs[step_idx]
+		var sig := sin(TAU * bass_f * t) * 0.24 + sin(TAU * bass_f * 2.0 * t) * 0.08
+		if (unlocked_stem_mask & 2) != 0:
+			var env := exp(-step_t * 14.0)
+			sig += sin(TAU * 910.0 * t) * cos(TAU * 1430.0 * t) * env * 0.10
+		if (unlocked_stem_mask & 4) != 0:
+			var c_sig := (sin(TAU * c0 * t) + sin(TAU * c1 * t) + sin(TAU * c2 * t)) / 3.0
+			sig += c_sig * 0.16
+		if (unlocked_stem_mask & 8) != 0:
+			sig += sin(TAU * lead_f * t + sin(TAU * 5.0 * t) * 0.25) * 0.14
+		if cue_chime_timer > 0.0:
+			sig += sin(TAU * cue_chime_freq * t) * 0.15
+		var sample := clampf(sig, -0.95, 0.95)
+		sum_sq += sample * sample
+		if sketch_playback != null:
+			sketch_playback.push_frame(Vector2(sample, sample))
+	sketch_frames_pushed += frames_to_gen
+	sketch_phase = fmod(float(sketch_frames_pushed) * inv_rate, 60.0)
+	sketch_tick = int(sketch_frames_pushed / samples_per_step)
+	last_pre_gain_rms = sqrt(sum_sq / float(frames_to_gen))
+	last_sample_rms = last_pre_gain_rms * music_volume
+	return frames_to_gen
+
+func parse_wav_stream(raw_bytes: PackedByteArray) -> AudioStreamWAV:
+	if raw_bytes.size() < 44:
+		return null
+	if raw_bytes.slice(0, 4).get_string_from_ascii() != "RIFF":
+		return null
+	if raw_bytes.slice(8, 12).get_string_from_ascii() != "WAVE":
+		return null
+	var offset := 12
+	var fmt_found := false
+	var audio_format := 0
+	var channels := 0
+	var sample_rate := 0
+	var bits_per_sample := 0
+	var data_offset := -1
+	var data_size := 0
+	while offset + 8 <= raw_bytes.size():
+		var chunk_id := raw_bytes.slice(offset, offset + 4).get_string_from_ascii()
+		var chunk_size := int(raw_bytes.decode_u32(offset + 4))
+		var chunk_body := offset + 8
+		if chunk_body + chunk_size > raw_bytes.size():
+			return null
+		if chunk_id == "fmt ":
+			if chunk_size < 16:
+				return null
+			audio_format = int(raw_bytes.decode_u16(chunk_body))
+			channels = int(raw_bytes.decode_u16(chunk_body + 2))
+			sample_rate = int(raw_bytes.decode_u32(chunk_body + 4))
+			bits_per_sample = int(raw_bytes.decode_u16(chunk_body + 14))
+			fmt_found = true
+		elif chunk_id == "data":
+			data_offset = chunk_body
+			data_size = chunk_size
+			break
+		offset = chunk_body + chunk_size + (chunk_size % 2)
+	if not fmt_found or data_offset < 0 or data_size <= 0:
+		return null
+	if audio_format != 1 or (channels != 1 and channels != 2):
+		return null
+	if bits_per_sample != 8 and bits_per_sample != 16:
+		return null
+	if sample_rate < 4000 or sample_rate > 96000:
+		return null
+	var frame_bytes := channels * int(bits_per_sample / 8)
+	if frame_bytes <= 0 or data_size < frame_bytes:
+		return null
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS if bits_per_sample == 16 else AudioStreamWAV.FORMAT_8_BITS
+	wav.mix_rate = sample_rate
+	wav.stereo = (channels == 2)
+	wav.data = raw_bytes.slice(data_offset, data_offset + data_size)
+	wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	wav.loop_begin = 0
+	wav.loop_end = int(data_size / frame_bytes)
+	return wav
+
+func is_plausible_mp3(raw_bytes: PackedByteArray) -> bool:
+	if raw_bytes.size() < 16:
+		return false
+	var offset := 0
+	if raw_bytes[0] == 0x49 and raw_bytes[1] == 0x44 and raw_bytes[2] == 0x33:
+		if raw_bytes[3] == 0xFF or raw_bytes[4] == 0xFF:
+			return false
+		for b_i in range(6, 10):
+			if raw_bytes[b_i] >= 0x80:
+				return false
+		var tag_size := (int(raw_bytes[6]) << 21) | (int(raw_bytes[7]) << 14) | (int(raw_bytes[8]) << 7) | int(raw_bytes[9])
+		offset = 10 + tag_size
+	if offset + 4 > raw_bytes.size():
+		return false
+	if raw_bytes[offset] != 0xFF or (raw_bytes[offset + 1] & 0xE0) != 0xE0:
+		return false
+	var ver_bits := (raw_bytes[offset + 1] >> 3) & 0x03
+	var layer_bits := (raw_bytes[offset + 1] >> 1) & 0x03
+	var br_idx := (raw_bytes[offset + 2] >> 4) & 0x0F
+	var sr_idx := (raw_bytes[offset + 2] >> 2) & 0x03
+	return ver_bits != 0x01 and layer_bits != 0x00 and br_idx != 0x00 and br_idx != 0x0F and sr_idx != 0x03
+
+func is_plausible_ogg_vorbis(raw_bytes: PackedByteArray) -> bool:
+	if raw_bytes.size() < 64:
+		return false
+	if raw_bytes.slice(0, 4).get_string_from_ascii() != "OggS" or raw_bytes[4] != 0:
+		return false
+	if raw_bytes[28] != 1 or raw_bytes.slice(29, 35).get_string_from_ascii() != "vorbis":
+		return false
+	var channels := int(raw_bytes[39])
+	var sr := int(raw_bytes.decode_u32(40))
+	if channels < 1 or channels > 8 or sr < 4000 or sr > 192000:
+		return false
+	var second_page := raw_bytes.slice(58, raw_bytes.size()).get_string_from_ascii().find("OggS")
+	return second_page >= 0
+
+func load_local_music_bytes(file_name: String, raw_bytes: PackedByteArray) -> bool:
+	var clean_name := file_name.get_file().strip_edges()
+	var ext := clean_name.get_extension().to_lower()
+	if clean_name.is_empty() or not (ext in ["mp3", "wav", "ogg"]):
+		music_error = MUSIC_FILE_ERROR
+		update_music_ui()
+		return false
+	if raw_bytes.is_empty() or raw_bytes.size() > MUSIC_MAX_LOCAL_BYTES:
+		music_error = MUSIC_FILE_ERROR
+		update_music_ui()
+		return false
+	var stream: AudioStream = null
+	if ext == "wav":
+		stream = parse_wav_stream(raw_bytes)
+	elif ext == "mp3":
+		if is_plausible_mp3(raw_bytes):
+			var mp3 := AudioStreamMP3.new()
+			mp3.data = raw_bytes
+			mp3.loop = true
+			if mp3.get_length() > 0.0:
+				stream = mp3
+	elif ext == "ogg":
+		if is_plausible_ogg_vorbis(raw_bytes):
+			var ogg := AudioStreamOggVorbis.load_from_buffer(raw_bytes)
+			if ogg != null and ogg.get_length() > 0.0:
+				ogg.loop = true
+				stream = ogg
+	if stream == null:
+		music_error = MUSIC_DECODE_ERROR
+		update_music_ui()
+		return false
+	if local_audio_player != null:
+		local_audio_player.stream = stream
+	local_music_name = clean_name
+	music_mode = "local"
+	music_error = ""
+	start_music_playback()
+	trigger_progress_cue("local_audition", clean_name)
+	info.text = "Auditioning local track: %s (Rook's Turk St speaker)\nTab-local only — never uploaded or saved · Use Sketch to return\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % clean_name
+	return true
+
+func use_synth_sketch() -> void:
+	music_error = ""
+	music_mode = "sketch"
+	if local_audio_player != null and local_audio_player.playing:
+		local_audio_player.stop()
+	if music_playing:
+		start_music_playback()
+	else:
+		update_speaker_3d()
+		update_music_ui()
+	info.text = "Switched Rook's Turk St Speaker to 80 BPM Synth Sketch (%s)\nExplicit Play/Pause below · Load Suno File for local audition\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % active_stem_summary()
+
+func setup_web_audio_bridge() -> void:
+	if not OS.has_feature("web"):
+		return
+	var js_init := """
+	(function() {
+		if (window.__tenderloinWebAudioReady) return;
+		window.__tenderloinWebAudioReady = true;
+		// Single pending-file slot: a new selection before the next frame poll replaces the prior slot.
+		window.__tenderloinWebAudioPending = null;
+		window.__tenderloinQueueLocalAudioBytes = function(name, bytes, err) {
+			var u8 = (bytes instanceof Uint8Array) ? bytes : (bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : new Uint8Array(0));
+			window.__tenderloinWebAudioPending = { name: String(name || ''), bytes: u8, err: String(err || '') };
+			return true;
+		};
+		window.__tenderloinQueueLocalAudioBase64 = function(name, b64, err) {
+			var u8 = new Uint8Array(0);
+			if (b64) {
+				try {
+					var bin = window.atob(String(b64));
+					u8 = new Uint8Array(bin.length);
+					for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+				} catch (_e) {
+					return window.__tenderloinQueueLocalAudioBytes(name, new Uint8Array(0), err || 'decode');
+				}
+			}
+			return window.__tenderloinQueueLocalAudioBytes(name, u8, err);
+		};
+		var input = document.createElement('input');
+		input.type = 'file';
+		input.id = 'tenderloin-godot-audio-input';
+		input.accept = '.mp3,.wav,.ogg,audio/mpeg,audio/wav,audio/ogg';
+		input.style.display = 'none';
+		input.addEventListener('change', function() {
+			var f = input.files && input.files[0];
+			if (!f) return;
+			if (f.size <= 0 || f.size > 40 * 1024 * 1024) {
+				window.__tenderloinQueueLocalAudioBytes(f.name, new Uint8Array(0), 'size');
+				input.value = '';
+				return;
+			}
+			var reader = new FileReader();
+			reader.onload = function() {
+				var buf = reader.result instanceof ArrayBuffer ? new Uint8Array(reader.result) : new Uint8Array(0);
+				window.__tenderloinQueueLocalAudioBytes(f.name, buf, '');
+				input.value = '';
+			};
+			reader.onerror = function() {
+				window.__tenderloinQueueLocalAudioBytes(f.name, new Uint8Array(0), 'read');
+				input.value = '';
+			};
+			reader.readAsArrayBuffer(f);
+		});
+		document.body.appendChild(input);
+		window.__tenderloinOpenAudioPicker = function() {
+			input.click();
+			return true;
+		};
+	})();
+	"""
+	JavaScriptBridge.eval(js_init, true)
+
+func prompt_local_music_file() -> void:
+	show_music_panel(true)
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("window.__tenderloinOpenAudioPicker && window.__tenderloinOpenAudioPicker();", true)
+	else:
+		info.text = "Choose a local MP3, WAV, or OGG track (or call load_local_music_bytes)\nTab-local only — never uploaded or saved · Sketch remains available\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL"
+
+func poll_web_audio() -> void:
+	if not OS.has_feature("web"):
+		return
+	var has_pending: Variant = JavaScriptBridge.eval("Boolean(window.__tenderloinWebAudioPending);", true)
+	if not bool(has_pending):
+		return
+	var fname_var: Variant = JavaScriptBridge.eval("window.__tenderloinWebAudioPending ? String(window.__tenderloinWebAudioPending.name || '') : '';", true)
+	var err_var: Variant = JavaScriptBridge.eval("window.__tenderloinWebAudioPending ? String(window.__tenderloinWebAudioPending.err || '') : '';", true)
+	var raw_var: Variant = JavaScriptBridge.eval("var p = window.__tenderloinWebAudioPending; window.__tenderloinWebAudioPending = null; (p && p.bytes instanceof Uint8Array) ? p.bytes : new Uint8Array(0);", true)
+	var fname := String(fname_var) if fname_var is String else ""
+	var err := String(err_var) if err_var is String else ""
+	var raw: PackedByteArray = raw_var if raw_var is PackedByteArray else PackedByteArray()
+	if not err.is_empty() or raw.is_empty():
+		music_error = MUSIC_FILE_ERROR
+		update_music_ui()
+		return
+	load_local_music_bytes(fname, raw)
 
 func can_interact_with_mural() -> bool:
 	return arrived_mural or arrived_neighbor == celeste_index or (mural_panel != null and mural_panel.visible)
@@ -1117,11 +1877,16 @@ func place_mural_motif(motif_id: String, col: int, row: int) -> bool:
 		return false
 	if cell_occupied_by_other(col, row, motif_id):
 		return false
+	var was_completed := mural_completed
 	active_motif = motif_id
 	mural_placements[motif_id] = {"col": col, "row": row}
 	update_mural_3d()
 	save_godot_state()
 	update_mural_ui()
+	if mural_completed and not was_completed:
+		trigger_progress_cue("mural_complete", "3/3 motifs")
+	else:
+		trigger_progress_cue("mural_motif", motif_id)
 	info.text = "Placed %s motif at (%d, %d) on Portable Mural Board with Celeste (%d/3 motifs)\nFreestanding sidewalk easel · %s palette · Saved to Godot storage\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [motif_id.capitalize(), col, row, mural_placements.size(), mural_palette.capitalize()]
 	return true
 
@@ -1172,6 +1937,7 @@ func set_mural_palette(palette_id: String) -> bool:
 	update_mural_3d()
 	save_godot_state()
 	update_mural_ui()
+	trigger_progress_cue("mural_palette", palette_id)
 	info.text = "Portable Mural Board palette set to %s with Celeste (%d/3 motifs)\nFreestanding sidewalk easel · Saved to Godot storage\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [mural_palette.capitalize(), mural_placements.size()]
 	return true
 
@@ -1208,7 +1974,19 @@ func is_whole_json_number(val: Variant) -> bool:
 		return not is_nan(val) and not is_inf(val) and is_equal_approx(val, roundf(val))
 	return false
 
+func valid_neighbor_ids() -> Array[String]:
+	var ids: Array[String] = []
+	for n in neighbors:
+		var nid := String(n.get("id", ""))
+		if not nid.is_empty():
+			ids.append(nid)
+	return ids
+
 func build_save_envelope() -> Dictionary:
+	var v_list: Array[String] = []
+	for k in visited_neighbors.keys():
+		v_list.append(String(k))
+	v_list.sort()
 	return {
 		"schema": "tenderloin-redux.godot.save",
 		"version": GODOT_SAVE_VERSION,
@@ -1216,7 +1994,9 @@ func build_save_envelope() -> Dictionary:
 		"celeste_talk_count": celeste_talk_count,
 		"mural_palette": mural_palette,
 		"active_motif": active_motif,
-		"mural_placements": mural_placements.duplicate(true)
+		"mural_placements": mural_placements.duplicate(true),
+		"rook_soundcheck_done": rook_soundcheck_done,
+		"visited_neighbors": v_list
 	}
 
 func save_godot_state() -> bool:
@@ -1240,9 +2020,22 @@ func reset_mural_state_to_defaults(status_label: String) -> void:
 	active_motif = "sun"
 	mural_placements.clear()
 	mural_completed = false
+	rook_soundcheck_done = false
+	visited_neighbors.clear()
+	stop_music_playback()
+	sketch_tick = 0
+	sketch_phase = 0.0
+	sketch_frames_pushed = 0
+	music_mode = "sketch"
+	local_music_name = ""
+	music_error = ""
+	if local_audio_player != null:
+		local_audio_player.stream = null
 	save_load_status = status_label
 	update_mural_3d()
+	update_speaker_3d()
 	update_mural_ui()
+	update_music_ui()
 
 func apply_save_envelope(raw_json: String) -> bool:
 	var trimmed := raw_json.strip_edges()
@@ -1272,6 +2065,26 @@ func apply_save_envelope(raw_json: String) -> bool:
 	if not is_whole_json_number(talk_val) or int(roundf(float(talk_val))) < 0:
 		reset_mural_state_to_defaults("recovered")
 		return false
+	var sc_done := false
+	if env.has("rook_soundcheck_done"):
+		var sc_val: Variant = env.get("rook_soundcheck_done")
+		if not (sc_val is bool):
+			reset_mural_state_to_defaults("recovered")
+			return false
+		sc_done = bool(sc_val)
+	var clean_visited: Dictionary = {}
+	if env.has("visited_neighbors"):
+		var vn_val: Variant = env.get("visited_neighbors")
+		if not (vn_val is Array):
+			reset_mural_state_to_defaults("recovered")
+			return false
+		var known_ids := valid_neighbor_ids()
+		var vn_arr: Array = vn_val
+		for item in vn_arr:
+			if not (item is String) or not (String(item) in known_ids):
+				reset_mural_state_to_defaults("recovered")
+				return false
+			clean_visited[String(item)] = true
 	var raw_placements: Variant = env.get("mural_placements", null)
 	if not raw_placements is Dictionary:
 		reset_mural_state_to_defaults("recovered")
@@ -1313,10 +2126,36 @@ func apply_save_envelope(raw_json: String) -> bool:
 	var act_id := String(env.get("active_motif", "sun"))
 	active_motif = act_id if act_id in MURAL_MOTIFS else "sun"
 	mural_placements = clean_placements
+	rook_soundcheck_done = sc_done
+	visited_neighbors = clean_visited
+	stop_music_playback()
+	sketch_tick = 0
+	sketch_phase = 0.0
+	sketch_frames_pushed = 0
+	music_mode = "sketch"
+	local_music_name = ""
+	music_error = ""
+	if local_audio_player != null:
+		local_audio_player.stream = null
 	save_load_status = "restored"
 	update_mural_3d()
+	update_speaker_3d()
 	update_mural_ui()
+	update_music_ui()
 	return true
+
+func extract_candidate_save_seq(raw_json: String) -> int:
+	var trimmed := raw_json.strip_edges()
+	if not trimmed.begins_with("{") or not trimmed.ends_with("}"):
+		return -1
+	var parsed: Variant = JSON.parse_string(trimmed)
+	if not (parsed is Dictionary):
+		return -1
+	var env: Dictionary = parsed
+	var seq_val: Variant = env.get("save_seq", 0)
+	if not is_whole_json_number(seq_val):
+		return -1
+	return int(roundf(float(seq_val)))
 
 func load_godot_state() -> bool:
 	var candidates: Array[String] = []
@@ -1331,6 +2170,10 @@ func load_godot_state() -> bool:
 	if candidates.is_empty():
 		reset_mural_state_to_defaults("fresh")
 		return false
+	if candidates.size() > 1:
+		candidates.sort_custom(func(a: String, b: String) -> bool:
+			return extract_candidate_save_seq(a) > extract_candidate_save_seq(b)
+		)
 	for raw_json in candidates:
 		if apply_save_envelope(raw_json):
 			return true
@@ -1353,6 +2196,8 @@ func advance_walk(delta: float) -> bool:
 		goal_xz = neighbor_xz(selected_neighbor)
 	elif walking_to_mural:
 		goal_xz = mural_stand_xz()
+	elif walking_to_speaker:
+		goal_xz = speaker_stand_xz()
 	var replanned := false
 	while remaining > 0.0 and not current_path.is_empty():
 		var cur := player_xz()
@@ -1361,6 +2206,9 @@ func advance_walk(delta: float) -> bool:
 			return true
 		if walking_to_mural and cur.distance_to(goal_xz) <= ARRIVAL_DISTANCE_M:
 			finish_mural_arrival()
+			return true
+		if walking_to_speaker and cur.distance_to(goal_xz) <= ARRIVAL_DISTANCE_M:
+			finish_speaker_arrival()
 			return true
 		var wp: Vector2 = current_path[0]
 		var to_wp := wp - cur
@@ -1388,6 +2236,9 @@ func advance_walk(delta: float) -> bool:
 		if walking_to_mural and nxt.distance_to(goal_xz) <= ARRIVAL_DISTANCE_M:
 			finish_mural_arrival()
 			return true
+		if walking_to_speaker and nxt.distance_to(goal_xz) <= ARRIVAL_DISTANCE_M:
+			finish_speaker_arrival()
+			return true
 		if nxt.distance_to(wp) <= 0.08:
 			current_path.remove_at(0)
 	if following_player:
@@ -1395,13 +2246,15 @@ func advance_walk(delta: float) -> bool:
 		update_camera()
 	update_occlusion(false)
 	update_route_ribbon(false)
-	if selected_neighbor >= 0 or walking_to_mural:
+	if selected_neighbor >= 0 or walking_to_mural or walking_to_speaker:
 		var dist_after := player_xz().distance_to(goal_xz)
 		if dist_after <= ARRIVAL_DISTANCE_M:
 			if selected_neighbor >= 0:
 				finish_neighbor_arrival(selected_neighbor)
-			else:
+			elif walking_to_mural:
 				finish_mural_arrival()
+			else:
+				finish_speaker_arrival()
 			return true
 		if current_path.is_empty():
 			var retry := find_path(player_xz(), goal_xz)
@@ -1411,10 +2264,16 @@ func advance_walk(delta: float) -> bool:
 				current_path = retry
 				update_route_ribbon(true)
 			else:
-				var dest_name: String = neighbors[selected_neighbor].name if selected_neighbor >= 0 else "Portable Mural Board"
+				var dest_name := "Rook's Speaker"
+				if selected_neighbor >= 0:
+					dest_name = neighbors[selected_neighbor].name
+				elif walking_to_mural:
+					dest_name = "Portable Mural Board"
 				arrived_neighbor = -1
 				walking_to_mural = false
+				walking_to_speaker = false
 				pending_celeste_talk = false
+				pending_rook_talk = false
 				update_route_ribbon(true)
 				info.text = "Route blocked to %s (%.1f m remaining)\nUse WASD/Arrows or tap another street point\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [dest_name, dist_after]
 	elif current_path.is_empty():
@@ -1425,7 +2284,9 @@ func advance_walk(delta: float) -> bool:
 func stop_walking() -> void:
 	current_path.clear()
 	walking_to_mural = false
+	walking_to_speaker = false
 	pending_celeste_talk = false
+	pending_rook_talk = false
 	update_route_ribbon(true)
 	update_walking_status()
 
@@ -1480,7 +2341,11 @@ func update_occlusion(force: bool = true) -> void:
 		clear_occlusion()
 		return
 	var p_xz := player_xz()
-	var occ_tag := selected_neighbor if not walking_to_mural and not arrived_mural else 99
+	var occ_tag := selected_neighbor
+	if walking_to_mural or arrived_mural:
+		occ_tag = 99
+	elif walking_to_speaker or arrived_speaker:
+		occ_tag = 98
 	if not force and p_xz.distance_to(last_occlusion_pos) < 0.40 and last_occlusion_neighbor == occ_tag:
 		return
 	clear_occlusion()
@@ -1492,12 +2357,20 @@ func update_occlusion(force: bool = true) -> void:
 	if selected_neighbor == celeste_index or arrived_neighbor == celeste_index or walking_to_mural or arrived_mural:
 		focus_points.append(mural_xz())
 		focus_points.append(neighbor_xz(celeste_index))
+	if selected_neighbor == rook_index or arrived_neighbor == rook_index or walking_to_speaker or arrived_speaker:
+		focus_points.append(speaker_xz())
+		focus_points.append(neighbor_xz(rook_index))
 	for idx in range(data.buildings.size()):
 		for fp in focus_points:
 			if building_occludes_point(idx, fp, 1.0):
 				occluded_buildings.append(idx)
 				meshes[idx].material_override = cutaway_material
 				break
+
+func _process(delta: float) -> void:
+	poll_web_audio()
+	if music_playing:
+		advance_music_clock(delta)
 
 func _physics_process(delta: float) -> void:
 	var input_vec := Vector2.ZERO
@@ -1529,6 +2402,8 @@ func is_screen_point_in_ui(screen_pos: Vector2) -> bool:
 	if header_panel and header_panel.get_global_rect().has_point(screen_pos):
 		return true
 	if mural_panel and mural_panel.visible and mural_panel.get_global_rect().has_point(screen_pos):
+		return true
+	if music_panel and music_panel.visible and music_panel.get_global_rect().has_point(screen_pos):
 		return true
 	if controls and controls.get_global_rect().has_point(screen_pos):
 		return true
@@ -1563,6 +2438,11 @@ func handle_scene_tap(screen_pos: Vector2) -> bool:
 	var m_world_d := mural_xz().distance_to(ground_xz)
 	if (m_screen_d <= 38.0 or m_world_d <= 3.6) and m_screen_d < best_screen_d:
 		return walk_to_mural()
+	var s_screen := camera.unproject_position(ROOK_SPEAKER_POS + Vector3(0.0, 0.8, 0.0))
+	var s_screen_d := s_screen.distance_to(screen_pos)
+	var s_world_d := speaker_xz().distance_to(ground_xz)
+	if (s_screen_d <= 36.0 or s_world_d <= 3.2) and s_screen_d < best_screen_d:
+		return walk_to_speaker()
 	if best_idx >= 0:
 		return walk_to_neighbor(best_idx)
 	return walk_to_point(ground_xz)
@@ -1614,6 +2494,17 @@ func _unhandled_input(event: InputEvent) -> void:
 							talk_with_celeste()
 						else:
 							pending_celeste_talk = true
+			KEY_R:
+				request_rook_soundcheck()
+			KEY_K:
+				show_music_panel(true)
+				toggle_music_playback()
+			KEY_V:
+				show_music_panel(true)
+				cycle_music_volume()
+			KEY_U:
+				show_music_panel(true)
+				use_synth_sketch()
 			KEY_P:
 				if can_interact_with_mural():
 					cycle_mural_palette()
@@ -1656,7 +2547,11 @@ func choose_next(direction: int) -> void:
 	walking_to_mural = false
 	arrived_mural = false
 	pending_celeste_talk = false
+	walking_to_speaker = false
+	arrived_speaker = false
+	pending_rook_talk = false
 	show_mural_panel(false)
+	show_music_panel(false)
 	current_path.clear()
 	update_route_ribbon(true)
 	clear_occlusion()
@@ -1684,7 +2579,11 @@ func overview() -> void:
 	walking_to_mural = false
 	arrived_mural = false
 	pending_celeste_talk = false
+	walking_to_speaker = false
+	arrived_speaker = false
+	pending_rook_talk = false
 	show_mural_panel(false)
+	show_music_panel(false)
 	current_path.clear()
 	update_route_ribbon(true)
 	if selected >= 0:
@@ -1742,10 +2641,20 @@ func refit_after_layout() -> void:
 		overview()
 
 func show_mural_panel(visible_flag: bool) -> void:
+	if visible_flag and music_panel != null:
+		music_panel.visible = false
 	if mural_panel != null:
 		mural_panel.visible = visible_flag
 		if visible_flag:
 			update_mural_ui()
+
+func show_music_panel(visible_flag: bool) -> void:
+	if visible_flag and mural_panel != null:
+		mural_panel.visible = false
+	if music_panel != null:
+		music_panel.visible = visible_flag
+		if visible_flag:
+			update_music_ui()
 
 func motif_button_text(motif_id: String, label_prefix: String) -> String:
 	var prefix := "> " if active_motif == motif_id else ""
@@ -1767,6 +2676,29 @@ func update_mural_ui() -> void:
 		mural_wave_btn.text = motif_button_text("wave", "Wave")
 	if mural_rise_btn != null:
 		mural_rise_btn.text = motif_button_text("rise", "Rise")
+
+func update_music_ui() -> void:
+	if music_label == null:
+		return
+	var play_state := "Playing" if music_playing else "Paused"
+	var mode_desc := "80 BPM Sketch" if music_mode == "sketch" else ("Local: %s" % local_music_name)
+	var sc_state := "Checked" if rook_soundcheck_done else "Pending"
+	music_label.text = "Speaker · %s · %s · %s" % [play_state, mode_desc, sc_state]
+	if music_stem_label != null:
+		if not music_error.is_empty():
+			music_stem_label.text = music_error
+		elif music_mode == "local":
+			music_stem_label.text = "Local full track (procedural stems hidden)"
+		else:
+			music_stem_label.text = "Stems: %s" % active_stem_summary()
+	if music_play_btn != null:
+		music_play_btn.text = "Pause Music" if music_playing else "Play Music"
+	if music_vol_btn != null:
+		music_vol_btn.text = "Vol: %d%%" % int(round(music_volume * 100.0))
+	if music_rook_btn != null:
+		music_rook_btn.text = "Soundcheck: Done" if rook_soundcheck_done else "Soundcheck: Rook"
+	if music_sketch_btn != null:
+		music_sketch_btn.text = "> Sketch (80 BPM)" if music_mode == "sketch" else "Use Sketch"
 
 func make_ui() -> void:
 	var layer := CanvasLayer.new()
@@ -1826,6 +2758,44 @@ func make_ui() -> void:
 	mural_button(row3, "Close", func(): show_mural_panel(false))
 	update_mural_ui()
 
+	music_panel = PanelContainer.new()
+	music_panel.name = "MusicPanel"
+	music_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	music_panel.offset_left = 12
+	music_panel.offset_right = -12
+	music_panel.offset_top = -302
+	music_panel.offset_bottom = -130
+	music_panel.visible = false
+	layer.add_child(music_panel)
+	var music_vbox := VBoxContainer.new()
+	music_vbox.add_theme_constant_override("separation", 2)
+	music_panel.add_child(music_vbox)
+	music_label = Label.new()
+	music_label.clip_text = true
+	music_label.add_theme_font_size_override("font_size", 13)
+	music_vbox.add_child(music_label)
+	music_stem_label = Label.new()
+	music_stem_label.clip_text = true
+	music_stem_label.add_theme_font_size_override("font_size", 12)
+	music_vbox.add_child(music_stem_label)
+	music_buttons.clear()
+	var m_row1 := HBoxContainer.new()
+	m_row1.add_theme_constant_override("separation", 4)
+	music_vbox.add_child(m_row1)
+	music_play_btn = music_button(m_row1, "Play Music", func(): toggle_music_playback())
+	music_vol_btn = music_button(m_row1, "Vol: 70%", func(): cycle_music_volume())
+	var m_row2 := HBoxContainer.new()
+	m_row2.add_theme_constant_override("separation", 4)
+	music_vbox.add_child(m_row2)
+	music_rook_btn = music_button(m_row2, "Soundcheck: Rook", func(): request_rook_soundcheck())
+	music_load_btn = music_button(m_row2, "Load Suno File", func(): prompt_local_music_file())
+	var m_row3 := HBoxContainer.new()
+	m_row3.add_theme_constant_override("separation", 4)
+	music_vbox.add_child(m_row3)
+	music_sketch_btn = music_button(m_row3, "> Sketch (80 BPM)", func(): use_synth_sketch())
+	music_button(m_row3, "Close", func(): show_music_panel(false))
+	update_music_ui()
+
 	controls = GridContainer.new()
 	controls.columns = 3
 	controls.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
@@ -1854,10 +2824,19 @@ func make_ui() -> void:
 		if is_instance_valid(mural_panel):
 			mural_panel.offset_bottom = -180 if narrow else -130
 			mural_panel.offset_top = -352 if narrow else -302
+		if is_instance_valid(music_panel):
+			music_panel.offset_bottom = -180 if narrow else -130
+			music_panel.offset_top = -352 if narrow else -302
 		if in_overview:
 			refit_after_layout()
 	vp.size_changed.connect(resize_controls)
 	tree_exiting.connect(func():
+		stop_music_playback()
+		if sketch_player != null:
+			sketch_player.stream = null
+		if local_audio_player != null:
+			local_audio_player.stream = null
+		sketch_generator = null
 		if vp.size_changed.is_connected(resize_controls):
 			vp.size_changed.disconnect(resize_controls)
 	)
@@ -1881,5 +2860,16 @@ func mural_button(parent: Node, text: String, action: Callable) -> Button:
 	control.pressed.connect(action)
 	parent.add_child(control)
 	mural_buttons.append(control)
+	return control
+
+func music_button(parent: Node, text: String, action: Callable) -> Button:
+	var control := Button.new()
+	control.text = text
+	control.custom_minimum_size = Vector2(44, 44)
+	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	control.add_theme_font_size_override("font_size", 13)
+	control.pressed.connect(action)
+	parent.add_child(control)
+	music_buttons.append(control)
 	return control
 

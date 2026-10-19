@@ -9,6 +9,31 @@ func require(condition: bool, message: String) -> void:
 		failed = true
 		push_error(message)
 
+func make_synthetic_wav_bytes(duration_sec: float = 0.35, freq_hz: float = 330.0, sample_rate: int = 22050) -> PackedByteArray:
+	var sr := clampi(sample_rate, 8000, 48000)
+	var num_samples := maxi(64, int(round(duration_sec * float(sr))))
+	var data_size := num_samples * 2
+	var buf := PackedByteArray()
+	buf.resize(44 + data_size)
+	buf[0] = 0x52; buf[1] = 0x49; buf[2] = 0x46; buf[3] = 0x46
+	buf.encode_u32(4, 36 + data_size)
+	buf[8] = 0x57; buf[9] = 0x41; buf[10] = 0x56; buf[11] = 0x45
+	buf[12] = 0x66; buf[13] = 0x6D; buf[14] = 0x74; buf[15] = 0x20
+	buf.encode_u32(16, 16)
+	buf.encode_u16(20, 1)
+	buf.encode_u16(22, 1)
+	buf.encode_u32(24, sr)
+	buf.encode_u32(28, sr * 2)
+	buf.encode_u16(32, 2)
+	buf.encode_u16(34, 16)
+	buf[36] = 0x64; buf[37] = 0x61; buf[38] = 0x74; buf[39] = 0x61
+	buf.encode_u32(40, data_size)
+	for i in range(num_samples):
+		var t := float(i) / float(sr)
+		var s := int(round(sin(TAU * freq_hz * t) * 14000.0))
+		buf.encode_s16(44 + i * 2, clampi(s, -32767, 32767))
+	return buf
+
 func run() -> void:
 	var study = load("res://main.tscn").instantiate()
 	root.add_child(study)
@@ -53,6 +78,16 @@ func run() -> void:
 		require(study.building_containing_point(corner) == "" and study.min_wall_distance(corner) >= 2.35, "all 4 mural board corners are outside all building footprints with >= 2.35m wall clearance")
 	require(not study.is_walkable_point(m_xz), "portable mural board footprint center is solid/non-walkable")
 	require(study.is_walkable_point(study.mural_stand_xz()), "portable mural board stand position in front of canvas is walkable")
+	var s_xz: Vector2 = study.speaker_xz()
+	require(study.speaker_node != null and study.speaker_cone_mesh != null and study.speaker_beacon_mesh != null, "3D RookSpeaker node, cone, and beacon meshes exist")
+	require(study.speaker_node.get_node_or_null("StaticBody3D") != null, "RookSpeaker has StaticBody3D collision")
+	require(study.building_containing_point(s_xz) == "", "RookSpeaker is outside all 58 building footprints")
+	var s_nb: Dictionary = study.nearest_building_info(s_xz)
+	require(s_nb.id == "201006.0004056" and study.min_wall_distance(s_xz) >= 5.5, "RookSpeaker is >= 5.5m clear of nearest measured building 201006.0004056")
+	for s_corner in study.speaker_corner_points():
+		require(study.building_containing_point(s_corner) == "" and study.min_wall_distance(s_corner) >= 2.35, "all 4 RookSpeaker corners are outside all building footprints with >= 2.35m wall clearance")
+	require(not study.is_walkable_point(s_xz), "RookSpeaker footprint center is solid/non-walkable")
+	require(study.is_walkable_point(study.speaker_stand_xz()), "RookSpeaker stand position on Turk Street sidewalk is walkable")
 	study.clear_godot_save()
 	study.choose_next(-1)
 	require(study.selected == 57, "first Previous selects last building")
@@ -119,8 +154,9 @@ func run() -> void:
 		require(final_d <= study.ARRIVAL_DISTANCE_M + 1e-3 and final_d >= 0.70, "arrival stops within <= 1.35m without overlapping neighbor")
 		require(study.info.text.contains(study.neighbors[i].name), "arrival updates info with neighbor name")
 		if study.neighbors[i].id == "celeste":
-			require(study.mural_panel.visible, "arriving at Celeste opens portable mural panel")
+			require(study.mural_panel.visible and not study.music_panel.visible, "arriving at Celeste opens portable mural panel and closes music panel")
 		if study.neighbors[i].id == "rook":
+			require(study.music_panel.visible and not study.mural_panel.visible, "arriving at Rook opens music panel and closes mural panel")
 			rook_occluded = not study.occluded_buildings.is_empty()
 			for occ_idx in study.occluded_buildings:
 				require(study.meshes[occ_idx].material_override == study.cutaway_material, "occluding building uses cutaway material")
@@ -177,6 +213,42 @@ func run() -> void:
 	require(study.player_xz().distance_to(m_xz) <= 2.2 and not study.is_point_in_mural_footprint(study.player_xz()), "player stands in front of Portable Mural Board outside board footprint")
 	require(study.mural_panel.visible, "arriving at Portable Mural Board opens mural panel")
 
+	# Test tapping and walking to the 3D RookSpeaker on Turk Street (opens MusicPanel; explicit soundcheck)
+	study.clear_godot_save()
+	study.pending_rook_talk = true
+	study.overview()
+	var speaker_screen: Vector2 = study.camera.unproject_position(study.ROOK_SPEAKER_POS + Vector3(0.0, 0.8, 0.0))
+	require(study.handle_scene_tap(speaker_screen), "tapping projected 3D RookSpeaker starts route")
+	require(study.walking_to_speaker and not study.pending_rook_talk and not study.current_path.is_empty(), "speaker tap sets walking_to_speaker route and clears stale pending_rook_talk")
+	var speaker_guard := 0
+	while not study.current_path.is_empty() and speaker_guard < 400:
+		study.advance_walk(0.2)
+		speaker_guard += 1
+	require(speaker_guard < 400 and study.arrived_speaker, "player arrives at RookSpeaker within bounded steps")
+	require(study.player_xz().distance_to(s_xz) <= 2.0 and not study.is_point_in_speaker_footprint(study.player_xz()), "player stands in front of RookSpeaker outside speaker footprint")
+	require(study.music_panel.visible and not study.rook_soundcheck_done, "passive arrival at RookSpeaker opens MusicPanel and waits for explicit soundcheck")
+	require(study.request_rook_soundcheck() and study.rook_soundcheck_done and study.speaker_beacon_mesh.visible, "request_rook_soundcheck while at RookSpeaker runs soundcheck and lights 3D beacon")
+
+	# Test deferred KEY_R / Soundcheck button when starting far from Rook
+	study.clear_godot_save()
+	study.player.position = study.PLAYER_START
+	study.overview()
+	study.music_rook_btn.pressed.emit()
+	require(study.selected_neighbor == study.rook_index and study.pending_rook_talk and not study.rook_soundcheck_done, "Soundcheck: Rook button when away starts walking to Rook and defers soundcheck until arrival")
+	study.clear_godot_save()
+	study.player.position = study.PLAYER_START
+	study.overview()
+	var keyr_ev := InputEventKey.new()
+	keyr_ev.pressed = true
+	keyr_ev.keycode = KEY_R
+	study._unhandled_input(keyr_ev)
+	require(study.selected_neighbor == study.rook_index and study.pending_rook_talk and not study.rook_soundcheck_done, "KEY_R when away starts walking to Rook and defers soundcheck until arrival")
+	var rook_guard := 0
+	while not study.current_path.is_empty() and rook_guard < 400:
+		study.advance_walk(0.2)
+		rook_guard += 1
+	require(study.arrived_neighbor == study.rook_index and not study.pending_rook_talk and study.rook_soundcheck_done and study.info.text.contains("Rook:"), "deferred KEY_R soundcheck fires upon arriving at Rook")
+
 	# Test deferred KEY_E talk when starting far from Celeste, and shortcut gating when away from mural
 	study.clear_godot_save()
 	study.player.position = study.PLAYER_START
@@ -197,11 +269,23 @@ func run() -> void:
 		talk_guard += 1
 	require(study.arrived_neighbor == study.celeste_index and not study.pending_celeste_talk and study.celeste_talk_count == 1 and study.info.text.contains("Celeste:"), "deferred KEY_E talk fires upon arriving at Celeste")
 
-	# Test talking with Celeste, 6x3 motif placement/movement, 3D visual consequence, and separate Godot save/reload
+	# Test procedural stem progression, Bea-only visit persistence, explicit playback, local Suno WAV audition, invalid/corrupt rejection, and save/reload
 	study.clear_godot_save()
+	require(not study.music_playing and study.music_mode == "sketch", "music starts paused in sketch mode after reset")
+	require(study.unlocked_stems() == ["bass"], "fresh state starts with 1 stem (bass)")
+	study.finish_neighbor_arrival(0)
+	require(study.unlocked_stems() == ["bass", "brush"], "visiting Bea unlocks brush stem (2/4 stems)")
+	var bea_reloaded = load("res://main.tscn").instantiate()
+	root.add_child(bea_reloaded)
+	await process_frame
+	await process_frame
+	require(bea_reloaded.save_load_status == "restored" and bea_reloaded.visited_neighbors.has("bea") and bea_reloaded.unlocked_stems() == ["bass", "brush"], "visiting Bea alone saves visited_neighbors and restores ['bass','brush'] on reload")
+	bea_reloaded.queue_free()
+	await process_frame
 	var line1: String = study.talk_with_celeste()
 	var line2: String = study.talk_with_celeste()
 	require(study.celeste_talk_count == 2 and line1 != line2, "talking with Celeste advances original portable board dialogue")
+	require(study.unlocked_stems() == ["bass", "brush", "chords"], "talking with Celeste unlocks chords stem (3/4 stems)")
 	require(not study.place_mural_motif("bogus", 0, 0), "invalid motif ID rejected")
 	require(not study.place_mural_motif("sun", -1, 0) and not study.place_mural_motif("sun", 6, 0) and not study.place_mural_motif("sun", 0, 3), "out-of-bounds 6x3 board cells rejected")
 	require(study.place_mural_motif("sun", 1, 0), "place Sun motif at (1,0)")
@@ -213,6 +297,7 @@ func run() -> void:
 	require(study.place_mural_motif("wave", 3, 1), "place Wave motif at (3,1)")
 	require(study.place_mural_motif("rise", 5, 2), "place Rise motif at (5,2)")
 	require(study.mural_completed and study.mural_banner_mesh.visible, "placing all 3 motifs completes mural and shows 3D completion banner")
+	require(study.unlocked_stems() == ["bass", "brush", "chords", "lead"], "completing mural unlocks lead stem (4/4 stems)")
 	var sun_pos_before: Vector3 = sun_node.position
 	study.active_motif = "sun"
 	require(study.move_active_motif(1, 0), "move_active_motif shifts Sun to (2,0)")
@@ -222,18 +307,65 @@ func run() -> void:
 	require(study.set_mural_palette("sunset"), "set_mural_palette switches to sunset")
 	var canvas_mat_after: StandardMaterial3D = study.mural_canvas_mesh.material_override
 	require(canvas_mat_after.albedo_color != color_before, "changing palette updates 3D canvas material color")
+
+	# Test explicit procedural sketch playback, clock progression, volume cycling, and local WAV audition
+	var rook_line: String = study.check_sound_with_rook()
+	require(rook_line.contains("Rook:") and study.rook_soundcheck_done, "check_sound_with_rook returns Rook dialogue and marks soundcheck done")
+	require(study.start_music_playback() and study.music_playing and study.music_mode == "sketch", "start_music_playback starts procedural 80 BPM sketch")
+	study.advance_music_clock(0.40)
+	require(study.sketch_tick >= 1 and study.sketch_frames_pushed > 0 and study.last_sample_rms > 0.01, "procedural synth advances beat clock and synthesizes non-zero audio waveform")
+	var ticks_before: int = study.sketch_tick
+	var frames_before: int = study.sketch_frames_pushed
+	study.advance_music_clock(0.80)
+	require(study.sketch_tick >= ticks_before + 2 and study.sketch_frames_pushed > frames_before, "advance_music_clock advances eighth-note steps and pushes additional synth frames")
+	require(is_equal_approx(study.cycle_music_volume(), 1.0), "cycle_music_volume steps from 0.70 to 1.0")
+	require(is_equal_approx(study.cycle_music_volume(), 0.35), "cycle_music_volume steps from 1.0 to 0.35")
+	require(is_equal_approx(study.cycle_music_volume(), 0.0) and is_equal_approx(study.last_sample_rms, 0.0), "cycle_music_volume steps to 0.0 mute with zero RMS")
+	require(is_equal_approx(study.cycle_music_volume(), 0.70), "cycle_music_volume wraps back to 0.70")
+	var valid_wav: PackedByteArray = make_synthetic_wav_bytes(0.35, 330.0, 22050)
+	require(study.load_local_music_bytes("suno-tl-sketch.wav", valid_wav), "valid synthetic WAV bytes load into local audition player")
+	require(study.music_mode == "local" and study.local_music_name == "suno-tl-sketch.wav" and study.music_playing and study.music_error == "", "local WAV audition activates local mode and clears errors")
+	require(study.music_stem_label.text.contains("procedural stems hidden"), "local full-track mode hides procedural stem labels")
+	require(not study.load_local_music_bytes("readme.txt", valid_wav), "unsupported file extension rejected")
+	require(study.music_error == study.MUSIC_FILE_ERROR and study.music_mode == "local" and study.local_music_name == "suno-tl-sketch.wav", "invalid extension sets MUSIC_FILE_ERROR and preserves active local track")
+	require(not study.load_local_music_bytes("empty.wav", PackedByteArray()), "empty audio file rejected")
+	require(study.music_error == study.MUSIC_FILE_ERROR and study.music_mode == "local", "empty audio file sets MUSIC_FILE_ERROR and preserves active track")
+	var corrupt_bytes := PackedByteArray([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08])
+	require(not study.load_local_music_bytes("corrupt.wav", corrupt_bytes) and study.music_error == study.MUSIC_DECODE_ERROR, "corrupt WAV bytes rejected with MUSIC_DECODE_ERROR")
+	require(not study.load_local_music_bytes("corrupt.mp3", corrupt_bytes) and study.music_error == study.MUSIC_DECODE_ERROR, "corrupt MP3 bytes rejected with MUSIC_DECODE_ERROR")
+	require(not study.load_local_music_bytes("corrupt.ogg", corrupt_bytes) and study.music_error == study.MUSIC_DECODE_ERROR, "corrupt OGG bytes rejected with MUSIC_DECODE_ERROR")
+	var id3_corrupt := "ID3".to_ascii_buffer()
+	id3_corrupt.append_array(PackedByteArray([0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66]))
+	require(not study.load_local_music_bytes("corrupt-id3.mp3", id3_corrupt) and study.music_error == study.MUSIC_DECODE_ERROR, "corrupt MP3 with ID3 header and junk body rejected without engine error")
+	var oggs_corrupt := "OggS".to_ascii_buffer()
+	for _b in range(32):
+		oggs_corrupt.append(0x42)
+	require(not study.load_local_music_bytes("corrupt-oggs.ogg", oggs_corrupt) and study.music_error == study.MUSIC_DECODE_ERROR, "corrupt OGG with OggS header and junk body rejected without engine error")
+	require(study.music_mode == "local" and study.local_music_name == "suno-tl-sketch.wav", "corrupt file attempts preserve previously loaded local track")
+	study.use_synth_sketch()
+	require(study.music_mode == "sketch" and study.music_error == "" and study.music_stem_label.text.contains("4/4 stems"), "use_synth_sketch returns to 80 BPM procedural sketch and restores stem labels")
+	study.stop_music_playback()
+	require(not study.music_playing and is_equal_approx(study.last_sample_rms, 0.0), "stop_music_playback pauses audio and zeroes RMS")
+
+	# Load local track again before save/reload check to prove local tracks are tab-local and never persisted
+	require(study.load_local_music_bytes("suno-tl-sketch.wav", valid_wav), "re-load local track before save check")
+	study.save_godot_state()
 	require(FileAccess.file_exists(study.save_path), "separate Godot save file written")
 	var raw_saved: String = FileAccess.get_file_as_string(study.save_path)
 	require(raw_saved.contains("\"schema\":\"tenderloin-redux.godot.save\"") and not raw_saved.contains("tenderloin-redux.save.v1"), "Godot save uses isolated schema namespace")
+	require(raw_saved.contains("\"rook_soundcheck_done\":true") and not raw_saved.contains("suno-tl-sketch.wav"), "Godot save persists rook_soundcheck_done and never stores local audio filenames")
+	study.stop_music_playback()
 
 	# Instantiate a fresh scene to prove reload persistence from save_path
 	var reloaded = load("res://main.tscn").instantiate()
 	root.add_child(reloaded)
 	await process_frame
 	await process_frame
-	require(reloaded.save_load_status == "restored", "fresh scene restores saved Godot mural state on load")
+	require(reloaded.save_load_status == "restored", "fresh scene restores saved Godot mural and soundcheck state on load")
 	require(reloaded.celeste_talk_count == 2 and reloaded.active_motif == "sun", "reloaded scene restores celeste_talk_count and active_motif")
 	require(reloaded.mural_palette == "sunset" and reloaded.mural_completed and reloaded.mural_banner_mesh.visible, "reloaded scene restores palette, completion, and 3D banner")
+	require(reloaded.rook_soundcheck_done and reloaded.speaker_beacon_mesh.visible and reloaded.unlocked_stems().size() == 4, "reloaded scene restores Rook soundcheck, 3D speaker beacon, and all 4 unlocked stems")
+	require(not reloaded.music_playing and reloaded.music_mode == "sketch" and reloaded.local_music_name == "", "reloaded scene starts silent in sketch mode without local track")
 	var rel_sun: Node3D = reloaded.mural_motif_nodes["sun"]
 	var rel_wave: Node3D = reloaded.mural_motif_nodes["wave"]
 	var rel_rise: Node3D = reloaded.mural_motif_nodes["rise"]
@@ -244,7 +376,7 @@ func run() -> void:
 
 	# Test corrupt save recovery without crashing
 	require(not study.apply_save_envelope("{corrupt-json"), "corrupt JSON save returns false")
-	require(study.save_load_status == "recovered" and study.mural_placements.is_empty() and not study.mural_banner_mesh.visible, "corrupt JSON resets cleanly to recovered defaults")
+	require(study.save_load_status == "recovered" and study.mural_placements.is_empty() and not study.mural_banner_mesh.visible and not study.rook_soundcheck_done, "corrupt JSON resets cleanly to recovered defaults")
 	require(not study.apply_save_envelope("{\"schema\":\"wrong\",\"version\":1}"), "wrong schema save rejected cleanly")
 	require(not study.apply_save_envelope("{\"schema\":\"tenderloin-redux.godot.save\",\"version\":2,\"mural_palette\":\"garden\",\"celeste_talk_count\":1,\"mural_placements\":{}}"), "wrong integer version rejected cleanly")
 	require(not study.apply_save_envelope("{\"schema\":\"tenderloin-redux.godot.save\",\"version\":1.5,\"mural_palette\":\"garden\",\"celeste_talk_count\":1,\"mural_placements\":{}}"), "fractional version rejected cleanly")
@@ -253,6 +385,8 @@ func run() -> void:
 	require(not study.apply_save_envelope("{\"schema\":\"tenderloin-redux.godot.save\",\"version\":1,\"mural_palette\":\"garden\",\"celeste_talk_count\":1,\"mural_placements\":{\"sun\":{\"col\":1.7,\"row\":0}}}"), "fractional cell coordinate rejected cleanly")
 	require(not study.apply_save_envelope("{\"schema\":\"tenderloin-redux.godot.save\",\"version\":1,\"mural_palette\":\"garden\",\"celeste_talk_count\":1,\"mural_placements\":{\"sun\":{\"col\":1,\"row\":0},\"wave\":{\"col\":1,\"row\":0}}}"), "duplicate cell collision in save rejected cleanly")
 	require(not study.apply_save_envelope("{\"schema\":\"tenderloin-redux.godot.save\",\"version\":1,\"mural_palette\":\"garden\",\"celeste_talk_count\":1,\"mural_placements\":{\"sun\":{\"col\":99,\"row\":0}}}"), "out-of-bounds saved cell rejected cleanly")
+	require(not study.apply_save_envelope("{\"schema\":\"tenderloin-redux.godot.save\",\"version\":1,\"mural_palette\":\"garden\",\"celeste_talk_count\":1,\"rook_soundcheck_done\":\"yes\",\"mural_placements\":{}}"), "non-bool rook_soundcheck_done rejected cleanly")
+	require(not study.apply_save_envelope("{\"schema\":\"tenderloin-redux.godot.save\",\"version\":1,\"mural_palette\":\"garden\",\"celeste_talk_count\":1,\"visited_neighbors\":[\"unknown\"],\"mural_placements\":{}}"), "unknown neighbor ID in visited_neighbors rejected cleanly")
 
 	study.overview()
 	var street_screen: Vector2 = study.camera.unproject_position(Vector3(45.0, 0.0, -7.2))
@@ -260,7 +394,7 @@ func run() -> void:
 	require(not study.current_path.is_empty(), "street tap produces walkable path")
 
 	study.overview()
-	require(study.occluded_buildings.is_empty() and study.selected_neighbor == -1 and not study.mural_panel.visible, "overview clears cutaway, neighbor selection, and mural panel")
+	require(study.occluded_buildings.is_empty() and study.selected_neighbor == -1 and not study.mural_panel.visible and not study.music_panel.visible, "overview clears cutaway, neighbor selection, mural panel, and music panel")
 	for i in range(58):
 		require(study.meshes[i].material_override == study.building_materials[i], "overview restores solid neutral building materials")
 
@@ -352,6 +486,34 @@ func run() -> void:
 		var mural_end_y: float = study.mural_panel.get_global_rect().end.y
 		var controls_pos_y: float = study.controls.get_global_rect().position.y
 		require(header_end_y <= mural_pos_y and mural_end_y <= controls_pos_y, "3-line Celeste dialogue header, MuralPanel, and bottom controls do not overlap at %s" % str(size))
+		study.check_sound_with_rook()
+		await process_frame
+		await process_frame
+		require(study.music_panel.visible and not study.mural_panel.visible, "check_sound_with_rook opens MusicPanel and hides MuralPanel")
+		require(study.music_buttons.size() == 6, "MusicPanel has all 6 interactive buttons")
+		var mus_rect: Rect2 = study.music_panel.get_global_rect()
+		var mus_header_end_y: float = study.header_panel.get_global_rect().end.y
+		var mus_controls_pos_y: float = study.controls.get_global_rect().position.y
+		require(mus_rect.position.x >= 0 and mus_rect.end.x <= size.x and mus_header_end_y <= mus_rect.position.y and mus_rect.end.y <= mus_controls_pos_y, "3-line Rook dialogue header, MusicPanel, and bottom controls do not overlap at %s" % str(size))
+		for mus_btn in study.music_buttons:
+			var br: Rect2 = mus_btn.get_global_rect()
+			require(br.size.x >= 44 and br.size.y >= 44, "44px minimum music panel buttons")
+			require(br.position.x >= 0 and br.end.x <= size.x and br.position.y >= 0 and br.end.y <= size.y, "music buttons within viewport")
+		study.stop_music_playback()
+		study.music_play_btn.grab_focus()
+		require(study.music_play_btn.has_focus(), "music Play button focus available")
+		accept = InputEventAction.new()
+		accept.action = "ui_accept"
+		accept.pressed = true
+		Input.parse_input_event(accept)
+		await process_frame
+		accept = InputEventAction.new()
+		accept.action = "ui_accept"
+		accept.pressed = false
+		Input.parse_input_event(accept)
+		await process_frame
+		require(study.music_playing, "ui_accept on music Play button starts playback")
+		study.stop_music_playback()
 		study.overview()
 	study.clear_godot_save()
 	if "--force-failure" in OS.get_cmdline_user_args():
@@ -360,7 +522,7 @@ func run() -> void:
 		print("GODOT_STUDY_FAIL")
 		quit(1)
 	else:
-		print("GODOT_STUDY_PASS:58 meshes, measured heights, collision/courtyards, walking/sliding, 5 neighbors, Celeste portable mural, save/reload, cutaway, 44px and ui_accept at 1100/390/320")
+		print("GODOT_STUDY_PASS:58 meshes, measured heights, collision/courtyards, walking/sliding, 5 neighbors, Celeste portable mural, Rook speaker/music/local-audition, save/reload, cutaway, 44px and ui_accept at 1100/390/320")
 		quit(0)
 
 

@@ -29,7 +29,10 @@ try {
     context.on('request', r => { if (!r.url().startsWith(base) && !r.url().startsWith('data:') && !r.url().startsWith('blob:')) external.push(r.url()); });
     const page = await context.newPage();
     page.on('pageerror', e => errors.push(e.message));
-    page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('console', m => {
+      if (m.type() === 'error') errors.push(m.text());
+      if (m.type() === 'warning' && /sample|playback.?type|AudioStreamGenerator/i.test(m.text())) errors.push(`audio-warning: ${m.text()}`);
+    });
     await page.goto(base);
     await page.locator('#status').waitFor({ state: 'hidden', timeout: 60000 });
     await page.waitForTimeout(1200);
@@ -51,9 +54,14 @@ try {
     await page.waitForTimeout(900);
     const neighbor = await page.screenshot({ path: `artifacts/godot-${size.width}-neighbor.png` });
     assert.notDeepEqual(keyboard, neighbor, `Walk to neighbor must visibly advance player/camera at ${size.width}`);
-    // Press KeyE to walk to Celeste and talk upon arrival (which saves initial state and opens MuralPanel)
+    // Press KeyE to walk to Celeste and talk upon arrival (which saves celeste_talk_count >= 1 and opens MuralPanel)
     await page.keyboard.press('KeyE');
-    await page.waitForFunction(() => Boolean(window.localStorage.getItem('tenderloin-redux.godot.save.v1')), null, { timeout: 25000 });
+    await page.waitForFunction(() => {
+      const raw = window.localStorage.getItem('tenderloin-redux.godot.save.v1');
+      if (!raw) return false;
+      const parsed = JSON.parse(raw);
+      return parsed.celeste_talk_count >= 1;
+    }, null, { timeout: 25000 });
     await page.waitForTimeout(250);
     const row2Y = size.height - (size.width < 600 ? 258 : 208);
     const row1Y = size.height - (size.width < 600 ? 305 : 255);
@@ -67,18 +75,83 @@ try {
     await page.waitForTimeout(250);
     const muralShot = await page.screenshot({ path: `artifacts/godot-${size.width}-mural.png` });
     assert.notDeepEqual(neighbor, muralShot, `Portable mural panel and motif placement must visibly update canvas at ${size.width}`);
+    // Press KeyR to walk to Rook on Turk Street and run soundcheck on arrival
+    await page.keyboard.press('KeyR');
+    await page.waitForFunction(() => {
+      const raw = window.localStorage.getItem('tenderloin-redux.godot.save.v1');
+      if (!raw) return false;
+      const parsed = JSON.parse(raw);
+      return parsed.rook_soundcheck_done === true;
+    }, null, { timeout: 25000 });
+    await page.waitForTimeout(200);
+    // Press KeyK to start explicit procedural sketch playback on Rook's speaker
+    await page.keyboard.press('KeyK');
+    await page.waitForTimeout(250);
+    const musicShot = await page.screenshot({ path: `artifacts/godot-${size.width}-music.png` });
+    assert.notDeepEqual(muralShot, musicShot, `Rook soundcheck and MusicPanel playback must visibly update canvas at ${size.width}`);
+    // Verify hidden Web audio file picker input and test local WAV audition + corrupt WAV/MP3/OGG rejection via Uint8Array Web bridge
+    const pickerOk = await page.evaluate(() => {
+      const el = document.getElementById('tenderloin-godot-audio-input');
+      if (!el || el.type !== 'file' || !el.accept.includes('.wav') || typeof window.__tenderloinQueueLocalAudioBytes !== 'function' || typeof window.__tenderloinQueueLocalAudioBase64 !== 'function') return false;
+      const sr = 22050, samples = 2205, dataSize = samples * 2;
+      const buf = new ArrayBuffer(44 + dataSize);
+      const v = new DataView(buf);
+      const writeAscii = (off, s) => { for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i)); };
+      writeAscii(0, 'RIFF');
+      v.setUint32(4, 36 + dataSize, true);
+      writeAscii(8, 'WAVE');
+      writeAscii(12, 'fmt ');
+      v.setUint32(16, 16, true);
+      v.setUint16(20, 1, true);
+      v.setUint16(22, 1, true);
+      v.setUint32(24, sr, true);
+      v.setUint32(28, sr * 2, true);
+      v.setUint16(32, 2, true);
+      v.setUint16(34, 16, true);
+      writeAscii(36, 'data');
+      v.setUint32(40, dataSize, true);
+      for (let i = 0; i < samples; i++) {
+        v.setInt16(44 + i * 2, Math.round(Math.sin((2 * Math.PI * 330 * i) / sr) * 12000), true);
+      }
+      return window.__tenderloinQueueLocalAudioBytes('suno-browser-test.wav', new Uint8Array(buf), '');
+    });
+    assert.equal(pickerOk, true, 'Web local audio picker input and Uint8Array bridge must be initialized');
+    await page.waitForTimeout(300);
+    const auditionShot = await page.screenshot();
+    assert.notDeepEqual(musicShot, auditionShot, `Local WAV audition must visibly update MusicPanel status at ${size.width}`);
+    await page.evaluate(() => window.__tenderloinQueueLocalAudioBase64('corrupt.wav', window.btoa('not-a-valid-riff-wav'), ''));
+    await page.waitForTimeout(220);
+    const errorShot = await page.screenshot();
+    assert.notDeepEqual(auditionShot, errorShot, `Corrupt WAV must visibly display decode error message at ${size.width}`);
+    await page.evaluate(() => {
+      const id3 = new Uint8Array([0x49, 0x44, 0x33, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66]);
+      return window.__tenderloinQueueLocalAudioBytes('corrupt-id3.mp3', id3, '');
+    });
+    await page.waitForTimeout(180);
+    await page.evaluate(() => {
+      const oggs = new Uint8Array(36);
+      oggs[0] = 0x4F; oggs[1] = 0x67; oggs[2] = 0x67; oggs[3] = 0x53;
+      for (let i = 4; i < 36; i++) oggs[i] = 0x42;
+      return window.__tenderloinQueueLocalAudioBytes('corrupt-oggs.ogg', oggs, '');
+    });
+    await page.waitForTimeout(180);
+    await page.keyboard.press('KeyU');
+    await page.waitForTimeout(200);
     const storageBeforeReload = await page.evaluate(() => ({
       godotSave: window.localStorage.getItem('tenderloin-redux.godot.save.v1'),
       browserSave: window.localStorage.getItem('tenderloin-redux.save.v1')
     }));
     assert.equal(storageBeforeReload.browserSave, BROWSER_SAVE_SENTINEL, 'Godot Web export must preserve browser game tenderloin-redux.save.v1 sentinel');
     assert.ok(storageBeforeReload.godotSave, `Godot Web export must persist to tenderloin-redux.godot.save.v1 at ${size.width}`);
+    assert.ok(!storageBeforeReload.godotSave.includes('suno-browser-test.wav'), 'Local Suno audio filename must stay tab-local and never persist in save JSON');
     const parsedSave = JSON.parse(storageBeforeReload.godotSave);
     assert.equal(parsedSave.schema, 'tenderloin-redux.godot.save');
     assert.equal(parsedSave.version, 1);
-    assert.ok(parsedSave.save_seq >= 5, 'save_seq must increment across talk, 3 motif placements, and palette change');
+    assert.ok(parsedSave.save_seq >= 6, 'save_seq must increment across talk, 3 motif placements, palette change, and Rook soundcheck');
     assert.equal(parsedSave.celeste_talk_count, 1);
     assert.equal(parsedSave.mural_palette, 'sunset');
+    assert.equal(parsedSave.rook_soundcheck_done, true);
+    assert.ok(Array.isArray(parsedSave.visited_neighbors) && parsedSave.visited_neighbors.includes('bea') && parsedSave.visited_neighbors.includes('celeste') && parsedSave.visited_neighbors.includes('rook'));
     assert.deepEqual(Object.keys(parsedSave.mural_placements).sort(), ['rise', 'sun', 'wave']);
     await page.reload();
     await page.locator('#status').waitFor({ state: 'hidden', timeout: 60000 });
@@ -100,12 +173,13 @@ try {
     const postReloadSave = JSON.parse(storageAfterReload.godotSave);
     assert.equal(postReloadSave.celeste_talk_count, parsedSave.celeste_talk_count + 1, 'Post-reload talk must increment restored celeste_talk_count');
     assert.equal(postReloadSave.mural_palette, 'sunset', 'Post-reload save must preserve restored sunset palette');
+    assert.equal(postReloadSave.rook_soundcheck_done, true, 'Post-reload save must preserve restored rook_soundcheck_done');
     assert.deepEqual(postReloadSave.mural_placements, parsedSave.mural_placements, 'Post-reload save must preserve all 3 restored motif placements');
-    runs.push({ viewport: size, overviewBytes: before.length, selectedBytes: after.length, neighborBytes: neighbor.length, muralBytes: muralShot.length, keyboardActivationVerified: true, neighborWalkVerified: true, muralSaveReloadVerified: true });
+    runs.push({ viewport: size, overviewBytes: before.length, selectedBytes: after.length, neighborBytes: neighbor.length, muralBytes: muralShot.length, musicBytes: musicShot.length, keyboardActivationVerified: true, neighborWalkVerified: true, muralSaveReloadVerified: true, rookMusicAuditionVerified: true });
     await context.close();
   }
   assert.deepEqual(external, []);
   assert.deepEqual(errors, []);
-  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, and driver-inspected screenshots, not DOM/screen-reader or physical-phone acceptance.' }, null, 2));
+  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, Web local WAV audition, and driver-inspected screenshots, not DOM/screen-reader or physical-phone acceptance.' }, null, 2));
   console.log(JSON.stringify({ runs, errors, external }));
 } finally { await browser.close(); }
