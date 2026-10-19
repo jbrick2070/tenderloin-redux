@@ -5,13 +5,26 @@ import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../artifacts/godot-web/', import.meta.url));
 const browserRoot = fileURLToPath(new URL('../public/', import.meta.url));
+const fieldGuideRoot = fileURLToPath(new URL('../tools/field-guide/', import.meta.url));
+const godotBuildingsPath = fileURLToPath(new URL('../godot/data/buildings.json', import.meta.url));
 const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.xml': 'application/xml; charset=utf-8', '.ico': 'image/x-icon', '.wasm': 'application/wasm', '.pck': 'application/octet-stream', '.png': 'image/png', '.svg': 'image/svg+xml' };
 const server = http.createServer(async (req, res) => {
   try {
     const name = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
+    if (name === '/field-guide/buildings.json') {
+      const bytes = await readFile(godotBuildingsPath);
+      res.writeHead(200, { 'Content-Type': mime['.json'], 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
+      res.end(bytes);
+      return;
+    }
+    const isFieldGuide = name === '/field-guide' || name.startsWith('/field-guide/');
     const isBrowser = name === '/browser' || name.startsWith('/browser/');
-    const baseDir = isBrowser ? browserRoot : root;
-    const subPath = isBrowser ? (name === '/browser' || name === '/browser/' ? '/index.html' : name.slice('/browser'.length)) : (name === '/' ? '/index.html' : name);
+    const baseDir = isFieldGuide ? fieldGuideRoot : isBrowser ? browserRoot : root;
+    const subPath = isFieldGuide
+      ? (name === '/field-guide' || name === '/field-guide/' ? '/index.html' : name.slice('/field-guide'.length))
+      : isBrowser
+      ? (name === '/browser' || name === '/browser/' ? '/index.html' : name.slice('/browser'.length))
+      : (name === '/' ? '/index.html' : name);
     const filename = path.resolve(baseDir, '.' + subPath);
     const relative = path.relative(baseDir, filename);
     if (relative.startsWith('..') || path.isAbsolute(relative)) throw Error('Outside export');

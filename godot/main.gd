@@ -486,6 +486,73 @@ func make_building_mesh_and_rect(building: Dictionary, mat: StandardMaterial3D, 
 		Color("b87830")  # Golden Ochre Awning
 	]
 	var awning_col: Color = awning_palette[b_hash % awning_palette.size()]
+	if not building.polygons.is_empty() and not building.polygons[0].rings.is_empty():
+		var r0: Array = building.polygons[0].rings[0]
+		var c0 := Vector3.ZERO
+		for rp0 in r0:
+			c0 += point(rp0, 0.0)
+		if not r0.is_empty():
+			c0 /= float(r0.size())
+		# Street-View-verified Tenderloin block & landmark color schemes
+		if c0.x >= -18.0 and c0.x <= 28.0 and c0.z >= -36.0 and c0.z <= 12.0:
+			# 101-111 Taylor St (Compton's Corner): ivory pilasters, powder-blue window bays, charcoal plinth, green 111 canopy
+			base_col = Color("dfd9c8")
+			spandrel_col = Color("87a6b8")
+			plinth_col = Color("34393e")
+			cornice_col = Color("383e42")
+			awning_col = Color("265c42")
+		elif c0.x > 28.0 and c0.x <= 92.0 and c0.z < -12.0 and c0.z >= -52.0:
+			# 50-65 Turk St (North Side): modern faceted alabaster concrete with slate-blue ribbon bays & charcoal colonnade
+			base_col = Color("dbd9d2")
+			spandrel_col = Color("4a6b88")
+			plinth_col = Color("282c30")
+			cornice_col = Color("e8e6df")
+			awning_col = Color("355269")
+		elif c0.x > 25.0 and c0.x <= 95.0 and c0.z >= -12.0 and c0.z <= 28.0:
+			# 45 Turk St (South Side): historic tan/sienna brick with mint-sage flat metal marquee
+			base_col = Color("9c7a63")
+			spandrel_col = Color("6e5544")
+			plinth_col = Color("4c5750")
+			cornice_col = Color("c2a68f")
+			awning_col = Color("7a9682")
+		elif c0.x >= -338.0 and c0.x <= -262.0 and c0.z >= -92.0 and c0.z <= -32.0:
+			# 398 Eddy St (Cadillac Hotel & Tenderloin Museum): alabaster upper floors, olive-sage ground floor, vermilion museum signboard
+			base_col = Color("ecebe4")
+			spandrel_col = Color("d5d3c8")
+			plinth_col = Color("727e68")
+			cornice_col = Color("f6f5ef")
+			awning_col = Color("d94234")
+		elif c0.x >= -205.0 and c0.x <= -115.0 and c0.z >= -10.0 and c0.z <= 48.0:
+			# 175-199 Turk St (at Jones): dusty blue-grey loft w/ white pilasters OR charcoal-bronze w/ redwood ground floor
+			if (b_hash % 2) == 0:
+				base_col = Color("8492a2")
+				spandrel_col = Color("5d6a78")
+				plinth_col = Color("2c3238")
+				cornice_col = Color("dcdad2")
+			else:
+				base_col = Color("45484c")
+				spandrel_col = Color("2f3236")
+				plinth_col = Color("5c3324")
+				cornice_col = Color("e6e4dc")
+		elif c0.x >= -365.0 and c0.x <= -285.0 and c0.z >= 22.0 and c0.z <= 75.0:
+			# 361 Turk St (TL Residences): warm terracotta-orange brick & sandy-buff wing
+			base_col = Color("c66848") if (b_hash % 2 == 0) else Color("dfcba6")
+			spandrel_col = base_col.darkened(0.15)
+			plinth_col = Color("3a3532")
+			cornice_col = Color("ebdcc0")
+		elif c0.x < -365.0 and c0.z >= 15.0 and c0.z <= 80.0:
+			# 430-447 Turk St (Dodge Alley block): lavender-slate Edwardian & seafoam-mint 3-story with navy windows
+			if (b_hash % 2) == 0:
+				base_col = Color("6e9b8d")
+				spandrel_col = Color("23395d")
+				plinth_col = Color("2b3d34")
+				cornice_col = Color("383c3a")
+			else:
+				base_col = Color("7d808c")
+				spandrel_col = Color("5c5f69")
+				plinth_col = Color("494c54")
+				cornice_col = Color("c5c7cc")
+	var fire_escape_col := Color("2e3336") if (b_hash % 2 == 0) else Color("dcdad0")
 	for polygon in building.polygons:
 		for r_idx in range(polygon.rings.size()):
 			var ring: Array = polygon.rings[r_idx]
@@ -542,12 +609,13 @@ func make_building_mesh_and_rect(building: Dictionary, mat: StandardMaterial3D, 
 							colored_quad(surface, aw_tip_a + Vector3.DOWN * 0.12, aw_tip_b + Vector3.DOWN * 0.12, aw_tip_b, aw_tip_a, awning_col.darkened(0.22))
 					else:
 						colored_quad(surface, a, b, b + Vector3.UP * plinth_h, a + Vector3.UP * plinth_h, plinth_col)
-					# Upper stories with 3D projecting SF bay windows and spandrel bands
+					# Upper stories with 3D projecting SF bay windows, wrought-iron fire escapes, and spandrel bands
 					var mid_h := cornice_y - plinth_h
 					var num_stories := maxi(1, int(floor(mid_h / 3.2)))
 					var story_h := mid_h / float(num_stories)
 					var num_bays := clampi(int(floor(seg_len / 3.2)), 1, 7)
 					var has_3d_bays := (seg_len >= 6.8 and h >= 8.2 and num_bays >= 2)
+					var fire_bay := num_bays / 2 if (seg_len >= 7.8 and num_stories >= 2) else -1
 					for s_i in range(num_stories):
 						var sy0 := plinth_h + float(s_i) * story_h
 						var sy1 := sy0 + story_h
@@ -566,7 +634,14 @@ func make_building_mesh_and_rect(building: Dictionary, mat: StandardMaterial3D, 
 							var p_t1 := a.lerp(b, t1)
 							var w_pick: int = (b_hash + i * 7 + s_i * 13 + bay_i * 5) % 5
 							var win_col := glass_warm if w_pick <= 1 else (glass_amber if w_pick == 2 else glass_sky)
-							if has_3d_bays and ((bay_i + b_hash) % 2 == 0):
+							if bay_i == fire_bay:
+								# 3D Wrought-Iron Fire Escape balcony platform & railing
+								var fe_out := out_n * 0.50
+								var fe_a := p_wt0 + fe_out + Vector3.UP * (sy0 + 0.08)
+								var fe_b := p_wt1 + fe_out + Vector3.UP * (sy0 + 0.08)
+								colored_quad(surface, p_wt0 + Vector3.UP * (sy0 + 0.08), p_wt1 + Vector3.UP * (sy0 + 0.08), fe_b, fe_a, fire_escape_col)
+								colored_quad(surface, fe_a, fe_b, fe_b + Vector3.UP * 0.34, fe_a + Vector3.UP * 0.34, fire_escape_col)
+							if has_3d_bays and ((bay_i + b_hash) % 2 == 0) and bay_i != fire_bay:
 								var bay_out := out_n * 0.38
 								var b_wt0 := p_wt0 + bay_out
 								var b_wt1 := p_wt1 + bay_out
@@ -815,9 +890,11 @@ func build_streets() -> void:
 	bike_mesh.mesh = bikelane_surface.commit()
 	bike_mesh.material_override = material(Color("2e7d5b"))
 	add_child(bike_mesh)
-	# Continental white zebra crosswalks at key intersections
+	# Continental white zebra crosswalks and yellow tactile ADA curb ramp pads at key intersections
 	var xwalk_surface := SurfaceTool.new()
 	xwalk_surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var ada_surface := SurfaceTool.new()
+	ada_surface.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var xwalk_centers: Array[Vector3] = [
 		Vector3(0.0, 0.04, 0.0),
 		Vector3(134.8, 0.04, -21.1),
@@ -836,12 +913,25 @@ func build_streets() -> void:
 			triangle(xwalk_surface, e_c - bw - bh, e_c + bw + bh, e_c - bw + bh)
 			triangle(xwalk_surface, w_c - bw - bh, w_c + bw - bh, w_c + bw + bh)
 			triangle(xwalk_surface, w_c - bw - bh, w_c + bw + bh, w_c - bw + bh)
+		for sx in [-1.0, 1.0]:
+			for sz in [-1.0, 1.0]:
+				var pad_c := xc + Vector3(sx * 5.6, 0.018, sz * 5.2)
+				var pw := Vector3(0.65, 0.0, 0.0)
+				var ph := Vector3(0.0, 0.0, 0.65)
+				triangle(ada_surface, pad_c - pw - ph, pad_c + pw - ph, pad_c + pw + ph)
+				triangle(ada_surface, pad_c - pw - ph, pad_c + pw + ph, pad_c - pw + ph)
 	xwalk_surface.generate_normals()
 	var xwalk_mesh := MeshInstance3D.new()
 	xwalk_mesh.name = "ContinentalCrosswalks"
 	xwalk_mesh.mesh = xwalk_surface.commit()
 	xwalk_mesh.material_override = material(Color("ede6d6"))
 	add_child(xwalk_mesh)
+	ada_surface.generate_normals()
+	var ada_mesh := MeshInstance3D.new()
+	ada_mesh.name = "TactileCurbRamps"
+	ada_mesh.mesh = ada_surface.commit()
+	ada_mesh.material_override = material(Color("e8bf3a"))
+	add_child(ada_mesh)
 	build_street_name_signs()
 
 func build_street_name_signs() -> void:

@@ -9,6 +9,7 @@ A peaceful neighborhood adventure set on an accurate map of San Francisco's Tend
 **Play Online (GitHub Pages):**
 - 🎮 **[3D Godot Web Edition](https://jbrick2070.github.io/tenderloin-redux/)** — Isometric/2.5D 188-building measured neighborhood walk & block party (`artifacts/godot-web/`)
 - 🗺️ **[2D Browser Edition](https://jbrick2070.github.io/tenderloin-redux/browser/)** — Illustrated block adventure (`public/`)
+- 📸 **[Field Photo & Surface Guide](https://jbrick2070.github.io/tenderloin-redux/field-guide/)** — Mobile GPS & 14-stop walking guide for capturing Tenderloin building facades (`tools/field-guide/`)
 
 The project began as a constructive response to the Tenderloin-set shooter reported as Night Shift by SFist and Tenderloin Night Shift by the San Francisco Chronicle, with the belief that games can inspire care, creativity, and greatness.
 

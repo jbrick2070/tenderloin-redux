@@ -60,10 +60,12 @@ jobs:
 
       - name: Assemble GitHub Pages site (_site)
         run: |
-          mkdir -p _site _site/godot _site/browser
+          mkdir -p _site _site/godot _site/browser _site/field-guide
           cp -r artifacts/godot-web/* _site/
           cp -r artifacts/godot-web/* _site/godot/
           cp -r public/* _site/browser/
+          cp -r tools/field-guide/* _site/field-guide/
+          cp godot/data/buildings.json _site/field-guide/buildings.json
           touch _site/.nojekyll
 
       - name: Configure GitHub Pages

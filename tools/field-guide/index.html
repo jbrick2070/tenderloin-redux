@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Tenderloin Redux · Field Photo & Surface Guide</title>
+  <style>
+    :root {
+      --bg: #122024;
+      --panel: #192b30;
+      --panel-alt: #21373d;
+      --border: #d9a74a;
+      --gold: #ffe094;
+      --teal: #6fd6c5;
+      --text: #f5efe2;
+      --muted: #b8c4be;
+      --accent: #cf6d51;
+      --green: #3ca374;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    header {
+      background: var(--panel);
+      border-bottom: 2px solid var(--border);
+      padding: 10px 14px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    .brand h1 {
+      margin: 0;
+      font-size: 1.05rem;
+      color: var(--gold);
+      letter-spacing: 0.3px;
+    }
+    .brand p {
+      margin: 2px 0 0;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .top-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    button, .btn {
+      background: var(--panel-alt);
+      color: var(--text);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 11px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    button:hover, .btn:hover { background: #2b474f; }
+    button.primary {
+      background: #2b5e55;
+      border-color: var(--teal);
+      color: #fff;
+    }
+    button.active {
+      background: var(--border);
+      color: #132024;
+    }
+    main {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      flex: 1;
+      min-height: 0;
+    }
+    @media (max-width: 860px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+    .map-pane {
+      position: relative;
+      background: #152529;
+      border-right: 1px solid #2e464d;
+      min-height: 360px;
+      display: flex;
+      flex-direction: column;
+    }
+    #mapCanvas {
+      width: 100%;
+      height: 430px;
+      display: block;
+      touch-action: none;
+      cursor: grab;
+    }
+    #mapCanvas:active { cursor: grabbing; }
+    .map-overlay {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      display: flex;
+      justify-content: space-between;
+      pointer-events: none;
+      gap: 8px;
+    }
+    .map-pill {
+      pointer-events: auto;
+      background: rgba(18, 32, 36, 0.9);
+      border: 1px solid var(--border);
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      color: var(--gold);
+    }
+    .map-controls {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      display: flex;
+      gap: 6px;
+    }
+    .guide-pane {
+      padding: 14px;
+      overflow-y: auto;
+      max-height: calc(100vh - 64px);
+    }
+    @media (max-width: 860px) {
+      .guide-pane { max-height: none; }
+    }
+    .stop-selector {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+    }
+    .stop-chip {
+      flex: 0 0 auto;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      border: 1px solid #48646b;
+      background: var(--panel);
+      color: var(--muted);
+    }
+    .stop-chip.active {
+      border-color: var(--gold);
+      background: #2d484f;
+      color: var(--gold);
+    }
+    .stop-chip.done {
+      border-color: var(--green);
+      color: #a9f5cd;
+    }
+    .card {
+      background: var(--panel);
+      border: 1.5px solid #355259;
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .card h2 {
+      margin: 0 0 4px;
+      font-size: 1.1rem;
+      color: var(--gold);
+    }
+    .submeta {
+      font-size: 0.8rem;
+      color: var(--teal);
+      margin-bottom: 10px;
+    }
+    .stand-box {
+      background: var(--panel-alt);
+      border-left: 3px solid var(--border);
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 0.86rem;
+      margin-bottom: 10px;
+      line-height: 1.4;
+    }
+    .shots-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin: 10px 0;
+    }
+    .shot-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.04);
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 0.86rem;
+      cursor: pointer;
+    }
+    .shot-item input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--teal);
+    }
+    .tag-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 8px 0 12px;
+    }
+    .tag-btn {
+      font-size: 0.76rem;
+      padding: 5px 9px;
+      border-radius: 6px;
+      border: 1px solid #48666e;
+      background: #18282c;
+      color: var(--muted);
+    }
+    .tag-btn.selected {
+      background: #2c574f;
+      border-color: var(--teal);
+      color: #fff;
+    }
+    textarea {
+      width: 100%;
+      min-height: 68px;
+      background: #111d20;
+      border: 1px solid #456169;
+      border-radius: 8px;
+      color: var(--text);
+      padding: 8px 10px;
+      font-size: 0.86rem;
+      font-family: inherit;
+      resize: vertical;
+    }
+    .photo-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .photo-thumb {
+      background: #111d20;
+      border: 1px solid #3e5b63;
+      border-radius: 8px;
+      overflow: hidden;
+      font-size: 0.7rem;
+    }
+    .photo-thumb img {
+      width: 100%;
+      height: 82px;
+      object-fit: cover;
+      display: block;
+    }
+    .photo-thumb .meta {
+      padding: 4px 6px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .bldg-inspector {
+      border-color: var(--teal);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <h1>📸 Tenderloin Field Photo & Surface Guide</h1>
+      <p id="progressSummary">Loading 188 measured DataSF buildings & 14 photo stops…</p>
+    </div>
+    <div class="top-actions">
+      <button id="gpsBtn" type="button">📍 Locate Me (GPS)</button>
+      <button id="exportJsonBtn" class="primary" type="button">📦 Export Field Pack (.json)</button>
+      <a class="btn" href="../">🎮 Back to 3D Game</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="map-pane">
+      <div class="map-overlay">
+        <div class="map-pill" id="mapStatusPill">Tap any numbered stop (1–14) or any of the 188 buildings</div>
+        <div class="map-pill" id="gpsStatusPill" style="display:none;">GPS: Off</div>
+      </div>
+      <canvas id="mapCanvas" width="720" height="460"></canvas>
+      <div class="map-controls">
+        <button id="zoomInBtn" type="button">＋</button>
+        <button id="zoomOutBtn" type="button">－</button>
+        <button id="resetViewBtn" type="button">Full Corridor</button>
+      </div>
+    </section>
+
+    <section class="guide-pane">
+      <div class="stop-selector" id="stopChips"></div>
+
+      <div class="card" id="stopCard">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+          <div>
+            <h2 id="stopTitle">Stop #1</h2>
+            <div class="submeta" id="stopCoords"></div>
+          </div>
+          <div style="display:flex; gap:6px;">
+            <button id="prevStopBtn" type="button">« Prev</button>
+            <button id="nextStopBtn" type="button">Next »</button>
+          </div>
+        </div>
+
+        <div class="stand-box" id="stopStand"></div>
+
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+          <label class="btn primary" style="cursor:pointer;">
+            📷 Snap / Attach Photo
+            <input id="photoInput" type="file" accept="image/*" capture="environment" multiple style="display:none;" />
+          </label>
+          <a id="gmapsLink" class="btn" target="_blank" rel="noopener">🗺️ Open Corner in Google Maps</a>
+        </div>
+
+        <strong>Target Shots to Capture:</strong>
+        <div class="shots-list" id="shotsList"></div>
+
+        <strong>Quick Surface & Architecture Tags (Tap what you see):</strong>
+        <div class="tag-grid" id="tagGrid"></div>
+
+        <strong>Field Notes for Claude / Antigravity:</strong>
+        <textarea id="notesInput" placeholder="E.g., Red brick upper floors, dark green ground-floor awning, gold 'Market' lettering, 3 rounded bay window columns…"></textarea>
+
+        <div class="photo-strip" id="photoStrip"></div>
+      </div>
+
+      <div class="card bldg-inspector" id="bldgCard" style="display:none;">
+        <h2 id="bldgTitle">Selected Building Footprint</h2>
+        <div class="submeta" id="bldgMeta"></div>
+        <p style="margin:6px 0; font-size:0.84rem;" id="bldgDetails"></p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+          <label class="btn primary" style="cursor:pointer;">
+            📷 Tag Photo to This Building ID
+            <input id="bldgPhotoInput" type="file" accept="image/*" capture="environment" multiple style="display:none;" />
+          </label>
+          <a id="bldgMapsLink" class="btn" target="_blank" rel="noopener">🗺️ Street View This Footprint</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    const ORIGIN = { lon: -122.4112237, lat: 37.783135 };
+    const METERS_PER_DEG_LAT = 111320.0;
+    const METERS_PER_DEG_LON = Math.cos((ORIGIN.lat * Math.PI) / 180.0) * 111320.0;
+
+    function gameXZToLatLon(x, z) {
+      return {
+        lat: +(ORIGIN.lat - z / METERS_PER_DEG_LAT).toFixed(6),
+        lon: +(ORIGIN.lon + x / METERS_PER_DEG_LON).toFixed(6)
+      };
+    }
+
+    function latLonToGameXZ(lat, lon) {
+      return {
+        x: (lon - ORIGIN.lon) * METERS_PER_DEG_LON,
+        z: (ORIGIN.lat - lat) * METERS_PER_DEG_LAT
+      };
+    }
+
+    const SURFACE_TAGS = [
+      "Red Brick", "Buff/Tan Brick", "Cream Stucco", "Sage/Teal Paint",
+      "Terracotta Ornate Trim", "Angled Bay Windows", "Rounded Bay Windows",
+      "Sloped Fabric Awning", "Flat Metal Marquee", "Vertical Neon Blade Sign",
+      "Iron Fire Escape", "Arched Mezzanine Windows", "Green Bike Lane",
+      "Continental Crosswalk", "Sidewalk Trees / Planters", "Painted Wall Mural"
+    ];
+
+    const PHOTO_STOPS = [
+      {
+        id: "stop-01-comptons",
+        num: 1,
+        name: "Turk & Taylor · Compton's Corner (101–111 Taylor)",
+        x: 0.0, z: 0.0,
+        stand: "Stand on the SW corner of Turk & Taylor facing NE across the intersection so you capture both the 101 Taylor corner facade and the Turk & Taylor crosswalks.",
+        shots: [
+          "Wide corner shot of 101–111 Taylor St (Compton's Cafeteria building)",
+          "Ground-floor storefront canopy, commemorative plaque & corner columns",
+          "Upper-story bay window rhythm, fire escapes & roofline cornice"
+        ]
+      },
+      {
+        id: "stop-02-turk-opening-north",
+        num: 2,
+        name: "0–50 Turk St (North Side · Bea & Celeste's Block)",
+        x: 36.0, z: -12.0,
+        stand: "Walk 35m east along the south sidewalk of Turk St and face North across the green bike lane toward the north-side mid-rise buildings.",
+        shots: [
+          "Straight-on elevation of the north-side facades (bay windows & brick tones)",
+          "Ground-floor commercial storefronts & awnings",
+          "Sidewalk surface, tree wells & Turk St green bike lane stripe"
+        ]
+      },
+      {
+        id: "stop-03-turk-opening-south",
+        num: 3,
+        name: "50–95 Turk St (South Side · Rook & Dez's Block)",
+        x: 78.0, z: -13.0,
+        stand: "Stand mid-block on the north sidewalk of Turk St facing South toward the south-side building facades.",
+        shots: [
+          "South-side mid-block facades & recessed courtyard gaps",
+          "Storefront security grilles / awnings / transom windows",
+          "Roofline parapet heights & color transitions between neighboring buildings"
+        ]
+      },
+      {
+        id: "stop-04-turk-mason",
+        num: 4,
+        name: "Turk & Mason (East Corner Anchor)",
+        x: 134.8, z: -21.1,
+        stand: "Stand at the Turk & Mason intersection looking back West along Turk St and at the corner buildings.",
+        shots: [
+          "Corner buildings at Turk & Mason",
+          "Long perspective shot looking West down the 0–100 Turk St canyon",
+          "Crosswalk striping, curb ramps & corner street signs"
+        ]
+      },
+      {
+        id: "stop-05-eddy-mason",
+        num: 5,
+        name: "Eddy & Mason (East Eddy Corridor)",
+        x: 112.0, z: -102.0,
+        stand: "Walk 1 block north on Mason to Eddy St. Capture the Eddy & Mason corner facades and street width.",
+        shots: [
+          "Corner hotel/apartment masonry at Eddy & Mason",
+          "Ground-floor corner storefronts & signage bands",
+          "Eddy St sidewalk paving, vintage streetlamps & trees"
+        ]
+      },
+      {
+        id: "stop-06-eddy-taylor",
+        num: 6,
+        name: "Eddy & Taylor (Boeddeker Park Edge)",
+        x: -14.0, z: -85.0,
+        stand: "Walk west on Eddy to Taylor St. Capture the buildings framing Eddy & Taylor.",
+        shots: [
+          "Corner facades at Eddy & Taylor",
+          "Park-facing perimeter fencing / trees / sidewalk seating",
+          "Upper bay window columns & painted stucco/brick colors"
+        ]
+      },
+      {
+        id: "stop-07-turk-jones",
+        num: 7,
+        name: "Turk & Jones (100–200 Turk Block)",
+        x: -145.6, z: 22.8,
+        stand: "Head to Turk & Jones. Capture all 4 corners and the transition from the 100 block to the 200 block of Turk.",
+        shots: [
+          "Corner facades at Turk & Jones",
+          "200 block of Turk St looking West toward Leavenworth",
+          "Sidewalk bulb-outs, crosswalks & streetlamp style"
+        ]
+      },
+      {
+        id: "stop-08-cadillac-museum",
+        num: 8,
+        name: "398 Eddy St at Leavenworth (Cadillac Hotel & Tenderloin Museum)",
+        x: -308.0, z: -52.0,
+        stand: "Stand on the SE corner of Eddy & Leavenworth facing NW toward the historic 1907 Cadillac Hotel & Tenderloin Museum.",
+        shots: [
+          "Full 4-story white/cream Edwardian facade & corner bay windows of 398 Eddy",
+          "Tenderloin Museum neon blade sign & ground-floor gallery windows",
+          "Cadillac Hotel entrance marquee & ornate roofline cornice"
+        ]
+      },
+      {
+        id: "stop-09-145-leavenworth",
+        num: 9,
+        name: "145 Leavenworth St (8th-Floor Window & Mid-Block Bays)",
+        x: -298.0, z: 5.0,
+        stand: "Walk half a block south on Leavenworth between Eddy and Turk, looking up at the 8-story apartment facade at 145 Leavenworth.",
+        shots: [
+          "Upward shot of the full 8-story brick/stucco facade & top-floor windows",
+          "Entryway arch, lobby doors & ground-floor stonework",
+          "Fire escape & bay window profile along Leavenworth"
+        ]
+      },
+      {
+        id: "stop-10-361-turk",
+        num: 10,
+        name: "361 Turk St ('So What' Musical-Staff Awning)",
+        x: -332.0, z: 56.0,
+        stand: "Walk just west of Leavenworth on Turk St to 361 Turk St on the south side.",
+        shots: [
+          "Close-up of the ground-floor awning & storefront at 361 Turk",
+          "Full building facade above 361 Turk St",
+          "Adjacent facades on the 300 block of Turk St"
+        ]
+      },
+      {
+        id: "stop-11-turk-leavenworth",
+        num: 11,
+        name: "Turk & Leavenworth Intersection",
+        x: -291.5, z: 45.7,
+        stand: "Stand at the corner of Turk & Leavenworth capturing the four intersection corners.",
+        shots: [
+          "Corner storefronts & corner bays at Turk & Leavenworth",
+          "Looking North up Leavenworth toward Eddy",
+          "Crosswalk, bike lane buffer & corner signage"
+        ]
+      },
+      {
+        id: "stop-12-dodge-alley",
+        num: 12,
+        name: "Dodge Place / Dodge Alley (North Side of 400 Turk)",
+        x: -414.0, z: 44.0,
+        stand: "Walk west on the 400 block of Turk St (between Leavenworth and Hyde) to the entrance of Dodge Place (Dodge Alley) on the north side.",
+        shots: [
+          "View looking North into Dodge Alley from the Turk St sidewalk",
+          "Brick side-walls & fire escapes flanking the alley entrance",
+          "Alley pavement surface, lighting & width"
+        ]
+      },
+      {
+        id: "stop-13-black-hawk",
+        num: 13,
+        name: "200 Hyde St at Turk (Former Black Hawk Jazz Club Corner)",
+        x: -437.3, z: 68.6,
+        stand: "Stand at the NE corner of Turk & Hyde (200 Hyde St), site of the legendary 1949–1963 Black Hawk jazz club.",
+        shots: [
+          "NE corner building at 200 Hyde St (Turk & Hyde)",
+          "Ground-floor corner frontage along Hyde & Turk",
+          "Wide intersection view of Turk & Hyde looking East back down Turk St"
+        ]
+      },
+      {
+        id: "stop-14-west-planters",
+        num: 14,
+        name: "Mason / Golden Gate Approach (Thanh's Planter Corner)",
+        x: 68.0, z: 22.0,
+        stand: "On your walk back east, capture any sidewalk community planters, murals, and diner/cafe awnings along Taylor or Mason.",
+        shots: [
+          "Sidewalk planter boxes & street trees",
+          "Neighborhood corner market or diner marquee",
+          "Close-up of sidewalk concrete scoring & curb paint"
+        ]
+      }
+    ];
+
+    const STORAGE_KEY = "tenderloin-redux.field-guide.v1";
+    let state = {
+      activeStopIdx: 0,
+      stops: {},
+      buildings: {},
+      selectedBuildingId: null
+    };
+
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") {
+          state = { ...state, ...parsed };
+        }
+      }
+    } catch {}
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (err) {
+        console.warn("Storage quota warning:", err);
+      }
+      updateProgressSummary();
+    }
+
+    function ensureStopRecord(stopId) {
+      if (!state.stops[stopId]) {
+        state.stops[stopId] = { shots: {}, tags: [], notes: "", photos: [] };
+      }
+      return state.stops[stopId];
+    }
+
+    let cityData = { buildings: [], wider_buildings: [], wider_streets: [] };
+    let allBuildings = [];
+    let view = { cx: -140, cz: 0, scale: 1.15 };
+    let userGps = null;
+
+    const canvas = document.getElementById("mapCanvas");
+    const ctx = canvas.getContext("2d");
+
+    async function loadCityData() {
+      try {
+        const res = await fetch("./buildings.json");
+        cityData = await res.json();
+        allBuildings = [
+          ...(cityData.buildings || []).map(b => ({ ...b, zone: "opening" })),
+          ...(cityData.wider_buildings || []).map(b => ({ ...b, zone: "wider" }))
+        ];
+      } catch (e) {
+        console.warn("Could not load buildings.json:", e);
+      }
+      updateProgressSummary();
+      renderStopChips();
+      renderActiveStop();
+      drawMap();
+    }
+
+    function updateProgressSummary() {
+      let completedStops = 0;
+      let totalPhotos = 0;
+      for (const stop of PHOTO_STOPS) {
+        const rec = state.stops[stop.id];
+        if (!rec) continue;
+        const checkedCount = Object.values(rec.shots || {}).filter(Boolean).length;
+        const photoCount = (rec.photos || []).length;
+        totalPhotos += photoCount;
+        if (checkedCount > 0 || photoCount > 0 || (rec.tags && rec.tags.length > 0) || (rec.notes && rec.notes.trim())) {
+          completedStops++;
+        }
+      }
+      const bldgOverrides = Object.keys(state.buildings || {}).length;
+      document.getElementById("progressSummary").textContent =
+        `${completedStops}/${PHOTO_STOPS.length} stops logged · ${totalPhotos} photos attached · ${bldgOverrides} individual buildings tagged (${allBuildings.length || 188} footprints loaded)`;
+    }
+
+    function worldToScreen(x, z) {
+      const w = canvas.width;
+      const h = canvas.height;
+      return {
+        px: w * 0.5 + (x - view.cx) * view.scale,
+        py: h * 0.5 + (z - view.cz) * view.scale
+      };
+    }
+
+    function screenToWorld(px, py) {
+      const w = canvas.width;
+      const h = canvas.height;
+      return {
+        x: view.cx + (px - w * 0.5) / view.scale,
+        z: view.cz + (py - h * 0.5) / view.scale
+      };
+    }
+
+    function drawMap() {
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.fillStyle = "#132226";
+      ctx.fillRect(0, 0, w, h);
+
+      // Draw streets
+      const streets = cityData.wider_streets || cityData.streets || [];
+      for (const st of streets) {
+        if (!st.points || st.points.length < 2) continue;
+        ctx.beginPath();
+        st.points.forEach((pt, idx) => {
+          const { px, py } = worldToScreen(pt[0], pt[1]);
+          if (idx === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        });
+        ctx.strokeStyle = "#294248";
+        ctx.lineWidth = Math.max(4, 11 * view.scale);
+        ctx.lineCap = "round";
+        ctx.stroke();
+      }
+
+      // Draw 188 buildings
+      for (const b of allBuildings) {
+        const isSelected = state.selectedBuildingId === b.id;
+        const hasTag = Boolean(state.buildings[b.id]);
+        for (const poly of b.polygons || []) {
+          const ring = poly.rings && poly.rings[0];
+          if (!ring || ring.length < 3) continue;
+          ctx.beginPath();
+          ring.forEach((pt, idx) => {
+            const { px, py } = worldToScreen(pt[0], pt[1]);
+            if (idx === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          });
+          ctx.closePath();
+          ctx.fillStyle = isSelected
+            ? "#6fd6c5"
+            : hasTag
+            ? "#3ca374"
+            : b.zone === "opening"
+            ? "#c87d55"
+            : "#756a5a";
+          ctx.fill();
+          ctx.strokeStyle = isSelected ? "#ffffff" : "#1c2d31";
+          ctx.lineWidth = isSelected ? 2 : 0.8;
+          ctx.stroke();
+        }
+      }
+
+      // Draw walking route line connecting the 14 stops
+      ctx.beginPath();
+      PHOTO_STOPS.forEach((s, idx) => {
+        const { px, py } = worldToScreen(s.x, s.z);
+        if (idx === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      });
+      ctx.strokeStyle = "rgba(255, 224, 148, 0.45)";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Draw numbered stop markers
+      PHOTO_STOPS.forEach((s, idx) => {
+        const { px, py } = worldToScreen(s.x, s.z);
+        const isActive = idx === state.activeStopIdx;
+        const rec = state.stops[s.id];
+        const isDone = rec && (Object.values(rec.shots || {}).some(Boolean) || (rec.photos || []).length > 0);
+        ctx.beginPath();
+        ctx.arc(px, py, isActive ? 13 : 10, 0, Math.PI * 2);
+        ctx.fillStyle = isActive ? "#ffe094" : isDone ? "#3ca374" : "#cf6d51";
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "#122024";
+        ctx.stroke();
+        ctx.fillStyle = isActive ? "#122024" : "#ffffff";
+        ctx.font = "bold 11px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(String(s.num), px, py);
+      });
+
+      // Draw live GPS dot if available
+      if (userGps) {
+        const { px, py } = worldToScreen(userGps.x, userGps.z);
+        ctx.beginPath();
+        ctx.arc(px, py, 9, 0, Math.PI * 2);
+        ctx.fillStyle = "#3898ff";
+        ctx.fill();
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = "#ffffff";
+        ctx.stroke();
+      }
+    }
+
+    function renderStopChips() {
+      const container = document.getElementById("stopChips");
+      container.innerHTML = "";
+      PHOTO_STOPS.forEach((s, idx) => {
+        const rec = state.stops[s.id];
+        const isDone = rec && (Object.values(rec.shots || {}).some(Boolean) || (rec.photos || []).length > 0);
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "stop-chip" + (idx === state.activeStopIdx ? " active" : "") + (isDone ? " done" : "");
+        btn.textContent = `#${s.num} ${s.name.split("·")[0].split("(")[0].trim()}`;
+        btn.addEventListener("click", () => {
+          state.activeStopIdx = idx;
+          centerOnStop(s);
+          renderStopChips();
+          renderActiveStop();
+          drawMap();
+        });
+        container.appendChild(btn);
+      });
+    }
+
+    function centerOnStop(s) {
+      view.cx = s.x;
+      view.cz = s.z;
+      if (view.scale < 1.6) view.scale = 1.85;
+    }
+
+    function renderActiveStop() {
+      const stop = PHOTO_STOPS[state.activeStopIdx];
+      const rec = ensureStopRecord(stop.id);
+      const gps = gameXZToLatLon(stop.x, stop.z);
+
+      document.getElementById("stopTitle").textContent = `#${stop.num}. ${stop.name}`;
+      document.getElementById("stopCoords").textContent =
+        `Game 3D: (${stop.x.toFixed(1)}m, ${stop.z.toFixed(1)}m) · GPS: ${gps.lat}, ${gps.lon}`;
+      document.getElementById("stopStand").textContent = `🧭 Where to stand: ${stop.stand}`;
+      document.getElementById("gmapsLink").href =
+        `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${gps.lat},${gps.lon}`;
+
+      // Shots checklist
+      const shotsList = document.getElementById("shotsList");
+      shotsList.innerHTML = "";
+      stop.shots.forEach((shotLabel, sIdx) => {
+        const row = document.createElement("label");
+        row.className = "shot-item";
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = Boolean(rec.shots[sIdx]);
+        cb.addEventListener("change", () => {
+          rec.shots[sIdx] = cb.checked;
+          saveState();
+          renderStopChips();
+          drawMap();
+        });
+        const span = document.createElement("span");
+        span.textContent = shotLabel;
+        row.append(cb, span);
+        shotsList.appendChild(row);
+      });
+
+      // Tags grid
+      const tagGrid = document.getElementById("tagGrid");
+      tagGrid.innerHTML = "";
+      SURFACE_TAGS.forEach(tag => {
+        const b = document.createElement("button");
+        b.type = "button";
+        const active = rec.tags.includes(tag);
+        b.className = "tag-btn" + (active ? " selected" : "");
+        b.textContent = tag;
+        b.addEventListener("click", () => {
+          if (rec.tags.includes(tag)) {
+            rec.tags = rec.tags.filter(t => t !== tag);
+          } else {
+            rec.tags.push(tag);
+          }
+          saveState();
+          renderActiveStop();
+        });
+        tagGrid.appendChild(b);
+      });
+
+      // Notes
+      const notesInput = document.getElementById("notesInput");
+      notesInput.value = rec.notes || "";
+      notesInput.oninput = () => {
+        rec.notes = notesInput.value;
+        saveState();
+      };
+
+      // Photos
+      renderPhotos(rec);
+    }
+
+    function renderPhotos(rec) {
+      const strip = document.getElementById("photoStrip");
+      strip.innerHTML = "";
+      (rec.photos || []).forEach((p, idx) => {
+        const div = document.createElement("div");
+        div.className = "photo-thumb";
+        const img = document.createElement("img");
+        img.src = p.dataUrl;
+        img.alt = p.filename;
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = p.filename.slice(0, 14) + "…";
+        const delBtn = document.createElement("button");
+        delBtn.type = "button";
+        delBtn.style.padding = "2px 6px";
+        delBtn.style.fontSize = "0.68rem";
+        delBtn.textContent = "✕";
+        delBtn.addEventListener("click", () => {
+          rec.photos.splice(idx, 1);
+          saveState();
+          renderPhotos(rec);
+          renderStopChips();
+          drawMap();
+        });
+        meta.append(nameSpan, delBtn);
+        div.append(img, meta);
+        strip.appendChild(div);
+      });
+    }
+
+    async function compressImageFile(file, maxDim = 1280, quality = 0.82) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+            const w = Math.round(img.width * scale);
+            const h = Math.round(img.height * scale);
+            const off = document.createElement("canvas");
+            off.width = w;
+            off.height = h;
+            off.getContext("2d").drawImage(img, 0, 0, w, h);
+            resolve({
+              width: w,
+              height: h,
+              dataUrl: off.toDataURL("image/jpeg", quality)
+            });
+          };
+          img.onerror = reject;
+          img.src = reader.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    document.getElementById("photoInput").addEventListener("change", async (e) => {
+      const stop = PHOTO_STOPS[state.activeStopIdx];
+      const rec = ensureStopRecord(stop.id);
+      const files = Array.from(e.target.files || []);
+      for (const file of files) {
+        const compressed = await compressImageFile(file);
+        const seq = (rec.photos.length + 1).toString().padStart(2, "0");
+        const filename = `TL-${stop.id}-${seq}.jpg`;
+        rec.photos.push({
+          filename,
+          stopId: stop.id,
+          gameXZ: [stop.x, stop.z],
+          capturedAt: new Date().toISOString(),
+          width: compressed.width,
+          height: compressed.height,
+          dataUrl: compressed.dataUrl
+        });
+      }
+      e.target.value = "";
+      saveState();
+      renderPhotos(rec);
+      renderStopChips();
+      drawMap();
+    });
+
+    // Point-in-polygon check for tapping any of the 188 buildings
+    function pointInRing(x, z, ring) {
+      let inside = false;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const xi = ring[i][0], zi = ring[i][1];
+        const xj = ring[j][0], zj = ring[j][1];
+        const intersect = ((zi > z) !== (zj > z)) && (x < ((xj - xi) * (z - zi)) / (zj - zi + 1e-9) + xi);
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    function selectBuilding(b) {
+      state.selectedBuildingId = b ? b.id : null;
+      const card = document.getElementById("bldgCard");
+      if (!b) {
+        card.style.display = "none";
+        return;
+      }
+      const ring = b.polygons[0].rings[0];
+      const cx = ring.reduce((s, p) => s + p[0], 0) / ring.length;
+      const cz = ring.reduce((s, p) => s + p[1], 0) / ring.length;
+      const gps = gameXZToLatLon(cx, cz);
+      const stories = Math.max(1, Math.round(b.height_m / 3.4));
+      card.style.display = "block";
+      document.getElementById("bldgTitle").textContent = `Building ID: ${b.id}`;
+      document.getElementById("bldgMeta").textContent =
+        `Measured Height: ${b.height_m.toFixed(1)}m (~${stories} stories) · Zone: ${b.zone === "opening" ? "Opening Block" : "Wider Tenderloin"}`;
+      const existing = state.buildings[b.id];
+      document.getElementById("bldgDetails").textContent =
+        `Game 3D Center: (${cx.toFixed(1)}m, ${cz.toFixed(1)}m) · GPS: ${gps.lat}, ${gps.lon}` +
+        (existing && existing.photos ? ` · ${existing.photos.length} photo(s) tagged` : "");
+      document.getElementById("bldgMapsLink").href =
+        `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${gps.lat},${gps.lon}`;
+    }
+
+    document.getElementById("bldgPhotoInput").addEventListener("change", async (e) => {
+      const bId = state.selectedBuildingId;
+      if (!bId) return;
+      if (!state.buildings[bId]) state.buildings[bId] = { photos: [] };
+      const files = Array.from(e.target.files || []);
+      for (const file of files) {
+        const compressed = await compressImageFile(file);
+        state.buildings[bId].photos.push({
+          filename: `TL-bldg-${bId}-${state.buildings[bId].photos.length + 1}.jpg`,
+          buildingId: bId,
+          capturedAt: new Date().toISOString(),
+          dataUrl: compressed.dataUrl
+        });
+      }
+      e.target.value = "";
+      saveState();
+      const bObj = allBuildings.find(x => x.id === bId);
+      selectBuilding(bObj);
+      drawMap();
+    });
+
+    // Map pan/zoom & tap interaction
+    let dragging = false;
+    let dragStart = { x: 0, y: 0 };
+    let moved = false;
+
+    canvas.addEventListener("pointerdown", (e) => {
+      dragging = true;
+      moved = false;
+      dragStart = { x: e.clientX, y: e.clientY };
+      canvas.setPointerCapture(e.pointerId);
+    });
+
+    canvas.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      const dx = e.clientX - dragStart.x;
+      const dy = e.clientY - dragStart.y;
+      if (Math.hypot(dx, dy) > 4) moved = true;
+      view.cx -= dx / view.scale;
+      view.cz -= dy / view.scale;
+      dragStart = { x: e.clientX, y: e.clientY };
+      drawMap();
+    });
+
+    canvas.addEventListener("pointerup", (e) => {
+      dragging = false;
+      if (moved) return;
+      const rect = canvas.getBoundingClientRect();
+      const px = ((e.clientX - rect.left) / rect.width) * canvas.width;
+      const py = ((e.clientY - rect.top) / rect.height) * canvas.height;
+
+      // 1. Check if user tapped a numbered stop
+      for (let i = 0; i < PHOTO_STOPS.length; i++) {
+        const s = PHOTO_STOPS[i];
+        const sp = worldToScreen(s.x, s.z);
+        if (Math.hypot(px - sp.px, py - sp.py) <= 16) {
+          state.activeStopIdx = i;
+          renderStopChips();
+          renderActiveStop();
+          drawMap();
+          return;
+        }
+      }
+
+      // 2. Check if user tapped one of the 188 buildings
+      const worldPt = screenToWorld(px, py);
+      for (const b of allBuildings) {
+        for (const poly of b.polygons || []) {
+          if (poly.rings && poly.rings[0] && pointInRing(worldPt.x, worldPt.z, poly.rings[0])) {
+            selectBuilding(b);
+            drawMap();
+            return;
+          }
+        }
+      }
+    });
+
+    document.getElementById("zoomInBtn").addEventListener("click", () => {
+      view.scale = Math.min(6.0, view.scale * 1.35);
+      drawMap();
+    });
+    document.getElementById("zoomOutBtn").addEventListener("click", () => {
+      view.scale = Math.max(0.45, view.scale / 1.35);
+      drawMap();
+    });
+    document.getElementById("resetViewBtn").addEventListener("click", () => {
+      view = { cx: -140, cz: 0, scale: 1.15 };
+      drawMap();
+    });
+
+    document.getElementById("prevStopBtn").addEventListener("click", () => {
+      state.activeStopIdx = (state.activeStopIdx - 1 + PHOTO_STOPS.length) % PHOTO_STOPS.length;
+      centerOnStop(PHOTO_STOPS[state.activeStopIdx]);
+      renderStopChips();
+      renderActiveStop();
+      drawMap();
+    });
+    document.getElementById("nextStopBtn").addEventListener("click", () => {
+      state.activeStopIdx = (state.activeStopIdx + 1) % PHOTO_STOPS.length;
+      centerOnStop(PHOTO_STOPS[state.activeStopIdx]);
+      renderStopChips();
+      renderActiveStop();
+      drawMap();
+    });
+
+    // Live GPS tracking
+    let watchId = null;
+    document.getElementById("gpsBtn").addEventListener("click", () => {
+      const pill = document.getElementById("gpsStatusPill");
+      pill.style.display = "block";
+      if (!navigator.geolocation) {
+        pill.textContent = "GPS not supported in this browser";
+        return;
+      }
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+        userGps = null;
+        pill.textContent = "GPS: Paused";
+        drawMap();
+        return;
+      }
+      pill.textContent = "GPS: Locating…";
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          const { latitude, longitude, accuracy } = pos.coords;
+          userGps = latLonToGameXZ(latitude, longitude);
+          const activeStop = PHOTO_STOPS[state.activeStopIdx];
+          const dist = Math.round(Math.hypot(userGps.x - activeStop.x, userGps.z - activeStop.z));
+          pill.textContent = `📍 GPS ±${Math.round(accuracy)}m · ${dist}m to Stop #${activeStop.num}`;
+          drawMap();
+        },
+        (err) => {
+          pill.textContent = `GPS Error: ${err.message}`;
+        },
+        { enableHighAccuracy: true, maximumAge: 5000 }
+      );
+    });
+
+    // Export complete Field Pack JSON
+    document.getElementById("exportJsonBtn").addEventListener("click", () => {
+      const payload = {
+        schema: "tenderloin-redux.field-survey.v1",
+        exportedAt: new Date().toISOString(),
+        origin: ORIGIN,
+        stops: PHOTO_STOPS.map(s => ({
+          ...s,
+          gps: gameXZToLatLon(s.x, s.z),
+          survey: state.stops[s.id] || { shots: {}, tags: [], notes: "", photos: [] }
+        })),
+        buildings: state.buildings
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `tenderloin-field-survey-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    });
+
+    loadCityData();
+  </script>
+</body>
+</html>
