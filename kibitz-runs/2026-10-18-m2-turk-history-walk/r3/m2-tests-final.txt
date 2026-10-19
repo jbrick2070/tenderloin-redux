@@ -1,0 +1,63 @@
+
+> tenderloin-redux@0.6.0 test
+> node --test tests/*.test.mjs
+
+✔ stopping during an asynchronous audio resume cannot re-enable playback (0.9956ms)
+✔ audio startup that finishes while hidden never schedules sound (0.2257ms)
+✔ phone starts close to player while desktop offers full block (1.7355ms)
+✔ view changes preserve coordinate round trips and actual world positions (0.5649ms)
+✔ drag stops following, stays bounded, explicit follow restores tracking (1.0139ms)
+✔ zoom clamps and resize keeps full block or a chosen close view (0.1657ms)
+✔ collapsed viewport cannot poison the camera before becoming visible again (0.1657ms)
+✔ visible Rook label has priority over the wrapper beneath it at every zoom (0.5079ms)
+✔ route waypoints carry coordinates only, never a neighbor appearance or ID (0.5055ms)
+✔ both layouts can complete without sound playback or optional modules (4.3937ms)
+✔ blocked route, overlapping supplies, and out-of-grid footprints are rejected (0.6001ms)
+✔ changing layout resets sound readiness and furniture, and opening locks the layout (1.1888ms)
+✔ moving a checked speaker requires another soundcheck (0.2702ms)
+✔ only authored litter can be collected and collections are idempotent (0.259ms)
+✔ mural contributions move, reject overlap, and keep all three identities (0.2773ms)
+✔ a forged incomplete finale cannot be restored as complete (0.187ms)
+✔ malformed core fields are sanitized and bounded unknown optional JSON survives (0.452ms)
+✔ whole-file damage and unknown version request recovery, not silent overwrite (0.3127ms)
+✔ actual Turk/Taylor shared OSM node projects to the origin without block compression (0.3549ms)
+✔ every quest target and neighbor is reachable on the street network without crossing a building (213.2932ms)
+✔ the ending is optional: skip photo, pack and return loans without changing core completion (2.9037ms)
+✔ packing and keepsakes cannot be created before the gathering, and returns need packing (0.3815ms)
+✔ returns are whitelisted and idempotent, and a partial lap survives reload (1.1897ms)
+✔ only consenting guests can be pictured; a skipped keepsake can be reconsidered before packing (0.6942ms)
+✔ keepsake freezes mural/palette/layout and preserves that snapshot after later edits and reload (1.1298ms)
+✔ old saves gain empty optional ending state; malformed ending data cannot undo valid main progress (0.6463ms)
+✔ renderer refuses a fabricated non-consenting participant or unsafe palette (0.2837ms)
+✔ loan completion has a stable canonical representation before and after reload (0.3919ms)
+✔ opening visibly distinguishes conversation from movement without changing the save (5.513ms)
+✔ visitor footprints avoid supplies, through-route and authored bike edge for representative arrangements (1.3537ms)
+✔ moving the table changes conversation positions and plan uses actual two-cell footprints (0.8271ms)
+✔ packing removes visitors and folded seats; partial and final returns keep plan truthful (0.4712ms)
+✔ reduced motion freezes dancing and conversation stays still (0.2596ms)
+✔ visitors stay clear of named residents and markers for every legal table position (11.4199ms)
+✔ SVG text and attribute strings are XML escaped (0.4732ms)
+✔ western intersections retain actual shared OSM nodes and uncompressed distances (1.4523ms)
+✔ long walk and return from western bounds reach every neighbor and history stop (1135.541ms)
+✔ discovery is additive v1, bounded and independent of gathering and unknown optional JSON (1.0341ms)
+✔ route overview leaves opening view readable and western reload follows saved player (0.4187ms)
+✔ visible Black Hawk label selects its stop at route, block and follow zooms (0.4561ms)
+✔ schematic west facades leave the authored road edges clear at each actual intersection (0.1365ms)
+✔ bounded search can traverse more than the old budget and exhaust a disconnected route (40.3905ms)
+✔ local audio waits for Play, loops, uses shared volume and excludes sketch playback (3.134ms)
+✔ replace/return releases old audio URLs; invalid files preserve current selection (1.9669ms)
+✔ stop during pending play prevents late audio restart (0.5537ms)
+✔ replacing a pending track cannot pause or enable its replacement (0.6968ms)
+✔ hidden completion, failed playback and decode errors remain silent and recoverable (0.7638ms)
+✔ decode error during play returns failure and cannot be retried into a misleading status (0.3421ms)
+✔ file replacement and fallback publish one coherent selection each (0.2724ms)
+✔ external pause updates enabled while a stale pause event cannot stop resumed UI (0.3478ms)
+✔ sketch startup notifies pending/failure and honors a late host hidden predicate (0.4486ms)
+ℹ tests 51
+ℹ suites 0
+ℹ pass 51
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1354.7498

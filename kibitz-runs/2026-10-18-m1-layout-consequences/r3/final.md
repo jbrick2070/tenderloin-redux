@@ -1,0 +1,9 @@
+# Visible layout consequences accepted — 0.5.0
+
+Long Table and Open Floor now produce distinct anonymous visitor arrangements and dialogue. Original named residents remain fixed and interactable. Editor preview/current-plan inspection share validated supply footprints and activity with the world; route/supply positions are readable DOM text too. Packing and returns update the plan, while consent-keepsake snapshots remain unchanged. Preview preserves tool, message and focus. Reduced motion freezes activity. No new task, save state, dependency, music asset or geographic change.
+
+One independent Gemini 4 Argon (High) call via installed Kibitz succeeded, rc0. All confirmed material findings verified and fixed as documented in judgment.md. Source integrity checked, raw report preserved, model/quota receipts retained; credit usage unavailable. Explicit r3-only campaign; r1/r2/r4 not run. No AGY Opus, second panel, quota retry or paid generation.
+
+44 Node tests, syntax/diff and complete Chrome 155 suite pass. Real-control completion of both layouts/endings includes preview context/focus, native SVG decode, read-only snapshots, branch dialogue, packing/return counts, v1 save/recovery, local WAV/audio fallback, mobile navigation and frozen consent-keepsake behavior. Six final-source responsive views pass overflow, caption spacing and stable reduced-motion canvas checks. browser-results.json, layout-supplemental.json and verification.json freeze this checkpoint and runtime fingerprint.
+
+Schematic geometry checks are not surveyed real accessibility or permits. Physical phone, full screen reader, human pacing/joy and final score remain unverified. M1 observed feedback remains open; next useful independent milestone is M2 dated geography/history and district-route work. The entire game is unfinished and hourly automation stays active. Preserve historical reports and original map projection.

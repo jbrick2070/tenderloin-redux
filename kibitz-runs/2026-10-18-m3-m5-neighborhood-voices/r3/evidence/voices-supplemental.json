@@ -1,0 +1,51 @@
+{
+  "at": "2026-10-19T00:12:02.213Z",
+  "source": {
+    "version": "0.10.0",
+    "fingerprint": "b5b88c31516dd354034f94b370af84fd902daeb71c07c54f88cfa3cdd88e08dd"
+  },
+  "browser": "155.0.8059.84",
+  "results": [
+    {
+      "width": 320,
+      "height": 844,
+      "fixture": "rules-generated open-floor/partial second gathering and bounded unknown optional JSON",
+      "overflow": false,
+      "offRequests": 0,
+      "sourceLinks": 3,
+      "sourceControlHeight": 62,
+      "offCleanup": "zero resources/audio; core+optional unchanged",
+      "errors": [],
+      "external": []
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "fixture": "rules-generated open-floor/partial second gathering and bounded unknown optional JSON",
+      "overflow": false,
+      "offRequests": 0,
+      "sourceLinks": 3,
+      "sourceControlHeight": 44,
+      "offCleanup": "zero resources/audio; core+optional unchanged",
+      "errors": [],
+      "external": []
+    },
+    {
+      "navigationRestore": "full-reload navigation path",
+      "preference": "on remains on; module returns ready"
+    },
+    {
+      "width": 1440,
+      "height": 844,
+      "fixture": "rules-generated open-floor/partial second gathering and bounded unknown optional JSON",
+      "overflow": false,
+      "offRequests": 0,
+      "sourceLinks": 3,
+      "sourceControlHeight": 44,
+      "offCleanup": "zero resources/audio; core+optional unchanged",
+      "errors": [],
+      "external": []
+    }
+  ],
+  "limits": "Chrome/touch emulation, not physical phone, screen-reader/human feedback, current service availability, actual voice or acoustic latency."
+}

@@ -1,0 +1,4 @@
+
+> tenderloin-redux@0.12.0 check
+> node --check public/game.js && node --check public/core.js && node --check public/civic.js && node --check public/film.js && node --check public/programme.js && node --check public/hosting.js && node --check public/experimental-host.js && node --check public/experiments/neighborhood-voices.js && node --check public/world.js && node --check public/district.js && node --check public/history.js && node --check public/gathering.js && node --check public/camera.js && node --check public/audio.js && node --check public/soundtrack.js && node --check public/keepsake.js && node --check scripts/serve.mjs && node --check scripts/build-fingerprint.mjs && node --check tests/browser-smoke.mjs && node --check tests/voices-browser.mjs && node --check tests/civic-browser.mjs && node --check tests/civic-fixture.mjs && node --check tests/film-browser.mjs && node --check tests/film-fixture.mjs
+

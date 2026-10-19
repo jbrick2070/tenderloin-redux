@@ -1,0 +1,108 @@
+{
+  "at": "2026-10-19T00:15:58.343658+00:00",
+  "source": {
+    "version": "0.10.0",
+    "fingerprint": "b5b88c31516dd354034f94b370af84fd902daeb71c07c54f88cfa3cdd88e08dd"
+  },
+  "nodeTests": {
+    "total": 78,
+    "passed": 78,
+    "failed": 0
+  },
+  "syntax": "pass",
+  "gitDiffCheck": "pass",
+  "browser": {
+    "version": "155.0.8059.84",
+    "core": "complete pass",
+    "voices": "complete pass",
+    "isolatedServers": true
+  },
+  "supplementalWidths": [
+    320,
+    390,
+    1440
+  ],
+  "actualBFCachePersisted": true,
+  "optionalAudioPauseCommandMs": 0.5,
+  "audioLimit": "synthetic nonshipped fixture, not acoustic latency or real voices",
+  "review": {
+    "provider": "native Claude CLI via installed Kibitz",
+    "modelRequested": "claude-opus-5-5",
+    "effortRequested": "high",
+    "rc": 0,
+    "actualPrompts": 1,
+    "sha256": "93fbf1fdd5cda302273e7d342125d3b7d45e5184dabff84c02507d5353f3d0fb",
+    "usagePercent": "not exposed",
+    "cost": "not exposed"
+  },
+  "pinCorrection": "Final metadata reports configured AGY Gemini3.8FlashHigh, not requested Gemini4ArgonHigh. Earlier driver statements superseded in judgment. No AGY call/substitution; authorized native Opus used.",
+  "noReviewerSourceDrift": true,
+  "driverChangesAfterReview": [
+    "docs/ASSETS.md",
+    "docs/BUILD_STATUS.md",
+    "docs/ROADMAP.md",
+    "docs/VOICES_SOURCE_REGISTER.md",
+    "public/experimental-host.js",
+    "public/experiments/neighborhood-voices.js",
+    "public/game.js",
+    "README.md",
+    "tests/experimental-host.test.mjs",
+    "tests/voices-browser.mjs"
+  ],
+  "inputSHA256": "f8340b5f9ea8fff5bb1d1df5db9f07f767186421f0275bd4e90647c86dd08c77",
+  "anchorSHA256": "6df9f424bcdbb31629ec74d705fd3e1252e2bd373b178a9f6804579e7c9944c2",
+  "manualReportSHA256": "3c6548df658ca822e91e1039e1c36a388c306ed1c2a56f513733d51c9267dae8",
+  "precedingReviewSHA256": "f4f88c970d1383c8f4a91c63e876ba0450b158622069e67225521fc99606de53",
+  "finalManifestSHA256": "b8bfde2a0496a6b5f4f1775a17dbee45eb677685b2a9bc9ea48ef985e1ecb67e",
+  "livePreviewMatches": true,
+  "roundsNotRun": [
+    "r1",
+    "r2",
+    "r4"
+  ],
+  "fullGameComplete": false,
+  "automation": "remain active hourly",
+  "next": "M4 peaceful civic event then original film shoot",
+  "limits": [
+    "no physical phone",
+    "no full screen reader audit",
+    "no human pacing",
+    "no current streetscape survey",
+    "no operational service availability claim",
+    "no final recorded score acceptance"
+  ],
+  "evidenceFiles": {
+    "browser-results.json": "a8a5c674e8c5124aa93935533f86257b8cd078c406da5835646e3d965e472aef",
+    "close-voices-round.py": "7c7058243fb77cea74a5618a19cb1f14802f3e51478d7dcf269fa2f095658ae7",
+    "voices-1440-sources.png": "81fd5e5bbab7e296dd67c0c1d97b6a7d6acfef1f25cc6b9af2564b8dbe4a0646",
+    "voices-1440-top.png": "428fa13d13fed5bebea1115e3fbd2f627d251fcf6d312a24165f3d9e3a078be8",
+    "voices-320-sources.png": "13d02a413781238effd9c0d5a3f3957063ff23cb8b3e8f70ea2aeaeca47161f8",
+    "voices-320-top.png": "c0047fe2675752af7b58d393d8a24871db71c52eac2251cc9b9becd8fcfe7cfd",
+    "voices-390-sources.png": "ef3d98a2f4021819a332841da8ffd0e9a48896cc14d928a0e91e0e93a643c636",
+    "voices-390-top.png": "89afc355aaf6075eb1699e2edd3bc3bf1846e0ea361fc10352a68465f7b7e758",
+    "voices-bfcache-before-review.log": "a4aaa178a4793d9e10c4bafbc8c0e96833f588f335296e497d9635a2f3d1650a",
+    "voices-bfcache-final.log": "38ef137b99b9768df5077ca4a63bac41d41ec8fa061e719e769c305965a7b757",
+    "voices-bfcache-preview-down.log": "ed600f222c2d04deed86ac6dbc95293b996cd05f2fbe825a4c167dd77d9d944e",
+    "voices-bfcache.json": "3e561c2f59c2f0a3624ec4a92bae5156d6e334d518ad83e64d08a7278c3d208e",
+    "voices-bfcache.mjs": "ff88e59eaa7980ab7aaaef58f39607f6c237fcc3e5b790d32e6b568365764730",
+    "voices-browser-before-review.log": "daa17e9ee5c996009ecc78a212e51b88b348142c6eed18cc845986749dbc9907",
+    "voices-browser-final.log": "1b60fd89dcae0b662c0822743f89583d48305d38ec60574b6f499e73789e84b3",
+    "voices-browser-initial.log": "f683e69eaabafe729d7edd6342cd5dc247abc3720f147ae709162e2685772255",
+    "voices-browser-results.json": "de381bcc8b8f97f0e90e5809afcf379c94b5b00ff7e1da36377b5974259a7d0a",
+    "voices-cards-320.png": "a0404863fd8e2f43333d732de194b039ea1333392832051075e5479410d4474a",
+    "voices-cards-390.png": "95c44b891f117b4726dd6c134051c2b561ea4a0ed65daecfe197a0d0eebb7c54",
+    "voices-core-browser-before-review.log": "edf2a7989fd3135ff114e1466569755129bc1b3989229df49caa7992a1f7a37f",
+    "voices-core-browser-final.log": "edf2a7989fd3135ff114e1466569755129bc1b3989229df49caa7992a1f7a37f",
+    "voices-node-before-review.log": "02698e701b152cb734f1def525889333667c9b072936fd2a0d7f82bd19da94b1",
+    "voices-node-final.log": "1727d88d3d765388a0c9b2ee757514549dfd81b4e9884522b8b43d5c5072c70c",
+    "voices-node-initial.log": "832a5a44d9649b750f960f6dd76e6ade70748123d8f8702c3761bb1ce36bf16a",
+    "voices-supplemental-before-review.log": "5aa2faa0a35d0104a7bb5da0403aff8f19713acca428c99ff2614edb3b7d39c8",
+    "voices-supplemental-final.log": "5aa2faa0a35d0104a7bb5da0403aff8f19713acca428c99ff2614edb3b7d39c8",
+    "voices-supplemental-preview-down.log": "54726b66dc019ed8afe3677ac292f0715600d4953e658c7b05dd5a6ac6a7d795",
+    "voices-supplemental.json": "bc413ccb77bcc8d446b0586418aaff754717feeaeb6dec74b0b98af679303930",
+    "voices-supplemental.mjs": "7197b438f39e087b0cf4039a942f011016772de27a8f30a86c25f5d75d55d230",
+    "voices-syntax-before-review.log": "65cec30c34e850eb266d2062a128d1e1d24cb95a3d243a8eddbfb25dd7ede540",
+    "voices-syntax-final.log": "65cec30c34e850eb266d2062a128d1e1d24cb95a3d243a8eddbfb25dd7ede540"
+  },
+  "ownedRoundLockReleased": true
+}

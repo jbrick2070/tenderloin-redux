@@ -1,0 +1,11 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+FIT_CHECK (1100, 760) bounds=[P: (208.4933, 151.7542), S: (683.0125, 458.4905)] top=126.0 bottom=636.0
+FIT_CHECK (390, 667) bounds=[P: (22.35871, 238.1102), S: (345.2831, 231.7805)] top=215.0 bottom=493.0
+FIT_CHECK (320, 667) bounds=[P: (20.37714, 273.7738), S: (279.2453, 187.4509)] top=242.0 bottom=493.0
+ERROR: harness failure sentinel
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] require (res://tests/study_test.gd:10)
+       [1] run (res://tests/study_test.gd:75)
+GODOT_STUDY_FAIL

@@ -1,0 +1,83 @@
+{
+  "checkpoint": "Godot city-data geography foundation; walking not yet implemented",
+  "builder": "Codex Sol High",
+  "review": {
+    "lane": "native Claude CLI",
+    "model": "claude-opus-5-5",
+    "effort": "high",
+    "successfulCalls": 1,
+    "rc": 0,
+    "authRc": 0,
+    "usagePercent": null,
+    "cost": null,
+    "scope": "r3 only",
+    "sourceEditsByReviewer": 0,
+    "rawSha256": "999dd9040038ab220cdd12352f03067929b3c918e0d9b4a4f76a7dc66f8482b7"
+  },
+  "gates": {
+    "nodeTests": 94,
+    "nodeFailures": 0,
+    "syntax": "pass",
+    "godotImport": "pass",
+    "godotNative": "pass",
+    "negativeHarnessExpectedExit": 1,
+    "negativeHarnessNoFalsePass": true,
+    "webExport": "pass",
+    "chrome": {
+      "runs": [
+        {
+          "viewport": {
+            "width": 1100,
+            "height": 760
+          },
+          "overviewBytes": 63781,
+          "selectedBytes": 58048,
+          "keyboardActivationVerified": true
+        },
+        {
+          "viewport": {
+            "width": 390,
+            "height": 667
+          },
+          "overviewBytes": 42452,
+          "selectedBytes": 45474,
+          "keyboardActivationVerified": true
+        },
+        {
+          "viewport": {
+            "width": 320,
+            "height": 667
+          },
+          "overviewBytes": 39349,
+          "selectedBytes": 42742,
+          "keyboardActivationVerified": true
+        }
+      ],
+      "errors": [],
+      "external": [],
+      "limit": "Pixel-change and driver-inspected screenshots, not DOM/screen-reader or physical-phone acceptance."
+    }
+  },
+  "browserBaseline": {
+    "version": "0.12.0",
+    "publicSha256": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567"
+  },
+  "preservedHashes": {
+    "manual": "3c6548df658ca822e91e1039e1c36a388c306ed1c2a56f513733d51c9267dae8",
+    "priorFilmRaw": "2f249735610205c7d04622b8eea6f03ba7027b9a6740b253f2eb958cff7f400e"
+  },
+  "automation": {
+    "id": "build-tenderloin-redux",
+    "status": "PAUSED",
+    "reason": "Creator requested AGY4 handoff and stop schedule",
+    "confirmed": "App update result plus saved automation.toml"
+  },
+  "next": "Read session_handoff.md; AGY Gemini4ArgonHigh driver; walking/collision/easy navigation; one independent partner each implementation round; regular reviewed pushes; keep scheduler paused",
+  "limits": [
+    "No current facade/terrain survey",
+    "No walking/mural/music in Godot yet",
+    "No browser-save adapter",
+    "No full screen-reader/physical-phone/human-play acceptance",
+    "No full-game completion"
+  ]
+}

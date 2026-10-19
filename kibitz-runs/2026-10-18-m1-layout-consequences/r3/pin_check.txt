@@ -1,0 +1,1 @@
+Installed kibitz.py --check-pins --driver codex --only antigravity rc0, Gemini 4 Argon (High) pin current, 2026-10-18. No reviewer prompt in catalog check.

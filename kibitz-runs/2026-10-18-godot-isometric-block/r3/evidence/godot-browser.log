@@ -1,0 +1,5 @@
+
+> tenderloin-redux@0.12.0 godot:browser
+> node tests/godot-browser.mjs
+
+{"runs":[{"viewport":{"width":1100,"height":760},"overviewBytes":63781,"selectedBytes":58048,"keyboardActivationVerified":true},{"viewport":{"width":390,"height":667},"overviewBytes":42452,"selectedBytes":45474,"keyboardActivationVerified":true},{"viewport":{"width":320,"height":667},"overviewBytes":39349,"selectedBytes":42742,"keyboardActivationVerified":true}],"errors":[],"external":[]}

@@ -1,0 +1,53 @@
+[
+  {
+    "before": {
+      "active": "civic-notes-none",
+      "rect": {
+        "top": 393.390625,
+        "bottom": 451.390625
+      },
+      "target": {
+        "top": 1995.3125,
+        "bottom": 2039.3125,
+        "height": 44
+      },
+      "scrollY": 0,
+      "viewport": 844,
+      "modal": true
+    }
+  },
+  {
+    "immediate": {
+      "active": "civic-hour",
+      "rect": {
+        "top": 784.3125,
+        "bottom": 828.3125
+      },
+      "target": {
+        "top": 784.3125,
+        "bottom": 828.3125,
+        "height": 44
+      },
+      "scrollY": 1211,
+      "viewport": 844,
+      "modal": false
+    }
+  },
+  {
+    "after": {
+      "active": "civic-hour",
+      "rect": {
+        "top": 784.3125,
+        "bottom": 828.3125
+      },
+      "target": {
+        "top": 784.3125,
+        "bottom": 828.3125,
+        "height": 44
+      },
+      "scrollY": 1211,
+      "viewport": 844,
+      "modal": false
+    }
+  }
+]

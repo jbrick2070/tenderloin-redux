@@ -1,0 +1,25 @@
+
+> tenderloin-redux@0.9.0 test:browser
+> node tests/browser-smoke.mjs
+
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
++ actual - expected
+
++ 'modal-title'
+- 'host-begin'
+
+    at hostingCheck (file:///C:/tenderloin-redux/tests/browser-smoke.mjs:365:57)
+    at async file:///C:/tenderloin-redux/tests/browser-smoke.mjs:445:5 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 'modal-title',
+  expected: 'host-begin',
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v26.4.0

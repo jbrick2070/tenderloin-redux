@@ -1,0 +1,27 @@
+{
+  "at": "2026-10-18T18:37:11.254Z",
+  "files": {
+    "public/audio.js": "5ac28c9eedbc9458a8e1b46f04e79a7ea5e5d8e4121fa8dc92f9159338cf740f",
+    "public/camera.js": "98b44825bf075486ddab75bf8e528096c925cad9e972185ed741c3c257836614",
+    "public/core.js": "0970883efcd0566aa763b8149d491bf60c9fbaa033a6c643b02889763ef2ec4a",
+    "public/data/source.osm.xml": "9a987cec02ce967566cd5a13a799d96fb96dd8301e06b4f9d0ffb4cf140ea458",
+    "public/data/streets.osm.json": "42e843b67e8faa56cf16811a5f9c4471eb5a6dd4b596b3cfe9c6f36cbb460ab8",
+    "public/game.js": "e4d9d47826e5402cbe0acefa0fc3b7c4e63412cd643d66e19fc6bca0bc67d4ef",
+    "public/icon.svg": "6a8c27a1e133c1cf0b150c904acc544f9b53ba444e0425e200b51dca6b33a000",
+    "public/index.html": "04467df0a08c76b44333e089d0a52ec2f8b374a4a6179da9c58e90234d074370",
+    "public/keepsake.js": "fb72bf4b444a720e2fb8c1d880b0567e99ea7b017572e4fee3c4747dbfb604b2",
+    "public/style.css": "92ab708fab336c2e35b3fe326121fb83a084d85a25e48a4e8a9c47748192f4d6",
+    "public/world.js": "0ecfde6fbd9f162ac365ab505e12a02e28ef254ab58ff8d77e0f617d24559d9a",
+    "scripts/build-fingerprint.mjs": "80bbfbcc67455c81102b20ca3d7413c906f9692a4758f5826c4ae4af239ae3af",
+    "scripts/serve.mjs": "904748a36c87769be0be6193c81fb6f6beea729c93d3b0084b61df9e5d5806a7",
+    "tests/audio.test.mjs": "dd05725ef31faa7f41d23c04f821bd878079d7b72c7c8c1e41f78c122afa8349",
+    "tests/browser-smoke.mjs": "d73b4a3e778a7f7e4d5fdab23759648cb70c96ed7985f6124a02743df1518a8a",
+    "tests/camera.test.mjs": "16789e0b95781d6d85c449a49368593bba425bd228d4e01df403fd92961f4118",
+    "tests/core.test.mjs": "a30f1c544ec960289ffd03936f145354b2e0652d64d6944bae1adfae7f401653",
+    "tests/epilogue.test.mjs": "9f30d9bc8a28e7b7a22c45014da6ac1e27f9d580b9a27441c4fbfc6597a66e1c",
+    "package.json": "146291eef3b5528ced350debe59ea6c663870503279afebda484ee22610c6c62",
+    "README.md": "056b60773ad04d7403e4813fbeede7143c7e969ac7ceba3b133a4ee6fd3d8015",
+    "docs/CLAUDE_MANUAL_REVIEW.md": "3c6548df658ca822e91e1039e1c36a388c306ed1c2a56f513733d51c9267dae8",
+    "docs/BUILD_M1_NAVIGATION_REVIEW.md": "c8b468eed8cfdbb9b7f6bb664fc06675701b32b24623607b6795f7bb10d1d508"
+  }
+}

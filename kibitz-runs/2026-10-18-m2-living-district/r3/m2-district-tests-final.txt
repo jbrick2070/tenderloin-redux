@@ -1,0 +1,66 @@
+
+> tenderloin-redux@0.7.0 test
+> node --test tests/*.test.mjs
+
+✔ stopping during an asynchronous audio resume cannot re-enable playback (1.9035ms)
+✔ audio startup that finishes while hidden never schedules sound (0.3478ms)
+✔ phone starts close to player while desktop offers full block (1.5553ms)
+✔ view changes preserve coordinate round trips and actual world positions (0.6435ms)
+✔ drag stops following, stays bounded, explicit follow restores tracking (1.3995ms)
+✔ zoom clamps and resize keeps full block or a chosen close view (0.239ms)
+✔ collapsed viewport cannot poison the camera before becoming visible again (0.2248ms)
+✔ visible Rook label has priority over the wrapper beneath it at every zoom (0.8286ms)
+✔ route waypoints carry coordinates only, never a neighbor appearance or ID (0.6134ms)
+✔ both layouts can complete without sound playback or optional modules (5.3855ms)
+✔ blocked route, overlapping supplies, and out-of-grid footprints are rejected (0.503ms)
+✔ changing layout resets sound readiness and furniture, and opening locks the layout (1.9633ms)
+✔ moving a checked speaker requires another soundcheck (0.4512ms)
+✔ only authored litter can be collected and collections are idempotent (0.5362ms)
+✔ mural contributions move, reject overlap, and keep all three identities (0.6545ms)
+✔ a forged incomplete finale cannot be restored as complete (0.3037ms)
+✔ malformed core fields are sanitized and bounded unknown optional JSON survives (0.7012ms)
+✔ whole-file damage and unknown version request recovery, not silent overwrite (0.5162ms)
+✔ actual Turk/Taylor shared OSM node projects to the origin without block compression (0.7431ms)
+✔ every quest target and neighbor is reachable on the street network without crossing a building (337.1389ms)
+✔ complete city feature retains every projected coordinate and extends beyond the game (4.5583ms)
+✔ malformed, swapped, distant, excessive and unclosed city geometry is rejected (1.5107ms)
+✔ layer draws holes separately, clips only the view, and brackets drawing with canvas save/restore (0.9506ms)
+✔ the ending is optional: skip photo, pack and return loans without changing core completion (7.4317ms)
+✔ packing and keepsakes cannot be created before the gathering, and returns need packing (2.0914ms)
+✔ returns are whitelisted and idempotent, and a partial lap survives reload (0.9284ms)
+✔ only consenting guests can be pictured; a skipped keepsake can be reconsidered before packing (0.9718ms)
+✔ keepsake freezes mural/palette/layout and preserves that snapshot after later edits and reload (1.9737ms)
+✔ old saves gain empty optional ending state; malformed ending data cannot undo valid main progress (1.1198ms)
+✔ renderer refuses a fabricated non-consenting participant or unsafe palette (0.5968ms)
+✔ loan completion has a stable canonical representation before and after reload (0.8781ms)
+✔ opening visibly distinguishes conversation from movement without changing the save (12.0582ms)
+✔ visitor footprints avoid supplies, through-route and authored bike edge for representative arrangements (3.608ms)
+✔ moving the table changes conversation positions and plan uses actual two-cell footprints (2.2245ms)
+✔ packing removes visitors and folded seats; partial and final returns keep plan truthful (0.9414ms)
+✔ reduced motion freezes dancing and conversation stays still (0.3529ms)
+✔ visitors stay clear of named residents and markers for every legal table position (18.1174ms)
+✔ SVG text and attribute strings are XML escaped (1.2803ms)
+✔ western intersections retain actual shared OSM nodes and uncompressed distances (2.9374ms)
+✔ long walk and return from western bounds reach every neighbor and history stop (1837.5842ms)
+✔ discovery is additive v1, bounded and independent of gathering and unknown optional JSON (1.423ms)
+✔ route overview leaves opening view readable and western reload follows saved player (0.5816ms)
+✔ visible Black Hawk label selects its stop at route, block and follow zooms (0.6234ms)
+✔ schematic west facades leave the authored road edges clear at each actual intersection (0.233ms)
+✔ bounded search can traverse more than the old budget and exhaust a disconnected route (89.3176ms)
+✔ local audio waits for Play, loops, uses shared volume and excludes sketch playback (3.4825ms)
+✔ replace/return releases old audio URLs; invalid files preserve current selection (2.1375ms)
+✔ stop during pending play prevents late audio restart (0.4949ms)
+✔ replacing a pending track cannot pause or enable its replacement (0.4111ms)
+✔ hidden completion, failed playback and decode errors remain silent and recoverable (0.7054ms)
+✔ decode error during play returns failure and cannot be retried into a misleading status (0.441ms)
+✔ file replacement and fallback publish one coherent selection each (0.3675ms)
+✔ external pause updates enabled while a stale pause event cannot stop resumed UI (0.4711ms)
+✔ sketch startup notifies pending/failure and honors a late host hidden predicate (0.522ms)
+ℹ tests 54
+ℹ suites 0
+ℹ pass 54
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2249.9572

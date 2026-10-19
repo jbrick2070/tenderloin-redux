@@ -1,0 +1,9 @@
+# First playable — implementation round conclusion
+
+The local game supports a complete resident-led gathering with two layout choices, protected-route placement rules, three authored litter objects, an original three-contribution portable mural, resident-led soundcheck, a saved ending and freeroam. It uses real projected street centerlines with separately authored schematic scenery. Music is an optional original synth sketch, and gameplay works muted.
+
+One native Claude Opus 5.5 request completed a substantive independent review. The driver grounded each claim, fixed all confirmed blockers plus small usability/lifecycle defects, and retained judgment.md, the raw report and receipts. This was explicitly scoped r3 only; no r1/r2/r4 execution is claimed. Credit cost was not exposed.
+
+Verification: 13 passing Node rule/route/save/audio-cancellation tests, syntax checks, and real Chrome end-to-end completion of both layouts. The browser harness starts a temporary isolated server and verifies served-source identity. It checks reload, blocked placement, E interaction, Enter editor activation/focus, keyboard movement, audio toggles, narrow viewport/touch prompt, restart cancellation, damaged-save recovery, restart after failed map loading, malformed settings and partial editor resume. Current evidence and screenshots are in artifacts/; BUILD_STATUS.md retains the handoff and limitations.
+
+Proceed to M1 in docs/ROADMAP.md. The entire game is not finished. Preserve accurate geometry and explicit uncertainty, add richer opening consequences and optional flourishes, improve mobile/nonvisual navigation, and gather human play feedback. Continue hourly with at least one independent partner in each substantive build round; do not spend on unchanged-code reviews during an external block.

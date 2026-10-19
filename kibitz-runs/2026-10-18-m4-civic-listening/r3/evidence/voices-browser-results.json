@@ -1,0 +1,54 @@
+{
+  "at": "2026-10-19T01:30:20.690Z",
+  "source": {
+    "version": "0.11.0",
+    "fingerprint": "0a6f3d2f495daffe458bfcb59ef16c3ab75f357cdbb3a7dcda3bc9bef7381cf3"
+  },
+  "browser": "155.0.8059.84",
+  "evidence": [
+    {
+      "defaultOff": "no optional import/data request or cards; save/state/canvas unchanged by enable/off",
+      "repeatedViews": "stable owned-resource count over3 Escape/reopen cycles",
+      "lifecycle": "synthetic persisted pagehide closes cards/releases all resources; pageshow restores ready without opening cards",
+      "focus": "disable to Settings then Escape returns to visible Settings button",
+      "preferences": "explicit on persists reload; off persists reload",
+      "fullCoreOffOnOff": "actual opening plus second gathering complete3times; relevant outcomes exactly equal, player coordinates excluded"
+    },
+    {
+      "malformedNotes": "contained error, no automatic retry on reopen, explicit retry succeeds and preserves visible heading;320px no overflow"
+    },
+    {
+      "lateLoads": "completion under Neighbors cannot replace dialog/focus; disabling pending fetch leaves no cards/resources/core change"
+    },
+    {
+      "absentModule": "save with optional data loads with flag off and makes no optional request; enabling missing module fails safely while both gatherings remain completable; explicit module retry uses fresh failed-import URL and succeeds"
+    },
+    {
+      "lifecycleFailure": "synthetic persisted pagehide/pageshow preserves error without new request; error-stub disable then close focuses Settings",
+      "badExport": "missing activate export is contained; explicit retry imports fresh URL and succeeds"
+    },
+    {
+      "stalledLoad": "10second host deadline aborts load, releases resources, and allows explicit off"
+    },
+    {
+      "syntheticMarkup": "organization text is rendered literally, no image/script/event executes and no external resource request"
+    },
+    {
+      "optionalAudioFixture": {
+        "ms": 0.6000000238418579,
+        "paused": true,
+        "host": {
+          "enabled": false,
+          "status": "off",
+          "resources": 0,
+          "audio": 0,
+          "cleanupErrors": 1
+        },
+        "main": 0.272262,
+        "mainEnabled": true
+      },
+      "measurement": "HTMLAudio pause command/state within100ms with throwing cleanup; main local audio continues. Synthetic QA tone only, not shipped voices or acoustic speaker latency certification."
+    }
+  ],
+  "limits": "Automated Chrome/touch emulation; no physical phone, full screen reader, human pacing, real service availability, actual voice recording or acoustic-latency certification."
+}

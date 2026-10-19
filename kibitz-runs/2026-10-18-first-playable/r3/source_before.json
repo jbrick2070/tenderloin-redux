@@ -1,0 +1,11 @@
+{
+  "public/core.js": "c0fc83828f24b370e722a1e393b400911994b607fbc43ac39b54ad022494797b",
+  "public/world.js": "8c481c3e70d40ecc5b8fb925c635a3b1d96645fb4c5edffb92d613a6942cd09e",
+  "public/game.js": "636876e9832a03d844145253972d0112fa9319d18d562d95099679de927f30e6",
+  "public/audio.js": "3d5e6a43eca42937ba455ee3c79c9461cca3269b5536022bac347c219b930634",
+  "public/index.html": "adb7f905a1c6179537363c1d855ebf388c7b7ae6d2a0f560e015cae3bd95d88d",
+  "public/style.css": "e7ba7eacea5730bf0a98aae8a1b512eb62ab06b8d50db1eface9305b180acded",
+  "scripts/serve.mjs": "87bb297c808899a2c214d3d4e512d44eac233d9f1aa9fc9685dc218cc273563e",
+  "tests/core.test.mjs": "a30f1c544ec960289ffd03936f145354b2e0652d64d6944bae1adfae7f401653",
+  "tests/browser-smoke.mjs": "f586ff478a6ef996c0c3a442781bc461b63eff16b683debfeee5bc9d526cf63c"
+}

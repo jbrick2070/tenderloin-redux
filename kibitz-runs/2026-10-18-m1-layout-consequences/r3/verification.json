@@ -1,0 +1,30 @@
+{
+  "at": "2026-10-18T19:20:09.736Z",
+  "source": {
+    "version": "0.5.0",
+    "fingerprint": "81219a128e31d98da4385471f7955e7fae829635c5528b7b4f31327e22832c76"
+  },
+  "tests": {
+    "node": 44,
+    "syntax": "pass",
+    "diff": "pass",
+    "completeChromeSmoke": "pass",
+    "responsiveBranches": 6,
+    "reducedMotionCanvas": "bit-identical"
+  },
+  "review": {
+    "calls": 1,
+    "model": "Gemini 4 Argon (High)",
+    "rc": 0,
+    "sha256": "aacff91c853f360ad3b60658f666e56e695c523910b5c0e3ae6955984fa5a27c",
+    "credits": "not exposed"
+  },
+  "manualReportSHA256": "3c6548df658ca822e91e1039e1c36a388c306ed1c2a56f513733d51c9267dae8",
+  "livePreviewMatches": true,
+  "roundsNotRun": [
+    "r1",
+    "r2",
+    "r4"
+  ],
+  "next": "M2 geography/history route; human M1 pacing feedback open"
+}

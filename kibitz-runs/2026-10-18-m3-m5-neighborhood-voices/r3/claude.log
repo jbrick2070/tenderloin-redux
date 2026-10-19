@@ -1,0 +1,17 @@
+STDOUT:
+I've written the review to `kibitz-runs/2026-10-18-m3-m5-neighborhood-voices/r3/claude.md`. I read the source files first, and nothing in the app, tests or docs was changed.
+
+**Verdict: yes-with-fixes.** Two of the plan's own rules are broken in the code, and the final test rerun the plan requires hasn't finished.
+
+**Must fix before build:**
+1. **Error gets retried automatically after back/forward navigation.** `public/experimental-host.js:25` turns an `error` status into `paused` when the page is hidden. Coming back (`game.js:550`) then reloads the module with no user action, including a fresh `?retry=N` import. That breaks "explicit retry only after error". The fix is one line: keep the `error` status when suspending.
+2. **Focus lands on a hidden button after turning the feature off.** If you turn it off from the cards or the loading screen, Settings opens, but the close target is still `#voices-button`. That button is now hidden, so closing Settings drops keyboard focus onto the page body. The fix: set the return target to `#settings-button` in `onDisable` (`game.js:44-47`).
+3. **Test results don't count yet.** The browser test's file-matching bug is fixed (`tests/voices-browser.mjs:103`, `:109`). Still, the Node, browser and Chrome runs need to be redone on the final code after fixes 1 and 2.
+
+**Should fix:**
+- **Back/forward handling is untested.** The game-level hide/restore path (`game.js:549-550`) is never exercised in the browser test.
+- **A broken module gets reused on every retry.** If the module loads but has no `activate` function, retry keeps reusing it and never fetches a fresh copy.
+- **"Free meals" in the GLIDE card isn't backed by the source register.** The register only says "meals" and rules out access promises. I couldn't check any of the three summaries against the live websites, only against the register.
+- **The `paused` state shows "Loading…" with no way to act.** Retry and Read are both hidden, so turning the feature off is the only way out if the page never gets restored.
+
+**Suggested cuts:** the browser-level real-audio test, since the shipped feature has no audio and unit tests already cover it. Also shorten the 8× reopen loop, which the 30-cycle unit test already covers.

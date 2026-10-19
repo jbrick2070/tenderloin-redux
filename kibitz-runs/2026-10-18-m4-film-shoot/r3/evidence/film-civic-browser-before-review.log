@@ -1,0 +1,129 @@
+
+> tenderloin-redux@0.12.0 test:civic
+> node tests/civic-browser.mjs
+
+{
+  "at": "2026-10-19T02:20:25.558Z",
+  "source": {
+    "version": "0.12.0",
+    "fingerprint": "0f207a025de506c1c5e5c3aa012aa8f65a1d20c656f9a5ab22f9bb2ced19a136"
+  },
+  "browser": "155.0.8059.84",
+  "coverage": "8 combinations distributed across320/390/1440 and both layouts; not each combination at every width",
+  "fixtures": "rules-generated complete second gathering in both opening layouts; core suite separately completes actual gatherings",
+  "results": [
+    {
+      "topic": "repairs",
+      "format": "circle",
+      "notes": "themes",
+      "width": 320,
+      "layout": "table",
+      "stagesReload": "planning/meeting/done pass",
+      "otherStateUnchanged": true,
+      "focus": "keyboard edit, persistent status, Back/Escape/x visible return and visible headings pass",
+      "doubleClick": "start/open/close plus deterministic replacement choice/back continuation rejected",
+      "targets": "44px minimum",
+      "errors": [],
+      "external": []
+    },
+    {
+      "topic": "repairs",
+      "format": "circle",
+      "notes": "none",
+      "width": 390,
+      "layout": "floor",
+      "stagesReload": "planning/meeting/done pass",
+      "otherStateUnchanged": true,
+      "focus": "keyboard edit, persistent status, Back/Escape/x visible return and visible headings pass",
+      "doubleClick": "start/open/close plus deterministic replacement choice/back continuation rejected",
+      "targets": "44px minimum",
+      "errors": [],
+      "external": []
+    },
+    {
+      "topic": "repairs",
+      "format": "dropin",
+      "notes": "themes",
+      "width": 1440,
+      "layout": "table",
+      "stagesReload": "planning/meeting/done pass",
+      "otherStateUnchanged": true,
+      "focus": "keyboard edit, persistent status, Back/Escape/x visible return and visible headings pass",
+      "doubleClick": "start/open/close plus deterministic replacement choice/back continuation rejected",
+      "targets": "44px minimum",
+      "errors": [],
+      "external": []
+    },
+    {
+      "topic": "repairs",
+      "format": "dropin",
+      "notes": "none",
+      "width": 320,
+      "layout": "floor",
+      "stagesReload": "planning/meeting/done pass",
+      "otherStateUnchanged": true,
+      "focus": "keyboard edit, persistent status, Back/Escape/x visible return and visible headings pass",
+      "doubleClick": "start/open/close plus deterministic replacement choice/back continuation rejected",
+      "targets": "44px minimum",
+      "errors": [],
+      "external": []
+    },
+    {
+      "topic": "access",
+      "format": "circle",
+      "notes": "themes",
+      "width": 390,
+      "layout": "table",
+      "stagesReload": "planning/meeting/done pass",
+      "otherStateUnchanged": true,
+      "focus": "keyboard edit, persistent status, Back/Escape/x visible return and visible headings pass",
+      "doubleClick": "start/open/close plus deterministic replacement choice/back continuation rejected",
+      "targets": "44px minimum",
+      "errors": [],
+      "external": []
+    },
+    {
+      "topic": "access",
+      "format": "circle",
+      "notes": "none",
+      "width": 1440,
+      "layout": "floor",
+      "stagesReload": "planning/meeting/done pass",
+      "otherStateUnchanged": true,
+      "focus": "keyboard edit, persistent status, Back/Escape/x visible return and visible headings pass",
+      "doubleClick": "start/open/close plus deterministic replacement choice/back continuation rejected",
+      "targets": "44px minimum",
+      "errors": [],
+      "external": []
+    },
+    {
+      "topic": "access",
+      "format": "dropin",
+      "notes": "themes",
+      "width": 320,
+      "layout": "table",
+      "stagesReload": "planning/meeting/done pass",
+      "otherStateUnchanged": true,
+      "focus": "keyboard edit, persistent status, Back/Escape/x visible return and visible headings pass",
+      "doubleClick": "start/open/close plus deterministic replacement choice/back continuation rejected",
+      "targets": "44px minimum",
+      "errors": [],
+      "external": []
+    },
+    {
+      "topic": "access",
+      "format": "dropin",
+      "notes": "none",
+      "width": 390,
+      "layout": "floor",
+      "stagesReload": "planning/meeting/done pass",
+      "otherStateUnchanged": true,
+      "focus": "keyboard edit, persistent status, Back/Escape/x visible return and visible headings pass",
+      "doubleClick": "start/open/close plus deterministic replacement choice/back continuation rejected",
+      "targets": "44px minimum",
+      "errors": [],
+      "external": []
+    }
+  ],
+  "limits": "Chrome automation, no physical phone/full screen reader/human pacing/real event or surveyed access certification"
+}

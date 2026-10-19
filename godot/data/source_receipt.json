@@ -1,0 +1,20 @@
+{
+  "downloadedUtc": "2026-10-19",
+  "count": 58,
+  "hashes": {
+    "godot/data/source/buildings.geojson": "393472ecd7fda3503e581fa49e2899f2e50d5f3307f055d26b23bea0a3665701",
+    "godot/data/source/metadata.json": "93407284a55c676b96d941042dcdd6223e5e5338f3b33a0faa639b56dd2309e6",
+    "godot/data/source/method.pdf": "1fa6af3167ac0935883bff2b3e79fefb8118827e158289f3cbf458769bdf6ad2",
+    "scripts/vendor/earcut.js": "83d5b59bc520601bb2dd7401a2f8382a008d8d95e0e6e0fe45759ae4fda1aa56",
+    "scripts/vendor/earcut.LICENSE": "324139c19d87af03fda38afea1590e00ca354c4159bdb2ae9e9cec070cfa46a8",
+    "public/data/streets.osm.json": "f3520882cc873788b8c34be031121128f303391d886bb9cadeb82b17b716ead8"
+  },
+  "engine": {
+    "version": "4.7.2.stable.official.ed1daf0bf",
+    "url": "https://github.com/godotengine/godot/releases/tag/4.7.2-stable",
+    "win64ZipSha256": "731980f9608d61333e5baf54a2ef17210acc7a538446c0cb9969f002aca1e953",
+    "templatesSha256": "f298490b8d44d934be425a5a65a51bf15f422428b229a06a6e11d9ffea248011",
+    "verified": true,
+    "location": "user cache outside repository"
+  }
+}

@@ -1,0 +1,4 @@
+node_modules/
+artifacts/
+.build-round.lock
+godot/.godot/

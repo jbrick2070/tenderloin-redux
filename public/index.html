@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f3eedf">
+  <meta name="description" content="A peaceful neighborhood adventure. Make a little room for something good.">
+  <title>Tenderloin Redux — A little room for good</title>
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header class="masthead">
+    <a class="brand" href="./" aria-label="Tenderloin Redux home"><span class="brand-mark" aria-hidden="true">✳</span><span>tenderloin<span class="brand-redux">redux</span></span></a>
+    <div class="edition"><span class="eyebrow">SAN FRANCISCO, TOGETHER</span><span>A little room for something good.</span></div>
+    <nav aria-label="Game tools"><button id="journal-button" class="quiet-button">Field notes <span aria-hidden="true">↗</span></button><button id="settings-button" class="icon-button" aria-label="Settings">☷</button></nav>
+  </header>
+  <main>
+    <div class="chapter-line"><div><span class="live-dot"></span><span>CHAPTER 01</span><span class="chapter-name">Get the block ready</span></div><span class="prototype-badge">FIRST PLAYABLE · WORK IN PROGRESS</span></div>
+    <div class="game-layout">
+      <div class="world-column"><section class="world-panel" aria-label="Explore the neighborhood">
+        <div class="map-topline"><span class="map-label">TURK STREET <span>TAYLOR TO HYDE</span></span><button id="map-info" aria-label="About this map">ⓘ</button></div>
+        <canvas id="world" tabindex="0" aria-label="Neighborhood map. Move with arrow keys or WASD. Press E or Enter to talk or help nearby. Tap a person to walk there, or drag to look around. Meet the neighbors and History walk list walking destinations."></canvas>
+        <div class="map-compass" aria-label="North points slightly right of up"><span>N</span><span class="compass-arrow">↑</span></div>
+        <div class="camera-controls" role="group" aria-label="Map view controls"><div><button id="zoom-out" aria-label="Zoom out">−</button><button id="zoom-in" aria-label="Zoom in">+</button></div><button id="map-overview">Full block</button><span id="camera-status">Full block</span></div>
+        <button id="world-prompt" class="world-prompt" type="button"><kbd>E</kbd><span>Explore the block</span></button>
+        <div class="map-bottom"><span>Tap to walk · drag to look <span class="pointer-hint">· <kbd>WASD</kbd> / <kbd>↑↓←→</kbd> to move · <kbd>E</kbd> to talk</span></span><button id="recenter" aria-label="Center map on me and follow">⌖ Follow me</button></div>
+        <div class="map-credit"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors · ODbL</a><span>Scenery & event are fictional</span></div>
+        <div id="toast" role="status" aria-live="polite"></div>
+        <div id="loading" class="loading"><span class="loading-star">✳</span> Finding our corner…</div>
+      </section><aside id="district-legend" class="district-legend" aria-label="City cultural-district map layer" hidden><p><span class="district-swatch" aria-hidden="true"></span><strong>Transgender Cultural District</strong><br>City boundary · only part of the district is in this game.<br><small>San Francisco Planning Department / DataSF · PDDL · checked October 18, 2026</small></p><div><button id="district-notes" class="secondary-button">Source notes</button><button id="district-hide" class="secondary-button">Hide layer</button></div></aside><nav class="neighbor-navigation" aria-label="Neighbor navigation"><button id="neighbors-button" class="secondary-button">Meet the neighbors <span aria-hidden="true">↗</span></button><button id="history-walk-button" class="secondary-button">History walk <span aria-hidden="true">↗</span></button><button id="district-button" class="secondary-button">Living district <span aria-hidden="true">↗</span></button><button id="voices-button" class="secondary-button" hidden>Neighborhood Voices <span aria-hidden="true">↗</span></button><button id="stop-walking" class="secondary-button" disabled>Stop walking</button><p id="route-status" role="status" aria-live="polite">Choose a neighbor for a walking route.</p></nav></div>
+      <aside class="field-guide" aria-label="Gathering progress">
+        <div class="guide-heading"><span class="eyebrow">TODAY ON THE BLOCK</span><span class="flower" aria-hidden="true">✳</span></div>
+        <h1>Good things <br>start small.</h1>
+        <p class="guide-intro">The neighbors have a gathering in mind. Help make a little space for it.</p>
+        <div class="progress-caption"><span id="progress-label">0 of 4 preparations</span><span id="progress-percent">0%</span></div><div class="progress-track"><div id="progress-fill"></div></div>
+        <ol id="tasks" class="task-list"></ol>
+        <div class="neighbor-note"><span class="note-pin"></span><p id="neighbor-quote">“A long table, a few good stories. That’s my kind of afternoon.”</p><span id="neighbor-credit">— Bea, your neighbor</span></div>
+        <button id="open-gathering" class="primary-button open-button" disabled>Open the gathering <span aria-hidden="true">↗</span></button>
+        <p class="save-status" id="save-status">Progress saves on this device.</p>
+      </aside>
+    </div>
+    <section id="afterglow" class="afterglow-panel" aria-label="Optional afternoon keepsakes and thank-you lap" hidden></section>
+    <section class="sound-strip" aria-label="The neighborhood soundtrack"><button id="sound-toggle" class="sound-toggle" aria-label="Enable music sketch" aria-pressed="false">♫</button><div class="sound-title"><span class="eyebrow" id="sound-heading">THE BLOCK FINDS ITS RHYTHM</span><span id="sound-caption">A quiet beginning. Each contribution adds a layer.</span></div><div id="stems" class="stems"></div><button id="music-button" class="secondary-button">Choose music</button><span id="sound-disclosure" class="sound-disclosure">Original synth sketch<br>Recorded jazz to come</span></section>
+    <footer class="page-footer"><span>A neighborhood adventure, made with care.</span><button id="about-button">Real places. Imagined afternoon. <span aria-hidden="true">↗</span></button></footer>
+  </main>
+  <dialog id="modal" aria-labelledby="modal-title"><div id="modal-body"></div><div id="modal-status" class="sr-only" role="status" aria-live="polite"></div><button class="modal-close" id="close-modal" aria-label="Close dialog">×</button></dialog>
+  <script type="module" src="./game.js"></script>
+</body>
+</html>

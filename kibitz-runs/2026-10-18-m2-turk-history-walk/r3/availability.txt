@@ -1,0 +1,1 @@
+Installed scripts/kibitz.py --check-pins --driver codex --only antigravity returned0 on2026-10-18. KIBITZ_AGY_MODEL=Gemini 4 Argon (High). Output: configured antigravity lane Gemini4ArgonHigh; antigravity pin is current. No quota percentage or cost exposed. Actual prompt result to follow in runner log/model/quota receipts.

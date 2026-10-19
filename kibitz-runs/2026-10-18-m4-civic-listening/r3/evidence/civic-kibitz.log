@@ -1,0 +1,18 @@
+Repo:       C:\tenderloin-redux
+Round:      r3
+Run folder: C:\tenderloin-redux\kibitz-runs\2026-10-18-m4-civic-listening\r3
+Driver:     codex (explicit)
+Agents:     claude
+Profiles:   none
+Fanning out (each agent reads the repo + writes its review to a FILE):
+  -> claude: budget=medium model=claude-opus-5-5 effort=high file-handoff -> claude.md
+  [OK] claude (rc=0) -> claude.md
+
+Reviews collected:
+  claude: OK
+
+Next (the driver, NOT the script):
+  1. Confirm the driver anchor was written before this fan-out; preserve it as driver_anchor.md.
+  2. Verify every claim in the agent reviews against the real code; discard misreads.
+  3. Record the judgment and merge survivors into C:\tenderloin-redux\kibitz-runs\2026-10-18-m4-civic-listening\r3\final.md.
+  4. Advance sequentially within the full arc or the explicit scoped/resume receipt.

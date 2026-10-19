@@ -1,0 +1,10 @@
+CONTROL 320 programme-up-art {"x":58.59375,"y":813.1875,"width":67.140625,"height":42}
+CONTROL 320 programme-down-art {"x":135.734375,"y":813.1875,"width":67.15625,"height":42}
+CONTROL 320 programme-remove-pause {"x":212.890625,"y":907.1875,"width":74.5,"height":42}
+CONTROL 390 programme-up-art {"x":60.703125,"y":813.4375,"width":91.53125,"height":42}
+CONTROL 390 programme-down-art {"x":162.234375,"y":813.4375,"width":91.53125,"height":42}
+CONTROL 390 programme-remove-pause {"x":263.765625,"y":907.4375,"width":91.53125,"height":42}
+CONTROL 1440 programme-up-art {"x":487,"y":812.578125,"width":157.328125,"height":42}
+CONTROL 1440 programme-down-art {"x":654.328125,"y":812.578125,"width":157.34375,"height":42}
+CONTROL 1440 programme-remove-pause {"x":821.671875,"y":906.578125,"width":157.328125,"height":42}
+[{"width":320,"fixture":"valid rules-generated open floor save, before optional packing/keepsake","status":"pass","controls":"native, size observations logged; acceptance pending size fix","overflow":false,"externalRequests":[],"errors":[]},{"width":390,"fixture":"valid rules-generated open floor save, before optional packing/keepsake","status":"pass","controls":"native, size observations logged; acceptance pending size fix","overflow":false,"externalRequests":[],"errors":[]},{"width":1440,"fixture":"valid rules-generated open floor save, before optional packing/keepsake","status":"pass","controls":"native, size observations logged; acceptance pending size fix","overflow":false,"externalRequests":[],"errors":[]}]

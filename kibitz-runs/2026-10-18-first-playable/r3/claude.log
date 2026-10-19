@@ -1,0 +1,27 @@
+STDOUT:
+I wrote the review to `C:\tenderloin-redux\kibitz-runs\2026-10-18-first-playable\r3\claude.md`. The file-access check passed, and I made no other file changes.
+
+**Verdict: yes-with-fixes.** The game logic, save handling and routing fit together, and the local server doesn't let requests reach files outside `public/`. Three things need fixing before build:
+
+1. **A crash in "Start fresh" (`game.js:155`).** If the street data hasn't loaded, or failed to load, Settings → "Start a new afternoon…" → "Start fresh" throws an error. The dialog stays open and the reset is never saved. The fix is a one-line guard: `if (world) world.path = [];`.
+2. **The browser test isn't connected to the server it checks (`tests/browser-smoke.mjs`).**
+   - It always uses port 4173, even though the server reads `PORT`.
+   - It doesn't start the server itself, so an old server left running on 4173 could give a false pass.
+   - It requires an installed Google Chrome.
+   - It records "keyboard: pass" after a single arrow-key press, so BUILD_STATUS would claim keyboard coverage that was never tested.
+3. **Keyboard focus is lost after every placement in both grid editors (`game.js:79`, `game.js:96`).** The grid cells have no `id`, so `show()` can't put focus back after redrawing the dialog. Keyboard users have to Tab back to their spot after each placement. Adding ids to the cells fixes it.
+
+The review also has nine should-fix items, with file:line evidence for each:
+- The animation loop stops for good if one frame throws an error.
+- The music button keeps focus, so WASD and the arrow keys stop working until you click the map.
+- Tap targets on narrow screens are very small, and there's no tap equivalent of the E key. The roadmap puts touch play in M1, so this isn't an M0 blocker.
+- A corrupt settings value makes the game say saving is unavailable even when it works.
+- Music can end up playing while the button shows it as off.
+- Placement messages may not be read out by screen readers.
+- After a reload, the editors select a supply or motif that's already placed instead of the next missing one.
+- The server can crash if a file read fails after the response has started.
+- Leaving the tab doesn't save the player's position.
+
+It lists three bits of unused code that can be cut: the `'move'` action, `dispose()` and `.text-link`.
+
+Some connected services (Asana, Atlassian, Datadog, GitHub, Linear, Notion, PagerDuty, Slack, Box, Runway) need authorizing before they can be used. Claude.ai connectors are authorized in your claude.ai connector settings; the others through `claude mcp` or `/mcp` in an interactive session. This review didn't need any of them.

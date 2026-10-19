@@ -1,0 +1,5 @@
+# Additional driver inspection while reviewer active
+
+CONFIRMED candidate fix, no production edits during reviewer: world.js hit() recognizes neighbor name chips only; the new persistent Black Hawk chip sits ~44 screen pixels above its ground marker at close scale, beyond 22px marker hit radius. Clicking its label can fail to select the history stop. After reviewer finishes, share the actual rendered chip anchor/visibility with hit testing and add pure + actual Chrome chip-click regression. At tiny route scale the shortened chip shifts +250 worldpixels to stay visible, so hit anchor must account for that shift too. The ground marker stays at the projected reading point.
+
+Supplemental current-source checks passed 320/390/1440 no document/modal overflow, local-only runtime requests, no page errors; desktop western save reload follows player, E reopens note, route back to Compton’s note works and leaves gathering unopened. Captures under artifacts. Awaiting independent report before application edits.

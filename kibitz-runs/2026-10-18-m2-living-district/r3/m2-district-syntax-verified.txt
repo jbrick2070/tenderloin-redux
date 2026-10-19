@@ -1,0 +1,4 @@
+
+> tenderloin-redux@0.7.0 check
+> node --check public/game.js && node --check public/core.js && node --check public/world.js && node --check public/district.js && node --check public/history.js && node --check public/gathering.js && node --check public/camera.js && node --check public/audio.js && node --check public/soundtrack.js && node --check public/keepsake.js && node --check scripts/serve.mjs && node --check scripts/build-fingerprint.mjs && node --check tests/browser-smoke.mjs
+

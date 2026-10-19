@@ -1,0 +1,29 @@
+# Driver judgment — source-verified independent review
+
+One successful installed Kibitz native Claude CLI call: exact claude-opus-5-5, High, rc0. Driver Codex excluded. Actual source-before/archive vs after-review comparison: **zero source edits**. Current explicit ArgonHigh pin check retained; native authorized alternative used without repeating historical no-report timeout or inferring current quota. Usage percentage/cost unavailable; auth rc0. Single r3 only; r1/r2/r4 not run. No second paid call after fixes.
+
+## Must-fix claims
+
+1. **CONFIRMED and fixed** first Previous: old -1+(-1) produced56. `godot/main.gd:120` now treats no-selection explicitly; `godot/tests/study_test.gd` checks first Previous57, subsequent wrap, and fresh Next0. Overview clears highlight/selection/context, so its initial-state semantics are consistent.
+2. **CONFIRMED by actual reproduction and fixed** mobile zoom inversion. Retained `evidence/godot-zoom-repro.log`: old overview size705.8127 at390 and872.6920 at320; Zoom out incorrectly became400 in both. `main.gd:178` bounds relative to saved overview_size; native tests assert strict outward change and paired restoration at all3sizes.
+3. **PARTLY CONFIRMED / scope interpretation narrowed.** The hard-coded Browser game link existed and had no test/configuration. It was an explicit optional click, not a prerequisite runtime dependency: study loaded/worked with no4173request. Removed anyway to keep this viewer self-contained. Browser game remains at its separately documented URL. Browser request observation is now context-wide, not opener-only; no outside requests across actual tested actions.
+
+## Should-fix claims
+
+1. Startup container-order overlap was an **UNVERIFIED hypothesis**, not reproduced proof. Made sequencing deterministic with two process frames after UI setup; final screenshots inspected. No claim the hypothesized old startup race was observed.
+2. **CONFIRMED** resize changed grid without refitting. Added in_overview state and deferred post-layout refit, guarded against selection/zoom. Native tests resize the existing scene1100→390→320 and inspect the automatic fit between actual UI bounds. Stronger test also caught stale camera transform/target after synchronous repeated overview calls; force_update_transform plus deterministic fit anchor fixes the reproduced failure. Final FIT_CHECK coordinates retained.
+3. **CONFIRMED** old Overview retained prior selection/title. Now restores neutral mesh, selected=-1 and dated all-building context. Native test verifies reset.
+4. **CONFIRMED** focus+signal was weaker than keyboard proof. Native test now delivers real ui_accept press/release via Input.parse_input_event and checks advance; Chrome asserts Tab/Enter changes the rendered zoom. No screen-reader speech claim.
+5. Old assert/coroutine/exit-code behavior **UNVERIFIED**; no assertion that a false pass actually occurred. Replaced with accumulated failure flag and a single final outcome. Explicit --force-failure returns1, prints FAIL and never prints PASS; retained negative result.
+6. **CONFIRMED** original hash coverage omitted OSM and receipt verification. Added streets hash to derived JSON/receipt; tests verify every pinned input/vendor hash and exact derived street/source metadata. JSON round-trip exposed negative-zero mismatch at origin; normalized signed zero without changing distances and reran all tests.
+7. **CONFIRMED** harness hard-coded4174; now shared GODOT_PORT base in navigation and context request filter. Default4174 exercised; alternate port configuration is source-verified, not separately live-tested.
+8. **CONFIRMED** missing npm launchers/native-test instructions/syntax checks. Added godot:data/import/test/export/serve/browser/check and run-godot.mjs (GODOT_BIN→verified cache→PATH), mkdir before export, docs exact order and already-running preview prerequisite. Main npm check includes new syntax checks; final commands executed with checked exit status.
+9. **CONFIRMED** pixel coordinates coupled to native layout. Kept the small bounded pixel harness with explicit row/column/order/margin explanation for Next index2, alongside native actual-rect bounds/focus/action tests at3sizes. It is not a general DOM semantic harness or proof for every control. No extra production test API introduced.
+
+## Optional findings and boundaries
+
+Finite ground validation, framing from exterior ring, helpful invalid-JSON error and globalized capture path were small confirmed improvements and were applied. The --capture native renderer path is not newly certified by Web screenshots. Godot engine license text retained and included in export. Original city/OSM/vendor terms and dated limits remain in data/SOURCES; no current façade/roof/terrain/access certification.
+
+Final driver gates:94 Node tests, all syntax checks, headless Godot study and negative harness, official Web export and Chrome1100x760/390x667/320x667 pass. Browser requests/page errors zero for tested paths; next selection and actual keyboard activation alter rendering. Existing browser0.12 public fingerprint unchanged. Human pacing/physical phone/full accessibility/current-location/music quality/full Godot gameplay remain open. Scheduler was updated to the approach, then **PAUSED at creator request for AGY4 handoff**. Do not restart it. No purchase/outreach/deployment/extra panel; commits/push now explicitly authorized.
+
+Remote-checkpoint preservation: .gitattributes disables newline conversion so source/vendor/report byte hashes survive Windows checkout. Intended source diff whitespace is checked separately from raw historical evidence logs: existing terminal logs contain trailing blank/space output and are preserved rather than rewritten. Verify staged blob bytes against working files before push; never clean historical reports merely to satisfy whitespace lint.

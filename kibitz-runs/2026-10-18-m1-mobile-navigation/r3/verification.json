@@ -1,0 +1,27 @@
+{
+  "at": "2026-10-18T18:37:11.261Z",
+  "tests": {
+    "node": 28,
+    "syntax": "pass",
+    "chromeSmoke": "pass",
+    "diff": "pass"
+  },
+  "source": {
+    "version": "0.3.0",
+    "fingerprint": "122f2e1fe917350755493e2b1d8b1747ea00207090d67b01770e5fc5a5207f04"
+  },
+  "review": {
+    "calls": 1,
+    "model": "Gemini 4 Argon (High)",
+    "rc": 0,
+    "sha256": "42138a301bb39cda5ecaf145504a2443e6a0a395351fced7863fc7fb90d6edf3",
+    "credits": "not exposed"
+  },
+  "manualReportSHA256": "3c6548df658ca822e91e1039e1c36a388c306ed1c2a56f513733d51c9267dae8",
+  "roundsNotRun": [
+    "r1",
+    "r2",
+    "r4"
+  ],
+  "next": "m1-local-soundtrack"
+}

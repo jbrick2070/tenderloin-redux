@@ -1,0 +1,14 @@
+{
+  "source": {
+    "version": "0.4.0",
+    "fingerprint": "b84994b02e825c889a94fae39c93d96e88f710186a4e2d1de33049ea4ecffc65"
+  },
+  "mp3NativeDecodeAndPositionAdvance": true,
+  "visibilityEventSimulation": {
+    "stops": true,
+    "noAutomaticResume": true
+  },
+  "networkRequestsLocalOnly": true,
+  "testFixture": "original quiet tone encoded by preinstalled FFmpeg; not shipped",
+  "limits": "Explicit visibility event simulation; actual headless tab activation kept document.hidden false in earlier attempt. No physical device or real song quality certification."
+}

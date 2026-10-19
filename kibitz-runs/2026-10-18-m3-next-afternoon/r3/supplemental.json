@@ -1,0 +1,38 @@
+{
+  "at": "2026-10-18T21:32:46.862Z",
+  "source": {
+    "version": "0.8.0",
+    "fingerprint": "a484f9582e02914db945bc29823a67a42d306cf1f54ece1b1b90ef389477550c"
+  },
+  "browser": "155.0.8059.84",
+  "results": [
+    {
+      "width": 320,
+      "fixture": "valid rules-generated open floor save, before optional packing/keepsake",
+      "status": "pass",
+      "controls": "native >=44px, verified",
+      "overflow": false,
+      "externalRequests": [],
+      "errors": []
+    },
+    {
+      "width": 390,
+      "fixture": "valid rules-generated open floor save, before optional packing/keepsake",
+      "status": "pass",
+      "controls": "native >=44px, verified",
+      "overflow": false,
+      "externalRequests": [],
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "fixture": "valid rules-generated open floor save, before optional packing/keepsake",
+      "status": "pass",
+      "controls": "native >=44px, verified",
+      "overflow": false,
+      "externalRequests": [],
+      "errors": []
+    }
+  ],
+  "limits": "Automated Chrome touch emulation/fixture, not physical phone/human pacing/full screen reader."
+}

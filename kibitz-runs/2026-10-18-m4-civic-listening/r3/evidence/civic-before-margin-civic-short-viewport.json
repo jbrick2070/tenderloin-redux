@@ -1,0 +1,31 @@
+{
+  "source": {
+    "version": "0.11.0",
+    "fingerprint": "cd8b2590483aefcf5e0c61d2f5289493deba8f80904fe2063566803103763d5d"
+  },
+  "browser": "155.0.8059.84",
+  "viewport": {
+    "width": 390,
+    "height": 667
+  },
+  "results": [
+    {
+      "id": "civic-topic-access",
+      "visible": true,
+      "overflow": false
+    },
+    {
+      "id": "civic-format-dropin",
+      "visible": true,
+      "overflow": false
+    },
+    {
+      "id": "civic-notes-none",
+      "visible": true,
+      "overflow": false
+    }
+  ],
+  "completion": true,
+  "focusReturn": true,
+  "scope": "Rules-generated completed second-gathering fixture, real UI; short viewport emulation, not physical phone"
+}

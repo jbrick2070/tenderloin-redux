@@ -1,0 +1,16 @@
+
+> tenderloin-redux@0.10.0 test:voices
+> node tests/voices-browser.mjs
+
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+page.waitForFunction: Timeout 30000ms exceeded.
+    at ready (C:\tenderloin-redux\tests\voices-browser.mjs:20:41)
+    at C:\tenderloin-redux\tests\voices-browser.mjs:110:311 {
+  log: [],
+  name: 'TimeoutError'
+}
+
+Node.js v26.4.0

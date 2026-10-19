@@ -1,0 +1,18 @@
+{
+  "source": {
+    "version": "0.6.0",
+    "fingerprint": "e0f94363af24895bb75fd418d63b4d6fcab263a703ed4c2d19e3c8e905320ecd"
+  },
+  "evidence": [
+    {
+      "width": 320,
+      "scale": 0.08,
+      "actualSmallOverviewChipSelectsNamedStop": true
+    },
+    {
+      "width": 390,
+      "scale": 0.10153846153846154,
+      "actualSmallOverviewChipSelectsNamedStop": true
+    }
+  ]
+}

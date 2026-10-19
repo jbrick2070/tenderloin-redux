@@ -1,0 +1,177 @@
+
+> tenderloin-redux@0.12.0 test:film
+> node tests/film-browser.mjs
+
+{
+  "at": "2026-10-19T02:18:31.790Z",
+  "source": {
+    "version": "0.12.0",
+    "fingerprint": "0f207a025de506c1c5e5c3aa012aa8f65a1d20c656f9a5ab22f9bb2ced19a136"
+  },
+  "browser": "155.0.8059.84",
+  "coverage": "8 representative plans covering all6orders/all4framing-plan pairs, distributed across320x844/390x667/1440x844 and both layouts; unit tests cover all24plans in both layouts",
+  "fixtures": "rules-generated civic-complete state; civic suite separately completes actual civic UI and verifies film unlock",
+  "results": [
+    {
+      "framing": "close",
+      "plan": "quiet",
+      "order": [
+        "seat",
+        "paint",
+        "welcome"
+      ],
+      "viewport": {
+        "width": 320,
+        "height": 844
+      },
+      "layout": "table",
+      "stages": "planning/hold/partial capture/done reload pass",
+      "focus": "native keyboard edits/order/screening, persistent status, visible Back/Escape/x return",
+      "doubleClick": "phase/capture plus deterministic replacement controls rejected",
+      "preservation": "other state unchanged; viewer read-only; Rook consent enforced in original frames",
+      "errors": [],
+      "external": []
+    },
+    {
+      "framing": "close",
+      "plan": "quiet",
+      "order": [
+        "paint",
+        "welcome",
+        "seat"
+      ],
+      "viewport": {
+        "width": 390,
+        "height": 667
+      },
+      "layout": "floor",
+      "stages": "planning/hold/partial capture/done reload pass",
+      "focus": "native keyboard edits/order/screening, persistent status, visible Back/Escape/x return",
+      "doubleClick": "phase/capture plus deterministic replacement controls rejected",
+      "preservation": "other state unchanged; viewer read-only; Rook consent enforced in original frames",
+      "errors": [],
+      "external": []
+    },
+    {
+      "framing": "close",
+      "plan": "later",
+      "order": [
+        "seat",
+        "welcome",
+        "paint"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 844
+      },
+      "layout": "table",
+      "stages": "planning/hold/partial capture/done reload pass",
+      "focus": "native keyboard edits/order/screening, persistent status, visible Back/Escape/x return",
+      "doubleClick": "phase/capture plus deterministic replacement controls rejected",
+      "preservation": "other state unchanged; viewer read-only; Rook consent enforced in original frames",
+      "errors": [],
+      "external": []
+    },
+    {
+      "framing": "close",
+      "plan": "later",
+      "order": [
+        "welcome",
+        "seat",
+        "paint"
+      ],
+      "viewport": {
+        "width": 320,
+        "height": 844
+      },
+      "layout": "floor",
+      "stages": "planning/hold/partial capture/done reload pass",
+      "focus": "native keyboard edits/order/screening, persistent status, visible Back/Escape/x return",
+      "doubleClick": "phase/capture plus deterministic replacement controls rejected",
+      "preservation": "other state unchanged; viewer read-only; Rook consent enforced in original frames",
+      "errors": [],
+      "external": []
+    },
+    {
+      "framing": "wide",
+      "plan": "quiet",
+      "order": [
+        "seat",
+        "welcome",
+        "paint"
+      ],
+      "viewport": {
+        "width": 390,
+        "height": 667
+      },
+      "layout": "table",
+      "stages": "planning/hold/partial capture/done reload pass",
+      "focus": "native keyboard edits/order/screening, persistent status, visible Back/Escape/x return",
+      "doubleClick": "phase/capture plus deterministic replacement controls rejected",
+      "preservation": "other state unchanged; viewer read-only; Rook consent enforced in original frames",
+      "errors": [],
+      "external": []
+    },
+    {
+      "framing": "wide",
+      "plan": "quiet",
+      "order": [
+        "welcome",
+        "seat",
+        "paint"
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 844
+      },
+      "layout": "floor",
+      "stages": "planning/hold/partial capture/done reload pass",
+      "focus": "native keyboard edits/order/screening, persistent status, visible Back/Escape/x return",
+      "doubleClick": "phase/capture plus deterministic replacement controls rejected",
+      "preservation": "other state unchanged; viewer read-only; Rook consent enforced in original frames",
+      "errors": [],
+      "external": []
+    },
+    {
+      "framing": "wide",
+      "plan": "later",
+      "order": [
+        "paint",
+        "seat",
+        "welcome"
+      ],
+      "viewport": {
+        "width": 320,
+        "height": 844
+      },
+      "layout": "table",
+      "stages": "planning/hold/partial capture/done reload pass",
+      "focus": "native keyboard edits/order/screening, persistent status, visible Back/Escape/x return",
+      "doubleClick": "phase/capture plus deterministic replacement controls rejected",
+      "preservation": "other state unchanged; viewer read-only; Rook consent enforced in original frames",
+      "errors": [],
+      "external": []
+    },
+    {
+      "framing": "wide",
+      "plan": "later",
+      "order": [
+        "welcome",
+        "paint",
+        "seat"
+      ],
+      "viewport": {
+        "width": 390,
+        "height": 667
+      },
+      "layout": "floor",
+      "stages": "planning/hold/partial capture/done reload pass",
+      "focus": "native keyboard edits/order/screening, persistent status, visible Back/Escape/x return",
+      "doubleClick": "phase/capture plus deterministic replacement controls rejected",
+      "preservation": "other state unchanged; viewer read-only; Rook consent enforced in original frames",
+      "errors": [],
+      "external": []
+    }
+  ],
+  "limits": "No physical phone/full screen-reader/human pacing, actual movie recording, real production consent/permit or current surveyed access certification"
+}

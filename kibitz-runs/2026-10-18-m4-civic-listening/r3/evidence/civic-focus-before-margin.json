@@ -1,0 +1,12 @@
+{
+  "source": {"version":"0.11.0","fingerprint":"cd8b2590483aefcf5e0c61d2f5289493deba8f80904fe2063566803103763d5d"},
+  "provenance":"Driver transcription of observed civic-focus-diagnosis.mjs tool output before margin fix; failing browser log retained separately. Diagnosis script/JSON then rerun on fixed build.",
+  "viewport":{"width":390,"height":844},
+  "fixture":"floor layout, completed second gathering, journal entry, planning repairs/circle/none then Back",
+  "active":"civic-hour",
+  "button":{"top":800.3125,"bottom":844.3125,"height":44},
+  "scrollY":1195,
+  "after1000msUnchanged":true,
+  "issue":"nearest integer-pixel scroll left0.3125px beyond viewport; strict bounds failed",
+  "resolution":"scoped16px scroll margin, fixed observed bottom828.3125"
+}

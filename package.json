@@ -1,0 +1,25 @@
+{
+  "name": "tenderloin-redux",
+  "version": "0.12.0",
+  "private": true,
+  "type": "module",
+  "description": "A peaceful, resident-led neighborhood adventure.",
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "start": "node scripts/serve.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "test:browser": "node tests/browser-smoke.mjs",
+    "check": "node --check public/game.js && node --check public/core.js && node --check public/civic.js && node --check public/film.js && node --check public/programme.js && node --check public/hosting.js && node --check public/experimental-host.js && node --check public/experiments/neighborhood-voices.js && node --check public/world.js && node --check public/district.js && node --check public/history.js && node --check public/gathering.js && node --check public/camera.js && node --check public/audio.js && node --check public/soundtrack.js && node --check public/keepsake.js && node --check scripts/serve.mjs && node --check scripts/build-fingerprint.mjs && node --check tests/browser-smoke.mjs && node --check tests/voices-browser.mjs && node --check tests/civic-browser.mjs && node --check tests/civic-fixture.mjs && node --check tests/film-browser.mjs && node --check tests/film-fixture.mjs && npm run godot:check",
+    "test:voices": "node tests/voices-browser.mjs",
+    "test:civic": "node tests/civic-browser.mjs",
+    "test:film": "node tests/film-browser.mjs",
+    "godot:data": "node scripts/build-godot-data.mjs",
+    "godot:import": "node scripts/run-godot.mjs --headless --path godot --editor --import --quit",
+    "godot:test": "node scripts/run-godot.mjs --headless --path godot --script res://tests/study_test.gd",
+    "godot:export": "node scripts/run-godot.mjs --headless --path godot --export-release Web",
+    "godot:serve": "node scripts/serve-godot.mjs",
+    "godot:browser": "node tests/godot-browser.mjs",
+    "godot:check": "node --check scripts/build-godot-data.mjs && node --check scripts/run-godot.mjs && node --check scripts/serve-godot.mjs && node --check tests/godot-browser.mjs && node --check tests/godot-data.test.mjs"
+  },
+  "license": "MIT"
+}

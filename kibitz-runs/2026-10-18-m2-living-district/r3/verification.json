@@ -1,0 +1,54 @@
+{
+  "at": "2026-10-18T21:14:39.528Z",
+  "source": {
+    "version": "0.7.0",
+    "fingerprint": "bb97b81604bd416ca2805d1b8e0d7e220dd76ef59a5fa43206193fab27a6661f"
+  },
+  "tests": {
+    "node": 54,
+    "syntax": "pass",
+    "diff": "pass",
+    "completeChromeSmoke": "pass",
+    "viewports": [
+      320,
+      390,
+      1440
+    ],
+    "canvasOffOnOff": "backing-store SHA256 exactly restored at all three widths; view/save unchanged",
+    "dataFailureCases": [
+      "malformed",
+      "explicit retry",
+      "no retry on reopen",
+      "late result with another modal",
+      "network abort",
+      "10 second stall"
+    ],
+    "runtimeRequests": "local only in supplements"
+  },
+  "review": {
+    "calls": 1,
+    "lane": "native claude",
+    "model": "claude-opus-5-5",
+    "effort": "high",
+    "rc": 0,
+    "sha256": "071a1f1dabb67f69af48d7705bd58719ae0b59a73e2d31e578dd8f837ac69154",
+    "credits": "not exposed",
+    "selection": "authorized native alternative after previous-round Gemini actual request failed without review; current pin/catalog is not availability proof"
+  },
+  "noReviewerSourceDrift": true,
+  "inputSHA256": "dc899ab361599dc93502460bfe9b7fcd5c466ab6dac4fc3f53f207f44e41d6a1",
+  "manualReportSHA256": "3c6548df658ca822e91e1039e1c36a388c306ed1c2a56f513733d51c9267dae8",
+  "precedingReviewSHA256": "41ede500a32f2adb4919234979a438609d3fe5158f3da4b8412ecf9e24741bf0",
+  "livePreviewMatches": true,
+  "roundsNotRun": [
+    "r1",
+    "r2",
+    "r4"
+  ],
+  "failuresPreserved": [
+    "composited screenshot comparison included HTML toast; direct backing pixels diagnose equality",
+    "existing WAV fixed180ms sampling missed progress; bounded condition wait passes"
+  ],
+  "fullGameComplete": false,
+  "limits": "Pinned city-data snapshot, not legal/field survey; current door/crossing/facade verification, physical device, full screen reader, human pacing and final recorded score remain open."
+}

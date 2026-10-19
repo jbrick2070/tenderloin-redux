@@ -1,0 +1,80 @@
+# Tenderloin Redux — build roadmap
+
+## Active engine direction — Godot, 2026-10-18
+
+Creator selected stylized isometric/2.5D Godot with accurate buildings from open city data. Follow [GODOT_APPROACH.md](GODOT_APPROACH.md): dated footprint/median-height study, then actual-scale walking/collision, one neighbor, original portable mural and music, followed by explicit mobile/accessibility/save checks before wider migration. Preserve browser 0.12.0 and every M0–M6 requirement below. Neither geography study nor first Godot block completes the game. Creator subsequently requested an AGY 4 handoff and **paused the hourly automation**; do not restart it automatically. Keep one independent Kibitz partner per implementation round and regular authorized commits/pushes of tested reviewed checkpoints.
+
+The creator authorized implementation on 2026-10-18 and hourly continued development. GPT-6.1 Sol High is the selected builder. Work is serial. Every implementation round needs at least one successful independent Kibitz partner review, a source-grounded driver judgment, and tests appropriate to its change. One partner is sufficient; conserve credits. Native Claude Opus is an authorized alternative (the creator verified a successful `claude -p ... --model opus` call); Gemini 4 Argon High is the default requested partner, with current catalog/identity checked before crediting a review. No AGY Opus calls. Provider failures do not count as reviews.
+
+The broad vision remains in CONCEPT.md. This roadmap makes the larger game finite enough to work toward while retaining every requested category. A first playable is not the finished game. Do not add filler systems to keep hourly runs busy. When work depends on external observation, user play feedback, rights, or resources, record the exact dependency and make progress on independent milestones; do not invent approval or evidence.
+
+## M0 — first playable foundation (complete)
+
+- Local, dependency-free browser scene using real projected OSM centerlines at uniform scale, original schematic graphics, explicit map limitations and ODbL attribution/data.
+- Walking, pointer routing, neighbor conversations, two distinct layout choices with a protected clear route, three authored litter spots, three original mural contributions, resident-led soundcheck, and opening/freeroam ending.
+- Save/load, damaged-save recovery, sound-independent completion, sound/motion controls, original synthesized music sketch.
+- Pure game-rule tests and actual browser completion/reload checks for both layouts, keyboard interaction, viewport checks. Record what ran and what did not.
+
+## M1 — a complete opening chapter (in progress)
+
+- Playtest pacing and discoverability. Finish distinct visible/dialogue consequences of both layouts. Reuse placement controls and avoid fetch-task repetition.
+- Implemented in version 0.2.0: short optional thank-you lap returning three event loans, and a consent-aware illustrated group keepsake. A neighbor can decline without penalty; selecting other consenting guests, skipping/defering, snapshotting the mural, local SVG export, partial returns and save/load are covered by tests and an independent review. This is fictional original artwork, not an actual camera photo.
+- Better nonvisual navigation, keyboard focus and mobile/touch play. Captions for musical changes. Meaningful player-feedback evidence, not an assumed 10–15 minute runtime.
+- Implemented in version 0.3.0: closer phone map, zoom/overview/follow, bounded drag, legible labels, named DOM neighbor directory, route status/cancel and arrival focus. Independently reviewed and tested with Chrome mouse/touch emulation; physical-phone feel, screen-reader audit and observed human play remain unverified.
+- Implemented in version 0.5.0: distinct conversation/movement visitor arrangements from actual furniture choices, branch-specific Celeste/Thanh dialogue, editor preview and a current gathering plan with DOM route/supply descriptions, packing/return updates and reduced-motion behavior. Visitor clearances are authored schematic geometry, not certified real access widths. Save format and consent-keepsake snapshots stay unchanged. Human pacing/discoverability feedback remains outstanding; proceed with independent M2 work while waiting.
+
+## M2 — a geographically grounded walkable district
+
+- Verify block geometry, actual entrances, crossings, protected bike access, Transgender District boundary and real streetscape locations against dated primary sources and current imagery/observations where permitted.
+- Replace schematic facades selectively with original geographically grounded designs. Preserve known current-use uncertainty. Do not invent businesses that overwrite real tenants.
+- Expand to a coherent, clearly bounded neighborhood route connecting real historical/music sites, including Black Hawk at Turk/Hyde and other verified places. Retain actual distances; navigation aids can improve travel.
+- Add sourced history cards and original writing about music legends; no copied recordings, artwork or implied affiliation.
+
+- First route slice implemented in version 0.6.0: optional Turk walk from Taylor through Jones/Leavenworth to the former Black Hawk at Hyde, original linked history note, remembered discovery and walk back to Bea. Full-route overview is separate from the opening block; uniform scale and existing coordinates are preserved. Current entrances/site use, crossings, bike access, district boundary, geographically grounded facades and wider district acceptance remain open. One successful native Claude Opus 5.5/High Kibitz partner followed the failed Gemini no-report attempt; 51 Node tests and complete Chrome/supplemental route/save/label checks pass. Evidence and remaining limits are recorded in BUILD_STATUS.md.
+
+- Version 0.7.0 adds a dated city-published Transgender Cultural District boundary layer and original community/street context with PDDL provenance. Source geometry/projected extent checked; explicit show/hide, bounded load, error/retry/focus and save independence independently reviewed and verified with 54 Node tests plus full Chrome/supplemental checks. Remaining M2 current appearances/entrances/crossings still require visual verification; proceed with independent M3 resident-led gameplay while keeping those checks open.
+
+## M3 — neighbors, organizations and festival life
+
+- A connected set of resident-led projects with meaningful arrangement/art/care choices and persistent neighborhood relationships. Improvement never removes residents or rewards displacement.
+- Real nonprofits represented through dated verified facts and official links; original fictional residents own gameplay. Any branded missions require actual participation/rights rather than invented endorsements.
+- At least one researched real festival reference/date/program in the journal and a clearly fictional playable gathering inspired by neighborhood cultural life. Do not pass an invented present-day event off as an actual scheduled festival.
+- Living Transgender District residents, art and history, and geographically verified decorations where rights permit; original portable community art stays separate from real public artworks.
+
+- First M3 project implemented in version 0.8.0: **Plan another afternoon** after opening, before or after optional epilogue. Arrange four fictional resident proposals, balance rhythm/story order with a quiet interval, retain a partial draft separately from the posted snapshot, and revise without silently changing the neighbors’ earlier agreement. Original poster, visible portable board and persistent branch-specific neighbor responses. This completes the planning slice only; a connected playable hosting arc, dated nonprofit facts and broader M3 acceptance remain open. The existing museum-linked 2022 festival reference stays distinct from this fictional future plan. Review/evidence/limits in BUILD_STATUS.md.
+
+- Version 0.9.0 hosts a second fictional gathering from a copied programme: story invitation, eight-step visual rhythm including listening-only round, six-tile original panel/palette and quiet-space choice. Partial drafts/results, completed event memories and resident responses persist. New art/stools and reserved visitor positions preserve the opening props/clear route; packing/returns remain independent and do not move the second gathering’s people. One independent Kibitz review and automated source-matched checks recorded in BUILD_STATUS. M3 now has connected planning/hosting projects, but dated nonprofit representation and broader human-play/culture acceptance remain open. Next add a small primary-source-verified organization context feature without invented missions or affiliation, then proceed through M4–M6.
+
+## M4 — occasional civic events and filming
+
+Version 0.10.0 delivers M3 dated organization context through the M5 default-off host/text boundary before M4. Three original summaries link to verified primary pages; no invented branded mission or endorsement. This deliberate ordering avoids an unconditional organization directory. Broader M3 human-play/cultural acceptance remains open. M4 peaceful civic and film projects are next.
+
+- One authored peaceful political/tenant-organizing event with a practical shared-space decision, differing fictional neighbor views and no invented real organization stance.
+- One original fictional movie shoot with permission-aware logistics, sound/access choices and an enjoyable playable consequence. Research any real historic film references separately.
+- Save-compatible event states, clear scheduling cues without punishing countdowns, and a complete multi-session arc.
+
+- Civic slice implemented in 0.11.0: after both gatherings, host a later fictional tenant listening hour. Two shared topics, small circle/drop-in setup with schematic plan, anonymous authored themes/no notes, actual scripted conversation and explicit closing. Respectful disagreement, copied persistent choices, latest neighbor responses and memory in Field notes; no attendee input/signatures/recordings/outbound message, invented real stance, clock or claim to solve housing insecurity. Eight combinations distributed across320/390/1440 and both layouts, stage reload/focus/announcements/double-click/old-save checks; evidence in BUILD_STATUS. Map/world/audio unchanged. Film shoot remains next, and full M4/multi-session human acceptance is open.
+
+- Filming representative implemented in 0.12.0: after civic completion, an original illustrated three-shot short. Frame/quiet-work choices,6valid shot orders, mandatory route hold, capture each copied shot and manual screening. Fictional volunteered hands/props only, Rook stays off camera. Partial plan/hold/captures and completed sequence/neighbor responses persist. No media/camera/microphone API or actual recording, real production/permit/film-reference claim. Core/Voices/civic/film gates and independent review evidence in BUILD_STATUS. This completes the two representative M4 implementations, not observed human pacing or full-game acceptance. Next independent work: M6 measured local performance/release/provenance checks and M2 dated current-location verification; actual recorded score and human/physical-place acceptance stay open.
+
+## M5 — experimental Neighborhood Voices
+
+- One `experimental.neighborhoodVoices` flag, default off in settings, separate from saves. Implement the host/teardown/lazy loading contract before enabling UI.
+- Start with at most three verified text-only organization records and direct official links; no voice impersonation or unlicensed TenderVoice code/interviews.
+- Test off/on/off, absent-module saves, late asynchronous loads, cleanup errors, repeat toggles and unchanged relevant core outcomes. Preserve bounded valid optional JSON. Test future audio cleanup with a nonshipped synthetic fixture; do not claim a measured 100 ms target without evidence.
+
+## M6 — release quality and completion evidence
+
+M5 host/text slice implemented in 0.10.0: strict separate preference, lazy optional module/data, generation-scoped abort/resource ownership, safe error/retry/off and page restoration, three bounded verified records. Tests cover relevant core outcomes off/on/off, absent module with optional save data, late loads, cleanup exceptions, repeat views and nonshipped future-audio fixture. No voice recordings or TenderVoice imports; full M5/M6 accessibility and human acceptance remain open. Evidence and limitations in BUILD_STATUS.md.
+
+- Cohesive original visual assets and an original musical score/performances with provenance; assess quality and production resources before claiming the synthesized development sketch is final jazz.
+- Creator audition support implemented in 0.4.0: local MP3/WAV player with loop, pause/volume and sketch fallback. One creator-selected track at a time; no Suno recording is bundled. This supports choosing a score and does not complete the final music/provenance milestone.
+- Complete asset/dependency/rights inventory; no unlicensed legacy source or media. Retain ODbL map data separately from MIT code and original assets.
+- Automated core/save/event regression checks, end-to-end completion, browser/audio and responsive/accessibility checks, performance measurements and observed human play feedback. Fix material blockers and preserve limitations.
+- Provide a runnable, documented local build containing every implemented milestone and no misleading current-place claims. Hosting/public release is a separate user decision. Declare the documented game complete only when the acceptance evidence supports it; then disable the hourly automation.
+
+## Hourly continuity
+
+Read BUILD_STATUS.md first, inspect current git state and processes, finish the earliest unreviewed round before starting another. Use a unique Kibitz topic for each implementation round; write `scope_receipt.md`, `driver_anchor.md`, `judgment.md` and `final.md`. The user's request is one partner per build round, an explicitly scoped single round rather than an automatic four-round panel campaign. Report actual calls and model requests. Preserve historical reviews unchanged. Never run two writers against this checkout.
+
+If the roadmap must change materially, explain the tradeoff and retain the creator's requirements. Do not silently shrink “the entire game” to M0. If there is no useful independent work during a real external block, skip paid reviews of unchanged code and report the actionable dependency.

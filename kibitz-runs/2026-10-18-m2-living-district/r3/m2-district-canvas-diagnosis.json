@@ -1,0 +1,140 @@
+[
+  {
+    "tag": "before",
+    "backingHash": "5dc198dd5604f90dbe21d5d748f679502c312a7268582c3002a1c5cdad30035e",
+    "screenHash": "9a6490724c75f830f5eb482638a19986cb7c8026b28f1acf39d08692a8410aa0",
+    "view": {
+      "x": 100.08695652173913,
+      "y": 270.9347826086956,
+      "scale": 0.28695652173913044
+    },
+    "size": [
+      358,
+      518,
+      16,
+      126.828125,
+      358,
+      518
+    ],
+    "scroll": [
+      0,
+      0
+    ],
+    "snapshot": {
+      "greeted": false,
+      "layout": null,
+      "furniture": {},
+      "litter": [],
+      "mural": {},
+      "palette": "garden",
+      "soundcheck": false,
+      "opened": false,
+      "history": false,
+      "blackhawk": false,
+      "player": {
+        "x": 95,
+        "y": -47
+      },
+      "epilogue": {
+        "packing": false,
+        "returned": [],
+        "photo": {
+          "status": "unasked"
+        }
+      },
+      "optional": {}
+    }
+  },
+  {
+    "tag": "shown",
+    "backingHash": "4ddec29492a2f7d3ab2aaa6c5b5af91bea719ee1bb0504e39741bfa8cb516157",
+    "screenHash": "96f2a18e8052178caf8e1930a47223f8c05ca3db020b8df70bdd81579b70d44f",
+    "view": {
+      "x": 100.08695652173913,
+      "y": 270.9347826086956,
+      "scale": 0.28695652173913044
+    },
+    "size": [
+      358,
+      518,
+      16,
+      126.828125,
+      358,
+      518
+    ],
+    "scroll": [
+      0,
+      0
+    ],
+    "snapshot": {
+      "greeted": false,
+      "layout": null,
+      "furniture": {},
+      "litter": [],
+      "mural": {},
+      "palette": "garden",
+      "soundcheck": false,
+      "opened": false,
+      "history": false,
+      "blackhawk": false,
+      "player": {
+        "x": 95,
+        "y": -47
+      },
+      "epilogue": {
+        "packing": false,
+        "returned": [],
+        "photo": {
+          "status": "unasked"
+        }
+      },
+      "optional": {}
+    }
+  },
+  {
+    "tag": "after",
+    "backingHash": "5dc198dd5604f90dbe21d5d748f679502c312a7268582c3002a1c5cdad30035e",
+    "screenHash": "87da13a2702ba5da939d7048b58557b6537a0e069873c9dff39710a6b12273f0",
+    "view": {
+      "x": 100.08695652173913,
+      "y": 270.9347826086956,
+      "scale": 0.28695652173913044
+    },
+    "size": [
+      358,
+      518,
+      16,
+      126.828125,
+      358,
+      518
+    ],
+    "scroll": [
+      0,
+      0
+    ],
+    "snapshot": {
+      "greeted": false,
+      "layout": null,
+      "furniture": {},
+      "litter": [],
+      "mural": {},
+      "palette": "garden",
+      "soundcheck": false,
+      "opened": false,
+      "history": false,
+      "blackhawk": false,
+      "player": {
+        "x": 95,
+        "y": -47
+      },
+      "epilogue": {
+        "packing": false,
+        "returned": [],
+        "photo": {
+          "status": "unasked"
+        }
+      },
+      "optional": {}
+    }
+  }
+]

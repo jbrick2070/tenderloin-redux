@@ -1,0 +1,120 @@
+
+> tenderloin-redux@0.11.0 test:civic
+> node tests/civic-browser.mjs
+
+{
+  "at": "2026-10-19T01:18:59.212Z",
+  "source": {
+    "version": "0.11.0",
+    "fingerprint": "3a47af07c0cdebed9d17a80768fb5211004f253876cb5976f469721fa0efcec3"
+  },
+  "browser": "155.0.8059.84",
+  "fixtures": "rules-generated complete second gathering in both opening layouts; core suite separately completes actual gatherings",
+  "results": [
+    {
+      "topic": "repairs",
+      "format": "circle",
+      "notes": "themes",
+      "width": 320,
+      "layout": "table",
+      "stagesReload": "planning/meeting/done pass",
+      "otherStateUnchanged": true,
+      "focus": "keyboard edit, Back/Escape/x return, visible headings pass",
+      "targets": "44px minimum",
+      "errors": [],
+      "external": []
+    },
+    {
+      "topic": "repairs",
+      "format": "circle",
+      "notes": "none",
+      "width": 390,
+      "layout": "floor",
+      "stagesReload": "planning/meeting/done pass",
+      "otherStateUnchanged": true,
+      "focus": "keyboard edit, Back/Escape/x return, visible headings pass",
+      "targets": "44px minimum",
+      "errors": [],
+      "external": []
+    },
+    {
+      "topic": "repairs",
+      "format": "dropin",
+      "notes": "themes",
+      "width": 1440,
+      "layout": "table",
+      "stagesReload": "planning/meeting/done pass",
+      "otherStateUnchanged": true,
+      "focus": "keyboard edit, Back/Escape/x return, visible headings pass",
+      "targets": "44px minimum",
+      "errors": [],
+      "external": []
+    },
+    {
+      "topic": "repairs",
+      "format": "dropin",
+      "notes": "none",
+      "width": 320,
+      "layout": "floor",
+      "stagesReload": "planning/meeting/done pass",
+      "otherStateUnchanged": true,
+      "focus": "keyboard edit, Back/Escape/x return, visible headings pass",
+      "targets": "44px minimum",
+      "errors": [],
+      "external": []
+    },
+    {
+      "topic": "access",
+      "format": "circle",
+      "notes": "themes",
+      "width": 390,
+      "layout": "table",
+      "stagesReload": "planning/meeting/done pass",
+      "otherStateUnchanged": true,
+      "focus": "keyboard edit, Back/Escape/x return, visible headings pass",
+      "targets": "44px minimum",
+      "errors": [],
+      "external": []
+    },
+    {
+      "topic": "access",
+      "format": "circle",
+      "notes": "none",
+      "width": 1440,
+      "layout": "floor",
+      "stagesReload": "planning/meeting/done pass",
+      "otherStateUnchanged": true,
+      "focus": "keyboard edit, Back/Escape/x return, visible headings pass",
+      "targets": "44px minimum",
+      "errors": [],
+      "external": []
+    },
+    {
+      "topic": "access",
+      "format": "dropin",
+      "notes": "themes",
+      "width": 320,
+      "layout": "table",
+      "stagesReload": "planning/meeting/done pass",
+      "otherStateUnchanged": true,
+      "focus": "keyboard edit, Back/Escape/x return, visible headings pass",
+      "targets": "44px minimum",
+      "errors": [],
+      "external": []
+    },
+    {
+      "topic": "access",
+      "format": "dropin",
+      "notes": "none",
+      "width": 390,
+      "layout": "floor",
+      "stagesReload": "planning/meeting/done pass",
+      "otherStateUnchanged": true,
+      "focus": "keyboard edit, Back/Escape/x return, visible headings pass",
+      "targets": "44px minimum",
+      "errors": [],
+      "external": []
+    }
+  ],
+  "limits": "Chrome automation, no physical phone/full screen reader/human pacing/real event or surveyed access certification"
+}

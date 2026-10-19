@@ -1,0 +1,62 @@
+{
+  "at": "2026-10-18T22:28:09.843Z",
+  "source": {
+    "version": "0.9.0",
+    "fingerprint": "708df79eb7c8db637403785dbaec6dfd3f1b58bf919131fe08bb9329fa13b790"
+  },
+  "browser": "155.0.8059.84",
+  "results": [
+    {
+      "width": 320,
+      "height": 844,
+      "fixture": "rules-generated opened/unpacked/unasked-photo floor save; art-first posted programme",
+      "status": "pass",
+      "quietPixels": {
+        "arc": "03eb90fa877a6f68f51f90f000b8be4faa5521c2a729ffa6c9cbf7a4cde6011c",
+        "pairs": "b9afd2214a90ceb02dc8ff89a320a9e97eb70e283e8a3f47d4eb75fbff0d5a7d",
+        "restored": "03eb90fa877a6f68f51f90f000b8be4faa5521c2a729ffa6c9cbf7a4cde6011c"
+      },
+      "soundOff": true,
+      "overflow": false,
+      "focus": "visible heading/edit controls, x returns to entry",
+      "sampledControls": "at least44px",
+      "errors": [],
+      "external": []
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "fixture": "rules-generated opened/unpacked/unasked-photo floor save; art-first posted programme",
+      "status": "pass",
+      "quietPixels": {
+        "arc": "3bdd8f4419d18eec319b3a8e6091e81af96ee102e20cb4b02f41368c41678298",
+        "pairs": "7397d58eacfde8467dbfe808cdc18c94f37052c199fb94ff8aa4fe7c4372f59a",
+        "restored": "3bdd8f4419d18eec319b3a8e6091e81af96ee102e20cb4b02f41368c41678298"
+      },
+      "soundOff": true,
+      "overflow": false,
+      "focus": "visible heading/edit controls, x returns to entry",
+      "sampledControls": "at least44px",
+      "errors": [],
+      "external": []
+    },
+    {
+      "width": 1440,
+      "height": 844,
+      "fixture": "rules-generated opened/unpacked/unasked-photo floor save; art-first posted programme",
+      "status": "pass",
+      "quietPixels": {
+        "arc": "d2d9efe3e0d1f03e170041703c11f01f645b1b0932a13b5ab63a71a4e7db199b",
+        "pairs": "346624e823c6c914082a75b475d49cb80c0ccbd8d85caedcfb0cd4b42e9f2b6d",
+        "restored": "d2d9efe3e0d1f03e170041703c11f01f645b1b0932a13b5ab63a71a4e7db199b"
+      },
+      "soundOff": true,
+      "overflow": false,
+      "focus": "visible heading/edit controls, x returns to entry",
+      "sampledControls": "at least44px",
+      "errors": [],
+      "external": []
+    }
+  ],
+  "limits": "Automated Chrome touch emulation and rules-generated fixtures, not physical phone, human pacing, full screen reader, real access survey or final music acceptance."
+}

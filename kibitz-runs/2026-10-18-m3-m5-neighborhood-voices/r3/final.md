@@ -1,0 +1,19 @@
+# Accepted implementation checkpoint — 0.10.0
+
+M3 dated organization context and M5 default-off host/text slice accepted on public fingerprint **b5b88c31516dd354034f94b370af84fd902daeb71c07c54f88cfa3cdd88e08dd**. Full game **unfinished**. M4 peaceful civic event then fictional permission-aware filming are next, with human play/current-place/final-score evidence still open. Hourly automation remains active.
+
+Settings → Experimental → Neighborhood Voices explicitly enables three original dated organization cards and official source links. Off imports neither optional implementation nor records. No recorded voices or legacy TenderVoice material. Core owns abort/deadline/generation/resource teardown and the safe Settings return. No module dependency for either gathering or save data. Official primary pages read by driver; source register freezes broad facts and exclusions. Optional text is bounded/escaped and links pinned; no externally fetched runtime content or invented endorsement.
+
+One independent native Claude CLI exact requested **claude-opus-5-5 / high**, installed Kibitz runner rc0. One actual partner prompt, r3 only; driver family excluded. Auth/model/effort/budget receipts retained, usage percentage/cost not exposed. No AGY Opus, Astra, purchase or additional paid review. Final pin refresh reports configured AGY Gemini3.8FlashHigh, superseding earlier input/scope Argon-pin claims; no Flash substitution or Argon availability/review is credited. Native Opus is the authorized alternative.
+
+Source-grounded judgment fixes error restoration retry, hidden focus return, unusable export cache, paused UX, data-relative URL and lifecycle/focus QA gaps. GLIDE free-meals register wording supported by the full official page. Kept explicitly required future-audio fixture with precise measurement limits; shortened actual view loop to3. Final gates run after production/test fixes:
+
+- **78/78 Node tests**, syntax and git diff checks pass.
+- **Complete core Chrome155.0.8059.84 suite** passes on matching source fingerprint.
+- **Voices Chrome suite** passes: both authored gatherings off/on/off with equal relevant outcomes; default-off network boundary; preferences/save independence; missing/malformed/stalled/late module/data; explicit fresh import and missing-export retry; literal markup escaping; ready/error synthetic lifecycle; focus after card/stub disable; listener-resource plateau.
+- **320/390/1440x844 supplemental fixtures** pass with no horizontal overflow/external runtime request/page error, sampled44px source links, preserved partial event and unknown optional JSON.
+- **Actual BFCache restoration** observed persisted=true after real local navigation/back, core unchanged, experiment ready, cards reopen/off safely. Synthetic PageTransitionEvent tests are separately labeled; default Playwright full-reload path also passes.
+- **Nonshipped real HTMLAudio fixture**: pause command/state measured0.5ms, optional cleanup error contained, zero remaining optional resources/audio, main local audio continues. No acoustic latency or real voice playback claim.
+- Live local preview /__build matches all final JSON source fingerprints. Read-only reviewer source comparison found zero changes; manual/preceding raw reports retain expected SHA256. Final source manifest and copied evidence accompany verification.json.
+
+Initial harness wildcard, BFCache DOMContentLoaded wait and stopped-preview connection failures are preserved alongside final passing logs. No physical-phone test, full screen-reader audit, human pacing/service availability, current streetscape survey or final music/rights acceptance. ES module code can stay cached after disable; active resources/data/UI are released. No commit/push/publication/outreach/purchase. One reviewed round complete, not a full four-round campaign or full-game declaration.

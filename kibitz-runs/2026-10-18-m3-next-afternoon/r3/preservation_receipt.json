@@ -1,0 +1,10 @@
+{
+  "manual": "3c6548df658ca822e91e1039e1c36a388c306ed1c2a56f513733d51c9267dae8",
+  "previous_raw_review": "071a1f1dabb67f69af48d7705bd58719ae0b59a73e2d31e578dd8f837ac69154",
+  "current_raw_review": "c3c0548b3563f3ce21cd6c4ceb1aaed992de56f268a914f915b5bfa0a1f4e139",
+  "input_matches_document": true,
+  "reviewer_source_drift": {
+    "changed": [],
+    "new_files": []
+  }
+}

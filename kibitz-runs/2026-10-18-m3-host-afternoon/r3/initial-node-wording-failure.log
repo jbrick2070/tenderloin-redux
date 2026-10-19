@@ -1,0 +1,101 @@
+
+> tenderloin-redux@0.9.0 test
+> node --test tests/*.test.mjs
+
+✔ stopping during an asynchronous audio resume cannot re-enable playback (1.7083ms)
+✔ audio startup that finishes while hidden never schedules sound (0.4365ms)
+✔ phone starts close to player while desktop offers full block (2.4494ms)
+✔ view changes preserve coordinate round trips and actual world positions (0.8042ms)
+✔ drag stops following, stays bounded, explicit follow restores tracking (1.6959ms)
+✔ zoom clamps and resize keeps full block or a chosen close view (0.709ms)
+✔ collapsed viewport cannot poison the camera before becoming visible again (1.6581ms)
+✔ visible Rook label has priority over the wrapper beneath it at every zoom (1.001ms)
+✔ route waypoints carry coordinates only, never a neighbor appearance or ID (1.7564ms)
+✔ both layouts can complete without sound playback or optional modules (4.8279ms)
+✔ blocked route, overlapping supplies, and out-of-grid footprints are rejected (0.6942ms)
+✔ changing layout resets sound readiness and furniture, and opening locks the layout (1.9725ms)
+✔ moving a checked speaker requires another soundcheck (0.666ms)
+✔ only authored litter can be collected and collections are idempotent (0.5908ms)
+✔ mural contributions move, reject overlap, and keep all three identities (0.727ms)
+✔ a forged incomplete finale cannot be restored as complete (0.3259ms)
+✔ malformed core fields are sanitized and bounded unknown optional JSON survives (1.0309ms)
+✔ whole-file damage and unknown version request recovery, not silent overwrite (1.6212ms)
+✔ actual Turk/Taylor shared OSM node projects to the origin without block compression (0.651ms)
+✔ every quest target and neighbor is reachable on the street network without crossing a building (334.9144ms)
+✔ complete city feature retains every projected coordinate and extends beyond the game (3.6092ms)
+✔ malformed, swapped, distant, excessive and unclosed city geometry is rejected (4.8042ms)
+✔ layer draws holes separately, clips only the view, and brackets drawing with canvas save/restore (1.0406ms)
+✔ the ending is optional: skip photo, pack and return loans without changing core completion (8.2212ms)
+✔ packing and keepsakes cannot be created before the gathering, and returns need packing (1.3241ms)
+✔ returns are whitelisted and idempotent, and a partial lap survives reload (1.5949ms)
+✔ only consenting guests can be pictured; a skipped keepsake can be reconsidered before packing (2.0256ms)
+✔ keepsake freezes mural/palette/layout and preserves that snapshot after later edits and reload (3.1009ms)
+✔ old saves gain empty optional ending state; malformed ending data cannot undo valid main progress (1.87ms)
+✔ renderer refuses a fabricated non-consenting participant or unsafe palette (1.2965ms)
+✔ loan completion has a stable canonical representation before and after reload (1.1472ms)
+✔ opening visibly distinguishes conversation from movement without changing the save (10.455ms)
+✔ visitor footprints avoid supplies, through-route and authored bike edge for representative arrangements (4.745ms)
+✔ moving the table changes conversation positions and plan uses actual two-cell footprints (2.1232ms)
+✔ packing removes visitors and folded seats; partial and final returns keep plan truthful (1.3633ms)
+✔ reduced motion freezes dancing and conversation stays still (0.542ms)
+✔ visitors stay clear of named residents and markers for every legal table position (34.5343ms)
+✔ SVG text and attribute strings are XML escaped (0.9812ms)
+✔ western intersections retain actual shared OSM nodes and uncompressed distances (2.7035ms)
+✔ long walk and return from western bounds reach every neighbor and history stop (1628.7291ms)
+✔ discovery is additive v1, bounded and independent of gathering and unknown optional JSON (1.3594ms)
+✔ route overview leaves opening view readable and western reload follows saved player (0.5782ms)
+✔ visible Black Hawk label selects its stop at route, block and follow zooms (0.5938ms)
+✔ schematic west facades leave the authored road edges clear at each actual intersection (0.1576ms)
+✔ bounded search can traverse more than the old budget and exhaust a disconnected route (48.6684ms)
+✔ every valid programme runs in its frozen order and resumes each prefix in either opening layout (57.7177ms)
+✔ opening and published-order guards reject early or unrelated controls; optional ending never gates hosting (3.9094ms)
+✖ rhythm edits, quiet choice and tile composition persist and produce immutable committed outcomes (4.8416ms)
+✔ later programme revisions and old keepsakes do not rewrite the active gathering or other core state (2.9169ms)
+✔ v1 restoration bounds malformed hosting data and never discards good main progress (1.3676ms)
+✔ hosting visitor choices use free outer cells and preserve people, marker, supply and through-route clearances (7.8437ms)
+✔ original tile SVG refuses unsafe palettes/tiles and displays all contributed shapes without external media (0.9393ms)
+✔ all 24 orders allow stories first or a quiet interval between rhythm and later stories (22.7309ms)
+✔ project works immediately after opening without packing, and guards every invalid action (1.1933ms)
+✔ drafts and published snapshots survive separately; edits do not silently change promises or keepsakes (3.1405ms)
+✔ v1 restoration is additive, bounded, strict for published snapshots and keeps optional JSON (1.353ms)
+✔ poster and responses use only original fixed proposals and require a valid published order (0.7089ms)
+✔ local audio waits for Play, loops, uses shared volume and excludes sketch playback (4.2639ms)
+✔ replace/return releases old audio URLs; invalid files preserve current selection (2.4407ms)
+✔ stop during pending play prevents late audio restart (0.518ms)
+✔ replacing a pending track cannot pause or enable its replacement (0.4212ms)
+✔ hidden completion, failed playback and decode errors remain silent and recoverable (0.7127ms)
+✔ decode error during play returns failure and cannot be retried into a misleading status (0.4333ms)
+✔ file replacement and fallback publish one coherent selection each (0.4079ms)
+✔ external pause updates enabled while a stale pause event cannot stop resumed UI (0.436ms)
+✔ sketch startup notifies pending/failure and honors a late host hidden predicate (0.5443ms)
+ℹ tests 66
+ℹ suites 0
+ℹ pass 65
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1983.5873
+
+✖ failing tests:
+
+test at tests\hosting.test.mjs:48:1
+✖ rhythm edits, quiet choice and tile composition persist and produce immutable committed outcomes (4.8416ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /open seat/. Input:
+  
+  '“A pair for a quiet conversation, and a seat someone could join. A little space can make joining easier.”'
+  
+      at TestContext.<anonymous> (file:///C:/tenderloin-redux/tests/hosting.test.mjs:61:71)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '“A pair for a quiet conversation, and a seat someone could join. A little space can make joining easier.”',
+    expected: /open seat/,
+    operator: 'match',
+    diff: 'simple'
+  }

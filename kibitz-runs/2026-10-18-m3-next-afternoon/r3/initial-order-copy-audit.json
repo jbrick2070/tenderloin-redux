@@ -1,0 +1,178 @@
+[
+  {
+    "order": [
+      "stories",
+      "beats",
+      "art",
+      "pause"
+    ],
+    "title": "Stories open the afternoon",
+    "bea": "“Stories first this time. I’ll bring one to open with. Thanks for finding a place for Dez’s workshop too.”",
+    "dez": "“I can pick up a rhythm from the stories, if their tellers want that. Glad there’s room for both ideas next time.”"
+  },
+  {
+    "order": [
+      "stories",
+      "beats",
+      "pause",
+      "art"
+    ],
+    "title": "Stories open the afternoon",
+    "bea": "“Stories first this time. I’ll bring one to open with. Thanks for finding a place for Dez’s workshop too.”",
+    "dez": "“I can pick up a rhythm from the stories, if their tellers want that. Glad there’s room for both ideas next time.”"
+  },
+  {
+    "order": [
+      "stories",
+      "art",
+      "beats",
+      "pause"
+    ],
+    "title": "Stories open the afternoon",
+    "bea": "“Stories first this time. I’ll bring one to open with. Thanks for finding a place for Dez’s workshop too.”",
+    "dez": "“I can pick up a rhythm from the stories, if their tellers want that. Glad there’s room for both ideas next time.”"
+  },
+  {
+    "order": [
+      "stories",
+      "art",
+      "pause",
+      "beats"
+    ],
+    "title": "Stories open the afternoon",
+    "bea": "“Stories first this time. I’ll bring one to open with. Thanks for finding a place for Dez’s workshop too.”",
+    "dez": "“I can pick up a rhythm from the stories, if their tellers want that. Glad there’s room for both ideas next time.”"
+  },
+  {
+    "order": [
+      "stories",
+      "pause",
+      "beats",
+      "art"
+    ],
+    "title": "Stories open the afternoon",
+    "bea": "“Stories first this time. I’ll bring one to open with. Thanks for finding a place for Dez’s workshop too.”",
+    "dez": "“I can pick up a rhythm from the stories, if their tellers want that. Glad there’s room for both ideas next time.”"
+  },
+  {
+    "order": [
+      "stories",
+      "pause",
+      "art",
+      "beats"
+    ],
+    "title": "Stories open the afternoon",
+    "bea": "“Stories first this time. I’ll bring one to open with. Thanks for finding a place for Dez’s workshop too.”",
+    "dez": "“I can pick up a rhythm from the stories, if their tellers want that. Glad there’s room for both ideas next time.”"
+  },
+  {
+    "order": [
+      "beats",
+      "art",
+      "pause",
+      "stories"
+    ],
+    "title": "A rhythm, a pause, a story",
+    "bea": "“A quiet interval before our circle. That gives us room to listen after the rhythm. I’ll bring a story.”",
+    "dez": "“We start with a rhythm and leave room to settle afterward. Bea and I have both got a place next time.”"
+  },
+  {
+    "order": [
+      "beats",
+      "pause",
+      "stories",
+      "art"
+    ],
+    "title": "A rhythm, a pause, a story",
+    "bea": "“A quiet interval before our circle. That gives us room to listen after the rhythm. I’ll bring a story.”",
+    "dez": "“We start with a rhythm and leave room to settle afterward. Bea and I have both got a place next time.”"
+  },
+  {
+    "order": [
+      "beats",
+      "pause",
+      "art",
+      "stories"
+    ],
+    "title": "A rhythm, a pause, a story",
+    "bea": "“A quiet interval before our circle. That gives us room to listen after the rhythm. I’ll bring a story.”",
+    "dez": "“We start with a rhythm and leave room to settle afterward. Bea and I have both got a place next time.”"
+  },
+  {
+    "order": [
+      "art",
+      "stories",
+      "beats",
+      "pause"
+    ],
+    "title": "Stories open the afternoon",
+    "bea": "“Stories first this time. I’ll bring one to open with. Thanks for finding a place for Dez’s workshop too.”",
+    "dez": "“I can pick up a rhythm from the stories, if their tellers want that. Glad there’s room for both ideas next time.”"
+  },
+  {
+    "order": [
+      "art",
+      "stories",
+      "pause",
+      "beats"
+    ],
+    "title": "Stories open the afternoon",
+    "bea": "“Stories first this time. I’ll bring one to open with. Thanks for finding a place for Dez’s workshop too.”",
+    "dez": "“I can pick up a rhythm from the stories, if their tellers want that. Glad there’s room for both ideas next time.”"
+  },
+  {
+    "order": [
+      "art",
+      "beats",
+      "pause",
+      "stories"
+    ],
+    "title": "A rhythm, a pause, a story",
+    "bea": "“A quiet interval before our circle. That gives us room to listen after the rhythm. I’ll bring a story.”",
+    "dez": "“We start with a rhythm and leave room to settle afterward. Bea and I have both got a place next time.”"
+  },
+  {
+    "order": [
+      "art",
+      "pause",
+      "stories",
+      "beats"
+    ],
+    "title": "Stories open the afternoon",
+    "bea": "“Stories first this time. I’ll bring one to open with. Thanks for finding a place for Dez’s workshop too.”",
+    "dez": "“I can pick up a rhythm from the stories, if their tellers want that. Glad there’s room for both ideas next time.”"
+  },
+  {
+    "order": [
+      "pause",
+      "stories",
+      "beats",
+      "art"
+    ],
+    "title": "Stories open the afternoon",
+    "bea": "“Stories first this time. I’ll bring one to open with. Thanks for finding a place for Dez’s workshop too.”",
+    "dez": "“I can pick up a rhythm from the stories, if their tellers want that. Glad there’s room for both ideas next time.”"
+  },
+  {
+    "order": [
+      "pause",
+      "stories",
+      "art",
+      "beats"
+    ],
+    "title": "Stories open the afternoon",
+    "bea": "“Stories first this time. I’ll bring one to open with. Thanks for finding a place for Dez’s workshop too.”",
+    "dez": "“I can pick up a rhythm from the stories, if their tellers want that. Glad there’s room for both ideas next time.”"
+  },
+  {
+    "order": [
+      "pause",
+      "art",
+      "stories",
+      "beats"
+    ],
+    "title": "Stories open the afternoon",
+    "bea": "“Stories first this time. I’ll bring one to open with. Thanks for finding a place for Dez’s workshop too.”",
+    "dez": "“I can pick up a rhythm from the stories, if their tellers want that. Glad there’s room for both ideas next time.”"
+  }
+]

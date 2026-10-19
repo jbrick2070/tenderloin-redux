@@ -1,0 +1,18 @@
+STDOUT:
+I wrote the review to `C:\tenderloin-redux\kibitz-runs\2026-10-18-m3-host-afternoon\r3\claude.md`. File reading worked, and I changed no code or test files.
+
+**Verdict: yes-with-fixes.** The hosting logic itself holds up: the running order is frozen at start, saves restore only a valid prefix, art results are copied, and stale completions are rejected. The problems are in how it's tested, one false claim in the plan, and a few on-screen edge cases.
+
+**Must-fix**
+1. The browser test only reaches hosting after the player has packed up and returned every loan (`tests/browser-smoke.mjs:443-445`, packing at `:261-265`). So it never checks hosting while the table, seats and speaker are still out, or while a loan is still pending.
+2. The final rerun must come after the freeze and any fixes from this round. Its fingerprint (`scripts/build-fingerprint.mjs`) only covers `public/`, so the before/after hash also needs to cover `tests/`, `scripts/` and `package.json`.
+
+**Should-fix**
+1. The plan's "existing shared queued close guard" isn't in the source. Searching `public/` for "queue" only finds the path-finding queue in `core.js`. The plan text should name the real close handling at `game.js:489-490`.
+2. Double-clicking the commit button could complete the next activity too, with its default choices, because the replacement button gets the next slot's id (`game.js:164`). A one-line check on `event.detail > 1` closes it. Whether a real double-click lands there depends on layout, so verify at 390 and 1440 widths.
+3. The new tile panel overlaps the building awning by 9px (`world.js:211` against `:178` and `:187-188`), but the in-game text says it is "away from real buildings" (`game.js:154`).
+4. On screen, the second gathering's visitors and stools move when the player packs or returns a loan (`world.js:259`, `gathering.js:25`). The plan claims hosting doesn't depend on packing or returns; that's only true in the game logic.
+5. Once hosting starts, the packing status heading in the afterglow panel gets overwritten (`game.js:137`).
+6. The completion handler builds its summary without checking the commit went through (`game.js:164`). If it were rejected before any activity was done, it would throw outside the error handler.
+
+Separately, several MCP connectors (Box, Runway, and the engineering plugins such as GitHub, Slack and Linear) need authorization in claude.ai connector settings or via `/mcp`. They weren't needed for this review.

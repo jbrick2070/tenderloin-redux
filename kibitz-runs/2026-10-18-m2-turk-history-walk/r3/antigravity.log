@@ -1,0 +1,6 @@
+MODEL: Gemini 4 Argon (High)
+ARGV (prompt omitted): ['C:\\Users\\jeffr\\AppData\\Local\\agy\\bin\\agy.EXE', '--model', 'Gemini 4 Argon (High)', '--dangerously-skip-permissions', '--print-timeout', '15m', '-p']
+
+STDERR:
+[agy] print timeout after 15m0s with turn in progress; returning partial output
+antigravity: rc=0 but NO review text (agy #76 / strict read-only). Failing this leg.

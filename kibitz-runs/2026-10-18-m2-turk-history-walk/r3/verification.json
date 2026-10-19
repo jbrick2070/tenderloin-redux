@@ -1,0 +1,52 @@
+{
+  "at": "2026-10-18T20:34:45.934Z",
+  "source": {
+    "version": "0.6.0",
+    "fingerprint": "e0f94363af24895bb75fd418d63b4d6fcab263a703ed4c2d19e3c8e905320ecd"
+  },
+  "tests": {
+    "node": 51,
+    "syntax": "pass",
+    "diff": "pass",
+    "completeChromeSmoke": "pass",
+    "viewports": [
+      320,
+      390,
+      1440
+    ],
+    "tinyOverviewChipClicks": [
+      320,
+      390
+    ],
+    "rawWayRecordsVerified": 41
+  },
+  "reviews": {
+    "attempts": 2,
+    "successfulPartners": 1,
+    "failed": {
+      "lane": "antigravity",
+      "model": "Gemini 4 Argon (High)",
+      "reason": "15 minute print timeout returned no review; CLIrc0 but runnerrc1"
+    },
+    "successful": {
+      "lane": "native claude",
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "rc": 0,
+      "sha256": "41ede500a32f2adb4919234979a438609d3fe5158f3da4b8412ecf9e24741bf0"
+    },
+    "credits": "not exposed"
+  },
+  "noReviewerSourceDrift": true,
+  "manualReportSHA256": "3c6548df658ca822e91e1039e1c36a388c306ed1c2a56f513733d51c9267dae8",
+  "priorLayoutRawReportSHA256": "aacff91c853f360ad3b60658f666e56e695c523910b5c0e3ae6955984fa5a27c",
+  "inputSHA256": "83a9d0a1dc96cb4ca3c6bcbede9b09ae488c02c70b473fed4c8f83182e47177e",
+  "livePreviewMatches": true,
+  "roundsNotRun": [
+    "r1",
+    "r2",
+    "r4"
+  ],
+  "fullGameComplete": false,
+  "limits": "No physical device, full screen reader or human pacing certification; current streetscape and entrance survey incomplete, final recorded score/rights not supplied. Forward old-v1 compatibility; downgrade may discard new discovery/reset western position."
+}

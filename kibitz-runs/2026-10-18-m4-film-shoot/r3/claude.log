@@ -1,0 +1,15 @@
+STDOUT:
+I wrote the review to `C:\tenderloin-redux\kibitz-runs\2026-10-18-m4-film-shoot\r3\claude.md`. The file tools worked, and I didn't run any tests; that's left to the driver as instructed.
+
+**Verdict: yes-with-fixes.** I traced the film wiring in the real code and found no ordering, data-contract or unlock-gating bug that would break the build, so there are no must-fix items. The film's save data loads in the right order (after the civic event it depends on). Double-clicks and stale capture clicks can't advance a step twice. The checks the plan claims (90 unit tests, 8 browser plans covering all orders and viewport/layout pairs) match what's actually in the test files.
+
+Should-fix items:
+1. **No screen-reader signal between captures.** After each "Keep shot" click, focus goes back to a heading that doesn't change between shots and the status message is cleared. A screen-reader user hears the same thing three times. Fix: send a "Shot N kept" message from the capture handler (`public/game.js:207-209`).
+2. **Browser tests only check for an early film entry on a brand-new game.** None checks that the film stays hidden while the civic event is still in its meeting stage. Fix: one assertion in `tests/civic-browser.mjs`.
+3. **The `check` script skips `tests/film-fixture.mjs`**, although it checks the matching civic fixture (`package.json:12`).
+4. **The film browser test checks button height but not width** for the 44px minimum. The civic test checks both.
+5. **The film browser test doesn't check that only one live status region exists**, which the civic test does.
+
+The optional notes are in the file: the version number is hard-coded in two places, Back from Field notes returns focus to the main panel instead, a possible key-repeat swap on Earlier/Later (unconfirmed), and old screenshots aren't cleared between runs. The plan's lock and source-archive steps aren't in the repo, so I couldn't verify them.
+
+Several connected services (Asana, Atlassian, Datadog, GitHub, Linear, Notion, PagerDuty, Slack, Box, Runway) aren't authorized and can't be used until you connect them. Use claude.ai connector settings for claude.ai connectors, or `claude mcp` / `/mcp` in an interactive session for the others. This review didn't need any of them.

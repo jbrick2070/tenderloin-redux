@@ -1,0 +1,16 @@
+STDOUT:
+My verdict is **yes-with-fixes**: the city boundary is drawn correctly and kept out of saves and quests, but two things block acceptance. The full review is in `kibitz-runs\2026-10-18-m2-living-district\r3\claude.md`. I read all the relevant code but ran nothing. The 54 Node test declarations match the document's count; I didn't confirm they pass.
+
+**Must fix before acceptance:**
+1. **The Chrome test suite hasn't finished.** The document itself says it is still running and must be rerun on the final source. Don't accept until `npm run test:browser` passes and someone has looked at the screenshots.
+2. **Focus lands in the wrong place every time the dialog opens.** It first goes to the Retry button, because that button isn't hidden in the markup when the dialog appears. Then it jumps to the last button, "Back to exploring", which skips the source notes and the Show control. The fix is to give Retry `hidden` in the template (`game.js:305`).
+
+**Should fix:**
+- **No timeout on the data request** (`game.js:294`). If the request stalls rather than fails, the layer stays "Loading…" with no Retry until reload. The rest of the game is unaffected.
+- **The two Hide controls send focus to different places.** The legend's Hide button returns focus to the nav button; hiding from the dialog sends it to the map instead.
+- **Retry isn't only explicit.** Reopening the dialog after an error quietly retries, which the document doesn't describe.
+- **The boundary line runs through the "JONES STREET" label.** The cross-street names are drawn before the layer, not after as the document claims (`world.js:174-178` vs `:193`).
+- **The unit test proves less than its name says.** It checks that save/restore wrap the drawing calls, not that the styles are actually restored.
+- **The version number is hard-coded in two places** (`package.json` and `game.js:451`).
+
+The only thing I'd consider cutting is the hard-coded lon/lat region check in `district.js:19`, which is low value but harmless.

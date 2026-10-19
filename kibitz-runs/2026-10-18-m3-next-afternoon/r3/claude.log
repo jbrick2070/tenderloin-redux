@@ -1,0 +1,21 @@
+STDOUT:
+The verdict is **yes-with-fixes**, and the review is written to `C:\tenderloin-redux\kibitz-runs\2026-10-18-m3-next-afternoon\r3\claude.md`. I couldn't run anything, so the "59 Node tests pass" claim and the Chrome suite result are not re-checked; the review marks both as "verify".
+
+Two things must be fixed before build:
+
+1. **Wrong copy for some valid orders.** The game only checks that the stories come before the rhythm, but the text says they come first.
+   - The title "Stories open the afternoon" (`public/programme.js:39`) and Bea's "Stories first this time… to open with" (`:45`) are wrong for 6 of the 16 valid orders, e.g. `art, stories, beats, pause`.
+   - Dez's "We start with a rhythm" (`:46`) is wrong for `art, beats, pause, stories`.
+   - The wrong title appears on the poster, in the poster image, in Field notes, on the editor's "Posted:" line and in Bea's dialogue. The tests only publish orders where the first item happens to match, so they don't catch it.
+
+2. **Closing the planner doesn't always return focus to the planner button.** Only the editor's and the poster's own close buttons do. The × button (`game.js:448`) and Escape both send focus to the map canvas.
+   - The obvious fix of remembering the button when the planner opens won't work. Every programme edit redraws the afterglow panel (`game.js:124,127`), which replaces that button, so the remembered one is gone by the time the modal closes.
+   - The fix is to look the button up again by its id when closing (`game.js:449`). The review gives the exact change.
+
+The should-fixes:
+- The planner flow is never tested at 390 or 320 px wide.
+- After posting, focus lands on a button below the poster image, out of view.
+- The board is drawn in front of the overhead bunting (`world.js:208-223`), and the test for the board only checks that the canvas changed somewhere.
+- The game logic still accepts re-posting an unchanged order that the button blocks.
+
+Separately, several connectors (GitHub, Slack, Linear, Notion, Asana, Atlassian, Datadog, PagerDuty, Box, Runway) need authorizing before they can be used: through your claude.ai connector settings, or `/mcp` in an interactive session. None were needed for this review.

@@ -1,0 +1,21 @@
+# Grounded driver judgment
+
+One successful partner: Gemini 4 Argon (High), installed Kibitz runner, rc0. Model and quota receipts retained. Credits/usage percentage not exposed. Source manifest comparison immediately after review found no application/test/doc modifications by the reviewer. Raw report is preserved unchanged. No second panel, Opus, AGY Opus or quota retry.
+
+| Claim | Source verification and judgment |
+| --- | --- |
+| MUST 1: player appearance/identity copied on arrival | CONFIRMED. `findPath` returned its full goal object and `renderFrame` spread each waypoint into player. Corrected both boundaries to `{x,y}`. Regression tests require coordinate-only waypoints and player keys after arrival. |
+| MUST 2: Rook label selects wrapper | CONFIRMED. Rook's visual label overlaps wrapper and old sorting used feet distance. Prefer any visible neighbor-label hit over body-radius hits, then nearest label center. Partner's proposed min-distance alone would still lose some overlapping pixels. Pure tests cover four scales; browser taps label before litter cleanup. |
+| MUST 3: toast covers zoom | CONFIRMED independently by driver captures. Move toast below toolbar; browser rectangle assertion. |
+| MUST 4: bitmap cleared during ResizeObserver | CONFIRMED reset semantics in `World.measure`; a one-frame blank is possible, not permanent map failure. Assign dimensions only when different, then draw immediately using last motion preference and current camera. |
+| MUST 5: disabled zoom loses focus | CONFIRMED behavior risk at native disabled boundary. Capture focused button before setting disabled, transfer to opposite zoom button. Browser checks both clamps. |
+| MUST 6: zero fit on collapsed canvas | CONFIRMED arithmetic; normal fixed-height scene did not expose it. Positive .05 floor prevents division by zero without changing normal layout. Collapsed/restored viewport pure regression. |
+| SHOULD 1: stale route control, near target skips follow | CONFIRMED bounded 150ms stale state. Central stopWalk helper and immediate arrival hint; near directory target resumes follow. Regression checks immediate arrival state. |
+| SHOULD 2: restart camera stranded | CONFIRMED when manual pan disabled follow. Restart restores responsive initial camera and route state, preserving unavailable-map guard. |
+| SHOULD 3: capture throw, secondary release and touch hover | CONFIRMED defensive gaps. Capture before registering pointer in try/catch; ignore untracked/nonprimary releases; clear touch hover on release/lost capture. Existing real DevTools touch cancel/multi-touch regression rerun. Synthetic capture failure is a defensive case, not claimed as a reproduced physical-phone defect. |
+| SHOULD 4: walking prompt hijacks passing neighbor | CONFIRMED. Walking prompt now keeps the route, focuses map and explains Stop walking. Dedicated browser assertion. E remains deliberate nearby interaction. |
+| SHOULD 5: initial external-link focus and selector-order fix | MISREAD as a required correction. A comma-separated selector always returns the first element in DOM order; reordering selectors does not prioritize buttons. Explicitly focusing an accessible official-source link is valid. No such selector change made. In-place dialog scroll retention is separately CONFIRMED; reset scroll on new dialog content while retaining editor focus/scroll for stable IDs. |
+| OPTIONAL: fit scale while following does not center entire block | CONFIRMED, intentional distinction. Full block explicitly fits/recenters; minus changes zoom around the current view. No extra system needed. |
+| CUT: initial goTo canvas focus redundant | PARTLY CONFIRMED. In a modal it is inert, but task-button routes outside a modal need map focus. Move focus to successful route after closing modal; nearby interactions focus their own dialog. |
+
+Additional driver polish updates welcome copy for touch/menu navigation and makes inactive Stop walking visibly dim. Supplemental keyboard check initially asserted Escape focus before the queued native close event; corrected timing passes with no application workaround. See artifacts/navigation-keyboard-initial-check.txt. No physical phone, screen reader or human pacing claim.

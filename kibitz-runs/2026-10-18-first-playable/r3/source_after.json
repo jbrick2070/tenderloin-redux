@@ -1,0 +1,14 @@
+{
+  "public/core.js": "c0fc83828f24b370e722a1e393b400911994b607fbc43ac39b54ad022494797b",
+  "public/world.js": "19f7561aefe489af6efdd7688aef6cb9fb500cf194ec5e337242e24cd5747c43",
+  "public/game.js": "2a84b8495b27d028539bfb41cac9be3c4a610c876bc768ded6da2a2f95e56683",
+  "public/audio.js": "5ac28c9eedbc9458a8e1b46f04e79a7ea5e5d8e4121fa8dc92f9159338cf740f",
+  "public/index.html": "3c8270d1e780efa47a70b4ef7b49ec57f3ce0de5498643cf884789f3280fe63d",
+  "public/style.css": "09a7f17d825bd57f434b5a7c399ee7b31b0e14d31d8a8d394c8e8f9c68d76f7d",
+  "scripts/serve.mjs": "904748a36c87769be0be6193c81fb6f6beea729c93d3b0084b61df9e5d5806a7",
+  "tests/core.test.mjs": "a30f1c544ec960289ffd03936f145354b2e0652d64d6944bae1adfae7f401653",
+  "tests/browser-smoke.mjs": "e58ca88b2984d9b74c95e76477b080d5fe172cde93a4e1474aaa8e22e1577755",
+  "scripts/build-fingerprint.mjs": "80bbfbcc67455c81102b20ca3d7413c906f9692a4758f5826c4ae4af239ae3af",
+  "tests/audio.test.mjs": "dd05725ef31faa7f41d23c04f821bd878079d7b72c7c8c1e41f78c122afa8349",
+  "package.json": "016cb2a7272e837a875e25b088ced30ce5dc0167a037f19969eea28f76a9539a"
+}

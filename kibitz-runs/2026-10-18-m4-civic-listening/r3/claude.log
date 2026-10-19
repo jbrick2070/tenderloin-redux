@@ -1,0 +1,17 @@
+STDOUT:
+I wrote the review to `kibitz-runs/2026-10-18-m4-civic-listening/r3/claude.md`. It's based on reading the code only; I didn't run any tests.
+
+**Verdict: yes-with-fixes.** The core wiring holds up. In `public/core.js:158-162` the listening hour is restored after the second gathering, so its unlock only sees validated gathering results. Every civic action checks its phase first, and the frozen choices are copied rather than shared.
+
+Must-fix:
+1. **Announcements:** the shared screen-reader status area only picks up messages marked `.grid-message` (`public/game.js:92`). The civic message isn't marked that way (`public/game.js:199`), so every civic edit clears that area. The "selected" message only appears in a status line that is rebuilt already filled in, which screen readers may not read out. The fix is to add the class, or write the message to `#modal-status` directly.
+2. **Double-click evidence:** C4 says "double-click start" is tested, but `tests/civic-browser.mjs:51` double-clicks the Welcome button. Nothing double-clicks Start or Close.
+
+Should-fix:
+- **Double-click guard (the gap behind #2):** only the Start/Welcome/Close buttons ignore a second click. On the screens that replace them, the choice buttons and Back don't (`public/game.js:203-204`). So the second click can quietly change a draft choice, or close the dialog before the player sees the meeting or done screen.
+- **Width coverage:** C4 says all 8 choices are checked at 320/390/1440, but each combination runs at only one width.
+- **Stale results file:** the results JSON is only written when every check passes (`tests/civic-browser.mjs:69`). A failed rerun leaves the old passing file in place. Delete it at startup, or only trust it if its fingerprint matches the current build.
+- **Return focus:** coming back from Field notes moves focus to `#civic-hour` without scrolling to it, so at 320px it may be off-screen.
+- **Untested restore cases:** two restore branches have no test.
+
+Nothing is listed to cut.

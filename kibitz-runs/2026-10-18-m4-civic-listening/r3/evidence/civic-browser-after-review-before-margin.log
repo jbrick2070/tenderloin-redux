@@ -1,0 +1,16 @@
+
+> tenderloin-redux@0.11.0 test:civic
+> node tests/civic-browser.mjs
+
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+page.waitForFunction: Timeout 30000ms exceeded.
+    at returned (C:\tenderloin-redux\tests\civic-browser.mjs:25:42)
+    at C:\tenderloin-redux\tests\civic-browser.mjs:51:53 {
+  log: [],
+  name: 'TimeoutError'
+}
+
+Node.js v26.4.0

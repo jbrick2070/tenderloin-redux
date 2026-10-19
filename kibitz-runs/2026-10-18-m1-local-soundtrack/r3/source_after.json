@@ -1,0 +1,30 @@
+{
+  "at": "2026-10-18T18:51:37.005Z",
+  "files": {
+    "public/audio.js": "5ac28c9eedbc9458a8e1b46f04e79a7ea5e5d8e4121fa8dc92f9159338cf740f",
+    "public/camera.js": "98b44825bf075486ddab75bf8e528096c925cad9e972185ed741c3c257836614",
+    "public/core.js": "0970883efcd0566aa763b8149d491bf60c9fbaa033a6c643b02889763ef2ec4a",
+    "public/data/source.osm.xml": "9a987cec02ce967566cd5a13a799d96fb96dd8301e06b4f9d0ffb4cf140ea458",
+    "public/data/streets.osm.json": "42e843b67e8faa56cf16811a5f9c4471eb5a6dd4b596b3cfe9c6f36cbb460ab8",
+    "public/game.js": "09f8fea720ac8fa9beec0c774850c525ba7b1ee446c75eee9b4a0fef952fd075",
+    "public/icon.svg": "6a8c27a1e133c1cf0b150c904acc544f9b53ba444e0425e200b51dca6b33a000",
+    "public/index.html": "f417e08ea0f7ff3919d44c669eb0e69158b627b67c941f56c652b43c6b51488e",
+    "public/keepsake.js": "fb72bf4b444a720e2fb8c1d880b0567e99ea7b017572e4fee3c4747dbfb604b2",
+    "public/soundtrack.js": "aa946b92042f148700b0b66659fc5414e82931ecdcdbeee0c7adba32cfe44910",
+    "public/style.css": "1c1d71fe1de2cda53eb8c000d944a0c77363394205fae6722e2e94bc63ab6ec2",
+    "public/world.js": "0ecfde6fbd9f162ac365ab505e12a02e28ef254ab58ff8d77e0f617d24559d9a",
+    "scripts/build-fingerprint.mjs": "80bbfbcc67455c81102b20ca3d7413c906f9692a4758f5826c4ae4af239ae3af",
+    "scripts/serve.mjs": "904748a36c87769be0be6193c81fb6f6beea729c93d3b0084b61df9e5d5806a7",
+    "tests/audio.test.mjs": "dd05725ef31faa7f41d23c04f821bd878079d7b72c7c8c1e41f78c122afa8349",
+    "tests/browser-smoke.mjs": "9d493db4ef032e669d7e97cdea5a007b1bf99d33ff57ddb540d03522996c582e",
+    "tests/camera.test.mjs": "16789e0b95781d6d85c449a49368593bba425bd228d4e01df403fd92961f4118",
+    "tests/core.test.mjs": "a30f1c544ec960289ffd03936f145354b2e0652d64d6944bae1adfae7f401653",
+    "tests/epilogue.test.mjs": "9f30d9bc8a28e7b7a22c45014da6ac1e27f9d580b9a27441c4fbfc6597a66e1c",
+    "tests/soundtrack.test.mjs": "b5e42eb31dbba86ccd116a8b0a58d54204c64bb6d8a975b320302139da163bce",
+    "package.json": "7f5076ca12e57a5d13dff774b3e47bf17d059e6d293266612da761337c01a685",
+    "README.md": "1167f670e9eda0e4fd0b47cbd480b40418519f0ead6d7eaf26e0c98db6477a67",
+    "docs/CLAUDE_MANUAL_REVIEW.md": "3c6548df658ca822e91e1039e1c36a388c306ed1c2a56f513733d51c9267dae8",
+    "docs/BUILD_M1_SOUNDTRACK_REVIEW.md": "b329db0e2c4f6de78f54bda6af057cd47417d8ea34b152846449762fd1bcbdba",
+    "docs/SUNO_MUSIC_BRIEF.md": "054f4830ec618a177b0b55e426973f0ef86028cb4cf97f4360d32d3ce34642f0"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "public/core.js": "71995cf36babd19713c1c6adeee662f97b5b7ab04d0d9e6620ec053097fb9511",
+  "public/keepsake.js": "fb72bf4b444a720e2fb8c1d880b0567e99ea7b017572e4fee3c4747dbfb604b2",
+  "public/game.js": "baef365180eb448ce29b6b26414a9051b27ec14e56df1c6195de7b2f66f5a9e2",
+  "public/world.js": "981df21014cc8dd09b65d2b3352f18011a5ccdd91e2ec2be5d92e98f9ce2d057",
+  "public/index.html": "bfbf265996ca54aaed8e1bcfdaceb1879cbbb674b76566763fce00cf0de053d2",
+  "public/style.css": "2794c2a7f53a18f6df092fec59524ab3022874ed7caec2ccce5b460416e8d636",
+  "tests/epilogue.test.mjs": "9f30d9bc8a28e7b7a22c45014da6ac1e27f9d580b9a27441c4fbfc6597a66e1c",
+  "tests/browser-smoke.mjs": "1dd55b8395222caadf62e1bf9730a63b3cd9d61756abfaf2860dc60fb31d8c16",
+  "package.json": "56e09c42efd7c095762082ea88ede778ced13fca95d5b1a275c15ae8b01900e5"
+}

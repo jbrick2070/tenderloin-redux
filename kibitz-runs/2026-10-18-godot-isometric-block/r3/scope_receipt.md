@@ -1,0 +1,5 @@
+# Explicit single-round scope before fanout
+
+Creator requests one independent Kibitz partner per implementation round. Scope r3 only; r1/r2/r4 omitted, not a full four-round arc. Driver Codex/SolHigh excluded. One native Claude CLI claude-opus-5-5/high prompt planned. Current requested Gemini4ArgonHigh pin checked explicitly; historical actual Argon print timeout/no-report is not retried blindly or represented as current quota/permanent unavailability. Native exact Opus is an authorized alternative. No AGY Opus, Flash, Astra, purchases or extra panel.
+
+Input docs/BUILD_GODOT_REVIEW.md SHA256 c659d1af7464053a43f3d7c6d88b4f1e072298b46fdd9fed48395a6f6fc07d34. Anchor is source-grounded and precedes fanout. Frozen source archive/manifest covers browser/Godot/data/scripts/tests/docs and root project files, excluding generated cache/binaries/artifacts. Owned godot-isometric-block lock; no concurrent writer. Reviewer may write only designated report; no implementation/test/data edits, no commits/push/outreach/publishing. Driver verifies all claims and final tests. Actual model/effort/auth/quota receipts retained by installed runner; usage/cost only if exposed.

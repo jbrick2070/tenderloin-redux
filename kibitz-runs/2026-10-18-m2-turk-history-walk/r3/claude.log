@@ -1,0 +1,28 @@
+STDOUT:
+I've written the review to `kibitz-runs/2026-10-18-m2-turk-history-walk/r3/claude.md`. I read the code and tests directly but couldn't run anything, so the performance and path-search-limit points are estimates I worked out by hand.
+
+**Verdict: yes, with fixes.** The main promises check out:
+- Old saves still load, and the new Black Hawk discovery doesn't affect progress or the ending.
+- The three western intersections use the real shared OSM street nodes.
+- The opening view and the wider walkable district stay separate.
+- The test count of 48 matches the files.
+
+**One must-fix:** the "Black Hawk" label on the map looks tappable but isn't.
+- **Phone, full-route view:** the marker itself shrinks to about 2 pixels. The label is drawn 250 world px to the right of it, so tapping the label only shows a "Keep to the streets" message.
+- **Close-up view:** the label sits about 52 px above the marker. Tapping it walks you to that spot on Hyde without opening the history note.
+
+Neighbor labels are tappable, so this is inconsistent. The fix is to give the Black Hawk label a tap region that matches where it's drawn (`world.js:77` vs `world.js:231`), plus a test like the existing Rook label one.
+
+**Should-fix:**
+1. **Route-finding limit (`core.js:181`):** it's a fixed 12,000 steps while the walkable area grew about 3.8×. My hand estimate leaves roughly 40% headroom, and no test checks it. If the limit is hit, the player gets a misleading "outside this small scene" message.
+2. **Route-finding cost:** every tap checks against all 41 streets, including Eddy Street, which lies wholly outside the playable area. It may lag on slower phones (not measured).
+3. **Hard-coded building positions (`world.js:158`):** the western building blocks aren't derived from the real intersections. Today they clear the roads by only 21–37 px, so a data refresh could draw buildings over streets without any test failing.
+4. **Desktop reload claim has no browser test:** the history-walk browser check only runs on the phone layout, which follows the player anyway. The new "desktop reload at a western position follows you" behavior is only covered by a bare camera unit test.
+5. **Street names unreadable in the full-route view:** they render at about 1 pixel on a phone.
+6. **Stale version in `docs/BUILD_STATUS.md`:** it still says 0.5.0. Update it only after the browser suite finishes, and land any code fixes before that final run so the recorded fingerprint matches.
+7. **Hidden error message:** if a walk can't be routed from the history-walk dialog, the message appears behind the open dialog.
+8. **Silent cancel:** "Show the whole route" cancels a walk in progress without telling the player.
+
+I couldn't check the claim that all 27 earlier streets are unchanged. There's no earlier copy of the street data in git to compare against.
+
+Separately, several connected services (GitHub, Slack, Linear and others) need to be authorized before their tools work. They weren't needed for this review. You can connect them through your claude.ai connector settings or with `/mcp` in an interactive session.

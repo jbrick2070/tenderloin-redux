@@ -1,0 +1,31 @@
+{
+  "source": {
+    "version": "0.6.0",
+    "fingerprint": "e0f94363af24895bb75fd418d63b4d6fcab263a703ed4c2d19e3c8e905320ecd"
+  },
+  "at": "2026-10-18T20:30:58.292Z",
+  "results": [
+    {
+      "width": 320,
+      "noOverflow": true,
+      "noExternalRuntimeRequests": true,
+      "pageErrors": [],
+      "desktopReloadEAndComptonsRoute": "not run"
+    },
+    {
+      "width": 390,
+      "noOverflow": true,
+      "noExternalRuntimeRequests": true,
+      "pageErrors": [],
+      "desktopReloadEAndComptonsRoute": "not run"
+    },
+    {
+      "width": 1440,
+      "noOverflow": true,
+      "noExternalRuntimeRequests": true,
+      "pageErrors": [],
+      "desktopReloadEAndComptonsRoute": "pass"
+    }
+  ],
+  "limits": "Headless Chrome emulation; not physical device, field survey, human play feedback or screen-reader certification."
+}

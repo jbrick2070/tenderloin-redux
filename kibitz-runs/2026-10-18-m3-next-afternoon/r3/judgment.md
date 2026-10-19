@@ -1,0 +1,24 @@
+# Driver judgment — one independent native Claude Opus 5.5 / High review
+
+One actual request, successful runner rc0; requested exact claude-opus-5-5/high in model/effort receipts. Medium is the runner budget-profile label; explicit model and effort overrides are recorded. Auth check rc0, usage percent/credits/cost unknown. No provider retry, AGY Opus, Astra or extra partner. Reviewer read source files but had no shell; its report is not independent test-execution evidence. Driver ran tests/browser separately.
+
+Source-before archive/manifest compared with source_after_review.json before fixes: zero source drift/new source files during review. Input hash retained in scope receipt. Manual report remains SHA256 3c6548df658ca822e91e1039e1c36a388c306ed1c2a56f513733d51c9267dae8. Historical raw reports retained.
+
+## Grounded claims
+
+1. CONFIRMED, fixed. programme.js:38-46 originally derived absolute opening claims from relative stories<beats. Driver also found the six counterexamples in artifacts/m3-order-copy-audit.json before reading review. Title now says open only when stories occupy slot1, otherwise relative wording; Bea/Dez respect actual first item. tests/programme.test.mjs:16-32 checks all24 orders,16valid including title/response positions.
+2. CONFIRMED, fixed. game.js:49-50,139,158,451-452 now set programme return target for editor/poster, resolve a recreated/disconnected afterglow target by stableID, and honor it through explicit close, x and nativeEscape while retaining queued-close modal.open guard. show():42 resets default target on newly opened nonprogramme dialogs. Browser uses actual Escape after draft mutations and x from poster plus explicit close after revision, asserting next-afternoon focus.
+3. MISREAD in part. Review asserts programmeCheck only1440. Existing epilogue floor branch tests/browser-smoke.mjs:252 changes to390x844 and does not restore, then programmeCheck is invoked; initial captured evidence already says390. Missing explicit focus-visibility assertions CONFIRMED and added at283-287 and after add/reorder/post. Supplemental valid opened-before-packing fixtures now verify320/390/1440, modal/document nooverflow, sampled reorder targets at least44px, localonlyrequests and zeroJSerrors. Physical phone/fullscreenreader notclaimed.
+4. CONFIRMED, fixed. show() first-enabled focus was programme-edit below long poster. game.js:159 now focuses tabindex-1 h2 at scrolltop; browser asserts heading focus and its bounds visible on both desktop/390. No hidden focus position left by poster entry.
+5. CONFIRMED drawing order and weak test, fixed. world.js draws portable board before overhead bunting; people/chips still draw later. Browser samples allfour expected strip colors at authored board transform/location after usercontrolled zoom/follow, not merely whole-canvas change. Hash comparison retained as broader visibleaddition check. Physical realworld geometry remains unverified.
+6. CONFIRMED, fixed. programme.js:25 rejects unchanged publish as no-op, matching disabledUI. All16valid permutations assert original state identity on repeatpublish.
+
+Optional leads: duplicate live region CONFIRMED, programme-message now uses existing persistent modal-status only. Fieldnotes label/grouping CONFIRMED, updated conditional revisit and placed new fictional plan beside fictional keepsake before realhistory. README nowdocuments0.8/project. Missing versionmatchtest MISREAD: existing browser start():43 already compares window.tenderloin.version with buildInfo().version. Runtime/versionduplication retained for tiny no-build runtime; testcoversmatch. Rook scheduleddate implication UNVERIFIABLE: original when-time-comes supplied no date; softened to if-we-hold-it as cheapcopyimprovement, no factualdateclaim. Optional world programme?.published cosmetic inconsistency CONFIRMED and removed.
+
+Driver extra finding: supplemental initial control-size assertion found42px buttons at320/390/1440 (failurelog preserved). Scoped CSS now sets44px minimum; rerun supplemental passes. No globalbuttonstyle changes.
+
+## Accepted scope / deferred
+
+Accept first M3 planning project with strict save guards, separate draft/published snapshots, allfour proposals and editable order, clear fictional future framing, original poster/board, published-neighbor consequences. Opening preparations/epilogue/keepsake/optional/history/music/geographicprojection remain independent. Existing v1 saves migrate additively; older builds may discard new fields on downgrade. No actual second live gathering implemented, no real event announced or sourceart reused.
+
+Full game remains incomplete. Hosting the plan and connected resident-led projects, dated nonprofit facts, M2 current observations, M4 civic/film and M5 safe experiment plus M6 finalscore/human/releasequality remain next. No repeat paid review of unchanged slices.

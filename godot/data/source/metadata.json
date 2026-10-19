@@ -1,0 +1,3540 @@
+{
+  "id" : "ynuv-fyni",
+  "name" : "Building Footprints",
+  "assetType" : "dataset",
+  "attribution" : "City and County of San Francisco",
+  "averageRating" : 0,
+  "category" : "Geographic Locations and Boundaries",
+  "createdAt" : 1539712581,
+  "description" : "These footprint extents are collapsed from an earlier 3D building model provided by Pictometry of 2010, and have been refined from a version of building masses publicly available on the open data portal for over two years.The building masses were manually split with reference to parcel lines, but using vertices from the building mass wherever possible.These split footprints correspond closely to individual structures even where there are common walls; the goal of the splitting process was to divide the building mass wherever there was likely to be a firewall.\nAn arbitrary identifier was assigned based on a descending sort of building area for 177,023 footprints. The centroid of each footprint was used to join a property identifier from a draft of the San Francisco Enterprise GIS Program's cartographic base, which provides continuous coverage with distinct right-of-way areas as well as selected nearby parcels from adjacent counties. See accompanying document SF_BldgFoot_2017-05_description.pdf for more on methodology and motivation",
+  "diciBackend" : false,
+  "displayType" : "table",
+  "domainCName" : "data.sf.gov",
+  "downloadCount" : 10992,
+  "hideFromCatalog" : false,
+  "hideFromDataJson" : false,
+  "licenseId" : "PDDL",
+  "locked" : false,
+  "newBackend" : true,
+  "numberOfComments" : 0,
+  "oid" : 40488900,
+  "provenance" : "official",
+  "publicationAppendEnabled" : false,
+  "publicationDate" : 1711049988,
+  "publicationGroup" : 15592925,
+  "publicationStage" : "published",
+  "rowIdentifierColumnId" : 591077409,
+  "rowsUpdatedAt" : 1792344168,
+  "rowsUpdatedBy" : "dbag-6qd9",
+  "tableId" : 19485242,
+  "totalTimesRated" : 0,
+  "viewCount" : 38612,
+  "viewLastModified" : 1792344111,
+  "viewType" : "tabular",
+  "approvals" : [ {
+    "reviewedAt" : 1595443121,
+    "reviewedAutomatically" : false,
+    "state" : "approved",
+    "submissionId" : 6228579,
+    "submissionObject" : "public_audience_request",
+    "submissionOutcome" : "change_audience",
+    "submittedAt" : 1595287016,
+    "targetAudience" : "public",
+    "workflowId" : 2546,
+    "reviewer" : {
+      "id" : "s7k8-df3k",
+      "displayName" : "Jason Lally"
+    },
+    "submissionDetails" : {
+      "permissionType" : "read"
+    },
+    "submissionOutcomeApplication" : {
+      "endedAt" : 1595443121,
+      "failureCount" : 0,
+      "startedAt" : 1595443121,
+      "status" : "success"
+    },
+    "submitter" : {
+      "id" : "dbag-6qd9",
+      "displayName" : "OpenData"
+    }
+  }, {
+    "message" : "The `strict_permissions` flag must be on to enable internal approvals.",
+    "state" : "unsubmittable",
+    "targetAudience" : "internal",
+    "workflowId" : 5264
+  } ],
+  "clientContext" : {
+    "clientContextVariables" : [ ],
+    "inheritedVariables" : { }
+  },
+  "columns" : [ {
+    "id" : 591077409,
+    "name" : "sf16_bldgid",
+    "dataTypeName" : "text",
+    "description" : "San Francisco Building ID using criteria of 2016-09, 6-char epoch, '.' , 7-char zero-padded AreaID or new ID in editing epochs after initial '201006.' ",
+    "fieldName" : "sf16_bldgid",
+    "position" : 1,
+    "renderTypeName" : "text",
+    "tableColumnId" : 70584291,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "201006.0177023",
+      "null" : "0",
+      "top" : [ {
+        "item" : "201006.0160538",
+        "count" : "1"
+      }, {
+        "item" : "201006.0124678",
+        "count" : "1"
+      }, {
+        "item" : "201006.0004455",
+        "count" : "1"
+      }, {
+        "item" : "201006.0146738",
+        "count" : "1"
+      }, {
+        "item" : "201006.0150050",
+        "count" : "1"
+      }, {
+        "item" : "201006.0057156",
+        "count" : "1"
+      }, {
+        "item" : "201006.0145620",
+        "count" : "1"
+      }, {
+        "item" : "201006.0127624",
+        "count" : "1"
+      }, {
+        "item" : "201006.0012712",
+        "count" : "1"
+      }, {
+        "item" : "201006.0129614",
+        "count" : "1"
+      }, {
+        "item" : "201006.0013941",
+        "count" : "1"
+      }, {
+        "item" : "201006.0066925",
+        "count" : "1"
+      }, {
+        "item" : "201006.0024721",
+        "count" : "1"
+      }, {
+        "item" : "201006.0021567",
+        "count" : "1"
+      }, {
+        "item" : "201006.0169632",
+        "count" : "1"
+      }, {
+        "item" : "201006.0002641",
+        "count" : "1"
+      }, {
+        "item" : "201006.0171033",
+        "count" : "1"
+      }, {
+        "item" : "201006.0140664",
+        "count" : "1"
+      }, {
+        "item" : "201006.0054910",
+        "count" : "1"
+      }, {
+        "item" : "201006.0138351",
+        "count" : "1"
+      } ],
+      "smallest" : "201006.0000001",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : {
+      "align" : "right"
+    }
+  }, {
+    "id" : 591077410,
+    "name" : "area_id",
+    "dataTypeName" : "text",
+    "description" : "Epoch 2010.06 Shape_Area sort of 177,023 building polygons with area > ~1 sq m",
+    "fieldName" : "area_id",
+    "position" : 2,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731649,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "99999",
+      "null" : "0",
+      "top" : [ {
+        "item" : "12377",
+        "count" : "1"
+      }, {
+        "item" : "148146",
+        "count" : "1"
+      }, {
+        "item" : "118912",
+        "count" : "1"
+      }, {
+        "item" : "36146",
+        "count" : "1"
+      }, {
+        "item" : "160535",
+        "count" : "1"
+      }, {
+        "item" : "136526",
+        "count" : "1"
+      }, {
+        "item" : "53623",
+        "count" : "1"
+      }, {
+        "item" : "30543",
+        "count" : "1"
+      }, {
+        "item" : "15967",
+        "count" : "1"
+      }, {
+        "item" : "40442",
+        "count" : "1"
+      }, {
+        "item" : "132634",
+        "count" : "1"
+      }, {
+        "item" : "16715",
+        "count" : "1"
+      }, {
+        "item" : "164232",
+        "count" : "1"
+      }, {
+        "item" : "47586",
+        "count" : "1"
+      }, {
+        "item" : "33223",
+        "count" : "1"
+      }, {
+        "item" : "169825",
+        "count" : "1"
+      }, {
+        "item" : "149526",
+        "count" : "1"
+      }, {
+        "item" : "107349",
+        "count" : "1"
+      }, {
+        "item" : "171203",
+        "count" : "1"
+      }, {
+        "item" : "128726",
+        "count" : "1"
+      } ],
+      "smallest" : "1",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : {
+      "noCommas" : "true"
+    }
+  }, {
+    "id" : 591077411,
+    "name" : "mblr",
+    "dataTypeName" : "text",
+    "description" : "San Francisco property key: Assessor's Map-Block-Lot of land parcel, plus Right-of-way area identifier derived from street Centerline Node Network (CNN) ",
+    "fieldName" : "mblr",
+    "position" : 3,
+    "renderTypeName" : "text",
+    "tableColumnId" : 70584270,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "SM104440180",
+      "null" : "0",
+      "top" : [ {
+        "item" : "SF1939001",
+        "count" : "531"
+      }, {
+        "item" : "CN1300001",
+        "count" : "415"
+      }, {
+        "item" : "SF1300001",
+        "count" : "336"
+      }, {
+        "item" : "CN4712008",
+        "count" : "171"
+      }, {
+        "item" : "SF4502A002",
+        "count" : "160"
+      }, {
+        "item" : "SF4591A079",
+        "count" : "156"
+      }, {
+        "item" : "SF1700001",
+        "count" : "138"
+      }, {
+        "item" : "SF7281006",
+        "count" : "101"
+      }, {
+        "item" : "SF7336001",
+        "count" : "99"
+      }, {
+        "item" : "SF5262009",
+        "count" : "98"
+      }, {
+        "item" : "SF7310001",
+        "count" : "94"
+      }, {
+        "item" : "CN4884026",
+        "count" : "91"
+      }, {
+        "item" : "SF7335001",
+        "count" : "88"
+      }, {
+        "item" : "SF7299005",
+        "count" : "86"
+      }, {
+        "item" : "SF7309001",
+        "count" : "82"
+      }, {
+        "item" : "SM103250110",
+        "count" : "75"
+      }, {
+        "item" : "SF7331004",
+        "count" : "75"
+      }, {
+        "item" : "SF7546102",
+        "count" : "73"
+      }, {
+        "item" : "SF2634A011",
+        "count" : "69"
+      }, {
+        "item" : "SF7332004",
+        "count" : "68"
+      } ],
+      "smallest" : "CN0002001",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : {
+      "align" : "right"
+    }
+  }, {
+    "id" : 591077412,
+    "name" : "p2010_name",
+    "dataTypeName" : "text",
+    "description" : "Pictometry 2010 building name, if any",
+    "fieldName" : "p2010_name",
+    "position" : 4,
+    "renderTypeName" : "text",
+    "tableColumnId" : 70584277,
+    "cachedContents" : {
+      "non_null" : "140740",
+      "largest" : "SanfranX_4279.flt",
+      "null" : "36283",
+      "top" : [ {
+        "item" : "SanFranC_2307.flt",
+        "count" : "126"
+      }, {
+        "item" : "SanfranQ_1882.flt",
+        "count" : "66"
+      }, {
+        "item" : "SanfranQ_1877.flt",
+        "count" : "58"
+      }, {
+        "item" : "SanfranQ_1881.flt",
+        "count" : "52"
+      }, {
+        "item" : "SanfranQ_1876.flt",
+        "count" : "43"
+      }, {
+        "item" : "SanfranQ_1875.flt",
+        "count" : "43"
+      }, {
+        "item" : "SanfranQ_1878.flt",
+        "count" : "41"
+      }, {
+        "item" : "SanfranX_0675.flt",
+        "count" : "41"
+      }, {
+        "item" : "SanfranQ_1880.flt",
+        "count" : "40"
+      }, {
+        "item" : "SanfranQ_1879.flt",
+        "count" : "39"
+      }, {
+        "item" : "SanfranQ_0983.flt",
+        "count" : "33"
+      }, {
+        "item" : "SanfranI_03481.flt",
+        "count" : "29"
+      }, {
+        "item" : "SanFranC_0233.flt",
+        "count" : "29"
+      }, {
+        "item" : "SanfranE_2428.flt",
+        "count" : "29"
+      }, {
+        "item" : "sanfranA_729.flt",
+        "count" : "28"
+      }, {
+        "item" : "SanFranC_1274.flt",
+        "count" : "28"
+      }, {
+        "item" : "SanfranQ_1237.flt",
+        "count" : "28"
+      }, {
+        "item" : "SanFranC_0227.flt",
+        "count" : "28"
+      }, {
+        "item" : "SanfranX_0672.flt",
+        "count" : "28"
+      }, {
+        "item" : "SanfranQ_1972.flt",
+        "count" : "28"
+      } ],
+      "smallest" : "sanfranA_0.flt",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : {
+      "align" : "right"
+    }
+  }, {
+    "id" : 591077413,
+    "name" : "p2010_zminn88ft",
+    "dataTypeName" : "text",
+    "description" : "Input building mass (of 2010,) minimum Z vertex elevation, NAVD 1988 ft",
+    "fieldName" : "p2010_zminn88ft",
+    "position" : 5,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731624,
+    "cachedContents" : {
+      "non_null" : "144963",
+      "largest" : "99.998000000000005",
+      "null" : "32060",
+      "top" : [ {
+        "item" : "0",
+        "count" : "4223"
+      }, {
+        "item" : "32.641800000000003",
+        "count" : "126"
+      }, {
+        "item" : "56.843200000000003",
+        "count" : "67"
+      }, {
+        "item" : "71.100999999999999",
+        "count" : "58"
+      }, {
+        "item" : "69.141099999999994",
+        "count" : "52"
+      }, {
+        "item" : "52.113500000000002",
+        "count" : "44"
+      }, {
+        "item" : "64.620099999999994",
+        "count" : "43"
+      }, {
+        "item" : "93.499600000000001",
+        "count" : "41"
+      }, {
+        "item" : "63.475099999999998",
+        "count" : "41"
+      }, {
+        "item" : "84.130899999999997",
+        "count" : "40"
+      }, {
+        "item" : "96.178700000000006",
+        "count" : "40"
+      }, {
+        "item" : "97.473699999999994",
+        "count" : "39"
+      }, {
+        "item" : "385.7851",
+        "count" : "33"
+      }, {
+        "item" : "20.0106",
+        "count" : "33"
+      }, {
+        "item" : "83.815600000000003",
+        "count" : "32"
+      }, {
+        "item" : "159.4273",
+        "count" : "30"
+      }, {
+        "item" : "165.3075",
+        "count" : "30"
+      }, {
+        "item" : "35.076500000000003",
+        "count" : "29"
+      }, {
+        "item" : "190.33369999999999",
+        "count" : "29"
+      }, {
+        "item" : "191.17859999999999",
+        "count" : "29"
+      } ],
+      "smallest" : "0",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : {
+      "align" : "right"
+    }
+  }, {
+    "id" : 591077414,
+    "name" : "p2010_zmaxn88ft",
+    "dataTypeName" : "text",
+    "description" : "Input building mass (of 2010,) maximum Z vertex elevation, NAVD 1988 ft",
+    "fieldName" : "p2010_zmaxn88ft",
+    "position" : 6,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731656,
+    "cachedContents" : {
+      "non_null" : "144963",
+      "largest" : "99.986199999999997",
+      "null" : "32060",
+      "top" : [ {
+        "item" : "0",
+        "count" : "4223"
+      }, {
+        "item" : "103.015",
+        "count" : "126"
+      }, {
+        "item" : "104.3775",
+        "count" : "66"
+      }, {
+        "item" : "129.45330000000001",
+        "count" : "60"
+      }, {
+        "item" : "118.64619999999999",
+        "count" : "52"
+      }, {
+        "item" : "102.8976",
+        "count" : "44"
+      }, {
+        "item" : "118.6948",
+        "count" : "43"
+      }, {
+        "item" : "106.6597",
+        "count" : "41"
+      }, {
+        "item" : "149.98079999999999",
+        "count" : "41"
+      }, {
+        "item" : "138.05789999999999",
+        "count" : "40"
+      }, {
+        "item" : "141.2859",
+        "count" : "39"
+      }, {
+        "item" : "236.18539999999999",
+        "count" : "35"
+      }, {
+        "item" : "152.48570000000001",
+        "count" : "35"
+      }, {
+        "item" : "409.20269999999999",
+        "count" : "33"
+      }, {
+        "item" : "118.9464",
+        "count" : "30"
+      }, {
+        "item" : "99.009799999999998",
+        "count" : "29"
+      }, {
+        "item" : "118.80759999999999",
+        "count" : "29"
+      }, {
+        "item" : "85.993099999999998",
+        "count" : "29"
+      }, {
+        "item" : "355.5634",
+        "count" : "28"
+      }, {
+        "item" : "99.037700000000001",
+        "count" : "28"
+      } ],
+      "smallest" : "0",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : {
+      "align" : "right"
+    }
+  }, {
+    "id" : 591077415,
+    "name" : "gnd_cells50cm",
+    "dataTypeName" : "text",
+    "description" : "zonal statistic: LiDAR-derived ground surface grid, population of 50cm square cells sampled in this building's zone, integer NAVD 1988 centimeters",
+    "fieldName" : "gnd_cells50cm",
+    "position" : 7,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731647,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "9990",
+      "null" : "0",
+      "top" : [ {
+        "item" : "455",
+        "count" : "485"
+      }, {
+        "item" : "476",
+        "count" : "466"
+      }, {
+        "item" : "441",
+        "count" : "462"
+      }, {
+        "item" : "473",
+        "count" : "462"
+      }, {
+        "item" : "511",
+        "count" : "457"
+      }, {
+        "item" : "495",
+        "count" : "454"
+      }, {
+        "item" : "461",
+        "count" : "452"
+      }, {
+        "item" : "435",
+        "count" : "450"
+      }, {
+        "item" : "466",
+        "count" : "450"
+      }, {
+        "item" : "439",
+        "count" : "448"
+      }, {
+        "item" : "463",
+        "count" : "448"
+      }, {
+        "item" : "464",
+        "count" : "448"
+      }, {
+        "item" : "460",
+        "count" : "447"
+      }, {
+        "item" : "453",
+        "count" : "447"
+      }, {
+        "item" : "490",
+        "count" : "447"
+      }, {
+        "item" : "444",
+        "count" : "446"
+      }, {
+        "item" : "451",
+        "count" : "443"
+      }, {
+        "item" : "512",
+        "count" : "443"
+      }, {
+        "item" : "508",
+        "count" : "443"
+      }, {
+        "item" : "450",
+        "count" : "443"
+      } ],
+      "smallest" : "1",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077416,
+    "name" : "gnd_mincm",
+    "dataTypeName" : "text",
+    "description" : "zonal statistic: LiDAR-derived ground surface grid, minimum value of 50cm square cells sampled in this building's zone, integer NAVD 1988 centimeters",
+    "fieldName" : "gnd_mincm",
+    "position" : 8,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731618,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "9999",
+      "null" : "0",
+      "top" : [ {
+        "item" : "351",
+        "count" : "40"
+      }, {
+        "item" : "348",
+        "count" : "35"
+      }, {
+        "item" : "346",
+        "count" : "35"
+      }, {
+        "item" : "345",
+        "count" : "34"
+      }, {
+        "item" : "6163",
+        "count" : "33"
+      }, {
+        "item" : "4645",
+        "count" : "33"
+      }, {
+        "item" : "5717",
+        "count" : "33"
+      }, {
+        "item" : "4680",
+        "count" : "33"
+      }, {
+        "item" : "5968",
+        "count" : "32"
+      }, {
+        "item" : "814",
+        "count" : "32"
+      }, {
+        "item" : "5505",
+        "count" : "32"
+      }, {
+        "item" : "4105",
+        "count" : "31"
+      }, {
+        "item" : "353",
+        "count" : "31"
+      }, {
+        "item" : "5396",
+        "count" : "31"
+      }, {
+        "item" : "357",
+        "count" : "31"
+      }, {
+        "item" : "1165",
+        "count" : "31"
+      }, {
+        "item" : "361",
+        "count" : "31"
+      }, {
+        "item" : "1657",
+        "count" : "30"
+      }, {
+        "item" : "824",
+        "count" : "30"
+      }, {
+        "item" : "1415",
+        "count" : "30"
+      } ],
+      "smallest" : "100",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077417,
+    "name" : "gnd_maxcm",
+    "dataTypeName" : "text",
+    "description" : "zonal statistic: LiDAR-derived ground surface grid, maximum value of 50cm square cells sampled in this building's zone, integer NAVD 1988 centimeters",
+    "fieldName" : "gnd_maxcm",
+    "position" : 9,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731643,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "9999",
+      "null" : "0",
+      "top" : [ {
+        "item" : "1672",
+        "count" : "34"
+      }, {
+        "item" : "6903",
+        "count" : "33"
+      }, {
+        "item" : "837",
+        "count" : "32"
+      }, {
+        "item" : "5402",
+        "count" : "32"
+      }, {
+        "item" : "5461",
+        "count" : "31"
+      }, {
+        "item" : "6939",
+        "count" : "31"
+      }, {
+        "item" : "383",
+        "count" : "31"
+      }, {
+        "item" : "4875",
+        "count" : "31"
+      }, {
+        "item" : "1872",
+        "count" : "31"
+      }, {
+        "item" : "5742",
+        "count" : "30"
+      }, {
+        "item" : "7012",
+        "count" : "30"
+      }, {
+        "item" : "7020",
+        "count" : "30"
+      }, {
+        "item" : "6518",
+        "count" : "30"
+      }, {
+        "item" : "4041",
+        "count" : "29"
+      }, {
+        "item" : "5038",
+        "count" : "29"
+      }, {
+        "item" : "4941",
+        "count" : "29"
+      }, {
+        "item" : "370",
+        "count" : "29"
+      }, {
+        "item" : "4203",
+        "count" : "29"
+      }, {
+        "item" : "4558",
+        "count" : "29"
+      }, {
+        "item" : "380",
+        "count" : "29"
+      } ],
+      "smallest" : "1000",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077418,
+    "name" : "gnd_rangecm",
+    "dataTypeName" : "text",
+    "description" : "zonal statistic: LiDAR-derived ground surface grid, maximum value of 50cm square cells sampled in this building's zone, integer NAVD 1988 centimeters",
+    "fieldName" : "gnd_rangecm",
+    "position" : 10,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731622,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "998",
+      "null" : "0",
+      "top" : [ {
+        "item" : "39",
+        "count" : "1064"
+      }, {
+        "item" : "31",
+        "count" : "1032"
+      }, {
+        "item" : "46",
+        "count" : "1030"
+      }, {
+        "item" : "33",
+        "count" : "1027"
+      }, {
+        "item" : "32",
+        "count" : "1019"
+      }, {
+        "item" : "38",
+        "count" : "1018"
+      }, {
+        "item" : "37",
+        "count" : "1002"
+      }, {
+        "item" : "44",
+        "count" : "1002"
+      }, {
+        "item" : "34",
+        "count" : "1001"
+      }, {
+        "item" : "41",
+        "count" : "994"
+      }, {
+        "item" : "48",
+        "count" : "993"
+      }, {
+        "item" : "42",
+        "count" : "993"
+      }, {
+        "item" : "28",
+        "count" : "990"
+      }, {
+        "item" : "47",
+        "count" : "989"
+      }, {
+        "item" : "45",
+        "count" : "989"
+      }, {
+        "item" : "40",
+        "count" : "988"
+      }, {
+        "item" : "36",
+        "count" : "986"
+      }, {
+        "item" : "43",
+        "count" : "986"
+      }, {
+        "item" : "52",
+        "count" : "976"
+      }, {
+        "item" : "50",
+        "count" : "970"
+      } ],
+      "smallest" : "0",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077419,
+    "name" : "gnd_meancm",
+    "dataTypeName" : "text",
+    "description" : "zonal statistic: LiDAR-derived ground surface grid, mean value of 50cm square cells sampled in this building's zone, from integer NAVD 1988 centimeters",
+    "fieldName" : "gnd_meancm",
+    "position" : 11,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731620,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "9999.7795414499997",
+      "null" : "0",
+      "top" : [ {
+        "item" : "4668",
+        "count" : "3"
+      }, {
+        "item" : "2807.5",
+        "count" : "2"
+      }, {
+        "item" : "6555.0952380999997",
+        "count" : "2"
+      }, {
+        "item" : "4952.5",
+        "count" : "2"
+      }, {
+        "item" : "2207.2857142900002",
+        "count" : "2"
+      }, {
+        "item" : "2075.3333333300002",
+        "count" : "2"
+      }, {
+        "item" : "5767.7250000000004",
+        "count" : "2"
+      }, {
+        "item" : "1599.78378378",
+        "count" : "2"
+      }, {
+        "item" : "6126.6333333299999",
+        "count" : "2"
+      }, {
+        "item" : "4347.1666666700003",
+        "count" : "2"
+      }, {
+        "item" : "7192.5",
+        "count" : "2"
+      }, {
+        "item" : "2708.3333333300002",
+        "count" : "2"
+      }, {
+        "item" : "429.38228942000001",
+        "count" : "2"
+      }, {
+        "item" : "3656.125",
+        "count" : "2"
+      }, {
+        "item" : "12572",
+        "count" : "2"
+      }, {
+        "item" : "2700",
+        "count" : "2"
+      }, {
+        "item" : "2722",
+        "count" : "2"
+      }, {
+        "item" : "14609.3803056",
+        "count" : "2"
+      }, {
+        "item" : "9548.0217391299993",
+        "count" : "2"
+      }, {
+        "item" : "2576",
+        "count" : "2"
+      } ],
+      "smallest" : "10000.18069307",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077420,
+    "name" : "gnd_stdcm",
+    "dataTypeName" : "text",
+    "description" : "zonal statistic: LiDAR-derived ground surface grid, 1 standard deviation of 50cm square cells sampled in this building's zone, centimeters",
+    "fieldName" : "gnd_stdcm",
+    "position" : 12,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731625,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "99.999828129999997",
+      "null" : "0",
+      "top" : [ {
+        "item" : "0.47140451999999999",
+        "count" : "8"
+      }, {
+        "item" : "0",
+        "count" : "5"
+      }, {
+        "item" : "1.0897247400000001",
+        "count" : "4"
+      }, {
+        "item" : "0.43301269999999997",
+        "count" : "4"
+      }, {
+        "item" : "1.88561808",
+        "count" : "4"
+      }, {
+        "item" : "1",
+        "count" : "4"
+      }, {
+        "item" : "1.4142135600000001",
+        "count" : "4"
+      }, {
+        "item" : "0.94280903999999999",
+        "count" : "3"
+      }, {
+        "item" : "1.5523279999999999",
+        "count" : "3"
+      }, {
+        "item" : "1.0198039000000001",
+        "count" : "3"
+      }, {
+        "item" : "1.25554326",
+        "count" : "3"
+      }, {
+        "item" : "1.9202864399999999",
+        "count" : "3"
+      }, {
+        "item" : "0.5",
+        "count" : "3"
+      }, {
+        "item" : "1.16592238",
+        "count" : "3"
+      }, {
+        "item" : "1.11803399",
+        "count" : "3"
+      }, {
+        "item" : "0.82915620000000001",
+        "count" : "3"
+      }, {
+        "item" : "3.5590260800000002",
+        "count" : "3"
+      }, {
+        "item" : "0.70710678000000005",
+        "count" : "3"
+      }, {
+        "item" : "0.86602539999999995",
+        "count" : "3"
+      }, {
+        "item" : "1.4696938500000001",
+        "count" : "3"
+      } ],
+      "smallest" : "0",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077421,
+    "name" : "gnd_varietycm",
+    "dataTypeName" : "text",
+    "description" : "zonal statistic: LiDAR-derived ground surface grid, count of unique values of 50cm square cells sampled in this building's zone, integer NAVD 1988 centimeters",
+    "fieldName" : "gnd_varietycm",
+    "position" : 13,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731651,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "999",
+      "null" : "0",
+      "top" : [ {
+        "item" : "32",
+        "count" : "1132"
+      }, {
+        "item" : "40",
+        "count" : "1122"
+      }, {
+        "item" : "35",
+        "count" : "1103"
+      }, {
+        "item" : "36",
+        "count" : "1082"
+      }, {
+        "item" : "31",
+        "count" : "1082"
+      }, {
+        "item" : "38",
+        "count" : "1073"
+      }, {
+        "item" : "33",
+        "count" : "1072"
+      }, {
+        "item" : "47",
+        "count" : "1071"
+      }, {
+        "item" : "29",
+        "count" : "1065"
+      }, {
+        "item" : "34",
+        "count" : "1064"
+      }, {
+        "item" : "52",
+        "count" : "1064"
+      }, {
+        "item" : "28",
+        "count" : "1060"
+      }, {
+        "item" : "25",
+        "count" : "1058"
+      }, {
+        "item" : "30",
+        "count" : "1056"
+      }, {
+        "item" : "49",
+        "count" : "1056"
+      }, {
+        "item" : "39",
+        "count" : "1056"
+      }, {
+        "item" : "37",
+        "count" : "1051"
+      }, {
+        "item" : "45",
+        "count" : "1051"
+      }, {
+        "item" : "27",
+        "count" : "1048"
+      }, {
+        "item" : "41",
+        "count" : "1047"
+      } ],
+      "smallest" : "1",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077422,
+    "name" : "gnd_majoritycm",
+    "dataTypeName" : "text",
+    "description" : "zonal statistic: LiDAR-derived ground surface grid, most frequently occuring value of 50cm square cells sampled in this building's zone, integer NAVD 1988 centimeters",
+    "fieldName" : "gnd_majoritycm",
+    "position" : 14,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731619,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "9999",
+      "null" : "0",
+      "top" : [ {
+        "item" : "6774",
+        "count" : "35"
+      }, {
+        "item" : "350",
+        "count" : "34"
+      }, {
+        "item" : "6164",
+        "count" : "34"
+      }, {
+        "item" : "4570",
+        "count" : "34"
+      }, {
+        "item" : "366",
+        "count" : "34"
+      }, {
+        "item" : "353",
+        "count" : "33"
+      }, {
+        "item" : "362",
+        "count" : "33"
+      }, {
+        "item" : "4726",
+        "count" : "32"
+      }, {
+        "item" : "352",
+        "count" : "32"
+      }, {
+        "item" : "1654",
+        "count" : "32"
+      }, {
+        "item" : "354",
+        "count" : "32"
+      }, {
+        "item" : "1526",
+        "count" : "32"
+      }, {
+        "item" : "5781",
+        "count" : "32"
+      }, {
+        "item" : "355",
+        "count" : "31"
+      }, {
+        "item" : "1600",
+        "count" : "31"
+      }, {
+        "item" : "6360",
+        "count" : "31"
+      }, {
+        "item" : "6762",
+        "count" : "31"
+      }, {
+        "item" : "365",
+        "count" : "31"
+      }, {
+        "item" : "369",
+        "count" : "31"
+      }, {
+        "item" : "6936",
+        "count" : "31"
+      } ],
+      "smallest" : "100",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077423,
+    "name" : "gnd_minoritycm",
+    "dataTypeName" : "text",
+    "description" : "zonal statistic: LiDAR-derived ground surface grid, least frequently occuring value of 50cm square cells sampled in this building's zone, integer NAVD 1988 centimeters",
+    "fieldName" : "gnd_minoritycm",
+    "position" : 15,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731645,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "9999",
+      "null" : "0",
+      "top" : [ {
+        "item" : "346",
+        "count" : "37"
+      }, {
+        "item" : "1415",
+        "count" : "34"
+      }, {
+        "item" : "348",
+        "count" : "32"
+      }, {
+        "item" : "1648",
+        "count" : "32"
+      }, {
+        "item" : "4105",
+        "count" : "31"
+      }, {
+        "item" : "5968",
+        "count" : "30"
+      }, {
+        "item" : "359",
+        "count" : "30"
+      }, {
+        "item" : "366",
+        "count" : "30"
+      }, {
+        "item" : "357",
+        "count" : "30"
+      }, {
+        "item" : "4026",
+        "count" : "30"
+      }, {
+        "item" : "1181",
+        "count" : "30"
+      }, {
+        "item" : "6163",
+        "count" : "29"
+      }, {
+        "item" : "5378",
+        "count" : "29"
+      }, {
+        "item" : "375",
+        "count" : "29"
+      }, {
+        "item" : "1798",
+        "count" : "29"
+      }, {
+        "item" : "4373",
+        "count" : "29"
+      }, {
+        "item" : "5050",
+        "count" : "29"
+      }, {
+        "item" : "6383",
+        "count" : "29"
+      }, {
+        "item" : "1351",
+        "count" : "29"
+      }, {
+        "item" : "351",
+        "count" : "29"
+      } ],
+      "smallest" : "1000",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077424,
+    "name" : "gnd_mediancm",
+    "dataTypeName" : "text",
+    "description" : "zonal statistic: LiDAR-derived ground surface grid, median value of 50cm square cells sampled in this building's zone, integer NAVD 1988 centimeters",
+    "fieldName" : "gnd_mediancm",
+    "position" : 16,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731654,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "9999",
+      "null" : "0",
+      "top" : [ {
+        "item" : "354",
+        "count" : "41"
+      }, {
+        "item" : "379",
+        "count" : "35"
+      }, {
+        "item" : "6900",
+        "count" : "34"
+      }, {
+        "item" : "388",
+        "count" : "33"
+      }, {
+        "item" : "362",
+        "count" : "33"
+      }, {
+        "item" : "1800",
+        "count" : "33"
+      }, {
+        "item" : "355",
+        "count" : "32"
+      }, {
+        "item" : "6890",
+        "count" : "32"
+      }, {
+        "item" : "794",
+        "count" : "31"
+      }, {
+        "item" : "1707",
+        "count" : "31"
+      }, {
+        "item" : "4457",
+        "count" : "31"
+      }, {
+        "item" : "6196",
+        "count" : "31"
+      }, {
+        "item" : "350",
+        "count" : "31"
+      }, {
+        "item" : "1502",
+        "count" : "31"
+      }, {
+        "item" : "367",
+        "count" : "31"
+      }, {
+        "item" : "5434",
+        "count" : "31"
+      }, {
+        "item" : "5412",
+        "count" : "30"
+      }, {
+        "item" : "352",
+        "count" : "30"
+      }, {
+        "item" : "1809",
+        "count" : "30"
+      }, {
+        "item" : "5419",
+        "count" : "30"
+      } ],
+      "smallest" : "100",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077425,
+    "name" : "cells50cm_1st",
+    "dataTypeName" : "text",
+    "description" : "zonal statistic: LiDAR-derived first return surface grid, population of 50cm square cells sampled in this building's zone, integer NAVD 1988 centimeters",
+    "fieldName" : "cells50cm_1st",
+    "position" : 17,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731653,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "9990",
+      "null" : "0",
+      "top" : [ {
+        "item" : "455",
+        "count" : "485"
+      }, {
+        "item" : "476",
+        "count" : "466"
+      }, {
+        "item" : "441",
+        "count" : "462"
+      }, {
+        "item" : "473",
+        "count" : "462"
+      }, {
+        "item" : "511",
+        "count" : "457"
+      }, {
+        "item" : "495",
+        "count" : "454"
+      }, {
+        "item" : "461",
+        "count" : "452"
+      }, {
+        "item" : "435",
+        "count" : "450"
+      }, {
+        "item" : "466",
+        "count" : "450"
+      }, {
+        "item" : "439",
+        "count" : "448"
+      }, {
+        "item" : "463",
+        "count" : "448"
+      }, {
+        "item" : "464",
+        "count" : "448"
+      }, {
+        "item" : "460",
+        "count" : "447"
+      }, {
+        "item" : "453",
+        "count" : "447"
+      }, {
+        "item" : "490",
+        "count" : "447"
+      }, {
+        "item" : "444",
+        "count" : "446"
+      }, {
+        "item" : "451",
+        "count" : "443"
+      }, {
+        "item" : "512",
+        "count" : "443"
+      }, {
+        "item" : "508",
+        "count" : "443"
+      }, {
+        "item" : "450",
+        "count" : "443"
+      } ],
+      "smallest" : "1",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077426,
+    "name" : "mincm_1st",
+    "dataTypeName" : "text",
+    "description" : "zonal statistic: LiDAR-derived first return surface grid, minimum value of 50cm square cells sampled in this building's zone, integer NAVD 1988 centimeters",
+    "fieldName" : "mincm_1st",
+    "position" : 18,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731629,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "9999",
+      "null" : "0",
+      "top" : [ {
+        "item" : "2593",
+        "count" : "35"
+      }, {
+        "item" : "6377",
+        "count" : "34"
+      }, {
+        "item" : "5893",
+        "count" : "33"
+      }, {
+        "item" : "5126",
+        "count" : "30"
+      }, {
+        "item" : "2738",
+        "count" : "30"
+      }, {
+        "item" : "5686",
+        "count" : "29"
+      }, {
+        "item" : "5235",
+        "count" : "29"
+      }, {
+        "item" : "2276",
+        "count" : "29"
+      }, {
+        "item" : "6180",
+        "count" : "29"
+      }, {
+        "item" : "2118",
+        "count" : "29"
+      }, {
+        "item" : "5894",
+        "count" : "29"
+      }, {
+        "item" : "5044",
+        "count" : "29"
+      }, {
+        "item" : "1893",
+        "count" : "29"
+      }, {
+        "item" : "1194",
+        "count" : "28"
+      }, {
+        "item" : "6028",
+        "count" : "28"
+      }, {
+        "item" : "7052",
+        "count" : "28"
+      }, {
+        "item" : "4481",
+        "count" : "28"
+      }, {
+        "item" : "6269",
+        "count" : "28"
+      }, {
+        "item" : "2247",
+        "count" : "28"
+      }, {
+        "item" : "1055",
+        "count" : "28"
+      } ],
+      "smallest" : "1000",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077427,
+    "name" : "maxcm_1st",
+    "dataTypeName" : "text",
+    "description" : "zonal statistic: LiDAR-derived first return surface grid, maximum value of 50cm square cells sampled in this building's zone, integer NAVD 1988 centimeters",
+    "fieldName" : "maxcm_1st",
+    "position" : 19,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731616,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "9999",
+      "null" : "0",
+      "top" : [ {
+        "item" : "6933",
+        "count" : "32"
+      }, {
+        "item" : "6675",
+        "count" : "32"
+      }, {
+        "item" : "6900",
+        "count" : "31"
+      }, {
+        "item" : "6536",
+        "count" : "31"
+      }, {
+        "item" : "7039",
+        "count" : "30"
+      }, {
+        "item" : "5316",
+        "count" : "30"
+      }, {
+        "item" : "6647",
+        "count" : "30"
+      }, {
+        "item" : "8199",
+        "count" : "30"
+      }, {
+        "item" : "7782",
+        "count" : "30"
+      }, {
+        "item" : "8012",
+        "count" : "30"
+      }, {
+        "item" : "6294",
+        "count" : "30"
+      }, {
+        "item" : "3289",
+        "count" : "30"
+      }, {
+        "item" : "6816",
+        "count" : "30"
+      }, {
+        "item" : "5479",
+        "count" : "30"
+      }, {
+        "item" : "8130",
+        "count" : "29"
+      }, {
+        "item" : "8053",
+        "count" : "29"
+      }, {
+        "item" : "7240",
+        "count" : "29"
+      }, {
+        "item" : "6937",
+        "count" : "29"
+      }, {
+        "item" : "5710",
+        "count" : "29"
+      }, {
+        "item" : "7817",
+        "count" : "29"
+      } ],
+      "smallest" : "1000",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077428,
+    "name" : "rangecm_1st",
+    "dataTypeName" : "text",
+    "description" : "zonal statistic: LiDAR-derived first return surface grid, maximum value of 50cm square cells sampled in this building's zone, integer NAVD 1988 centimeters",
+    "fieldName" : "rangecm_1st",
+    "position" : 20,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731628,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "9995",
+      "null" : "0",
+      "top" : [ {
+        "item" : "417",
+        "count" : "354"
+      }, {
+        "item" : "376",
+        "count" : "349"
+      }, {
+        "item" : "400",
+        "count" : "344"
+      }, {
+        "item" : "378",
+        "count" : "340"
+      }, {
+        "item" : "381",
+        "count" : "340"
+      }, {
+        "item" : "403",
+        "count" : "339"
+      }, {
+        "item" : "389",
+        "count" : "339"
+      }, {
+        "item" : "440",
+        "count" : "339"
+      }, {
+        "item" : "420",
+        "count" : "335"
+      }, {
+        "item" : "373",
+        "count" : "335"
+      }, {
+        "item" : "432",
+        "count" : "335"
+      }, {
+        "item" : "423",
+        "count" : "335"
+      }, {
+        "item" : "421",
+        "count" : "334"
+      }, {
+        "item" : "353",
+        "count" : "334"
+      }, {
+        "item" : "392",
+        "count" : "334"
+      }, {
+        "item" : "418",
+        "count" : "333"
+      }, {
+        "item" : "384",
+        "count" : "333"
+      }, {
+        "item" : "394",
+        "count" : "332"
+      }, {
+        "item" : "407",
+        "count" : "332"
+      }, {
+        "item" : "425",
+        "count" : "331"
+      } ],
+      "smallest" : "0",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077429,
+    "name" : "meancm_1st",
+    "dataTypeName" : "text",
+    "description" : "zonal statistic: LiDAR-derived first return surface grid, mean value of 50cm square cells sampled in this building's zone, from integer NAVD 1988 centimeters",
+    "fieldName" : "meancm_1st",
+    "position" : 21,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731648,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "9999.8420074299993",
+      "null" : "0",
+      "top" : [ {
+        "item" : "7155.2307692300001",
+        "count" : "2"
+      }, {
+        "item" : "4374.03125",
+        "count" : "2"
+      }, {
+        "item" : "6580",
+        "count" : "2"
+      }, {
+        "item" : "6798.5",
+        "count" : "2"
+      }, {
+        "item" : "547",
+        "count" : "2"
+      }, {
+        "item" : "6171.46",
+        "count" : "2"
+      }, {
+        "item" : "4790.25",
+        "count" : "2"
+      }, {
+        "item" : "7300.6666666700003",
+        "count" : "2"
+      }, {
+        "item" : "8145.3599999999997",
+        "count" : "2"
+      }, {
+        "item" : "9021.5",
+        "count" : "2"
+      }, {
+        "item" : "7981.5",
+        "count" : "2"
+      }, {
+        "item" : "1563.09090909",
+        "count" : "2"
+      }, {
+        "item" : "8039.375",
+        "count" : "2"
+      }, {
+        "item" : "6802",
+        "count" : "2"
+      }, {
+        "item" : "7948.5",
+        "count" : "2"
+      }, {
+        "item" : "3852.5999999999999",
+        "count" : "2"
+      }, {
+        "item" : "5988",
+        "count" : "2"
+      }, {
+        "item" : "1416.5",
+        "count" : "2"
+      }, {
+        "item" : "11914.5",
+        "count" : "2"
+      }, {
+        "item" : "11022.92307692",
+        "count" : "2"
+      } ],
+      "smallest" : "10000.091867470001",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : {
+      "align" : "right"
+    }
+  }, {
+    "id" : 591077430,
+    "name" : "stdcm_1st",
+    "dataTypeName" : "text",
+    "description" : "zonal statistic: LiDAR-derived first return surface grid, 1 standard deviation of 50cm square cells sampled in this building's zone, centimeters",
+    "fieldName" : "stdcm_1st",
+    "position" : 22,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731640,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "99.999949849999993",
+      "null" : "0",
+      "top" : [ {
+        "item" : "46.993789579999998",
+        "count" : "2"
+      }, {
+        "item" : "11.722201159999999",
+        "count" : "2"
+      }, {
+        "item" : "24.139960080000002",
+        "count" : "2"
+      }, {
+        "item" : "28.268632010000001",
+        "count" : "2"
+      }, {
+        "item" : "101.19938594",
+        "count" : "2"
+      }, {
+        "item" : "39.425334390000003",
+        "count" : "1"
+      }, {
+        "item" : "82.588938429999999",
+        "count" : "1"
+      }, {
+        "item" : "240.02798967999999",
+        "count" : "1"
+      }, {
+        "item" : "49.651819490000001",
+        "count" : "1"
+      }, {
+        "item" : "44.708089860000001",
+        "count" : "1"
+      }, {
+        "item" : "33.059157319999997",
+        "count" : "1"
+      }, {
+        "item" : "83.984527409999998",
+        "count" : "1"
+      }, {
+        "item" : "103.51010131",
+        "count" : "1"
+      }, {
+        "item" : "74.440749740000001",
+        "count" : "1"
+      }, {
+        "item" : "71.38568076",
+        "count" : "1"
+      }, {
+        "item" : "40.977443770000001",
+        "count" : "1"
+      }, {
+        "item" : "130.15373041000001",
+        "count" : "1"
+      }, {
+        "item" : "124.87282367",
+        "count" : "1"
+      }, {
+        "item" : "1317.58186916",
+        "count" : "1"
+      }, {
+        "item" : "41.561955939999997",
+        "count" : "1"
+      } ],
+      "smallest" : "0",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : {
+      "align" : "right"
+    }
+  }, {
+    "id" : 591077431,
+    "name" : "varietycm_1st",
+    "dataTypeName" : "text",
+    "description" : "zonal statistic: LiDAR-derived first return surface grid, count of unique values of 50cm square cells sampled in this building's zone, integer NAVD 1988 centimeters",
+    "fieldName" : "varietycm_1st",
+    "position" : 23,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731615,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "999",
+      "null" : "0",
+      "top" : [ {
+        "item" : "125",
+        "count" : "1010"
+      }, {
+        "item" : "124",
+        "count" : "998"
+      }, {
+        "item" : "113",
+        "count" : "998"
+      }, {
+        "item" : "128",
+        "count" : "977"
+      }, {
+        "item" : "132",
+        "count" : "976"
+      }, {
+        "item" : "122",
+        "count" : "972"
+      }, {
+        "item" : "112",
+        "count" : "970"
+      }, {
+        "item" : "116",
+        "count" : "967"
+      }, {
+        "item" : "111",
+        "count" : "966"
+      }, {
+        "item" : "117",
+        "count" : "965"
+      }, {
+        "item" : "114",
+        "count" : "959"
+      }, {
+        "item" : "123",
+        "count" : "958"
+      }, {
+        "item" : "110",
+        "count" : "956"
+      }, {
+        "item" : "118",
+        "count" : "953"
+      }, {
+        "item" : "120",
+        "count" : "952"
+      }, {
+        "item" : "140",
+        "count" : "951"
+      }, {
+        "item" : "119",
+        "count" : "949"
+      }, {
+        "item" : "134",
+        "count" : "946"
+      }, {
+        "item" : "126",
+        "count" : "941"
+      }, {
+        "item" : "130",
+        "count" : "940"
+      } ],
+      "smallest" : "1",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077432,
+    "name" : "majoritycm_1st",
+    "dataTypeName" : "text",
+    "description" : "zonal statistic: LiDAR-derived first return surface grid, most frequently occuring value of 50cm square cells sampled in this building's zone, integer NAVD 1988 centimeters ",
+    "fieldName" : "majoritycm_1st",
+    "position" : 24,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731630,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "9999",
+      "null" : "0",
+      "top" : [ {
+        "item" : "1441",
+        "count" : "34"
+      }, {
+        "item" : "5673",
+        "count" : "33"
+      }, {
+        "item" : "7859",
+        "count" : "33"
+      }, {
+        "item" : "4974",
+        "count" : "32"
+      }, {
+        "item" : "2258",
+        "count" : "32"
+      }, {
+        "item" : "7262",
+        "count" : "31"
+      }, {
+        "item" : "5188",
+        "count" : "31"
+      }, {
+        "item" : "1426",
+        "count" : "31"
+      }, {
+        "item" : "6335",
+        "count" : "30"
+      }, {
+        "item" : "8304",
+        "count" : "30"
+      }, {
+        "item" : "5279",
+        "count" : "30"
+      }, {
+        "item" : "1726",
+        "count" : "30"
+      }, {
+        "item" : "7972",
+        "count" : "30"
+      }, {
+        "item" : "3935",
+        "count" : "30"
+      }, {
+        "item" : "6452",
+        "count" : "29"
+      }, {
+        "item" : "6956",
+        "count" : "29"
+      }, {
+        "item" : "8109",
+        "count" : "29"
+      }, {
+        "item" : "7239",
+        "count" : "29"
+      }, {
+        "item" : "6727",
+        "count" : "29"
+      }, {
+        "item" : "7727",
+        "count" : "29"
+      } ],
+      "smallest" : "1000",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077433,
+    "name" : "minoritycm_1st",
+    "dataTypeName" : "text",
+    "description" : "zonal statistic: LiDAR-derived first return surface grid, least frequently occuring value of 50cm square cells sampled in this building's zone, integer NAVD 1988 centimeters",
+    "fieldName" : "minoritycm_1st",
+    "position" : 25,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731650,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "9999",
+      "null" : "0",
+      "top" : [ {
+        "item" : "2593",
+        "count" : "34"
+      }, {
+        "item" : "6377",
+        "count" : "34"
+      }, {
+        "item" : "5893",
+        "count" : "32"
+      }, {
+        "item" : "5126",
+        "count" : "31"
+      }, {
+        "item" : "5141",
+        "count" : "31"
+      }, {
+        "item" : "2116",
+        "count" : "30"
+      }, {
+        "item" : "7276",
+        "count" : "29"
+      }, {
+        "item" : "2276",
+        "count" : "29"
+      }, {
+        "item" : "5235",
+        "count" : "29"
+      }, {
+        "item" : "1893",
+        "count" : "29"
+      }, {
+        "item" : "5044",
+        "count" : "29"
+      }, {
+        "item" : "1337",
+        "count" : "29"
+      }, {
+        "item" : "2118",
+        "count" : "29"
+      }, {
+        "item" : "5686",
+        "count" : "29"
+      }, {
+        "item" : "1194",
+        "count" : "29"
+      }, {
+        "item" : "1219",
+        "count" : "29"
+      }, {
+        "item" : "6271",
+        "count" : "29"
+      }, {
+        "item" : "5632",
+        "count" : "29"
+      }, {
+        "item" : "7179",
+        "count" : "29"
+      }, {
+        "item" : "5824",
+        "count" : "29"
+      } ],
+      "smallest" : "1000",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077434,
+    "name" : "mediancm_1st",
+    "dataTypeName" : "text",
+    "description" : "zonal statistic: LiDAR-derived first return surface grid, median value of 50cm square cells sampled in this building's zone, integer NAVD 1988 centimeters",
+    "fieldName" : "mediancm_1st",
+    "position" : 26,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731614,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "9999",
+      "null" : "0",
+      "top" : [ {
+        "item" : "4665",
+        "count" : "33"
+      }, {
+        "item" : "2587",
+        "count" : "32"
+      }, {
+        "item" : "7729",
+        "count" : "31"
+      }, {
+        "item" : "6733",
+        "count" : "30"
+      }, {
+        "item" : "2166",
+        "count" : "30"
+      }, {
+        "item" : "6763",
+        "count" : "30"
+      }, {
+        "item" : "7269",
+        "count" : "30"
+      }, {
+        "item" : "1424",
+        "count" : "30"
+      }, {
+        "item" : "7757",
+        "count" : "29"
+      }, {
+        "item" : "5265",
+        "count" : "29"
+      }, {
+        "item" : "8458",
+        "count" : "29"
+      }, {
+        "item" : "5102",
+        "count" : "29"
+      }, {
+        "item" : "4990",
+        "count" : "29"
+      }, {
+        "item" : "7810",
+        "count" : "29"
+      }, {
+        "item" : "7934",
+        "count" : "29"
+      }, {
+        "item" : "4984",
+        "count" : "29"
+      }, {
+        "item" : "6859",
+        "count" : "29"
+      }, {
+        "item" : "2268",
+        "count" : "29"
+      }, {
+        "item" : "7193",
+        "count" : "29"
+      }, {
+        "item" : "8866",
+        "count" : "29"
+      } ],
+      "smallest" : "1000",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077435,
+    "name" : "hgt_cells50cm",
+    "dataTypeName" : "text",
+    "description" : "zonal statistic: LiDAR-derived height surface grid, population of 50cm square cells sampled in this building's zone, integer centimeters",
+    "fieldName" : "hgt_cells50cm",
+    "position" : 27,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731627,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "9990",
+      "null" : "0",
+      "top" : [ {
+        "item" : "455",
+        "count" : "485"
+      }, {
+        "item" : "476",
+        "count" : "466"
+      }, {
+        "item" : "441",
+        "count" : "462"
+      }, {
+        "item" : "473",
+        "count" : "462"
+      }, {
+        "item" : "511",
+        "count" : "457"
+      }, {
+        "item" : "495",
+        "count" : "454"
+      }, {
+        "item" : "461",
+        "count" : "452"
+      }, {
+        "item" : "435",
+        "count" : "450"
+      }, {
+        "item" : "466",
+        "count" : "450"
+      }, {
+        "item" : "439",
+        "count" : "448"
+      }, {
+        "item" : "463",
+        "count" : "448"
+      }, {
+        "item" : "464",
+        "count" : "448"
+      }, {
+        "item" : "460",
+        "count" : "447"
+      }, {
+        "item" : "453",
+        "count" : "447"
+      }, {
+        "item" : "490",
+        "count" : "447"
+      }, {
+        "item" : "444",
+        "count" : "446"
+      }, {
+        "item" : "451",
+        "count" : "443"
+      }, {
+        "item" : "512",
+        "count" : "443"
+      }, {
+        "item" : "508",
+        "count" : "443"
+      }, {
+        "item" : "450",
+        "count" : "443"
+      } ],
+      "smallest" : "1",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077436,
+    "name" : "hgt_mincm",
+    "dataTypeName" : "text",
+    "description" : "zonal statistic: LiDAR-derived height surface grid, minimum value of 50cm square cells sampled in this building's zone, integer centimeters",
+    "fieldName" : "hgt_mincm",
+    "position" : 28,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731626,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "999",
+      "null" : "0",
+      "top" : [ {
+        "item" : "308",
+        "count" : "457"
+      }, {
+        "item" : "317",
+        "count" : "454"
+      }, {
+        "item" : "304",
+        "count" : "447"
+      }, {
+        "item" : "281",
+        "count" : "444"
+      }, {
+        "item" : "339",
+        "count" : "441"
+      }, {
+        "item" : "266",
+        "count" : "439"
+      }, {
+        "item" : "276",
+        "count" : "438"
+      }, {
+        "item" : "284",
+        "count" : "437"
+      }, {
+        "item" : "302",
+        "count" : "437"
+      }, {
+        "item" : "329",
+        "count" : "436"
+      }, {
+        "item" : "297",
+        "count" : "436"
+      }, {
+        "item" : "314",
+        "count" : "434"
+      }, {
+        "item" : "293",
+        "count" : "434"
+      }, {
+        "item" : "350",
+        "count" : "431"
+      }, {
+        "item" : "282",
+        "count" : "430"
+      }, {
+        "item" : "351",
+        "count" : "429"
+      }, {
+        "item" : "315",
+        "count" : "428"
+      }, {
+        "item" : "333",
+        "count" : "428"
+      }, {
+        "item" : "309",
+        "count" : "428"
+      }, {
+        "item" : "262",
+        "count" : "426"
+      } ],
+      "smallest" : "0",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077437,
+    "name" : "hgt_maxcm",
+    "dataTypeName" : "text",
+    "description" : "zonal statistic: LiDAR-derived height surface grid, maximum value of 50cm square cells sampled in this building's zone, integer centimeters",
+    "fieldName" : "hgt_maxcm",
+    "position" : 29,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731655,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "999",
+      "null" : "0",
+      "top" : [ {
+        "item" : "663",
+        "count" : "448"
+      }, {
+        "item" : "662",
+        "count" : "441"
+      }, {
+        "item" : "649",
+        "count" : "438"
+      }, {
+        "item" : "646",
+        "count" : "437"
+      }, {
+        "item" : "650",
+        "count" : "433"
+      }, {
+        "item" : "655",
+        "count" : "432"
+      }, {
+        "item" : "680",
+        "count" : "429"
+      }, {
+        "item" : "645",
+        "count" : "429"
+      }, {
+        "item" : "670",
+        "count" : "426"
+      }, {
+        "item" : "665",
+        "count" : "424"
+      }, {
+        "item" : "653",
+        "count" : "423"
+      }, {
+        "item" : "659",
+        "count" : "423"
+      }, {
+        "item" : "651",
+        "count" : "422"
+      }, {
+        "item" : "677",
+        "count" : "420"
+      }, {
+        "item" : "664",
+        "count" : "419"
+      }, {
+        "item" : "661",
+        "count" : "418"
+      }, {
+        "item" : "675",
+        "count" : "416"
+      }, {
+        "item" : "660",
+        "count" : "415"
+      }, {
+        "item" : "656",
+        "count" : "414"
+      }, {
+        "item" : "667",
+        "count" : "412"
+      } ],
+      "smallest" : "10",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077438,
+    "name" : "hgt_rangecm",
+    "dataTypeName" : "text",
+    "description" : "zonal statistic: LiDAR-derived height surface grid, maximum value of 50cm square cells sampled in this building's zone, integer centimeters",
+    "fieldName" : "hgt_rangecm",
+    "position" : 30,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731657,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "999",
+      "null" : "0",
+      "top" : [ {
+        "item" : "422",
+        "count" : "346"
+      }, {
+        "item" : "421",
+        "count" : "340"
+      }, {
+        "item" : "433",
+        "count" : "339"
+      }, {
+        "item" : "409",
+        "count" : "339"
+      }, {
+        "item" : "442",
+        "count" : "339"
+      }, {
+        "item" : "461",
+        "count" : "337"
+      }, {
+        "item" : "372",
+        "count" : "335"
+      }, {
+        "item" : "377",
+        "count" : "334"
+      }, {
+        "item" : "391",
+        "count" : "333"
+      }, {
+        "item" : "468",
+        "count" : "332"
+      }, {
+        "item" : "365",
+        "count" : "330"
+      }, {
+        "item" : "420",
+        "count" : "330"
+      }, {
+        "item" : "405",
+        "count" : "329"
+      }, {
+        "item" : "357",
+        "count" : "328"
+      }, {
+        "item" : "435",
+        "count" : "328"
+      }, {
+        "item" : "382",
+        "count" : "327"
+      }, {
+        "item" : "436",
+        "count" : "326"
+      }, {
+        "item" : "424",
+        "count" : "326"
+      }, {
+        "item" : "383",
+        "count" : "325"
+      }, {
+        "item" : "445",
+        "count" : "323"
+      } ],
+      "smallest" : "0",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077439,
+    "name" : "hgt_meancm",
+    "dataTypeName" : "text",
+    "description" : "zonal statistic: LiDAR-derived height surface grid, mean value of 50cm square cells sampled in this building's zone, from integer centimeters",
+    "fieldName" : "hgt_meancm",
+    "position" : 31,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731652,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "999.99582172999999",
+      "null" : "0",
+      "top" : [ {
+        "item" : "613",
+        "count" : "6"
+      }, {
+        "item" : "663",
+        "count" : "4"
+      }, {
+        "item" : "264",
+        "count" : "4"
+      }, {
+        "item" : "273",
+        "count" : "4"
+      }, {
+        "item" : "610.5",
+        "count" : "4"
+      }, {
+        "item" : "226.33333332999999",
+        "count" : "4"
+      }, {
+        "item" : "237.5",
+        "count" : "4"
+      }, {
+        "item" : "208",
+        "count" : "4"
+      }, {
+        "item" : "621",
+        "count" : "4"
+      }, {
+        "item" : "578",
+        "count" : "4"
+      }, {
+        "item" : "624",
+        "count" : "4"
+      }, {
+        "item" : "289",
+        "count" : "3"
+      }, {
+        "item" : "201",
+        "count" : "3"
+      }, {
+        "item" : "170.5",
+        "count" : "3"
+      }, {
+        "item" : "225",
+        "count" : "3"
+      }, {
+        "item" : "622",
+        "count" : "3"
+      }, {
+        "item" : "912",
+        "count" : "3"
+      }, {
+        "item" : "177.33333332999999",
+        "count" : "3"
+      }, {
+        "item" : "582.859375",
+        "count" : "3"
+      }, {
+        "item" : "182.25",
+        "count" : "3"
+      } ],
+      "smallest" : "1000.00694444",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : {
+      "align" : "right"
+    }
+  }, {
+    "id" : 591077440,
+    "name" : "hgt_stdcm",
+    "dataTypeName" : "text",
+    "description" : "zonal statistic: LiDAR-derived height surface grid, 1 standard deviation of 50cm square cells sampled in this building's zone, centimeters",
+    "fieldName" : "hgt_stdcm",
+    "position" : 32,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731623,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "99.999921439999994",
+      "null" : "0",
+      "top" : [ {
+        "item" : "26.957596670000001",
+        "count" : "2"
+      }, {
+        "item" : "29.184488600000002",
+        "count" : "2"
+      }, {
+        "item" : "22.508640320000001",
+        "count" : "2"
+      }, {
+        "item" : "49.463124409999999",
+        "count" : "2"
+      }, {
+        "item" : "19.688388790000001",
+        "count" : "2"
+      }, {
+        "item" : "294.85780031000002",
+        "count" : "1"
+      }, {
+        "item" : "130.50162381000001",
+        "count" : "1"
+      }, {
+        "item" : "144.41985281000001",
+        "count" : "1"
+      }, {
+        "item" : "65.240089889999993",
+        "count" : "1"
+      }, {
+        "item" : "95.074762079999999",
+        "count" : "1"
+      }, {
+        "item" : "73.981084859999996",
+        "count" : "1"
+      }, {
+        "item" : "54.568275360000001",
+        "count" : "1"
+      }, {
+        "item" : "115.04493131",
+        "count" : "1"
+      }, {
+        "item" : "72.786056299999998",
+        "count" : "1"
+      }, {
+        "item" : "36.078652499999997",
+        "count" : "1"
+      }, {
+        "item" : "94.072230640000001",
+        "count" : "1"
+      }, {
+        "item" : "219.21744218000001",
+        "count" : "1"
+      }, {
+        "item" : "173.91576990999999",
+        "count" : "1"
+      }, {
+        "item" : "115.51710309000001",
+        "count" : "1"
+      }, {
+        "item" : "125.26762512000001",
+        "count" : "1"
+      } ],
+      "smallest" : "0",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : {
+      "align" : "right"
+    }
+  }, {
+    "id" : 591077441,
+    "name" : "hgt_varietycm",
+    "dataTypeName" : "text",
+    "description" : "zonal statistic: LiDAR-derived height surface grid, count of unique values of 50cm square cells sampled in this building's zone, integer centimeters",
+    "fieldName" : "hgt_varietycm",
+    "position" : 33,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731639,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "999",
+      "null" : "0",
+      "top" : [ {
+        "item" : "167",
+        "count" : "759"
+      }, {
+        "item" : "176",
+        "count" : "759"
+      }, {
+        "item" : "142",
+        "count" : "758"
+      }, {
+        "item" : "156",
+        "count" : "747"
+      }, {
+        "item" : "160",
+        "count" : "744"
+      }, {
+        "item" : "180",
+        "count" : "743"
+      }, {
+        "item" : "158",
+        "count" : "742"
+      }, {
+        "item" : "145",
+        "count" : "741"
+      }, {
+        "item" : "164",
+        "count" : "739"
+      }, {
+        "item" : "152",
+        "count" : "739"
+      }, {
+        "item" : "165",
+        "count" : "738"
+      }, {
+        "item" : "198",
+        "count" : "738"
+      }, {
+        "item" : "157",
+        "count" : "732"
+      }, {
+        "item" : "170",
+        "count" : "731"
+      }, {
+        "item" : "155",
+        "count" : "729"
+      }, {
+        "item" : "193",
+        "count" : "728"
+      }, {
+        "item" : "153",
+        "count" : "727"
+      }, {
+        "item" : "163",
+        "count" : "725"
+      }, {
+        "item" : "190",
+        "count" : "722"
+      }, {
+        "item" : "147",
+        "count" : "721"
+      } ],
+      "smallest" : "1",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077442,
+    "name" : "hgt_majoritycm",
+    "dataTypeName" : "text",
+    "description" : "zonal statistic: LiDAR-derived height surface grid, most frequently occuring value of 50cm square cells sampled in this building's zone, integer centimeters",
+    "fieldName" : "hgt_majoritycm",
+    "position" : 34,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731644,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "999",
+      "null" : "0",
+      "top" : [ {
+        "item" : "582",
+        "count" : "799"
+      }, {
+        "item" : "585",
+        "count" : "788"
+      }, {
+        "item" : "577",
+        "count" : "779"
+      }, {
+        "item" : "579",
+        "count" : "776"
+      }, {
+        "item" : "583",
+        "count" : "776"
+      }, {
+        "item" : "586",
+        "count" : "773"
+      }, {
+        "item" : "584",
+        "count" : "769"
+      }, {
+        "item" : "581",
+        "count" : "760"
+      }, {
+        "item" : "591",
+        "count" : "742"
+      }, {
+        "item" : "578",
+        "count" : "742"
+      }, {
+        "item" : "580",
+        "count" : "736"
+      }, {
+        "item" : "587",
+        "count" : "735"
+      }, {
+        "item" : "590",
+        "count" : "728"
+      }, {
+        "item" : "575",
+        "count" : "725"
+      }, {
+        "item" : "576",
+        "count" : "717"
+      }, {
+        "item" : "592",
+        "count" : "709"
+      }, {
+        "item" : "594",
+        "count" : "706"
+      }, {
+        "item" : "588",
+        "count" : "704"
+      }, {
+        "item" : "589",
+        "count" : "701"
+      }, {
+        "item" : "573",
+        "count" : "697"
+      } ],
+      "smallest" : "0",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077443,
+    "name" : "hgt_minoritycm",
+    "dataTypeName" : "text",
+    "description" : "zonal statistic: LiDAR-derived height surface grid, least frequently occuring value of 50cm square cells sampled in this building's zone, integer centimeters",
+    "fieldName" : "hgt_minoritycm",
+    "position" : 35,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731641,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "999",
+      "null" : "0",
+      "top" : [ {
+        "item" : "317",
+        "count" : "457"
+      }, {
+        "item" : "308",
+        "count" : "452"
+      }, {
+        "item" : "304",
+        "count" : "447"
+      }, {
+        "item" : "281",
+        "count" : "445"
+      }, {
+        "item" : "302",
+        "count" : "442"
+      }, {
+        "item" : "284",
+        "count" : "441"
+      }, {
+        "item" : "339",
+        "count" : "440"
+      }, {
+        "item" : "276",
+        "count" : "438"
+      }, {
+        "item" : "329",
+        "count" : "438"
+      }, {
+        "item" : "293",
+        "count" : "435"
+      }, {
+        "item" : "266",
+        "count" : "433"
+      }, {
+        "item" : "350",
+        "count" : "431"
+      }, {
+        "item" : "297",
+        "count" : "431"
+      }, {
+        "item" : "314",
+        "count" : "431"
+      }, {
+        "item" : "315",
+        "count" : "430"
+      }, {
+        "item" : "309",
+        "count" : "430"
+      }, {
+        "item" : "334",
+        "count" : "429"
+      }, {
+        "item" : "311",
+        "count" : "429"
+      }, {
+        "item" : "262",
+        "count" : "428"
+      }, {
+        "item" : "351",
+        "count" : "426"
+      } ],
+      "smallest" : "0",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077444,
+    "name" : "hgt_mediancm",
+    "dataTypeName" : "text",
+    "description" : "zonal statistic: LiDAR-derived height surface grid, median value of 50cm square cells sampled in this building's zone, integer centimeters",
+    "fieldName" : "hgt_mediancm",
+    "position" : 36,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731617,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "999",
+      "null" : "0",
+      "top" : [ {
+        "item" : "583",
+        "count" : "868"
+      }, {
+        "item" : "586",
+        "count" : "834"
+      }, {
+        "item" : "585",
+        "count" : "814"
+      }, {
+        "item" : "594",
+        "count" : "810"
+      }, {
+        "item" : "589",
+        "count" : "809"
+      }, {
+        "item" : "584",
+        "count" : "799"
+      }, {
+        "item" : "588",
+        "count" : "799"
+      }, {
+        "item" : "595",
+        "count" : "795"
+      }, {
+        "item" : "582",
+        "count" : "793"
+      }, {
+        "item" : "577",
+        "count" : "786"
+      }, {
+        "item" : "591",
+        "count" : "784"
+      }, {
+        "item" : "592",
+        "count" : "779"
+      }, {
+        "item" : "597",
+        "count" : "778"
+      }, {
+        "item" : "581",
+        "count" : "777"
+      }, {
+        "item" : "590",
+        "count" : "773"
+      }, {
+        "item" : "593",
+        "count" : "766"
+      }, {
+        "item" : "587",
+        "count" : "753"
+      }, {
+        "item" : "575",
+        "count" : "753"
+      }, {
+        "item" : "578",
+        "count" : "751"
+      }, {
+        "item" : "579",
+        "count" : "750"
+      } ],
+      "smallest" : "10",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077445,
+    "name" : "gnd_min_m",
+    "dataTypeName" : "text",
+    "description" : "summary statistic: zonal minimum ground surface height, NAVD 1988 meters",
+    "fieldName" : "gnd_min_m",
+    "position" : 37,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731621,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "99.989999999999995",
+      "null" : "0",
+      "top" : [ {
+        "item" : "3.5099999999999998",
+        "count" : "40"
+      }, {
+        "item" : "3.46",
+        "count" : "35"
+      }, {
+        "item" : "3.48",
+        "count" : "35"
+      }, {
+        "item" : "3.4500000000000002",
+        "count" : "34"
+      }, {
+        "item" : "61.630000000000003",
+        "count" : "33"
+      }, {
+        "item" : "46.450000000000003",
+        "count" : "33"
+      }, {
+        "item" : "46.799999999999997",
+        "count" : "33"
+      }, {
+        "item" : "57.170000000000002",
+        "count" : "33"
+      }, {
+        "item" : "8.1400000000000006",
+        "count" : "32"
+      }, {
+        "item" : "55.049999999999997",
+        "count" : "32"
+      }, {
+        "item" : "59.68",
+        "count" : "32"
+      }, {
+        "item" : "53.960000000000001",
+        "count" : "31"
+      }, {
+        "item" : "11.65",
+        "count" : "31"
+      }, {
+        "item" : "3.6099999999999999",
+        "count" : "31"
+      }, {
+        "item" : "3.5299999999999998",
+        "count" : "31"
+      }, {
+        "item" : "41.049999999999997",
+        "count" : "31"
+      }, {
+        "item" : "3.5699999999999998",
+        "count" : "31"
+      }, {
+        "item" : "46.020000000000003",
+        "count" : "30"
+      }, {
+        "item" : "65.769999999999996",
+        "count" : "30"
+      }, {
+        "item" : "3.4300000000000002",
+        "count" : "30"
+      } ],
+      "smallest" : "0.17000000000000001",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : {
+      "align" : "right"
+    }
+  }, {
+    "id" : 591077446,
+    "name" : "median_1st_m",
+    "dataTypeName" : "text",
+    "description" : "summary statistic: zonal median first return surface height, NAVD 1988 meters",
+    "fieldName" : "median_1st_m",
+    "position" : 38,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731646,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "99.989999999999995",
+      "null" : "0",
+      "top" : [ {
+        "item" : "46.649999999999999",
+        "count" : "33"
+      }, {
+        "item" : "25.870000000000001",
+        "count" : "32"
+      }, {
+        "item" : "77.290000000000006",
+        "count" : "31"
+      }, {
+        "item" : "67.329999999999998",
+        "count" : "30"
+      }, {
+        "item" : "14.24",
+        "count" : "30"
+      }, {
+        "item" : "21.66",
+        "count" : "30"
+      }, {
+        "item" : "67.629999999999995",
+        "count" : "30"
+      }, {
+        "item" : "72.689999999999998",
+        "count" : "30"
+      }, {
+        "item" : "22.68",
+        "count" : "29"
+      }, {
+        "item" : "46.259999999999998",
+        "count" : "29"
+      }, {
+        "item" : "64.040000000000006",
+        "count" : "29"
+      }, {
+        "item" : "51.020000000000003",
+        "count" : "29"
+      }, {
+        "item" : "71.930000000000007",
+        "count" : "29"
+      }, {
+        "item" : "55.990000000000002",
+        "count" : "29"
+      }, {
+        "item" : "77.569999999999993",
+        "count" : "29"
+      }, {
+        "item" : "84.579999999999998",
+        "count" : "29"
+      }, {
+        "item" : "49.899999999999999",
+        "count" : "29"
+      }, {
+        "item" : "68.590000000000003",
+        "count" : "29"
+      }, {
+        "item" : "66.709999999999994",
+        "count" : "29"
+      }, {
+        "item" : "52.649999999999999",
+        "count" : "29"
+      } ],
+      "smallest" : "-0.58999999999999997",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : {
+      "align" : "right"
+    }
+  }, {
+    "id" : 591077447,
+    "name" : "hgt_median_m",
+    "dataTypeName" : "text",
+    "description" : "summary statistic: zonal median height surface value, meters ",
+    "fieldName" : "hgt_median_m",
+    "position" : 39,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731658,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "9.9900000000000002",
+      "null" : "0",
+      "top" : [ {
+        "item" : "5.8300000000000001",
+        "count" : "868"
+      }, {
+        "item" : "5.8600000000000003",
+        "count" : "834"
+      }, {
+        "item" : "5.8499999999999996",
+        "count" : "814"
+      }, {
+        "item" : "5.9400000000000004",
+        "count" : "810"
+      }, {
+        "item" : "5.8899999999999997",
+        "count" : "809"
+      }, {
+        "item" : "5.8399999999999999",
+        "count" : "799"
+      }, {
+        "item" : "5.8799999999999999",
+        "count" : "799"
+      }, {
+        "item" : "5.9500000000000002",
+        "count" : "795"
+      }, {
+        "item" : "5.8200000000000003",
+        "count" : "793"
+      }, {
+        "item" : "5.7699999999999996",
+        "count" : "786"
+      }, {
+        "item" : "5.9100000000000001",
+        "count" : "784"
+      }, {
+        "item" : "5.9199999999999999",
+        "count" : "779"
+      }, {
+        "item" : "5.9699999999999998",
+        "count" : "778"
+      }, {
+        "item" : "5.8099999999999996",
+        "count" : "777"
+      }, {
+        "item" : "5.9000000000000004",
+        "count" : "773"
+      }, {
+        "item" : "5.9299999999999997",
+        "count" : "766"
+      }, {
+        "item" : "5.8700000000000001",
+        "count" : "753"
+      }, {
+        "item" : "5.75",
+        "count" : "753"
+      }, {
+        "item" : "5.7800000000000002",
+        "count" : "751"
+      }, {
+        "item" : "5.79",
+        "count" : "750"
+      } ],
+      "smallest" : "0.02",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : {
+      "align" : "right"
+    }
+  }, {
+    "id" : 591077448,
+    "name" : "gnd1st_delta",
+    "dataTypeName" : "text",
+    "description" : "summary statistic: discrete difference of (median first return surface -- minimum bare earth surface) for the building's zone, meters",
+    "fieldName" : "gnd1st_delta",
+    "position" : 40,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731642,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "99.980000000000004",
+      "null" : "0",
+      "top" : [ {
+        "item" : "6.1200000000000001",
+        "count" : "636"
+      }, {
+        "item" : "6.1600000000000001",
+        "count" : "628"
+      }, {
+        "item" : "6.0599999999999996",
+        "count" : "622"
+      }, {
+        "item" : "6.1799999999999997",
+        "count" : "620"
+      }, {
+        "item" : "6.2199999999999998",
+        "count" : "620"
+      }, {
+        "item" : "6.1100000000000003",
+        "count" : "612"
+      }, {
+        "item" : "6.1699999999999999",
+        "count" : "611"
+      }, {
+        "item" : "6.1399999999999997",
+        "count" : "606"
+      }, {
+        "item" : "6.1299999999999999",
+        "count" : "605"
+      }, {
+        "item" : "6.0899999999999999",
+        "count" : "603"
+      }, {
+        "item" : "6.2300000000000004",
+        "count" : "600"
+      }, {
+        "item" : "6.25",
+        "count" : "594"
+      }, {
+        "item" : "6.2999999999999998",
+        "count" : "590"
+      }, {
+        "item" : "6.0800000000000001",
+        "count" : "587"
+      }, {
+        "item" : "6.21",
+        "count" : "585"
+      }, {
+        "item" : "6.3099999999999996",
+        "count" : "584"
+      }, {
+        "item" : "6.1500000000000004",
+        "count" : "581"
+      }, {
+        "item" : "6.3200000000000003",
+        "count" : "577"
+      }, {
+        "item" : "6.0999999999999996",
+        "count" : "577"
+      }, {
+        "item" : "6.0700000000000003",
+        "count" : "576"
+      } ],
+      "smallest" : "0.050000000000000003",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : {
+      "align" : "right"
+    }
+  }, {
+    "id" : 591077449,
+    "name" : "peak_1st_m",
+    "dataTypeName" : "text",
+    "description" : "summary statistic: highest cell value of first return surface in the building's zone, NAVD 1988 meters",
+    "fieldName" : "peak_1st_m",
+    "position" : 41,
+    "renderTypeName" : "text",
+    "tableColumnId" : 108731638,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "99.989999999999995",
+      "null" : "0",
+      "top" : [ {
+        "item" : "69.329999999999998",
+        "count" : "32"
+      }, {
+        "item" : "66.75",
+        "count" : "32"
+      }, {
+        "item" : "65.359999999999999",
+        "count" : "31"
+      }, {
+        "item" : "69",
+        "count" : "31"
+      }, {
+        "item" : "32.890000000000001",
+        "count" : "30"
+      }, {
+        "item" : "80.120000000000005",
+        "count" : "30"
+      }, {
+        "item" : "53.159999999999997",
+        "count" : "30"
+      }, {
+        "item" : "62.939999999999998",
+        "count" : "30"
+      }, {
+        "item" : "54.789999999999999",
+        "count" : "30"
+      }, {
+        "item" : "81.989999999999995",
+        "count" : "30"
+      }, {
+        "item" : "66.469999999999999",
+        "count" : "30"
+      }, {
+        "item" : "70.390000000000001",
+        "count" : "30"
+      }, {
+        "item" : "77.819999999999993",
+        "count" : "30"
+      }, {
+        "item" : "68.159999999999997",
+        "count" : "30"
+      }, {
+        "item" : "57.100000000000001",
+        "count" : "29"
+      }, {
+        "item" : "59.280000000000001",
+        "count" : "29"
+      }, {
+        "item" : "72.400000000000006",
+        "count" : "29"
+      }, {
+        "item" : "69.370000000000005",
+        "count" : "29"
+      }, {
+        "item" : "78.170000000000002",
+        "count" : "29"
+      }, {
+        "item" : "81.299999999999997",
+        "count" : "29"
+      } ],
+      "smallest" : "10",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : {
+      "align" : "right"
+    }
+  }, {
+    "id" : 591077450,
+    "name" : "globalid",
+    "dataTypeName" : "text",
+    "description" : "Global Identifier",
+    "fieldName" : "globalid",
+    "position" : 42,
+    "renderTypeName" : "text",
+    "tableColumnId" : 70584278,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "{FFFFEBD3-C15E-402E-AC04-14A9363F3CC0}",
+      "null" : "0",
+      "top" : [ {
+        "item" : "{988FDE59-B212-44BC-B9E4-B6A0D419411D}",
+        "count" : "1"
+      }, {
+        "item" : "{F94ADFCC-8DF7-465B-B798-CCC7B4CAFBAA}",
+        "count" : "1"
+      }, {
+        "item" : "{8D7FCEF9-A7EE-40E4-BE14-B6597DAE5153}",
+        "count" : "1"
+      }, {
+        "item" : "{DF93E3C3-0869-485D-86F0-8845E84F0C44}",
+        "count" : "1"
+      }, {
+        "item" : "{B38A02B9-CD30-4E30-89BB-5987AA856F8D}",
+        "count" : "1"
+      }, {
+        "item" : "{63D90018-2A2D-4B94-ABDB-5DEB99656F0C}",
+        "count" : "1"
+      }, {
+        "item" : "{8A4F8C23-6BB7-44C3-9AB1-9CFBD3A278C8}",
+        "count" : "1"
+      }, {
+        "item" : "{68DD621F-257E-4328-9F81-2247E5A92DEF}",
+        "count" : "1"
+      }, {
+        "item" : "{5931B60D-5DF6-47CB-9E0B-B13219CDE4BE}",
+        "count" : "1"
+      }, {
+        "item" : "{8C313412-4339-4A12-950C-AE4B8CFDC0E2}",
+        "count" : "1"
+      }, {
+        "item" : "{AD29A9E1-DC55-4DF0-9AF0-F045F5FB0EDC}",
+        "count" : "1"
+      }, {
+        "item" : "{C3A17A00-0E51-4072-98FB-539D8CD23A1A}",
+        "count" : "1"
+      }, {
+        "item" : "{241CA793-D46E-41D3-8818-88A04C67B577}",
+        "count" : "1"
+      }, {
+        "item" : "{7461D212-76B2-48DC-B211-55063955DA48}",
+        "count" : "1"
+      }, {
+        "item" : "{C110D2C5-0024-4720-A717-484679623005}",
+        "count" : "1"
+      }, {
+        "item" : "{D1B599AB-DF3F-4386-A7E5-F51AFC6B9D24}",
+        "count" : "1"
+      }, {
+        "item" : "{5F3DCA7E-6568-467F-B6A2-FB41B9623762}",
+        "count" : "1"
+      }, {
+        "item" : "{1F5DA73A-90DC-4638-B595-E7CA62B296E4}",
+        "count" : "1"
+      }, {
+        "item" : "{201DC21B-C457-489C-BDC3-3F34310E7140}",
+        "count" : "1"
+      }, {
+        "item" : "{D69E7F68-803B-4DEF-861A-1D98D4CBEF08}",
+        "count" : "1"
+      } ],
+      "smallest" : "{00003B3F-75C5-442F-968D-4D790C3F418A}",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077451,
+    "name" : "shape",
+    "dataTypeName" : "multipolygon",
+    "description" : "Multi-Polygon geography",
+    "fieldName" : "shape",
+    "position" : 43,
+    "renderTypeName" : "multipolygon",
+    "tableColumnId" : 70584263,
+    "format" : { }
+  }, {
+    "id" : 591077453,
+    "name" : "data_as_of",
+    "dataTypeName" : "calendar_date",
+    "description" : "Timestamp the data was updated in the source system",
+    "fieldName" : "data_as_of",
+    "position" : 44,
+    "renderTypeName" : "calendar_date",
+    "tableColumnId" : 151987758,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "2023-09-11T12:00:00.000",
+      "null" : "0",
+      "top" : [ {
+        "item" : "2023-09-11T12:00:00.000",
+        "count" : "177023"
+      } ],
+      "smallest" : "2023-09-11T12:00:00.000",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : {
+      "view" : "date_ymd_time"
+    }
+  }, {
+    "id" : 591077452,
+    "name" : "data_loaded_at",
+    "dataTypeName" : "calendar_date",
+    "description" : "Timestamp the data was loaded to the open data portal",
+    "fieldName" : "data_loaded_at",
+    "position" : 45,
+    "renderTypeName" : "calendar_date",
+    "tableColumnId" : 151987757,
+    "cachedContents" : {
+      "non_null" : "177023",
+      "largest" : "2026-10-18T10:21:11.620",
+      "null" : "0",
+      "top" : [ {
+        "item" : "2026-10-18T10:21:11.620",
+        "count" : "177023"
+      } ],
+      "smallest" : "2026-10-18T10:21:11.620",
+      "count" : "177023",
+      "cardinality" : "177023"
+    },
+    "format" : {
+      "view" : "date_ymd_time"
+    }
+  } ],
+  "grants" : [ {
+    "inherited" : false,
+    "type" : "viewer",
+    "flags" : [ "public" ]
+  } ],
+  "license" : {
+    "name" : "Open Data Commons Public Domain Dedication and License",
+    "termsLink" : "http://opendatacommons.org/licenses/pddl/1.0/"
+  },
+  "metadata" : {
+    "attachments" : [ {
+      "filename" : "SF_BldgFoot_2017-05_description.pdf",
+      "assetId" : "e6e73cd0-15be-47a8-9463-9c9a725b72c3",
+      "name" : "SF_BldgFoot_2017-05_description.pdf"
+    } ],
+    "custom_fields" : {
+      "Geospatial API Pre-release" : {
+        "Enabled" : "true"
+      },
+      "Department Metrics" : {
+        "Publishing Department" : "Technology"
+      },
+      "Internal Management" : {
+        "Inventory ID" : "TIS-0006"
+      },
+      "Detailed Descriptive" : {
+        "Geographic unit" : "Other"
+      },
+      "Publishing Details" : {
+        "Data change frequency" : "As needed",
+        "Program link" : "",
+        "Publishing frequency" : "Daily",
+        "Geographic unit" : ""
+      }
+    },
+    "rowIdentifier" : 591077409,
+    "rowLabel" : "Building Footprint",
+    "availableDisplayTypes" : [ "table", "fatrow", "page" ],
+    "renderTypeConfig" : {
+      "visible" : {
+        "table" : true
+      }
+    }
+  },
+  "owner" : {
+    "id" : "dbag-6qd9",
+    "displayName" : "OpenData",
+    "screenName" : "OpenData",
+    "type" : "interactive",
+    "flags" : [ "acceptedEula" ]
+  },
+  "query" : { },
+  "rights" : [ "read" ],
+  "tableAuthor" : {
+    "id" : "dbag-6qd9",
+    "displayName" : "OpenData",
+    "screenName" : "OpenData",
+    "type" : "interactive",
+    "flags" : [ "acceptedEula" ]
+  },
+  "tags" : [ "building" ],
+  "flags" : [ "default", "federated", "internalToPublicFederatedView", "ownerMayBeContacted", "restorable", "restorePossibleForType" ]
+}

@@ -1,0 +1,47 @@
+{
+  "at": "2026-10-18T21:36:34.684708+00:00",
+  "source": {
+    "version": "0.8.0",
+    "fingerprint": "a484f9582e02914db945bc29823a67a42d306cf1f54ece1b1b90ef389477550c"
+  },
+  "nodeTests": {
+    "total": 59,
+    "passed": 59,
+    "failed": 0
+  },
+  "syntax": "pass",
+  "browser": {
+    "version": "155.0.8059.84",
+    "suite": "complete pass",
+    "isolatedServer": true
+  },
+  "supplementalWidths": [
+    320,
+    390,
+    1440
+  ],
+  "review": {
+    "provider": "native Claude CLI through installed Kibitz",
+    "modelRequested": "claude-opus-5-5",
+    "effort": "high",
+    "rc": 0,
+    "actualPrompts": 1,
+    "sha256": "c3c0548b3563f3ce21cd6c4ceb1aaed992de56f268a914f915b5bfa0a1f4e139",
+    "usagePercent": "not exposed",
+    "cost": "not exposed"
+  },
+  "noReviewerSourceDrift": true,
+  "inputSHA256": "6aad3d868aa8cb65738b8f37220cbe665573305db855d9d6ccc9f354b3eb3987",
+  "manualReportSHA256": "3c6548df658ca822e91e1039e1c36a388c306ed1c2a56f513733d51c9267dae8",
+  "precedingReviewSHA256": "071a1f1dabb67f69af48d7705bd58719ae0b59a73e2d31e578dd8f837ac69154",
+  "finalManifestSHA256": "aaceb0064c774e19958a86d190ada8c7263a7d4626d057b301b5f183b5aaec58",
+  "roundsNotRun": [
+    "r1",
+    "r2",
+    "r4"
+  ],
+  "fullGameComplete": false,
+  "next": "M3 playable hosting project from posted programme; remaining roadmap preserved",
+  "limits": "Rules-generated supplemental fixtures and automated Chrome touch emulation, not physical device, full screen reader, human pacing/current streetscape survey or final music/rights acceptance.",
+  "livePreviewMatches": true
+}

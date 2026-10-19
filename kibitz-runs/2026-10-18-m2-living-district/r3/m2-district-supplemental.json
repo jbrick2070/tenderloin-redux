@@ -1,0 +1,43 @@
+{
+  "source": {
+    "version": "0.7.0",
+    "fingerprint": "bb97b81604bd416ca2805d1b8e0d7e220dd76ef59a5fa43206193fab27a6661f"
+  },
+  "evidence": [
+    {
+      "width": 320,
+      "before": "97807c1b1812b1220e09c20688a0198d4480f8e213be57fb48f6d944a77db2e1",
+      "on": "b6065cd5ca5049118a20510bbe2af84ce9746cf7f6e96ff85dced62ddda86633",
+      "after": "97807c1b1812b1220e09c20688a0198d4480f8e213be57fb48f6d944a77db2e1",
+      "exactCanvasRestoration": true,
+      "viewAndSaveUnchanged": true,
+      "noOverflow": true,
+      "noExternalRuntimeRequests": true,
+      "pageErrors": []
+    },
+    {
+      "width": 390,
+      "before": "5dc198dd5604f90dbe21d5d748f679502c312a7268582c3002a1c5cdad30035e",
+      "on": "4ddec29492a2f7d3ab2aaa6c5b5af91bea719ee1bb0504e39741bfa8cb516157",
+      "after": "5dc198dd5604f90dbe21d5d748f679502c312a7268582c3002a1c5cdad30035e",
+      "exactCanvasRestoration": true,
+      "viewAndSaveUnchanged": true,
+      "noOverflow": true,
+      "noExternalRuntimeRequests": true,
+      "pageErrors": []
+    },
+    {
+      "width": 1440,
+      "before": "9a58092a7492f8639c8b48e6eee97c57b466fabd6f91d312927e0e5e35f2865a",
+      "on": "63a4532389b5464c87f37ba581b4a07f0ef6aa9a8fac6d789018eb5abb507175",
+      "after": "9a58092a7492f8639c8b48e6eee97c57b466fabd6f91d312927e0e5e35f2865a",
+      "exactCanvasRestoration": true,
+      "viewAndSaveUnchanged": true,
+      "noOverflow": true,
+      "noExternalRuntimeRequests": true,
+      "pageErrors": []
+    }
+  ],
+  "at": "2026-10-18T21:08:58.339Z",
+  "limits": "Headless Chrome responsive checks; not physical-device, screen-reader, human-pacing or current streetscape survey."
+}

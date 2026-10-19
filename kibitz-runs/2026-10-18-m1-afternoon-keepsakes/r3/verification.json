@@ -1,0 +1,96 @@
+{
+  "completedAt": "2026-10-18T18:13:00.839Z",
+  "unitTests": {
+    "passed": 21,
+    "failed": 0
+  },
+  "syntax": "pass",
+  "browser": {
+    "testedAt": "2026-10-18T18:11:17.398Z",
+    "browser": "155.0.8059.84",
+    "source": {
+      "version": "0.2.0",
+      "fingerprint": "6efb8e6c769ff2f9f891245ef076678712b73d9f69fd23d24f6cab816abfe8fe"
+    },
+    "isolatedServer": true,
+    "evidence": [
+      {
+        "layout": "table",
+        "completion": "pass",
+        "saveReload": "pass",
+        "blockedRoute": "pass",
+        "keyboardMovement": "pass",
+        "eKeyInteraction": "pass",
+        "enterGridPlacementAndFocus": "pass",
+        "audioToggle": "pass",
+        "movementAfterAudioButton": "pass",
+        "pageErrors": []
+      },
+      {
+        "epilogue": "table",
+        "photo": "consent subset, local SVG export and frozen snapshot pass",
+        "returnLoans": "all three, arbitrary order",
+        "partialLapReload": "pass",
+        "completedCorePreserved": "pass",
+        "completedLayoutMarkerGuard": "before and after packing pass",
+        "modalTransitionFocus": "pass",
+        "postPackingDezDialogue": "pass",
+        "narrowEnding": "desktop plus 390px keepsake view"
+      },
+      {
+        "layout": "floor",
+        "completion": "pass",
+        "saveReload": "pass",
+        "blockedRoute": "pass",
+        "keyboardMovement": "pass",
+        "eKeyInteraction": "pass",
+        "enterGridPlacementAndFocus": "pass",
+        "audioToggle": "pass",
+        "movementAfterAudioButton": "pass",
+        "pageErrors": []
+      },
+      {
+        "epilogue": "floor",
+        "photo": "skipped without penalty; narrow consent dialog can be revisited and deferred",
+        "returnLoans": "all three, arbitrary order",
+        "partialLapReload": "pass",
+        "completedCorePreserved": "pass",
+        "completedLayoutMarkerGuard": "before and after packing pass",
+        "modalTransitionFocus": "pass",
+        "postPackingDezDialogue": "pass",
+        "narrowEnding": "390px no overflow"
+      },
+      {
+        "mobile390": "no horizontal overflow",
+        "touchInteractionPrompt": "pass",
+        "touchLayout": "pass",
+        "restartCancellation": "pass",
+        "corruptSaveRecovery": "pass"
+      },
+      {
+        "failedMapLoadRestart": "pass",
+        "unhandledPageErrors": []
+      },
+      {
+        "nullSettingsPreserveSaveAvailability": "pass"
+      },
+      {
+        "partialLayoutResumeSelectsMissingSupply": "pass",
+        "partialMuralResumeSelectsMissingMotif": "pass"
+      }
+    ],
+    "staticRootIsolation": "pass",
+    "limits": "Automated Chrome checks; not a full keyboard-only completion audit, human playtest, screen reader audit, audible musical-quality assessment or surveyed street verification."
+  },
+  "livePreviewMatches": true,
+  "manualReportUnchanged": true,
+  "review": {
+    "calls": 1,
+    "modelRequested": "Gemini 4 Argon (High)",
+    "lane": "antigravity",
+    "exitCode": 0,
+    "reportSha256": "a716773619cc753d8cba595399e0e31da5992d3c5c1750ff9a7158b2be0c1a00",
+    "creditSpend": "not exposed"
+  },
+  "limits": "No human playtest, screen-reader audit, final jazz or new geographic survey. M1 and full game remain unfinished."
+}

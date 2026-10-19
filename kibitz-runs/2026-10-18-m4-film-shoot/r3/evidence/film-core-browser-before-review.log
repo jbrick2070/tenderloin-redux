@@ -1,0 +1,202 @@
+
+> tenderloin-redux@0.12.0 test:browser
+> node tests/browser-smoke.mjs
+
+[
+  {
+    "layout": "table",
+    "completion": "pass",
+    "saveReload": "pass",
+    "blockedRoute": "pass",
+    "keyboardMovement": "pass",
+    "eKeyInteraction": "pass",
+    "enterGridPlacementAndFocus": "pass",
+    "audioToggle": "pass",
+    "movementAfterAudioButton": "pass",
+    "pageErrors": []
+  },
+  {
+    "gatheringPlan": "table",
+    "packing": false,
+    "remainingSupplies": 3,
+    "visitors": 3,
+    "svgDecode": "pass",
+    "readOnlySnapshot": "pass",
+    "dialogFocus": "pass",
+    "viewportOverflow": "none"
+  },
+  {
+    "gatheringPlan": "table",
+    "packing": true,
+    "remainingSupplies": 2,
+    "visitors": 0,
+    "svgDecode": "pass",
+    "readOnlySnapshot": "pass",
+    "dialogFocus": "pass",
+    "viewportOverflow": "none"
+  },
+  {
+    "gatheringPlan": "table",
+    "packing": true,
+    "remainingSupplies": 0,
+    "visitors": 0,
+    "svgDecode": "pass",
+    "readOnlySnapshot": "pass",
+    "dialogFocus": "pass",
+    "viewportOverflow": "none"
+  },
+  {
+    "epilogue": "table",
+    "photo": "consent subset, local SVG export and frozen snapshot pass",
+    "returnLoans": "all three, arbitrary order",
+    "partialLapReload": "pass",
+    "completedCorePreserved": "pass",
+    "completedLayoutMarkerGuard": "before and after packing pass",
+    "modalTransitionFocus": "pass",
+    "postPackingDezDialogue": "pass",
+    "narrowEnding": "desktop plus 390px keepsake view"
+  },
+  {
+    "programme": "table",
+    "draftAndPublishedReload": "pass; partial draft preserves prior poster/responses",
+    "quietIntervalConstraint": "blocked order, keyboard reorder, successful post",
+    "revision": "stories-first replaces posted order; core/keepsake/optional unchanged",
+    "visibleWorldBoard": "backing-store hash changed on publication",
+    "neighbourDialogue": "actual walk to Dez uses published snapshot",
+    "responsive": "1440px no horizontal/modal overflow"
+  },
+  {
+    "hosting": "table",
+    "width": 1440,
+    "order": [
+      "stories",
+      "beats",
+      "pause",
+      "art"
+    ],
+    "completionAndReload": "four activities, no forced performance, saved art draft/palette and result memory",
+    "isolation": "first preparations/ending/keepsake/optional/history retained; later programme does not rewrite event",
+    "keyboardFocus": "Enter edits, Escape/x/explicit close return to event entry; visible controls/headings",
+    "neighbourResponse": "Celeste remembers the completed cool panel in actual walk-to conversation"
+  },
+  {
+    "layout": "floor",
+    "completion": "pass",
+    "saveReload": "pass",
+    "blockedRoute": "pass",
+    "keyboardMovement": "pass",
+    "eKeyInteraction": "pass",
+    "enterGridPlacementAndFocus": "pass",
+    "audioToggle": "pass",
+    "movementAfterAudioButton": "pass",
+    "pageErrors": []
+  },
+  {
+    "gatheringPlan": "floor",
+    "packing": false,
+    "remainingSupplies": 3,
+    "visitors": 3,
+    "svgDecode": "pass",
+    "readOnlySnapshot": "pass",
+    "dialogFocus": "pass",
+    "viewportOverflow": "none"
+  },
+  {
+    "gatheringPlan": "floor",
+    "packing": true,
+    "remainingSupplies": 2,
+    "visitors": 0,
+    "svgDecode": "pass",
+    "readOnlySnapshot": "pass",
+    "dialogFocus": "pass",
+    "viewportOverflow": "none"
+  },
+  {
+    "gatheringPlan": "floor",
+    "packing": true,
+    "remainingSupplies": 0,
+    "visitors": 0,
+    "svgDecode": "pass",
+    "readOnlySnapshot": "pass",
+    "dialogFocus": "pass",
+    "viewportOverflow": "none"
+  },
+  {
+    "epilogue": "floor",
+    "photo": "skipped without penalty; narrow consent dialog can be revisited and deferred",
+    "returnLoans": "all three, arbitrary order",
+    "partialLapReload": "pass",
+    "completedCorePreserved": "pass",
+    "completedLayoutMarkerGuard": "before and after packing pass",
+    "modalTransitionFocus": "pass",
+    "postPackingDezDialogue": "pass",
+    "narrowEnding": "390px no overflow"
+  },
+  {
+    "programme": "floor",
+    "draftAndPublishedReload": "pass; partial draft preserves prior poster/responses",
+    "quietIntervalConstraint": "blocked order, keyboard reorder, successful post",
+    "revision": "stories-first replaces posted order; core/keepsake/optional unchanged",
+    "visibleWorldBoard": "backing-store hash changed on publication",
+    "neighbourDialogue": "actual walk to Dez uses published snapshot",
+    "responsive": "390px no horizontal/modal overflow"
+  },
+  {
+    "hosting": "floor",
+    "width": 390,
+    "order": [
+      "art",
+      "stories",
+      "beats",
+      "pause"
+    ],
+    "completionAndReload": "four activities, no forced performance, saved art draft/palette and result memory",
+    "isolation": "first preparations/ending/keepsake/optional/history retained; later programme does not rewrite event",
+    "keyboardFocus": "Enter edits, Escape/x/explicit close return to event entry; visible controls/headings",
+    "neighbourResponse": "Celeste remembers the completed cool panel in actual walk-to conversation"
+  },
+  {
+    "hostingWithPendingLoans": "actual opening, start new event before packing, real double-click and replacement detail2 do not skip; pack and return table/paint case during quiet interval, original actions/headline stay reachable, resume and finish without returning speaker"
+  },
+  {
+    "mobileNavigation": "close view, zoom, full block, follow, mouse/touch drag without movement, multi-touch and cancelled touch suppression, five named neighbor buttons, keyboard route selection, stop, arrival dialog focus pass",
+    "pageErrors": []
+  },
+  {
+    "localSoundtrack": "native WAV decode/play position, pause, volume, safe filename, file validation, corrupt-audio recovery, replacement, synth fallback, focus and reload without autoplay pass",
+    "audioFixture": "synthetic quiet tone, not final music or Suno quality evidence"
+  },
+  {
+    "historyWalk": "real-control westward route, cancel/reselect, arrival note, tappable close-view label, source links, optional state isolation, v1 discovery/player reload, saved-note reread, actual return to Bea, opening overview and phone overflow pass"
+  },
+  {
+    "livingDistrict": "source note, real canvas change, bit-identical off/on/off, focus, snapshot/save isolation, journal access and reload off pass"
+  },
+  {
+    "mobile390": "no horizontal overflow",
+    "touchInteractionPrompt": "pass",
+    "touchLayout": "pass",
+    "restartCancellation": "pass",
+    "corruptSaveRecovery": "pass"
+  },
+  {
+    "desktopWesternSave": "World/init follows saved player, E opens note, whole-route cancel announces stop, route-overview chip walks to note"
+  },
+  {
+    "syntheticMissingWestRoute": "failed route closes modal and exposes visible feedback; synthetic incomplete QA data, not the shipped street network"
+  },
+  {
+    "cityLayerFailure": "malformed data rejected, one explicit retry succeeds, error reopening does not refetch, focused Retry removal returns to heading, 320px no overflow, late response cannot replace neighbor dialog/focus or enable layer, aborted city request leaves core playable; stalled request times out and exposes Retry"
+  },
+  {
+    "failedMapLoadRestart": "pass",
+    "unhandledPageErrors": []
+  },
+  {
+    "nullSettingsPreserveSaveAvailability": "pass"
+  },
+  {
+    "partialLayoutResumeSelectsMissingSupply": "pass",
+    "partialMuralResumeSelectsMissingMotif": "pass"
+  }
+]

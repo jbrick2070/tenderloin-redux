@@ -1,0 +1,62 @@
+{
+  "source": {
+    "version": "0.5.0",
+    "fingerprint": "81219a128e31d98da4385471f7955e7fae829635c5528b7b4f31327e22832c76"
+  },
+  "views": [
+    {
+      "layout": "table",
+      "width": 320,
+      "svgDecoded": true,
+      "noOverflow": true,
+      "reducedMotionCanvasStable": true,
+      "captionMargin": "8px"
+    },
+    {
+      "layout": "table",
+      "width": 390,
+      "svgDecoded": true,
+      "noOverflow": true,
+      "reducedMotionCanvasStable": true,
+      "captionMargin": "8px"
+    },
+    {
+      "layout": "table",
+      "width": 1440,
+      "svgDecoded": true,
+      "noOverflow": true,
+      "reducedMotionCanvasStable": true,
+      "captionMargin": "8px"
+    },
+    {
+      "layout": "floor",
+      "width": 320,
+      "svgDecoded": true,
+      "noOverflow": true,
+      "reducedMotionCanvasStable": true,
+      "captionMargin": "8px"
+    },
+    {
+      "layout": "floor",
+      "width": 390,
+      "svgDecoded": true,
+      "noOverflow": true,
+      "reducedMotionCanvasStable": true,
+      "captionMargin": "8px"
+    },
+    {
+      "layout": "floor",
+      "width": 1440,
+      "svgDecoded": true,
+      "noOverflow": true,
+      "reducedMotionCanvasStable": true,
+      "captionMargin": "8px"
+    }
+  ],
+  "limits": "Completed fixtures for visual QA; separate full suite uses real controls. No physical device/human pacing certification.",
+  "driverFinalVisualInspection": [
+    "floor plan 320px",
+    "floor world 1440px",
+    "pre-fix table plan 390px and both world branches, then final six-view validation"
+  ]
+}

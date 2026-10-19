@@ -1,0 +1,11 @@
+import { spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync } from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+const cached = path.join(os.homedir(), '.cache/tenderloin-tools/godot-4.7.2/Godot_v4.7.2-stable_win64_console.exe');
+const engine = process.env.GODOT_BIN || (existsSync(cached) ? cached : 'godot');
+const args = process.argv.slice(2);
+if (args.includes('--export-release')) mkdirSync('artifacts/godot-web', { recursive: true });
+const result = spawnSync(engine, args, { stdio: 'inherit', windowsHide: true });
+if (result.error) console.error('Set GODOT_BIN to your Godot 4.7.2 standard executable:', result.error.message);
+process.exitCode = result.status ?? 1;

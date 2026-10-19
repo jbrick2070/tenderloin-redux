@@ -1,0 +1,1 @@
+{"source":{"version":"0.10.0","fingerprint":"b5b88c31516dd354034f94b370af84fd902daeb71c07c54f88cfa3cdd88e08dd"},"browser":"155.0.8059.84","persisted":true,"coreUnchanged":true,"reopenedAndDisabled":true,"errors":[],"configuration":"Only Playwright default --disable-back-forward-cache omitted; actual navigation/pageshow checked, no synthetic event"}

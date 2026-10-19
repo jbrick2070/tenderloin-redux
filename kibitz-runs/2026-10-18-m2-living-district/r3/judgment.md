@@ -1,0 +1,36 @@
+# Grounded driver judgment — Living district
+
+One successful independent native Claude CLI request through installed Kibitz: exact `claude-opus-5-5`, effort `high`, CLI/runner rc0. No other partner prompt this round. Gemini current-pin/catalog check was read-only; the previous implementation round’s actual Gemini attempt had ended without a report at 15 minutes. Native authorized alternative used to avoid blindly repeating that failure. This does not assert Gemini is permanently unavailable or out of quota. Budget profile label medium is overridden by explicit Opus 5.5/high model/effort; actual credits/usage percentage unavailable. No AGY Opus/Astra, r1/r2/r4 or duplicate driver-family lane. Source manifest confirms no app/test/doc edits during reviewer. Raw claude.md/log/model/effort/quota receipts remain unchanged.
+
+## Grounded claims and decisions
+
+- MUST1 CONFIRMED acceptance gate: final full Chrome suite now exits 0 with all new cases and old both-layout/ending/audio/navigation/save checks. Browser/supplemental/live-preview fingerprints match. Driver inspected narrow source note, phone layer/legend and desktop layer.
+- MUST2 CONFIRMED focus defect: initial Retry markup was visible, show() selected it, then districtUI hid it and moved focus to last button. Fixed with hidden initial retry when appropriate, ready-aware toggle markup, generic first-focus selector skipping [hidden], and explicit district heading focus on initial loading, Retry on preserved error, action button on cached ready. Real Retry→loading removal returns to heading, never bottom of long dialog. Native suggested hidden markup alone was INCOMPLETE because show() query had not filtered hidden controls. Browser now asserts these actual states and both-hide return focus.
+- SHOULD1 CONFIRMED missing stalled-load path. Added an AbortController with a 10-second timer, cleared in finally; uses baseline fetch-compatible browser APIs rather than assuming AbortSignal.timeout support. Stalled local request test exposes Retry after the bounded timeout; aborted request still leaves core playable. Closing dialog does not autoenable layer or prevent bounded completion.
+- SHOULD2 CONFIRMED inconsistent hide focus. close(target) and native queued-close handler now honor a connected return target, defaulting to canvas. Both legend-hide and dialog-hide return to Living district nav; queued close no longer overrides target. Existing modal transition/preview/arrival/endings focus suite passes.
+- SHOULD3 CONFIRMED implicit retry-on-reopen. Error now remains until explicit Retry. Initial idle starts load; reopens while loading share promise; ready uses cached geometry. Browser confirms attempt count remains 1 when error dialog is reopened, then explicit retry yields attempt 2.
+- SHOULD4 CONFIRMED paint order. Western street labels now draw after city overlay so the Jones label is not darkened by the boundary. Source projection/road positions unchanged. Narrow/desktop views inspected.
+- SHOULD5 CONFIRMED test description overclaimed mock behavior. Renamed unit test to save/restore bracket. It checks clip/hole/evenodd/input immutability and call bracket, not real browser state restoration. Added polygon-count, ring-count and finite distant-position corruptions. Actual rendered backing-store off/on/off equality is independently verified in Chrome at 320/390/1440.
+- SHOULD6 CONFIRMED manual version sync; package and readonly diagnostics both 0.7.0, caught by actual browser source check. No redundant unit assertion added.
+
+## Optional/cut judgments
+
+- Removed aria-pressed from action that changes Show/Hide label and closes modal; native action label plus DOM legend/status communicates state.
+- Bare catch remains a single explanatory UI/error state. No noisy automatic console logging added for intentionally intercepted QA failures; module validation errors can be reproduced against shipped raw feature with unit tests.
+- Pinned data refresh is manual, not an implemented synchronization service. Source JSON retains exact query/license/source timestamps; README records refresh/reverification requirement. No upstream change autoapplied at runtime.
+- Classic-scrollbar resize hypothesis was UNVERIFIABLE as a general environment claim. Actual target desktop/mobile contexts confirm identical before/after view and backing-store hashes. Do not infer physical Windows/Safari/screen-reader certification.
+- Keep local coordinate-domain guard (CUT1 optional). It catches named but swapped/distant finite coordinates cheaply and has direct regressions. Single feature/name alone does not validate geographic position. No dependency or additional geography representation needed.
+- Other CUT observation CONFIRMED: minimal module/local fetch, no packages, quests, settings, saved flags or containment-based identity/score. No other cuts requested.
+- Wiring confirmations are CONFIRMED by source: shared core.project, world-coordinate clip after camera transform, screen-sized dash/stroke, separate polygons/holes, isolated World view fields, one pending promise, no show() from async completion, generic GeoJSON MIME download compatible with fetch.json, complete public fingerprint coverage and 54 unit tests. Rough hand extents are contextual estimates, not surveyed/legal boundary certification.
+
+## Harness failures preserved and corrected
+
+Initial off/on/off test compared composited locator screenshots that included changing sibling HTML toasts. Node tried formatting differing large PNG buffers and used excessive memory/time before exiting rc1. A guarded stop attempt found the owned root already gone; no unrelated process was stopped. Direct diagnosis retained camera/size/scroll/state and before/shown/after captures: backing-store pixels before/after identical while composited screenshot hashes differed. Changed only QA to SHA256 of canvas.toDataURL() after two animation frames, requiring shown hash differ and off hash match. Hash failure output is bounded. Initial failure and diagnosis remain in ignored artifacts.
+
+A later full-suite attempt sampled existing native WAV position after fixed 180 ms and observed 0. No audio/player implementation changed here. QA now waits up to 5 seconds for actual positive native playback position; still fails if playback does not advance. Final complete suite passes. Initial failure and timing note retained. No final musical-quality claim.
+
+## Accepted evidence and limits
+
+54 Node tests, syntax/diff checks, complete Chrome 155 suite, exact final-source 320/390/1440 checks pass. New cases cover malformed explicit retry, no reopen refetch, heading/action/hide focus, layer/show/reload isolation, late response under Neighbors dialog, network abort, 10-second stall, visual layer change and exact restoration. View/save/optional JSON untouched; no external runtime requests in supplemental checks. Final public fingerprint: `bb97b81604bd416ca2805d1b8e0d7e220dd76ef59a5fa43206193fab27a6661f`. Manual and preceding raw reports preserved.
+
+Current city data snapshot is mapped and sourced; current facades, doors, crossing paint/poles/ramps and permits remain unverified. No full screen-reader/physical-phone/human-pacing/final-score acceptance. M2 partial; next independent implementation is M3 resident-led cultural project. Hourly work continues, full game incomplete.

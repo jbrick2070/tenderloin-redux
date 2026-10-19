@@ -1,0 +1,4 @@
+# Preserve exact bytes of pinned data, vendor sources and historical QA receipts.
+# Source SHA-256 receipts must also survive a Windows checkout with autocrlf.
+* -text
+* whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

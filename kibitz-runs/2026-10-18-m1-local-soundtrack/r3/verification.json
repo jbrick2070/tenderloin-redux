@@ -1,0 +1,29 @@
+{
+  "at": "2026-10-18T18:51:37.012Z",
+  "source": {
+    "version": "0.4.0",
+    "fingerprint": "b84994b02e825c889a94fae39c93d96e88f710186a4e2d1de33049ea4ecffc65"
+  },
+  "tests": {
+    "node": 37,
+    "syntax": "pass",
+    "diff": "pass",
+    "completeChromeSmoke": "pass",
+    "nativeMP3Supplemental": "pass",
+    "visibility": "explicit event simulation only"
+  },
+  "review": {
+    "calls": 1,
+    "model": "Gemini 4 Argon (High)",
+    "rc": 0,
+    "sha256": "570d0de4b87ce62a4d27e83f9ba03bbee2573473a2eae005075aea651a4d3c51",
+    "credits": "not exposed"
+  },
+  "manualReportSHA256": "3c6548df658ca822e91e1039e1c36a388c306ed1c2a56f513733d51c9267dae8",
+  "livePreviewMatches": true,
+  "roundsNotRun": [
+    "r1",
+    "r2",
+    "r4"
+  ]
+}

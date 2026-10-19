@@ -1,0 +1,20 @@
+STDOUT:
+I've written the review to `kibitz-runs/2026-10-18-godot-isometric-block/r3/claude.md`. I changed nothing else in the repo. The tool check passed: every file I cite was read from the repo. I found these problems by reading the code; I did not run any of the tests.
+
+**Verdict: yes-with-fixes.** The building data the build script writes is what the Godot viewer reads, but three viewer defects contradict what the document claims, and the current tests miss all three:
+
+1. **Previous skips a building.** Before anything is selected, the first "Previous" press goes to building 56 instead of 57 (`godot/main.gd:114`). The test only presses Previous after many Next presses, so it never hits this case.
+2. **Zoom can go the wrong way on phones.** The overview fit doesn't limit its zoom level, but the zoom buttons cap it at 400. By my rough estimate the fit at 390 and 320 px wide is about 650–800, so "Zoom out" would actually zoom in. This needs checking by printing the overview's zoom value at those widths.
+3. **A hard-coded link to the browser game.** The "Browser game" button opens `http://127.0.0.1:4173/` (`main.gd:196`), which needs a second server that nothing starts. In the web build it opens a popup on another origin. My understanding (not verified) is that the browser test's zero-external-requests check doesn't see popups, so it would miss this.
+
+There are also nine should-fix items. The main ones:
+- **Overview timing:** the overview may measure the header before its wrapped text is laid out, and it doesn't re-fit when the window is resized.
+- **Overview state:** it leaves the previously selected building highlighted and its label showing.
+- **Keyboard proof:** neither the native test nor the browser test proves that a key press activates a button.
+- **False pass:** the native test can report PASS with exit code 0 after a failure in its last loop.
+- **Street data:** its input isn't hashed and its output isn't tested. Nothing checks the receipt hashes either.
+- **Port and run order:** the server reads `GODOT_PORT` but the browser test ignores it, and the run order isn't in `package.json` or the docs.
+
+I suggest cutting the "Browser game" button and the browser test's Tab/Enter step. That step asserts nothing but records `keyboardAttempted: true` as if it were evidence.
+
+Several Godot connectors (asana, atlassian, datadog, github, linear, notion, pagerduty, slack, Box, Runway) need sign-in before they can be used. I didn't need them for this review. You can authorize them in your claude.ai connector settings, or with `claude mcp` or `/mcp` in an interactive session.

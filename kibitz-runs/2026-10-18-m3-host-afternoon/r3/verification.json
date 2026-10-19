@@ -1,0 +1,47 @@
+{
+  "at": "2026-10-18T22:32:21.546743+00:00",
+  "source": {
+    "version": "0.9.0",
+    "fingerprint": "708df79eb7c8db637403785dbaec6dfd3f1b58bf919131fe08bb9329fa13b790"
+  },
+  "nodeTests": {
+    "total": 68,
+    "passed": 68,
+    "failed": 0
+  },
+  "syntax": "pass",
+  "browser": {
+    "version": "155.0.8059.84",
+    "suite": "complete pass",
+    "isolatedServer": true
+  },
+  "supplementalWidths": [
+    320,
+    390,
+    1440
+  ],
+  "review": {
+    "provider": "native Claude CLI through installed Kibitz",
+    "modelRequested": "claude-opus-5-5",
+    "effort": "high",
+    "rc": 0,
+    "actualPrompts": 1,
+    "sha256": "f4f88c970d1383c8f4a91c63e876ba0450b158622069e67225521fc99606de53",
+    "usagePercent": "not exposed",
+    "cost": "not exposed"
+  },
+  "noReviewerSourceDrift": true,
+  "inputSHA256": "158afb5026e5c061ab56e697b71a8efb605981921f2c6ecc7da0b66c930c1bac",
+  "manualReportSHA256": "3c6548df658ca822e91e1039e1c36a388c306ed1c2a56f513733d51c9267dae8",
+  "precedingReviewSHA256": "c3c0548b3563f3ce21cd6c4ceb1aaed992de56f268a914f915b5bfa0a1f4e139",
+  "finalManifestSHA256": "be9f2e627e770f2c88747032205462b83236768bb1fc02748f81251e3085ace3",
+  "livePreviewMatches": true,
+  "roundsNotRun": [
+    "r1",
+    "r2",
+    "r4"
+  ],
+  "fullGameComplete": false,
+  "next": "M3 dated verified nonprofit context, then M4\u2013M6; preserve M1 human and M2 observation dependencies",
+  "limits": "Automated Chrome touch emulation and rules-generated fixtures, not physical phone, human pacing, full screen reader, real access survey or final music acceptance."
+}
