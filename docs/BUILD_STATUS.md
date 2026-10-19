@@ -2,6 +2,8 @@
 
 Updated 2026-10-18 Pacific / 2026-10-19 UTC. **Creator chose Godot/isometric with city-sourced buildings, then requested an AGY 4 handoff and stopped the hourly builder. Automation `build-tenderloin-redux` is PAUSED**, verified through app tool and saved configuration; do not automatically resume it. The full game remains unfinished. [Handoff](../session_handoff.md), [active approach](GODOT_APPROACH.md).
 
+Latest creator clarification after foundation push `09d0311`: **AGY may run its own hourly scheduler**, keeping Codex paused and one writer. Each implementation turn should get other-model CLI QA when possible: independent Claude Opus5.5/High, then Codex SolHigh; if unavailable, exact available Gemini Flash3.8 subagent is explicitly authorized as a same-family fallback. Retain actual model/QA evidence and honest unreviewed status if no reviewer can run. Detailed policy is in the handoff. This is a documentation-only handoff clarification; no game code changed after the reviewed foundation.
+
 ## Latest checkpoint — Godot measured-building foundation
 
 Separate `godot/` Godot4.7.2 standard/GDScript Compatibility project now renders58 complete city building records around Turk/Taylor/Mason. Actual footprint geometry, multipart rings/courtyards, stableIDs and above-ground median-height metres; original neutral materials, orthographic view, per-building selection/context, responsive44px+ controls, bounded zoom and full-record overview between panels. This is a geography study, **not yet the walking/neighbor/mural/music prototype**. Browser0.12 remains unchanged and playable at4173; Godot Web study at4174. No browser saves read/written or automatic migration promised.
