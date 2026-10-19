@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/tenderloin-redux-banner.jpg" alt="Tenderloin Redux — A Peaceful Neighborhood Adventure · Art · Jazz · Living History" width="100%" />
+</p>
+
 # Tenderloin Redux
 
 A peaceful neighborhood adventure set on an accurate map of San Francisco's Tenderloin. Help neighbors with shared projects, create community art, explore local history, and bring a block together through original jazz and hip-hop.

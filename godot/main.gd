@@ -245,6 +245,9 @@ var speaker_node: Node3D
 var speaker_cone_mesh: MeshInstance3D
 var speaker_beacon_mesh: MeshInstance3D
 var rook_soundcheck_done := false
+var rook_talk_count := 0
+var neighbor_talk_counts: Dictionary = {}
+var last_panel_dialogue := ""
 var visited_neighbors: Dictionary = {}
 var music_panel: PanelContainer
 var music_label: Label
@@ -3270,15 +3273,83 @@ func walk_to_point(goal_xz: Vector2) -> bool:
 	return true
 
 func neighbor_greeting_line(n_id: String) -> String:
+	var turn := posmod(maxi(1, int(neighbor_talk_counts.get(n_id, 1))) - 1, 3)
 	match n_id:
 		"bea":
-			return "Bea: \"Welcome to Turk & Taylor! Greet all 5 neighbors, add 3 mural motifs, and run Rook's soundcheck to open our block.\""
+			if block_opened:
+				match turn:
+					0:
+						return "Bea: \"Look at Turk Street come alive! Let's take a group photo, plan our party schedule, or hold our tenant listening circle.\""
+					1:
+						return "Bea: \"Tap 'Plan Party Schedule' below to line up stories, rhythm, shared art tiles, and a quiet pause for the block.\""
+					_:
+						return "Bea: \"Every neighbor's voice belongs here at Turk & Taylor—have you visited the 1966 Compton's plaque or the Museum Time-Portal on Eddy?\""
+			match turn:
+				0:
+					return "Bea: \"Welcome to Turk & Taylor! Greet all 5 neighbors, add 3 mural motifs, and run Rook's soundcheck to open our block.\""
+				1:
+					return "Bea: \"I've got the signboard ready by my rollator—tap 'Meet Next' below to walk over and chat with everyone on the street!\""
+				_:
+					return "Bea: \"Once all 5 of us have met, Celeste's easel is painted, and Rook's speaker is checked, tap 'Open Block Party!' right below.\""
 		"dez":
-			return "Dez: \"80 BPM pocket is locked in near Mason—use the Block Panel below to visit anyone left or host our afternoon.\""
+			if block_opened:
+				match turn:
+					0:
+						return "Dez: \"The block party is jumping! Tap 'Plan Party Schedule' or 'Shoot Short Film' below to collaborate on our afternoon projects.\""
+					1:
+						return "Dez: \"During the rhythm workshop we can toggle an 8-step beat pattern right from the sidewalk—and playing quiet always counts too.\""
+					_:
+						return "Dez: \"If you stroll up to Dodge Alley or out west to Turk & Hyde, you can feel that classic Tenderloin jazz history in the air.\""
+			match turn:
+				0:
+					return "Dez: \"80 BPM pocket is locked in near Mason—use the conversation actions below to meet anyone left or get our block party rolling!\""
+				1:
+					return "Dez: \"Have you chatted with Rook by the Turk Street speaker yet? Every neighbor you meet and motif you paint unlocks another layer of the groove.\""
+				_:
+					return "Dez: \"Tap 'Soundcheck w/ Rook' or 'Paint w/ Celeste' below, or take a walk west to the Black Hawk jazz site at Hyde Street!\""
 		"thanh":
-			return "Thanh: \"Hot tea and folding stools are stacked on Taylor Street—once all 5 neighbors, mural & soundcheck are ready, tap Open Block!\""
+			if block_opened:
+				match turn:
+					0:
+						return "Thanh: \"Pull up a stool and pour some hot jasmine tea! We can snap a group photo, host the party schedule, or hold our tenant circle.\""
+					1:
+						return "Thanh: \"Whenever the afternoon winds down, tap 'Pack Borrowed Gear' and we'll return the folding table, paint case, and speaker.\""
+					_:
+						return "Thanh: \"I love seeing the sidewalk stay clear for neighbors passing through while we share stories around the long table.\""
+			match turn:
+				0:
+					return "Thanh: \"Hot tea and folding stools are stacked on Taylor Street—once all 5 neighbors, mural & soundcheck are ready, tap Open Block Party!\""
+				1:
+					return "Thanh: \"Celeste has her portable mural easel set up on Turk Street, and Rook is testing the sidewalk monitor just down the block.\""
+				_:
+					return "Thanh: \"Tap any action below to meet the rest of the block—we're keeping the through-route clear for everyone on Taylor and Turk.\""
 		_:
-			return "Opening block checklist below · Press G for Block Panel"
+			return "Choose a conversation topic or neighborhood action below"
+
+func talk_with_neighbor(index: int) -> String:
+	if index < 0 or index >= neighbors.size():
+		return ""
+	if index == celeste_index:
+		return talk_with_celeste()
+	if index == rook_index:
+		return check_sound_with_rook()
+	var n: Dictionary = neighbors[index]
+	var n_id := String(n.get("id", ""))
+	neighbor_talk_counts[n_id] = int(neighbor_talk_counts.get(n_id, 0)) + 1
+	visited_neighbors[n_id] = true
+	browser_import_message = ""
+	last_panel_dialogue = ""
+	recompute_music_stems()
+	update_block_3d()
+	show_block_panel(true)
+	update_block_ui()
+	trigger_progress_cue("neighbor_visit", n.name)
+	var line := neighbor_greeting_line(n_id)
+	var mem_line := neighbor_project_memory_line(n_id)
+	var sub_b := mem_line if not mem_line.is_empty() else ("Talking with %s (%s) · Click %s again or choose an action below" % [n.name, n.role, n.name])
+	info.text = "%s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, sub_b]
+	announce_a11y_status(line if mem_line.is_empty() else ("%s %s" % [line, mem_line]))
+	return line
 
 func finish_neighbor_arrival(index: int) -> void:
 	var n: Dictionary = neighbors[index]
@@ -3304,7 +3375,10 @@ func finish_neighbor_arrival(index: int) -> void:
 	arrived_speaker = false
 	walking_to_history_stop = ""
 	arrived_history_stop = ""
+	last_panel_dialogue = ""
 	var n_id := String(n.get("id", ""))
+	if not n_id.is_empty() and int(neighbor_talk_counts.get(n_id, 0)) == 0:
+		neighbor_talk_counts[n_id] = 1
 	var newly_visited := false
 	if not n_id.is_empty() and not visited_neighbors.has(n_id):
 		visited_neighbors[n_id] = true
@@ -3441,7 +3515,7 @@ func celeste_dialogue_text() -> String:
 		0:
 			return "Celeste: \"Our freestanding easel sits %.1f m clear of the wall—add Sun, Wave, and Rise below.\"" % min_wall_distance(mural_xz())
 		1:
-			return "Celeste: \"Cycle Garden, Sunset, or Ocean, or tap Move tile to shift your active motif on the 6×3 board.\""
+			return "Celeste: \"Cycle Garden, Sunset, or Ocean, or tap Shift Motif to move your active shape on the 6×3 board.\""
 		_:
 			return "Celeste: \"Every motif stays on our portable sidewalk board in its own Godot save—no façade is altered.\""
 
@@ -3449,8 +3523,14 @@ func rook_dialogue_text() -> String:
 	if music_mode == "local" and not local_music_name.is_empty():
 		return "Rook: \"Spinning your local cut (%s) on the Turk Street monitor—tab-local only, never uploaded.\"" % local_music_name
 	if mural_completed:
-		return "Rook: \"Celeste's 3/3 mural unlocked the full 4-stem 80 BPM sketch—hit Play or load a local Suno bounce.\""
-	return "Rook: \"Turk Street speaker is %.1f m clear of the wall—soundcheck locked in (%s).\"" % [min_wall_distance(speaker_xz()), active_stem_summary()]
+		return "Rook: \"Celeste's 3/3 mural unlocked the full 4-stem 80 BPM sketch—hit Play Groove or load a local track.\""
+	match posmod(maxi(1, rook_talk_count) - 1, 3):
+		0:
+			return "Rook: \"Turk Street speaker is %.1f m clear of the wall—soundcheck locked in (%s).\"" % [min_wall_distance(speaker_xz()), active_stem_summary()]
+		1:
+			return "Rook: \"Every neighbor you meet and motif you paint unlocks another stem—from warm bass to brush drums, chords, and lead.\""
+		_:
+			return "Rook: \"You can keep the street totally quiet or hit Play Groove whenever you want—our block party works either way.\""
 
 func focus_mural_camera() -> void:
 	in_overview = false
@@ -3504,6 +3584,7 @@ func talk_with_celeste() -> String:
 	celeste_talk_count += 1
 	visited_neighbors[CELESTE_ID] = true
 	browser_import_message = ""
+	last_panel_dialogue = ""
 	recompute_music_stems()
 	update_block_3d()
 	show_mural_panel(true)
@@ -3535,9 +3616,11 @@ func request_rook_soundcheck() -> bool:
 	return false
 
 func check_sound_with_rook() -> String:
+	rook_talk_count += 1
 	visited_neighbors[ROOK_ID] = true
 	rook_soundcheck_done = true
 	browser_import_message = ""
+	last_panel_dialogue = ""
 	recompute_music_stems()
 	update_speaker_3d()
 	update_block_3d()
@@ -3587,6 +3670,7 @@ func open_block_gathering() -> bool:
 	if not is_block_ready():
 		show_block_panel(true)
 		var missing := get_block_missing_summary()
+		last_panel_dialogue = "Bea: \"Almost ready to open the block party! We just need: %s.\"" % missing
 		info.text = "Turk St block gathering needs: %s\nVisit all 5 neighbors (1–5), place 3/3 mural motifs (M), and soundcheck with Rook (R)\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % missing
 		update_block_ui()
 		announce_a11y_status("Block gathering needs: %s." % missing)
@@ -3594,18 +3678,20 @@ func open_block_gathering() -> bool:
 	if block_opened:
 		show_block_panel(true)
 		focus_block_camera()
+		last_panel_dialogue = "Bea: \"Our Turk Street block party is open! Pick an activity below—photo, schedule, tenant circle, or short film.\""
 		update_block_ui()
 		announce_a11y_status("Block gathering already open.")
 		return true
 	block_opened = true
 	browser_import_message = ""
+	var line := "Bea: \"Everyone's here, Celeste's 3/3 board is glowing, and Rook's speaker is set—our Turk Street block gathering is open!\""
+	last_panel_dialogue = line
 	update_block_3d()
 	show_block_panel(true)
 	focus_block_camera()
 	save_godot_state()
 	trigger_progress_cue("block_opened", "Turk St Gathering")
 	update_block_ui()
-	var line := "Bea: \"Everyone's here, Celeste's 3/3 board is glowing, and Rook's speaker is set—our Turk Street block gathering is open!\""
 	info.text = "%s\nOpening Block Complete (5/5 neighbors · 3/3 mural · Soundcheck ready · Sound-independent)\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % line
 	announce_a11y_status(line)
 	return true
@@ -3738,18 +3824,33 @@ func advance_epilogue_step() -> String:
 	show_block_panel(true)
 	if not block_opened:
 		var msg := "Open the Turk Street block gathering (O) before taking the keepsake photo or returning loans."
+		last_panel_dialogue = "Thanh: \"Let's open the Turk Street block party first (%s)—then we'll take our group photo and pack borrowed gear!\"" % get_block_missing_summary()
+		update_block_ui()
 		info.text = "%s\nVisit all 5 neighbors, complete 3/3 mural motifs, and soundcheck with Rook\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % msg
 		announce_a11y_status(msg)
 		return "locked"
 	if String(keepsake_photo.get("status", "unasked")) == "unasked" and not epilogue_packing:
-		return "photo_taken" if take_keepsake_photo(PHOTO_GUESTS) else "photo_blocked"
+		var ok_ph := take_keepsake_photo(PHOTO_GUESTS)
+		if ok_ph:
+			last_panel_dialogue = "Celeste: \"Group photo snapped by the 3/3 mural! Tap 'Pack Borrowed Gear' whenever we're ready to wrap up.\""
+			update_block_ui()
+		return "photo_taken" if ok_ph else "photo_blocked"
 	if not epilogue_packing:
-		return "packing_started" if start_packing_epilogue() else "packing_blocked"
+		var ok_pk := start_packing_epilogue()
+		if ok_pk:
+			last_panel_dialogue = "Thanh: \"Let's pack up our borrowed gear—tap 'Return Gear' to return the table, paint case, and speaker.\""
+			update_block_ui()
+		return "packing_started" if ok_pk else "packing_blocked"
 	if epilogue_returned.size() < LOAN_IDS.size():
 		var lid := return_next_loan()
+		if not lid.is_empty():
+			last_panel_dialogue = "Thanh: \"Returned %s (%d/3 gear items back home)!\"" % [String(LOAN_TITLES.get(lid, lid)), epilogue_returned.size()]
+			update_block_ui()
 		return ("returned_" + lid) if not lid.is_empty() else "loan_blocked"
 	var kp_status := String(keepsake_photo.get("status", "skipped"))
 	var done_msg := "Afternoon epilogue complete: keepsake %s and 3/3 neighbor loans returned." % kp_status
+	last_panel_dialogue = "Thanh: \"All 3 borrowed items are returned and our afternoon keepsake is %s!\"" % kp_status
+	update_block_ui()
 	var export_hint := " (Shift+Y exports keepsake SVG)" if kp_status == "taken" else ""
 	info.text = "%s\nUse Z to plan & host the Second Afternoon Programme%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [done_msg, export_hint]
 	announce_a11y_status(done_msg)
@@ -4218,6 +4319,8 @@ func advance_programme_and_hosting_step() -> String:
 	show_block_panel(true)
 	if not block_opened:
 		var msg := "Open the Turk Street block gathering (O) before publishing or hosting the Second Afternoon Programme."
+		last_panel_dialogue = "Bea: \"Let's open the Turk Street block party first (%s)—then we'll plan and host our 4 party activities!\"" % get_block_missing_summary()
+		update_block_ui()
 		info.text = "%s\nVisit all 5 neighbors, complete 3/3 mural motifs, and soundcheck with Rook\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % msg
 		announce_a11y_status(msg)
 		return "locked"
@@ -4227,16 +4330,33 @@ func advance_programme_and_hosting_step() -> String:
 				programme_add(sid)
 		var issue := programme_issue(programme_order)
 		if issue != "":
+			last_panel_dialogue = "Bea: \"%s\"" % issue
+			update_block_ui()
 			info.text = "%s\nAdjust programme draft before publishing\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % issue
 			announce_a11y_status(issue)
 			return "programme_blocked"
-		return "programme_published" if programme_publish() else "programme_blocked"
+		var ok_pub := programme_publish()
+		if ok_pub:
+			last_panel_dialogue = "Bea: \"Party schedule posted on the signboard! Tap 'Start Hosting Party' to kick off the first activity.\""
+			update_block_ui()
+		return "programme_published" if ok_pub else "programme_blocked"
 	if hosting_order.is_empty():
-		return "hosting_started" if host_start() else "hosting_blocked"
+		var ok_st := host_start()
+		if ok_st:
+			last_panel_dialogue = "Bea: \"We're hosting 1/4: %s! Tap 'Host Activity' to lead each segment across the block.\"" % programme_title(hosting_order[0])
+			update_block_ui()
+		return "hosting_started" if ok_st else "hosting_blocked"
 	if not is_hosting_done():
 		var act := current_hosting_activity()
-		return ("hosted_" + act) if host_complete_current() else "hosting_blocked"
+		var ok_hc := host_complete_current()
+		if ok_hc:
+			var next_a := current_hosting_activity()
+			last_panel_dialogue = "Bea: \"All 4 party schedule activities hosted! Now we can hold our Tenant Listening Circle.\"" if next_a == "" else ("Bea: \"Finished %s (%d/4)—up next is %s!\"" % [programme_title(act), hosting_results.size(), programme_title(next_a)])
+			update_block_ui()
+		return ("hosted_" + act) if ok_hc else "hosting_blocked"
 	var done_msg := "Second Afternoon Programme complete: 4/4 activities hosted across Turk Street."
+	last_panel_dialogue = "Bea: \"All 4 party schedule activities are complete! Tap 'Hold Tenant Circle' to gather neighbors.\""
+	update_block_ui()
 	info.text = "%s\nStory circle, Rhythm workshop, Quiet interval, and Shared art panel complete\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % done_msg
 	announce_a11y_status(done_msg)
 	return "hosting_complete"
@@ -4282,6 +4402,7 @@ func civic_start() -> bool:
 	civic_draft = default_civic_draft()
 	civic_result = {}
 	browser_import_message = ""
+	last_panel_dialogue = "Bea: \"Planning our Tenant Listening Circle (%s · %s). Tap 'Convene Circle' when ready!\"" % [civic_topic_title(String(civic_draft.get("topic", "repairs"))), civic_format_title(String(civic_draft.get("format", "circle")))]
 	update_block_3d()
 	save_godot_state()
 	trigger_progress_cue("civic_planning", "Listening hour")
@@ -4320,6 +4441,7 @@ func civic_convene() -> bool:
 	civic_draft = copy_civic_plan(civic_result)
 	civic_phase = "meeting"
 	browser_import_message = ""
+	last_panel_dialogue = "Bea: \"Neighbors are gathered for '%s'—tap 'Share Circle Notes' to wrap up the circle.\"" % civic_topic_title(String(civic_result.get("topic", "repairs")))
 	update_block_3d()
 	save_godot_state()
 	trigger_progress_cue("civic_meeting", String(civic_result.get("topic", "repairs")))
@@ -4334,6 +4456,7 @@ func civic_complete() -> bool:
 		return false
 	civic_phase = "done"
 	browser_import_message = ""
+	last_panel_dialogue = "Bea: \"Tenant Listening Circle complete! Now we can shoot 'The Open Seat' short film ('Shoot Short Film').\""
 	update_block_3d()
 	save_godot_state()
 	trigger_progress_cue("civic_complete", "Listening hour complete")
@@ -4374,6 +4497,8 @@ func advance_civic_step() -> String:
 	show_block_panel(true)
 	if not is_civic_available():
 		var msg := "Complete the 4 Second Afternoon Programme activities (Z) before starting the Peaceful Tenant Listening Hour."
+		last_panel_dialogue = "Bea: \"Let's finish hosting our 4 party schedule activities ('Plan Party Schedule') first, then we'll hold our Tenant Circle!\""
+		update_block_ui()
 		info.text = "%s\nM4 Civic Listening Hour unlocks after all 4 hosted segments finish\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % msg
 		announce_a11y_status(msg)
 		return "locked"
@@ -4384,6 +4509,8 @@ func advance_civic_step() -> String:
 	if civic_phase == "meeting":
 		return "civic_done" if civic_complete() else "civic_blocked"
 	var done_msg := "Peaceful Tenant Listening Hour complete (%s · %s · %s)." % [civic_topic_title(String(civic_result.get("topic", "repairs"))), civic_format_title(String(civic_result.get("format", "circle"))), civic_notes_title(String(civic_result.get("notes", "themes")))]
+	last_panel_dialogue = "Bea: \"Our Tenant Listening Circle is complete (%s)! Tap 'Shoot Short Film' to film The Open Seat.\"" % civic_topic_title(String(civic_result.get("topic", "repairs")))
+	update_block_ui()
 	info.text = "%s\nPress Period (.) to plan & capture The Open Seat three-shot film short\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % done_msg
 	announce_a11y_status(done_msg)
 	return "civic_complete"
@@ -4639,22 +4766,45 @@ func advance_film_step() -> String:
 	show_block_panel(true)
 	if not is_film_available():
 		var msg := "Complete the Peaceful Tenant Listening Hour (Q) before planning The Open Seat three-shot film short."
+		last_panel_dialogue = "Dez: \"Let's hold our Tenant Listening Circle ('Hold Tenant Circle') first—then we'll shoot our 3-frame short film!\""
+		update_block_ui()
 		info.text = "%s\nM4 Film Short unlocks after the listening hour finishes\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % msg
 		announce_a11y_status(msg)
 		return "locked"
 	if film_phase == "idle":
-		return "film_planning" if film_start() else "film_blocked"
+		var ok_fs := film_start()
+		if ok_fs:
+			last_panel_dialogue = "Dez: \"Storyboard easel ready! Tap 'Set Up Film Shot' to hold the take beside the clear route.\""
+			update_block_ui()
+		return "film_planning" if ok_fs else "film_blocked"
 	if film_phase == "planning":
-		return "film_hold" if film_hold() else "film_blocked"
+		var ok_fh := film_hold()
+		if ok_fh:
+			last_panel_dialogue = "Dez: \"Holding the take while neighbors use the sidewalk—tap 'Roll Camera (Clear)' to start shooting!\""
+			update_block_ui()
+		return "film_hold" if ok_fh else "film_blocked"
 	if film_phase == "hold":
-		return "film_shooting" if film_begin_shooting() else "film_blocked"
+		var ok_fb := film_begin_shooting()
+		if ok_fb:
+			last_panel_dialogue = "Dez: \"Route is clear! Tap 'Shoot Frame' to capture %s.\"" % film_shot_title(film_next_shot())
+			update_block_ui()
+		return "film_shooting" if ok_fb else "film_blocked"
 	if film_phase == "shooting":
 		var next_s := film_next_shot()
 		if not film_capture_shot():
 			return "film_blocked"
+		if film_phase == "done":
+			last_panel_dialogue = "Dez: \"That's a wrap on 'The Open Seat' (3/3 frames)! Tap 'Watch Film' to cycle frames.\""
+		else:
+			last_panel_dialogue = "Dez: \"Captured %s (%d/3)! Next frame: %s.\"" % [film_shot_title(next_s), film_captured.size(), film_shot_title(film_next_shot())]
+		update_block_ui()
 		return "film_done" if film_phase == "done" else ("captured_" + next_s)
 	var next_idx := posmod(film_screen_frame + 1, FILM_SHOTS.size())
 	film_set_screen_frame(next_idx)
+	var ord: Array = film_result.get("order", FILM_SHOTS)
+	var shot_id := String(ord[next_idx]) if next_idx < ord.size() else "seat"
+	last_panel_dialogue = "Dez: \"Screening 'The Open Seat' Frame %d/3: %s.\"" % [next_idx + 1, film_shot_title(shot_id)]
+	update_block_ui()
 	return "film_complete_frame_%d" % next_idx
 
 func neighbor_project_memory_line(neighbor_id: String) -> String:
@@ -5902,6 +6052,9 @@ func save_godot_state() -> bool:
 
 func reset_mural_state_to_defaults(status_label: String) -> void:
 	celeste_talk_count = 0
+	rook_talk_count = 0
+	neighbor_talk_counts.clear()
+	last_panel_dialogue = ""
 	mural_palette = "garden"
 	active_motif = "sun"
 	mural_placements.clear()
@@ -7236,9 +7389,6 @@ func update_occlusion(force: bool = true) -> void:
 	last_occlusion_pos = p_xz
 	last_occlusion_neighbor = occ_tag
 	var focus_points: Array[Vector2] = [p_xz]
-	if p_xz.x > -60.0:
-		for n_i in range(neighbors.size()):
-			focus_points.append(neighbor_xz(n_i))
 	if selected_neighbor >= 0 and selected_neighbor < neighbors.size():
 		focus_points.append(neighbor_xz(selected_neighbor))
 	if selected_neighbor == celeste_index or arrived_neighbor == celeste_index or walking_to_mural or arrived_mural:
@@ -7327,7 +7477,7 @@ func _physics_process(delta: float) -> void:
 					finish_neighbor_arrival(n_i)
 				break
 	elif not current_path.is_empty():
-		advance_walk(delta)
+		advance_walk(delta * (2.2 if OS.has_feature("web") else 1.0))
 
 func is_screen_point_in_ui(screen_pos: Vector2) -> bool:
 	if header_panel and header_panel.get_global_rect().has_point(screen_pos):
@@ -7413,6 +7563,9 @@ func handle_scene_tap(screen_pos: Vector2) -> bool:
 			elif best_idx == rook_index:
 				check_sound_with_rook()
 				return true
+			else:
+				talk_with_neighbor(best_idx)
+				return true
 		return walk_to_neighbor(best_idx)
 	return walk_to_point(ground_xz)
 
@@ -7432,11 +7585,31 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		var k: Key = event.keycode if event.keycode != KEY_NONE else event.physical_keycode
 		match k:
-			KEY_1, KEY_KP_1: walk_to_neighbor(0)
-			KEY_2, KEY_KP_2: walk_to_neighbor(1)
-			KEY_3, KEY_KP_3: walk_to_neighbor(2)
-			KEY_4, KEY_KP_4: walk_to_neighbor(3)
-			KEY_5, KEY_KP_5: walk_to_neighbor(4)
+			KEY_1, KEY_KP_1:
+				if arrived_neighbor == 0:
+					talk_with_neighbor(0)
+				else:
+					walk_to_neighbor(0)
+			KEY_2, KEY_KP_2:
+				if arrived_neighbor == 1:
+					talk_with_celeste()
+				else:
+					walk_to_neighbor(1)
+			KEY_3, KEY_KP_3:
+				if arrived_neighbor == 2:
+					check_sound_with_rook()
+				else:
+					walk_to_neighbor(2)
+			KEY_4, KEY_KP_4:
+				if arrived_neighbor == 3:
+					talk_with_neighbor(3)
+				else:
+					walk_to_neighbor(3)
+			KEY_5, KEY_KP_5:
+				if arrived_neighbor == 4:
+					talk_with_neighbor(4)
+				else:
+					walk_to_neighbor(4)
 			KEY_6, KEY_KP_6:
 				if can_interact_with_mural():
 					activate_or_advance_motif("sun")
@@ -7457,11 +7630,26 @@ func _unhandled_input(event: InputEvent) -> void:
 					inspect_tenderloin_museum_hub()
 				else:
 					walk_to_mural()
-			KEY_E, KEY_T:
-				if k == KEY_E and event.shift_pressed:
+			KEY_E:
+				if event.shift_pressed:
 					cycle_eatery_guide()
 				elif arrived_neighbor == celeste_index or arrived_mural:
 					talk_with_celeste()
+				elif selected_neighbor == celeste_index or walking_to_mural:
+					pending_celeste_talk = true
+				else:
+					if walk_to_neighbor(celeste_index):
+						if arrived_neighbor == celeste_index:
+							talk_with_celeste()
+						else:
+							pending_celeste_talk = true
+			KEY_T:
+				if arrived_neighbor == celeste_index or arrived_mural:
+					talk_with_celeste()
+				elif arrived_neighbor == rook_index or arrived_speaker:
+					check_sound_with_rook()
+				elif arrived_neighbor >= 0 and arrived_neighbor < neighbors.size():
+					talk_with_neighbor(arrived_neighbor)
 				elif selected_neighbor == celeste_index or walking_to_mural:
 					pending_celeste_talk = true
 				else:
@@ -7821,13 +8009,13 @@ func motif_button_text(motif_id: String, label_prefix: String) -> String:
 	if mural_placements.has(motif_id):
 		var c_dict: Dictionary = mural_placements[motif_id]
 		return "%s%s (%d,%d)" % [prefix, label_prefix, int(c_dict.get("col", 0)), int(c_dict.get("row", 0))]
-	return "%s%s · add" % [prefix, label_prefix]
+	return "%s%s · Paint" % [prefix, label_prefix]
 
 func update_mural_ui() -> void:
 	if mural_label == null:
 		return
-	var state_tag := "3/3 Complete" if mural_completed else "%d/3 motifs" % mural_placements.size()
-	mural_label.text = "Portable Board · %s · %s" % [state_tag, mural_palette.capitalize()]
+	var state_tag := "3/3 Complete" if mural_completed else "%d/3 Motifs Painted" % mural_placements.size()
+	mural_label.text = "Talking with Celeste (Mural Artist)  ·  Easel: %s (%s Palette)" % [state_tag, mural_palette.capitalize()]
 	if mural_palette_btn != null:
 		mural_palette_btn.text = "Palette: %s" % mural_palette.capitalize()
 	if mural_sun_btn != null:
@@ -7842,114 +8030,118 @@ func update_music_ui() -> void:
 		return
 	var play_state := "Playing" if music_playing else "Paused"
 	var mode_desc := "80 BPM Sketch" if music_mode == "sketch" else ("Local: %s" % local_music_name)
-	var sc_state := "Checked" if rook_soundcheck_done else "Pending"
-	music_label.text = "Speaker · %s · %s · %s" % [play_state, mode_desc, sc_state]
+	var sc_state := "Ready" if rook_soundcheck_done else "Pending"
+	music_label.text = "Talking with Rook (Sound & Stories)  ·  %s  ·  %s  ·  Soundcheck: %s" % [play_state, mode_desc, sc_state]
 	if music_stem_label != null:
 		if not music_error.is_empty():
 			music_stem_label.text = music_error
 		elif music_mode == "local":
-			music_stem_label.text = "Local full track (procedural stems hidden)"
+			music_stem_label.text = "Local full track (procedural stems hidden) — %s" % rook_dialogue_text()
 		else:
-			music_stem_label.text = "Stems: %s" % active_stem_summary()
+			music_stem_label.text = "Groove Stems: %s — %s" % [active_stem_summary(), rook_dialogue_text()]
 	if music_play_btn != null:
-		music_play_btn.text = "Pause Music" if music_playing else "Play Music"
+		music_play_btn.text = "Pause Groove" if music_playing else "Play Groove"
 	if music_vol_btn != null:
-		music_vol_btn.text = "Vol: %d%%" % int(round(music_volume * 100.0))
+		music_vol_btn.text = "Volume: %d%%" % int(round(music_volume * 100.0))
 	if music_rook_btn != null:
-		music_rook_btn.text = "Soundcheck: Done" if rook_soundcheck_done else "Soundcheck: Rook"
+		music_rook_btn.text = "Chat & Soundcheck (Done)" if rook_soundcheck_done else "Soundcheck w/ Rook"
 	if music_sketch_btn != null:
-		music_sketch_btn.text = "> Sketch (80 BPM)" if music_mode == "sketch" else "Use Sketch"
+		music_sketch_btn.text = "80 BPM Sketch (Active)" if music_mode == "sketch" else "Use 80 BPM Sketch"
 
 func update_block_ui() -> void:
 	if block_label == null:
 		return
 	var v_count := visited_neighbors.size()
 	var n_total := neighbors.size() if not neighbors.is_empty() else 5
-	var m_state := "3/3" if mural_completed else "%d/3" % mural_placements.size()
-	var sc_state := "Sound OK" if rook_soundcheck_done else "Sound Pending"
-	var open_tag := "OPEN" if block_opened else ("READY" if is_block_ready() else "PREP")
-	block_label.text = "Block · %s · %d/%d Nbrs · %s Mural · %s" % [open_tag, v_count, n_total, m_state, sc_state]
+	var m_state := "3/3 Ready" if mural_completed else "%d/3" % mural_placements.size()
+	var sc_state := "Soundcheck Ready" if rook_soundcheck_done else "Soundcheck Pending"
+	var open_tag := "Block Party Open!" if block_opened else ("Ready to Open!" if is_block_ready() else "Meet Neighbors & Prepare")
+	var talk_idx := arrived_neighbor if (arrived_neighbor >= 0 and arrived_neighbor < neighbors.size()) else (selected_neighbor if (selected_neighbor >= 0 and selected_neighbor < neighbors.size()) else -1)
+	if talk_idx >= 0:
+		var active_n: Dictionary = neighbors[talk_idx]
+		block_label.text = "Talking with %s (%s)  ·  %s  ·  %d/%d Met  ·  Mural %s" % [String(active_n.get("name", "Neighbor")), String(active_n.get("role", "Neighbor")), open_tag, v_count, n_total, m_state]
+	else:
+		block_label.text = "Turk St Conversation & Actions  ·  %s  ·  %d/%d Met  ·  Mural %s  ·  %s" % [open_tag, v_count, n_total, m_state, sc_state]
 	if block_detail_label != null:
-		var west_tag := "BH:Found" if blackhawk_discovered else "BH:West"
-		var comp_tag := "CC:Read" if history_read else "CC:1966"
-		var m1_tag := "Loans:%d/3" % epilogue_returned.size() if epilogue_packing else ("Photo:OK" if String(keepsake_photo.get("status", "unasked")) == "taken" else "M1:Ready")
-		var m3_tag := "Host:%d/4" % hosting_results.size()
-		var m4_tag := "Film:3/3" if film_phase == "done" else ("Civic:OK" if civic_phase == "done" else ("Civic:" + civic_phase))
-		var m5_tag := "Voices:Off"
-		if voices_enabled:
-			if voices_status == "ready":
-				m5_tag = "Voices:" + str(voices_records.size())
-			elif voices_status == "error":
-				m5_tag = "Voices:Err"
-			elif voices_status == "paused":
-				m5_tag = "Voices:Paused"
-			else:
-				m5_tag = "Voices:On"
-		var base_detail := "%s · %s · %s · %s · %s · %s · %s" % [get_block_missing_summary(), comp_tag, west_tag, m1_tag, m3_tag, m4_tag, m5_tag]
+		var base_detail := ""
+		if not last_panel_dialogue.is_empty():
+			base_detail = last_panel_dialogue
+		elif talk_idx >= 0:
+			var n_id := String(neighbors[talk_idx].get("id", ""))
+			var mem_line := neighbor_project_memory_line(n_id)
+			var greet_line := neighbor_greeting_line(n_id)
+			var spoken := greet_line if mem_line.is_empty() else ("%s · %s" % [greet_line, mem_line])
+			base_detail = "%s  (Click %s or press T to keep chatting)" % [spoken, String(neighbors[talk_idx].get("name", "neighbor"))]
+		elif block_opened:
+			base_detail = "The Turk Street block party is open! Choose a conversation or neighborhood activity below:"
+		else:
+			base_detail = "Walk up to any neighbor (1–5) to talk! Still needed to open the block party: %s" % get_block_missing_summary()
 		block_detail_label.text = base_detail if browser_import_message.is_empty() else ("%s · %s" % [base_detail, browser_import_message])
 	if block_open_btn != null:
 		if block_opened:
-			block_open_btn.text = "Block Opened"
+			block_open_btn.text = "Party Open! (View)"
 		elif is_block_ready():
-			block_open_btn.text = "Open Block!"
+			block_open_btn.text = "Open Block Party!"
 		else:
-			block_open_btn.text = "Open Block"
+			block_open_btn.text = "Open Block Party"
 	if block_next_btn != null:
 		var remaining := maxi(0, n_total - v_count)
-		block_next_btn.text = "Visit Next (%d left)" % remaining if remaining > 0 else "Cycle Neighbor"
+		block_next_btn.text = "Meet Next (%d left)" % remaining if remaining > 0 else "Visit Next Neighbor"
 	if block_epilogue_btn != null:
 		if is_epilogue_done():
-			block_epilogue_btn.text = "Loans: 3/3"
+			block_epilogue_btn.text = "Gear Returned (3/3)"
 		elif epilogue_packing:
-			block_epilogue_btn.text = "Loan: %d/3" % epilogue_returned.size()
+			block_epilogue_btn.text = "Return Gear (%d/3)" % epilogue_returned.size()
 		elif String(keepsake_photo.get("status", "unasked")) != "unasked":
-			block_epilogue_btn.text = "Pack Loans"
+			block_epilogue_btn.text = "Pack Borrowed Gear"
 		else:
-			block_epilogue_btn.text = "Keepsake"
+			block_epilogue_btn.text = "Take Group Photo"
 	if block_programme_btn != null:
 		if is_hosting_done():
-			block_programme_btn.text = "Hosted: 4/4"
+			block_programme_btn.text = "Hosted All 4 Events"
 		elif not hosting_order.is_empty():
-			block_programme_btn.text = "Host: %d/4" % hosting_results.size()
+			block_programme_btn.text = "Host Activity (%d/4)" % hosting_results.size()
 		elif programme_published.size() == PROGRAMME_SEGMENTS.size():
-			block_programme_btn.text = "Start Host"
+			block_programme_btn.text = "Start Hosting Party"
+		elif not programme_order.is_empty():
+			block_programme_btn.text = "Plan Schedule (%d/4)" % programme_order.size()
 		else:
-			block_programme_btn.text = "Programme"
+			block_programme_btn.text = "Plan Party Schedule"
 	if block_civic_btn != null:
 		if civic_phase == "done":
-			block_civic_btn.text = "Civic: Done"
+			block_civic_btn.text = "Tenant Circle (Done)"
 		elif civic_phase == "meeting":
-			block_civic_btn.text = "Civic: Meet"
+			block_civic_btn.text = "Share Circle Notes"
 		elif civic_phase == "planning":
-			block_civic_btn.text = "Civic: Plan"
+			block_civic_btn.text = "Convene Circle"
 		else:
-			block_civic_btn.text = "Civic"
+			block_civic_btn.text = "Hold Tenant Circle"
 	if block_film_btn != null:
 		if film_phase == "done":
-			block_film_btn.text = "Film: %d/3" % (film_screen_frame + 1)
+			block_film_btn.text = "Watch Film (%d/3)" % (film_screen_frame + 1)
 		elif film_phase == "shooting":
-			block_film_btn.text = "Shot: %d/3" % film_captured.size()
+			block_film_btn.text = "Shoot Frame (%d/3)" % film_captured.size()
 		elif film_phase == "hold":
-			block_film_btn.text = "Film: Hold"
+			block_film_btn.text = "Roll Camera (Clear)"
 		elif film_phase == "planning":
-			block_film_btn.text = "Film: Plan"
+			block_film_btn.text = "Set Up Film Shot"
 		else:
-			block_film_btn.text = "Film"
+			block_film_btn.text = "Shoot Short Film"
 	if block_voices_btn != null:
 		if voices_enabled:
-			block_voices_btn.text = "Voices: Err" if voices_status == "error" else "Voices: On"
+			block_voices_btn.text = "Local Stories: Err" if voices_status == "error" else "Local Stories: On"
 		else:
-			block_voices_btn.text = "Voices: Off"
+			block_voices_btn.text = "Read Local Stories"
 	if block_mural_btn != null:
-		block_mural_btn.text = "Mural: 3/3" if mural_completed else ("Mural: %d/3" % mural_placements.size())
+		block_mural_btn.text = "Mural (3/3)" if mural_completed else ("Paint w/ Celeste (%d/3)" % mural_placements.size())
 	if block_rook_btn != null:
-		block_rook_btn.text = "Rook: OK" if rook_soundcheck_done else "Rook: Sound"
+		block_rook_btn.text = "Soundcheck w/ Rook (OK)" if rook_soundcheck_done else "Soundcheck w/ Rook"
 	if block_west_btn != null:
-		block_west_btn.text = "Hyde: OK" if blackhawk_discovered else "West: Hyde"
+		block_west_btn.text = "Black Hawk Site (OK)" if blackhawk_discovered else "Walk to Black Hawk"
 	if block_district_btn != null:
-		block_district_btn.text = "District: On" if district_boundary_visible else "District: Off"
+		block_district_btn.text = "District Border: On" if district_boundary_visible else "District Border: Off"
 	if block_import_btn != null:
-		block_import_btn.text = "Save: Ready" if browser_import_status == "imported" else "Import Save"
+		block_import_btn.text = "Web Save Loaded" if browser_import_status == "imported" else "Import Web Save"
 
 func make_ui() -> void:
 	button_focus_style = StyleBoxFlat.new()
@@ -8018,8 +8210,8 @@ func make_ui() -> void:
 	mural_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	mural_panel.offset_left = 12
 	mural_panel.offset_right = -12
-	mural_panel.offset_top = -338
-	mural_panel.offset_bottom = -138
+	mural_panel.offset_top = -302
+	mural_panel.offset_bottom = -130
 	mural_panel.visible = false
 	layer.add_child(mural_panel)
 	var mural_vbox := VBoxContainer.new()
@@ -8034,20 +8226,20 @@ func make_ui() -> void:
 	var row1 := HBoxContainer.new()
 	row1.add_theme_constant_override("separation", 4)
 	mural_vbox.add_child(row1)
-	mural_button(row1, "Talk: Celeste", func(): talk_with_celeste())
+	mural_button(row1, "Chat with Celeste", func(): talk_with_celeste())
 	mural_palette_btn = mural_button(row1, "Palette: Garden", func(): cycle_mural_palette())
 	var row2 := HBoxContainer.new()
 	row2.add_theme_constant_override("separation", 4)
 	mural_vbox.add_child(row2)
-	mural_sun_btn = mural_button(row2, "Sun · add", func(): activate_or_advance_motif("sun"))
-	mural_wave_btn = mural_button(row2, "Wave · add", func(): activate_or_advance_motif("wave"))
-	mural_rise_btn = mural_button(row2, "Rise · add", func(): activate_or_advance_motif("rise"))
+	mural_sun_btn = mural_button(row2, "Sun · Paint", func(): activate_or_advance_motif("sun"))
+	mural_wave_btn = mural_button(row2, "Wave · Paint", func(): activate_or_advance_motif("wave"))
+	mural_rise_btn = mural_button(row2, "Rise · Paint", func(): activate_or_advance_motif("rise"))
 	var row3 := HBoxContainer.new()
 	row3.add_theme_constant_override("separation", 4)
 	mural_vbox.add_child(row3)
-	mural_button(row3, "Move tile", func(): move_active_motif(1, 0))
-	mural_button(row3, "Reset", func(): clear_mural_board())
-	mural_button(row3, "Close", func(): show_mural_panel(false))
+	mural_button(row3, "Shift Motif", func(): move_active_motif(1, 0))
+	mural_button(row3, "Clear Board", func(): clear_mural_board())
+	mural_button(row3, "Step Back", func(): show_mural_panel(false))
 	update_mural_ui()
 
 	music_panel = PanelContainer.new()
@@ -8056,8 +8248,8 @@ func make_ui() -> void:
 	music_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	music_panel.offset_left = 12
 	music_panel.offset_right = -12
-	music_panel.offset_top = -338
-	music_panel.offset_bottom = -138
+	music_panel.offset_top = -324
+	music_panel.offset_bottom = -130
 	music_panel.visible = false
 	layer.add_child(music_panel)
 	var music_vbox := VBoxContainer.new()
@@ -8077,18 +8269,18 @@ func make_ui() -> void:
 	var m_row1 := HBoxContainer.new()
 	m_row1.add_theme_constant_override("separation", 4)
 	music_vbox.add_child(m_row1)
-	music_play_btn = music_button(m_row1, "Play Music", func(): toggle_music_playback())
-	music_vol_btn = music_button(m_row1, "Vol: 70%", func(): cycle_music_volume())
+	music_play_btn = music_button(m_row1, "Play Groove", func(): toggle_music_playback())
+	music_vol_btn = music_button(m_row1, "Volume: 70%", func(): cycle_music_volume())
 	var m_row2 := HBoxContainer.new()
 	m_row2.add_theme_constant_override("separation", 4)
 	music_vbox.add_child(m_row2)
-	music_rook_btn = music_button(m_row2, "Soundcheck: Rook", func(): request_rook_soundcheck())
-	music_load_btn = music_button(m_row2, "Load Suno File", func(): prompt_local_music_file())
+	music_rook_btn = music_button(m_row2, "Soundcheck w/ Rook", func(): request_rook_soundcheck())
+	music_load_btn = music_button(m_row2, "Load Local Track", func(): prompt_local_music_file())
 	var m_row3 := HBoxContainer.new()
 	m_row3.add_theme_constant_override("separation", 4)
 	music_vbox.add_child(m_row3)
-	music_sketch_btn = music_button(m_row3, "> Sketch (80 BPM)", func(): use_synth_sketch())
-	music_button(m_row3, "Close", func(): show_music_panel(false))
+	music_sketch_btn = music_button(m_row3, "80 BPM Sketch (Active)", func(): use_synth_sketch())
+	music_button(m_row3, "Step Back", func(): show_music_panel(false))
 	update_music_ui()
 
 	block_panel = PanelContainer.new()
@@ -8097,8 +8289,8 @@ func make_ui() -> void:
 	block_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	block_panel.offset_left = 12
 	block_panel.offset_right = -12
-	block_panel.offset_top = -338
-	block_panel.offset_bottom = -138
+	block_panel.offset_top = -324
+	block_panel.offset_bottom = -130
 	block_panel.visible = false
 	layer.add_child(block_panel)
 	var block_vbox := VBoxContainer.new()
@@ -8118,25 +8310,25 @@ func make_ui() -> void:
 	var b_row1 := HBoxContainer.new()
 	b_row1.add_theme_constant_override("separation", 4)
 	block_vbox.add_child(b_row1)
-	block_open_btn = block_button(b_row1, "Open Block", func(): open_block_gathering())
-	block_next_btn = block_button(b_row1, "Visit Next (5 left)", func(): visit_next_unvisited_neighbor())
-	block_epilogue_btn = block_button(b_row1, "Keepsake", func(): advance_epilogue_step())
-	block_programme_btn = block_button(b_row1, "Programme", func(): advance_programme_and_hosting_step())
+	block_open_btn = block_button(b_row1, "Open Block Party", func(): open_block_gathering())
+	block_next_btn = block_button(b_row1, "Meet Next (5 left)", func(): visit_next_unvisited_neighbor())
+	block_epilogue_btn = block_button(b_row1, "Take Group Photo", func(): advance_epilogue_step())
+	block_programme_btn = block_button(b_row1, "Plan Party Schedule", func(): advance_programme_and_hosting_step())
 	var b_row2 := HBoxContainer.new()
 	b_row2.add_theme_constant_override("separation", 4)
 	block_vbox.add_child(b_row2)
-	block_mural_btn = block_button(b_row2, "Mural: 0/3", func(): open_mural_from_block_panel())
-	block_rook_btn = block_button(b_row2, "Rook: Sound", func(): request_rook_soundcheck())
-	block_west_btn = block_button(b_row2, "West: Hyde", func(): walk_to_or_read_history_stop("blackhawk"))
-	block_civic_btn = block_button(b_row2, "Civic", func(): advance_civic_step())
+	block_mural_btn = block_button(b_row2, "Paint w/ Celeste (0/3)", func(): open_mural_from_block_panel())
+	block_rook_btn = block_button(b_row2, "Soundcheck w/ Rook", func(): request_rook_soundcheck())
+	block_west_btn = block_button(b_row2, "Walk to Black Hawk", func(): walk_to_or_read_history_stop("blackhawk"))
+	block_civic_btn = block_button(b_row2, "Hold Tenant Circle", func(): advance_civic_step())
 	var b_row3 := HBoxContainer.new()
 	b_row3.add_theme_constant_override("separation", 4)
 	block_vbox.add_child(b_row3)
-	block_film_btn = block_button(b_row3, "Film", func(): advance_film_step())
-	block_voices_btn = block_button(b_row3, "Voices: Off", func(): toggle_voices_enabled())
-	block_district_btn = block_button(b_row3, "District: On", func(): toggle_district_boundary())
-	block_import_btn = block_button(b_row3, "Import Save", func(): import_browser_save_from_web_storage())
-	block_button(b_row3, "Close", func(): show_block_panel(false))
+	block_film_btn = block_button(b_row3, "Shoot Short Film", func(): advance_film_step())
+	block_voices_btn = block_button(b_row3, "Read Local Stories", func(): toggle_voices_enabled())
+	block_district_btn = block_button(b_row3, "District Border: On", func(): toggle_district_boundary())
+	block_import_btn = block_button(b_row3, "Import Web Save", func(): import_browser_save_from_web_storage())
+	block_button(b_row3, "Step Back", func(): show_block_panel(false))
 	update_block_ui()
 
 	controls = GridContainer.new()
@@ -8146,15 +8338,15 @@ func make_ui() -> void:
 	controls.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	controls.offset_left = 12
 	controls.offset_right = -12
-	controls.offset_top = -132
+	controls.offset_top = -124
 	controls.offset_bottom = -12
 	layer.add_child(controls)
-	button(controls, "Previous", func(): choose_next(-1))
-	button(controls, "Overview", overview)
-	button(controls, "Next building", func(): choose_next(1))
-	button(controls, "Zoom in", func(): zoom(0.8))
-	button(controls, "Zoom out", func(): zoom(1.25))
-	button(controls, "Walk to neighbor", func(): choose_next_neighbor(1))
+	button(controls, "« Prev Building", func(): choose_next(-1))
+	button(controls, "Map Overview", overview)
+	button(controls, "Next Building »", func(): choose_next(1))
+	button(controls, "Zoom In (+)", func(): zoom(0.8))
+	button(controls, "Zoom Out (−)", func(): zoom(1.25))
+	button(controls, "Walk & Talk (Next)", func(): choose_next_neighbor(1))
 	var vp := get_viewport()
 	var resize_controls := func():
 		if not is_instance_valid(controls) or not is_inside_tree():
@@ -8165,20 +8357,20 @@ func make_ui() -> void:
 		if is_instance_valid(info):
 			info.add_theme_font_size_override("font_size", 13 if narrow else 19)
 		if is_instance_valid(mural_label):
-			mural_label.add_theme_font_size_override("font_size", 13 if narrow else 17)
+			mural_label.add_theme_font_size_override("font_size", 13 if narrow else 16)
 		if is_instance_valid(music_label):
-			music_label.add_theme_font_size_override("font_size", 13 if narrow else 17)
+			music_label.add_theme_font_size_override("font_size", 13 if narrow else 16)
 		if is_instance_valid(music_stem_label):
-			music_stem_label.add_theme_font_size_override("font_size", 12 if narrow else 15)
+			music_stem_label.add_theme_font_size_override("font_size", 12 if narrow else 14)
 		if is_instance_valid(block_label):
-			block_label.add_theme_font_size_override("font_size", 13 if narrow else 17)
+			block_label.add_theme_font_size_override("font_size", 13 if narrow else 16)
 		if is_instance_valid(block_detail_label):
-			block_detail_label.add_theme_font_size_override("font_size", 12 if narrow else 15)
-		var main_btn_font := 16 if narrow else 20
+			block_detail_label.add_theme_font_size_override("font_size", 12 if narrow else 14)
+		var main_btn_font := 14 if narrow else 19
 		for child in controls.get_children():
 			if child is Button:
 				child.add_theme_font_size_override("font_size", main_btn_font)
-		var sub_btn_font := 13 if narrow else 16
+		var sub_btn_font := 13 if narrow else 15
 		for b in mural_buttons:
 			if is_instance_valid(b):
 				b.add_theme_font_size_override("font_size", sub_btn_font)
@@ -8189,16 +8381,16 @@ func make_ui() -> void:
 			if is_instance_valid(b):
 				b.add_theme_font_size_override("font_size", sub_btn_font)
 		controls.columns = 2 if narrow else 3
-		controls.offset_top = -174 if narrow else -132
+		controls.offset_top = -174 if narrow else -124
 		if is_instance_valid(mural_panel):
-			mural_panel.offset_bottom = -180 if narrow else -138
-			mural_panel.offset_top = -352 if narrow else -338
+			mural_panel.offset_bottom = -180 if narrow else -130
+			mural_panel.offset_top = -352 if narrow else -302
 		if is_instance_valid(music_panel):
-			music_panel.offset_bottom = -180 if narrow else -138
-			music_panel.offset_top = -352 if narrow else -338
+			music_panel.offset_bottom = -176 if narrow else -130
+			music_panel.offset_top = -368 if narrow else -324
 		if is_instance_valid(block_panel):
-			block_panel.offset_bottom = -180 if narrow else -138
-			block_panel.offset_top = -352 if narrow else -338
+			block_panel.offset_bottom = -176 if narrow else -130
+			block_panel.offset_top = -368 if narrow else -324
 		if in_overview or in_wide_overview:
 			refit_after_layout()
 	vp.size_changed.connect(resize_controls)
@@ -8230,7 +8422,8 @@ func style_game_button(control: Button) -> void:
 func button(parent: Node, text: String, action: Callable) -> void:
 	var control := Button.new()
 	control.text = text
-	control.custom_minimum_size = Vector2(0, 50)
+	control.clip_text = true
+	control.custom_minimum_size = Vector2(44, 50)
 	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	control.focus_mode = Control.FOCUS_ALL
 	style_game_button(control)

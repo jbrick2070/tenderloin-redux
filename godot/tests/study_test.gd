@@ -972,6 +972,12 @@ func run() -> void:
 	require(is_equal_approx(study.player_height_m(), study.PLAYER_HEIGHT_M), "animate_person_node preserves exact 1.72m player height")
 	var bea_nameplate_screen: Vector2 = study.camera.unproject_position(study.neighbors[0].pos + Vector3(0.0, 4.0, 0.0))
 	require(study.handle_scene_tap(bea_nameplate_screen) and study.selected_neighbor == 0, "tapping neighbor upper body / nameplate selects neighbor")
+	var bea_line_1: String = study.talk_with_neighbor(0)
+	var bea_line_2: String = study.talk_with_neighbor(0)
+	require(not bea_line_1.is_empty() and bea_line_1 != bea_line_2 and study.block_panel.visible and study.block_label.text.contains("Talking with Bea") and study.block_detail_label.text.contains("Bea:"), "talk_with_neighbor(0) cycles Bea's natural conversation turns and updates BlockPanel talking header and spoken quote")
+	require(study.block_programme_btn.text.contains("Hosted All 4 Events") and study.block_civic_btn.text.contains("Tenant Circle") and study.block_film_btn.text.contains("Watch Film"), "BlockPanel completed action buttons use natural conversational action phrasing")
+	study.reset_mural_state_to_defaults("fresh")
+	require(study.block_programme_btn.text.contains("Plan Party Schedule") and study.block_civic_btn.text.contains("Hold Tenant Circle") and study.block_film_btn.text.contains("Shoot Short Film"), "BlockPanel fresh action buttons use natural conversational action phrasing")
 	study.overview()
 
 	for size in [Vector2i(1100, 760), Vector2i(390, 667), Vector2i(320, 667)]:
