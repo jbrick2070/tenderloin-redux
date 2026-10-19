@@ -955,6 +955,13 @@ func run() -> void:
 	for i in range(58):
 		require(study.meshes[i].material_override == study.building_materials[i], "overview restores solid neutral building materials")
 
+	# Verify 3D mouse/keyboard camera orbit rotation and reset
+	var orig_cam_pos: Vector3 = study.camera.position
+	study.rotate_camera_by_delta(0.55, -0.15)
+	require(not is_zero_approx(study.camera_yaw) and study.camera.position.distance_to(orig_cam_pos) > 5.0, "rotate_camera_by_delta orbits 3D camera around target")
+	study.overview()
+	require(is_zero_approx(study.camera_yaw) and is_equal_approx(study.camera_pitch_scale, 1.0), "overview resets camera orbit yaw and pitch")
+
 	for size in [Vector2i(1100, 760), Vector2i(390, 667), Vector2i(320, 667)]:
 		root.size = size
 		await process_frame

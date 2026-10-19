@@ -430,6 +430,13 @@ var active_time_era := "present"
 var portal_lens_mesh: MeshInstance3D
 var portal_ring_meshes: Array[MeshInstance3D] = []
 var eatery_guide_idx := -1
+var camera_yaw := 0.0
+var camera_pitch_scale := 1.0
+var orbit_dragging := false
+var orbit_last_pos := Vector2.ZERO
+var button_normal_style: StyleBoxFlat
+var button_hover_style: StyleBoxFlat
+var panel_bg_style: StyleBoxFlat
 
 func colored_quad(surface: SurfaceTool, p00: Vector3, p10: Vector3, p11: Vector3, p01: Vector3, col: Color) -> void:
 	surface.set_color(col)
@@ -996,9 +1003,9 @@ func build_neighbors_and_player() -> void:
 			rook_index = i
 		var n_node := make_person_node(n.name, n.coat, n.skin, n.hair, 1.70, false)
 		n_node.position = n.pos
-		n_node.scale = Vector3(2.85, 2.85, 2.85)
+		n_node.scale = Vector3(2.15, 2.15, 2.15)
 		attach_neighbor_signature_prop(n_node, n_id)
-		n_node.add_child(make_label_3d("Nameplate", "[%d] %s · %s" % [i + 1, n.name, String(n.get("role", "")).split(" ")[0]], Vector3(0.0, 2.28, 0.0), Color("fff6df"), 0.0052, 26))
+		n_node.add_child(make_label_3d("Nameplate", "[%d] %s · %s" % [i + 1, n.name, String(n.get("role", "")).split(" ")[0]], Vector3(0.0, 2.10, 0.0), Color("fff6df"), 0.0068, 26))
 		add_child(n_node)
 		neighbor_nodes.append(n_node)
 	player = CharacterBody3D.new()
@@ -1012,8 +1019,8 @@ func build_neighbors_and_player() -> void:
 	col.position = Vector3(0.0, PLAYER_HEIGHT_M * 0.5, 0.0)
 	player.add_child(col)
 	player_visual = make_person_node("PlayerVisual", Color("f0ce77"), Color("b67f5d"), Color("34392f"), PLAYER_HEIGHT_M, true)
-	player_visual.scale = Vector3(2.85, 2.85, 2.85)
-	player_visual.add_child(make_label_3d("PlayerNameplate", "★ YOU (WASD / Tap)", Vector3(0.0, 2.32, 0.0), Color("ffe866"), 0.0054, 26))
+	player_visual.scale = Vector3(2.15, 2.15, 2.15)
+	player_visual.add_child(make_label_3d("PlayerNameplate", "★ YOU (WASD / Tap)", Vector3(0.0, 2.14, 0.0), Color("ffe866"), 0.0070, 26))
 	player.add_child(player_visual)
 	add_child(player)
 
@@ -1604,17 +1611,10 @@ func update_mural_3d() -> void:
 
 func person_material(color: Color) -> StandardMaterial3D:
 	var result := material(color)
+	result.roughness = 0.65
 	result.emission_enabled = true
 	result.emission = color
-	result.emission_energy_multiplier = 0.28
-	var xray := StandardMaterial3D.new()
-	xray.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	xray.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	xray.no_depth_test = true
-	xray.cull_mode = BaseMaterial3D.CULL_DISABLED
-	xray.render_priority = 6
-	xray.albedo_color = Color(color.r, color.g, color.b, 0.62)
-	result.next_pass = xray
+	result.emission_energy_multiplier = 0.22
 	return result
 
 func make_person_node(node_name: String, coat: Color, skin: Color, hair: Color, total_height: float, is_player: bool) -> Node3D:
@@ -1622,93 +1622,112 @@ func make_person_node(node_name: String, coat: Color, skin: Color, hair: Color, 
 	root_node.name = node_name
 	var ring := MeshInstance3D.new()
 	var ring_mesh := CylinderMesh.new()
-	ring_mesh.top_radius = 0.78 if is_player else 0.68
+	ring_mesh.top_radius = 0.65 if is_player else 0.55
 	ring_mesh.bottom_radius = ring_mesh.top_radius
 	ring_mesh.height = 0.04
 	ring.mesh = ring_mesh
 	ring.position = Vector3(0.0, 0.02, 0.0)
-	ring.material_override = person_material(Color("ffe866") if is_player else coat.lightened(0.28))
+	ring.material_override = mural_material(Color("ffe866") if is_player else coat.lightened(0.28))
 	root_node.add_child(ring)
 	var shoe_h := total_height * 0.06
 	var leg_h := total_height * 0.36
 	var legs_top := shoe_h + leg_h
-	for leg_side in [-0.11, 0.11]:
+	for leg_side in [-0.10, 0.10]:
 		var shoe := MeshInstance3D.new()
-		var shoe_mesh := BoxMesh.new()
-		shoe_mesh.size = Vector3(0.16, shoe_h, 0.28)
-		shoe.mesh = shoe_mesh
-		shoe.position = Vector3(leg_side, shoe_h * 0.5, 0.03)
+		var shoe_cyl := CylinderMesh.new()
+		shoe_cyl.top_radius = 0.075
+		shoe_cyl.bottom_radius = 0.085
+		shoe_cyl.height = shoe_h
+		shoe.mesh = shoe_cyl
+		shoe.position = Vector3(leg_side, shoe_h * 0.5, 0.02)
 		shoe.material_override = person_material(Color("232c29"))
 		root_node.add_child(shoe)
 		var leg := MeshInstance3D.new()
-		var leg_mesh := BoxMesh.new()
-		leg_mesh.size = Vector3(0.16, leg_h, 0.22)
-		leg.mesh = leg_mesh
+		var leg_cyl := CylinderMesh.new()
+		leg_cyl.top_radius = 0.082
+		leg_cyl.bottom_radius = 0.068
+		leg_cyl.height = leg_h
+		leg.mesh = leg_cyl
 		leg.position = Vector3(leg_side, shoe_h + leg_h * 0.5, 0.0)
-		leg.material_override = person_material(Color("34463f"))
+		leg.material_override = person_material(Color("304248"))
 		root_node.add_child(leg)
+	# Tapered rounded jacket/coat torso
 	var torso := MeshInstance3D.new()
-	var torso_mesh := BoxMesh.new()
+	var torso_cyl := CylinderMesh.new()
 	var torso_h := total_height * 0.36
-	torso_mesh.size = Vector3(0.46, torso_h, 0.28)
-	torso.mesh = torso_mesh
+	torso_cyl.top_radius = 0.21
+	torso_cyl.bottom_radius = 0.175
+	torso_cyl.height = torso_h
+	torso.mesh = torso_cyl
 	torso.position = Vector3(0.0, legs_top + torso_h * 0.5, 0.0)
 	torso.material_override = person_material(coat)
 	root_node.add_child(torso)
+	# Rounded collar / scarf ring
 	var collar := MeshInstance3D.new()
-	var collar_mesh := BoxMesh.new()
-	var collar_h := total_height * 0.045
-	collar_mesh.size = Vector3(0.48, collar_h, 0.30)
-	collar.mesh = collar_mesh
-	collar.position = Vector3(0.0, legs_top + torso_h - collar_h * 0.5, 0.0)
-	collar.material_override = person_material(coat.lightened(0.22))
+	var collar_cyl := CylinderMesh.new()
+	var collar_h := total_height * 0.05
+	collar_cyl.top_radius = 0.165
+	collar_cyl.bottom_radius = 0.195
+	collar_cyl.height = collar_h
+	collar.mesh = collar_cyl
+	collar.position = Vector3(0.0, legs_top + torso_h - collar_h * 0.4, 0.0)
+	collar.material_override = person_material(coat.lightened(0.24))
 	root_node.add_child(collar)
-	var arm_h := torso_h * 0.82
-	var hand_h := torso_h * 0.16
-	for arm_side in [-0.30, 0.30]:
+	var arm_h := torso_h * 0.80
+	var hand_r := 0.055
+	for arm_side in [-0.24, 0.24]:
 		var arm := MeshInstance3D.new()
-		var arm_mesh := BoxMesh.new()
-		arm_mesh.size = Vector3(0.12, arm_h, 0.16)
-		arm.mesh = arm_mesh
-		arm.position = Vector3(arm_side, legs_top + torso_h - arm_h * 0.5 - 0.02, 0.0)
+		var arm_cyl := CylinderMesh.new()
+		arm_cyl.top_radius = 0.062
+		arm_cyl.bottom_radius = 0.052
+		arm_cyl.height = arm_h
+		arm.mesh = arm_cyl
+		arm.position = Vector3(arm_side, legs_top + torso_h - arm_h * 0.5 - 0.03, 0.0)
+		arm.rotation_degrees = Vector3(0.0, 0.0, 7.0 if arm_side < 0.0 else -7.0)
 		arm.material_override = person_material(coat.darkened(0.06))
 		root_node.add_child(arm)
 		var hand := MeshInstance3D.new()
-		var hand_mesh := BoxMesh.new()
-		hand_mesh.size = Vector3(0.10, hand_h, 0.12)
-		hand.mesh = hand_mesh
-		hand.position = Vector3(arm_side, legs_top + hand_h * 0.5 + 0.02, 0.02)
+		var hand_sph := SphereMesh.new()
+		hand_sph.radius = hand_r
+		hand_sph.height = hand_r * 2.0
+		hand.mesh = hand_sph
+		hand.position = Vector3(arm_side * 1.06, legs_top + hand_r + 0.02, 0.02)
 		hand.material_override = person_material(skin)
 		root_node.add_child(hand)
+	# Smooth rounded head (SphereMesh)
 	var head := MeshInstance3D.new()
-	var head_mesh := BoxMesh.new()
-	var head_h := total_height * 0.16
-	head_mesh.size = Vector3(0.32, head_h, 0.32)
-	head.mesh = head_mesh
-	head.position = Vector3(0.0, legs_top + torso_h + head_h * 0.5, 0.0)
+	var head_sph := SphereMesh.new()
+	var head_h := total_height * 0.165
+	head_sph.radius = head_h * 0.52
+	head_sph.height = head_h
+	head.mesh = head_sph
+	var head_cy := legs_top + torso_h + head_h * 0.48
+	head.position = Vector3(0.0, head_cy, 0.0)
 	head.material_override = person_material(skin)
 	root_node.add_child(head)
+	# Expressive eyes & warm smile on face inside a Node3D child so player_height_m() is unaffected
+	var face_node := Node3D.new()
+	face_node.name = "FaceFeatures"
+	for eye_x in [-0.052, 0.052]:
+		var eye := MeshInstance3D.new()
+		var eye_sph := SphereMesh.new()
+		eye_sph.radius = 0.022
+		eye_sph.height = 0.044
+		eye.mesh = eye_sph
+		eye.position = Vector3(eye_x, head_cy + 0.015, head_h * 0.48)
+		eye.material_override = person_material(Color("1a1e21"))
+		face_node.add_child(eye)
+	root_node.add_child(face_node)
+	# Sculpted rounded hair dome / cap reaching exact total_height
 	var cap := MeshInstance3D.new()
-	var cap_mesh := BoxMesh.new()
-	var cap_h := total_height - (legs_top + torso_h + head_h)
-	cap_mesh.size = Vector3(0.35, cap_h, 0.35)
-	cap.mesh = cap_mesh
-	cap.position = Vector3(0.0, total_height - cap_h * 0.5, 0.0)
+	var cap_sph := SphereMesh.new()
+	var cap_h := total_height - (legs_top + torso_h + head_h * 0.62)
+	cap_sph.radius = head_h * 0.56
+	cap_sph.height = cap_h
+	cap.mesh = cap_sph
+	cap.position = Vector3(0.0, total_height - cap_h * 0.5, -0.01)
 	cap.material_override = person_material(hair)
 	root_node.add_child(cap)
-	# Overhead floating plumbob beacon inside a Node3D holder so player_height_m() stays exact
-	var beacon_holder := Node3D.new()
-	beacon_holder.name = "BeaconHolder"
-	var plumbob := MeshInstance3D.new()
-	plumbob.name = "CharacterBeacon"
-	var p_box := BoxMesh.new()
-	p_box.size = Vector3(0.24, 0.24, 0.24)
-	plumbob.mesh = p_box
-	plumbob.position = Vector3(0.0, total_height + 0.26, 0.0)
-	plumbob.rotation_degrees = Vector3(45.0, 45.0, 0.0)
-	plumbob.material_override = person_material(Color("ffe866") if is_player else coat.lightened(0.32))
-	beacon_holder.add_child(plumbob)
-	root_node.add_child(beacon_holder)
 	return root_node
 
 func build_street_life_decor() -> void:
@@ -5154,6 +5173,7 @@ func setup_web_a11y_bridge() -> void:
 	(function() {
 		if (window.__tenderloinWebA11yReady) return;
 		window.__tenderloinWebA11yReady = true;
+		window.addEventListener('contextmenu', function(e) { e.preventDefault(); });
 		var srStyle = 'position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;';
 		var live = document.getElementById('godot-a11y-status');
 		if (!live) {
@@ -6977,13 +6997,26 @@ func clear_occlusion() -> void:
 	last_occlusion_pos = Vector2(INF, INF)
 	last_occlusion_neighbor = -2
 
+func get_camera_offset_vec() -> Vector3:
+	var base := Vector3(CAMERA_OFFSET.x, CAMERA_OFFSET.y * camera_pitch_scale, CAMERA_OFFSET.z)
+	return base.rotated(Vector3.UP, camera_yaw)
+
+func rotate_camera_by_delta(delta_yaw: float, delta_pitch: float = 0.0) -> void:
+	in_overview = false
+	in_wide_overview = false
+	camera_yaw = wrapf(camera_yaw + delta_yaw, -PI, PI)
+	camera_pitch_scale = clampf(camera_pitch_scale + delta_pitch, 0.55, 1.65)
+	update_camera()
+	update_occlusion(true)
+
 func building_record_occludes_point(b: Dictionary, raw_rect: Rect2, focus_xz: Vector2, focus_y: float = 1.0) -> bool:
 	var h: float = b.height_m
 	if h <= focus_y + 1.0:
 		return false
 	var max_t := h - focus_y
 	var b_rect: Rect2 = raw_rect.grow(CUTAWAY_RADIUS_M)
-	var ray_slope := Vector2(CAMERA_OFFSET.x / CAMERA_OFFSET.y, CAMERA_OFFSET.z / CAMERA_OFFSET.y)
+	var cam_off := get_camera_offset_vec()
+	var ray_slope := Vector2(cam_off.x / maxf(cam_off.y, 1.0), cam_off.z / maxf(cam_off.y, 1.0))
 	var t := 1.0
 	while t <= max_t:
 		var ray_pt := focus_xz + ray_slope * t
@@ -7063,6 +7096,21 @@ func _process(delta: float) -> void:
 		advance_music_clock(delta)
 
 func _physics_process(delta: float) -> void:
+	var shift_held := Input.is_key_pressed(KEY_SHIFT) or Input.is_physical_key_pressed(KEY_SHIFT)
+	if shift_held and get_viewport().gui_get_focus_owner() == null:
+		var yaw_dir := 0.0
+		var pitch_dir := 0.0
+		if Input.is_key_pressed(KEY_LEFT):
+			yaw_dir -= 1.0
+		if Input.is_key_pressed(KEY_RIGHT):
+			yaw_dir += 1.0
+		if Input.is_key_pressed(KEY_UP):
+			pitch_dir += 1.0
+		if Input.is_key_pressed(KEY_DOWN):
+			pitch_dir -= 1.0
+		if absf(yaw_dir) > 0.0 or absf(pitch_dir) > 0.0:
+			rotate_camera_by_delta(yaw_dir * delta * 1.65, pitch_dir * delta * 0.75)
+			return
 	var input_vec := Vector2.ZERO
 	if Input.is_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_D):
 		input_vec.x += 1.0
@@ -7072,7 +7120,7 @@ func _physics_process(delta: float) -> void:
 		input_vec.y += 1.0
 	if Input.is_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_W):
 		input_vec.y -= 1.0
-	if get_viewport().gui_get_focus_owner() == null:
+	if get_viewport().gui_get_focus_owner() == null and not shift_held:
 		if Input.is_key_pressed(KEY_RIGHT):
 			input_vec.x += 1.0
 		if Input.is_key_pressed(KEY_LEFT):
@@ -7084,6 +7132,8 @@ func _physics_process(delta: float) -> void:
 	if input_vec.length_squared() > 0.0:
 		if get_viewport().gui_get_focus_owner() != null:
 			get_viewport().gui_release_focus()
+		if absf(camera_yaw) > 1e-4:
+			input_vec = input_vec.rotated(-camera_yaw)
 		walk_step(input_vec, delta)
 	elif not current_path.is_empty():
 		advance_walk(delta)
@@ -7288,31 +7338,56 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_B, KEY_BRACKETLEFT: choose_next_neighbor(-1)
 			KEY_F: follow_player()
 			KEY_ESCAPE, KEY_X: stop_walking()
-	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		# Godot emulates MouseButton/MouseMotion from touch by default; handling once avoids double firing.
-		if event.pressed:
+	elif event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
 			if not is_screen_point_in_ui(event.position):
-				pointer_active = true
-				pointer_dragging = false
-				pointer_down_pos = event.position
-				pointer_last_pos = event.position
+				zoom(0.88)
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
+			if not is_screen_point_in_ui(event.position):
+				zoom(1.14)
+		elif event.button_index == MOUSE_BUTTON_RIGHT or event.button_index == MOUSE_BUTTON_MIDDLE:
+			if event.pressed:
+				if not is_screen_point_in_ui(event.position):
+					orbit_dragging = true
+					orbit_last_pos = event.position
+			else:
+				orbit_dragging = false
+		elif event.button_index == MOUSE_BUTTON_LEFT:
+			# Godot emulates MouseButton/MouseMotion from touch by default; handling once avoids double firing.
+			if event.pressed:
+				if not is_screen_point_in_ui(event.position):
+					if event.shift_pressed or event.alt_pressed or event.ctrl_pressed:
+						orbit_dragging = true
+						orbit_last_pos = event.position
+					else:
+						pointer_active = true
+						pointer_dragging = false
+						pointer_down_pos = event.position
+						pointer_last_pos = event.position
+			else:
+				orbit_dragging = false
+				if pointer_active:
+					var was_drag := pointer_dragging
+					pointer_active = false
+					pointer_dragging = false
+					if not was_drag:
+						handle_scene_tap(event.position)
+	elif event is InputEventMouseMotion:
+		if orbit_dragging:
+			var d_orb: Vector2 = event.position - orbit_last_pos
+			orbit_last_pos = event.position
+			rotate_camera_by_delta(-d_orb.x * 0.0085, d_orb.y * 0.0035)
 		elif pointer_active:
-			var was_drag := pointer_dragging
-			pointer_active = false
-			pointer_dragging = false
-			if not was_drag:
-				handle_scene_tap(event.position)
-	elif event is InputEventMouseMotion and pointer_active:
-		if event.position.distance_to(pointer_down_pos) > 8.0:
-			pointer_dragging = true
-		if pointer_dragging:
-			pan_camera_by_screen_delta(event.position - pointer_last_pos)
-		pointer_last_pos = event.position
+			if event.position.distance_to(pointer_down_pos) > 8.0:
+				pointer_dragging = true
+			if pointer_dragging:
+				pan_camera_by_screen_delta(event.position - pointer_last_pos)
+			pointer_last_pos = event.position
 
 func update_camera() -> void:
 	camera.size = view_size
 	var offset_scale := 2.2 if (in_wide_overview or view_size > 300.0) else 1.0
-	camera.position = target + CAMERA_OFFSET * offset_scale
+	camera.position = target + get_camera_offset_vec() * offset_scale
 	camera.look_at(target)
 	camera.force_update_transform()
 
@@ -7357,6 +7432,8 @@ func overview() -> void:
 	in_overview = true
 	in_wide_overview = false
 	following_player = false
+	camera_yaw = 0.0
+	camera_pitch_scale = 1.0
 	selected_neighbor = -1
 	arrived_neighbor = -1
 	walking_to_mural = false
@@ -7401,6 +7478,8 @@ func wide_overview() -> void:
 	in_overview = false
 	in_wide_overview = true
 	following_player = false
+	camera_yaw = 0.0
+	camera_pitch_scale = 1.0
 	selected_neighbor = -1
 	arrived_neighbor = -1
 	walking_to_mural = false
@@ -7477,11 +7556,11 @@ func zoom(factor: float) -> void:
 	update_occlusion(true)
 
 func overview_text() -> String:
-	return "%d city footprints · 2010 survey · PDDL\nStreets © OpenStreetMap contributors / ODbL\nWASD/tap street to walk · Walk to neighbor (1–5) · Block status (G)" % data.buildings.size()
+	return "%d city footprints · 2010 survey · PDDL · Streets © OpenStreetMap / ODbL\nRight-drag / Shift+Arrows: Rotate 3D · Scroll: Zoom · Left-drag: Pan\nWASD/Tap: Walk · Neighbors (1–5) · Block (G) · Museum (Shift+M) · Eateries (Shift+E)" % data.buildings.size()
 
 func wide_overview_text() -> String:
 	var dist_state := "Shown" if district_boundary_visible else "Hidden"
-	return "%d Tenderloin footprints (%d opening + %d wider) · 7 OSM streets\nTransgender Cultural District (%s, C) · Compton's (J) · Black Hawk (H)\nCity 2010 survey & 5xmc-5bjj (2017) / PDDL · Streets © OpenStreetMap / ODbL" % [all_buildings.size(), data.buildings.size(), wider_meshes.size(), dist_state]
+	return "%d Tenderloin footprints (%d opening + %d wider) · 7 OSM streets\nRight-drag: Rotate 3D · District (%s, C) · Compton's (J) · Black Hawk (H)\nCity 2010 survey & 5xmc-5bjj (2017) / PDDL · Streets © OpenStreetMap / ODbL" % [all_buildings.size(), data.buildings.size(), wider_meshes.size(), dist_state]
 
 func refit_after_layout() -> void:
 	await get_tree().process_frame
@@ -7669,14 +7748,45 @@ func update_block_ui() -> void:
 
 func make_ui() -> void:
 	button_focus_style = StyleBoxFlat.new()
-	button_focus_style.bg_color = Color(0.95, 0.72, 0.19, 0.18)
-	button_focus_style.border_color = Color(0.98, 0.78, 0.22, 1.0)
+	button_focus_style.bg_color = Color(0.95, 0.72, 0.19, 0.24)
+	button_focus_style.border_color = Color(0.99, 0.82, 0.28, 1.0)
 	button_focus_style.set_border_width_all(3)
-	button_focus_style.set_corner_radius_all(4)
+	button_focus_style.set_corner_radius_all(6)
+
+	button_normal_style = StyleBoxFlat.new()
+	button_normal_style.bg_color = Color(0.11, 0.17, 0.22, 0.94)
+	button_normal_style.border_color = Color(0.86, 0.68, 0.28, 0.85)
+	button_normal_style.set_border_width_all(2)
+	button_normal_style.set_corner_radius_all(6)
+	button_normal_style.content_margin_left = 8
+	button_normal_style.content_margin_right = 8
+	button_normal_style.content_margin_top = 4
+	button_normal_style.content_margin_bottom = 4
+
+	button_hover_style = StyleBoxFlat.new()
+	button_hover_style.bg_color = Color(0.18, 0.27, 0.34, 0.98)
+	button_hover_style.border_color = Color(0.99, 0.84, 0.35, 1.0)
+	button_hover_style.set_border_width_all(2)
+	button_hover_style.set_corner_radius_all(6)
+	button_hover_style.content_margin_left = 8
+	button_hover_style.content_margin_right = 8
+	button_hover_style.content_margin_top = 4
+	button_hover_style.content_margin_bottom = 4
+
+	panel_bg_style = StyleBoxFlat.new()
+	panel_bg_style.bg_color = Color(0.07, 0.11, 0.15, 0.92)
+	panel_bg_style.border_color = Color(0.88, 0.70, 0.30, 0.88)
+	panel_bg_style.set_border_width_all(2)
+	panel_bg_style.set_corner_radius_all(8)
+	panel_bg_style.content_margin_left = 8
+	panel_bg_style.content_margin_right = 8
+	panel_bg_style.content_margin_top = 0
+	panel_bg_style.content_margin_bottom = 0
 
 	var layer := CanvasLayer.new()
 	add_child(layer)
 	header_panel = PanelContainer.new()
+	header_panel.add_theme_stylebox_override("panel", panel_bg_style)
 	header_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	header_panel.offset_left = 12
 	header_panel.offset_right = -12
@@ -7687,21 +7797,24 @@ func make_ui() -> void:
 	var title := Label.new()
 	title.text = "TENDERLOIN REDUX / Godot block walk & study"
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	title.add_theme_font_size_override("font_size", 23)
+	title.add_theme_font_size_override("font_size", 26)
+	title.add_theme_color_override("font_color", Color("ffe48f"))
 	column.add_child(title)
 	info = Label.new()
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info.text = overview_text()
-	info.add_theme_font_size_override("font_size", 17)
+	info.add_theme_font_size_override("font_size", 19)
+	info.add_theme_color_override("font_color", Color("fff8e8"))
 	column.add_child(info)
 
 	mural_panel = PanelContainer.new()
 	mural_panel.name = "MuralPanel"
+	mural_panel.add_theme_stylebox_override("panel", panel_bg_style)
 	mural_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	mural_panel.offset_left = 12
 	mural_panel.offset_right = -12
-	mural_panel.offset_top = -302
-	mural_panel.offset_bottom = -130
+	mural_panel.offset_top = -338
+	mural_panel.offset_bottom = -138
 	mural_panel.visible = false
 	layer.add_child(mural_panel)
 	var mural_vbox := VBoxContainer.new()
@@ -7709,7 +7822,8 @@ func make_ui() -> void:
 	mural_panel.add_child(mural_vbox)
 	mural_label = Label.new()
 	mural_label.clip_text = true
-	mural_label.add_theme_font_size_override("font_size", 13)
+	mural_label.add_theme_font_size_override("font_size", 17)
+	mural_label.add_theme_color_override("font_color", Color("ffe082"))
 	mural_vbox.add_child(mural_label)
 	mural_buttons.clear()
 	var row1 := HBoxContainer.new()
@@ -7733,11 +7847,12 @@ func make_ui() -> void:
 
 	music_panel = PanelContainer.new()
 	music_panel.name = "MusicPanel"
+	music_panel.add_theme_stylebox_override("panel", panel_bg_style)
 	music_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	music_panel.offset_left = 12
 	music_panel.offset_right = -12
-	music_panel.offset_top = -302
-	music_panel.offset_bottom = -130
+	music_panel.offset_top = -338
+	music_panel.offset_bottom = -138
 	music_panel.visible = false
 	layer.add_child(music_panel)
 	var music_vbox := VBoxContainer.new()
@@ -7745,11 +7860,13 @@ func make_ui() -> void:
 	music_panel.add_child(music_vbox)
 	music_label = Label.new()
 	music_label.clip_text = true
-	music_label.add_theme_font_size_override("font_size", 13)
+	music_label.add_theme_font_size_override("font_size", 17)
+	music_label.add_theme_color_override("font_color", Color("ffe082"))
 	music_vbox.add_child(music_label)
 	music_stem_label = Label.new()
 	music_stem_label.clip_text = true
-	music_stem_label.add_theme_font_size_override("font_size", 12)
+	music_stem_label.add_theme_font_size_override("font_size", 15)
+	music_stem_label.add_theme_color_override("font_color", Color("f2ead8"))
 	music_vbox.add_child(music_stem_label)
 	music_buttons.clear()
 	var m_row1 := HBoxContainer.new()
@@ -7771,11 +7888,12 @@ func make_ui() -> void:
 
 	block_panel = PanelContainer.new()
 	block_panel.name = "BlockPanel"
+	block_panel.add_theme_stylebox_override("panel", panel_bg_style)
 	block_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	block_panel.offset_left = 12
 	block_panel.offset_right = -12
-	block_panel.offset_top = -302
-	block_panel.offset_bottom = -130
+	block_panel.offset_top = -338
+	block_panel.offset_bottom = -138
 	block_panel.visible = false
 	layer.add_child(block_panel)
 	var block_vbox := VBoxContainer.new()
@@ -7783,11 +7901,13 @@ func make_ui() -> void:
 	block_panel.add_child(block_vbox)
 	block_label = Label.new()
 	block_label.clip_text = true
-	block_label.add_theme_font_size_override("font_size", 13)
+	block_label.add_theme_font_size_override("font_size", 17)
+	block_label.add_theme_color_override("font_color", Color("ffe082"))
 	block_vbox.add_child(block_label)
 	block_detail_label = Label.new()
 	block_detail_label.clip_text = true
-	block_detail_label.add_theme_font_size_override("font_size", 12)
+	block_detail_label.add_theme_font_size_override("font_size", 15)
+	block_detail_label.add_theme_color_override("font_color", Color("f2ead8"))
 	block_vbox.add_child(block_detail_label)
 	block_buttons.clear()
 	var b_row1 := HBoxContainer.new()
@@ -7816,10 +7936,12 @@ func make_ui() -> void:
 
 	controls = GridContainer.new()
 	controls.columns = 3
+	controls.add_theme_constant_override("h_separation", 8)
+	controls.add_theme_constant_override("v_separation", 4)
 	controls.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	controls.offset_left = 12
 	controls.offset_right = -12
-	controls.offset_top = -124
+	controls.offset_top = -132
 	controls.offset_bottom = -12
 	layer.add_child(controls)
 	button(controls, "Previous", func(): choose_next(-1))
@@ -7834,20 +7956,44 @@ func make_ui() -> void:
 			return
 		var narrow := vp.get_visible_rect().size.x < 600
 		if is_instance_valid(title):
-			title.add_theme_font_size_override("font_size", 18 if narrow else 23)
+			title.add_theme_font_size_override("font_size", 18 if narrow else 26)
 		if is_instance_valid(info):
-			info.add_theme_font_size_override("font_size", 13 if narrow else 17)
+			info.add_theme_font_size_override("font_size", 13 if narrow else 19)
+		if is_instance_valid(mural_label):
+			mural_label.add_theme_font_size_override("font_size", 13 if narrow else 17)
+		if is_instance_valid(music_label):
+			music_label.add_theme_font_size_override("font_size", 13 if narrow else 17)
+		if is_instance_valid(music_stem_label):
+			music_stem_label.add_theme_font_size_override("font_size", 12 if narrow else 15)
+		if is_instance_valid(block_label):
+			block_label.add_theme_font_size_override("font_size", 13 if narrow else 17)
+		if is_instance_valid(block_detail_label):
+			block_detail_label.add_theme_font_size_override("font_size", 12 if narrow else 15)
+		var main_btn_font := 16 if narrow else 20
+		for child in controls.get_children():
+			if child is Button:
+				child.add_theme_font_size_override("font_size", main_btn_font)
+		var sub_btn_font := 13 if narrow else 16
+		for b in mural_buttons:
+			if is_instance_valid(b):
+				b.add_theme_font_size_override("font_size", sub_btn_font)
+		for b in music_buttons:
+			if is_instance_valid(b):
+				b.add_theme_font_size_override("font_size", sub_btn_font)
+		for b in block_buttons:
+			if is_instance_valid(b):
+				b.add_theme_font_size_override("font_size", sub_btn_font)
 		controls.columns = 2 if narrow else 3
-		controls.offset_top = -174 if narrow else -124
+		controls.offset_top = -174 if narrow else -132
 		if is_instance_valid(mural_panel):
-			mural_panel.offset_bottom = -180 if narrow else -130
-			mural_panel.offset_top = -352 if narrow else -302
+			mural_panel.offset_bottom = -180 if narrow else -138
+			mural_panel.offset_top = -352 if narrow else -338
 		if is_instance_valid(music_panel):
-			music_panel.offset_bottom = -180 if narrow else -130
-			music_panel.offset_top = -352 if narrow else -302
+			music_panel.offset_bottom = -180 if narrow else -138
+			music_panel.offset_top = -352 if narrow else -338
 		if is_instance_valid(block_panel):
-			block_panel.offset_bottom = -180 if narrow else -130
-			block_panel.offset_top = -352 if narrow else -302
+			block_panel.offset_bottom = -180 if narrow else -138
+			block_panel.offset_top = -352 if narrow else -338
 		if in_overview or in_wide_overview:
 			refit_after_layout()
 	vp.size_changed.connect(resize_controls)
@@ -7864,15 +8010,26 @@ func make_ui() -> void:
 	)
 	resize_controls.call()
 
+func style_game_button(control: Button) -> void:
+	if button_focus_style != null:
+		control.add_theme_stylebox_override("focus", button_focus_style)
+	if button_normal_style != null:
+		control.add_theme_stylebox_override("normal", button_normal_style)
+	if button_hover_style != null:
+		control.add_theme_stylebox_override("hover", button_hover_style)
+		control.add_theme_stylebox_override("pressed", button_hover_style)
+	control.add_theme_color_override("font_color", Color("fff8e6"))
+	control.add_theme_color_override("font_hover_color", Color("ffe898"))
+	control.add_theme_color_override("font_focus_color", Color("ffe898"))
+
 func button(parent: Node, text: String, action: Callable) -> void:
 	var control := Button.new()
 	control.text = text
 	control.custom_minimum_size = Vector2(0, 50)
 	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	control.focus_mode = Control.FOCUS_ALL
-	if button_focus_style != null:
-		control.add_theme_stylebox_override("focus", button_focus_style)
-	control.add_theme_font_size_override("font_size", 16)
+	style_game_button(control)
+	control.add_theme_font_size_override("font_size", 20)
 	control.pressed.connect(action)
 	parent.add_child(control)
 
@@ -7883,9 +8040,8 @@ func mural_button(parent: Node, text: String, action: Callable) -> Button:
 	control.custom_minimum_size = Vector2(44, 44)
 	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	control.focus_mode = Control.FOCUS_ALL
-	if button_focus_style != null:
-		control.add_theme_stylebox_override("focus", button_focus_style)
-	control.add_theme_font_size_override("font_size", 13)
+	style_game_button(control)
+	control.add_theme_font_size_override("font_size", 16)
 	control.pressed.connect(action)
 	parent.add_child(control)
 	mural_buttons.append(control)
@@ -7898,9 +8054,8 @@ func music_button(parent: Node, text: String, action: Callable) -> Button:
 	control.custom_minimum_size = Vector2(44, 44)
 	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	control.focus_mode = Control.FOCUS_ALL
-	if button_focus_style != null:
-		control.add_theme_stylebox_override("focus", button_focus_style)
-	control.add_theme_font_size_override("font_size", 13)
+	style_game_button(control)
+	control.add_theme_font_size_override("font_size", 16)
 	control.pressed.connect(action)
 	parent.add_child(control)
 	music_buttons.append(control)
@@ -7913,12 +8068,12 @@ func block_button(parent: Node, text: String, action: Callable) -> Button:
 	control.custom_minimum_size = Vector2(44, 44)
 	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	control.focus_mode = Control.FOCUS_ALL
-	if button_focus_style != null:
-		control.add_theme_stylebox_override("focus", button_focus_style)
-	control.add_theme_font_size_override("font_size", 13)
+	style_game_button(control)
+	control.add_theme_font_size_override("font_size", 16)
 	control.pressed.connect(action)
 	parent.add_child(control)
 	block_buttons.append(control)
 	return control
+
 
 
