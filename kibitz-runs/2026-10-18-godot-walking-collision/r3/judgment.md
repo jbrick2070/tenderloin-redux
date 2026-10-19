@@ -1,0 +1,33 @@
+# Driver judgment — source-verified independent review
+
+One successful installed Kibitz native Claude CLI call: exact `claude-opus-5-5`, effort `high`, `rc=0`, `authRc=0` (`claude.md` SHA256 `c245b8ba8ee6f2d6040a2c6376cab45b90c946820c9300a7249013b4c100382f`). Driver AGY (`Gemini 4 Argon` High) excluded from independent-family review. Actual `source_before.json` / `source_before.zip` vs post-review comparison: **zero source edits by reviewer** (`SOURCE_EDITS_BY_REVIEWER= 0`). Single `r3` only; `r1`/`r2`/`r4` omitted per creator's single-round policy. No second paid call after fixes.
+
+## Must-fix claims
+
+1. **CONFIRMED and fixed** (`[G3 find_path / arrival]` silent teleport on a blocked or failed route):
+   - In the pre-review version of `godot/main.gd`, `advance_walk` and `walk_to_neighbor` checked `or current_path.is_empty()` alongside `player_xz().distance_to(goal) <= ARRIVAL_DISTANCE_M`, and `finish_neighbor_arrival` overwrote `player.position` with `neighbors[index].pos`. If a micro-step failed `is_walkable_point` or `current_path` emptied early, the player would be teleported to the neighbor's origin.
+   - **Fix**: Set `ARRIVAL_DISTANCE_M := 1.35`, removed `or current_path.is_empty()` from the arrival condition in both `walk_to_neighbor` and `advance_walk`, stopped overwriting `player.position` onto the neighbor's origin in `finish_neighbor_arrival` (if `dist < 0.85 m`, offsets to `0.95 m` along the approach vector so player and neighbor models never overlap), and added a single re-plan attempt in `advance_walk` if `current_path` empties while `dist > ARRIVAL_DISTANCE_M` (reporting `"Route blocked to <name>"` in `info.text` if still unreachable).
+2. **CONFIRMED and fixed** (`[G3 tests]` arrival test could not distinguish continuous walking from teleporting):
+   - Updated `godot/tests/study_test.gd` to record `prev_pos` before every `advance_walk(0.2)` step and assert `cur_pos.distance_to(prev_pos) <= WALK_SPEED_M_PER_S * 0.2 + 0.05`, assert `guard < 400`, assert `arrived_neighbor == i`, and assert final arrival distance is `<= ARRIVAL_DISTANCE_M` (`1.35 m`) and `>= 0.70 m` (no model overlap).
+3. **CONFIRMED and fixed** (`[G3 handle_scene_tap / web touch]` double firing under Godot's default mouse-from-touch emulation):
+   - Godot 4.7 enables `emulate_mouse_from_touch` by default, so handling both `InputEventMouseButton`/`InputEventMouseMotion` and `InputEventScreenTouch`/`InputEventScreenDrag` in `_unhandled_input` caused touch taps and drags on Web to run twice.
+   - **Fix**: Removed the duplicate `InputEventScreenTouch`/`InputEventScreenDrag` branches in `godot/main.gd:_unhandled_input`, relying on the unified mouse/emulated-touch path.
+4. **CONFIRMED and fixed** (`[G2 / G3 doc <-> code contract]` constant names and thresholds):
+   - Aligned `ARRIVAL_DISTANCE_M := 1.35`, `WALK_CLEARANCE_M := 0.65`, `PLAYER_HEIGHT_M := 1.72`, `PLAYER_RADIUS_M := 0.45`, `WALK_SPEED_M_PER_S := 4.8`, `nearest_street_tangent`, and `study_test.gd` neighbor clearance assertion (`>= 2.35 m`, actual minimum `2.39 m`) across `godot/main.gd`, `godot/tests/study_test.gd`, `docs/GODOT_APPROACH.md`, and `docs/BUILD_GODOT_WALKING_REVIEW.md`.
+5. **CONFIRMED and fixed** (`[Docs sequencing]` `docs/GODOT_APPROACH.md:16` referencing `BUILD_STATUS` receipts):
+   - `docs/BUILD_STATUS.md` and `session_handoff.md` are updated in this checkpoint with the complete Round 2 review, test, and browser receipts.
+
+## Should-fix and optional claims
+
+1. **CONFIRMED and documented** (`[G2 CharacterBody3D / StaticBody3D]`): Documented in `docs/GODOT_APPROACH.md` and `docs/BUILD_GODOT_WALKING_REVIEW.md` that 2D polygon + courtyard-hole checks (`is_walkable_point`) are authoritative for movement and collision, while `StaticBody3D` + `ConcavePolygonShape3D` bodies remain attached to all 58 buildings for 3D scene representation.
+2. **CONFIRMED and fixed** (`[G3 drag pan <-> walking]` `following_player` flag): Gated camera re-centering in `advance_walk` and `finish_neighbor_arrival` with `if following_player:`, so dragging the camera while walking preserves the panned view until `F` (`follow_player()`) or a new walk is initiated. Verified in `study_test.gd`.
+3. **CONFIRMED and fixed** (`[G2 sliding <-> data contract]` hard-coded street tangents): Replaced hard-coded `turk_tangent`/`taylor_tangent` vectors with `nearest_street_tangent(pt)` derived dynamically from `data.streets` segments.
+4. **CONFIRMED and fixed** (`[G2/G3 config]` dynamic `walk_bounds` and BFS cap): Computed `walk_bounds` in `_ready()` from the union of all 58 `building_rects` grown by `12.0 m`, and derived `max_cells` in `find_path` from `walk_bounds.size`.
+5. **CONFIRMED and fixed** (`[G2 cutaway <-> camera]` shared `CAMERA_OFFSET`): Defined `const CAMERA_OFFSET := Vector3(180.0, 180.0, 180.0)` and derived the occlusion ray slope in `building_occludes_point` from `CAMERA_OFFSET`.
+6. **CONFIRMED and fixed** (`[G3 failure feedback]`): `walk_to_neighbor` and `walk_to_point` now update `info.text` with `"No walkable route to ..."` when `find_path` returns empty, and `study_test.gd` asserts `not study.current_path.is_empty() or study.arrived_neighbor == expected_neighbor` after `ui_accept` on `"Walk to neighbor"`.
+7. **CONFIRMED and fixed** (`[G3 tests]` `_unhandled_input` coverage): Added direct `_unhandled_input` tests in `study_test.gd` for `InputEventMouseButton` press+release on a projected neighbor and `> 8 px` `InputEventMouseMotion` drag-pan gating.
+8. **CONFIRMED and fixed** (`[Build pipeline sequencing]` stale export guard in `tests/godot-browser.mjs`): Added `stat` comparison checking that `artifacts/godot-web/index.pck` is at least as new as `godot/main.gd` and `godot/data/buildings.json` before launching Chrome.
+9. **CONFIRMED and fixed** (`[Per-tick cost]`): Throttled `update_route_ribbon(false)` (`>= 0.35 m` or waypoint count change) and `update_occlusion(false)` (`>= 0.40 m` or neighbor change) during per-tick walking while keeping `force = true` on mode/route transitions.
+10. **CONFIRMED and fixed** (`[G3 arrival visual]` player overlapping neighbor): `finish_neighbor_arrival` stops at the walked position (`<= 1.35 m`, `>= 0.70 m`) instead of snapping onto the neighbor's origin.
+11. **CONFIRMED and fixed** (`[G3 neighbor focus leak]`): `choose_next`, `overview`, and `walk_step` clear `selected_neighbor = -1` and `arrived_neighbor = -1`, and `update_occlusion` clears/skips cutaway when `selected >= 0` (studying a building) or `in_overview`.
+12. **CONFIRMED and fixed** (Optional keyboard layout independence, early-return null guard, interior footprint test assertion, and viewport `size_changed` disconnect on `tree_exiting`).

@@ -1,0 +1,89 @@
+{
+  "checkpoint": "Godot actual-scale walking, building/courtyard collision, camera sightline cutaway, and keyboard/touch neighbor navigation",
+  "builder": "AGY 4 / Gemini 4 Argon High",
+  "review": {
+    "lane": "native Claude CLI",
+    "model": "claude-opus-5-5",
+    "effort": "high",
+    "successfulCalls": 1,
+    "rc": 0,
+    "authRc": 0,
+    "usagePercent": null,
+    "cost": null,
+    "scope": "r3 only",
+    "sourceEditsByReviewer": 0,
+    "rawSha256": "c245b8ba8ee6f2d6040a2c6376cab45b90c946820c9300a7249013b4c100382f"
+  },
+  "gates": {
+    "nodeTests": 94,
+    "nodeFailures": 0,
+    "syntax": "pass",
+    "godotImport": "pass",
+    "godotNative": "pass",
+    "negativeHarnessExpectedExit": 1,
+    "negativeHarnessNoFalsePass": true,
+    "webExport": "pass",
+    "chrome": {
+      "runs": [
+        {
+          "viewport": {
+            "width": 1100,
+            "height": 760
+          },
+          "overviewBytes": 75416,
+          "selectedBytes": 65661,
+          "neighborBytes": 70803,
+          "keyboardActivationVerified": true,
+          "neighborWalkVerified": true
+        },
+        {
+          "viewport": {
+            "width": 390,
+            "height": 667
+          },
+          "overviewBytes": 49570,
+          "selectedBytes": 49625,
+          "neighborBytes": 53355,
+          "keyboardActivationVerified": true,
+          "neighborWalkVerified": true
+        },
+        {
+          "viewport": {
+            "width": 320,
+            "height": 667
+          },
+          "overviewBytes": 46141,
+          "selectedBytes": 46137,
+          "neighborBytes": 51106,
+          "keyboardActivationVerified": true,
+          "neighborWalkVerified": true
+        }
+      ],
+      "errors": [],
+      "external": [],
+      "limit": "Pixel-change and driver-inspected screenshots, not DOM/screen-reader or physical-phone acceptance."
+    }
+  },
+  "browserBaseline": {
+    "version": "0.12.0",
+    "publicSha256": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567"
+  },
+  "preservedHashes": {
+    "manual": "3c6548df658ca822e91e1039e1c36a388c306ed1c2a56f513733d51c9267dae8",
+    "priorFilmRaw": "2f249735610205c7d04622b8eea6f03ba7027b9a6740b253f2eb958cff7f400e",
+    "priorGodotFoundationRaw": "999dd9040038ab220cdd12352f03067929b3c918e0d9b4a4f76a7dc66f8482b7"
+  },
+  "automation": {
+    "codexId": "build-tenderloin-redux",
+    "codexStatus": "PAUSED",
+    "agyScheduler": "ACTIVE (0 * * * *)"
+  },
+  "next": "Godot Round 3: one fictional neighbor conversation and original portable mural with visible saved consequence; then music (Round 4), block validation/save adapter (Round 5), and whole-Tenderloin M2 expansion (Round 6).",
+  "limits": [
+    "No current facade/terrain survey",
+    "No portable mural/neighbor dialogue or music in Godot yet",
+    "No browser-save adapter",
+    "No full screen-reader/physical-phone/human-play acceptance",
+    "No full-game completion"
+  ]
+}

@@ -15,3 +15,10 @@ City and County of San Francisco, Department of Technology, **Building Footprint
 - Streets: existing `public/data/streets.osm.json` plus source XML, original OSM IDs/coordinates. **© OpenStreetMap contributors**, https://www.openstreetmap.org/copyright , ODbL 1.0. Derived street data retains source metadata and ODbL; city buildings remain PDDL. The 10 m bands are schematic widths, not surveyed curbs/sidewalks/permissions.
 
 `source_receipt.json` records input/vendor hashes and official engine/template asset hashes; tests verify every listed hash. Generated `buildings.json` records raw GeoJSON and OSM street hashes, and tests verify exact derived streets. Godot Engine copyright/permission text is retained at `godot/ENGINE_LICENSE.txt` and included in the export. No imagery, business identities, current occupancy claims, borrowed art/music or Google Maps/Earth assets imported. Current façades/roof details/entrances/crossings/decorations remain unverified.
+
+## Why Google Maps / Google Open Buildings Are Not Bundled (Even Non-Commercial)
+
+- **Google Open Buildings V3 (`CC BY 4.0`)**: Covers Africa, South/Southeast Asia, Latin America, and the Caribbean; it does **not** cover North America or San Francisco.
+- **Google Maps Platform Photorealistic 3D Tiles, Street View, and Places**: Even for non-commercial projects, Google Maps Platform requires a live billed Google Cloud API key at runtime, and Google Maps Platform Terms of Service (Section 3.2.3: *No Scraping*, *No Caching*, *No Creating Content From Google Maps Content*) prohibit pre-fetching, extracting, or redistributing Google 3D meshes, textures, panoramas, or place data inside a self-contained offline MIT repository.
+- **Verified Open-Data Alternative Used Here**: San Francisco's official airborne-LiDAR + Pictometry building footprints (`DataSF ynuv-fyni`, **PDDL 1.0**) paired with **OpenStreetMap (`ODbL 1.0`)** street centerlines give higher cadastral/roof-height fidelity for San Francisco without proprietary keys, runtime network calls, or ToS restrictions, and scale cleanly across the **entire Tenderloin neighborhood** in subsequent M2 milestones.
+

@@ -1,0 +1,15 @@
+STDOUT:
+I wrote the round-3 review to `kibitz-runs\2026-10-18-2026-10-18-godot-walking-collision\r3\claude.md`. The tool check passed and the review is grounded in the real source; I only read and ran nothing. Verdict: **yes-with-fixes**.
+
+The five must-fix items:
+
+1. **Silent teleport:** if a route gets blocked partway, `advance_walk` treats the empty path as "arrived" and snaps the player straight to the neighbor, from any distance (`godot/main.gd:706-719`, `681`).
+2. **The arrival test can't catch #1:** it only checks `arrived_neighbor == i`. The doc's "≤ 1.35 m" is never asserted, and the code actually uses 1.6 m (`main.gd:12`).
+3. **Each touch fires twice on web:** with Godot's default touch-to-mouse emulation, a tap runs pathfinding twice and a drag pans at double speed. The default is assumed for Godot 4.7, and `project.godot` doesn't override it.
+4. **Doc and code disagree:**
+   - The doc says 0.45 m wall clearance; the code uses 0.65 m.
+   - `TANGENT_DIRS` doesn't exist in the code.
+   - The doc says ≥ 2.39 m neighbor clearance; the test checks ≥ 2.0 m.
+5. **Receipts claimed early:** `docs/GODOT_APPROACH.md:16` says Round 2 is "checked and reviewed; see BUILD_STATUS", but `docs/BUILD_STATUS.md` has no Round 2 entry yet.
+
+The review also lists 11 should-fix items and 4 suggested cuts. The most notable: the `StaticBody3D`/`CharacterBody3D` physics bodies don't do anything (all collision is the 2D check), and the `following_player` flag is set but never read, so dragging the camera during a walk gets undone every frame.

@@ -6,7 +6,7 @@ The project began as a constructive response to the Tenderloin-set shooter repor
 
 **Status:** first local playable in development. The full game remains in progress; see [build status](docs/BUILD_STATUS.md) and [roadmap](docs/ROADMAP.md).
 
-**Godot direction:** the creator selected stylized isometric/2.5D with city-sourced buildings. Separate `godot/` is initially an interactive footprint/height study; walking/neighbor/mural/music migration comes next. The browser game remains playable below. See [Godot approach/run instructions](docs/GODOT_APPROACH.md) and [data provenance](godot/data/SOURCES.md). The hourly builder follows this direction and regularly pushes tested, independently reviewed checkpoints to GitHub.
+**Godot direction:** the creator selected stylized isometric/2.5D with city-sourced buildings. Separate `godot/` combines the 58-building measured footprint/height study (`DataSF ynuv-fyni` PDDL + OpenStreetMap ODbL streets) with actual-scale walking, building/courtyard collision, camera sightline cutaway, and keyboard/touch neighbor navigation; neighbor conversation/portable mural/music and whole-Tenderloin neighborhood expansion come next. The browser game remains playable below. See [Godot approach/run instructions](docs/GODOT_APPROACH.md) and [data provenance](godot/data/SOURCES.md). The hourly builder follows this direction and regularly pushes tested, reviewed checkpoints to GitHub.
 
 Run with Node.js 22 or newer:
 

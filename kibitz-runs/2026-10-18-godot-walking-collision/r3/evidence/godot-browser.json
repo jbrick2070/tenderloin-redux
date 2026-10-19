@@ -1,0 +1,40 @@
+{
+  "runs": [
+    {
+      "viewport": {
+        "width": 1100,
+        "height": 760
+      },
+      "overviewBytes": 75416,
+      "selectedBytes": 65661,
+      "neighborBytes": 70803,
+      "keyboardActivationVerified": true,
+      "neighborWalkVerified": true
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 667
+      },
+      "overviewBytes": 49570,
+      "selectedBytes": 49625,
+      "neighborBytes": 53355,
+      "keyboardActivationVerified": true,
+      "neighborWalkVerified": true
+    },
+    {
+      "viewport": {
+        "width": 320,
+        "height": 667
+      },
+      "overviewBytes": 46141,
+      "selectedBytes": 46137,
+      "neighborBytes": 51106,
+      "keyboardActivationVerified": true,
+      "neighborWalkVerified": true
+    }
+  ],
+  "errors": [],
+  "external": [],
+  "limit": "Pixel-change and driver-inspected screenshots, not DOM/screen-reader or physical-phone acceptance."
+}

@@ -1,6 +1,8 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, stat, writeFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
+const [pckStat, mainStat, dataStat] = await Promise.all([stat('artifacts/godot-web/index.pck'), stat('godot/main.gd'), stat('godot/data/buildings.json')]);
+assert.ok(pckStat.mtimeMs >= mainStat.mtimeMs && pckStat.mtimeMs >= dataStat.mtimeMs, 'artifacts/godot-web/index.pck is older than godot/main.gd or godot/data/buildings.json; run npm run godot:export first');
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : 'playwright');
 const base = 'http://127.0.0.1:' + (process.env.GODOT_PORT || 4174) + '/';
 await mkdir('artifacts', { recursive: true });
@@ -29,7 +31,12 @@ try {
     await page.waitForTimeout(150);
     const keyboard = await page.screenshot();
     assert.notDeepEqual(after, keyboard, 'Tab then Enter must visibly activate Zoom in');
-    runs.push({ viewport: size, overviewBytes: before.length, selectedBytes: after.length, keyboardActivationVerified: true });
+    // Click "Walk to neighbor" (button index 5: bottom-right of 3x2 desktop or 2x3 phone grid)
+    await page.mouse.click(size.width * (size.width < 600 ? .75 : .83), size.height - 38);
+    await page.waitForTimeout(900);
+    const neighbor = await page.screenshot({ path: `artifacts/godot-${size.width}-neighbor.png` });
+    assert.notDeepEqual(keyboard, neighbor, `Walk to neighbor must visibly advance player/camera at ${size.width}`);
+    runs.push({ viewport: size, overviewBytes: before.length, selectedBytes: after.length, neighborBytes: neighbor.length, keyboardActivationVerified: true, neighborWalkVerified: true });
     await context.close();
   }
   assert.deepEqual(external, []);
