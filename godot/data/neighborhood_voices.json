@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "checkedAt": "2026-10-18",
+  "records": [
+    {
+      "id": "tndc",
+      "name": "Tenderloin Neighborhood Development Corporation",
+      "topic": "Homes and community",
+      "summary": "TNDC describes its work as affordable housing, services and community development for people with low incomes in the Tenderloin and across San Francisco.",
+      "url": "https://www.tndc.org/about",
+      "sourceTitle": "TNDC: Who We Are"
+    },
+    {
+      "id": "glide",
+      "name": "GLIDE",
+      "topic": "Meals and community support",
+      "summary": "GLIDE’s programs page describes free meals and a range of support for individuals and families, including community and family programs.",
+      "url": "https://www.glide.org/programs/",
+      "sourceTitle": "GLIDE: Programs"
+    },
+    {
+      "id": "larkin",
+      "name": "Larkin Street Youth Services",
+      "topic": "Young people and housing",
+      "summary": "Larkin Street describes support for young people experiencing homelessness in San Francisco, including housing, education and employment programs.",
+      "url": "https://larkinstreetyouth.org/about/",
+      "sourceTitle": "Larkin Street Youth Services: About"
+    }
+  ]
+}

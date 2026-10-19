@@ -8,7 +8,8 @@ const [pckStat, ...sourceStats] = await Promise.all([
   stat('godot/main.tscn'),
   stat('godot/project.godot'),
   stat('godot/export_presets.cfg'),
-  stat('godot/data/buildings.json')
+  stat('godot/data/buildings.json'),
+  stat('godot/data/neighborhood_voices.json')
 ]);
 for (const srcStat of sourceStats) {
   assert.ok(pckStat.mtimeMs >= srcStat.mtimeMs, 'artifacts/godot-web/index.pck is older than Godot project sources; run npm run godot:export first');
@@ -206,6 +207,52 @@ try {
       const parsed = JSON.parse(raw);
       return Array.isArray(parsed.programme?.published) && parsed.programme.published.length === 4 && Array.isArray(parsed.hosting?.results) && parsed.hosting.results.length === 4;
     }, null, { timeout: 10000 });
+    // Round 8: Verify M5 Neighborhood Voices starts default-off before any toggle
+    const initialVoicesState = await page.evaluate(() => ({
+      settingsRaw: window.localStorage.getItem('tenderloin-redux.godot.settings.v1'),
+      voicesEnabled: window.__tenderloinGodotA11ySnapshot?.voices_enabled,
+      voicesStatus: window.__tenderloinGodotA11ySnapshot?.voices_status
+    }));
+    assert.equal(initialVoicesState.settingsRaw, null, 'M5 Neighborhood Voices settings key must not exist before explicit user toggle');
+    assert.equal(initialVoicesState.voicesEnabled, false, 'M5 Neighborhood Voices must start default-off');
+    assert.equal(initialVoicesState.voicesStatus, 'off', 'M5 Neighborhood Voices initial status must be off');
+    // Press KeyQ (3x) to start, convene, and complete M4 Peaceful Tenant Listening Hour
+    for (let qStep = 0; qStep < 3; qStep++) {
+      await page.keyboard.press('KeyQ');
+      await page.waitForTimeout(80);
+    }
+    await page.waitForFunction(() => {
+      const raw = window.localStorage.getItem('tenderloin-redux.godot.save.v1');
+      if (!raw) return false;
+      return JSON.parse(raw).civic?.phase === 'done';
+    }, null, { timeout: 10000 });
+    // Press Period (6x) to start M4 Film Short (The Open Seat), hold storyboard, begin shooting, and capture all 3 shots (seat, paint, welcome)
+    for (let fStep = 0; fStep < 6; fStep++) {
+      await page.keyboard.press('Period');
+      await page.waitForTimeout(80);
+    }
+    await page.waitForFunction(() => {
+      const raw = window.localStorage.getItem('tenderloin-redux.godot.save.v1');
+      if (!raw) return false;
+      const film = JSON.parse(raw).film;
+      return film && film.phase === 'done' && Array.isArray(film.captured) && film.captured.length === 3;
+    }, null, { timeout: 10000 });
+    // Press Slash to opt-in to M5 Experimental Neighborhood Voices and verify separate settings storage + profile presentation + disclaimer
+    await page.keyboard.press('Slash');
+    await page.waitForFunction(() => {
+      const s = window.__tenderloinGodotA11ySnapshot;
+      return s && s.voices_enabled === true && s.voices_status === 'ready' && s.voices_count === 3;
+    }, null, { timeout: 10000 });
+    const voicesLiveText = await page.evaluate(() => document.getElementById('godot-a11y-status')?.textContent || '');
+    assert.ok(voicesLiveText.includes('Tenderloin Neighborhood Development Corporation') && voicesLiveText.includes('GLIDE') && voicesLiveText.includes('Larkin Street Youth Services') && voicesLiveText.includes('No organization endorses or assigns missions in this game.'), 'Enabling M5 Neighborhood Voices must announce all 3 verified organization profiles and the non-affiliation disclaimer');
+    const genBeforeSuspend = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot?.voices_generation || 0);
+    await page.evaluate(() => { window.__tenderloinWebVoicesLifecyclePending = 'suspend'; });
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.voices_status === 'paused', null, { timeout: 10000 });
+    const pausedSnap = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+    assert.equal(pausedSnap.voices_generation, genBeforeSuspend + 1, 'Web pagehide suspend must increment voices_generation and release active records');
+    assert.equal(pausedSnap.voices_count, 0, 'Web pagehide suspend must clear voices_records');
+    await page.evaluate(() => { window.__tenderloinWebVoicesLifecyclePending = 'resume'; });
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.voices_status === 'ready' && window.__tenderloinGodotA11ySnapshot?.voices_count === 3, null, { timeout: 10000 });
     // Press KeyC to toggle Transgender Cultural District boundary (DataSF 5xmc-5bjj) and KeyL for wide 188-building Tenderloin overview
     await page.keyboard.press('KeyC');
     await page.waitForFunction(() => {
@@ -236,15 +283,21 @@ try {
     assert.equal(a11yDom.livePolite, 'polite', 'DOM #godot-a11y-status must have aria-live="polite"');
     assert.ok((a11yDom.snapshot?.seq || 0) > 0 && a11yDom.liveText.includes('188 city footprints across 7 streets'), 'DOM #godot-a11y-status must announce wide 188-footprint Tenderloin overview');
     assert.equal(a11yDom.summaryRole, 'region', 'DOM #godot-a11y-summary must have role="region"');
-    assert.ok(a11yDom.summaryText.includes('Neighbors 5/5') && a11yDom.summaryText.includes('Mural 3/3') && a11yDom.summaryText.includes('Block Opened') && a11yDom.summaryText.includes("Compton's Read") && a11yDom.summaryText.includes('Black Hawk Found') && a11yDom.summaryText.includes('District Hidden') && a11yDom.summaryText.includes('Keepsake taken') && a11yDom.summaryText.includes('Loans 3/3') && a11yDom.summaryText.includes('Hosted 4/4'), 'DOM #godot-a11y-summary must reflect 5/5 neighbors, 3/3 mural, Block Opened, Compton\'s Read, Black Hawk Found, District Hidden, Keepsake taken, Loans 3/3, and Hosted 4/4');
+    assert.ok(a11yDom.summaryText.includes('Neighbors 5/5') && a11yDom.summaryText.includes('Mural 3/3') && a11yDom.summaryText.includes('Block Opened') && a11yDom.summaryText.includes("Compton's Read") && a11yDom.summaryText.includes('Black Hawk Found') && a11yDom.summaryText.includes('District Hidden') && a11yDom.summaryText.includes('Keepsake taken') && a11yDom.summaryText.includes('Loans 3/3') && a11yDom.summaryText.includes('Hosted 4/4') && a11yDom.summaryText.includes('Civic done') && a11yDom.summaryText.includes('Film done (3/3)') && a11yDom.summaryText.includes('Voices On:ready'), 'DOM #godot-a11y-summary must reflect 5/5 neighbors, 3/3 mural, Block Opened, Compton\'s Read, Black Hawk Found, District Hidden, Keepsake taken, Loans 3/3, Hosted 4/4, Civic done, Film done (3/3), and Voices On:ready');
     assert.equal(a11yDom.savePickerReady, true, 'Web JSON save file picker fallback input and queue bridge must be initialized');
-    assert.equal(a11yDom.snapshot?.music_playing, false, 'Block opening, wider Tenderloin, and M1/M3 completion must succeed with music_playing === false (sound-independent completion)');
+    assert.equal(a11yDom.snapshot?.music_playing, false, 'Block opening, wider Tenderloin, and M1/M3/M4 completion must succeed with music_playing === false (sound-independent completion)');
     assert.equal(a11yDom.snapshot?.total_buildings, 188, 'A11y snapshot must report 188 total measured Tenderloin buildings');
     assert.equal(a11yDom.snapshot?.wider_buildings_count, 130, 'A11y snapshot must report 130 wider Tenderloin buildings');
     assert.equal(a11yDom.snapshot?.epilogue_done, true, 'A11y snapshot must report epilogue_done === true');
     assert.equal(a11yDom.snapshot?.hosting_done, true, 'A11y snapshot must report hosting_done === true');
+    assert.equal(a11yDom.snapshot?.civic_phase, 'done', 'A11y snapshot must report civic_phase === done');
+    assert.equal(a11yDom.snapshot?.film_phase, 'done', 'A11y snapshot must report film_phase === done');
+    assert.equal(a11yDom.snapshot?.film_captured_count, 3, 'A11y snapshot must report film_captured_count === 3');
+    assert.equal(a11yDom.snapshot?.voices_enabled, true, 'A11y snapshot must report voices_enabled === true after Slash toggle');
+    assert.equal(a11yDom.snapshot?.voices_count, 3, 'A11y snapshot must report 3 verified Tenderloin organization profiles');
     const storageBeforeReload = await page.evaluate(() => ({
       godotSave: window.localStorage.getItem('tenderloin-redux.godot.save.v1'),
+      godotSettings: window.localStorage.getItem('tenderloin-redux.godot.settings.v1'),
       browserSave: window.localStorage.getItem('tenderloin-redux.save.v1')
     }));
     // Verify explicit opt-in browser save import (KeyI) rejects BROWSER_SAVE_SENTINEL without overwriting it or mutating Godot save
@@ -261,11 +314,16 @@ try {
     assert.equal(afterSentinelImportAttempt.snapshot?.block_opened, true, 'Rejected browser save import must preserve existing Godot block_opened state');
     assert.equal(storageBeforeReload.browserSave, BROWSER_SAVE_SENTINEL, 'Godot Web export must preserve browser game tenderloin-redux.save.v1 sentinel');
     assert.ok(storageBeforeReload.godotSave, `Godot Web export must persist to tenderloin-redux.godot.save.v1 at ${size.width}`);
+    assert.ok(storageBeforeReload.godotSettings, `Godot Web export must persist M5 settings to tenderloin-redux.godot.settings.v1 at ${size.width}`);
+    const parsedSettings = JSON.parse(storageBeforeReload.godotSettings);
+    assert.equal(parsedSettings.schema, 'tenderloin-redux.godot.settings.v1');
+    assert.equal(parsedSettings.neighborhood_voices, true);
     assert.ok(!storageBeforeReload.godotSave.includes('suno-browser-test.wav'), 'Local Suno audio filename must stay tab-local and never persist in save JSON');
     const parsedSave = JSON.parse(storageBeforeReload.godotSave);
     assert.equal(parsedSave.schema, 'tenderloin-redux.godot.save');
     assert.equal(parsedSave.version, 1);
-    assert.ok(parsedSave.save_seq >= 22, 'save_seq must increment across talk, 3 motif placements, palette change, Rook soundcheck, Dez/Thanh visits, block opening, Compton\'s Corner, Black Hawk, M1 keepsake/loan returns, M3 programme/hosting, and district boundary toggle');
+    assert.equal('voices_enabled' in parsedSave || 'neighborhood_voices' in parsedSave, false, 'Game save JSON must never store voices_enabled / neighborhood_voices preference');
+    assert.ok(parsedSave.save_seq >= 30, 'save_seq must increment across talk, 3 motif placements, palette change, Rook soundcheck, Dez/Thanh visits, block opening, Compton\'s Corner, Black Hawk, M1 keepsake/loan returns, M3 programme/hosting, M4 civic/film, and district boundary toggle');
     assert.equal(parsedSave.celeste_talk_count, 1);
     assert.equal(parsedSave.mural_palette, 'sunset');
     assert.equal(parsedSave.rook_soundcheck_done, true);
@@ -278,12 +336,16 @@ try {
     assert.deepEqual(parsedSave.epilogue?.returned, ['table', 'paint-case', 'speaker']);
     assert.deepEqual(parsedSave.programme?.published, ['stories', 'beats', 'pause', 'art']);
     assert.equal(parsedSave.hosting?.results?.length, 4);
+    assert.equal(parsedSave.civic?.phase, 'done');
+    assert.equal(parsedSave.civic?.result?.topic, 'repairs');
+    assert.equal(parsedSave.film?.phase, 'done');
+    assert.deepEqual(parsedSave.film?.captured, ['seat', 'paint', 'welcome']);
     assert.deepEqual(parsedSave.visited_neighbors, ['bea', 'celeste', 'dez', 'rook', 'thanh']);
     assert.deepEqual(Object.keys(parsedSave.mural_placements).sort(), ['rise', 'sun', 'wave']);
     await page.reload();
     await page.locator('#status').waitFor({ state: 'hidden', timeout: 60000 });
     await page.waitForTimeout(600);
-    // Prove load_godot_state() restored the save into the running Godot instance on reload:
+    // Prove load_godot_state() and load_godot_settings() restored both game save and M5 settings on reload:
     // press KeyE to walk to Celeste and talk, triggering a fresh save from Godot memory.
     await page.keyboard.press('KeyE');
     await page.waitForFunction((prevSeq) => {
@@ -294,9 +356,11 @@ try {
     }, parsedSave.save_seq, { timeout: 25000 });
     const storageAfterReload = await page.evaluate(() => ({
       godotSave: window.localStorage.getItem('tenderloin-redux.godot.save.v1'),
-      browserSave: window.localStorage.getItem('tenderloin-redux.save.v1')
+      browserSave: window.localStorage.getItem('tenderloin-redux.save.v1'),
+      snapshot: window.__tenderloinGodotA11ySnapshot
     }));
     assert.equal(storageAfterReload.browserSave, BROWSER_SAVE_SENTINEL, 'Browser game save sentinel must remain intact after reload and post-reload save');
+    assert.equal(storageAfterReload.snapshot?.voices_enabled, true, 'Post-reload snapshot must restore voices_enabled from tenderloin-redux.godot.settings.v1');
     const postReloadSave = JSON.parse(storageAfterReload.godotSave);
     assert.equal(postReloadSave.celeste_talk_count, parsedSave.celeste_talk_count + 1, 'Post-reload talk must increment restored celeste_talk_count');
     assert.equal(postReloadSave.mural_palette, 'sunset', 'Post-reload save must preserve restored sunset palette');
@@ -308,8 +372,10 @@ try {
     assert.deepEqual(postReloadSave.epilogue, parsedSave.epilogue, 'Post-reload save must preserve restored M1 epilogue keepsake and returned loans');
     assert.deepEqual(postReloadSave.programme, parsedSave.programme, 'Post-reload save must preserve restored M3 programme');
     assert.deepEqual(postReloadSave.hosting, parsedSave.hosting, 'Post-reload save must preserve restored M3 hosting results');
+    assert.deepEqual(postReloadSave.civic, parsedSave.civic, 'Post-reload save must preserve restored M4 civic listening hour');
+    assert.deepEqual(postReloadSave.film, parsedSave.film, 'Post-reload save must preserve restored M4 film short');
     assert.deepEqual(postReloadSave.mural_placements, parsedSave.mural_placements, 'Post-reload save must preserve all 3 restored motif placements');
-    // Build a genuine public/core.js v1 save via applyAction + serializeSave with ocean palette, M1 keepsake + loans, and M3 hosting (future, 0 listening round, cool, pairs)
+    // Build a genuine public/core.js v1 save via applyAction + serializeSave with ocean palette, M1 keepsake + loans, M3 hosting, M4 civic (access/dropin/none), M4 film (welcome/seat/paint, wide/later), and optional metadata
     let bState = initialState();
     for (const act of [
       { type: 'greet' },
@@ -350,14 +416,32 @@ try {
       { type: 'host-complete', id: 'stories' },
       { type: 'host-palette', value: 'cool' },
       { type: 'host-tile', cell: 0 },
-      { type: 'host-complete', id: 'art' }
+      { type: 'host-complete', id: 'art' },
+      { type: 'civic-start' },
+      { type: 'civic-choice', key: 'topic', value: 'access' },
+      { type: 'civic-choice', key: 'format', value: 'dropin' },
+      { type: 'civic-choice', key: 'notes', value: 'none' },
+      { type: 'civic-open' },
+      { type: 'civic-close' },
+      { type: 'film-start' },
+      { type: 'film-move', id: 'welcome', direction: -1 },
+      { type: 'film-move', id: 'welcome', direction: -1 },
+      { type: 'film-choice', key: 'framing', value: 'wide' },
+      { type: 'film-choice', key: 'plan', value: 'later' },
+      { type: 'film-roll' },
+      { type: 'film-clear' },
+      { type: 'film-capture', id: 'welcome' },
+      { type: 'film-capture', id: 'seat' },
+      { type: 'film-capture', id: 'paint' }
     ]) {
       bState = applyAction(bState, act);
     }
+    bState = { ...bState, optional: { voices_bookmark: 'glide' } };
     const seededBrowserSave = serializeSave(bState);
-    // Clear Godot save and reload so Godot starts at 0/4 hosted, proving KeyI imports all 4/4 browser hosting segments from scratch
+    // Clear Godot save AND Godot settings before reload so Godot starts fresh with Voices off, proving KeyI imports M1-M4 + optional without auto-enabling M5 Voices
     await page.evaluate((raw) => {
       window.localStorage.removeItem('tenderloin-redux.godot.save.v1');
+      window.localStorage.removeItem('tenderloin-redux.godot.settings.v1');
       window.localStorage.setItem('tenderloin-redux.save.v1', raw);
     }, seededBrowserSave);
     await page.reload();
@@ -383,7 +467,13 @@ try {
     assert.equal(afterValidImport.godotSave.hosting?.results?.[1]?.value, 'pairs', 'Imported pause segment must preserve pairs value');
     assert.equal(afterValidImport.godotSave.hosting?.results?.[2]?.value, 'future', 'Imported stories segment must preserve future value');
     assert.equal(afterValidImport.godotSave.hosting?.results?.[3]?.value?.palette, 'cool', 'Imported art segment must preserve cool palette');
-    // Queue a partial browser save via the cross-origin .json file picker bridge and verify monotonic merge preserves 5/5 neighbors, 3/3 ocean mural, block_opened, history_read, blackhawk_discovered, M1 epilogue, and M3 hosting
+    assert.equal(afterValidImport.godotSave.civic?.phase, 'done', 'Explicit KeyI import must map browser M4 civic done phase');
+    assert.deepEqual(afterValidImport.godotSave.civic?.result, { topic: 'access', format: 'dropin', notes: 'none' }, 'Explicit KeyI import must map browser M4 civic result');
+    assert.equal(afterValidImport.godotSave.film?.phase, 'done', 'Explicit KeyI import must map browser M4 film done phase');
+    assert.deepEqual(afterValidImport.godotSave.film?.captured, ['welcome', 'seat', 'paint'], 'Explicit KeyI import must map browser M4 film captured order');
+    assert.deepEqual(afterValidImport.godotSave.optional, { voices_bookmark: 'glide' }, 'Explicit KeyI import must preserve bounded optional save data');
+    assert.equal(afterValidImport.snapshot?.voices_enabled, false, 'Importing browser save with optional data must never auto-enable M5 Neighborhood Voices');
+    // Queue a partial browser save via the cross-origin .json file picker bridge and verify monotonic merge preserves 5/5 neighbors, 3/3 ocean mural, block_opened, history_read, blackhawk_discovered, M1 epilogue, M3 hosting, and M4 civic/film
     const prevSaveSeq = afterValidImport.godotSave.save_seq;
     await page.evaluate(() => window.__tenderloinQueueBrowserSaveJson(JSON.stringify({
       version: 1,
@@ -401,11 +491,13 @@ try {
     assert.equal(afterFileBridgeMerge.blackhawk_discovered, true, 'File picker bridge monotonic merge must preserve blackhawk_discovered state');
     assert.deepEqual(afterFileBridgeMerge.epilogue?.returned, ['table', 'paint-case', 'speaker'], 'File picker bridge monotonic merge must preserve M1 returned loans');
     assert.equal(afterFileBridgeMerge.hosting?.results?.length, 4, 'File picker bridge monotonic merge must preserve M3 completed hosting segments');
-    runs.push({ viewport: size, overviewBytes: before.length, selectedBytes: after.length, neighborBytes: neighbor.length, muralBytes: muralShot.length, musicBytes: musicShot.length, blockBytes: blockShot.length, blackhawkBytes: blackhawkShot.length, wideBytes: wideShot.length, keyboardActivationVerified: true, neighborWalkVerified: true, muralSaveReloadVerified: true, rookMusicAuditionVerified: true, blockCompletionVerified: true, widerTenderloinVerified: true, m1EpilogueVerified: true, m3HostingVerified: true, browserSaveImportVerified: true, domA11yLiveVerified: true });
+    assert.equal(afterFileBridgeMerge.civic?.phase, 'done', 'File picker bridge monotonic merge must preserve M4 civic done state');
+    assert.equal(afterFileBridgeMerge.film?.phase, 'done', 'File picker bridge monotonic merge must preserve M4 film done state');
+    runs.push({ viewport: size, overviewBytes: before.length, selectedBytes: after.length, neighborBytes: neighbor.length, muralBytes: muralShot.length, musicBytes: musicShot.length, blockBytes: blockShot.length, blackhawkBytes: blackhawkShot.length, wideBytes: wideShot.length, keyboardActivationVerified: true, neighborWalkVerified: true, muralSaveReloadVerified: true, rookMusicAuditionVerified: true, blockCompletionVerified: true, widerTenderloinVerified: true, m1EpilogueVerified: true, m3HostingVerified: true, m4CivicFilmVerified: true, m5VoicesIsolatedVerified: true, browserSaveImportVerified: true, domA11yLiveVerified: true });
     await context.close();
   }
   assert.deepEqual(external, []);
   assert.deepEqual(errors, []);
-  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
+  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
   console.log(JSON.stringify({ runs, errors, external }));
 } finally { await browser.close(); }

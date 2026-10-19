@@ -1,0 +1,25 @@
+STDOUT:
+I wrote the Round 3 review to `C:\tenderloin-redux\kibitz-runs\2026-10-19-godot-m4-m5-projects\r3\claude.md`. The verdict is **yes-with-fixes**. The tool check passed, and I didn't change any other file.
+
+Startup order (game save loaded before settings) and the browser-import merge order (hosting, then civic, then film) are both correct. Five things should be fixed before build:
+
+1. **Optional data can erase all progress.** If the `optional` blob fails validation when a save loads, `godot/main.gd:4951-4956` resets the whole save, M1–M4 included. The browser just drops a bad blob (`public/core.js:173`). One way this could happen is the blob growing past 8192 characters on a save/load round trip. That depends on how Godot formats numbers, which I couldn't confirm, so it's marked "verify". The fix is to fall back to an empty blob instead of resetting.
+2. **Voices suspend/resume is never triggered.** Only the test calls `suspend_voices`/`resume_voices`. `main.gd` has no handler for the app pausing, losing focus or the page hiding. The browser wires these to `pagehide`, `pageshow` and `visibilitychange` (`public/game.js:609-611`).
+3. **Voices suspend/resume/retry behave differently from the browser's experiment host:**
+   - Suspend doesn't bump the generation or release resources.
+   - It overwrites an error state.
+   - It reports "suspended" where the browser uses "paused".
+   - Resume doesn't reload the data.
+   - Retry leaves the suspended flag set.
+4. **Voices records are loaded but never shown.** Only the record count reaches the UI. The organisation cards and the required disclaimer that the browser shows (`neighborhood-voices.js:45`) never appear in Godot.
+5. **The film steps don't match `public/film.js`.** The browser always goes planning → hold → shooting. Godot's Period key skips hold, adds a hold → planning step, and describes "hold" as "saved for another day", which isn't what it means in the browser.
+
+The should-fix items, in brief:
+- **Most civic and film plans can't be chosen.** Shift+Q and Shift+. flip every field at once, so only 2 of 8 civic plans and 2 of 24 film plans are reachable.
+- **Neighbour responses differ from the browser.** They depend on different choices and use different text.
+- **Bad civic/film save data resets everything.** The other sections fall back to defaults instead.
+- **The 8192 cap is in characters, not bytes.** The brief calls it a byte cap.
+- **Web settings write to two places but read only one.** If localStorage is unavailable, the Voices preference is lost on every reload.
+- **The neighbour response is dropped** when you arrive at Celeste or Rook with a pending talk.
+
+The cut list covers the Voices audio-ownership code (Voices is text-only), the generation tracking (loading is synchronous, so nothing can arrive late), unused variables and duplicate constants, and test hooks that ship in the production script.

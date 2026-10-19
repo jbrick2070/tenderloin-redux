@@ -63,6 +63,66 @@ const HOSTING_STORIES: Array[String] = ["memory", "future"]
 const HOSTING_PALETTES: Array[String] = ["warm", "cool"]
 const HOSTING_QUIETS: Array[String] = ["arc", "pairs"]
 const HOSTING_DEFAULT_TILES: Array[int] = [0, 1, 2, 2, 1, 0]
+const GODOT_SETTINGS_PATH := "user://godot_block_settings_v1.json"
+const GODOT_TEST_SETTINGS_PATH := "user://godot_block_settings_test_v1.json"
+const GODOT_SETTINGS_WEB_STORAGE_KEY := "tenderloin-redux.godot.settings.v1"
+const CIVIC_TOPICS: Array[String] = ["repairs", "access"]
+const CIVIC_TOPIC_LABELS: Dictionary = {
+	"repairs": "Repairs and staying put",
+	"access": "Room to come and go"
+}
+const CIVIC_TOPIC_REQUESTS: Dictionary = {
+	"repairs": "We want homes cared for and neighbors able to stay. We ask for a conversation about repairs without displacement.",
+	"access": "We want shared spaces that welcome neighbors while keeping entrances and the through-route clear."
+}
+const CIVIC_FORMATS: Array[String] = ["circle", "dropin"]
+const CIVIC_FORMAT_LABELS: Dictionary = {
+	"circle": "Small listening circle",
+	"dropin": "Drop-in notice table"
+}
+const CIVIC_NOTES: Array[String] = ["themes", "none"]
+const CIVIC_NOTE_LABELS: Dictionary = {
+	"themes": "Keep anonymous themes",
+	"none": "Keep no meeting notes"
+}
+const CIVIC_PHASES: Array[String] = ["idle", "planning", "meeting", "done"]
+const FILM_SHOTS: Array[String] = ["seat", "paint", "welcome"]
+const FILM_SHOT_LABELS: Dictionary = {
+	"seat": "An empty seat",
+	"paint": "A shared motif",
+	"welcome": "Room for one more"
+}
+const FILM_SHOT_QUIET_CAPTIONS: Dictionary = {
+	"seat": "A chair waits. There is room for someone new.",
+	"paint": "A neighbor's shape becomes part of something shared.",
+	"welcome": "A place stays open. Joining in is an invitation."
+}
+const FILM_SHOT_LATER_CAPTIONS: Dictionary = {
+	"seat": "\"May I sit here?\" \"We kept a place open.\"",
+	"paint": "\"Your shape belongs beside mine.\"",
+	"welcome": "\"Stay for a moment, or come back another day.\""
+}
+const FILM_FRAMING: Array[String] = ["close", "wide"]
+const FILM_FRAMING_LABELS: Dictionary = {
+	"close": "Objects in close-up",
+	"wide": "Table and volunteer hands"
+}
+const FILM_PLANS: Array[String] = ["quiet", "later"]
+const FILM_PLAN_LABELS: Dictionary = {
+	"quiet": "A quiet prop take",
+	"later": "Wait for the conversation"
+}
+const FILM_PHASES: Array[String] = ["idle", "planning", "hold", "shooting", "done"]
+const VOICES_DATA_PATH := "res://data/neighborhood_voices.json"
+const VOICES_CHECKED_AT := "2026-10-18"
+const VOICES_DISCLAIMER := "Sources checked October 18, 2026. This is a dated introduction, not a current service or emergency directory. Follow the official pages for current information. No organization endorses or assigns missions in this game. \"Neighborhood Voices\" is the feature's name; this version contains no recorded voices."
+const VOICES_MAX_BYTES := 8192
+const OPTIONAL_SAVE_MAX_BYTES := 8192
+const VOICES_SOURCES: Dictionary = {
+	"tndc": "https://www.tndc.org/about",
+	"glide": "https://www.glide.org/programs/",
+	"larkin": "https://larkinstreetyouth.org/about/"
+}
 const MUSIC_STEM_ORDER: Array[String] = ["bass", "brush", "chords", "lead"]
 const MUSIC_VOL_STEPS: Array[float] = [0.70, 1.0, 0.35, 0.0]
 const MUSIC_MIX_RATE := 22050.0
@@ -229,7 +289,38 @@ var block_district_btn: Button
 var block_open_btn: Button
 var block_epilogue_btn: Button
 var block_programme_btn: Button
+var block_civic_btn: Button
+var block_film_btn: Button
+var block_voices_btn: Button
 var block_import_btn: Button
+var settings_path := GODOT_SETTINGS_PATH
+var civic_phase := "idle"
+var civic_draft: Dictionary = {"topic": "repairs", "format": "circle", "notes": "themes"}
+var civic_result: Dictionary = {}
+var civic_setup_node: Node3D
+var civic_circle_group: Node3D
+var civic_dropin_group: Node3D
+var civic_done_beacon: MeshInstance3D
+var film_phase := "idle"
+var film_draft: Dictionary = {"framing": "close", "plan": "quiet", "order": ["seat", "paint", "welcome"]}
+var film_result: Dictionary = {}
+var film_captured: Array[String] = []
+var film_screen_frame := 0
+var film_storyboard_node: Node3D
+var film_frame_canvas: MeshInstance3D
+var film_wide_border: MeshInstance3D
+var film_shot_pips: Array[MeshInstance3D] = []
+var optional_save_data: Dictionary = {}
+var voices_enabled := false
+var voices_status := "off"
+var voices_error := ""
+var voices_suspended := false
+var voices_simulate_error := false
+var voices_generation := 0
+var voices_release_count := 0
+var voices_checked_at := ""
+var voices_records: Array[Dictionary] = []
+var voices_custom_json_override := ""
 var browser_import_status := "none"
 var browser_import_message := ""
 var last_a11y_announcement := ""
@@ -284,6 +375,7 @@ func make_building_mesh_and_rect(building: Dictionary, mat: StandardMaterial3D) 
 
 func _ready() -> void:
 	save_path = resolve_save_path()
+	settings_path = resolve_settings_path()
 	var parsed = JSON.parse_string(FileAccess.get_file_as_string("res://data/buildings.json"))
 	if not parsed is Dictionary or not parsed.has("buildings") or parsed.buildings.is_empty():
 		set_physics_process(false)
@@ -372,6 +464,7 @@ func _ready() -> void:
 	setup_web_audio_bridge()
 	setup_web_a11y_bridge()
 	load_godot_state()
+	load_godot_settings()
 	await get_tree().process_frame
 	await get_tree().process_frame
 	overview()
@@ -938,7 +1031,127 @@ func build_block_banner() -> void:
 		hosting_tile_meshes.append(t_mesh)
 	hosting_tile_panel_node.visible = false
 	add_child(hosting_tile_panel_node)
+
+	civic_setup_node = Node3D.new()
+	civic_setup_node.name = "CivicListeningSetup"
+	civic_setup_node.position = neighbors[0].pos + Vector3(3.40, 0.0, -0.45)
+	civic_setup_node.rotation.y = banner_rot_y
+	civic_circle_group = Node3D.new()
+	civic_circle_group.name = "CivicCircleGroup"
+	var circle_offsets: Array[Vector3] = [
+		Vector3(-0.48, 0.24, -0.28),
+		Vector3(0.48, 0.24, -0.28),
+		Vector3(-0.48, 0.24, 0.28),
+		Vector3(0.48, 0.24, 0.28)
+	]
+	for c_i in range(circle_offsets.size()):
+		var c_stool := MeshInstance3D.new()
+		c_stool.name = "CivicCircleStool%d" % c_i
+		var c_cyl := CylinderMesh.new()
+		c_cyl.top_radius = 0.20
+		c_cyl.bottom_radius = 0.18
+		c_cyl.height = 0.48
+		c_stool.mesh = c_cyl
+		c_stool.position = circle_offsets[c_i]
+		c_stool.material_override = material(Color("75907c"))
+		civic_circle_group.add_child(c_stool)
+	var c_board := MeshInstance3D.new()
+	var c_board_box := BoxMesh.new()
+	c_board_box.size = Vector3(0.68, 0.52, 0.08)
+	c_board.mesh = c_board_box
+	c_board.position = Vector3(0.0, 0.92, -0.42)
+	c_board.material_override = material(Color("d9a2b2"))
+	civic_circle_group.add_child(c_board)
+	civic_setup_node.add_child(civic_circle_group)
+
+	civic_dropin_group = Node3D.new()
+	civic_dropin_group.name = "CivicDropinGroup"
+	var d_table := MeshInstance3D.new()
+	var d_table_box := BoxMesh.new()
+	d_table_box.size = Vector3(1.24, 0.72, 0.42)
+	d_table.mesh = d_table_box
+	d_table.position = Vector3(0.0, 0.36, -0.18)
+	d_table.material_override = material(Color("d9a2b2"))
+	civic_dropin_group.add_child(d_table)
+	for d_i in range(2):
+		var d_stool := MeshInstance3D.new()
+		d_stool.name = "CivicDropinStool%d" % d_i
+		var d_cyl := CylinderMesh.new()
+		d_cyl.top_radius = 0.20
+		d_cyl.bottom_radius = 0.18
+		d_cyl.height = 0.48
+		d_stool.mesh = d_cyl
+		d_stool.position = Vector3(-0.34 + float(d_i) * 0.68, 0.24, 0.32)
+		d_stool.material_override = material(Color("75907c"))
+		civic_dropin_group.add_child(d_stool)
+	civic_setup_node.add_child(civic_dropin_group)
+
+	civic_done_beacon = MeshInstance3D.new()
+	civic_done_beacon.name = "CivicDoneBeacon"
+	var cb_sphere := SphereMesh.new()
+	cb_sphere.radius = 0.16
+	cb_sphere.height = 0.32
+	civic_done_beacon.mesh = cb_sphere
+	civic_done_beacon.position = Vector3(0.0, 1.38, -0.42)
+	civic_done_beacon.material_override = material(Color("8a7964"))
+	civic_setup_node.add_child(civic_done_beacon)
+	civic_setup_node.visible = false
+	add_child(civic_setup_node)
+
+	film_storyboard_node = Node3D.new()
+	film_storyboard_node.name = "FilmStoryboardEasel"
+	film_storyboard_node.position = MURAL_POS + Vector3(-2.35, 0.0, 0.0)
+	film_storyboard_node.rotation.y = atan2(-m_t.y, m_t.x)
+	var f_frame := MeshInstance3D.new()
+	var f_frame_box := BoxMesh.new()
+	f_frame_box.size = Vector3(1.16, 0.88, 0.10)
+	f_frame.mesh = f_frame_box
+	f_frame.position = Vector3(0.0, 1.28, 0.0)
+	f_frame.material_override = material(Color("253f35"))
+	film_storyboard_node.add_child(f_frame)
+	film_frame_canvas = MeshInstance3D.new()
+	film_frame_canvas.name = "FilmFrameCanvas"
+	var f_canvas_box := BoxMesh.new()
+	f_canvas_box.size = Vector3(0.96, 0.62, 0.12)
+	film_frame_canvas.mesh = f_canvas_box
+	film_frame_canvas.position = Vector3(0.0, 1.32, 0.02)
+	film_frame_canvas.material_override = mural_material(Color("276a5a"))
+	film_storyboard_node.add_child(film_frame_canvas)
+	film_wide_border = MeshInstance3D.new()
+	film_wide_border.name = "FilmWideBorder"
+	var f_wide_box := BoxMesh.new()
+	f_wide_box.size = Vector3(0.92, 0.10, 0.14)
+	film_wide_border.mesh = f_wide_box
+	film_wide_border.position = Vector3(0.0, 1.06, 0.03)
+	film_wide_border.material_override = mural_material(Color("c38c65"))
+	film_wide_border.visible = false
+	film_storyboard_node.add_child(film_wide_border)
+	film_shot_pips.clear()
+	for s_i in range(FILM_SHOTS.size()):
+		var f_pip := MeshInstance3D.new()
+		f_pip.name = "FilmShotPip%d" % s_i
+		var f_pip_cyl := CylinderMesh.new()
+		f_pip_cyl.top_radius = 0.07
+		f_pip_cyl.bottom_radius = 0.07
+		f_pip_cyl.height = 0.14
+		f_pip.mesh = f_pip_cyl
+		f_pip.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+		f_pip.position = Vector3(-0.28 + float(s_i) * 0.28, 0.92, 0.04)
+		f_pip.material_override = material(Color("5a665f"))
+		film_storyboard_node.add_child(f_pip)
+		film_shot_pips.append(f_pip)
+	film_storyboard_node.visible = false
+	add_child(film_storyboard_node)
 	update_block_3d()
+
+func film_shot_color(shot_id: String) -> Color:
+	match shot_id:
+		"paint":
+			return Color("d9a2b2")
+		"welcome":
+			return Color("91bac2")
+		_:
+			return Color("276a5a")
 
 func update_block_3d() -> void:
 	if block_banner_node != null:
@@ -980,6 +1193,38 @@ func update_block_3d() -> void:
 			for t_idx in range(hosting_tile_meshes.size()):
 				var tv := int(h_tiles[t_idx]) if t_idx < h_tiles.size() else 0
 				hosting_tile_meshes[t_idx].material_override = mural_material(hosting_tile_color(h_pal, tv))
+	if civic_setup_node != null:
+		var c_vis := is_civic_available() and (civic_phase in ["meeting", "done"]) and not civic_result.is_empty()
+		civic_setup_node.visible = c_vis
+		if c_vis:
+			var c_fmt := String(civic_result.get("format", "circle"))
+			if civic_circle_group != null:
+				civic_circle_group.visible = (c_fmt == "circle")
+			if civic_dropin_group != null:
+				civic_dropin_group.visible = (c_fmt == "dropin")
+			if civic_done_beacon != null:
+				civic_done_beacon.material_override = mural_material(Color("f8cc58")) if civic_phase == "done" else material(Color("8a7964"))
+	if film_storyboard_node != null:
+		var f_vis := is_film_available() and (film_phase in ["hold", "shooting", "done"]) and not film_result.is_empty()
+		film_storyboard_node.visible = f_vis
+		if f_vis:
+			var f_framing := String(film_result.get("framing", "close"))
+			if film_wide_border != null:
+				film_wide_border.visible = (f_framing == "wide")
+			var f_ord: Array = film_result.get("order", FILM_SHOTS)
+			var active_shot := "seat"
+			if f_ord.size() == 3:
+				if film_phase == "done":
+					active_shot = String(f_ord[clampi(film_screen_frame, 0, 2)])
+				elif film_phase == "shooting" and film_captured.size() < 3:
+					active_shot = String(f_ord[film_captured.size()])
+				else:
+					active_shot = String(f_ord[0])
+			if film_frame_canvas != null:
+				film_frame_canvas.material_override = mural_material(film_shot_color(active_shot))
+			for p_i in range(film_shot_pips.size()):
+				var is_cap := p_i < film_captured.size()
+				film_shot_pips[p_i].material_override = mural_material(Color("f8cc58")) if is_cap else material(Color("5a665f"))
 
 func build_audio_players() -> void:
 	sketch_generator = AudioStreamGenerator.new()
@@ -1946,6 +2191,8 @@ func finish_neighbor_arrival(index: int) -> void:
 	update_occlusion(true)
 	var nb := nearest_building_info(player_xz())
 	var cut_note := " · %d cutaway" % occluded_buildings.size() if not occluded_buildings.is_empty() else ""
+	var mem_line := neighbor_project_memory_line(n_id)
+	var mem_a11y := (" " + mem_line) if not mem_line.is_empty() else ""
 	if index == celeste_index:
 		pending_rook_talk = false
 		var trigger_talk := pending_celeste_talk
@@ -1961,8 +2208,9 @@ func finish_neighbor_arrival(index: int) -> void:
 			save_godot_state()
 		show_mural_panel(true)
 		update_mural_ui()
-		info.text = "With %s — %s (%d/3 mural motifs · %.2f m from %s%s)\nPortable sidewalk easel ready · Place Sun, Wave & Rise below\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, mural_placements.size(), nb.distance, nb.id, cut_note]
-		announce_a11y_status("Arrived at %s (%s). Portable Mural Board %d/3 motifs." % [n.name, n.role, mural_placements.size()])
+		var sub_c := mem_line if not mem_line.is_empty() else "Portable sidewalk easel ready · Place Sun, Wave & Rise below"
+		info.text = "With %s — %s (%d/3 mural motifs · %.2f m from %s%s)\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, mural_placements.size(), nb.distance, nb.id, cut_note, sub_c]
+		announce_a11y_status("Arrived at %s (%s). Portable Mural Board %d/3 motifs.%s" % [n.name, n.role, mural_placements.size(), mem_a11y])
 	elif index == rook_index:
 		pending_celeste_talk = false
 		var trigger_rook := pending_rook_talk
@@ -1975,8 +2223,9 @@ func finish_neighbor_arrival(index: int) -> void:
 		show_music_panel(true)
 		update_music_ui()
 		var sc_tag := "Soundcheck ready" if rook_soundcheck_done else "Tap Soundcheck below"
-		info.text = "With %s — %s (%s · %.2f m from %s%s)\nTurk St speaker %.1f m clear of wall · Explicit play/audition below\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, sc_tag, nb.distance, nb.id, cut_note, min_wall_distance(speaker_xz())]
-		announce_a11y_status("Arrived at %s (%s). %s." % [n.name, n.role, sc_tag])
+		var sub_r := mem_line if not mem_line.is_empty() else ("Turk St speaker %.1f m clear of wall · Explicit play/audition below" % min_wall_distance(speaker_xz()))
+		info.text = "With %s — %s (%s · %.2f m from %s%s)\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, sc_tag, nb.distance, nb.id, cut_note, sub_r]
+		announce_a11y_status("Arrived at %s (%s). %s.%s" % [n.name, n.role, sc_tag, mem_a11y])
 	elif index >= 3 or (index == 0 and not newly_visited):
 		pending_celeste_talk = false
 		pending_rook_talk = false
@@ -1984,8 +2233,9 @@ func finish_neighbor_arrival(index: int) -> void:
 			save_godot_state()
 		show_block_panel(true)
 		update_block_ui()
-		info.text = "With %s — %s (%d/5 neighbors · %.2f m from %s%s)\nOpening block checklist below · Press G for Block Panel\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, visited_neighbors.size(), nb.distance, nb.id, cut_note]
-		announce_a11y_status("Arrived at %s (%s). Visited %d/5 neighbors." % [n.name, n.role, visited_neighbors.size()])
+		var sub_b := mem_line if not mem_line.is_empty() else "Opening block checklist below · Press G for Block Panel"
+		info.text = "With %s — %s (%d/5 neighbors · %.2f m from %s%s)\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, visited_neighbors.size(), nb.distance, nb.id, cut_note, sub_b]
+		announce_a11y_status("Arrived at %s (%s). Visited %d/5 neighbors.%s" % [n.name, n.role, visited_neighbors.size(), mem_a11y])
 	else:
 		pending_celeste_talk = false
 		pending_rook_talk = false
@@ -1994,8 +2244,9 @@ func finish_neighbor_arrival(index: int) -> void:
 		show_mural_panel(false)
 		show_music_panel(false)
 		show_block_panel(false)
-		info.text = "With %s — %s (%.2f m from %s%s)\nWASD/Arrows or tap street to walk · Walk to neighbor for next · Press G for Block\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, nb.distance, nb.id, cut_note]
-		announce_a11y_status("Arrived at %s (%s). Visited %d/5 neighbors." % [n.name, n.role, visited_neighbors.size()])
+		var sub_o := mem_line if not mem_line.is_empty() else "WASD/Arrows or tap street to walk · Walk to neighbor for next · Press G for Block"
+		info.text = "With %s — %s (%.2f m from %s%s)\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, nb.distance, nb.id, cut_note, sub_o]
+		announce_a11y_status("Arrived at %s (%s). Visited %d/5 neighbors.%s" % [n.name, n.role, visited_neighbors.size(), mem_a11y])
 
 func finish_mural_arrival() -> void:
 	var stand_pt := mural_stand_xz()
@@ -2143,8 +2394,10 @@ func talk_with_celeste() -> String:
 	update_block_ui()
 	trigger_progress_cue("celeste_talk", "Celeste talk")
 	var line := celeste_dialogue_text()
-	info.text = "%s\nPortable Mural Board: %d/3 motifs (%s palette) · Separate Godot save\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, mural_placements.size(), mural_palette.capitalize()]
-	announce_a11y_status(line)
+	var mem_c := neighbor_project_memory_line(CELESTE_ID)
+	var sub_c := mem_c if not mem_c.is_empty() else ("Portable Mural Board: %d/3 motifs (%s palette) · Separate Godot save" % [mural_placements.size(), mural_palette.capitalize()])
+	info.text = "%s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, sub_c]
+	announce_a11y_status(line if mem_c.is_empty() else ("%s %s" % [line, mem_c]))
 	return line
 
 func request_rook_soundcheck() -> bool:
@@ -2176,8 +2429,10 @@ func check_sound_with_rook() -> String:
 	update_music_ui()
 	update_block_ui()
 	var line := rook_dialogue_text()
-	info.text = "%s\nRook's Speaker: %s · Explicit Play/Pause & local Suno audition\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, active_stem_summary()]
-	announce_a11y_status(line)
+	var mem_r := neighbor_project_memory_line(ROOK_ID)
+	var sub_r := mem_r if not mem_r.is_empty() else ("Rook's Speaker: %s · Explicit Play/Pause & local Suno audition" % active_stem_summary())
+	info.text = "%s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, sub_r]
+	announce_a11y_status(line if mem_r.is_empty() else ("%s %s" % [line, mem_r]))
 	return line
 
 func is_block_ready() -> bool:
@@ -2647,6 +2902,716 @@ func advance_programme_and_hosting_step() -> String:
 	announce_a11y_status(done_msg)
 	return "hosting_complete"
 
+func default_civic_draft() -> Dictionary:
+	return {"topic": "repairs", "format": "circle", "notes": "themes"}
+
+func is_civic_available() -> bool:
+	return block_opened and is_hosting_done()
+
+func is_valid_civic_plan(raw_val: Variant) -> bool:
+	if not (raw_val is Dictionary):
+		return false
+	var d: Dictionary = raw_val
+	var t_val: Variant = d.get("topic", null)
+	var f_val: Variant = d.get("format", null)
+	var n_val: Variant = d.get("notes", null)
+	return (t_val is String) and (String(t_val) in CIVIC_TOPICS) and (f_val is String) and (String(f_val) in CIVIC_FORMATS) and (n_val is String) and (String(n_val) in CIVIC_NOTES)
+
+func copy_civic_plan(raw_val: Dictionary) -> Dictionary:
+	var t := String(raw_val.get("topic", "repairs"))
+	var f := String(raw_val.get("format", "circle"))
+	var n := String(raw_val.get("notes", "themes"))
+	return {
+		"topic": t if t in CIVIC_TOPICS else "repairs",
+		"format": f if f in CIVIC_FORMATS else "circle",
+		"notes": n if n in CIVIC_NOTES else "themes"
+	}
+
+func civic_topic_title(topic_id: String) -> String:
+	return String(CIVIC_TOPIC_LABELS.get(topic_id, topic_id))
+
+func civic_format_title(format_id: String) -> String:
+	return String(CIVIC_FORMAT_LABELS.get(format_id, format_id))
+
+func civic_notes_title(notes_id: String) -> String:
+	return String(CIVIC_NOTE_LABELS.get(notes_id, notes_id))
+
+func civic_start() -> bool:
+	if not is_civic_available() or civic_phase != "idle":
+		return false
+	civic_phase = "planning"
+	civic_draft = default_civic_draft()
+	civic_result = {}
+	browser_import_message = ""
+	update_block_3d()
+	save_godot_state()
+	trigger_progress_cue("civic_planning", "Listening hour")
+	update_block_ui()
+	var summary := "Started planning Peaceful Tenant Listening Hour (%s · %s · %s)." % [civic_topic_title(String(civic_draft.get("topic", "repairs"))), civic_format_title(String(civic_draft.get("format", "circle"))), civic_notes_title(String(civic_draft.get("notes", "themes")))]
+	info.text = "%s\nPress Q to convene listening hour or Shift+Q to cycle all 8 topic/seating/notes plans\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % summary
+	announce_a11y_status(summary)
+	return true
+
+func civic_set_choice(key: String, val: String) -> bool:
+	if not is_civic_available() or civic_phase != "planning":
+		return false
+	if key == "topic":
+		if not (val in CIVIC_TOPICS) or String(civic_draft.get("topic", "repairs")) == val:
+			return false
+		civic_draft["topic"] = val
+	elif key == "format":
+		if not (val in CIVIC_FORMATS) or String(civic_draft.get("format", "circle")) == val:
+			return false
+		civic_draft["format"] = val
+	elif key == "notes":
+		if not (val in CIVIC_NOTES) or String(civic_draft.get("notes", "themes")) == val:
+			return false
+		civic_draft["notes"] = val
+	else:
+		return false
+	browser_import_message = ""
+	save_godot_state()
+	update_block_ui()
+	return true
+
+func civic_convene() -> bool:
+	if not is_civic_available() or civic_phase != "planning":
+		return false
+	civic_result = copy_civic_plan(civic_draft)
+	civic_draft = copy_civic_plan(civic_result)
+	civic_phase = "meeting"
+	browser_import_message = ""
+	update_block_3d()
+	save_godot_state()
+	trigger_progress_cue("civic_meeting", String(civic_result.get("topic", "repairs")))
+	update_block_ui()
+	var summary := "Convened Peaceful Tenant Listening Hour: %s (%s · %s)." % [civic_topic_title(String(civic_result.get("topic", "repairs"))), civic_format_title(String(civic_result.get("format", "circle"))), civic_notes_title(String(civic_result.get("notes", "themes")))]
+	info.text = "%s\n3D Listening Circle & Notes Easel active on Turk Street · Press Q to complete\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % summary
+	announce_a11y_status(summary)
+	return true
+
+func civic_complete() -> bool:
+	if not is_civic_available() or civic_phase != "meeting" or not is_valid_civic_plan(civic_result):
+		return false
+	civic_phase = "done"
+	browser_import_message = ""
+	update_block_3d()
+	save_godot_state()
+	trigger_progress_cue("civic_complete", "Listening hour complete")
+	update_block_ui()
+	var summary := "Completed Peaceful Tenant Listening Hour (%s · %s · %s) — The Open Seat film short ready!" % [civic_topic_title(String(civic_result.get("topic", "repairs"))), civic_format_title(String(civic_result.get("format", "circle"))), civic_notes_title(String(civic_result.get("notes", "themes")))]
+	info.text = "%s\nM4 Civic Listening Hour Complete · Press Period (.) to plan The Open Seat\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % summary
+	announce_a11y_status(summary)
+	return true
+
+func cycle_civic_choice() -> String:
+	show_block_panel(true)
+	if not is_civic_available():
+		return "locked"
+	if civic_phase == "idle":
+		civic_start()
+		return "started"
+	if civic_phase != "planning":
+		return "noop"
+	var t_idx := maxi(0, CIVIC_TOPICS.find(String(civic_draft.get("topic", "repairs"))))
+	var f_idx := maxi(0, CIVIC_FORMATS.find(String(civic_draft.get("format", "circle"))))
+	var n_idx := maxi(0, CIVIC_NOTES.find(String(civic_draft.get("notes", "themes"))))
+	var combo := posmod((t_idx * 4) + (f_idx * 2) + n_idx + 1, 8)
+	var next_topic := CIVIC_TOPICS[(combo >> 2) & 1]
+	var next_fmt := CIVIC_FORMATS[(combo >> 1) & 1]
+	var next_notes := CIVIC_NOTES[combo & 1]
+	civic_draft["topic"] = next_topic
+	civic_draft["format"] = next_fmt
+	civic_draft["notes"] = next_notes
+	browser_import_message = ""
+	save_godot_state()
+	update_block_ui()
+	var summary := "Listening hour draft set to %s · %s · %s." % [civic_topic_title(next_topic), civic_format_title(next_fmt), civic_notes_title(next_notes)]
+	info.text = "%s\nPress Q to convene Peaceful Tenant Listening Hour\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % summary
+	announce_a11y_status(summary)
+	return "choice_%s_%s_%s" % [next_topic, next_fmt, next_notes]
+
+func advance_civic_step() -> String:
+	show_block_panel(true)
+	if not is_civic_available():
+		var msg := "Complete the 4 Second Afternoon Programme activities (Z) before starting the Peaceful Tenant Listening Hour."
+		info.text = "%s\nM4 Civic Listening Hour unlocks after all 4 hosted segments finish\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % msg
+		announce_a11y_status(msg)
+		return "locked"
+	if civic_phase == "idle":
+		return "civic_planning" if civic_start() else "civic_blocked"
+	if civic_phase == "planning":
+		return "civic_meeting" if civic_convene() else "civic_blocked"
+	if civic_phase == "meeting":
+		return "civic_done" if civic_complete() else "civic_blocked"
+	var done_msg := "Peaceful Tenant Listening Hour complete (%s · %s · %s)." % [civic_topic_title(String(civic_result.get("topic", "repairs"))), civic_format_title(String(civic_result.get("format", "circle"))), civic_notes_title(String(civic_result.get("notes", "themes")))]
+	info.text = "%s\nPress Period (.) to plan & capture The Open Seat three-shot film short\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % done_msg
+	announce_a11y_status(done_msg)
+	return "civic_complete"
+
+func default_film_draft() -> Dictionary:
+	var ord: Array[String] = []
+	for s_id in FILM_SHOTS:
+		ord.append(s_id)
+	return {"framing": "close", "plan": "quiet", "order": ord}
+
+func is_film_available() -> bool:
+	return block_opened and civic_phase == "done"
+
+func is_valid_film_order(raw_order: Variant) -> bool:
+	if not (raw_order is Array):
+		return false
+	var ord: Array = raw_order
+	if ord.size() != FILM_SHOTS.size():
+		return false
+	var seen: Dictionary = {}
+	for item in ord:
+		if not (item is String):
+			return false
+		var sid := String(item)
+		if not (sid in FILM_SHOTS) or seen.has(sid):
+			return false
+		seen[sid] = true
+	return seen.size() == FILM_SHOTS.size()
+
+func is_valid_film_plan(raw_val: Variant) -> bool:
+	if not (raw_val is Dictionary):
+		return false
+	var d: Dictionary = raw_val
+	var fr_val: Variant = d.get("framing", null)
+	var pl_val: Variant = d.get("plan", null)
+	return (fr_val is String) and (String(fr_val) in FILM_FRAMING) and (pl_val is String) and (String(pl_val) in FILM_PLANS) and is_valid_film_order(d.get("order", null))
+
+func copy_film_plan(raw_val: Dictionary) -> Dictionary:
+	var fr := String(raw_val.get("framing", "close"))
+	var pl := String(raw_val.get("plan", "quiet"))
+	var clean_ord: Array[String] = []
+	var raw_ord: Variant = raw_val.get("order", null)
+	if is_valid_film_order(raw_ord):
+		for item in (raw_ord as Array):
+			clean_ord.append(String(item))
+	else:
+		for s_id in FILM_SHOTS:
+			clean_ord.append(s_id)
+	return {
+		"framing": fr if fr in FILM_FRAMING else "close",
+		"plan": pl if pl in FILM_PLANS else "quiet",
+		"order": clean_ord
+	}
+
+func film_shot_title(shot_id: String) -> String:
+	return String(FILM_SHOT_LABELS.get(shot_id, shot_id))
+
+func film_next_shot() -> String:
+	if film_phase != "shooting" or not is_valid_film_plan(film_result):
+		return ""
+	var ord: Array = film_result.get("order", [])
+	if film_captured.size() >= ord.size():
+		return ""
+	return String(ord[film_captured.size()])
+
+func film_start() -> bool:
+	if not is_film_available() or film_phase != "idle":
+		return false
+	film_phase = "planning"
+	film_draft = default_film_draft()
+	film_result = {}
+	film_captured.clear()
+	film_screen_frame = 0
+	browser_import_message = ""
+	update_block_3d()
+	save_godot_state()
+	trigger_progress_cue("film_planning", "The Open Seat")
+	update_block_ui()
+	var summary := "Started planning The Open Seat three-shot film short (Objects in close-up · A quiet prop take · Seat -> Paint -> Welcome)."
+	info.text = "%s\nPress Period (.) to roll/hold for clear route or Shift+Period to cycle all 24 film plans\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % summary
+	announce_a11y_status(summary)
+	return true
+
+func film_set_choice(key: String, val: String) -> bool:
+	if not is_film_available() or film_phase != "planning":
+		return false
+	if key == "framing":
+		if not (val in FILM_FRAMING) or String(film_draft.get("framing", "close")) == val:
+			return false
+		film_draft["framing"] = val
+	elif key == "plan":
+		if not (val in FILM_PLANS) or String(film_draft.get("plan", "quiet")) == val:
+			return false
+		film_draft["plan"] = val
+	else:
+		return false
+	browser_import_message = ""
+	save_godot_state()
+	update_block_ui()
+	return true
+
+func film_move_shot(shot_id: String, delta: int) -> bool:
+	if not is_film_available() or film_phase != "planning" or not (shot_id in FILM_SHOTS):
+		return false
+	var raw_ord: Variant = film_draft.get("order", FILM_SHOTS)
+	var ord: Array[String] = []
+	if is_valid_film_order(raw_ord):
+		for item in (raw_ord as Array):
+			ord.append(String(item))
+	else:
+		for s_id in FILM_SHOTS:
+			ord.append(s_id)
+	var at := ord.find(shot_id)
+	var to := at + (-1 if delta < 0 else 1)
+	if at < 0 or to < 0 or to >= ord.size():
+		return false
+	var tmp := ord[at]
+	ord[at] = ord[to]
+	ord[to] = tmp
+	film_draft["order"] = ord
+	browser_import_message = ""
+	save_godot_state()
+	update_block_ui()
+	return true
+
+func film_hold() -> bool:
+	if not is_film_available() or film_phase != "planning":
+		return false
+	film_result = copy_film_plan(film_draft)
+	film_draft = copy_film_plan(film_result)
+	film_captured.clear()
+	film_screen_frame = 0
+	film_phase = "hold"
+	browser_import_message = ""
+	update_block_3d()
+	save_godot_state()
+	update_block_ui()
+	var summary := "The Open Seat crew holds the take beside the clear route until neighbors pass (hold)."
+	info.text = "%s\n3D Storyboard Easel ready · Press Period (.) when the route is clear to begin shooting\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % summary
+	announce_a11y_status(summary)
+	return true
+
+func film_begin_shooting() -> bool:
+	if not is_film_available() or film_phase != "hold" or not is_valid_film_plan(film_result):
+		return false
+	var plan_src := copy_film_plan(film_result)
+	film_result = plan_src
+	film_draft = copy_film_plan(plan_src)
+	film_captured.clear()
+	film_screen_frame = 0
+	film_phase = "shooting"
+	browser_import_message = ""
+	update_block_3d()
+	save_godot_state()
+	trigger_progress_cue("film_shooting", film_next_shot())
+	update_block_ui()
+	var next_title := film_shot_title(film_next_shot())
+	var summary := "Route clear — started shooting The Open Seat (0/3 frames · Next: %s)." % next_title
+	info.text = "%s\n3D Storyboard Easel active · Press Period (.) to capture each frame in order\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % summary
+	announce_a11y_status(summary)
+	return true
+
+func film_capture_shot(shot_id: String = "") -> bool:
+	if not is_film_available() or film_phase != "shooting" or not is_valid_film_plan(film_result):
+		return false
+	var expected := film_next_shot()
+	var target_shot := expected if shot_id.is_empty() else shot_id
+	if expected.is_empty() or target_shot != expected:
+		return false
+	film_captured.append(expected)
+	if film_captured.size() == FILM_SHOTS.size():
+		film_phase = "done"
+		film_screen_frame = 0
+	browser_import_message = ""
+	update_block_3d()
+	save_godot_state()
+	if film_phase == "done":
+		trigger_progress_cue("film_complete", "The Open Seat 3/3")
+	else:
+		trigger_progress_cue("film_shot", expected)
+	update_block_ui()
+	var cap_title := film_shot_title(expected)
+	var summary := "Captured %s (%d/3 frames)%s" % [cap_title, film_captured.size(), " — The Open Seat Complete!" if film_phase == "done" else (" · Next: " + film_shot_title(film_next_shot()))]
+	info.text = "%s\nM4 Three-Shot Film Short (The Open Seat) · Sound-independent\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % summary
+	announce_a11y_status(summary)
+	return true
+
+func film_set_screen_frame(index: int) -> bool:
+	if film_phase != "done" or index < 0 or index >= FILM_SHOTS.size() or not is_valid_film_plan(film_result):
+		return false
+	film_screen_frame = index
+	update_block_3d()
+	update_block_ui()
+	var ord: Array = film_result.get("order", FILM_SHOTS)
+	var shot_id := String(ord[index]) if index < ord.size() else "seat"
+	var summary := "Viewing The Open Seat Frame %d/3: %s." % [index + 1, film_shot_title(shot_id)]
+	info.text = "%s\nTransient storyboard viewer frame (resets to Frame 1 on reload)\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % summary
+	announce_a11y_status(summary)
+	return true
+
+func all_film_shot_orders() -> Array[Array]:
+	return [
+		["seat", "paint", "welcome"],
+		["seat", "welcome", "paint"],
+		["paint", "seat", "welcome"],
+		["paint", "welcome", "seat"],
+		["welcome", "seat", "paint"],
+		["welcome", "paint", "seat"]
+	]
+
+func cycle_film_choice_or_frame() -> String:
+	show_block_panel(true)
+	if not is_film_available():
+		return "locked"
+	if film_phase == "idle":
+		film_start()
+		return "started"
+	if film_phase == "planning":
+		var orders := all_film_shot_orders()
+		var cur_ord: Array = film_draft.get("order", FILM_SHOTS)
+		var ord_idx := 0
+		for i in range(orders.size()):
+			var cand: Array = orders[i]
+			if cur_ord.size() == 3 and String(cur_ord[0]) == String(cand[0]) and String(cur_ord[1]) == String(cand[1]) and String(cur_ord[2]) == String(cand[2]):
+				ord_idx = i
+				break
+		var fr_idx := maxi(0, FILM_FRAMING.find(String(film_draft.get("framing", "close"))))
+		var pl_idx := maxi(0, FILM_PLANS.find(String(film_draft.get("plan", "quiet"))))
+		var combo := posmod((fr_idx * 12) + (pl_idx * 6) + ord_idx + 1, 24)
+		var next_fr := FILM_FRAMING[(combo / 12) % 2]
+		var next_pl := FILM_PLANS[(combo / 6) % 2]
+		var next_ord_raw: Array = orders[combo % 6]
+		var next_ord: Array[String] = []
+		for item in next_ord_raw:
+			next_ord.append(String(item))
+		film_draft["framing"] = next_fr
+		film_draft["plan"] = next_pl
+		film_draft["order"] = next_ord
+		browser_import_message = ""
+		save_godot_state()
+		update_block_ui()
+		var summary := "The Open Seat draft set to %s · %s · %s." % [next_fr, next_pl, "->".join(next_ord)]
+		info.text = "%s\nPress Period (.) to hold for clear route or Shift+Period to cycle all 24 film plans\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % summary
+		announce_a11y_status(summary)
+		return "draft_%s_%s_%s" % [next_fr, next_pl, "_".join(next_ord)]
+	if film_phase == "done":
+		var next_idx := posmod(film_screen_frame + 1, FILM_SHOTS.size())
+		film_set_screen_frame(next_idx)
+		return "frame_%d" % next_idx
+	return "noop"
+
+func advance_film_step() -> String:
+	show_block_panel(true)
+	if not is_film_available():
+		var msg := "Complete the Peaceful Tenant Listening Hour (Q) before planning The Open Seat three-shot film short."
+		info.text = "%s\nM4 Film Short unlocks after the listening hour finishes\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % msg
+		announce_a11y_status(msg)
+		return "locked"
+	if film_phase == "idle":
+		return "film_planning" if film_start() else "film_blocked"
+	if film_phase == "planning":
+		return "film_hold" if film_hold() else "film_blocked"
+	if film_phase == "hold":
+		return "film_shooting" if film_begin_shooting() else "film_blocked"
+	if film_phase == "shooting":
+		var next_s := film_next_shot()
+		if not film_capture_shot():
+			return "film_blocked"
+		return "film_done" if film_phase == "done" else ("captured_" + next_s)
+	var next_idx := posmod(film_screen_frame + 1, FILM_SHOTS.size())
+	film_set_screen_frame(next_idx)
+	return "film_complete_frame_%d" % next_idx
+
+func neighbor_project_memory_line(neighbor_id: String) -> String:
+	if film_phase == "done" and is_valid_film_plan(film_result):
+		var ord: Array = film_result.get("order", FILM_SHOTS)
+		var last_shot := film_shot_title(String(ord[2]) if ord.size() >= 3 else "welcome").to_lower()
+		var framing := String(film_result.get("framing", "close"))
+		var plan := String(film_result.get("plan", "quiet"))
+		match neighbor_id:
+			"rook":
+				return "“I helped with the cue and stayed out of the picture. A no can belong in a good film too.”"
+			"celeste":
+				return "“Dez and I offered our hands, not everyone else’s faces. We made the picture together.”" if framing == "wide" else "“Our props told the story without putting anyone on camera. I like that small frame.”"
+			"thanh":
+				return "“The crew held the take while I used the route. A production should fit around the people who live here.”"
+			"bea":
+				return "“They waited until the conversation finished. Being heard mattered more than rushing a take.”" if plan == "later" else "“We could keep talking while they worked quietly. The film made room for our afternoon.”"
+			"dez":
+				return "“We ended on %s. A different order would tell a different little story.”" % last_shot
+	if civic_phase == "done" and is_valid_civic_plan(civic_result):
+		var topic := String(civic_result.get("topic", "repairs"))
+		var fmt := String(civic_result.get("format", "circle"))
+		var notes := String(civic_result.get("notes", "themes"))
+		match neighbor_id:
+			"bea":
+				return "“We put repairs and staying put into the conversation. One listening hour is a beginning, not a promise that housing problems are solved.”" if topic == "repairs" else "“I still want us to talk about repairs. Making room to come and go gave us a useful place to begin.”"
+			"thanh":
+				return "“I could join for a few minutes and leave when I needed to. Keeping the table off the route mattered.”" if fmt == "dropin" else "“I liked hearing everyone together. Next time, could we leave a drop-in moment for people who cannot stay?”"
+			"celeste":
+				return "“The shared request has no names or personal stories attached. Nobody owes us their story.”" if notes == "themes" else "“We agreed to keep no meeting notes. Listening can matter without making a record of someone.”"
+			"rook":
+				return "“No microphone needed. A listening hour can have room for a disagreement and a quiet voice.”"
+			"dez":
+				return "“I helped welcome people who just wanted to listen. Nobody had to sign anything or agree to belong.”"
+	return ""
+
+func is_test_suite_mode() -> bool:
+	for arg in OS.get_cmdline_user_args():
+		if arg == "--test-suite":
+			return true
+	for arg in OS.get_cmdline_args():
+		if arg.ends_with("study_test.gd") or arg == "--test-suite":
+			return true
+	return false
+
+func resolve_settings_path() -> String:
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--godot-settings-path="):
+			var custom := arg.trim_prefix("--godot-settings-path=").strip_edges()
+			if not custom.is_empty():
+				return custom
+	if is_test_suite_mode():
+		return GODOT_TEST_SETTINGS_PATH
+	return GODOT_SETTINGS_PATH
+
+func save_godot_settings() -> bool:
+	var env := {
+		"schema": "tenderloin-redux.godot.settings.v1",
+		"version": 1,
+		"neighborhood_voices": voices_enabled
+	}
+	var raw_json := JSON.stringify(env)
+	var wrote := false
+	if OS.has_feature("web"):
+		var js_literal := JSON.stringify(raw_json)
+		var web_ok: Variant = JavaScriptBridge.eval("try { window.localStorage.setItem('%s', %s); true; } catch (_e) { false; }" % [GODOT_SETTINGS_WEB_STORAGE_KEY, js_literal], true)
+		wrote = bool(web_ok)
+	if not wrote and not settings_path.is_empty():
+		var file := FileAccess.open(settings_path, FileAccess.WRITE)
+		if file != null:
+			file.store_string(raw_json)
+			file.close()
+			wrote = true
+	return wrote
+
+func load_godot_settings() -> bool:
+	var raw_str := ""
+	if OS.has_feature("web"):
+		var web_val: Variant = JavaScriptBridge.eval("try { window.localStorage.getItem('%s') || ''; } catch (_e) { ''; }" % GODOT_SETTINGS_WEB_STORAGE_KEY, true)
+		if web_val is String and not String(web_val).strip_edges().is_empty():
+			raw_str = String(web_val)
+	elif not settings_path.is_empty() and FileAccess.file_exists(settings_path):
+		raw_str = FileAccess.get_file_as_string(settings_path)
+	var trimmed := raw_str.strip_edges()
+	if trimmed.is_empty() or not trimmed.begins_with("{") or not trimmed.ends_with("}"):
+		set_voices_enabled(false, false)
+		return false
+	var parsed: Variant = JSON.parse_string(trimmed)
+	if not (parsed is Dictionary):
+		set_voices_enabled(false, false)
+		return false
+	var env: Dictionary = parsed
+	if String(env.get("schema", "")) != "tenderloin-redux.godot.settings.v1":
+		set_voices_enabled(false, false)
+		return false
+	var nv_val: Variant = env.get("neighborhood_voices", false)
+	if not (nv_val is bool):
+		set_voices_enabled(false, false)
+		return false
+	return set_voices_enabled(bool(nv_val), false)
+
+func clear_godot_settings() -> void:
+	voices_custom_json_override = ""
+	voices_simulate_error = false
+	if not settings_path.is_empty() and FileAccess.file_exists(settings_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(settings_path))
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("try { window.localStorage.removeItem('%s'); } catch (_e) {}" % GODOT_SETTINGS_WEB_STORAGE_KEY, true)
+	set_voices_enabled(false, false)
+
+func validate_voices_payload(raw_json: String) -> Dictionary:
+	if raw_json.to_utf8_buffer().size() > VOICES_MAX_BYTES:
+		return {"ok": false}
+	var trimmed := raw_json.strip_edges()
+	if trimmed.is_empty() or not trimmed.begins_with("{") or not trimmed.ends_with("}"):
+		return {"ok": false}
+	var parsed: Variant = JSON.parse_string(trimmed)
+	if not (parsed is Dictionary):
+		return {"ok": false}
+	var d: Dictionary = parsed
+	var ver_val: Variant = d.get("version", -1)
+	if not is_whole_json_number(ver_val) or int(roundf(float(ver_val))) != 1:
+		return {"ok": false}
+	var checked_val: Variant = d.get("checkedAt", "")
+	if not (checked_val is String) or String(checked_val) != VOICES_CHECKED_AT:
+		return {"ok": false}
+	var list_val: Variant = d.get("records", null)
+	if not (list_val is Array) or (list_val as Array).size() != 3:
+		return {"ok": false}
+	var req_keys := ["name", "topic", "summary", "sourceTitle"]
+	var clean_records: Array[Dictionary] = []
+	var seen_ids: Dictionary = {}
+	for entry_val in (list_val as Array):
+		if not (entry_val is Dictionary):
+			return {"ok": false}
+		var entry: Dictionary = entry_val
+		var id_val: Variant = entry.get("id", null)
+		var url_val: Variant = entry.get("url", null)
+		if not (id_val is String) or not (url_val is String):
+			return {"ok": false}
+		var rec_id := String(id_val)
+		var src_url := String(url_val)
+		if not VOICES_SOURCES.has(rec_id) or seen_ids.has(rec_id) or src_url != String(VOICES_SOURCES[rec_id]):
+			return {"ok": false}
+		seen_ids[rec_id] = true
+		var clean_rec: Dictionary = {"id": rec_id, "url": src_url}
+		for k in req_keys:
+			var v: Variant = entry.get(k, null)
+			var max_len := 450 if k == "summary" else 100
+			if not (v is String) or String(v).strip_edges().is_empty() or String(v).length() > max_len:
+				return {"ok": false}
+			clean_rec[k] = String(v)
+		clean_records.append(clean_rec)
+	return {"ok": true, "checked_at": String(checked_val), "records": clean_records}
+
+func voices_release_resources() -> void:
+	voices_records.clear()
+	voices_checked_at = ""
+	voices_release_count += 1
+
+func present_voices_summary() -> String:
+	if not voices_enabled or voices_status != "ready" or voices_records.is_empty():
+		return ""
+	var card_lines: Array[String] = []
+	for rec in voices_records:
+		card_lines.append("%s (%s): %s [%s — %s]" % [
+			String(rec.get("name", "")),
+			String(rec.get("topic", "")),
+			String(rec.get("summary", "")),
+			String(rec.get("sourceTitle", "")),
+			String(rec.get("url", ""))
+		])
+	var body := "People already doing the work (%d profiles checked %s): %s\n%s" % [
+		voices_records.size(),
+		voices_checked_at,
+		" · ".join(card_lines),
+		VOICES_DISCLAIMER
+	]
+	if info != null:
+		info.text = "%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % body
+	announce_a11y_status(body)
+	return body
+
+func load_voices_for_generation(gen: int, raw_override: String = "") -> bool:
+	if not voices_enabled or gen != voices_generation:
+		return false
+	if is_test_suite_mode() and voices_simulate_error:
+		voices_records.clear()
+		voices_checked_at = ""
+		voices_status = "error"
+		voices_error = "Could not load neighborhood voices dataset."
+		update_block_ui()
+		sync_web_a11y_status()
+		return false
+	var raw_text := raw_override
+	if raw_text.is_empty() and is_test_suite_mode():
+		raw_text = voices_custom_json_override
+	if raw_text.is_empty() and FileAccess.file_exists(VOICES_DATA_PATH):
+		raw_text = FileAccess.get_file_as_string(VOICES_DATA_PATH)
+	var val_res := validate_voices_payload(raw_text)
+	if not bool(val_res.get("ok", false)):
+		voices_records.clear()
+		voices_checked_at = ""
+		voices_status = "error"
+		voices_error = "Neighborhood voices dataset failed validation."
+		update_block_ui()
+		sync_web_a11y_status()
+		return false
+	voices_records = val_res.get("records", [] as Array[Dictionary])
+	voices_checked_at = String(val_res.get("checked_at", ""))
+	voices_status = "ready"
+	voices_error = ""
+	update_block_ui()
+	sync_web_a11y_status()
+	return true
+
+func set_voices_enabled(enabled_flag: bool, persist_setting: bool = true) -> bool:
+	voices_generation += 1
+	var gen := voices_generation
+	voices_release_resources()
+	voices_enabled = enabled_flag
+	voices_suspended = false
+	if not enabled_flag:
+		voices_status = "off"
+		voices_error = ""
+		if persist_setting:
+			save_godot_settings()
+		update_block_ui()
+		if persist_setting and info != null:
+			var off_msg := "Experimental Neighborhood Voices: Off (default-off · game saves unaffected)."
+			info.text = "%s\nSettings stored separately from game saves · Core gathering stays complete\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % off_msg
+			announce_a11y_status(off_msg)
+		else:
+			sync_web_a11y_status()
+		return false
+	voices_status = "loading"
+	voices_error = ""
+	if persist_setting:
+		save_godot_settings()
+	var ok := load_voices_for_generation(gen)
+	if persist_setting and info != null:
+		if ok:
+			present_voices_summary()
+		else:
+			var err_msg := "Experimental Neighborhood Voices error: %s" % voices_error
+			info.text = "%s\nUse Retry (Shift+/) or switch Voices Off · Core gathering unaffected\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % err_msg
+			announce_a11y_status(err_msg)
+	return ok
+
+func toggle_voices_enabled() -> bool:
+	show_block_panel(true)
+	return set_voices_enabled(not voices_enabled, true)
+
+func retry_voices_load() -> bool:
+	if not voices_enabled:
+		return false
+	voices_generation += 1
+	var gen := voices_generation
+	voices_release_resources()
+	voices_suspended = false
+	voices_status = "loading"
+	voices_error = ""
+	var ok := load_voices_for_generation(gen)
+	if info != null:
+		if ok:
+			present_voices_summary()
+		else:
+			var msg := "Neighborhood Voices retry failed: %s" % voices_error
+			info.text = "%s\nDefault-off optional shelf · Core gathering unaffected\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % msg
+			announce_a11y_status(msg)
+	return ok
+
+func suspend_voices() -> bool:
+	if not voices_enabled:
+		return false
+	var had_error := (voices_status == "error" or not voices_error.is_empty())
+	voices_generation += 1
+	voices_release_resources()
+	voices_suspended = true
+	voices_status = "error" if had_error else "paused"
+	update_block_ui()
+	sync_web_a11y_status()
+	return true
+
+func resume_voices() -> bool:
+	if not voices_enabled or voices_status != "paused":
+		return false
+	voices_suspended = false
+	return retry_voices_load()
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_WINDOW_FOCUS_OUT or what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		suspend_voices()
+	elif what == NOTIFICATION_APPLICATION_RESUMED or what == NOTIFICATION_WM_WINDOW_FOCUS_IN or what == NOTIFICATION_APPLICATION_FOCUS_IN:
+		resume_voices()
+
 func recompute_music_stems() -> void:
 	var mask := 1 # "bass" always active
 	if visited_neighbors.size() >= 1 or celeste_talk_count > 0 or rook_soundcheck_done:
@@ -3079,13 +4044,23 @@ func setup_web_a11y_bridge() -> void:
 				if (s) {
 					var progLen = Array.isArray(data.programme_published) ? data.programme_published.length : 0;
 					var hostCur = data.hosting_current ? (" (" + data.hosting_current + ")") : "";
-					s.textContent = "Neighbors " + data.visited_count + "/5 · Mural " + data.mural_count + "/3 (" + data.mural_palette + ") · Soundcheck " + (data.soundcheck_done ? "Done" : "Pending") + " · Block " + (data.block_opened ? "Opened" : (data.block_ready ? "Ready" : "In progress")) + " · Compton's " + (data.history_read ? "Read" : "Unread") + " · Black Hawk " + (data.blackhawk_discovered ? "Found" : "Unvisited") + " · District " + (data.district_boundary_visible ? "Shown" : "Hidden") + " · Keepsake " + (data.keepsake_status || "unasked") + " · Loans " + (data.loans_returned_count || 0) + "/3 · Programme " + progLen + "/4 · Hosted " + (data.hosting_completed_count || 0) + "/4" + hostCur;
+					var voicesTag = data.voices_enabled ? ("On:" + (data.voices_status || "ready")) : "Off";
+					s.textContent = "Neighbors " + data.visited_count + "/5 · Mural " + data.mural_count + "/3 (" + data.mural_palette + ") · Soundcheck " + (data.soundcheck_done ? "Done" : "Pending") + " · Block " + (data.block_opened ? "Opened" : (data.block_ready ? "Ready" : "In progress")) + " · Compton's " + (data.history_read ? "Read" : "Unread") + " · Black Hawk " + (data.blackhawk_discovered ? "Found" : "Unvisited") + " · District " + (data.district_boundary_visible ? "Shown" : "Hidden") + " · Keepsake " + (data.keepsake_status || "unasked") + " · Loans " + (data.loans_returned_count || 0) + "/3 · Programme " + progLen + "/4 · Hosted " + (data.hosting_completed_count || 0) + "/4" + hostCur + " · Civic " + (data.civic_phase || "idle") + " · Film " + (data.film_phase || "idle") + " (" + (data.film_captured_count || 0) + "/3) · Voices " + voicesTag;
 				}
 				return true;
 			} catch (_e) {
 				return false;
 			}
 		};
+		window.__tenderloinWebVoicesLifecyclePending = '';
+		window.addEventListener('pagehide', function() {
+			window.__tenderloinWebVoicesLifecyclePending = 'suspend';
+		});
+		window.addEventListener('pageshow', function(e) {
+			if (e && e.persisted) {
+				window.__tenderloinWebVoicesLifecyclePending = 'resume';
+			}
+		});
 		window.__tenderloinWebSavePending = null;
 		window.__tenderloinQueueBrowserSaveJson = function(rawText, errMsg) {
 			window.__tenderloinWebSavePending = {
@@ -3161,6 +4136,16 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"hosting_completed_count": hosting_results.size(),
 		"hosting_current": current_hosting_activity(),
 		"hosting_done": is_hosting_done(),
+		"civic_phase": civic_phase,
+		"civic_done": civic_phase == "done",
+		"film_phase": film_phase,
+		"film_captured_count": film_captured.size(),
+		"film_screen_frame": film_screen_frame,
+		"film_done": film_phase == "done",
+		"voices_enabled": voices_enabled,
+		"voices_status": voices_status,
+		"voices_count": voices_records.size(),
+		"voices_generation": voices_generation,
 		"total_buildings": all_buildings.size(),
 		"wider_buildings_count": wider_meshes.size(),
 		"music_playing": music_playing,
@@ -3196,6 +4181,12 @@ func prompt_local_music_file() -> void:
 func poll_web_audio() -> void:
 	if not OS.has_feature("web"):
 		return
+	var voices_lc_var: Variant = JavaScriptBridge.eval("var vlc = window.__tenderloinWebVoicesLifecyclePending || ''; window.__tenderloinWebVoicesLifecyclePending = ''; String(vlc);", true)
+	var voices_lc := String(voices_lc_var) if voices_lc_var is String else ""
+	if voices_lc == "suspend":
+		suspend_voices()
+	elif voices_lc == "resume":
+		resume_voices()
 	var has_save_pending: Variant = JavaScriptBridge.eval("Boolean(window.__tenderloinWebSavePending);", true)
 	if bool(has_save_pending):
 		var save_err_var: Variant = JavaScriptBridge.eval("window.__tenderloinWebSavePending ? String(window.__tenderloinWebSavePending.err || '') : '';", true)
@@ -3411,22 +4402,35 @@ func build_save_envelope() -> Dictionary:
 			"order": hosting_order.duplicate(),
 			"results": hosting_results.duplicate(true),
 			"draft": hosting_draft.duplicate(true)
-		}
+		},
+		"civic": {
+			"phase": civic_phase,
+			"draft": copy_civic_plan(civic_draft),
+			"result": copy_civic_plan(civic_result) if is_valid_civic_plan(civic_result) else null
+		},
+		"film": {
+			"phase": film_phase,
+			"draft": copy_film_plan(film_draft),
+			"result": copy_film_plan(film_result) if is_valid_film_plan(film_result) else null,
+			"captured": film_captured.duplicate()
+		},
+		"optional": optional_save_data.duplicate(true)
 	}
 
 func save_godot_state() -> bool:
 	save_seq += 1
 	var raw_json := JSON.stringify(build_save_envelope())
 	var wrote := false
-	var file := FileAccess.open(save_path, FileAccess.WRITE)
-	if file != null:
-		file.store_string(raw_json)
-		file.close()
-		wrote = true
 	if OS.has_feature("web"):
 		var js_literal := JSON.stringify(raw_json)
 		var web_ok: Variant = JavaScriptBridge.eval("try { window.localStorage.setItem('%s', %s); true; } catch (_e) { false; }" % [GODOT_WEB_STORAGE_KEY, js_literal], true)
 		wrote = wrote or bool(web_ok)
+	if not wrote:
+		var file := FileAccess.open(save_path, FileAccess.WRITE)
+		if file != null:
+			file.store_string(raw_json)
+			file.close()
+			wrote = true
 	return wrote
 
 func reset_mural_state_to_defaults(status_label: String) -> void:
@@ -3446,6 +4450,15 @@ func reset_mural_state_to_defaults(status_label: String) -> void:
 	hosting_order.clear()
 	hosting_results.clear()
 	hosting_draft = default_hosting_draft()
+	civic_phase = "idle"
+	civic_draft = default_civic_draft()
+	civic_result = {}
+	film_phase = "idle"
+	film_draft = default_film_draft()
+	film_result = {}
+	film_captured.clear()
+	film_screen_frame = 0
+	optional_save_data = {}
 	history_read = false
 	blackhawk_discovered = false
 	district_boundary_visible = true
@@ -3734,6 +4747,132 @@ func validate_godot_hosting(raw_host: Variant, allow_opened: bool) -> Dictionary
 		return {"ok": true, "order": [] as Array[String], "results": [] as Array[Dictionary], "draft": default_hosting_draft()}
 	return {"ok": true, "order": clean_order, "results": clean_results, "draft": clean_draft}
 
+func validate_godot_civic(raw_civic: Variant, allow_civic: bool) -> Dictionary:
+	if not (raw_civic is Dictionary):
+		return {"ok": false}
+	var cv: Dictionary = raw_civic
+	var ph_val: Variant = cv.get("phase", "idle")
+	if not (ph_val is String) or not (String(ph_val) in ["idle", "planning", "meeting", "done"]):
+		return {"ok": false}
+	var ph := String(ph_val)
+	var clean_draft := default_civic_draft()
+	if cv.has("draft"):
+		var dr_val: Variant = cv.get("draft")
+		if not (dr_val is Dictionary):
+			return {"ok": false}
+		var dr: Dictionary = dr_val
+		if dr.has("topic"):
+			if not (dr.get("topic") is String) or not (String(dr.get("topic")) in CIVIC_TOPICS):
+				return {"ok": false}
+			clean_draft["topic"] = String(dr.get("topic"))
+		if dr.has("format"):
+			if not (dr.get("format") is String) or not (String(dr.get("format")) in CIVIC_FORMATS):
+				return {"ok": false}
+			clean_draft["format"] = String(dr.get("format"))
+		if dr.has("notes"):
+			if not (dr.get("notes") is String) or not (String(dr.get("notes")) in CIVIC_NOTES):
+				return {"ok": false}
+			clean_draft["notes"] = String(dr.get("notes"))
+	var clean_result: Dictionary = {}
+	if cv.has("result") and cv.get("result") != null:
+		var r_val: Variant = cv.get("result")
+		if not is_valid_civic_plan(r_val):
+			return {"ok": false}
+		clean_result = copy_civic_plan(r_val as Dictionary)
+	if ph in ["meeting", "done"]:
+		if clean_result.is_empty():
+			return {"ok": false}
+		clean_draft = copy_civic_plan(clean_result)
+	elif not clean_result.is_empty():
+		return {"ok": false}
+	if not allow_civic:
+		if ph != "idle":
+			return {"ok": false}
+		return {"ok": true, "phase": "idle", "draft": default_civic_draft(), "result": {}}
+	return {"ok": true, "phase": ph, "draft": clean_draft, "result": clean_result}
+
+func validate_godot_film(raw_film: Variant, allow_film: bool) -> Dictionary:
+	if not (raw_film is Dictionary):
+		return {"ok": false}
+	var fm: Dictionary = raw_film
+	var ph_val: Variant = fm.get("phase", "idle")
+	if not (ph_val is String) or not (String(ph_val) in ["idle", "planning", "hold", "shooting", "done"]):
+		return {"ok": false}
+	var ph := String(ph_val)
+	var clean_draft := default_film_draft()
+	if fm.has("draft"):
+		var dr_val: Variant = fm.get("draft")
+		if not (dr_val is Dictionary):
+			return {"ok": false}
+		var dr: Dictionary = dr_val
+		if dr.has("framing"):
+			if not (dr.get("framing") is String) or not (String(dr.get("framing")) in FILM_FRAMING):
+				return {"ok": false}
+			clean_draft["framing"] = String(dr.get("framing"))
+		if dr.has("plan"):
+			if not (dr.get("plan") is String) or not (String(dr.get("plan")) in FILM_PLANS):
+				return {"ok": false}
+			clean_draft["plan"] = String(dr.get("plan"))
+		if dr.has("order"):
+			var ord_val: Variant = dr.get("order")
+			if not is_valid_film_order(ord_val):
+				return {"ok": false}
+			var c_ord: Array[String] = []
+			for s_item in (ord_val as Array):
+				c_ord.append(String(s_item))
+			clean_draft["order"] = c_ord
+	var clean_result: Dictionary = {}
+	if fm.has("result") and fm.get("result") != null:
+		var r_val: Variant = fm.get("result")
+		if not is_valid_film_plan(r_val):
+			return {"ok": false}
+		clean_result = copy_film_plan(r_val as Dictionary)
+	var clean_cap: Array[String] = []
+	if fm.has("captured"):
+		var cap_val: Variant = fm.get("captured")
+		if not (cap_val is Array) or (cap_val as Array).size() > FILM_SHOTS.size():
+			return {"ok": false}
+		for c_item in (cap_val as Array):
+			if not (c_item is String) or not (String(c_item) in FILM_SHOTS):
+				return {"ok": false}
+			clean_cap.append(String(c_item))
+	if ph in ["idle", "planning"]:
+		if not clean_result.is_empty() or not clean_cap.is_empty():
+			return {"ok": false}
+	elif ph == "hold":
+		if clean_result.is_empty() or not clean_cap.is_empty():
+			return {"ok": false}
+		clean_draft = copy_film_plan(clean_result)
+	elif ph == "shooting":
+		if clean_result.is_empty() or clean_cap.size() >= FILM_SHOTS.size():
+			return {"ok": false}
+		var r_ord: Array = clean_result.get("order", [])
+		for i in range(clean_cap.size()):
+			if clean_cap[i] != String(r_ord[i]):
+				return {"ok": false}
+		clean_draft = copy_film_plan(clean_result)
+	elif ph == "done":
+		if clean_result.is_empty() or clean_cap.size() != FILM_SHOTS.size():
+			return {"ok": false}
+		var r_ord_d: Array = clean_result.get("order", [])
+		for i in range(FILM_SHOTS.size()):
+			if clean_cap[i] != String(r_ord_d[i]):
+				return {"ok": false}
+		clean_draft = copy_film_plan(clean_result)
+	if not allow_film:
+		if ph != "idle":
+			return {"ok": false}
+		return {"ok": true, "phase": "idle", "draft": default_film_draft(), "result": {}, "captured": [] as Array[String]}
+	return {"ok": true, "phase": ph, "draft": clean_draft, "result": clean_result, "captured": clean_cap}
+
+func validate_godot_optional(raw_opt: Variant) -> Dictionary:
+	if not (raw_opt is Dictionary):
+		return {"ok": false}
+	var serialized := JSON.stringify(raw_opt)
+	if serialized.length() > OPTIONAL_SAVE_MAX_BYTES:
+		return {"ok": false}
+	return {"ok": true, "optional": (raw_opt as Dictionary).duplicate(true)}
+
 func apply_save_envelope(raw_json: String) -> bool:
 	var trimmed := raw_json.strip_edges()
 	if trimmed.is_empty():
@@ -3834,6 +4973,25 @@ func apply_save_envelope(raw_json: String) -> bool:
 		if not bool(host_res.get("ok", false)):
 			reset_mural_state_to_defaults("recovered")
 			return false
+	var host_done := will_open and (host_res.get("order", []) as Array).size() == PROGRAMME_SEGMENTS.size() and (host_res.get("results", []) as Array).size() == PROGRAMME_SEGMENTS.size()
+	var civic_res := {"ok": true, "phase": "idle", "draft": default_civic_draft(), "result": {}}
+	if env.has("civic"):
+		civic_res = validate_godot_civic(env.get("civic"), host_done)
+		if not bool(civic_res.get("ok", false)):
+			reset_mural_state_to_defaults("recovered")
+			return false
+	var civic_done := host_done and String(civic_res.get("phase", "idle")) == "done"
+	var film_res := {"ok": true, "phase": "idle", "draft": default_film_draft(), "result": {}, "captured": [] as Array[String]}
+	if env.has("film"):
+		film_res = validate_godot_film(env.get("film"), civic_done)
+		if not bool(film_res.get("ok", false)):
+			reset_mural_state_to_defaults("recovered")
+			return false
+	var opt_res := {"ok": true, "optional": {}}
+	if env.has("optional"):
+		opt_res = validate_godot_optional(env.get("optional"))
+		if not bool(opt_res.get("ok", false)):
+			opt_res = {"ok": true, "optional": {}}
 	var seq_val: Variant = env.get("save_seq", 0)
 	if is_whole_json_number(seq_val):
 		save_seq = maxi(save_seq, int(roundf(float(seq_val))))
@@ -3856,6 +5014,15 @@ func apply_save_envelope(raw_json: String) -> bool:
 	hosting_order = host_res.get("order", [] as Array[String])
 	hosting_results = host_res.get("results", [] as Array[Dictionary])
 	hosting_draft = host_res.get("draft", default_hosting_draft())
+	civic_phase = String(civic_res.get("phase", "idle"))
+	civic_draft = civic_res.get("draft", default_civic_draft())
+	civic_result = civic_res.get("result", {})
+	film_phase = String(film_res.get("phase", "idle"))
+	film_draft = film_res.get("draft", default_film_draft())
+	film_result = film_res.get("result", {})
+	film_captured = film_res.get("captured", [] as Array[String])
+	film_screen_frame = 0
+	optional_save_data = opt_res.get("optional", {})
 	stop_music_playback()
 	sketch_tick = 0
 	sketch_phase = 0.0
@@ -4102,6 +5269,69 @@ func inspect_browser_save_json(raw_json: String) -> Dictionary:
 						dt.append(int(roundf(float(tv))))
 					if ok_dt:
 						clean_host_draft["tiles"] = dt
+	var civic_avail := opened_done and clean_host_results.size() == PROGRAMME_SEGMENTS.size()
+	var clean_civic := {"phase": "idle", "draft": default_civic_draft(), "result": {}}
+	if civic_avail and (saved.get("civic", null) is Dictionary):
+		var raw_cv: Dictionary = saved.get("civic")
+		var cv_ph := String(raw_cv.get("phase", "")) if (raw_cv.get("phase", null) is String) else ""
+		if cv_ph in ["planning", "meeting", "done"]:
+			clean_civic["phase"] = "planning"
+			if raw_cv.get("draft", null) is Dictionary:
+				var cv_dr: Dictionary = raw_cv.get("draft")
+				if (cv_dr.get("topic", null) is String) and String(cv_dr.get("topic")) in CIVIC_TOPICS:
+					clean_civic["draft"]["topic"] = String(cv_dr.get("topic"))
+				if (cv_dr.get("format", null) is String) and String(cv_dr.get("format")) in CIVIC_FORMATS:
+					clean_civic["draft"]["format"] = String(cv_dr.get("format"))
+				if (cv_dr.get("notes", null) is String) and String(cv_dr.get("notes")) in CIVIC_NOTES:
+					clean_civic["draft"]["notes"] = String(cv_dr.get("notes"))
+			if (cv_ph in ["meeting", "done"]) and is_valid_civic_plan(raw_cv.get("result", null)):
+				var cv_res := copy_civic_plan(raw_cv.get("result") as Dictionary)
+				clean_civic["phase"] = cv_ph
+				clean_civic["result"] = cv_res
+				clean_civic["draft"] = copy_civic_plan(cv_res)
+	var film_avail := opened_done and String(clean_civic.get("phase", "idle")) == "done"
+	var clean_film := {"phase": "idle", "draft": default_film_draft(), "result": {}, "captured": [] as Array[String]}
+	if film_avail and (saved.get("film", null) is Dictionary):
+		var raw_fm: Dictionary = saved.get("film")
+		var fm_ph := String(raw_fm.get("phase", "")) if (raw_fm.get("phase", null) is String) else ""
+		if fm_ph in ["planning", "hold", "shooting", "done"]:
+			clean_film["phase"] = "planning"
+			if raw_fm.get("draft", null) is Dictionary:
+				var fm_dr: Dictionary = raw_fm.get("draft")
+				if (fm_dr.get("framing", null) is String) and String(fm_dr.get("framing")) in FILM_FRAMING:
+					clean_film["draft"]["framing"] = String(fm_dr.get("framing"))
+				if (fm_dr.get("plan", null) is String) and String(fm_dr.get("plan")) in FILM_PLANS:
+					clean_film["draft"]["plan"] = String(fm_dr.get("plan"))
+				if is_valid_film_order(fm_dr.get("order", null)):
+					var f_ord: Array[String] = []
+					for s_item in (fm_dr.get("order") as Array):
+						f_ord.append(String(s_item))
+					clean_film["draft"]["order"] = f_ord
+			if fm_ph != "planning" and is_valid_film_plan(raw_fm.get("result", null)):
+				var fm_res := copy_film_plan(raw_fm.get("result") as Dictionary)
+				clean_film["result"] = fm_res
+				clean_film["draft"] = copy_film_plan(fm_res)
+				if fm_ph == "hold":
+					clean_film["phase"] = "hold"
+				else:
+					clean_film["phase"] = "shooting"
+					var f_cap: Array[String] = []
+					if raw_fm.get("captured", null) is Array:
+						var raw_cap: Array = raw_fm.get("captured")
+						var res_ord: Array = fm_res.get("order", [])
+						for i in range(mini(raw_cap.size(), res_ord.size())):
+							if (raw_cap[i] is String) and String(raw_cap[i]) == String(res_ord[i]):
+								f_cap.append(String(raw_cap[i]))
+							else:
+								break
+					clean_film["captured"] = f_cap
+					if f_cap.size() == FILM_SHOTS.size():
+						clean_film["phase"] = "done"
+	var clean_optional: Dictionary = {}
+	if env.get("optional", null) is Dictionary:
+		var cand_opt: Dictionary = env.get("optional")
+		if JSON.stringify(cand_opt).length() <= OPTIONAL_SAVE_MAX_BYTES:
+			clean_optional = cand_opt.duplicate(true)
 	return {
 		"valid": true,
 		"greeted": greeted,
@@ -4120,8 +5350,26 @@ func inspect_browser_save_json(raw_json: String) -> Dictionary:
 		"blackhawk": blackhawk_flag,
 		"epilogue": clean_epilogue,
 		"programme": {"order": clean_prog_order, "published": clean_prog_pub},
-		"hosting": {"order": clean_host_order, "results": clean_host_results, "draft": clean_host_draft}
+		"hosting": {"order": clean_host_order, "results": clean_host_results, "draft": clean_host_draft},
+		"civic": clean_civic,
+		"film": clean_film,
+		"optional": clean_optional
 	}
+
+func civic_phase_rank(ph: String) -> int:
+	match ph:
+		"planning": return 1
+		"meeting": return 2
+		"done": return 3
+		_: return 0
+
+func film_phase_rank(ph: String) -> int:
+	match ph:
+		"planning": return 1
+		"hold": return 2
+		"shooting": return 3
+		"done": return 4
+		_: return 0
 
 func import_browser_save_json(raw_json: String) -> bool:
 	var res := inspect_browser_save_json(raw_json)
@@ -4200,6 +5448,34 @@ func import_browser_save_json(raw_json: String) -> bool:
 			hosting_results = imp_ho_res.duplicate(true)
 			if imp_ho.get("draft", null) is Dictionary:
 				hosting_draft = imp_ho.get("draft").duplicate(true)
+		if is_civic_available():
+			var imp_cv: Dictionary = res.get("civic", {})
+			var imp_cv_ph := String(imp_cv.get("phase", "idle"))
+			if civic_phase_rank(imp_cv_ph) > civic_phase_rank(civic_phase):
+				civic_phase = imp_cv_ph
+				if imp_cv.get("draft", null) is Dictionary:
+					civic_draft = copy_civic_plan(imp_cv.get("draft"))
+				civic_result = copy_civic_plan(imp_cv.get("result")) if is_valid_civic_plan(imp_cv.get("result", null)) else {}
+		if is_film_available():
+			var imp_fm: Dictionary = res.get("film", {})
+			var imp_fm_ph := String(imp_fm.get("phase", "idle"))
+			var imp_fm_cap: Array = imp_fm.get("captured", [])
+			if film_phase_rank(imp_fm_ph) > film_phase_rank(film_phase) or (imp_fm_ph == "shooting" and film_phase == "shooting" and imp_fm_cap.size() > film_captured.size()):
+				film_phase = imp_fm_ph
+				if imp_fm.get("draft", null) is Dictionary:
+					film_draft = copy_film_plan(imp_fm.get("draft"))
+				film_result = copy_film_plan(imp_fm.get("result")) if is_valid_film_plan(imp_fm.get("result", null)) else {}
+				film_captured.clear()
+				for s_item in imp_fm_cap:
+					film_captured.append(String(s_item))
+				film_screen_frame = 0
+	var imp_opt: Dictionary = res.get("optional", {})
+	if not imp_opt.is_empty():
+		var merged_opt := optional_save_data.duplicate(true)
+		for k in imp_opt.keys():
+			merged_opt[k] = imp_opt[k]
+		if JSON.stringify(merged_opt).length() <= OPTIONAL_SAVE_MAX_BYTES:
+			optional_save_data = merged_opt
 	update_mural_3d()
 	update_speaker_3d()
 	update_block_3d()
@@ -4258,7 +5534,7 @@ func load_godot_state() -> bool:
 		var web_val: Variant = JavaScriptBridge.eval("try { window.localStorage.getItem('%s') || ''; } catch (_e) { ''; }" % GODOT_WEB_STORAGE_KEY, true)
 		if web_val is String and not String(web_val).strip_edges().is_empty():
 			candidates.append(String(web_val))
-	if FileAccess.file_exists(save_path):
+	elif FileAccess.file_exists(save_path):
 		var file_val := FileAccess.get_file_as_string(save_path)
 		if not file_val.strip_edges().is_empty() and not candidates.has(file_val):
 			candidates.append(file_val)
@@ -4669,6 +5945,24 @@ func _unhandled_input(event: InputEvent) -> void:
 					cycle_programme_or_hosting_choice()
 				else:
 					advance_programme_and_hosting_step()
+			KEY_Q:
+				if event.shift_pressed:
+					cycle_civic_choice()
+				else:
+					advance_civic_step()
+			KEY_PERIOD:
+				if event.shift_pressed:
+					cycle_film_choice_or_frame()
+				else:
+					advance_film_step()
+			KEY_SLASH:
+				if event.shift_pressed and voices_enabled:
+					if voices_status == "error":
+						retry_voices_load()
+					elif voices_status == "ready":
+						present_voices_summary()
+				else:
+					toggle_voices_enabled()
 			KEY_I:
 				import_browser_save_from_web_storage()
 			KEY_J:
@@ -4988,7 +6282,18 @@ func update_block_ui() -> void:
 		var comp_tag := "CC:Read" if history_read else "CC:1966"
 		var m1_tag := "Loans:%d/3" % epilogue_returned.size() if epilogue_packing else ("Photo:OK" if String(keepsake_photo.get("status", "unasked")) == "taken" else "M1:Ready")
 		var m3_tag := "Host:%d/4" % hosting_results.size()
-		var base_detail := "%s · %s · %s · %s · %s" % [get_block_missing_summary(), comp_tag, west_tag, m1_tag, m3_tag]
+		var m4_tag := "Film:3/3" if film_phase == "done" else ("Civic:OK" if civic_phase == "done" else ("Civic:" + civic_phase))
+		var m5_tag := "Voices:Off"
+		if voices_enabled:
+			if voices_status == "ready":
+				m5_tag = "Voices:" + str(voices_records.size())
+			elif voices_status == "error":
+				m5_tag = "Voices:Err"
+			elif voices_status == "paused":
+				m5_tag = "Voices:Paused"
+			else:
+				m5_tag = "Voices:On"
+		var base_detail := "%s · %s · %s · %s · %s · %s · %s" % [get_block_missing_summary(), comp_tag, west_tag, m1_tag, m3_tag, m4_tag, m5_tag]
 		block_detail_label.text = base_detail if browser_import_message.is_empty() else ("%s · %s" % [base_detail, browser_import_message])
 	if block_open_btn != null:
 		if block_opened:
@@ -5018,6 +6323,31 @@ func update_block_ui() -> void:
 			block_programme_btn.text = "Start Host"
 		else:
 			block_programme_btn.text = "Programme"
+	if block_civic_btn != null:
+		if civic_phase == "done":
+			block_civic_btn.text = "Civic: Done"
+		elif civic_phase == "meeting":
+			block_civic_btn.text = "Civic: Meet"
+		elif civic_phase == "planning":
+			block_civic_btn.text = "Civic: Plan"
+		else:
+			block_civic_btn.text = "Civic"
+	if block_film_btn != null:
+		if film_phase == "done":
+			block_film_btn.text = "Film: %d/3" % (film_screen_frame + 1)
+		elif film_phase == "shooting":
+			block_film_btn.text = "Shot: %d/3" % film_captured.size()
+		elif film_phase == "hold":
+			block_film_btn.text = "Film: Hold"
+		elif film_phase == "planning":
+			block_film_btn.text = "Film: Plan"
+		else:
+			block_film_btn.text = "Film"
+	if block_voices_btn != null:
+		if voices_enabled:
+			block_voices_btn.text = "Voices: Err" if voices_status == "error" else "Voices: On"
+		else:
+			block_voices_btn.text = "Voices: Off"
 	if block_mural_btn != null:
 		block_mural_btn.text = "Mural: 3/3" if mural_completed else ("Mural: %d/3" % mural_placements.size())
 	if block_rook_btn != null:
@@ -5165,9 +6495,12 @@ func make_ui() -> void:
 	block_mural_btn = block_button(b_row2, "Mural: 0/3", func(): open_mural_from_block_panel())
 	block_rook_btn = block_button(b_row2, "Rook: Sound", func(): request_rook_soundcheck())
 	block_west_btn = block_button(b_row2, "West: Hyde", func(): walk_to_or_read_history_stop("blackhawk"))
+	block_civic_btn = block_button(b_row2, "Civic", func(): advance_civic_step())
 	var b_row3 := HBoxContainer.new()
 	b_row3.add_theme_constant_override("separation", 4)
 	block_vbox.add_child(b_row3)
+	block_film_btn = block_button(b_row3, "Film", func(): advance_film_step())
+	block_voices_btn = block_button(b_row3, "Voices: Off", func(): toggle_voices_enabled())
 	block_district_btn = block_button(b_row3, "District: On", func(): toggle_district_boundary())
 	block_import_btn = block_button(b_row3, "Import Save", func(): import_browser_save_from_web_storage())
 	block_button(b_row3, "Close", func(): show_block_panel(false))
@@ -5212,6 +6545,7 @@ func make_ui() -> void:
 	vp.size_changed.connect(resize_controls)
 	tree_exiting.connect(func():
 		stop_music_playback()
+		voices_release_resources()
 		if sketch_player != null:
 			sketch_player.stream = null
 		if local_audio_player != null:

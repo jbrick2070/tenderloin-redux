@@ -135,3 +135,17 @@ test('data derivation fails visibly on unknown/missing geometry and wrong units'
     assert.throws(() => deriveCulturalDistrict(d, districtMeta));
   }
 });
+
+test('godot/data/neighborhood_voices.json matches public/experiments/neighborhood-voices.json and verified M5 schema', async () => {
+  const { readRecords } = await import('../public/experiments/neighborhood-voices.js');
+  const browserVoicesRaw = await readFile(new URL('../public/experiments/neighborhood-voices.json', import.meta.url), 'utf8');
+  const godotVoicesRaw = await readFile(new URL('../godot/data/neighborhood_voices.json', import.meta.url), 'utf8');
+  assert.ok(Buffer.byteLength(godotVoicesRaw, 'utf8') <= 8192);
+  const browserVoices = JSON.parse(browserVoicesRaw);
+  const godotVoices = JSON.parse(godotVoicesRaw);
+  assert.deepEqual(godotVoices, browserVoices);
+  const parsed = readRecords(godotVoices);
+  assert.equal(parsed.checkedAt, '2026-10-18');
+  assert.deepEqual(parsed.records.map(r => r.id), ['tndc', 'glide', 'larkin']);
+});
+

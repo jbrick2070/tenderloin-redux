@@ -718,6 +718,161 @@ func run() -> void:
 	study._unhandled_input(key_z)
 	require(study.is_hosting_done() and study.hosting_tile_panel_node.visible, "KEY_Z advances remaining hosted segments to complete M3")
 
+	# M4 Peaceful Tenant Listening Hour (Civic) & Illustrated Three-Shot Film Short (The Open Seat)
+	study.clear_godot_settings()
+	require(not study.voices_enabled and study.voices_status == "off" and study.voices_records.is_empty(), "M5 Neighborhood Voices is default-off on startup and after clear_godot_settings")
+	require(study.is_civic_available() and study.civic_phase == "idle" and not study.civic_setup_node.visible, "M4 Civic Listening Hour unlocks after all 4 M3 hosted segments finish and 3D setup starts hidden")
+	require(not study.is_film_available() and not study.film_start() and study.advance_film_step() == "locked", "M4 Film Short stays locked until Peaceful Tenant Listening Hour is done")
+	require(study.civic_start() and study.civic_phase == "planning" and not study.civic_setup_node.visible, "civic_start enters planning phase with 3D setup still hidden")
+	var seq_before_noop: int = study.save_seq
+	require(not study.civic_set_choice("topic", "repairs") and study.save_seq == seq_before_noop, "civic_set_choice rejects no-op choice without incrementing save_seq")
+	require(study.civic_set_choice("topic", "access") and study.civic_set_choice("format", "dropin") and study.civic_set_choice("notes", "none"), "civic_set_choice updates topic, format, and notes in planning phase")
+	require(study.civic_convene() and study.civic_phase == "meeting" and study.civic_setup_node.visible and study.civic_dropin_group.visible and not study.civic_circle_group.visible, "civic_convene enters meeting phase and shows 3D drop-in table setup")
+	require(not study.is_film_available() and not study.film_start(), "M4 Film Short remains locked while Listening Hour is in meeting phase")
+	require(study.civic_complete() and study.civic_phase == "done" and study.is_film_available(), "civic_complete finishes M4 Listening Hour and unlocks M4 Film Short")
+	require(study.neighbor_project_memory_line("bea").find("Making room to come and go gave us a useful place to begin") >= 0 and study.neighbor_project_memory_line("celeste").find("We agreed to keep no meeting notes") >= 0, "neighbors remember completed M4 Listening Hour choices verbatim")
+
+	# M4 Film Short (The Open Seat)
+	require(study.film_start() and study.film_phase == "planning" and not study.film_storyboard_node.visible, "film_start enters planning phase with 3D storyboard easel hidden")
+	var seq_before_film_noop: int = study.save_seq
+	require(not study.film_set_choice("framing", "close") and study.save_seq == seq_before_film_noop, "film_set_choice rejects no-op framing without incrementing save_seq")
+	require(study.film_set_choice("framing", "wide") and study.film_set_choice("plan", "later"), "film_set_choice updates framing and sharing plan")
+	require(study.film_move_shot("welcome", -1) and study.film_move_shot("welcome", -1) and study.film_draft.get("order", []) == ["welcome", "seat", "paint"], "film_move_shot reorders 3 storyboard shots")
+	require(not study.film_begin_shooting() and study.film_phase == "planning", "film_begin_shooting requires hold phase and rejects direct transition from planning")
+	require(study.film_hold() and study.film_phase == "hold" and study.film_storyboard_node.visible and study.film_wide_border.visible, "film_hold saves storyboard for another day and displays 3D easel with wide border")
+	require(study.film_begin_shooting() and study.film_phase == "shooting" and study.film_next_shot() == "welcome" and study.film_storyboard_node.visible, "film_begin_shooting transitions from hold to shooting and starts at first ordered shot")
+	require(not study.film_capture_shot("seat") and study.film_captured.is_empty(), "film_capture_shot rejects out-of-order shot capture")
+	require(study.film_capture_shot("welcome") and study.film_captured == ["welcome"] and study.film_next_shot() == "seat", "first ordered shot captures cleanly")
+	var key_period := InputEventKey.new()
+	key_period.pressed = true
+	key_period.keycode = KEY_PERIOD
+	study._unhandled_input(key_period)
+	study._unhandled_input(key_period)
+	require(study.film_phase == "done" and study.film_captured == ["welcome", "seat", "paint"] and study.film_screen_frame == 0, "KEY_PERIOD captures remaining ordered shots and completes The Open Seat")
+	var seq_before_frame: int = study.save_seq
+	require(study.film_set_screen_frame(2) and study.film_screen_frame == 2 and study.save_seq == seq_before_frame, "film_set_screen_frame updates viewer frame without writing save state")
+	require(study.neighbor_project_memory_line("celeste").find("Dez and I offered our hands, not everyone else’s faces") >= 0 and study.neighbor_project_memory_line("dez").find("We ended on a shared motif") >= 0, "neighbors remember completed M4 Film Short choices verbatim")
+	study.finish_neighbor_arrival(0)
+	require(study.info.text.find("Being heard mattered more than rushing a take") >= 0, "arriving at Bea after M4 completion surfaces her remembered project line in header info")
+	study.talk_with_celeste()
+	require(study.info.text.find("Dez and I offered our hands, not everyone else’s faces") >= 0, "talk_with_celeste includes Celeste's remembered M4 project line")
+	study.check_sound_with_rook()
+	require(study.info.text.find("A no can belong in a good film too") >= 0, "check_sound_with_rook includes Rook's remembered M4 project line")
+
+	# M4/M5 Save & Reload + Tamper Rejection
+	study.optional_save_data = {"notes": {"tag": "quiet-block"}}
+	study.save_godot_state()
+	var saved_m4_json := FileAccess.get_file_as_string(study.save_path)
+	study.reset_mural_state_to_defaults("fresh")
+	require(study.civic_phase == "idle" and study.film_phase == "idle" and not study.civic_setup_node.visible and not study.film_storyboard_node.visible, "reset clears M4 civic and film state and hides 3D props")
+	require(study.apply_save_envelope(saved_m4_json) and study.civic_phase == "done" and study.film_phase == "done" and study.film_screen_frame == 0 and study.civic_setup_node.visible and study.film_storyboard_node.visible, "apply_save_envelope restores M4 civic and film state, 3D props, and resets transient film_screen_frame to 0")
+	require(not study.voices_enabled and study.optional_save_data.get("notes", {}).get("tag", "") == "quiet-block", "restoring save with optional data preserves optional dictionary without enabling M5 Neighborhood Voices")
+
+	var bad_civic_save: Dictionary = JSON.parse_string(saved_m4_json)
+	bad_civic_save["civic"]["result"] = null
+	require(not study.apply_save_envelope(JSON.stringify(bad_civic_save)) and study.save_load_status == "recovered", "Godot save with civic.phase=done and null result is rejected")
+	var bad_civic_gate: Dictionary = JSON.parse_string(saved_m4_json)
+	bad_civic_gate["hosting"]["results"] = []
+	require(not study.apply_save_envelope(JSON.stringify(bad_civic_gate)) and study.save_load_status == "recovered", "Godot save with active civic state before 4/4 hosting is rejected")
+	var bad_film_save: Dictionary = JSON.parse_string(saved_m4_json)
+	bad_film_save["film"]["captured"] = ["welcome", "seat"]
+	require(not study.apply_save_envelope(JSON.stringify(bad_film_save)) and study.save_load_status == "recovered", "Godot save with film.phase=done and fewer than 3 captured shots is rejected")
+	var bad_film_hold: Dictionary = JSON.parse_string(saved_m4_json)
+	bad_film_hold["film"]["phase"] = "hold"
+	require(not study.apply_save_envelope(JSON.stringify(bad_film_hold)) and study.save_load_status == "recovered", "Godot save with film.phase=hold and non-empty captured shots is rejected")
+	var bad_opt_save: Dictionary = JSON.parse_string(saved_m4_json)
+	bad_opt_save["optional"] = {"oversized": "x".repeat(8300)}
+	require(study.apply_save_envelope(JSON.stringify(bad_opt_save)) and study.save_load_status == "restored" and study.optional_save_data.is_empty() and study.civic_phase == "done" and study.film_phase == "done", "Godot save with oversized optional dictionary (>8192 bytes) drops optional data to {} while preserving core and M1-M4 progress")
+
+	# Browser v1 save inspection & import for M4 civic, M4 film, and M5 optional
+	var browser_m4_edge := JSON.stringify({
+		"version": 1,
+		"core": {
+			"greeted": true,
+			"layout": "table",
+			"furniture": {"table": {"col": 1, "row": 0}, "seats": {"col": 4, "row": 0}, "speaker": {"col": 1, "row": 3}},
+			"litter": ["cup", "offcuts", "wrapper"],
+			"mural": {"sun": {"col": 0, "row": 0}, "wave": {"col": 2, "row": 1}, "rise": {"col": 4, "row": 2}},
+			"palette": "garden",
+			"soundcheck": true,
+			"opened": true,
+			"programme": {"order": ["stories", "beats", "pause", "art"], "published": ["stories", "beats", "pause", "art"]},
+			"hosting": {
+				"order": ["stories", "beats", "pause", "art"],
+				"results": [
+					{"id": "stories", "value": "memory"},
+					{"id": "beats", "value": 85},
+					{"id": "pause", "value": "arc"},
+					{"id": "art", "value": {"palette": "warm", "tiles": [0, 1, 2, 2, 1, 0]}}
+				]
+			},
+			"civic": {
+				"phase": "done",
+				"draft": {"topic": "repairs", "format": "circle", "notes": "themes"},
+				"result": {"topic": "repairs", "format": "circle", "notes": "themes"}
+			},
+			"film": {
+				"phase": "done",
+				"draft": {"framing": "close", "plan": "quiet", "order": ["paint", "seat", "welcome"]},
+				"result": {"framing": "close", "plan": "quiet", "order": ["paint", "seat", "welcome"]},
+				"captured": ["paint", "seat"]
+			}
+		},
+		"optional": {"voices_bookmark": "tndc"}
+	})
+	var m4_insp: Dictionary = study.inspect_browser_save_json(browser_m4_edge)
+	require(String(m4_insp["civic"]["phase"]) == "done" and String(m4_insp["film"]["phase"]) == "shooting" and (m4_insp["film"]["captured"] as Array) == ["paint", "seat"], "inspect_browser_save_json matches public/film.js by downgrading done film with 2/3 captures to shooting")
+	study.reset_mural_state_to_defaults("fresh")
+	require(study.import_browser_save_json(browser_m4_edge) and study.civic_phase == "done" and study.film_phase == "shooting" and study.film_captured == ["paint", "seat"] and study.film_next_shot() == "welcome", "import_browser_save_json imports M4 civic done and partial M4 film shooting progress")
+	require(not study.voices_enabled and String(study.optional_save_data.get("voices_bookmark", "")) == "tndc", "importing browser save with optional data does not enable M5 Neighborhood Voices")
+	require(study.film_capture_shot("welcome") and study.film_phase == "done", "capturing final shot after browser save import completes The Open Seat")
+
+	# M5 Default-Off Experimental Neighborhood Voices lifecycle, generation-scoped cleanup, error/retry, and settings isolation
+	var seq_before_voices: int = study.save_seq
+	require(study.set_voices_enabled(true) and study.voices_enabled and study.voices_status == "ready" and study.voices_records.size() == 3 and study.voices_checked_at == "2026-10-18", "enabling M5 Neighborhood Voices lazy-loads 3 verified Tenderloin organization profiles")
+	require(study.info.text.find("Tenderloin Neighborhood Development Corporation") >= 0 and study.info.text.find("GLIDE") >= 0 and study.info.text.find("Larkin Street Youth Services") >= 0 and study.info.text.find(study.VOICES_DISCLAIMER) >= 0, "enabling M5 Neighborhood Voices presents all 3 organization profiles and non-affiliation disclaimer in header info")
+	require(study.last_a11y_announcement.find("Tenderloin Neighborhood Development Corporation") >= 0 and study.last_a11y_announcement.find(study.VOICES_DISCLAIMER) >= 0, "enabling M5 Neighborhood Voices announces all 3 organization profiles and non-affiliation disclaimer to screen readers")
+	require(study.save_seq == seq_before_voices and not study.build_save_envelope().has("voices_enabled"), "toggling M5 Neighborhood Voices writes separate settings and does not touch game save_seq or save envelope")
+	var active_gen: int = study.voices_generation
+	var rel_before_suspend: int = study.voices_release_count
+	require(study.suspend_voices() and study.voices_status == "paused" and study.voices_generation == active_gen + 1 and study.voices_records.is_empty() and study.voices_release_count == rel_before_suspend + 1, "suspend_voices sets paused status, increments generation, and releases owned resources")
+	require(study.resume_voices() and study.voices_status == "ready" and study.voices_records.size() == 3, "resume_voices reloads M5 Neighborhood Voices records and restores ready status")
+	study._notification(Node.NOTIFICATION_APPLICATION_FOCUS_OUT)
+	require(study.voices_status == "paused" and study.voices_records.is_empty(), "NOTIFICATION_APPLICATION_FOCUS_OUT suspends M5 Neighborhood Voices")
+	study._notification(Node.NOTIFICATION_APPLICATION_FOCUS_IN)
+	require(study.voices_status == "ready" and study.voices_records.size() == 3, "NOTIFICATION_APPLICATION_FOCUS_IN resumes M5 Neighborhood Voices")
+	var rel_before: int = study.voices_release_count
+	require(not study.set_voices_enabled(false) and not study.voices_enabled and study.voices_status == "off" and study.voices_records.is_empty() and study.voices_release_count == rel_before + 1, "disabling M5 Neighborhood Voices releases all owned resources")
+	study.voices_simulate_error = true
+	require(not study.set_voices_enabled(true) and study.voices_enabled and study.voices_status == "error" and not study.voices_error.is_empty(), "simulated load failure places M5 Neighborhood Voices into error state without affecting core play")
+	require(study.block_opened and study.civic_phase == "done" and study.film_phase == "done", "M5 Neighborhood Voices load error leaves core M1-M4 block state intact")
+	require(study.suspend_voices() and study.voices_status == "error" and not study.resume_voices(), "suspend_voices preserves error status and resume_voices does not auto-retry errored Voices")
+	study.voices_simulate_error = false
+	require(study.retry_voices_load() and study.voices_status == "ready" and study.voices_records.size() == 3, "retry_voices_load recovers M5 Neighborhood Voices after transient error")
+	require(not bool(study.validate_voices_payload("{\"version\":1,\"checkedAt\":\"2026-10-18\",\"records\":[]}").get("ok", true)), "validate_voices_payload rejects empty records array")
+	require(not bool(study.validate_voices_payload("{\"version\":1,\"checkedAt\":\"2099-01-01\",\"records\":[]}").get("ok", true)), "validate_voices_payload rejects unverified checkedAt date")
+	var unverified_url_json := JSON.stringify({
+		"version": 1,
+		"checkedAt": "2026-10-18",
+		"records": [
+			{"id": "tndc", "name": "TNDC", "topic": "Homes", "summary": "Test", "url": "https://evil.example/tndc", "sourceTitle": "TNDC"},
+			{"id": "glide", "name": "GLIDE", "topic": "Meals", "summary": "Test", "url": "https://www.glide.org/programs/", "sourceTitle": "GLIDE"},
+			{"id": "larkin", "name": "Larkin", "topic": "Youth", "summary": "Test", "url": "https://larkinstreetyouth.org/about/", "sourceTitle": "Larkin"}
+		]
+	})
+	require(not bool(study.validate_voices_payload(unverified_url_json).get("ok", true)), "validate_voices_payload rejects unverified organization URL")
+	study.set_voices_enabled(false, false)
+	require(not study.voices_enabled and study.load_godot_settings() and study.voices_enabled and study.voices_status == "ready", "load_godot_settings restores persisted voices_enabled preference from separate settings store")
+	var slash_ev := InputEventKey.new()
+	slash_ev.pressed = true
+	slash_ev.keycode = KEY_SLASH
+	study._unhandled_input(slash_ev)
+	require(not study.voices_enabled and study.voices_status == "off", "KEY_SLASH toggles M5 Neighborhood Voices off")
+	study._unhandled_input(slash_ev)
+	require(study.voices_enabled and study.voices_status == "ready", "KEY_SLASH toggles M5 Neighborhood Voices on")
+	study.clear_godot_settings()
+	require(not study.voices_enabled and study.voices_status == "off", "clear_godot_settings resets M5 Neighborhood Voices to default-off")
+
 	study.overview()
 	var street_screen: Vector2 = study.camera.unproject_position(Vector3(45.0, 0.0, -7.2))
 	require(study.handle_scene_tap(street_screen) and study.selected_neighbor == -1, "tapping projected street point in overview starts street route")
@@ -863,7 +1018,7 @@ func run() -> void:
 		await process_frame
 		await process_frame
 		require(study.block_panel.visible and not study.mural_panel.visible and not study.music_panel.visible, "show_block_panel opens BlockPanel and hides MuralPanel/MusicPanel")
-		require(study.block_buttons.size() == 10, "BlockPanel has all 10 interactive buttons")
+		require(study.block_buttons.size() == 13, "BlockPanel has all 13 interactive buttons")
 		var blk_rect: Rect2 = study.block_panel.get_global_rect()
 		var blk_header_end_y: float = study.header_panel.get_global_rect().end.y
 		var blk_controls_pos_y: float = study.controls.get_global_rect().position.y
@@ -888,13 +1043,14 @@ func run() -> void:
 		require(study.block_opened and study.block_banner_node.visible, "ui_accept on block Open button opens block gathering and reveals 3D banner at %s" % str(size))
 		study.overview()
 	study.clear_godot_save()
+	study.clear_godot_settings()
 	if "--force-failure" in OS.get_cmdline_user_args():
 		require(false, "harness failure sentinel")
 	if failed:
 		print("GODOT_STUDY_FAIL")
 		quit(1)
 	else:
-		print("GODOT_STUDY_PASS:188 meshes (58 opening + 130 wider), measured heights, collision/courtyards, walking/sliding, 5 neighbors, Celeste portable mural, Rook speaker/music/local-audition, opening-block readiness/banner, wider Tenderloin walk (Compton's Corner + Black Hawk at Turk & Hyde + Transgender Cultural District boundary), M1 keepsake photo & loan returns, M3 afternoon programme & hosting, browser-save adapter, save/reload, cutaway, focus-rings, 44px and ui_accept at 1100/390/320")
+		print("GODOT_STUDY_PASS:188 meshes (58 opening + 130 wider), measured heights, collision/courtyards, walking/sliding, 5 neighbors, Celeste portable mural, Rook speaker/music/local-audition, opening-block readiness/banner, wider Tenderloin walk (Compton's Corner + Black Hawk at Turk & Hyde + Transgender Cultural District boundary), M1 keepsake photo & loan returns, M3 afternoon programme & hosting, M4 civic listening hour & three-shot film short (The Open Seat), M5 default-off neighborhood voices & isolated settings, browser-save adapter, save/reload, cutaway, focus-rings, 44px and ui_accept at 1100/390/320")
 		quit(0)
 
 
