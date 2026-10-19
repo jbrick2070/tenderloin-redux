@@ -1,13 +1,18 @@
 {
   "downloadedUtc": "2026-10-19",
   "count": 58,
+  "widerCount": 130,
+  "totalCount": 188,
   "hashes": {
     "godot/data/source/buildings.geojson": "393472ecd7fda3503e581fa49e2899f2e50d5f3307f055d26b23bea0a3665701",
+    "godot/data/source/buildings_tenderloin_west.geojson": "9439ff555fc43206d1d24f29af7e0c6384c0ef3403d7fcfbfb37564231b64737",
     "godot/data/source/metadata.json": "93407284a55c676b96d941042dcdd6223e5e5338f3b33a0faa639b56dd2309e6",
     "godot/data/source/method.pdf": "1fa6af3167ac0935883bff2b3e79fefb8118827e158289f3cbf458769bdf6ad2",
     "scripts/vendor/earcut.js": "83d5b59bc520601bb2dd7401a2f8382a008d8d95e0e6e0fe45759ae4fda1aa56",
     "scripts/vendor/earcut.LICENSE": "324139c19d87af03fda38afea1590e00ca354c4159bdb2ae9e9cec070cfa46a8",
-    "public/data/streets.osm.json": "f3520882cc873788b8c34be031121128f303391d886bb9cadeb82b17b716ead8"
+    "public/data/streets.osm.json": "f3520882cc873788b8c34be031121128f303391d886bb9cadeb82b17b716ead8",
+    "public/data/transgender-district.geojson": "af2b1bd6dbcf7c00a4021cfaf07e45bce80bd299194114a8ef1781b589ac8d5c",
+    "public/data/cultural-district-source.json": "4b2b5f6391e0955974437bc059179457189474819d32a8062778c0a347a9476e"
   },
   "engine": {
     "version": "4.7.2.stable.official.ed1daf0bf",

@@ -1,0 +1,23 @@
+# Scope Receipt — Godot Round 6 (`2026-10-19-godot-whole-tenderloin`, `r3`)
+
+- **Milestone**: Godot Round 6 — Wider Tenderloin Neighborhood Expansion (188 Measured Footprints), Transgender Cultural District Boundary & Turk-to-Hyde History Walk (`docs/GODOT_APPROACH.md` Round 6)
+- **Modified Implementation Files**:
+  - `scripts/build-godot-data.mjs`
+  - `godot/data/source/buildings_tenderloin_west.geojson`
+  - `godot/data/source_receipt.json`
+  - `godot/data/SOURCES.md`
+  - `godot/data/buildings.json`
+  - `godot/main.gd`
+  - `godot/tests/study_test.gd`
+  - `tests/godot-data.test.mjs`
+  - `tests/godot-browser.mjs`
+  - `artifacts/godot-web/index.pck` (re-exported from `godot/`)
+  - `artifacts/godot-browser.json` and `artifacts/godot-*-*.png`
+- **Preserved Invariants**:
+  - All 58 opening-block measured building footprints (`godot/data/source/buildings.geojson`) and heights untouched.
+  - All 130 wider Tenderloin building footprints (`godot/data/source/buildings_tenderloin_west.geojson`, deduplicated by `sf16_bldgid`, `0 < height_m <= 300`) verified from measured San Francisco building height (`DataSF ynuv-fyni`, PDDL 1.0) and OSM (`ODbL 1.0`) street sources.
+  - Official `Transgender Cultural District` boundary (`DataSF 5xmc-5bjj`, PDDL 1.0, founding year 2017) exported under `cultural_district.polygons[].rings` and toggleable via `KEY_C` (`toggle_district_boundary()`).
+  - Browser game 0.12.0 (`public/*`) untouched (`2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567`).
+  - Browser save (`tenderloin-redux.save.v1`) read-only and never overwritten by Godot (`user://godot_block_save_v1.json`).
+  - No bundled Suno audio or external network dependencies.
+  - All historical review reports preserved byte-for-byte.

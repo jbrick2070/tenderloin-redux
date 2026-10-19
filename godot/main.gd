@@ -1,12 +1,13 @@
 extends Node3D
-## Measured-building block with actual-metre walking, footprint/courtyard collision,
-## camera sightline cutaway, keyboard/touch neighbor navigation, Celeste's
-## portable sidewalk mural board, Rook's soundcheck + procedural/local music,
-## opening-block completion validation, opt-in browser-save adapter, and DOM a11y status bridge.
-## Real DataSF 2010 PDDL rings and median heights; ODbL OSM street centerlines;
-## original neutral materials, flat presentation ground and schematic street widths.
+## Measured-building Tenderloin neighborhood with actual-metre walking, footprint/courtyard
+## collision across 188 DataSF footprints (58 opening block + 130 wider Tenderloin),
+## 7 ODbL OSM streets (Turk, Taylor, Mason, Jones, Leavenworth, Hyde, Eddy),
+## Transgender Cultural District boundary layer (DataSF 5xmc-5bjj, PDDL 1.0, founded 2017),
+## Compton's Corner & Former Black Hawk Jazz Club history stops, Celeste's portable mural board,
+## Rook's soundcheck + procedural/local music, opening-block completion, and browser-save adapter.
 
 const WALK_SPEED_M_PER_S := 4.8
+const WALK_CORRIDOR_SPEED_M_PER_S := 24.0
 const PLAYER_HEIGHT_M := 1.72
 const PLAYER_RADIUS_M := 0.45
 const WALK_CLEARANCE_M := 0.65
@@ -22,6 +23,9 @@ const CELESTE_ID := "celeste"
 const ROOK_ID := "rook"
 const ROOK_SPEAKER_POS := Vector3(117.10, 0.0, -15.95)
 const BLOCK_BANNER_OFFSET := Vector3(0.0, 0.0, -0.55)
+const COMPTONS_POS := Vector3(-6.0, 0.0, -5.5)
+const BLACKHAWK_POS := Vector3(-424.5, 0.0, 62.5)
+const HISTORY_STOP_IDS: Array[String] = ["comptons", "blackhawk"]
 const MURAL_HALF_EXTENTS := Vector2(1.78, 0.18)
 const SPEAKER_HALF_EXTENTS := Vector2(0.34, 0.28)
 const GODOT_SAVE_PATH := "user://godot_block_save_v1.json"
@@ -52,6 +56,13 @@ var camera: Camera3D
 var meshes: Array[MeshInstance3D] = []
 var building_rects: Array[Rect2] = []
 var building_materials: Array[StandardMaterial3D] = []
+var wider_meshes: Array[MeshInstance3D] = []
+var wider_building_rects: Array[Rect2] = []
+var wider_building_materials: Array[StandardMaterial3D] = []
+var all_buildings: Array = []
+var all_building_rects: Array[Rect2] = []
+var street_ways: Array = []
+var street_way_rects: Array[Rect2] = []
 var walk_bounds := Rect2(-40.0, -65.0, 210.0, 140.0)
 var selected := -1
 var info: Label
@@ -64,6 +75,7 @@ var controls: GridContainer
 var header_panel: PanelContainer
 var overview_size := 400.0
 var in_overview := true
+var in_wide_overview := false
 
 var player: CharacterBody3D
 var player_visual: Node3D
@@ -86,8 +98,11 @@ var pending_celeste_talk := false
 var walking_to_speaker := false
 var arrived_speaker := false
 var pending_rook_talk := false
+var walking_to_history_stop := ""
+var arrived_history_stop := ""
 var current_path: Array[Vector2] = []
 var occluded_buildings: Array[int] = []
+var occluded_wider_buildings: Array[int] = []
 var following_player := false
 var cell_walkable_cache: Dictionary = {}
 var last_occlusion_pos := Vector2(INF, INF)
@@ -159,6 +174,13 @@ var cached_speaker_normal := Vector2.ZERO
 
 var block_banner_node: Node3D
 var block_opened := false
+var district_boundary_node: MeshInstance3D
+var district_boundary_visible := true
+var west_intersection_nodes: Array[Node3D] = []
+var history_stop_nodes: Dictionary = {}
+var history_beacon_meshes: Dictionary = {}
+var history_read := false
+var blackhawk_discovered := false
 var block_panel: PanelContainer
 var block_label: Label
 var block_detail_label: Label
@@ -166,6 +188,8 @@ var block_buttons: Array[Button] = []
 var block_next_btn: Button
 var block_mural_btn: Button
 var block_rook_btn: Button
+var block_west_btn: Button
+var block_district_btn: Button
 var block_open_btn: Button
 var block_import_btn: Button
 var browser_import_status := "none"
@@ -174,6 +198,51 @@ var last_a11y_announcement := ""
 var a11y_announcement_seq := 0
 var last_synced_a11y_json := ""
 var button_focus_style: StyleBoxFlat
+
+func make_building_mesh_and_rect(building: Dictionary, mat: StandardMaterial3D) -> Dictionary:
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	surface.set_smooth_group(-1)
+	var wall_faces := PackedVector3Array()
+	var h: float = building.height_m
+	var b_rect := Rect2()
+	var has_rect := false
+	for polygon in building.polygons:
+		for ring in polygon.rings:
+			for i in range(ring.size()):
+				var p0: Array = ring[i]
+				var v2 := Vector2(p0[0], p0[1])
+				if not has_rect:
+					b_rect = Rect2(v2, Vector2.ZERO)
+					has_rect = true
+				else:
+					b_rect = b_rect.expand(v2)
+				var a := point(p0, 0)
+				var b := point(ring[(i + 1) % ring.size()], 0)
+				var bu := b + Vector3.UP * h
+				var au := a + Vector3.UP * h
+				triangle(surface, a, b, bu)
+				triangle(surface, a, bu, au)
+				wall_faces.append_array([a, b, bu, a, bu, au])
+		for i in range(0, polygon.triangles.size(), 3):
+			triangle(surface, point(polygon.vertices[polygon.triangles[i]], h),
+				point(polygon.vertices[polygon.triangles[i + 1]], h),
+				point(polygon.vertices[polygon.triangles[i + 2]], h))
+	surface.generate_normals()
+	var building_mesh := MeshInstance3D.new()
+	building_mesh.name = building.id
+	building_mesh.mesh = surface.commit()
+	building_mesh.material_override = mat
+	var body := StaticBody3D.new()
+	body.name = "StaticBody3D"
+	var col := CollisionShape3D.new()
+	var concave := ConcavePolygonShape3D.new()
+	concave.set_faces(wall_faces)
+	col.shape = concave
+	body.add_child(col)
+	building_mesh.add_child(body)
+	add_child(building_mesh)
+	return {"mesh": building_mesh, "rect": b_rect}
 
 func _ready() -> void:
 	save_path = resolve_save_path()
@@ -193,6 +262,12 @@ func _ready() -> void:
 		Color("b8afa0"),
 		Color("c9ab97")
 	]
+	var wider_palette: Array[Color] = [
+		Color("b7aa96"),
+		Color("bfb09b"),
+		Color("ada496"),
+		Color("bca28f")
+	]
 	var environment := WorldEnvironment.new()
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
@@ -208,65 +283,43 @@ func _ready() -> void:
 	add_child(sun)
 	var ground := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
-	plane.size = Vector2(520, 420)
+	plane.size = Vector2(960, 560)
 	ground.mesh = plane
 	ground.material_override = material(Color("566a63"))
-	ground.position = Vector3(60, -0.1, -12)
+	ground.position = Vector3(-130, -0.1, 15)
 	add_child(ground)
 	build_streets()
+	build_district_boundary()
 	for idx in range(data.buildings.size()):
 		var building: Dictionary = data.buildings[idx]
-		var surface := SurfaceTool.new()
-		surface.begin(Mesh.PRIMITIVE_TRIANGLES)
-		surface.set_smooth_group(-1)
-		var wall_faces := PackedVector3Array()
-		var h: float = building.height_m
-		var b_rect := Rect2()
-		var has_rect := false
-		for polygon in building.polygons:
-			for ring in polygon.rings:
-				for i in range(ring.size()):
-					var p0: Array = ring[i]
-					var v2 := Vector2(p0[0], p0[1])
-					if not has_rect:
-						b_rect = Rect2(v2, Vector2.ZERO)
-						has_rect = true
-					else:
-						b_rect = b_rect.expand(v2)
-					var a := point(p0, 0)
-					var b := point(ring[(i + 1) % ring.size()], 0)
-					var bu := b + Vector3.UP * h
-					var au := a + Vector3.UP * h
-					triangle(surface, a, b, bu)
-					triangle(surface, a, bu, au)
-					wall_faces.append_array([a, b, bu, a, bu, au])
-			for i in range(0, polygon.triangles.size(), 3):
-				triangle(surface, point(polygon.vertices[polygon.triangles[i]], h),
-					point(polygon.vertices[polygon.triangles[i + 1]], h),
-					point(polygon.vertices[polygon.triangles[i + 2]], h))
-		surface.generate_normals()
-		var building_mesh := MeshInstance3D.new()
-		building_mesh.name = building.id
-		building_mesh.mesh = surface.commit()
 		var b_mat := material(palette[idx % palette.size()])
 		building_materials.append(b_mat)
-		building_mesh.material_override = b_mat
-		var body := StaticBody3D.new()
-		body.name = "StaticBody3D"
-		var col := CollisionShape3D.new()
-		var concave := ConcavePolygonShape3D.new()
-		concave.set_faces(wall_faces)
-		col.shape = concave
-		body.add_child(col)
-		building_mesh.add_child(body)
-		add_child(building_mesh)
-		meshes.append(building_mesh)
+		var built := make_building_mesh_and_rect(building, b_mat)
+		var b_mesh: MeshInstance3D = built.mesh
+		var b_rect: Rect2 = built.rect
+		meshes.append(b_mesh)
 		building_rects.append(b_rect)
-	if not building_rects.is_empty():
-		var b_union := building_rects[0]
-		for br in building_rects:
+		all_buildings.append(building)
+		all_building_rects.append(b_rect)
+	var wider_list: Array = data.get("wider_buildings", [])
+	for w_idx in range(wider_list.size()):
+		var w_building: Dictionary = wider_list[w_idx]
+		var w_mat := material(wider_palette[w_idx % wider_palette.size()])
+		wider_building_materials.append(w_mat)
+		var w_built := make_building_mesh_and_rect(w_building, w_mat)
+		var w_mesh: MeshInstance3D = w_built.mesh
+		var w_rect: Rect2 = w_built.rect
+		wider_meshes.append(w_mesh)
+		wider_building_rects.append(w_rect)
+		all_buildings.append(w_building)
+		all_building_rects.append(w_rect)
+	if not all_building_rects.is_empty():
+		var b_union := all_building_rects[0]
+		for br in all_building_rects:
 			b_union = b_union.merge(br)
-		walk_bounds = b_union.grow(12.0)
+		walk_bounds = b_union.grow(14.0)
+	build_west_intersections()
+	build_history_stops()
 	build_neighbors_and_player()
 	build_mural_board()
 	build_rook_speaker()
@@ -274,7 +327,6 @@ func _ready() -> void:
 	build_audio_players()
 	camera = Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	camera.far = 2000
 	add_child(camera)
 	camera.current = true
 	update_camera()
@@ -293,7 +345,19 @@ func _ready() -> void:
 		get_tree().quit()
 
 func build_streets() -> void:
-	for street in data.streets:
+	street_ways = data.get("wider_streets", data.streets)
+	street_way_rects.clear()
+	for street in street_ways:
+		var s_rect := Rect2()
+		var has_s_rect := false
+		for p in street.points:
+			var pv := Vector2(p[0], p[1])
+			if not has_s_rect:
+				s_rect = Rect2(pv, Vector2.ZERO)
+				has_s_rect = true
+			else:
+				s_rect = s_rect.expand(pv)
+		street_way_rects.append(s_rect)
 		var sidewalk := SurfaceTool.new()
 		sidewalk.begin(Mesh.PRIMITIVE_TRIANGLES)
 		var road_surface := SurfaceTool.new()
@@ -332,6 +396,138 @@ func build_streets() -> void:
 		stripe.mesh = stripe_surface.commit()
 		stripe.material_override = material(Color("cbbd9d"))
 		add_child(stripe)
+
+func build_district_boundary() -> void:
+	district_boundary_node = MeshInstance3D.new()
+	district_boundary_node.name = "DistrictBoundaryRibbon"
+	var cd: Dictionary = data.get("cultural_district", {})
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	st.set_smooth_group(-1)
+	var polys: Array = cd.get("polygons", [])
+	for poly in polys:
+		var rings: Array = poly.get("rings", [])
+		for ring in rings:
+			var r_size: int = ring.size()
+			for i in range(r_size):
+				var p0: Array = ring[i]
+				var p1: Array = ring[(i + 1) % r_size]
+				var a := point(p0, 0.045)
+				var b := point(p1, 0.045)
+				var seg := b - a
+				if seg.length_squared() < 1e-6:
+					continue
+				var across := seg.normalized().cross(Vector3.UP) * 0.90
+				triangle(st, a - across, b - across, b + across)
+				triangle(st, a - across, b + across, a + across)
+				var au := a + Vector3.UP * 0.35
+				var bu := b + Vector3.UP * 0.35
+				triangle(st, a, b, bu)
+				triangle(st, a, bu, au)
+	st.generate_normals()
+	district_boundary_node.mesh = st.commit()
+	district_boundary_node.material_override = mural_material(Color("d484b4"))
+	district_boundary_node.visible = district_boundary_visible
+	add_child(district_boundary_node)
+
+func update_district_boundary_3d() -> void:
+	if district_boundary_node != null:
+		district_boundary_node.visible = district_boundary_visible
+
+func build_west_intersections() -> void:
+	west_intersection_nodes.clear()
+	var list: Array = data.get("west_intersections", [])
+	for item in list:
+		var int_id := String(item.get("id", ""))
+		var pt: Array = item.get("point", [0.0, 0.0])
+		var root_n := Node3D.new()
+		root_n.name = "WestIntersection_%s" % int_id
+		root_n.position = Vector3(float(pt[0]), 0.0, float(pt[1]))
+		var ring_inst := MeshInstance3D.new()
+		var cyl := CylinderMesh.new()
+		cyl.top_radius = 1.65
+		cyl.bottom_radius = 1.65
+		cyl.height = 0.03
+		ring_inst.mesh = cyl
+		ring_inst.position = Vector3(0.0, 0.042, 0.0)
+		ring_inst.material_override = material(Color("d8c8a8"))
+		root_n.add_child(ring_inst)
+		var post_inst := MeshInstance3D.new()
+		var post_box := BoxMesh.new()
+		post_box.size = Vector3(0.14, 3.0, 0.14)
+		post_inst.mesh = post_box
+		post_inst.position = Vector3(4.2, 1.5, -4.2)
+		post_inst.material_override = material(Color("455357"))
+		root_n.add_child(post_inst)
+		var blade_inst := MeshInstance3D.new()
+		blade_inst.name = "StreetSignBlade"
+		var blade_box := BoxMesh.new()
+		blade_box.size = Vector3(1.85, 0.34, 0.16)
+		blade_inst.mesh = blade_box
+		blade_inst.position = Vector3(4.2, 3.12, -4.2)
+		blade_inst.material_override = mural_material(Color("75bbb2"))
+		root_n.add_child(blade_inst)
+		add_child(root_n)
+		west_intersection_nodes.append(root_n)
+
+func build_history_stops() -> void:
+	history_stop_nodes.clear()
+	history_beacon_meshes.clear()
+	var stops: Array = data.get("history_stops", [])
+	for stop in stops:
+		var stop_id := String(stop.get("id", ""))
+		var pt: Array = stop.get("pos", stop.get("point", [0.0, 0.0]))
+		var s_node := Node3D.new()
+		s_node.name = "HistoryStop_%s" % stop_id
+		s_node.position = Vector3(float(pt[0]), 0.0, float(pt[1]))
+		var ring_inst := MeshInstance3D.new()
+		var cyl := CylinderMesh.new()
+		cyl.top_radius = 0.78
+		cyl.bottom_radius = 0.78
+		cyl.height = 0.04
+		ring_inst.mesh = cyl
+		ring_inst.position = Vector3(0.0, 0.02, 0.0)
+		ring_inst.material_override = material(Color("e6d7b8"))
+		s_node.add_child(ring_inst)
+		var ped_inst := MeshInstance3D.new()
+		var ped_box := BoxMesh.new()
+		ped_box.size = Vector3(0.42, 1.24, 0.30)
+		ped_inst.mesh = ped_box
+		ped_inst.position = Vector3(0.0, 0.62, 0.0)
+		ped_inst.material_override = material(Color("4a3d33"))
+		s_node.add_child(ped_inst)
+		var plaque_inst := MeshInstance3D.new()
+		plaque_inst.name = "HistoryPlaque"
+		var plaque_box := BoxMesh.new()
+		plaque_box.size = Vector3(0.76, 0.48, 0.14)
+		plaque_inst.mesh = plaque_box
+		plaque_inst.position = Vector3(0.0, 1.34, 0.0)
+		plaque_inst.material_override = material(Color("c89d54"))
+		s_node.add_child(plaque_inst)
+		var beacon := MeshInstance3D.new()
+		beacon.name = "HistoryBeacon"
+		var b_cyl := CylinderMesh.new()
+		b_cyl.top_radius = 0.22
+		b_cyl.bottom_radius = 0.22
+		b_cyl.height = 0.28
+		beacon.mesh = b_cyl
+		beacon.position = Vector3(0.0, 1.76, 0.0)
+		s_node.add_child(beacon)
+		history_stop_nodes[stop_id] = s_node
+		history_beacon_meshes[stop_id] = beacon
+		add_child(s_node)
+	update_history_stops_3d()
+
+func update_history_stops_3d() -> void:
+	for stop_id in HISTORY_STOP_IDS:
+		if not history_beacon_meshes.has(stop_id):
+			continue
+		var beacon: MeshInstance3D = history_beacon_meshes[stop_id]
+		var discovered := history_read if stop_id == "comptons" else blackhawk_discovered
+		if discovered:
+			beacon.material_override = mural_material(Color("f8cc58") if stop_id == "comptons" else Color("5fd4ba"))
+		else:
+			beacon.material_override = material(Color("8a7964"))
 
 func build_neighbors_and_player() -> void:
 	route_mesh = MeshInstance3D.new()
@@ -808,11 +1004,36 @@ func is_point_in_building_polygon(pt: Vector2, polygon: Dictionary) -> bool:
 			return false
 	return true
 
+func get_history_stop_record(stop_id: String) -> Dictionary:
+	var stops: Array = data.get("history_stops", [])
+	for item in stops:
+		if String(item.get("id", "")) == stop_id:
+			return item
+	var fallback_pt := [BLACKHAWK_POS.x, BLACKHAWK_POS.z] if stop_id == "blackhawk" else [COMPTONS_POS.x, COMPTONS_POS.z]
+	return { "id": stop_id, "name": stop_id, "pos": fallback_pt }
+
+func history_stop_xz(stop_id: String) -> Vector2:
+	var rec := get_history_stop_record(stop_id)
+	var pt: Array = rec.get("pos", rec.get("point", []))
+	if pt.size() >= 2:
+		return Vector2(float(pt[0]), float(pt[1]))
+	return Vector2(BLACKHAWK_POS.x, BLACKHAWK_POS.z) if stop_id == "blackhawk" else Vector2(COMPTONS_POS.x, COMPTONS_POS.z)
+
+func comptons_xz() -> Vector2:
+	return history_stop_xz("comptons")
+
+func blackhawk_xz() -> Vector2:
+	return history_stop_xz("blackhawk")
+
+func history_stop_pos_3d(stop_id: String) -> Vector3:
+	var xz := history_stop_xz(stop_id)
+	return Vector3(xz.x, 0.0, xz.y)
+
 func building_containing_point(pt: Vector2) -> String:
-	for idx in range(data.buildings.size()):
-		if not building_rects[idx].has_point(pt):
+	for idx in range(all_buildings.size()):
+		if not all_building_rects[idx].has_point(pt):
 			continue
-		var b: Dictionary = data.buildings[idx]
+		var b: Dictionary = all_buildings[idx]
 		for polygon in b.polygons:
 			if is_point_in_building_polygon(pt, polygon):
 				return b.id
@@ -831,10 +1052,10 @@ func rect_distance_2d(rect: Rect2, pt: Vector2) -> float:
 
 func min_wall_distance(pt: Vector2) -> float:
 	var best := INF
-	for idx in range(data.buildings.size()):
-		if rect_distance_2d(building_rects[idx], pt) >= best:
+	for idx in range(all_buildings.size()):
+		if rect_distance_2d(all_building_rects[idx], pt) >= best:
 			continue
-		var b: Dictionary = data.buildings[idx]
+		var b: Dictionary = all_buildings[idx]
 		for polygon in b.polygons:
 			for ring in polygon.rings:
 				var r_size: int = ring.size()
@@ -850,10 +1071,10 @@ func nearest_building_info(pt: Vector2) -> Dictionary:
 	var best := INF
 	var best_id := ""
 	var best_tangent := Vector2(1.0, 0.0)
-	for idx in range(data.buildings.size()):
-		if rect_distance_2d(building_rects[idx], pt) >= best:
+	for idx in range(all_buildings.size()):
+		if rect_distance_2d(all_building_rects[idx], pt) >= best:
 			continue
-		var b: Dictionary = data.buildings[idx]
+		var b: Dictionary = all_buildings[idx]
 		for polygon in b.polygons:
 			for ring in polygon.rings:
 				var r_size: int = ring.size()
@@ -873,8 +1094,10 @@ func nearest_building_info(pt: Vector2) -> Dictionary:
 
 func min_street_distance(pt: Vector2) -> float:
 	var best := INF
-	for street in data.streets:
-		var pts: Array = street.points
+	for w_idx in range(street_ways.size()):
+		if rect_distance_2d(street_way_rects[w_idx], pt) >= best:
+			continue
+		var pts: Array = street_ways[w_idx].points
 		for i in range(1, pts.size()):
 			var p0: Array = pts[i - 1]
 			var p1: Array = pts[i]
@@ -886,8 +1109,10 @@ func min_street_distance(pt: Vector2) -> float:
 func nearest_street_tangent(pt: Vector2) -> Vector2:
 	var best := INF
 	var best_tangent := Vector2(1.0, 0.0)
-	for street in data.streets:
-		var pts: Array = street.points
+	for w_idx in range(street_ways.size()):
+		if rect_distance_2d(street_way_rects[w_idx], pt) >= best:
+			continue
+		var pts: Array = street_ways[w_idx].points
 		for i in range(1, pts.size()):
 			var p0: Array = pts[i - 1]
 			var p1: Array = pts[i]
@@ -918,6 +1143,12 @@ func is_walkable_point(pt: Vector2, clearance: float = WALK_CLEARANCE_M) -> bool
 
 func segment_walkable(a: Vector2, b: Vector2, clearance: float = WALK_CLEARANCE_M) -> bool:
 	var dist := a.distance_to(b)
+	if dist > 1.0:
+		if not is_walkable_point(a.lerp(b, 0.5), clearance):
+			return false
+		if dist > 4.0:
+			if not is_walkable_point(a.lerp(b, 0.25), clearance) or not is_walkable_point(a.lerp(b, 0.75), clearance):
+				return false
 	var steps := maxi(1, int(ceil(dist / 0.20)))
 	for i in range(steps + 1):
 		var t := float(i) / float(steps)
@@ -982,26 +1213,51 @@ func find_path(start_xz: Vector2, goal_xz: Vector2) -> Array[Vector2]:
 			if is_cell_passable.call(g_cell + d):
 				g_cell = g_cell + d
 				break
-	var queue: Array[Vector2i] = [s_cell]
+	var open_set: Array[Vector2i] = [s_cell]
+	var in_open: Dictionary = {s_cell: true}
+	var closed_set: Dictionary = {}
+	var g_score: Dictionary = {s_cell: 0.0}
+	var f_score: Dictionary = {s_cell: Vector2(s_cell - g_cell).length()}
 	var parent: Dictionary = {s_cell: null}
 	var found := false
 	var reached_cell := s_cell
-	var head := 0
-	while head < queue.size() and head < max_cells:
-		var cur: Vector2i = queue[head]
-		head += 1
+	var expanded := 0
+	while not open_set.is_empty() and expanded < max_cells:
+		var best_idx := 0
+		var best_f := float(f_score.get(open_set[0], INF))
+		for idx_o in range(1, open_set.size()):
+			var cand_f := float(f_score.get(open_set[idx_o], INF))
+			if cand_f < best_f:
+				best_f = cand_f
+				best_idx = idx_o
+		var cur: Vector2i = open_set[best_idx]
+		open_set[best_idx] = open_set.back()
+		open_set.pop_back()
+		in_open.erase(cur)
+		closed_set[cur] = true
+		expanded += 1
 		if cur.distance_to(g_cell) <= 1.5 and segment_walkable(cell_to_world.call(cur), safe_goal):
 			reached_cell = cur
 			found = true
 			break
+		var cur_g := float(g_score.get(cur, 0.0))
 		for d in dirs:
 			var nxt: Vector2i = cur + d
-			if not parent.has(nxt) and is_cell_passable.call(nxt):
-				if d.x != 0 and d.y != 0:
-					if not is_cell_passable.call(Vector2i(cur.x + d.x, cur.y)) or not is_cell_passable.call(Vector2i(cur.x, cur.y + d.y)):
-						continue
+			if closed_set.has(nxt) or not is_cell_passable.call(nxt):
+				continue
+			var step_cost := 1.0
+			if d.x != 0 and d.y != 0:
+				if not is_cell_passable.call(Vector2i(cur.x + d.x, cur.y)) or not is_cell_passable.call(Vector2i(cur.x, cur.y + d.y)):
+					continue
+				step_cost = 1.41421356
+			var tentative_g := cur_g + step_cost
+			if not g_score.has(nxt) or tentative_g < float(g_score[nxt]):
 				parent[nxt] = cur
-				queue.append(nxt)
+				g_score[nxt] = tentative_g
+				f_score[nxt] = tentative_g + Vector2(nxt - g_cell).length()
+				if not in_open.has(nxt):
+					open_set.append(nxt)
+					in_open[nxt] = true
 	if not found:
 		return []
 	var raw: Array[Vector2] = [safe_goal]
@@ -1065,11 +1321,14 @@ func walk_step(input_dir: Vector2, delta: float) -> bool:
 	walking_to_speaker = false
 	arrived_speaker = false
 	pending_rook_talk = false
+	walking_to_history_stop = ""
+	arrived_history_stop = ""
 	show_mural_panel(false)
 	show_music_panel(false)
 	show_block_panel(false)
 	update_route_ribbon(true)
 	in_overview = false
+	in_wide_overview = false
 	following_player = true
 	if selected >= 0:
 		meshes[selected].material_override = building_materials[selected]
@@ -1123,8 +1382,9 @@ func walk_step(input_dir: Vector2, delta: float) -> bool:
 func update_walking_status() -> void:
 	var p := player_xz()
 	var nb := nearest_building_info(p)
-	var cut_note := " · %d cutaway" % occluded_buildings.size() if not occluded_buildings.is_empty() else ""
-	info.text = "Pos (%.1f, %.1f) m · %.2f m from %s%s\nWASD/Arrows or tap street to walk · 1–5 neighbors · M mural · R/K music · G block\nCity 2010 PDDL footprints · Streets © OpenStreetMap / ODbL" % [p.x, p.y, nb.distance, nb.id, cut_note]
+	var occ_total := occluded_buildings.size() + occluded_wider_buildings.size()
+	var cut_note := " · %d cutaway" % occ_total if occ_total > 0 else ""
+	info.text = "Pos (%.1f, %.1f) m · %.2f m from %s%s\nWASD/Arrows or tap street to walk · 1–5 neighbors · M mural · R/K music · G block · H/J/C west\nCity 2010 PDDL footprints · Streets © OpenStreetMap / ODbL" % [p.x, p.y, nb.distance, nb.id, cut_note]
 
 func choose_next_neighbor(direction: int = 1) -> bool:
 	if selected_neighbor >= 0:
@@ -1145,6 +1405,8 @@ func walk_to_neighbor(index: int) -> bool:
 	walking_to_speaker = false
 	arrived_speaker = false
 	pending_rook_talk = false
+	walking_to_history_stop = ""
+	arrived_history_stop = ""
 	if index != celeste_index:
 		show_mural_panel(false)
 	if index != rook_index:
@@ -1152,6 +1414,7 @@ func walk_to_neighbor(index: int) -> bool:
 	if index in [celeste_index, rook_index]:
 		show_block_panel(false)
 	in_overview = false
+	in_wide_overview = false
 	following_player = true
 	if selected >= 0:
 		meshes[selected].material_override = building_materials[selected]
@@ -1188,9 +1451,12 @@ func walk_to_mural() -> bool:
 	walking_to_speaker = false
 	arrived_speaker = false
 	pending_rook_talk = false
+	walking_to_history_stop = ""
+	arrived_history_stop = ""
 	show_music_panel(false)
 	show_block_panel(false)
 	in_overview = false
+	in_wide_overview = false
 	following_player = true
 	if selected >= 0:
 		meshes[selected].material_override = building_materials[selected]
@@ -1228,9 +1494,12 @@ func walk_to_speaker() -> bool:
 	walking_to_speaker = true
 	arrived_speaker = false
 	pending_rook_talk = false
+	walking_to_history_stop = ""
+	arrived_history_stop = ""
 	show_mural_panel(false)
 	show_block_panel(false)
 	in_overview = false
+	in_wide_overview = false
 	following_player = true
 	if selected >= 0:
 		meshes[selected].material_override = building_materials[selected]
@@ -1259,8 +1528,11 @@ func walk_to_speaker() -> bool:
 	announce_a11y_status("Walking to Rook's Turk Street Speaker, %.1f m." % dist)
 	return true
 
-func walk_to_point(goal_xz: Vector2) -> bool:
-	var safe_goal := nearest_walkable_point(goal_xz, WALK_CLEARANCE_M)
+func walk_to_history_stop(stop_id: String) -> bool:
+	if not (stop_id in HISTORY_STOP_IDS):
+		return false
+	var rec := get_history_stop_record(stop_id)
+	var title_str := String(rec.get("name", rec.get("title", stop_id)))
 	selected_neighbor = -1
 	arrived_neighbor = -1
 	walking_to_mural = false
@@ -1269,10 +1541,149 @@ func walk_to_point(goal_xz: Vector2) -> bool:
 	walking_to_speaker = false
 	arrived_speaker = false
 	pending_rook_talk = false
+	walking_to_history_stop = stop_id
+	arrived_history_stop = ""
 	show_mural_panel(false)
 	show_music_panel(false)
 	show_block_panel(false)
 	in_overview = false
+	in_wide_overview = false
+	following_player = true
+	if selected >= 0:
+		meshes[selected].material_override = building_materials[selected]
+		selected = -1
+	var goal := history_stop_xz(stop_id)
+	var dist := player_xz().distance_to(goal)
+	if dist <= ARRIVAL_DISTANCE_M:
+		finish_history_stop_arrival(stop_id)
+		return true
+	current_path = find_path(player_xz(), goal)
+	if current_path.size() > 1 and current_path[0].distance_to(player_xz()) < 0.20:
+		current_path.remove_at(0)
+	if current_path.is_empty():
+		walking_to_history_stop = ""
+		update_route_ribbon(true)
+		info.text = "No walkable route to %s\nWASD/Arrows or tap street to walk\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % title_str
+		announce_a11y_status("No walkable route to %s." % title_str)
+		return false
+	if view_size > 110.0:
+		view_size = 75.0
+	target = Vector3(player.position.x, 1.0, player.position.z)
+	update_camera()
+	update_occlusion(true)
+	update_route_ribbon(true)
+	info.text = "Walking to %s · %.1f m\nWider Tenderloin route across %d measured footprints · Press Esc to stop\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [title_str, dist, all_buildings.size()]
+	announce_a11y_status("Walking to %s, %.1f m." % [title_str, dist])
+	return true
+
+func finish_history_stop_arrival(stop_id: String) -> void:
+	current_path.clear()
+	walking_to_history_stop = ""
+	arrived_history_stop = stop_id
+	arrived_neighbor = -1
+	walking_to_mural = false
+	arrived_mural = false
+	walking_to_speaker = false
+	arrived_speaker = false
+	pending_celeste_talk = false
+	pending_rook_talk = false
+	update_route_ribbon(true)
+	if following_player:
+		target = Vector3(player.position.x, 1.0, player.position.z)
+		update_camera()
+	update_occlusion(true)
+	read_history_stop(stop_id)
+
+func focus_history_stop_camera(stop_id: String) -> void:
+	in_overview = false
+	in_wide_overview = false
+	following_player = false
+	if selected >= 0:
+		meshes[selected].material_override = building_materials[selected]
+		selected = -1
+	var pos := history_stop_pos_3d(stop_id)
+	target = Vector3(pos.x, 1.3, pos.z)
+	view_size = 55.0
+	update_camera()
+	if get_viewport() != null and get_viewport().get_visible_rect().size.x < 600:
+		target -= camera.global_basis.y * 4.2
+		update_camera()
+	update_occlusion(true)
+
+func read_history_stop(stop_id: String) -> bool:
+	if not (stop_id in HISTORY_STOP_IDS):
+		return false
+	var rec := get_history_stop_record(stop_id)
+	var title_str := String(rec.get("name", rec.get("title", stop_id)))
+	var note_str := String(rec.get("note", rec.get("source_note", "")))
+	var newly_discovered := false
+	if stop_id == "comptons":
+		if not history_read:
+			history_read = true
+			newly_discovered = true
+	else:
+		if not blackhawk_discovered:
+			blackhawk_discovered = true
+			newly_discovered = true
+	browser_import_message = ""
+	update_history_stops_3d()
+	show_block_panel(true)
+	focus_history_stop_camera(stop_id)
+	if newly_discovered:
+		save_godot_state()
+		trigger_progress_cue("history_" + stop_id, title_str)
+	update_block_ui()
+	var yr := int(rec.get("year", 1949 if stop_id == "blackhawk" else 1966))
+	info.text = "%s (%d)\n%s\nCity 2010 survey & 5xmc-5bjj (2017) / PDDL · Streets © OpenStreetMap / ODbL" % [title_str, yr, note_str]
+	announce_a11y_status("%s: %s" % [title_str, note_str])
+	return true
+
+func walk_to_or_read_history_stop(stop_id: String) -> bool:
+	if arrived_history_stop == stop_id or player_xz().distance_to(history_stop_xz(stop_id)) <= ARRIVAL_DISTANCE_M + 0.5:
+		return read_history_stop(stop_id)
+	return walk_to_history_stop(stop_id)
+
+func walk_to_comptons_corner() -> bool:
+	return walk_to_history_stop("comptons")
+
+func walk_to_black_hawk() -> bool:
+	return walk_to_history_stop("blackhawk")
+
+func toggle_district_boundary() -> bool:
+	district_boundary_visible = not district_boundary_visible
+	browser_import_message = ""
+	update_district_boundary_3d()
+	save_godot_state()
+	update_block_ui()
+	var state_word := "Shown" if district_boundary_visible else "Hidden"
+	var msg := "Transgender Cultural District boundary (DataSF 5xmc-5bjj, PDDL 1.0, founded 2017): %s within the wider Tenderloin." % state_word
+	info.text = "%s\nRecognized 2017 city cultural district boundary within the wider %d-building Tenderloin scene\nCity 2010 survey & 5xmc-5bjj / PDDL · Streets © OpenStreetMap / ODbL" % [msg, all_buildings.size()]
+	announce_a11y_status(msg)
+	return district_boundary_visible
+
+func walk_to_point(goal_xz: Vector2) -> bool:
+	var safe_goal := nearest_walkable_point(goal_xz, WALK_CLEARANCE_M)
+	if goal_xz.distance_to(safe_goal) > 28.5 or not is_walkable_point(safe_goal, WALK_CLEARANCE_M):
+		current_path.clear()
+		update_route_ribbon(true)
+		info.text = "No walkable street point near (%.1f, %.1f) m\nTap a street corridor or use WASD/Arrows\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [goal_xz.x, goal_xz.y]
+		announce_a11y_status("No walkable street point here.")
+		return false
+	selected_neighbor = -1
+	arrived_neighbor = -1
+	walking_to_mural = false
+	arrived_mural = false
+	pending_celeste_talk = false
+	walking_to_speaker = false
+	arrived_speaker = false
+	pending_rook_talk = false
+	walking_to_history_stop = ""
+	arrived_history_stop = ""
+	show_mural_panel(false)
+	show_music_panel(false)
+	show_block_panel(false)
+	in_overview = false
+	in_wide_overview = false
 	following_player = true
 	if selected >= 0:
 		meshes[selected].material_override = building_materials[selected]
@@ -1311,6 +1722,8 @@ func finish_neighbor_arrival(index: int) -> void:
 	arrived_mural = false
 	walking_to_speaker = false
 	arrived_speaker = false
+	walking_to_history_stop = ""
+	arrived_history_stop = ""
 	var n_id := String(n.get("id", ""))
 	var newly_visited := false
 	if not n_id.is_empty() and not visited_neighbors.has(n_id):
@@ -1390,6 +1803,8 @@ func finish_mural_arrival() -> void:
 	arrived_mural = true
 	walking_to_speaker = false
 	arrived_speaker = false
+	walking_to_history_stop = ""
+	arrived_history_stop = ""
 	arrived_neighbor = -1
 	pending_rook_talk = false
 	var trigger_talk := pending_celeste_talk
@@ -1423,6 +1838,8 @@ func finish_speaker_arrival() -> void:
 	arrived_speaker = true
 	walking_to_mural = false
 	arrived_mural = false
+	walking_to_history_stop = ""
+	arrived_history_stop = ""
 	arrived_neighbor = -1
 	pending_celeste_talk = false
 	var trigger_rook := pending_rook_talk
@@ -1462,6 +1879,7 @@ func rook_dialogue_text() -> String:
 
 func focus_mural_camera() -> void:
 	in_overview = false
+	in_wide_overview = false
 	following_player = false
 	if selected >= 0:
 		meshes[selected].material_override = building_materials[selected]
@@ -1477,6 +1895,7 @@ func focus_mural_camera() -> void:
 
 func focus_speaker_camera() -> void:
 	in_overview = false
+	in_wide_overview = false
 	following_player = false
 	if selected >= 0:
 		meshes[selected].material_override = building_materials[selected]
@@ -1492,6 +1911,7 @@ func focus_speaker_camera() -> void:
 
 func focus_block_camera() -> void:
 	in_overview = false
+	in_wide_overview = false
 	following_player = false
 	if selected >= 0:
 		meshes[selected].material_override = building_materials[selected]
@@ -2041,7 +2461,7 @@ func setup_web_a11y_bridge() -> void:
 				}
 				var s = document.getElementById('godot-a11y-summary');
 				if (s) {
-					s.textContent = 'Neighbors ' + data.visited_count + '/5 · Mural ' + data.mural_count + '/3 (' + data.mural_palette + ') · Soundcheck ' + (data.soundcheck_done ? 'Done' : 'Pending') + ' · Block ' + (data.block_opened ? 'Opened' : (data.block_ready ? 'Ready' : 'In progress'));
+					s.textContent = "Neighbors " + data.visited_count + "/5 · Mural " + data.mural_count + "/3 (" + data.mural_palette + ") · Soundcheck " + (data.soundcheck_done ? "Done" : "Pending") + " · Block " + (data.block_opened ? "Opened" : (data.block_ready ? "Ready" : "In progress")) + " · Compton's " + (data.history_read ? "Read" : "Unread") + " · Black Hawk " + (data.blackhawk_discovered ? "Found" : "Unvisited") + " · District " + (data.district_boundary_visible ? "Shown" : "Hidden");
 				}
 				return true;
 			} catch (_e) {
@@ -2110,6 +2530,11 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"soundcheck_done": rook_soundcheck_done,
 		"block_ready": is_block_ready(),
 		"block_opened": block_opened,
+		"history_read": history_read,
+		"blackhawk_discovered": blackhawk_discovered,
+		"district_boundary_visible": district_boundary_visible,
+		"total_buildings": all_buildings.size(),
+		"wider_buildings_count": wider_meshes.size(),
 		"music_playing": music_playing,
 		"music_mode": music_mode,
 		"browser_import_status": browser_import_status
@@ -2330,7 +2755,10 @@ func build_save_envelope() -> Dictionary:
 		"mural_placements": mural_placements.duplicate(true),
 		"rook_soundcheck_done": rook_soundcheck_done,
 		"visited_neighbors": v_list,
-		"block_opened": block_opened
+		"block_opened": block_opened,
+		"history_read": history_read,
+		"blackhawk_discovered": blackhawk_discovered,
+		"district_boundary_visible": district_boundary_visible
 	}
 
 func save_godot_state() -> bool:
@@ -2357,6 +2785,12 @@ func reset_mural_state_to_defaults(status_label: String) -> void:
 	rook_soundcheck_done = false
 	visited_neighbors.clear()
 	block_opened = false
+	history_read = false
+	blackhawk_discovered = false
+	district_boundary_visible = true
+	walking_to_history_stop = ""
+	arrived_history_stop = ""
+	in_wide_overview = false
 	browser_import_status = "none"
 	browser_import_message = ""
 	stop_music_playback()
@@ -2372,6 +2806,8 @@ func reset_mural_state_to_defaults(status_label: String) -> void:
 	update_mural_3d()
 	update_speaker_3d()
 	update_block_3d()
+	update_district_boundary_3d()
+	update_history_stops_3d()
 	update_mural_ui()
 	update_music_ui()
 	update_block_ui()
@@ -2419,6 +2855,27 @@ func apply_save_envelope(raw_json: String) -> bool:
 			reset_mural_state_to_defaults("recovered")
 			return false
 		bo_done = bool(bo_val)
+	var hr_done := false
+	if env.has("history_read"):
+		var hr_val: Variant = env.get("history_read")
+		if not (hr_val is bool):
+			reset_mural_state_to_defaults("recovered")
+			return false
+		hr_done = bool(hr_val)
+	var bh_done := false
+	if env.has("blackhawk_discovered"):
+		var bh_val: Variant = env.get("blackhawk_discovered")
+		if not (bh_val is bool):
+			reset_mural_state_to_defaults("recovered")
+			return false
+		bh_done = bool(bh_val)
+	var db_vis := true
+	if env.has("district_boundary_visible"):
+		var db_val: Variant = env.get("district_boundary_visible")
+		if not (db_val is bool):
+			reset_mural_state_to_defaults("recovered")
+			return false
+		db_vis = bool(db_val)
 	var clean_visited: Dictionary = {}
 	if env.has("visited_neighbors"):
 		var vn_val: Variant = env.get("visited_neighbors")
@@ -2475,6 +2932,9 @@ func apply_save_envelope(raw_json: String) -> bool:
 	mural_placements = clean_placements
 	rook_soundcheck_done = sc_done
 	visited_neighbors = clean_visited
+	history_read = hr_done
+	blackhawk_discovered = bh_done
+	district_boundary_visible = db_vis
 	stop_music_playback()
 	sketch_tick = 0
 	sketch_phase = 0.0
@@ -2489,6 +2949,8 @@ func apply_save_envelope(raw_json: String) -> bool:
 	block_opened = bo_done and is_block_ready()
 	update_speaker_3d()
 	update_block_3d()
+	update_district_boundary_3d()
+	update_history_stops_3d()
 	update_mural_ui()
 	update_music_ui()
 	update_block_ui()
@@ -2590,6 +3052,8 @@ func inspect_browser_save_json(raw_json: String) -> Dictionary:
 		pal_id = String(saved.get("palette"))
 	var sc_done := (saved.get("soundcheck", false) is bool) and bool(saved.get("soundcheck", false)) and layout_ready
 	var opened_done := (saved.get("opened", false) is bool) and bool(saved.get("opened", false)) and layout_ready and tidy_ready and mural_ready and sc_done
+	var history_flag := (saved.get("history", false) is bool) and bool(saved.get("history", false))
+	var blackhawk_flag := (saved.get("blackhawk", false) is bool) and bool(saved.get("blackhawk", false))
 	return {
 		"valid": true,
 		"greeted": greeted,
@@ -2603,7 +3067,9 @@ func inspect_browser_save_json(raw_json: String) -> Dictionary:
 		"mural_ready": mural_ready,
 		"palette": pal_id,
 		"soundcheck": sc_done,
-		"opened": opened_done
+		"opened": opened_done,
+		"history": history_flag,
+		"blackhawk": blackhawk_flag
 	}
 
 func import_browser_save_json(raw_json: String) -> bool:
@@ -2623,6 +3089,8 @@ func import_browser_save_json(raw_json: String) -> bool:
 	if not mural_placements.is_empty():
 		celeste_talk_count = maxi(1, celeste_talk_count)
 	rook_soundcheck_done = rook_soundcheck_done or bool(res.get("soundcheck", false))
+	history_read = history_read or bool(res.get("history", false))
+	blackhawk_discovered = blackhawk_discovered or bool(res.get("blackhawk", false))
 	var next_visited: Dictionary = visited_neighbors.duplicate()
 	if bool(res.get("greeted", false)):
 		next_visited["bea"] = true
@@ -2642,6 +3110,7 @@ func import_browser_save_json(raw_json: String) -> bool:
 	block_opened = (block_opened or bool(res.get("opened", false))) and is_block_ready()
 	update_speaker_3d()
 	update_block_3d()
+	update_history_stops_3d()
 	browser_import_status = "imported"
 	var state_tag := "Gathering Open" if block_opened else ("Ready" if is_block_ready() else "In progress")
 	browser_import_message = "Imported browser v1 save: %d/5 neighbors · %d/3 mural (%s) · %s" % [visited_neighbors.size(), mural_placements.size(), mural_palette.capitalize(), state_tag]
@@ -2717,7 +3186,6 @@ func clear_godot_save() -> void:
 func advance_walk(delta: float) -> bool:
 	if current_path.is_empty() or delta <= 0.0:
 		return false
-	var remaining := WALK_SPEED_M_PER_S * delta
 	var goal_xz: Vector2 = current_path.back()
 	if selected_neighbor >= 0:
 		goal_xz = neighbor_xz(selected_neighbor)
@@ -2725,6 +3193,11 @@ func advance_walk(delta: float) -> bool:
 		goal_xz = mural_stand_xz()
 	elif walking_to_speaker:
 		goal_xz = speaker_stand_xz()
+	elif not walking_to_history_stop.is_empty():
+		goal_xz = history_stop_xz(walking_to_history_stop)
+	var use_corridor_speed := walking_to_history_stop == "blackhawk" or player_xz().x < -50.0 or goal_xz.x < -50.0
+	var speed := WALK_CORRIDOR_SPEED_M_PER_S if use_corridor_speed else WALK_SPEED_M_PER_S
+	var remaining := speed * delta
 	var replanned := false
 	while remaining > 0.0 and not current_path.is_empty():
 		var cur := player_xz()
@@ -2736,6 +3209,9 @@ func advance_walk(delta: float) -> bool:
 			return true
 		if walking_to_speaker and cur.distance_to(goal_xz) <= ARRIVAL_DISTANCE_M:
 			finish_speaker_arrival()
+			return true
+		if not walking_to_history_stop.is_empty() and cur.distance_to(goal_xz) <= ARRIVAL_DISTANCE_M:
+			finish_history_stop_arrival(walking_to_history_stop)
 			return true
 		var wp: Vector2 = current_path[0]
 		var to_wp := wp - cur
@@ -2766,6 +3242,9 @@ func advance_walk(delta: float) -> bool:
 		if walking_to_speaker and nxt.distance_to(goal_xz) <= ARRIVAL_DISTANCE_M:
 			finish_speaker_arrival()
 			return true
+		if not walking_to_history_stop.is_empty() and nxt.distance_to(goal_xz) <= ARRIVAL_DISTANCE_M:
+			finish_history_stop_arrival(walking_to_history_stop)
+			return true
 		if nxt.distance_to(wp) <= 0.08:
 			current_path.remove_at(0)
 	if following_player:
@@ -2773,15 +3252,17 @@ func advance_walk(delta: float) -> bool:
 		update_camera()
 	update_occlusion(false)
 	update_route_ribbon(false)
-	if selected_neighbor >= 0 or walking_to_mural or walking_to_speaker:
+	if selected_neighbor >= 0 or walking_to_mural or walking_to_speaker or not walking_to_history_stop.is_empty():
 		var dist_after := player_xz().distance_to(goal_xz)
 		if dist_after <= ARRIVAL_DISTANCE_M:
 			if selected_neighbor >= 0:
 				finish_neighbor_arrival(selected_neighbor)
 			elif walking_to_mural:
 				finish_mural_arrival()
-			else:
+			elif walking_to_speaker:
 				finish_speaker_arrival()
+			else:
+				finish_history_stop_arrival(walking_to_history_stop)
 			return true
 		if current_path.is_empty():
 			var retry := find_path(player_xz(), goal_xz)
@@ -2796,9 +3277,13 @@ func advance_walk(delta: float) -> bool:
 					dest_name = neighbors[selected_neighbor].name
 				elif walking_to_mural:
 					dest_name = "Portable Mural Board"
+				elif not walking_to_history_stop.is_empty():
+					var stop_rec := get_history_stop_record(walking_to_history_stop)
+					dest_name = String(stop_rec.get("name", stop_rec.get("title", walking_to_history_stop)))
 				arrived_neighbor = -1
 				walking_to_mural = false
 				walking_to_speaker = false
+				walking_to_history_stop = ""
 				pending_celeste_talk = false
 				pending_rook_talk = false
 				update_route_ribbon(true)
@@ -2813,6 +3298,7 @@ func stop_walking() -> void:
 	current_path.clear()
 	walking_to_mural = false
 	walking_to_speaker = false
+	walking_to_history_stop = ""
 	pending_celeste_talk = false
 	pending_rook_talk = false
 	update_route_ribbon(true)
@@ -2820,6 +3306,7 @@ func stop_walking() -> void:
 
 func follow_player() -> void:
 	in_overview = false
+	in_wide_overview = false
 	following_player = true
 	if selected >= 0:
 		meshes[selected].material_override = building_materials[selected]
@@ -2836,16 +3323,19 @@ func clear_occlusion() -> void:
 		if idx >= 0 and idx < meshes.size():
 			meshes[idx].material_override = chosen_material if idx == selected else building_materials[idx]
 	occluded_buildings.clear()
+	for w_idx in occluded_wider_buildings:
+		if w_idx >= 0 and w_idx < wider_meshes.size():
+			wider_meshes[w_idx].material_override = wider_building_materials[w_idx]
+	occluded_wider_buildings.clear()
 	last_occlusion_pos = Vector2(INF, INF)
 	last_occlusion_neighbor = -2
 
-func building_occludes_point(b_idx: int, focus_xz: Vector2, focus_y: float = 1.0) -> bool:
-	var b: Dictionary = data.buildings[b_idx]
+func building_record_occludes_point(b: Dictionary, raw_rect: Rect2, focus_xz: Vector2, focus_y: float = 1.0) -> bool:
 	var h: float = b.height_m
 	if h <= focus_y + 1.0:
 		return false
 	var max_t := h - focus_y
-	var b_rect: Rect2 = building_rects[b_idx].grow(CUTAWAY_RADIUS_M)
+	var b_rect: Rect2 = raw_rect.grow(CUTAWAY_RADIUS_M)
 	var ray_slope := Vector2(CAMERA_OFFSET.x / CAMERA_OFFSET.y, CAMERA_OFFSET.z / CAMERA_OFFSET.y)
 	var t := 1.0
 	while t <= max_t:
@@ -2864,8 +3354,11 @@ func building_occludes_point(b_idx: int, focus_xz: Vector2, focus_y: float = 1.0
 		t += 1.5
 	return false
 
+func building_occludes_point(b_idx: int, focus_xz: Vector2, focus_y: float = 1.0) -> bool:
+	return building_record_occludes_point(data.buildings[b_idx], building_rects[b_idx], focus_xz, focus_y)
+
 func update_occlusion(force: bool = true) -> void:
-	if in_overview or selected >= 0:
+	if in_overview or in_wide_overview or selected >= 0:
 		clear_occlusion()
 		return
 	var p_xz := player_xz()
@@ -2874,6 +3367,10 @@ func update_occlusion(force: bool = true) -> void:
 		occ_tag = 99
 	elif walking_to_speaker or arrived_speaker:
 		occ_tag = 98
+	elif walking_to_history_stop == "comptons" or arrived_history_stop == "comptons":
+		occ_tag = 97
+	elif walking_to_history_stop == "blackhawk" or arrived_history_stop == "blackhawk":
+		occ_tag = 96
 	if not force and p_xz.distance_to(last_occlusion_pos) < 0.40 and last_occlusion_neighbor == occ_tag:
 		return
 	clear_occlusion()
@@ -2888,11 +3385,22 @@ func update_occlusion(force: bool = true) -> void:
 	if selected_neighbor == rook_index or arrived_neighbor == rook_index or walking_to_speaker or arrived_speaker:
 		focus_points.append(speaker_xz())
 		focus_points.append(neighbor_xz(rook_index))
+	if not walking_to_history_stop.is_empty():
+		focus_points.append(history_stop_xz(walking_to_history_stop))
+	elif not arrived_history_stop.is_empty():
+		focus_points.append(history_stop_xz(arrived_history_stop))
 	for idx in range(data.buildings.size()):
 		for fp in focus_points:
 			if building_occludes_point(idx, fp, 1.0):
 				occluded_buildings.append(idx)
 				meshes[idx].material_override = cutaway_material
+				break
+	var wider_list: Array = data.get("wider_buildings", [])
+	for w_idx in range(wider_meshes.size()):
+		for fp in focus_points:
+			if building_record_occludes_point(wider_list[w_idx], wider_building_rects[w_idx], fp, 1.0):
+				occluded_wider_buildings.append(w_idx)
+				wider_meshes[w_idx].material_override = cutaway_material
 				break
 
 func _process(delta: float) -> void:
@@ -2959,26 +3467,37 @@ func handle_scene_tap(screen_pos: Vector2) -> bool:
 		var n_screen := camera.unproject_position(n_pos)
 		var screen_d := n_screen.distance_to(screen_pos)
 		var world_d := neighbor_xz(i).distance_to(ground_xz)
-		if screen_d <= 36.0 or world_d <= 4.5:
+		if (screen_d <= 36.0 and world_d <= 8.5) or world_d <= 4.5:
 			if screen_d < best_screen_d:
 				best_screen_d = screen_d
 				best_idx = i
 	var m_screen := camera.unproject_position(MURAL_POS + Vector3(0.0, 1.4, 0.0))
 	var m_screen_d := m_screen.distance_to(screen_pos)
 	var m_world_d := mural_xz().distance_to(ground_xz)
-	if (m_screen_d <= 38.0 or m_world_d <= 3.6) and m_screen_d < best_screen_d:
+	if ((m_screen_d <= 38.0 and m_world_d <= 8.5) or m_world_d <= 3.6) and m_screen_d < best_screen_d:
 		return walk_to_mural()
 	var s_screen := camera.unproject_position(ROOK_SPEAKER_POS + Vector3(0.0, 0.8, 0.0))
 	var s_screen_d := s_screen.distance_to(screen_pos)
 	var s_world_d := speaker_xz().distance_to(ground_xz)
-	if (s_screen_d <= 36.0 or s_world_d <= 3.2) and s_screen_d < best_screen_d:
+	if ((s_screen_d <= 36.0 and s_world_d <= 8.5) or s_world_d <= 3.2) and s_screen_d < best_screen_d:
 		return walk_to_speaker()
+	var c_screen := camera.unproject_position(history_stop_pos_3d("comptons") + Vector3(0.0, 1.3, 0.0))
+	var c_screen_d := c_screen.distance_to(screen_pos)
+	var c_world_d := comptons_xz().distance_to(ground_xz)
+	if ((c_screen_d <= 34.0 and c_world_d <= 8.5) or c_world_d <= 3.0) and c_screen_d < best_screen_d:
+		return walk_to_history_stop("comptons")
+	var bh_screen := camera.unproject_position(history_stop_pos_3d("blackhawk") + Vector3(0.0, 1.3, 0.0))
+	var bh_screen_d := bh_screen.distance_to(screen_pos)
+	var bh_world_d := blackhawk_xz().distance_to(ground_xz)
+	if ((bh_screen_d <= 36.0 and bh_world_d <= 8.5) or bh_world_d <= 3.5) and bh_screen_d < best_screen_d:
+		return walk_to_history_stop("blackhawk")
 	if best_idx >= 0:
 		return walk_to_neighbor(best_idx)
 	return walk_to_point(ground_xz)
 
 func pan_camera_by_screen_delta(delta_px: Vector2) -> void:
 	in_overview = false
+	in_wide_overview = false
 	following_player = false
 	var ppm := (camera.unproject_position(target + camera.global_basis.y) - camera.unproject_position(target)).length()
 	if ppm <= 1e-5:
@@ -3042,6 +3561,14 @@ func _unhandled_input(event: InputEvent) -> void:
 				open_block_gathering()
 			KEY_I:
 				import_browser_save_from_web_storage()
+			KEY_J:
+				walk_to_or_read_history_stop("comptons")
+			KEY_H:
+				walk_to_or_read_history_stop("blackhawk")
+			KEY_C:
+				toggle_district_boundary()
+			KEY_L:
+				wide_overview()
 			KEY_P:
 				if can_interact_with_mural():
 					cycle_mural_palette()
@@ -3072,12 +3599,14 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func update_camera() -> void:
 	camera.size = view_size
-	camera.position = target + CAMERA_OFFSET
+	var offset_scale := 2.2 if (in_wide_overview or view_size > 300.0) else 1.0
+	camera.position = target + CAMERA_OFFSET * offset_scale
 	camera.look_at(target)
 	camera.force_update_transform()
 
 func choose_next(direction: int) -> void:
 	in_overview = false
+	in_wide_overview = false
 	following_player = false
 	selected_neighbor = -1
 	arrived_neighbor = -1
@@ -3087,6 +3616,8 @@ func choose_next(direction: int) -> void:
 	walking_to_speaker = false
 	arrived_speaker = false
 	pending_rook_talk = false
+	walking_to_history_stop = ""
+	arrived_history_stop = ""
 	show_mural_panel(false)
 	show_music_panel(false)
 	show_block_panel(false)
@@ -3112,6 +3643,7 @@ func choose_next(direction: int) -> void:
 
 func overview() -> void:
 	in_overview = true
+	in_wide_overview = false
 	following_player = false
 	selected_neighbor = -1
 	arrived_neighbor = -1
@@ -3121,6 +3653,8 @@ func overview() -> void:
 	walking_to_speaker = false
 	arrived_speaker = false
 	pending_rook_talk = false
+	walking_to_history_stop = ""
+	arrived_history_stop = ""
 	show_mural_panel(false)
 	show_music_panel(false)
 	show_block_panel(false)
@@ -3151,6 +3685,48 @@ func overview() -> void:
 	update_camera()
 	announce_a11y_status("Overview: %d city footprints." % data.buildings.size())
 
+func wide_overview() -> void:
+	in_overview = false
+	in_wide_overview = true
+	following_player = false
+	selected_neighbor = -1
+	arrived_neighbor = -1
+	walking_to_mural = false
+	arrived_mural = false
+	pending_celeste_talk = false
+	walking_to_speaker = false
+	arrived_speaker = false
+	pending_rook_talk = false
+	walking_to_history_stop = ""
+	arrived_history_stop = ""
+	show_mural_panel(false)
+	show_music_panel(false)
+	show_block_panel(false)
+	current_path.clear()
+	update_route_ribbon(true)
+	if selected >= 0:
+		meshes[selected].material_override = building_materials[selected]
+	selected = -1
+	clear_occlusion()
+	info.text = wide_overview_text()
+	var viewport_size := get_viewport().get_visible_rect().size
+	var header: Control = info.get_parent().get_parent()
+	var top := header.get_global_rect().end.y + 12
+	var bottom := controls.get_global_rect().position.y - 12
+	var available := Rect2(12, top, maxf(viewport_size.x - 24, 1), maxf(bottom - top, 1))
+	target = Vector3(-130, 0, 15)
+	view_size = 560
+	update_camera()
+	var bounds := projected_wider_bounds()
+	view_size *= maxf(bounds.size.x / available.size.x, bounds.size.y / available.size.y) * 1.06
+	update_camera()
+	bounds = projected_wider_bounds()
+	var pixels_per_metre := (camera.unproject_position(target + camera.global_basis.y) - camera.unproject_position(target)).length()
+	var offset := bounds.get_center() - available.get_center()
+	target += camera.global_basis.x * offset.x / pixels_per_metre - camera.global_basis.y * offset.y / pixels_per_metre
+	update_camera()
+	announce_a11y_status("Wider Tenderloin overview: %d city footprints across 7 streets; Transgender Cultural District boundary %s." % [all_buildings.size(), "shown" if district_boundary_visible else "hidden"])
+
 func projected_bounds() -> Rect2:
 	var bounds := Rect2()
 	var first := true
@@ -3166,20 +3742,42 @@ func projected_bounds() -> Rect2:
 						bounds = bounds.expand(screen)
 	return bounds
 
+func projected_wider_bounds() -> Rect2:
+	var bounds := Rect2()
+	var first := true
+	for building in all_buildings:
+		for polygon in building.polygons:
+			for vertex in polygon.vertices:
+				for h in [0.0, building.height_m]:
+					var screen := camera.unproject_position(point(vertex, h))
+					if first:
+						bounds = Rect2(screen, Vector2.ZERO)
+						first = false
+					else:
+						bounds = bounds.expand(screen)
+	return bounds
+
 func zoom(factor: float) -> void:
 	in_overview = false
-	view_size = clampf(view_size * factor, 45, maxf(400, overview_size * 2.0))
+	in_wide_overview = false
+	view_size = clampf(view_size * factor, 45, maxf(900, overview_size * 2.5))
 	update_camera()
 	update_occlusion(true)
 
 func overview_text() -> String:
 	return "%d city footprints · 2010 survey · PDDL\nStreets © OpenStreetMap contributors / ODbL\nWASD/tap street to walk · Walk to neighbor (1–5) · Block status (G)" % data.buildings.size()
 
+func wide_overview_text() -> String:
+	var dist_state := "Shown" if district_boundary_visible else "Hidden"
+	return "%d Tenderloin footprints (%d opening + %d wider) · 7 OSM streets\nTransgender Cultural District (%s, C) · Compton's (J) · Black Hawk (H)\nCity 2010 survey & 5xmc-5bjj (2017) / PDDL · Streets © OpenStreetMap / ODbL" % [all_buildings.size(), data.buildings.size(), wider_meshes.size(), dist_state]
+
 func refit_after_layout() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if in_overview:
 		overview()
+	elif in_wide_overview:
+		wide_overview()
 
 func show_mural_panel(visible_flag: bool) -> void:
 	if visible_flag:
@@ -3276,7 +3874,10 @@ func update_block_ui() -> void:
 	var open_tag := "OPEN" if block_opened else ("READY" if is_block_ready() else "PREP")
 	block_label.text = "Block · %s · %d/%d Nbrs · %s Mural · %s" % [open_tag, v_count, n_total, m_state, sc_state]
 	if block_detail_label != null:
-		block_detail_label.text = get_block_missing_summary() if browser_import_message.is_empty() else ("%s · %s" % [get_block_missing_summary(), browser_import_message])
+		var west_tag := "BH:Found" if blackhawk_discovered else "BH:West"
+		var comp_tag := "CC:Read" if history_read else "CC:1966"
+		var base_detail := "%s · %s · %s" % [get_block_missing_summary(), comp_tag, west_tag]
+		block_detail_label.text = base_detail if browser_import_message.is_empty() else ("%s · %s" % [base_detail, browser_import_message])
 	if block_open_btn != null:
 		if block_opened:
 			block_open_btn.text = "Block Opened"
@@ -3290,9 +3891,13 @@ func update_block_ui() -> void:
 	if block_mural_btn != null:
 		block_mural_btn.text = "Mural: 3/3" if mural_completed else ("Mural: %d/3" % mural_placements.size())
 	if block_rook_btn != null:
-		block_rook_btn.text = "Rook: Checked" if rook_soundcheck_done else "Rook: Soundcheck"
+		block_rook_btn.text = "Rook: OK" if rook_soundcheck_done else "Rook: Sound"
+	if block_west_btn != null:
+		block_west_btn.text = "Hyde: OK" if blackhawk_discovered else "West: Hyde"
+	if block_district_btn != null:
+		block_district_btn.text = "District: On" if district_boundary_visible else "District: Off"
 	if block_import_btn != null:
-		block_import_btn.text = "Browser Save: Ready" if browser_import_status == "imported" else "Import Browser Save"
+		block_import_btn.text = "Save: Ready" if browser_import_status == "imported" else "Import Save"
 
 func make_ui() -> void:
 	button_focus_style = StyleBoxFlat.new()
@@ -3426,11 +4031,13 @@ func make_ui() -> void:
 	b_row2.add_theme_constant_override("separation", 4)
 	block_vbox.add_child(b_row2)
 	block_mural_btn = block_button(b_row2, "Mural: 0/3", func(): open_mural_from_block_panel())
-	block_rook_btn = block_button(b_row2, "Rook: Soundcheck", func(): request_rook_soundcheck())
+	block_rook_btn = block_button(b_row2, "Rook: Sound", func(): request_rook_soundcheck())
+	block_west_btn = block_button(b_row2, "West: Hyde", func(): walk_to_or_read_history_stop("blackhawk"))
 	var b_row3 := HBoxContainer.new()
 	b_row3.add_theme_constant_override("separation", 4)
 	block_vbox.add_child(b_row3)
-	block_import_btn = block_button(b_row3, "Import Browser Save", func(): import_browser_save_from_web_storage())
+	block_district_btn = block_button(b_row3, "District: On", func(): toggle_district_boundary())
+	block_import_btn = block_button(b_row3, "Import Save", func(): import_browser_save_from_web_storage())
 	block_button(b_row3, "Close", func(): show_block_panel(false))
 	update_block_ui()
 
@@ -3468,7 +4075,7 @@ func make_ui() -> void:
 		if is_instance_valid(block_panel):
 			block_panel.offset_bottom = -180 if narrow else -130
 			block_panel.offset_top = -352 if narrow else -302
-		if in_overview:
+		if in_overview or in_wide_overview:
 			refit_after_layout()
 	vp.size_changed.connect(resize_controls)
 	tree_exiting.connect(func():
@@ -3498,6 +4105,7 @@ func button(parent: Node, text: String, action: Callable) -> void:
 func mural_button(parent: Node, text: String, action: Callable) -> Button:
 	var control := Button.new()
 	control.text = text
+	control.clip_text = true
 	control.custom_minimum_size = Vector2(44, 44)
 	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	control.focus_mode = Control.FOCUS_ALL
@@ -3512,6 +4120,7 @@ func mural_button(parent: Node, text: String, action: Callable) -> Button:
 func music_button(parent: Node, text: String, action: Callable) -> Button:
 	var control := Button.new()
 	control.text = text
+	control.clip_text = true
 	control.custom_minimum_size = Vector2(44, 44)
 	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	control.focus_mode = Control.FOCUS_ALL
@@ -3526,6 +4135,7 @@ func music_button(parent: Node, text: String, action: Callable) -> Button:
 func block_button(parent: Node, text: String, action: Callable) -> Button:
 	var control := Button.new()
 	control.text = text
+	control.clip_text = true
 	control.custom_minimum_size = Vector2(44, 44)
 	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	control.focus_mode = Control.FOCUS_ALL

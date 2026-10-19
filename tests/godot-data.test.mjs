@@ -2,15 +2,36 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { derive, deriveStreets, project, origin } from '../scripts/build-godot-data.mjs';
+import {
+  derive,
+  deriveWiderBuildings,
+  deriveStreets,
+  deriveWiderStreets,
+  deriveCulturalDistrict,
+  deriveWestIntersections,
+  WIDER_STREET_NAMES,
+  project,
+  origin
+} from '../scripts/build-godot-data.mjs';
 
 const raw = await readFile(new URL('../godot/data/source/buildings.geojson', import.meta.url));
 const source = JSON.parse(raw);
+const widerRaw = await readFile(new URL('../godot/data/source/buildings_tenderloin_west.geojson', import.meta.url));
+const widerSource = JSON.parse(widerRaw);
+const districtRaw = await readFile(new URL('../public/data/transgender-district.geojson', import.meta.url));
+const districtSource = JSON.parse(districtRaw);
+const districtMetaRaw = await readFile(new URL('../public/data/cultural-district-source.json', import.meta.url));
+const districtMeta = JSON.parse(districtMetaRaw);
 const output = JSON.parse(await readFile(new URL('../godot/data/buildings.json', import.meta.url)));
 
 test('pinned source/vendor receipt and derived OSM streets match every actual input', async () => {
   const receipt = JSON.parse(await readFile(new URL('../godot/data/source_receipt.json', import.meta.url)));
+  assert.equal(receipt.count, output.buildings.length);
+  assert.equal(receipt.widerCount, output.wider_buildings.length);
+  assert.equal(receipt.totalCount, output.buildings.length + output.wider_buildings.length);
   assert.ok(receipt.hashes['public/data/streets.osm.json']);
+  assert.ok(receipt.hashes['godot/data/source/buildings_tenderloin_west.geojson']);
+  assert.ok(receipt.hashes['public/data/transgender-district.geojson']);
   for (const [file, sha] of Object.entries(receipt.hashes)) {
     assert.equal(createHash('sha256').update(await readFile(new URL('../' + file, import.meta.url))).digest('hex'), sha, file);
   }
@@ -18,6 +39,11 @@ test('pinned source/vendor receipt and derived OSM streets match every actual in
   const streets = JSON.parse(rawStreets);
   assert.equal(output.streets_sha256, createHash('sha256').update(rawStreets).digest('hex'));
   assert.deepEqual(output.streets, deriveStreets(streets));
+  assert.deepEqual(output.wider_streets, deriveWiderStreets(streets));
+  const streetNames = new Set(output.wider_streets.map(w => w.name));
+  for (const expectedName of WIDER_STREET_NAMES) {
+    assert.ok(streetNames.has(expectedName), `wider_streets must include ${expectedName}`);
+  }
   assert.deepEqual(output.street_source, streets.source);
 });
 
@@ -61,10 +87,51 @@ test('all roof triangles preserve footprint area excluding courtyards; heights u
   });
 });
 
+test('wider Tenderloin footprints, Transgender Cultural District boundary, and west intersections preserve exact city/OSM geometry', () => {
+  assert.equal(output.wider_source_sha256, createHash('sha256').update(widerRaw).digest('hex'));
+  const derivedWider = deriveWiderBuildings(widerSource, output.buildings);
+  assert.equal(derivedWider.length, 130);
+  assert.deepEqual(output.wider_buildings, derivedWider);
+  const openingIds = new Set(output.buildings.map(b => b.id));
+  let widerHoles = 0;
+  for (const b of output.wider_buildings) {
+    assert.ok(!openingIds.has(b.id), `wider_buildings must not duplicate opening building ${b.id}`);
+    for (const polygon of b.polygons) {
+      widerHoles += polygon.rings.length - 1;
+      const expected = ringArea(polygon.rings[0]) - polygon.rings.slice(1).reduce((s, r) => s + ringArea(r), 0);
+      let actual = 0;
+      for (let n = 0; n < polygon.triangles.length; n += 3) {
+        const indexes = polygon.triangles.slice(n, n + 3);
+        actual += ringArea(indexes.map(k => polygon.vertices[k]));
+      }
+      assert.ok(Math.abs(actual - expected) < 1e-6, b.id);
+    }
+  }
+  assert.ok(widerHoles > 0, 'wider Tenderloin footprints retain inner courtyard holes');
+  assert.equal(output.cultural_district_sha256, createHash('sha256').update(districtRaw).digest('hex'));
+  assert.deepEqual(output.cultural_district, deriveCulturalDistrict(districtSource, districtMeta));
+  assert.equal(output.cultural_district.name, 'Transgender Cultural District');
+  assert.equal(output.cultural_district.dataset_id, '5xmc-5bjj');
+  assert.equal(output.cultural_district.polygons[0].rings[0].length, districtSource.features[0].geometry.coordinates[0][0].length - 1);
+  assert.deepEqual(output.west_intersections, deriveWestIntersections());
+  assert.equal(output.west_intersections.length, 3);
+  assert.equal(output.history_stops.length, 2);
+});
+
 test('data derivation fails visibly on unknown/missing geometry and wrong units', () => {
   for (const mutate of [s => s.features[0].geometry.type = 'Polygon', s => s.features[0].properties.hgt_mediancm = 'missing',
     s => s.features[0].properties.hgt_mediancm = '241900', s => s.features[0].geometry.coordinates[0][0].pop(),
     s => s.features.push(s.features[0])]) {
     const s = structuredClone(source); mutate(s); assert.throws(() => derive(s));
+  }
+  for (const mutateDistrict of [
+    d => d.features = [],
+    d => d.features[0].properties.district_name = 'Wrong',
+    d => d.features[0].geometry.coordinates[0][0].pop(),
+    d => d.features[0].geometry.coordinates[0][0][0] = [0, 0]
+  ]) {
+    const d = structuredClone(districtSource);
+    mutateDistrict(d);
+    assert.throws(() => deriveCulturalDistrict(d, districtMeta));
   }
 });

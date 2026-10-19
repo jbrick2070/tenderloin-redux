@@ -1,0 +1,25 @@
+STDOUT:
+I wrote the review to `kibitz-runs/2026-10-19-godot-whole-tenderloin/r3/claude.md`. Verdict: **yes-with-fixes**. The code mostly wires together, but the review packet describes an interface the code doesn't have. I only read files; I didn't run any tests.
+
+**Must-fix before build:**
+1. **The packet doesn't match the code:**
+   - `walk_to_comptons_corner()` and `walk_to_black_hawk()` don't exist.
+   - The stop ids are `comptons` and `blackhawk`.
+   - KEY_T already means "talk to Celeste"; the district toggle is KEY_C.
+   - There is no "Wide Map" button.
+   - The save path, the `district_boundary.rings` field and the `scope`/`height_source` fields are all different or absent.
+2. **The height claim is false.** The wider set includes a 0.18 m footprint (`201006.0033969`) and two others under 5 m. Duplicates are removed by city building ID, not OSM ID.
+3. **History-stop positions are stored in three places.** The plaque is drawn from the data file, but walking, tapping and the camera use constants hard-coded in `main.gd`, and there is a third fallback copy. If the data changes, the plaque moves but walking still goes to the old spot.
+4. **The data and the game code use different field names.** The data records use `name`/`source_note`; the code expects `title`/`note`/`year`. As a result the "route blocked" message shows the raw id `blackhawk`, and the plaque text shows a citation instead of the story.
+
+**Should-fix highlights:**
+- **Hidden 5× speed.** The Black Hawk walk runs at 24 m/s, not walking speed. The browser test's 40 s timeout only passes because of this; at 4.8 m/s the walk takes about 93 s.
+- **Possible freeze.** Route planning to Hyde searches the whole enlarged map without a distance heuristic, synchronously, in the key handler. This could stall the Web build; I didn't measure it.
+- **Loose crossing test.** The "crossed Jones/Leavenworth" thresholds sit about 8 m short of the real street centrelines.
+- **Golden Gate is claimed but not exported.** `SOURCES.md` mentions it, but the street data contains no Golden Gate ways.
+- **Bad tap fallback.** A wide-view tap on an unreachable spot can silently send the player back to the start, up to ~450 m away.
+- **Untested claims.** No test checks that the wide overview fits at 390 or 320 px wide, or that tapping a street near a neighbor routes to the street.
+
+The browser-save mapping (`core.history` → Compton's, `core.blackhawk` → Black Hawk) matches the browser game and needs no change. Three of my estimates (block-interior distances, near-plane margins, camera depth) are marked [ASSUMPTION] in the file.
+
+Several MCP servers (Asana, Atlassian, Datadog, GitHub, Linear, Notion, PagerDuty, Slack, Box, Runway) need authorizing before they can be used: claude.ai connectors in your connector settings, the others via `/mcp` in an interactive session. I didn't need any of them for this review.
