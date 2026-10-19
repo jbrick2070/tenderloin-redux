@@ -479,9 +479,21 @@ func make_building_mesh_and_rect(building: Dictionary, mat: StandardMaterial3D, 
 	var glass_amber := Color("f5b562")
 	var glass_sky := Color("88c6d8")
 	var storefront_glow := Color("ffe08a") if (b_hash % 2 == 0) else Color("8ce0e6")
+	var awning_palette: Array[Color] = [
+		Color("8f352e"), # Classic SF Burgundy Canopy
+		Color("295e4a"), # Heritage Forest Awning
+		Color("2d4c6e"), # Pacific Navy Marquee
+		Color("b87830")  # Golden Ochre Awning
+	]
+	var awning_col: Color = awning_palette[b_hash % awning_palette.size()]
 	for polygon in building.polygons:
 		for r_idx in range(polygon.rings.size()):
 			var ring: Array = polygon.rings[r_idx]
+			var ring_center := Vector3.ZERO
+			for rp in ring:
+				ring_center += point(rp, 0.0)
+			if not ring.is_empty():
+				ring_center /= float(ring.size())
 			for i in range(ring.size()):
 				var p0: Array = ring[i]
 				var v2 := Vector2(p0[0], p0[1])
@@ -496,6 +508,11 @@ func make_building_mesh_and_rect(building: Dictionary, mat: StandardMaterial3D, 
 				var au := a + Vector3.UP * h
 				wall_faces.append_array([a, b, bu, a, bu, au])
 				var seg_len := a.distance_to(b)
+				var seg_dir := (b - a).normalized() if seg_len > 1e-4 else Vector3.RIGHT
+				var out_n := seg_dir.cross(Vector3.UP).normalized()
+				var edge_mid := (a + b) * 0.5
+				if (edge_mid + out_n * 0.5 - ring_center).length_squared() < (edge_mid - out_n * 0.5 - ring_center).length_squared():
+					out_n = -out_n
 				var plinth_h := minf(3.6, h * 0.30)
 				var cornice_y := maxf(plinth_h, h - minf(0.95, h * 0.12))
 				if r_idx > 0 or h < 5.0 or seg_len < 2.8:
@@ -505,7 +522,7 @@ func make_building_mesh_and_rect(building: Dictionary, mat: StandardMaterial3D, 
 					if h > cornice_y:
 						colored_quad(surface, a + Vector3.UP * cornice_y, b + Vector3.UP * cornice_y, bu, au, cornice_col)
 				else:
-					# Ground-floor storefront / masonry plinth
+					# Ground-floor storefront / masonry plinth + 3D sloped fabric awning
 					if seg_len >= 4.2 and plinth_h >= 2.6:
 						var s_a := a.lerp(b, 0.16)
 						var s_b := a.lerp(b, 0.84)
@@ -516,13 +533,21 @@ func make_building_mesh_and_rect(building: Dictionary, mat: StandardMaterial3D, 
 						colored_quad(surface, s_a, s_b, s_b + Vector3.UP * sill_y, s_a + Vector3.UP * sill_y, plinth_col)
 						colored_quad(surface, s_a + Vector3.UP * sill_y, s_b + Vector3.UP * sill_y, s_b + Vector3.UP * head_y, s_a + Vector3.UP * head_y, storefront_glow)
 						colored_quad(surface, s_a + Vector3.UP * head_y, s_b + Vector3.UP * head_y, s_b + Vector3.UP * plinth_h, s_a + Vector3.UP * plinth_h, cornice_col)
+						if seg_len >= 5.6 and ((b_hash + i) % 2 == 0):
+							var aw_top_a := s_a + Vector3.UP * (head_y + 0.30)
+							var aw_top_b := s_b + Vector3.UP * (head_y + 0.30)
+							var aw_tip_a := s_a + out_n * 0.52 + Vector3.UP * (head_y - 0.06)
+							var aw_tip_b := s_b + out_n * 0.52 + Vector3.UP * (head_y - 0.06)
+							colored_quad(surface, aw_tip_a, aw_tip_b, aw_top_b, aw_top_a, awning_col)
+							colored_quad(surface, aw_tip_a + Vector3.DOWN * 0.12, aw_tip_b + Vector3.DOWN * 0.12, aw_tip_b, aw_tip_a, awning_col.darkened(0.22))
 					else:
 						colored_quad(surface, a, b, b + Vector3.UP * plinth_h, a + Vector3.UP * plinth_h, plinth_col)
-					# Upper stories with windows and spandrel bands
+					# Upper stories with 3D projecting SF bay windows and spandrel bands
 					var mid_h := cornice_y - plinth_h
 					var num_stories := maxi(1, int(floor(mid_h / 3.2)))
 					var story_h := mid_h / float(num_stories)
 					var num_bays := clampi(int(floor(seg_len / 3.2)), 1, 7)
+					var has_3d_bays := (seg_len >= 6.8 and h >= 8.2 and num_bays >= 2)
 					for s_i in range(num_stories):
 						var sy0 := plinth_h + float(s_i) * story_h
 						var sy1 := sy0 + story_h
@@ -539,14 +564,29 @@ func make_building_mesh_and_rect(building: Dictionary, mat: StandardMaterial3D, 
 							var p_wt0 := a.lerp(b, wt0)
 							var p_wt1 := a.lerp(b, wt1)
 							var p_t1 := a.lerp(b, t1)
-							colored_quad(surface, p_t0 + Vector3.UP * wy0, p_wt0 + Vector3.UP * wy0, p_wt0 + Vector3.UP * wy1, p_t0 + Vector3.UP * wy1, base_col)
 							var w_pick: int = (b_hash + i * 7 + s_i * 13 + bay_i * 5) % 5
 							var win_col := glass_warm if w_pick <= 1 else (glass_amber if w_pick == 2 else glass_sky)
-							colored_quad(surface, p_wt0 + Vector3.UP * wy0, p_wt1 + Vector3.UP * wy0, p_wt1 + Vector3.UP * wy1, p_wt0 + Vector3.UP * wy1, win_col)
-							colored_quad(surface, p_wt1 + Vector3.UP * wy0, p_t1 + Vector3.UP * wy0, p_t1 + Vector3.UP * wy1, p_wt1 + Vector3.UP * wy1, base_col)
-					# Top cornice crown
+							if has_3d_bays and ((bay_i + b_hash) % 2 == 0):
+								var bay_out := out_n * 0.38
+								var b_wt0 := p_wt0 + bay_out
+								var b_wt1 := p_wt1 + bay_out
+								# Angled SF bay cheeks + projecting center window + bay spandrel
+								colored_quad(surface, p_t0 + Vector3.UP * sy0, b_wt0 + Vector3.UP * sy0, b_wt0 + Vector3.UP * sy1, p_t0 + Vector3.UP * sy1, cornice_col.darkened(0.08))
+								colored_quad(surface, b_wt1 + Vector3.UP * sy0, p_t1 + Vector3.UP * sy0, p_t1 + Vector3.UP * sy1, b_wt1 + Vector3.UP * sy1, cornice_col.darkened(0.14))
+								colored_quad(surface, b_wt0 + Vector3.UP * sy0, b_wt1 + Vector3.UP * sy0, b_wt1 + Vector3.UP * wy0, b_wt0 + Vector3.UP * wy0, spandrel_col)
+								colored_quad(surface, b_wt0 + Vector3.UP * wy0, b_wt1 + Vector3.UP * wy0, b_wt1 + Vector3.UP * wy1, b_wt0 + Vector3.UP * wy1, win_col)
+								colored_quad(surface, b_wt0 + Vector3.UP * wy1, b_wt1 + Vector3.UP * wy1, b_wt1 + Vector3.UP * sy1, b_wt0 + Vector3.UP * sy1, cornice_col)
+								if s_i == num_stories - 1:
+									colored_quad(surface, p_wt0 + Vector3.UP * sy1, p_wt1 + Vector3.UP * sy1, b_wt1 + Vector3.UP * sy1, b_wt0 + Vector3.UP * sy1, cornice_col)
+							else:
+								colored_quad(surface, p_t0 + Vector3.UP * wy0, p_wt0 + Vector3.UP * wy0, p_wt0 + Vector3.UP * wy1, p_t0 + Vector3.UP * wy1, base_col)
+								colored_quad(surface, p_wt0 + Vector3.UP * wy0, p_wt1 + Vector3.UP * wy0, p_wt1 + Vector3.UP * wy1, p_wt0 + Vector3.UP * wy1, win_col)
+								colored_quad(surface, p_wt1 + Vector3.UP * wy0, p_t1 + Vector3.UP * wy0, p_t1 + Vector3.UP * wy1, p_wt1 + Vector3.UP * wy1, base_col)
+					# 3D projecting top cornice crown
 					if h > cornice_y:
-						colored_quad(surface, a + Vector3.UP * cornice_y, b + Vector3.UP * cornice_y, bu, au, cornice_col)
+						var c_out := out_n * 0.22
+						colored_quad(surface, a + c_out + Vector3.UP * cornice_y, b + c_out + Vector3.UP * cornice_y, bu + c_out, au + c_out, cornice_col)
+						colored_quad(surface, au, bu, bu + c_out, au + c_out, cornice_col.lightened(0.12))
 		for i in range(0, polygon.triangles.size(), 3):
 			surface.set_color(roof_col)
 			surface.add_vertex(point(polygon.vertices[polygon.triangles[i]], h))
@@ -616,6 +656,11 @@ func _ready() -> void:
 	sun.rotation_degrees = Vector3(-55, -25, 0)
 	sun.light_energy = 1.25
 	add_child(sun)
+	var rim_sun := DirectionalLight3D.new()
+	rim_sun.rotation_degrees = Vector3(-38, 145, 0)
+	rim_sun.light_color = Color("ffd8a6")
+	rim_sun.light_energy = 0.48
+	add_child(rim_sun)
 	var ground := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(960, 560)
@@ -688,6 +733,10 @@ func _ready() -> void:
 func build_streets() -> void:
 	street_ways = data.get("wider_streets", data.streets)
 	street_way_rects.clear()
+	var curb_surface := SurfaceTool.new()
+	curb_surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var bikelane_surface := SurfaceTool.new()
+	bikelane_surface.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for street in street_ways:
 		var s_rect := Rect2()
 		var has_s_rect := false
@@ -705,6 +754,7 @@ func build_streets() -> void:
 		road_surface.begin(Mesh.PRIMITIVE_TRIANGLES)
 		var stripe_surface := SurfaceTool.new()
 		stripe_surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+		var is_turk := String(street.get("name", "")).to_lower().contains("turk")
 		for i in range(street.points.size() - 1):
 			var a_sw := point(street.points[i], 0.01)
 			var b_sw := point(street.points[i + 1], 0.01)
@@ -717,6 +767,22 @@ func build_streets() -> void:
 			var across := dir.cross(Vector3.UP) * 5.0
 			triangle(road_surface, a - across, b - across, b + across)
 			triangle(road_surface, a - across, b + across, a + across)
+			# Raised curb bands along both road edges
+			var c_in := dir.cross(Vector3.UP) * 4.88
+			var c_out := dir.cross(Vector3.UP) * 5.22
+			var a_cb := point(street.points[i], 0.052)
+			var b_cb := point(street.points[i + 1], 0.052)
+			triangle(curb_surface, a_cb + c_in, b_cb + c_in, b_cb + c_out)
+			triangle(curb_surface, a_cb + c_in, b_cb + c_out, a_cb + c_out)
+			triangle(curb_surface, a_cb - c_out, b_cb - c_out, b_cb - c_in)
+			triangle(curb_surface, a_cb - c_out, b_cb - c_in, a_cb - c_in)
+			if is_turk:
+				var bl_in := dir.cross(Vector3.UP) * 2.95
+				var bl_out := dir.cross(Vector3.UP) * 4.45
+				var a_bl := point(street.points[i], 0.032)
+				var b_bl := point(street.points[i + 1], 0.032)
+				triangle(bikelane_surface, a_bl - bl_out, b_bl - bl_out, b_bl - bl_in)
+				triangle(bikelane_surface, a_bl - bl_out, b_bl - bl_in, a_bl - bl_in)
 			var a_st := point(street.points[i], 0.035)
 			var b_st := point(street.points[i + 1], 0.035)
 			var across_st := dir.cross(Vector3.UP) * 0.16
@@ -725,7 +791,7 @@ func build_streets() -> void:
 		sidewalk.generate_normals()
 		var sw_mesh := MeshInstance3D.new()
 		sw_mesh.mesh = sidewalk.commit()
-		sw_mesh.material_override = material(Color("7d7a6e"))
+		sw_mesh.material_override = material(Color("8a8577"))
 		add_child(sw_mesh)
 		road_surface.generate_normals()
 		var road := MeshInstance3D.new()
@@ -735,8 +801,47 @@ func build_streets() -> void:
 		stripe_surface.generate_normals()
 		var stripe := MeshInstance3D.new()
 		stripe.mesh = stripe_surface.commit()
-		stripe.material_override = material(Color("cbbd9d"))
+		stripe.material_override = material(Color("e2d5b5"))
 		add_child(stripe)
+	curb_surface.generate_normals()
+	var curb_mesh := MeshInstance3D.new()
+	curb_mesh.name = "StreetCurbs"
+	curb_mesh.mesh = curb_surface.commit()
+	curb_mesh.material_override = material(Color("b5aea0"))
+	add_child(curb_mesh)
+	bikelane_surface.generate_normals()
+	var bike_mesh := MeshInstance3D.new()
+	bike_mesh.name = "TurkProtectedBikeLane"
+	bike_mesh.mesh = bikelane_surface.commit()
+	bike_mesh.material_override = material(Color("2e7d5b"))
+	add_child(bike_mesh)
+	# Continental white zebra crosswalks at key intersections
+	var xwalk_surface := SurfaceTool.new()
+	xwalk_surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var xwalk_centers: Array[Vector3] = [
+		Vector3(0.0, 0.04, 0.0),
+		Vector3(134.8, 0.04, -21.1),
+		Vector3(-145.6, 0.04, 22.8),
+		Vector3(-291.5, 0.04, 45.7),
+		Vector3(-437.3, 0.04, 68.6)
+	]
+	for xc in xwalk_centers:
+		for bar_i in range(-3, 4):
+			var bar_off := float(bar_i) * 1.15
+			var e_c := xc + Vector3(7.2, 0.0, bar_off)
+			var w_c := xc + Vector3(-7.2, 0.0, bar_off)
+			var bw := Vector3(1.35, 0.0, 0.0)
+			var bh := Vector3(0.0, 0.0, 0.28)
+			triangle(xwalk_surface, e_c - bw - bh, e_c + bw - bh, e_c + bw + bh)
+			triangle(xwalk_surface, e_c - bw - bh, e_c + bw + bh, e_c - bw + bh)
+			triangle(xwalk_surface, w_c - bw - bh, w_c + bw - bh, w_c + bw + bh)
+			triangle(xwalk_surface, w_c - bw - bh, w_c + bw + bh, w_c - bw + bh)
+	xwalk_surface.generate_normals()
+	var xwalk_mesh := MeshInstance3D.new()
+	xwalk_mesh.name = "ContinentalCrosswalks"
+	xwalk_mesh.mesh = xwalk_surface.commit()
+	xwalk_mesh.material_override = material(Color("ede6d6"))
+	add_child(xwalk_mesh)
 	build_street_name_signs()
 
 func build_street_name_signs() -> void:
