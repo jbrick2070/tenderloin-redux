@@ -196,6 +196,9 @@ const SPEECH_BUBBLE_FONT := 24
 const SPEECH_BUBBLE_HEIGHT_M := 5.0
 const SPEECH_BUBBLE_HIDE_TARGET_DIST_M := 45.0
 const STREET_TREE_DATA_PATH := "res://data/street_trees.json"
+const LIDAR_DATA_PATH := "res://data/lidar_2023.json"
+const CURRENT_BUILDINGS_NODE := "CurrentBuildings"
+const LIDAR_STOREY_M := 3.2
 const DAY_LIGHT_POOL_ALPHA := 0.28
 const EATERY_HOST_LINES: Dictionary = {
 	"bowl_basil_pho": [
@@ -282,6 +285,15 @@ var wider_building_rects: Array[Rect2] = []
 var wider_building_materials: Array[Material] = []
 var all_buildings: Array = []
 var all_building_rects: Array[Rect2] = []
+# Current outlines for walking and collision: the 2010 footprints minus those a newer building has
+# replaced, plus the additions from data/lidar_2023.json. all_buildings stays the 188 city records.
+var current_buildings: Array = []
+var current_building_rects: Array[Rect2] = []
+var lidar_source: Dictionary = {}
+var lidar_roofs: Dictionary = {}
+var lidar_superseded: Dictionary = {}
+var lidar_additions: Array = []
+var addition_meshes: Array[MeshInstance3D] = []
 var street_ways: Array = []
 var street_way_rects: Array[Rect2] = []
 var walk_bounds := Rect2(-40.0, -65.0, 210.0, 140.0)
@@ -305,7 +317,7 @@ var neighbors: Array[Dictionary] = [
 	{"id": "celeste", "name": "Celeste", "role": "Signs, paint & possibility", "pos": Vector3(70.07, 0.0, -17.75), "coat": Color("c87d82"), "skin": Color("8b5b3f"), "hair": Color("383c32")},
 	{"id": "rook", "name": "Rook", "role": "Good ears. Better stories.", "pos": Vector3(114.71, 0.0, -14.79), "coat": Color("547a79"), "skin": Color("a97650"), "hair": Color("3f352c")},
 	{"id": "dez", "name": "Dez", "role": "Always making a beat", "pos": Vector3(126.74, 0.0, -26.86), "coat": Color("978aaf"), "skin": Color("704b37"), "hair": Color("292f2b")},
-	{"id": "thanh", "name": "Thanh", "role": "Neighbor & supply lender", "pos": Vector3(12.85, 0.0, 24.47), "coat": Color("b59b5d"), "skin": Color("c38c65"), "hair": Color("454236")}
+	{"id": "thanh", "name": "Thanh", "role": "Neighbor & supply lender", "pos": Vector3(11.10, 0.0, 24.97), "coat": Color("b59b5d"), "skin": Color("c38c65"), "hair": Color("454236")}
 ]
 var neighbor_nodes: Array[Node3D] = []
 var celeste_index := 1
@@ -598,7 +610,7 @@ var street_intersections: Array[Vector2] = []
 var street_intersection_streets: Array[PackedStringArray] = []
 var corner_tower_sites: Dictionary = {}
 var building_shader_material: ShaderMaterial
-var rooftop_feature_counts: Dictionary = {"parapets": 0, "water_tanks": 0, "penthouses": 0, "skylights": 0, "vents": 0, "corner_towers": 0}
+var rooftop_feature_counts: Dictionary = {"parapets": 0, "water_tanks": 0, "penthouses": 0, "skylights": 0, "vents": 0, "corner_towers": 0, "lidar_masses": 0}
 var rooftop_feature_points: Array[Dictionary] = []
 var trolley_pole_points: Array[Vector2] = []
 var trolley_wire_runs := 0
@@ -858,7 +870,8 @@ func compute_corner_tower_sites() -> void:
 		var cands: Array[Dictionary] = []
 		for b in all_list:
 			var h: float = b.height_m
-			if h < CORNER_TOWER_MIN_HEIGHT_M:
+			# Stylized turrets only on roofs the 2023 LiDAR has not measured, and never on replaced footprints.
+			if h < CORNER_TOWER_MIN_HEIGHT_M or is_superseded_building(String(b.id)) or lidar_roofs.has(String(b.id)):
 				continue
 			for polygon in b.polygons:
 				var ring: Array = polygon.rings[0]
@@ -1002,10 +1015,139 @@ func record_rooftop_feature(kind: String, b_id: String, xz: Vector2, top_y: floa
 	rooftop_feature_counts[kind] = int(rooftop_feature_counts.get(kind, 0)) + 1
 	rooftop_feature_points.append({"kind": kind, "id": b_id, "xz": xz, "top": top_y})
 
+## 2023 USGS LiDAR roofs (Roofer LoD 1.3) and current OpenStreetMap outlines for buildings the
+## 2010 city layer lacks, derived offline by scripts/build-lidar-2023.mjs into data/lidar_2023.json.
+func load_lidar_data() -> void:
+	lidar_source = {}
+	lidar_roofs = {}
+	lidar_superseded = {}
+	lidar_additions = []
+	var raw := FileAccess.get_file_as_string(LIDAR_DATA_PATH)
+	var parsed: Variant = JSON.parse_string(raw) if not raw.is_empty() else null
+	if not parsed is Dictionary:
+		push_warning("Missing data/lidar_2023.json; run node scripts/build-lidar-2023.mjs.")
+		return
+	lidar_source = parsed.get("source", {})
+	lidar_roofs = parsed.get("roofs", {})
+	for s_rec in parsed.get("superseded", []):
+		lidar_superseded[String(s_rec.id)] = s_rec
+	lidar_additions = parsed.get("additions", [])
+
+func is_superseded_building(b_id: String) -> bool:
+	return lidar_superseded.has(b_id)
+
+func lidar_record(b_id: String) -> Dictionary:
+	if lidar_roofs.has(b_id):
+		return lidar_roofs[b_id]
+	for a_rec in lidar_additions:
+		if String(a_rec.id) == b_id:
+			return a_rec
+	return {}
+
+func lidar_addition(b_id: String) -> Dictionary:
+	for a_rec in lidar_additions:
+		if String(a_rec.id) == b_id:
+			return a_rec
+	return {}
+
+## A 2010 footprint that a newer building has replaced keeps its record (ids, saves, tests) but is
+## hidden and leaves physics and 2D collision; the current building comes from data/lidar_2023.json.
+func hide_superseded_building(b_mesh: MeshInstance3D) -> void:
+	b_mesh.visible = false
+	var body := b_mesh.get_node_or_null("StaticBody3D") as StaticBody3D
+	if body != null:
+		body.process_mode = Node.PROCESS_MODE_DISABLED
+		for ch in body.get_children():
+			if ch is CollisionShape3D:
+				(ch as CollisionShape3D).disabled = true
+
+## Current outlines: 2010 footprints that still stand, plus OSM buildings the 2010 layer lacks, drawn
+## at their 2023 LiDAR median height with the same facade builder. Facade colors are stylized.
+func build_current_buildings() -> void:
+	current_buildings.clear()
+	current_building_rects.clear()
+	addition_meshes.clear()
+	for idx in range(all_buildings.size()):
+		if is_superseded_building(String(all_buildings[idx].id)):
+			continue
+		current_buildings.append(all_buildings[idx])
+		current_building_rects.append(all_building_rects[idx])
+	var root := Node3D.new()
+	root.name = CURRENT_BUILDINGS_NODE
+	add_child(root)
+	var add_palette: Array[Color] = [Color("d9d7d0"), Color("b8bec2"), Color("c9b9a6")]
+	for a_idx in range(lidar_additions.size()):
+		var a_rec: Dictionary = lidar_additions[a_idx]
+		var rec := {"id": String(a_rec.id), "height_m": float(a_rec.height_m), "ground_m_navd88": float(a_rec.get("ground_m", 0.0)), "polygons": a_rec.polygons, "name": String(a_rec.get("name", "")), "address": String(a_rec.get("address", ""))}
+		var built := make_building_mesh_and_rect(rec, building_material(), add_palette[a_idx % add_palette.size()])
+		var a_mesh: MeshInstance3D = built.mesh
+		a_mesh.reparent(root)
+		a_mesh.name = "Addition_%d" % a_idx
+		addition_meshes.append(a_mesh)
+		current_buildings.append(rec)
+		current_building_rects.append(built.rect)
+
+## Raised roof parts measured by the 2023 LiDAR: flat-topped blocks from the 2010 median roof up to
+## the measured height, with a window row per storey on tall walls. Returns the parts drawn.
+func add_lidar_roof_masses(surface: SurfaceTool, b_id: String, masses: Array, h: float, pal: Dictionary) -> int:
+	var drawn := 0
+	var wall_col: Color = Color(pal.base).darkened(0.05)
+	var top_col: Color = Color(pal.roof).lightened(0.10)
+	var cap_col: Color = Color(pal.cornice)
+	var glass := Color("93b4c2")
+	for m_i in range(masses.size()):
+		var m: Dictionary = masses[m_i]
+		var top := float(m.h)
+		if top <= h + 0.05:
+			continue
+		var verts: Array = m.vertices
+		var tris: Array = m.triangles
+		for t_i in range(0, tris.size(), 3):
+			for k in range(3):
+				surface.set_color(top_col)
+				surface.add_vertex(point(verts[int(tris[t_i + k])], top))
+		var rings: Array = m.rings
+		var center := Vector2.ZERO
+		for rp in rings[0]:
+			center += Vector2(rp[0], rp[1])
+		center /= float(rings[0].size())
+		for r_idx in range(rings.size()):
+			var ring: Array = rings[r_idx]
+			var n := ring.size()
+			for i in range(n):
+				var a2 := Vector2(ring[i][0], ring[i][1])
+				var b2 := Vector2(ring[(i + 1) % n][0], ring[(i + 1) % n][1])
+				var seg := a2.distance_to(b2)
+				if seg < 0.05:
+					continue
+				var a := Vector3(a2.x, h, a2.y)
+				var b := Vector3(b2.x, h, b2.y)
+				var rise := Vector3.UP * (top - h)
+				colored_quad(surface, a, b, b + rise, a + rise, wall_col)
+				colored_quad(surface, a + rise - Vector3.UP * 0.18, b + rise - Vector3.UP * 0.18, b + rise, a + rise, cap_col)
+				if top - h < 2.6 or seg < 2.4:
+					continue
+				var t3 := (b - a) / seg
+				var out2 := Vector2(t3.z, -t3.x)
+				var mid := (a2 + b2) * 0.5
+				if r_idx == 0 and (mid + out2 - center).length_squared() < (mid - out2 - center).length_squared():
+					out2 = -out2
+				elif r_idx > 0 and (mid + out2 - center).length_squared() > (mid - out2 - center).length_squared():
+					out2 = -out2
+				var off := Vector3(out2.x, 0.0, out2.y) * 0.03
+				var storeys := int(floor((top - h - 0.4) / LIDAR_STOREY_M))
+				for f_i in range(storeys):
+					var y0 := h + 0.85 + float(f_i) * LIDAR_STOREY_M
+					var lit := absi(("%s:%d:%d:%d" % [b_id, m_i, i, f_i]).hash()) % 100 < 55
+					colored_quad(surface, a + t3 * 0.5 + off + Vector3.UP * (y0 - h), b - t3 * 0.5 + off + Vector3.UP * (y0 - h), b - t3 * 0.5 + off + Vector3.UP * (y0 - h + 1.35), a + t3 * 0.5 + off + Vector3.UP * (y0 - h + 1.35), glass_flag(glass, lit))
+		record_rooftop_feature("lidar_masses", b_id, center, top)
+		drawn += 1
+	return drawn
+
 ## Separate child mesh so building meshes keep their measured LiDAR AABB height; hidden during cutaway.
 func build_rooftop_details(building: Dictionary, h: float, pal: Dictionary) -> MeshInstance3D:
 	var b_id := String(building.get("id", ""))
-	if building.polygons.is_empty() or h < 3.0:
+	if building.polygons.is_empty() or h < 3.0 or is_superseded_building(b_id):
 		return null
 	var rseed := absi(("%s:roof" % b_id).hash())
 	var surface := SurfaceTool.new()
@@ -1018,6 +1160,10 @@ func build_rooftop_details(building: Dictionary, h: float, pal: Dictionary) -> M
 	var roof_water_tank: bool = survey.get("roof_water_tank", false)
 	var roof_penthouse: bool = survey.get("roof_penthouse", false)
 	var roof_skylights: bool = survey.get("roof_skylights", false)
+	# Measured 2023 LiDAR roof: draw its raised parts and skip the rule-placed penthouses, tanks,
+	# skylights, and vents. Creator field-survey tags still force their items.
+	var lidar_rec := lidar_record(b_id)
+	var lidar_roof := not lidar_rec.is_empty()
 	var feature_count := 0
 	var main_poly: Dictionary = building.polygons[0]
 	var best_area := 0.0
@@ -1059,6 +1205,8 @@ func build_rooftop_details(building: Dictionary, h: float, pal: Dictionary) -> M
 				colored_quad(surface, a + up, b + up, b + in3 + up, a + in3 + up, cornice_col.lightened(0.18))
 		record_rooftop_feature("parapets", b_id, Vector2(main_ring[0][0], main_ring[0][1]), h + par_h)
 		feature_count += 1
+	if lidar_roof:
+		feature_count += add_lidar_roof_masses(surface, b_id, lidar_rec.get("masses", []), h, pal)
 	# Surveyed vertical neon blade sign on the longest street-facing facade
 	if bool(survey.get("neon_blade", false)) and h >= 6.0:
 		var blade := neon_blade_site(main_ring)
@@ -1081,7 +1229,7 @@ func build_rooftop_details(building: Dictionary, h: float, pal: Dictionary) -> M
 		record_rooftop_feature("corner_towers", b_id, tower_site.center, t_top)
 		feature_count += 1
 	# 2. Elevator penthouse / stair bulkhead on taller mid-rises
-	if (h >= 18.0 and best_area >= 120.0 and (rseed % 3) != 2) or (roof_penthouse and h >= 6.0 and best_area >= 50.0):
+	if (not lidar_roof and h >= 18.0 and best_area >= 120.0 and (rseed % 3) != 2) or (roof_penthouse and h >= 6.0 and best_area >= 50.0):
 		var pp := find_roof_spot(main_poly, 2.4, rseed, placed, 4.0)
 		if pp.x < INF:
 			var ph := 2.7
@@ -1094,7 +1242,7 @@ func build_rooftop_details(building: Dictionary, h: float, pal: Dictionary) -> M
 			record_rooftop_feature("penthouses", b_id, pp, h + ph + 0.18)
 			feature_count += 1
 	# 3. Wooden water tank on a timber trestle
-	if (h >= 14.0 and best_area >= 90.0 and ((rseed / 3) % 4) == 0) or (roof_water_tank and h >= 6.0 and best_area >= 40.0):
+	if (not lidar_roof and h >= 14.0 and best_area >= 90.0 and ((rseed / 3) % 4) == 0) or (roof_water_tank and h >= 6.0 and best_area >= 40.0):
 		var tp := find_roof_spot(main_poly, 2.2, rseed + 11, placed, 4.2)
 		if tp.x < INF:
 			var tank_top := add_water_tank(surface, Vector3(tp.x, h, tp.y), rseed)
@@ -1102,7 +1250,7 @@ func build_rooftop_details(building: Dictionary, h: float, pal: Dictionary) -> M
 			record_rooftop_feature("water_tanks", b_id, tp, h + tank_top)
 			feature_count += 1
 	# 4. Gabled glass skylights over stairwells and light courts
-	if (h >= 5.0 and h <= 45.0 and best_area >= 60.0 and (rseed % 5) != 0) or (roof_skylights and best_area >= 20.0):
+	if (not lidar_roof and h >= 5.0 and h <= 45.0 and best_area >= 60.0 and (rseed % 5) != 0) or (roof_skylights and best_area >= 20.0):
 		var sky_n := 1 + (rseed / 5) % 2
 		for s_i in range(sky_n):
 			var sp := find_roof_spot(main_poly, 1.4, rseed + 29 + s_i * 7, placed, 2.6)
@@ -1113,7 +1261,7 @@ func build_rooftop_details(building: Dictionary, h: float, pal: Dictionary) -> M
 			record_rooftop_feature("skylights", b_id, sp, h + 0.64)
 			feature_count += 1
 	# 5. Brick chimneys on older low-rises, HVAC units elsewhere
-	var vent_n := (rseed / 7) % 3
+	var vent_n := 0 if lidar_roof else (rseed / 7) % 3
 	for v_i in range(vent_n):
 		var vp := find_roof_spot(main_poly, 1.0, rseed + 53 + v_i * 13, placed, 2.0)
 		if vp.x == INF:
@@ -1429,6 +1577,7 @@ func _ready() -> void:
 		push_error("Missing/invalid city geometry. Run node scripts/build-godot-data.mjs.")
 		return
 	data = parsed
+	load_lidar_data()
 	wall_material = material(Color("c4b6a1"))
 	chosen_material = material(Color("75bbb2"))
 	cutaway_material = translucent_material(Color(0.77, 0.71, 0.63, 0.22))
@@ -1492,6 +1641,8 @@ func _ready() -> void:
 		var built := make_building_mesh_and_rect(building, b_mat, base_c)
 		var b_mesh: MeshInstance3D = built.mesh
 		var b_rect: Rect2 = built.rect
+		if is_superseded_building(String(building.id)):
+			hide_superseded_building(b_mesh)
 		meshes.append(b_mesh)
 		building_rects.append(b_rect)
 		all_buildings.append(building)
@@ -1509,6 +1660,7 @@ func _ready() -> void:
 		wider_building_rects.append(w_rect)
 		all_buildings.append(w_building)
 		all_building_rects.append(w_rect)
+	build_current_buildings()
 	if not all_building_rects.is_empty():
 		var b_union := all_building_rects[0]
 		for br in all_building_rects:
@@ -5245,10 +5397,10 @@ func history_stop_pos_3d(stop_id: String) -> Vector3:
 	return Vector3(xz.x, 0.0, xz.y)
 
 func building_containing_point(pt: Vector2) -> String:
-	for idx in range(all_buildings.size()):
-		if not all_building_rects[idx].has_point(pt):
+	for idx in range(current_buildings.size()):
+		if not current_building_rects[idx].has_point(pt):
 			continue
-		var b: Dictionary = all_buildings[idx]
+		var b: Dictionary = current_buildings[idx]
 		for polygon in b.polygons:
 			if is_point_in_building_polygon(pt, polygon):
 				return b.id
@@ -5267,13 +5419,13 @@ func rect_distance_2d(rect: Rect2, pt: Vector2) -> float:
 
 func min_wall_distance(pt: Vector2, cutoff: float = INF) -> float:
 	var best := cutoff
-	for idx in range(all_buildings.size()):
+	for idx in range(current_buildings.size()):
 		if best < INF:
-			if not all_building_rects[idx].grow(best).has_point(pt):
+			if not current_building_rects[idx].grow(best).has_point(pt):
 				continue
-		elif rect_distance_2d(all_building_rects[idx], pt) >= best:
+		elif rect_distance_2d(current_building_rects[idx], pt) >= best:
 			continue
-		var b: Dictionary = all_buildings[idx]
+		var b: Dictionary = current_buildings[idx]
 		for polygon in b.polygons:
 			for ring in polygon.rings:
 				var r_size: int = ring.size()
@@ -5291,10 +5443,10 @@ func nearest_building_info(pt: Vector2) -> Dictionary:
 	var best := INF
 	var best_id := ""
 	var best_tangent := Vector2(1.0, 0.0)
-	for idx in range(all_buildings.size()):
-		if rect_distance_2d(all_building_rects[idx], pt) >= best:
+	for idx in range(current_buildings.size()):
+		if rect_distance_2d(current_building_rects[idx], pt) >= best:
 			continue
-		var b: Dictionary = all_buildings[idx]
+		var b: Dictionary = current_buildings[idx]
 		for polygon in b.polygons:
 			for ring in polygon.rings:
 				var r_size: int = ring.size()
@@ -10704,9 +10856,26 @@ func choose_next(direction: int) -> void:
 	if s_rec is Dictionary:
 		var s_tags: Array = s_rec.get("tags", [])
 		facade_line = "Field survey (%s): %s" % [String(s_rec.get("source", "Field Guide")), ", ".join(PackedStringArray(s_tags)) if not s_tags.is_empty() else "surveyed colors"]
-	info.text = "%s  •  median height %.2f m\nCity: 2010 survey / PDDL\nStreets © OpenStreetMap contributors / ODbL\n%s" % [building.id, building.height_m, facade_line]
+	info.text = "%s  •  median height %.2f m\nCity: 2010 survey / PDDL · %s\nStreets © OpenStreetMap contributors / ODbL\n%s" % [building.id, building.height_m, lidar_summary_line(String(building.id), float(building.height_m)), facade_line]
 	update_camera()
 	announce_a11y_status("Building %s selected, median height %.2f meters." % [building.id, building.height_m])
+
+## One plain line comparing a 2010 footprint with the 2023 LiDAR, or naming the building that replaced it.
+func lidar_summary_line(b_id: String, city_h: float) -> String:
+	if lidar_superseded.has(b_id):
+		var by := lidar_addition(String(lidar_superseded[b_id].by))
+		var label := String(by.get("name", "")) if String(by.get("name", "")) != "" else "a newer building"
+		return "Replaced: 2023 LiDAR and OpenStreetMap show %s (%s), %.0f m tall" % [label, String(by.get("address", "")), float(by.get("height_m", 0.0))]
+	var rec := lidar_record(b_id)
+	if rec.is_empty():
+		return "no 2023 LiDAR roof yet"
+	var lidar_med := float(rec.get("median_m", city_h))
+	if absf(lidar_med - city_h) > 5.0:
+		return "2023 LiDAR median roof %.1f m (%s than in 2010)" % [lidar_med, "taller" if lidar_med > city_h else "lower"]
+	var raised: Array = rec.get("masses", [])
+	if raised.is_empty():
+		return "2023 LiDAR agrees (median %.1f m)" % lidar_med
+	return "2023 LiDAR: %d raised roof part%s, up to %.1f m" % [raised.size(), "" if raised.size() == 1 else "s", float(raised[raised.size() - 1].h)]
 
 func overview() -> void:
 	in_overview = true

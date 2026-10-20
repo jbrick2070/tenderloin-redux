@@ -103,7 +103,7 @@ func run() -> void:
 	require(study.speaker_node.get_node_or_null("StaticBody3D") != null, "RookSpeaker has StaticBody3D collision")
 	require(study.building_containing_point(s_xz) == "", "RookSpeaker is outside all 58 building footprints")
 	var s_nb: Dictionary = study.nearest_building_info(s_xz)
-	require(s_nb.id == "201006.0004056" and study.min_wall_distance(s_xz) >= 5.5, "RookSpeaker is >= 5.5m clear of nearest measured building 201006.0004056")
+	require(s_nb.id == "osm:way/1072899109" and study.min_wall_distance(s_xz) >= 5.5, "RookSpeaker is >= 5.5m clear of the nearest standing building (Serif, which replaced 2010 footprint 201006.0004056)")
 	for s_corner in study.speaker_corner_points():
 		require(study.building_containing_point(s_corner) == "" and study.min_wall_distance(s_corner) >= 2.35, "all 4 RookSpeaker corners are outside all building footprints with >= 2.35m wall clearance")
 	require(not study.is_walkable_point(s_xz), "RookSpeaker footprint center is solid/non-walkable")
@@ -983,6 +983,60 @@ func run() -> void:
 				if det.get_aabb().end.y < float(b_list[1][d_i].height_m) - 0.01:
 					details_above_roof = false
 	require(details_count >= 150 and details_above_roof, "RooftopDetails child meshes sit on measured roofs while building meshes keep LiDAR heights")
+	# 2023 USGS LiDAR roofs and post-2010 buildings (data/lidar_2023.json)
+	require(study.lidar_roofs.size() == study.data.buildings.size() and int(roof_counts.get("lidar_masses", 0)) >= 40, "every opening-block footprint has a 2023 LiDAR roof record and raised roof parts are drawn")
+	var rule_items_on_lidar := 0
+	for feat in study.rooftop_feature_points:
+		if String(feat.kind) in ["water_tanks", "penthouses", "skylights", "vents"] and study.lidar_roofs.has(String(feat.id)):
+			rule_items_on_lidar += 1
+	for t_id in study.corner_tower_sites:
+		if study.lidar_roofs.has(String(t_id)):
+			rule_items_on_lidar += 1
+	require(rule_items_on_lidar == 0, "measured LiDAR roofs replace the rule-placed tanks, penthouses, skylights, vents, and stylized corner turrets")
+	var superseded_ok: bool = study.lidar_superseded.size() == 3
+	for o_i in range(study.data.buildings.size()):
+		var o_id := String(study.data.buildings[o_i].id)
+		var o_mesh: MeshInstance3D = study.meshes[o_i]
+		var o_body := o_mesh.get_node_or_null("StaticBody3D")
+		if study.is_superseded_building(o_id):
+			if o_mesh.visible or o_mesh.get_node_or_null(study.ROOFTOP_DETAIL_NODE) != null or o_body == null or o_body.process_mode != Node.PROCESS_MODE_DISABLED:
+				superseded_ok = false
+			var o_poly: Dictionary = study.data.buildings[o_i].polygons[0]
+			var o_tri: Array = o_poly.triangles
+			var o_c := (Vector2(o_poly.vertices[o_tri[0]][0], o_poly.vertices[o_tri[0]][1]) + Vector2(o_poly.vertices[o_tri[1]][0], o_poly.vertices[o_tri[1]][1]) + Vector2(o_poly.vertices[o_tri[2]][0], o_poly.vertices[o_tri[2]][1])) / 3.0
+			if study.building_containing_point(o_c) == o_id:
+				superseded_ok = false
+		elif not o_mesh.visible:
+			superseded_ok = false
+	require(superseded_ok, "2010 footprints a newer building replaced are hidden, have no roof details, and leave physics and 2D collision")
+	var adds_ok: bool = study.get_node_or_null(study.CURRENT_BUILDINGS_NODE) != null and study.lidar_additions.size() == 2 and study.addition_meshes.size() == 2
+	var add_names := []
+	for a_i in range(study.lidar_additions.size()):
+		var a_rec: Dictionary = study.lidar_additions[a_i]
+		var a_mesh: MeshInstance3D = study.addition_meshes[a_i]
+		add_names.append(String(a_rec.name))
+		if a_mesh.get_parent().name != study.CURRENT_BUILDINGS_NODE or not is_equal_approx(a_mesh.get_aabb().size.y, float(a_rec.height_m)) or a_mesh.get_node_or_null("StaticBody3D") == null:
+			adds_ok = false
+		var a_poly: Dictionary = a_rec.polygons[0]
+		var a_tri: Array = a_poly.triangles
+		var found_inside := false
+		for t_i in range(0, a_tri.size(), 3):
+			var a_c := (Vector2(a_poly.vertices[a_tri[t_i]][0], a_poly.vertices[a_tri[t_i]][1]) + Vector2(a_poly.vertices[a_tri[t_i + 1]][0], a_poly.vertices[a_tri[t_i + 1]][1]) + Vector2(a_poly.vertices[a_tri[t_i + 2]][0], a_poly.vertices[a_tri[t_i + 2]][1])) / 3.0
+			if study.building_containing_point(a_c) == String(a_rec.id) and not study.is_walkable_point(a_c):
+				found_inside = true
+				break
+		if not found_inside:
+			adds_ok = false
+	require(adds_ok and "Livat Mall" in add_names and "Serif" in add_names, "post-2010 buildings (Livat Mall, Serif) stand on current OSM outlines at their LiDAR height and block walking")
+	var sup_idx := -1
+	for o_i in range(study.data.buildings.size()):
+		if study.is_superseded_building(String(study.data.buildings[o_i].id)):
+			sup_idx = o_i
+			break
+	study.selected = sup_idx - 1
+	study.choose_next(1)
+	require(study.selected == sup_idx and study.info.text.contains("Replaced") and study.info.text.contains("Serif"), "selecting a replaced 2010 footprint names the building there now")
+	study.overview()
 	require(study.get_node_or_null("MuniOverheadLines/TrolleyPoles") != null and study.get_node_or_null("MuniOverheadLines/TrolleyWires") != null and study.trolley_pole_points.size() >= 40 and study.trolley_wire_runs >= 20, "Muni trolleybus poles and overhead contact wires run along Turk and Eddy")
 	var poles_ok := true
 	for pole_xz in study.trolley_pole_points:
