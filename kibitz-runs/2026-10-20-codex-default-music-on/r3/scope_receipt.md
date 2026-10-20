@@ -1,0 +1,2 @@
+# Scope receipt
+Explicit creator-scoped manual round, r3 only; r1/r2/r4 omitted. Driver/sole writer/judge Codex, one Claude reviewer. Requested --driver codex --only claude --round r3; exact claude-opus-5-5/high via environment. No substitution, larger panel, purchase or blind quota/auth retry. Input review_scope.md SHA256 071213a2d710b13d540d84402cfeffe9ae3a9d01c194afdd5afd09579581094d. Source before review recorded. Five final gates pending.

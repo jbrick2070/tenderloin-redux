@@ -47,6 +47,7 @@ func run() -> void:
 	await process_frame
 	await process_frame
 	require(study.startup_story_pending and study.is_story_card_visible(), "real startup presents Start before accepting")
+	require(not study.music_playing, "music waits for startup acceptance instead of autoplaying during load")
 	root.size = Vector2i(390, 667)
 	await process_frame
 	await process_frame
@@ -60,6 +61,36 @@ func run() -> void:
 	initial_start_key.pressed = true
 	study._unhandled_input(initial_start_key)
 	require(not study.in_overview and study.view_size == 45.0 and study.player.position == initial_start_position and JSON.stringify(study.build_save_envelope()) == initial_start_save, "real startup keyboard acceptance frames without moving or mutating progress")
+	require(study.music_playing and study.music_mode == "sketch" and study.music_volume == 0.70 and study.music_play_btn.text == "Pause Groove", "startup acceptance starts the original sketch at the existing volume")
+	require(study.last_a11y_announcement.begins_with("You're here"), "startup music preserves orientation as the final announcement")
+	study.stop_music_playback()
+	study.show_story_card(study.current_chapter())
+	study.continue_story()
+	study.frame_player_for_walking()
+	require(not study.music_playing and study.music_play_btn.text == "Play Groove", "later chapter Continue and Find Me preserve the player pause")
+	study.show_story_card(study.current_chapter())
+	study.startup_story_pending = true
+	var startup_escape := InputEventKey.new()
+	startup_escape.keycode = KEY_ESCAPE
+	startup_escape.pressed = true
+	study._unhandled_input(startup_escape)
+	require(not study.music_playing and not study.startup_story_pending, "Escape dismisses startup silently without pretending to be an audio activation")
+	study.show_story_card(study.current_chapter())
+	study.startup_story_pending = true
+	var startup_walk := InputEventKey.new()
+	startup_walk.keycode = KEY_W
+	startup_walk.pressed = true
+	study._input(startup_walk)
+	require(study.music_playing and not study.startup_story_pending, "W accepts startup and starts default music")
+	study.stop_music_playback()
+	study.show_story_card(study.current_chapter())
+	study.startup_story_pending = true
+	study.update_music_ui()
+	var tap_start_pos: Vector3 = study.player.position
+	var tap_start_save: String = JSON.stringify(study.build_save_envelope())
+	study.handle_scene_tap(Vector2(4, 400))
+	require(study.music_playing and not study.startup_story_pending and study.player.position == tap_start_pos and JSON.stringify(study.build_save_envelope()) == tap_start_save, "first street tap accepts startup without routing in the pre-start camera view")
+	study.stop_music_playback()
 	require(study.lidar_additions[2].id == "osm:way/1072899109" and study.occluded_additions.has(2) and study.addition_meshes[2].material_override == study.cutaway_material, "Serif addition fades instead of hiding the starting player behind its roof")
 	study.overview()
 	require(study.occluded_additions.is_empty() and study.addition_meshes[2].material_override == study.addition_materials[2], "overview restores addition materials")
@@ -2428,6 +2459,7 @@ func run() -> void:
 		require(study.last_panel_dialogue.begins_with("Bea: \""), "ui_accept on What's Next? asks Bea for the next step at %s" % str(size))
 		study.overview()
 	for start_size in [Vector2i(1100, 760), Vector2i(390, 667), Vector2i(320, 667)]:
+		study.stop_music_playback()
 		root.size = start_size
 		study.overview()
 		await process_frame
@@ -2440,6 +2472,7 @@ func run() -> void:
 		await process_frame
 		await process_frame
 		require(not study.in_overview and study.following_player and study.view_size <= 58.0 and study.play_area_rect().has_point(study.camera.unproject_position(study.player.position + Vector3.UP)), "Start frames the avatar in usable scene at %s" % start_size)
+		require(study.music_playing and not study.music_toggle_btn.disabled and study.music_toggle_btn.size.x >= 44 and study.music_toggle_btn.size.y >= 44 and study.header_panel.size.y <= 130, "default music has an immediate visible pause control in a compact header")
 		require(study.player.position == start_position and JSON.stringify(study.build_save_envelope()) == start_save, "orientation never moves the player or changes progress")
 		require(study.progress_label.visible and study.progress_label.text.contains("Sparks:") and study.progress_label.text.contains("Keepsakes:"), "persistent score remains visible after Start")
 		var later_target: Vector3 = study.target
@@ -2455,6 +2488,7 @@ func run() -> void:
 		require(not study.any_side_panel_visible() and not study.is_speech_bubble_visible() and study.talk_partner == -1 and study.current_path == find_me_route and study.music_playing == find_me_music and JSON.stringify(study.build_save_envelope()) == find_me_save, "Find Me clears conversation overlays while preserving route, music and progress")
 		study.overview()
 		require(study.in_overview, "Map Overview remains available after Start")
+		study.stop_music_playback()
 	study.show_conversation(0)
 	study.last_panel_dialogue = "Bea: \"A previous conversation.\""
 	study.wide_overview()

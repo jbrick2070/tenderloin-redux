@@ -1,0 +1,8 @@
+{
+  "unchanged": true,
+  "source": {
+    "godot/main.gd": "69e2039e93a8722063cab11277f2d65b00895184a4b04af980be6ce20b8052bd",
+    "godot/tests/study_test.gd": "9437f19382c62dd6387fdf812ffcccd1ec3a55f499990d79e089958da979218e",
+    "tests/godot-browser.mjs": "493df42af7eec454990cac0acaa8fb491c905530473fe85f0c0cba7efe1115ae"
+  }
+}

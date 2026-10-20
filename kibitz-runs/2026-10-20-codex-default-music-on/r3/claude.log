@@ -1,0 +1,17 @@
+STDOUT:
+Verdict: **yes-with-fixes.** Music only starts on the startup Start Exploring path, and in the browser test the music still ends up paused before the sound-independent completion checks. But three problems should be fixed before build. The review is written to `kibitz-runs/2026-10-20-codex-default-music-on/r3/claude.md`.
+
+The tool check passed: I read `godot/main.gd`, `godot/tests/study_test.gd` and `tests/godot-browser.mjs` directly. Bash is disabled in this session, so I couldn't run `git diff`, the export or the `public/` fingerprint check; those are marked "verify" in the review. I changed nothing else.
+
+**Must-fix:**
+1. **The Start announcement is lost.** `continue_story()` (`godot/main.gd:6741-6744`) first announces "You're here… Follow the gold marker", then starts the music, which announces "Music playing…". The web screen-reader region only publishes the last message each frame, so players never hear the orientation guidance. Starting the music first fixes it.
+2. **No touch way to pause on phones.** Once Start Exploring hides the music panel, it only reopens by walking to Rook or pressing K/V/U. The header "Sounds" button only controls reward sounds. That leaves 390px and 320px players with music they can't stop from the screen they're on.
+3. **The browser test doesn't prove sound is audible.** The fields it checks (`tests/godot-browser.mjs:79-82`) are all Godot-side state, and the volume level keeps its last value after the browser stops pulling audio. Those fields can't detect suspended browser audio, so either add a check that the browser's audio is actually running or drop the claim from the plan.
+
+**Should-fix:**
+- **Escape starts the music.** Escape counts as accepting the startup card, but browsers don't treat it as a gesture that unlocks audio. The result can be "Pause Groove" showing with nothing audible.
+- **Tapping the street at startup skips the music.** It, like other keys and the overview buttons, dismisses the card without starting the music. That's probably the most common phone gesture, and the behaviour isn't stated or tested.
+- **Real Enter and W/A/S/D input isn't tested.** The native test sends Space straight to the scene's input handler, so the real button and WASD acceptance paths are only partly covered.
+- **A native test loop leaves music playing.** The three-size startup loop in `study_test.gd` turns music on and never turns it off for the rest of the suite.
+- **The browser test's K-press sequence is fragile.** It relies on counting K presses, and a code comment now describes the wrong state.
+- **The export must be redone after these fixes.** The browser test needs a fresh export, so it can only be rerun after that.

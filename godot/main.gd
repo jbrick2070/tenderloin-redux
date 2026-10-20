@@ -557,6 +557,7 @@ var reward_audio_unlocked := false
 var reward_sound_count := 0
 var reward_sound_last_cue := ""
 var sounds_btn: Button
+var music_toggle_btn: Button
 var progress_label: Label
 var header_details_expanded := false
 var player_nameplate: Label3D
@@ -1975,6 +1976,7 @@ func _ready() -> void:
 	show_story_card(start_chapter)
 	startup_story_pending = true
 	story_continue_btn.text = "Start Exploring"
+	update_music_ui()
 	# Headless parser/import tests don't pretend to render a screenshot.
 	if "--capture" in OS.get_cmdline_user_args():
 		await get_tree().process_frame
@@ -6730,15 +6732,21 @@ func show_story_card(chapter: Dictionary) -> void:
 
 func hide_story_card() -> void:
 	startup_story_pending = false
+	if music_toggle_btn != null:
+		music_toggle_btn.disabled = false
 	if story_card != null:
 		story_card.visible = false
 
-func continue_story() -> void:
+func continue_story(with_music := true) -> void:
 	var orient := is_story_card_visible() and startup_story_pending
 	hide_story_card()
 	if not orient or player == null:
 		return
+	# Keep orientation as the final announcement. Escape can dismiss without activating audio.
+	if with_music and not music_playing:
+		start_music_playback()
 	frame_player_for_walking()
+	update_music_ui()
 
 func frame_player_for_walking() -> void:
 	# Keep the player's position and progress; only bring the local scene into view.
@@ -10799,6 +10807,8 @@ func get_a11y_status_snapshot() -> Dictionary:
 	return {
 		"ui_frame": Engine.get_process_frames(),
 		"sounds_control": control_snapshot(sounds_btn),
+		"music_toggle_control": control_snapshot(music_toggle_btn),
+		"music_toggle_text": music_toggle_btn.text if music_toggle_btn != null else "",
 		"start_control": control_snapshot(story_continue_btn),
 		"info_control": control_snapshot(header_panel.find_child("HeaderInfoToggle", true, false) as Control),
 		"header_control": control_snapshot(header_panel),
@@ -10876,6 +10886,10 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"reward_burst_count": reward_burst_count,
 		"last_reward_title": last_reward_title,
 		"music_playing": music_playing,
+		"music_audio_playing": (sketch_player != null and sketch_player.playing) or (local_audio_player != null and local_audio_player.playing),
+		"music_buffer_ready": sketch_playback != null,
+		"music_sample_rms": last_sample_rms,
+		"music_volume": music_volume,
 		"music_mode": music_mode,
 		"browser_import_status": browser_import_status
 	}
@@ -12861,6 +12875,9 @@ func surprise_screen_distance(sp: Vector2, screen_pos: Vector2, include_marker: 
 func handle_scene_tap(screen_pos: Vector2) -> bool:
 	if is_screen_point_in_ui(screen_pos):
 		return false
+	if startup_story_pending:
+		continue_story() # First street tap accepts and frames; routing uses a subsequent tap in the new view.
+		return true
 	hide_story_card()
 	var ground_xz := screen_to_ground_xz(screen_pos)
 	var obj := current_objective()
@@ -12985,7 +13002,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		var k: Key = event.keycode if event.keycode != KEY_NONE else event.physical_keycode
 		if is_story_card_visible() and not (k in [KEY_SHIFT, KEY_CTRL, KEY_ALT, KEY_META]):
 			if k == KEY_ESCAPE or k == KEY_ENTER or k == KEY_KP_ENTER or k == KEY_SPACE:
-				continue_story()
+				continue_story(k != KEY_ESCAPE)
 				return
 			if startup_story_pending and k in [KEY_W, KEY_A, KEY_S, KEY_D, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT]:
 				continue_story()
@@ -13552,6 +13569,10 @@ func update_mural_ui() -> void:
 		mural_rise_btn.text = motif_button_text("rise", "Rise")
 
 func update_music_ui() -> void:
+	if music_toggle_btn != null:
+		music_toggle_btn.text = "Music: On" if music_playing else "Music: Off"
+		music_toggle_btn.set_pressed_no_signal(music_playing)
+		music_toggle_btn.disabled = startup_story_pending
 	if music_label == null:
 		return
 	apply_character_panel_theme(music_panel, "rook")
@@ -13754,6 +13775,7 @@ func make_ui() -> void:
 	header_panel.offset_top = 12
 	layer.add_child(header_panel)
 	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 1)
 	header_panel.add_child(column)
 	var title_row := HBoxContainer.new()
 	column.add_child(title_row)
@@ -13768,6 +13790,16 @@ func make_ui() -> void:
 	title.add_theme_font_size_override("font_size", 20)
 	title.add_theme_color_override("font_color", Color("ffe48f"))
 	title_stack.add_child(title)
+	music_toggle_btn = Button.new()
+	music_toggle_btn.name = "MusicToggle"
+	music_toggle_btn.custom_minimum_size = Vector2(94, 44)
+	music_toggle_btn.toggle_mode = true
+	music_toggle_btn.tooltip_text = "Background music. Starts with Start Exploring; tap to pause or resume. Volume controls are with Rook (V)."
+	music_toggle_btn.add_theme_font_size_override("font_size", 13)
+	style_game_button(music_toggle_btn)
+	music_toggle_btn.pressed.connect(toggle_music_playback)
+	title_row.add_child(music_toggle_btn)
+
 	sounds_btn = Button.new()
 	sounds_btn.name = "RewardSoundsToggle"
 	sounds_btn.custom_minimum_size = Vector2(94, 44)
@@ -13797,7 +13829,7 @@ func make_ui() -> void:
 	progress_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	progress_label.add_theme_font_size_override("font_size", 12)
 	progress_label.add_theme_color_override("font_color", Color("ffe48f"))
-	title_stack.add_child(progress_label)
+	column.add_child(progress_label)
 	objective_label = Label.new()
 	objective_label.name = "ObjectiveLabel"
 	objective_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -14020,6 +14052,9 @@ func make_ui() -> void:
 		if not is_instance_valid(controls) or not is_inside_tree():
 			return
 		var narrow := vp.get_visible_rect().size.x < 600
+		title_stack.visible = not narrow
+		music_toggle_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL if narrow else Control.SIZE_SHRINK_CENTER
+		sounds_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL if narrow else Control.SIZE_SHRINK_CENTER
 		if is_instance_valid(title):
 			title.add_theme_font_size_override("font_size", 16 if narrow else 20)
 			title.text = "TL REDUX" if narrow else "TENDERLOIN REDUX"

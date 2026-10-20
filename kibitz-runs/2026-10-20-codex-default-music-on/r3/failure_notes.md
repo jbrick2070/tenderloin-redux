@@ -1,0 +1,4 @@
+# Retained intermediate evidence
+- Initial implementation: native/export/check/104 Node and all three browser viewports passed (artifacts/default-music-*-initial.log and default-music-browser-initial.json). That build preceded review fixes; it is not the final source.
+- First post-review native gate failed: hardcoded startup street-tap fixture landed in UI; adding a44px attribution-row music control grew the header by30px and broke one320px host-speech/caption composition fixture. Preserved artifacts/default-music-native-layout-failure.log.
+- Driver corrected the fixture to an actual unobstructed canvas margin and moved music to the top control row, full-width progress beneath, hidden small brand on phones,1px column gaps. The existing conversation/caption assertions were retained; no weakening. Final native gate passes; remaining final gates tracked in verification.json.

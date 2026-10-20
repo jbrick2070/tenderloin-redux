@@ -25,7 +25,7 @@ const BROWSER_SAVE_SENTINEL = JSON.stringify({ schema: 'tenderloin-redux.save', 
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : 'playwright');
 const base = 'http://127.0.0.1:' + (process.env.GODOT_PORT || 4174) + '/';
 await mkdir('artifacts', { recursive: true });
-const browser = await chromium.launch({ channel: 'chrome', headless: true });
+const browser = await chromium.launch({ channel: 'chrome', headless: true, ignoreDefaultArgs: ['--autoplay-policy=no-user-gesture-required'], args: ['--autoplay-policy=user-gesture-required'] });
 const errors = [], external = [], runs = [];
 let latestPage = null;
 try {
@@ -37,6 +37,19 @@ try {
       }
     }, BROWSER_SAVE_SENTINEL);
     context.on('request', r => { if (!r.url().startsWith(base) && !r.url().startsWith('data:') && !r.url().startsWith('blob:')) external.push(r.url()); });
+    await context.addInitScript(() => {
+      window.__tenderloinAudioContexts = [];
+      for (const key of ['AudioContext', 'webkitAudioContext']) {
+        if (typeof window[key] !== 'function') continue;
+        window[key] = new Proxy(window[key], {
+          construct(target, args, newTarget) {
+            const audioContext = Reflect.construct(target, args, newTarget);
+            window.__tenderloinAudioContexts.push(audioContext);
+            return audioContext;
+          }
+        });
+      }
+    });
     const page = await context.newPage();
     latestPage = page;
     page.on('pageerror', e => errors.push(e.message));
@@ -58,6 +71,8 @@ try {
       await page.mouse.click(canvas.x + (control.x + control.width / 2) * canvas.width / snap.viewport_width, canvas.y + (control.y + control.height / 2) * canvas.height / snap.viewport_height);
     }
     const startup = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+    assert.equal(startup.music_playing, false, 'music waits for Start Exploring');
+    assert.equal(startup.music_audio_playing, false);
     assert.equal(startup.reward_sounds_enabled, true);
     assert.equal(startup.reward_audio_unlocked, false);
     assert.equal(startup.reward_sound_count, 0);
@@ -68,15 +83,37 @@ try {
     await page.mouse.wheel(0, -100);
     await page.waitForTimeout(600);
     assert.equal((await page.evaluate(() => window.__tenderloinGodotA11ySnapshot)).reward_audio_unlocked, false, 'wheel is not a sound-unlock gesture');
-    await clickHeaderControl('start_control');
+    if (size.width === 320) await page.keyboard.press('Enter');
+    else await clickHeaderControl('start_control');
     await page.waitForFunction(() => !window.__tenderloinGodotA11ySnapshot?.in_overview && window.__tenderloinGodotA11ySnapshot?.camera_view_size <= 58);
     const oriented = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
     assert.equal(oriented.reward_audio_unlocked, true);
-    assert.equal(oriented.music_playing, false);
+    assert.equal(oriented.music_playing, true, 'Start Exploring enables the original soundtrack');
+    assert.equal(oriented.music_volume, 0.7);
+    assert.match(oriented.announcement, /^You're here/);
+    assert.equal(oriented.music_toggle_text, 'Music: On');
+    await page.waitForFunction(() => window.__tenderloinAudioContexts.some(ctx => ctx.state === 'running'));
+    await page.waitForFunction(() => {
+      const s = window.__tenderloinGodotA11ySnapshot;
+      return s?.music_audio_playing && s.music_buffer_ready && s.music_sample_rms > 0;
+    });
     assert.ok(oriented.cutaway_additions > 0, 'newer foreground buildings must fade for the starting character');
     assert.ok(oriented.player_screen.x >= oriented.play_area.x && oriented.player_screen.x <= oriented.play_area.x + oriented.play_area.width && oriented.player_screen.y >= oriented.play_area.y && oriented.player_screen.y <= oriented.play_area.y + oriented.play_area.height, 'Start frames the actual avatar inside the playable scene');
     assert.match(oriented.progress_text, /Sparks: 0 · Keepsakes: 0\/10/);
     await page.screenshot({ path: `artifacts/godot-${size.width}-start-oriented.png` });
+    // A touch-reachable header control pauses without a trip to Rook or opening a panel.
+    await clickHeaderControl('music_toggle_control');
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.music_playing === false);
+    assert.equal((await page.evaluate(() => window.__tenderloinGodotA11ySnapshot)).music_audio_playing, false);
+    assert.equal((await page.evaluate(() => window.__tenderloinGodotA11ySnapshot)).reward_sounds_enabled, true);
+    await clickHeaderControl('music_toggle_control');
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.music_playing === true);
+    await page.keyboard.press('KeyK');
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.music_playing === false);
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('KeyF');
+    await page.waitForTimeout(150);
+    assert.equal((await page.evaluate(() => window.__tenderloinGodotA11ySnapshot)).music_playing, false, 'Find Me preserves paused music');
     function assertGrounded(snap, context) {
       const p = snap.player_grounding;
       assert.ok(Math.abs(p.x - p.shadow_x) < 0.001 && Math.abs(p.z - p.shadow_z) < 0.001, `${context}: shadow stays beneath the actual player`);
@@ -228,8 +265,9 @@ try {
       return parsed.rook_soundcheck_done === true;
     }, null, { timeout: 30000 });
     await page.waitForTimeout(200);
-    // Press KeyK to start explicit procedural sketch playback on Rook's speaker
+    // Resume the explicitly paused procedural sketch on Rook's speaker.
     await page.keyboard.press('KeyK');
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.music_playing === true);
     await page.waitForTimeout(250);
     const musicShot = await page.screenshot({ path: `artifacts/godot-${size.width}-music.png` });
     assert.notDeepEqual(muralShot, musicShot, `Rook soundcheck and MusicPanel playback must visibly update canvas at ${size.width}`);
@@ -283,6 +321,7 @@ try {
     await page.waitForTimeout(200);
     // Pause music playback before completing the block to prove sound-independent block opening in Web export
     await page.keyboard.press('KeyK');
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.music_playing === false);
     await page.waitForTimeout(150);
     // Visit remaining neighbor Dez (just east of Rook on Turk St) via Digit4 and open the block gathering via KeyO
     await page.keyboard.press('Digit4');
@@ -936,7 +975,7 @@ try {
     await page.waitForFunction(() => !window.__tenderloinGodotA11ySnapshot?.player_grounding.path_active);
     assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), resumeSave, 'route start and Stop preserve saved progress');
     assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.save.v1')), resumeLegacySave);
-    const explorationEvidence = { readableRewardAndGuideVerified: true, inspectionResumeVerified: true, walkingStopControlVerified: true, compactHeaderHeight: startup.header_control.height, compactInfoToggleVerified: true, startupOrientationVerified: true, findMeAndMapVerified: true, rewardSoundsAndMuteVerified: true, persistentProgressVerified: true, surpriseDiscoveryVerified: true, surpriseKeepsakeReloadVerified: true, chapter6ConversationVerified: true, sessionLandmarkTourVerified: true, fullSaveBytes: Buffer.byteLength(saveBeforeTour, 'utf8') };
+    const explorationEvidence = { defaultMusicOnVerified: true, runningAudioContextVerified: true, touchMusicToggleVerified: true, readableRewardAndGuideVerified: true, inspectionResumeVerified: true, walkingStopControlVerified: true, compactHeaderHeight: startup.header_control.height, compactInfoToggleVerified: true, startupOrientationVerified: true, findMeAndMapVerified: true, rewardSoundsAndMuteVerified: true, persistentProgressVerified: true, surpriseDiscoveryVerified: true, surpriseKeepsakeReloadVerified: true, chapter6ConversationVerified: true, sessionLandmarkTourVerified: true, fullSaveBytes: Buffer.byteLength(saveBeforeTour, 'utf8') };
     runs.push({ ...explorationEvidence, viewport: size, overviewBytes: before.length, selectedBytes: after.length, neighborBytes: neighbor.length, muralBytes: muralShot.length, musicBytes: musicShot.length, blockBytes: blockShot.length, blackhawkBytes: blackhawkShot.length, wideBytes: wideShot.length, keyboardActivationVerified: true, neighborWalkVerified: true, muralSaveReloadVerified: true, rookMusicAuditionVerified: true, blockCompletionVerified: true, widerTenderloinVerified: true, m1EpilogueVerified: true, m3HostingVerified: true, m4CivicFilmVerified: true, m5VoicesIsolatedVerified: true, m6KeepsakeSvgExportVerified: true, m6PerfBudgetVerified: true, perfSnapshot: perfSnap, browserSaveImportVerified: true, domA11yLiveVerified: true });
     await context.close();
   }

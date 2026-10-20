@@ -1,0 +1,188 @@
+{
+  "verified_at_utc": "2026-10-20T20:04:43.164588+00:00",
+  "baseline": "bab664cc902a27c284c3fa42e2bd83db117036bc",
+  "manual_authorization_after_shift_cutoff": true,
+  "automation_status": "PAUSED",
+  "source_sha256": {
+    "godot/main.gd": "c0d31619a4e861bc610b64b6468d006f17344e5dea795095202916294002723c",
+    "godot/tests/study_test.gd": "43bf177bb6267052e273631b845db4c7ec1d32b345ee4201aeaf3b87ef952704",
+    "tests/godot-browser.mjs": "43f2e2a694bcd6d4b8f493034e60589e4a3998b0983d8642a5cdc35e7b5f11ed"
+  },
+  "all_five_gates_after_final_source_change": true,
+  "gates": [
+    {
+      "command": "npm.cmd run godot:test",
+      "exit_code": 0,
+      "log": {
+        "path": "artifacts/default-music-native-reviewed.log",
+        "sha256": "bd80f5acbe0649dc38a8f36db32f2b1ba91648ea7b616b58cd122f83eaff83c8",
+        "bytes": 12103,
+        "modified_utc": "2026-10-20T19:57:21.388870+00:00"
+      }
+    },
+    {
+      "command": "npm.cmd run godot:export",
+      "exit_code": 0,
+      "log": {
+        "path": "artifacts/default-music-export-reviewed.log",
+        "sha256": "77bbe5abafd44045c22fb807d2a1c5f69bdee4f7a79bc459bc8a5c8ce7dff476",
+        "bytes": 2404,
+        "modified_utc": "2026-10-20T19:57:29.522624+00:00"
+      }
+    },
+    {
+      "command": "npm.cmd run check",
+      "exit_code": 0,
+      "log": {
+        "path": "artifacts/default-music-check-reviewed.log",
+        "sha256": "bbbf642933db0755ec1b063caec7667a16966ea1db64dadab1526709e88e5537",
+        "bytes": 1337,
+        "modified_utc": "2026-10-20T19:57:32.390489+00:00"
+      }
+    },
+    {
+      "command": "npm.cmd test",
+      "exit_code": 0,
+      "log": {
+        "path": "artifacts/default-music-node-reviewed.log",
+        "sha256": "d8fb43d4196e6535f5f9d3ff354895773d299c1e3d2ee17c8615c407ae276d60",
+        "bytes": 10798,
+        "modified_utc": "2026-10-20T19:57:41.605756+00:00"
+      }
+    },
+    {
+      "command": "npm.cmd run godot:browser",
+      "exit_code": 0,
+      "log": {
+        "path": "artifacts/default-music-browser-reviewed.log",
+        "sha256": "40090069373dc2569b9d711b6e7eac1a949b1239fd7a661a016da5ab973f0652",
+        "bytes": 36371,
+        "modified_utc": "2026-10-20T20:03:53.654764+00:00"
+      }
+    }
+  ],
+  "node_tests": 104,
+  "browser_report": {
+    "path": "artifacts/godot-browser.json",
+    "sha256": "5b804c4fe557e4e75baddfd6ea2e9e57ba5f7b9837337209b97aaedf3f03d6ef",
+    "bytes": 38817,
+    "modified_utc": "2026-10-20T20:03:53.651255+00:00"
+  },
+  "browser_errors": [],
+  "external_requests": [],
+  "viewports": [
+    {
+      "viewport": {
+        "width": 1100,
+        "height": 760
+      },
+      "header_height": 98,
+      "default_music_on": true,
+      "audio_context_running": true,
+      "visible_pause_toggle": true,
+      "full_save_bytes": 1728,
+      "performance_save_bytes": 1535,
+      "pathfind_blackhawk_usec": 193400
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 667
+      },
+      "header_height": 94,
+      "default_music_on": true,
+      "audio_context_running": true,
+      "visible_pause_toggle": true,
+      "full_save_bytes": 1728,
+      "performance_save_bytes": 1535,
+      "pathfind_blackhawk_usec": 199200
+    },
+    {
+      "viewport": {
+        "width": 320,
+        "height": 667
+      },
+      "header_height": 94,
+      "default_music_on": true,
+      "audio_context_running": true,
+      "visible_pause_toggle": true,
+      "full_save_bytes": 1728,
+      "performance_save_bytes": 1535,
+      "pathfind_blackhawk_usec": 199900
+    }
+  ],
+  "export": {
+    "path": "artifacts/godot-web/index.pck",
+    "sha256": "0f2820c3c196088eb314a07aac0b8de84dbb1e3ead0dcdb152fca3c597b22c95",
+    "bytes": 1650708,
+    "modified_utc": "2026-10-20T19:57:29.513124+00:00"
+  },
+  "public_fingerprint": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567",
+  "independent_review": {
+    "calls": 1,
+    "selected_model": "claude-opus-5-5",
+    "effort": "high",
+    "exit_code": 0,
+    "verdict": "yes-with-fixes",
+    "source_unchanged_during_review": true,
+    "post_review_fixes": "Driver grounded and all five gates; no second external call",
+    "quota_usage": "unknown"
+  },
+  "screenshots_inspected": [
+    {
+      "path": "artifacts/godot-1100-start-oriented.png",
+      "sha256": "9c9656c7a112669c7b2b0ed031c9971e671cc60d53d758a82475053d92d0957d",
+      "bytes": 213996,
+      "modified_utc": "2026-10-20T19:58:05.731579+00:00"
+    },
+    {
+      "path": "artifacts/godot-1100-wrapped-reward-title.png",
+      "sha256": "d0dce2b80cfa427eb6ddfe66e8a76bfff0c2d94b8818aea6f789bd1042cb47af",
+      "bytes": 236738,
+      "modified_utc": "2026-10-20T19:59:55.150187+00:00"
+    },
+    {
+      "path": "artifacts/godot-390-start-oriented.png",
+      "sha256": "08292da3ef0ee7c3cbc614745b7b9107455ee813f26e6835857290c4e85dc4a0",
+      "bytes": 82088,
+      "modified_utc": "2026-10-20T20:00:01.279027+00:00"
+    },
+    {
+      "path": "artifacts/godot-390-wrapped-reward-title.png",
+      "sha256": "015a79be3c3e7631ab64e8899a1a40db69bbc7bef7e0356f20df1945c8f25716",
+      "bytes": 105305,
+      "modified_utc": "2026-10-20T20:01:47.489681+00:00"
+    },
+    {
+      "path": "artifacts/godot-320-start-oriented.png",
+      "sha256": "e1748f549438b4b4719b082b95e55141b8f4785c5ce98332140e5d1aed696bd6",
+      "bytes": 70056,
+      "modified_utc": "2026-10-20T20:01:53.574222+00:00"
+    },
+    {
+      "path": "artifacts/godot-320-wrapped-reward-title.png",
+      "sha256": "c2701c9e72dddcebd314ffc59593bdea492b43d54e7345cf0fc83880716babd8",
+      "bytes": 94278,
+      "modified_utc": "2026-10-20T20:03:52.164460+00:00"
+    },
+    {
+      "path": "artifacts/godot-320-inspection-resume-walk.png",
+      "sha256": "6364a8f76c7ccb0eda0a81ea69a935401e0e78056e10cc8f1eb2521c8d33fc08",
+      "bytes": 87984,
+      "modified_utc": "2026-10-20T20:03:53.181695+00:00"
+    }
+  ],
+  "limits": [
+    "Physical phones and human listening/comfort unverified",
+    "No music pause/volume preference persistence added",
+    "Other deliberate non-accept startup dismissals remain silent",
+    "Detached hub action buttons/detail row still truncate on phones",
+    "No deployment; full roadmap unfinished"
+  ],
+  "live_preview": {
+    "path": "artifacts/codex-default-music-live-preview.png",
+    "sha256": "622ef3ef2a519c74ea191800ab7b7f92c6169380be26f382c96f802733f38a60",
+    "bytes": 54441,
+    "visible_result": "Start Exploring clicked; Music:On and framed player; orientation live announcement retained"
+  }
+}

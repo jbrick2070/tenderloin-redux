@@ -1,0 +1,12 @@
+# Driver judgment
+One independent Claude r3 CLI call, exact selected claude-opus-5-5/high, rc0, yes-with-fixes. Source compare unchanged=true during review. No further reviewer call. Final code changes below are driver-grounded and require all five final gates.
+
+1. HOLDS: continue_story initially started music after frame_player_for_walking, overwriting orientation in the batched live region. Start audio before orientation and assert final announcement in native and browser.
+2. HOLDS: existing music controls were with Rook or K/V; default music needs an immediate touch pause. Add Music: On/Off,94x44, in the header top row beside Sounds and Info. Progress uses the full row below; the small brand label hides on phones and column gaps shrink. Attribution stays visible. Final header must remain <=130px. Button disabled until startup acceptance/dismissal; independent reward Sounds unaffected. Browser clicks pause/resume; native checks all sizes.
+3. HOLDS: player/buffer/RMS proves Godot-side generation, not the browser AudioContext or physical sound. Installed export uses new(window.AudioContext||window.webkitAudioContext). Wrap constructor through test-only addInitScript, require running context after real acceptance; launch with user-gesture-required autoplay policy and remove permissive default flag. Physical listening remains unverified.
+4. HOLDS: Escape is not a reliable sound activation. continue_story(false) dismisses and frames silently; future Music toggle can start it. Native coverage.
+5. HOLDS/decision: first street tap previously hid startup and skipped default music. It now accepts and frames only, without routing in the old view; a subsequent tap routes. Other deliberate non-accept dismissals (Info/Map/other keys) remain silent. Native first-tap check preserves position/save.
+6. HOLDS: add native W acceptance, real browser Enter at320px, explicit music state in the orientation loop and clean stop after each iteration. Add immediate assertions around later K toggles to remove distant ordering ambiguity.
+7. CONFIRMED: re-export final source before final browser suite; five final gates still required. Independent reviewer did not run builds or hashes; driver does.
+
+No music preference or volume persistence added. Existing K/V and Rook panel preserved; original procedural sketch only by default, no new track/licensing claims. Scheduled automation remains paused.
