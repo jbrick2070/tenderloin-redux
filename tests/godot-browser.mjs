@@ -77,6 +77,20 @@ try {
     assert.ok(oriented.player_screen.x >= oriented.play_area.x && oriented.player_screen.x <= oriented.play_area.x + oriented.play_area.width && oriented.player_screen.y >= oriented.play_area.y && oriented.player_screen.y <= oriented.play_area.y + oriented.play_area.height, 'Start frames the actual avatar inside the playable scene');
     assert.match(oriented.progress_text, /Sparks: 0 · Keepsakes: 0\/10/);
     await page.screenshot({ path: `artifacts/godot-${size.width}-start-oriented.png` });
+    function assertGrounded(snap, context) {
+      const p = snap.player_grounding;
+      assert.ok(Math.abs(p.x - p.shadow_x) < 0.001 && Math.abs(p.z - p.shadow_z) < 0.001, `${context}: shadow stays beneath the actual player`);
+      assert.ok(p.shadow_y >= 0.07 && p.shadow_y < 0.09, `${context}: shadow clears the route ribbon without floating`);
+    }
+    assertGrounded(oriented, 'daylight');
+    const saveBeforeLight = await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1'));
+    await page.keyboard.press('Shift+KeyL');
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.evening_mode === true);
+    assertGrounded(await page.evaluate(() => window.__tenderloinGodotA11ySnapshot), 'evening');
+    await page.screenshot({ path: `artifacts/godot-${size.width}-character-evening.png` });
+    await page.keyboard.press('Shift+KeyL');
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.evening_mode === false);
+    assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), saveBeforeLight, 'character lighting comparison leaves save untouched');
     await clickHeaderControl('info_control');
     await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.header_details_expanded === true);
     await page.waitForTimeout(150);
@@ -113,14 +127,43 @@ try {
     await page.waitForTimeout(900);
     const neighbor = await page.screenshot({ path: `artifacts/godot-${size.width}-neighbor.png` });
     assert.notDeepEqual(keyboard, neighbor, `Walk to neighbor must visibly advance player/camera at ${size.width}`);
+    // Close the conversation through normal input so feet are visible in motion.
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.active_panel === 'none');
+    const beforeThanh = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
     // Visit Thanh on the west end of the block (Mason & Golden Gate) via Digit5 before heading east along Turk St
     await page.keyboard.press('Digit5');
+    await page.waitForFunction(previous => {
+      const s = window.__tenderloinGodotA11ySnapshot, p = s?.player_grounding;
+      return s?.ui_frame > previous.frame && p?.path_active && p.stride > 0.5 && Math.hypot(p.x - previous.x, p.z - previous.z) > 0.1;
+    }, { frame: beforeThanh.ui_frame, x: beforeThanh.player_grounding.x, z: beforeThanh.player_grounding.z });
+    const walkingGrounding = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+    assertGrounded(walkingGrounding, 'walking');
+    // PNGs are visual evidence near the asserted frame, not atomic frame captures.
+    await page.screenshot({ path: `artifacts/godot-${size.width}-character-walking.png` });
+    await page.keyboard.press('Shift+KeyL');
+    await page.waitForFunction(() => {
+      const s = window.__tenderloinGodotA11ySnapshot;
+      return s?.evening_mode && s.player_grounding.nearest_light_pool_distance < 1.3;
+    }, null, { timeout: 15000 });
+    assertGrounded(await page.evaluate(() => window.__tenderloinGodotA11ySnapshot), 'evening light pool');
+    await page.screenshot({ path: `artifacts/godot-${size.width}-character-light-pool.png` });
+    await page.keyboard.press('Shift+KeyL');
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.evening_mode === false);
     await page.waitForFunction(() => {
       const raw = window.localStorage.getItem('tenderloin-redux.godot.save.v1');
       if (!raw) return false;
       const parsed = JSON.parse(raw);
       return Array.isArray(parsed.visited_neighbors) && parsed.visited_neighbors.includes('thanh');
     }, null, { timeout: 35000 });
+    await page.waitForFunction(() => {
+      const p = window.__tenderloinGodotA11ySnapshot?.player_grounding;
+      return p && !p.path_active && p.stride < 0.1;
+    });
+    assertGrounded(await page.evaluate(() => window.__tenderloinGodotA11ySnapshot), 'arrived');
+    await page.keyboard.press('KeyF');
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.active_panel === 'none' && window.__tenderloinGodotA11ySnapshot?.overlays.speech.anchor === '');
+    await page.screenshot({ path: `artifacts/godot-${size.width}-character-arrived.png` });
     // Press KeyE to walk to Celeste and talk upon arrival (which saves celeste_talk_count >= 1 and opens MuralPanel)
     await page.keyboard.press('KeyE');
     await page.waitForFunction(() => {

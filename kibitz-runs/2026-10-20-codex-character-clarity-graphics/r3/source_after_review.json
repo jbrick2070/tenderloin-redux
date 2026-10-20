@@ -1,0 +1,12 @@
+{
+  "unchanged_during_review": true,
+  "files": {
+    "godot/main.gd": "f1e3b96701f8e556bb3ee59cbb32bd1979213db9630f55d823ae0f4c5871a0bc",
+    "godot/tests/study_test.gd": "be98e06e19ee84c6fd06881e1bf84034896911dbe8158e85f19a3efed523ffca",
+    "tests/godot-browser.mjs": "b1a78f327e5320259a7b1137b7b88cbe8ba0058bec3a0ccff1ac6b20feb20d76",
+    "docs/STREET_VIEW_ASSESSMENT.md": "5a938c593e98ecaaab83c74fcb604d534ceecc3442d0d4d76bade5c8bbc77afa",
+    "kibitz-runs/2026-10-20-codex-character-clarity-graphics/r3/review_scope.md": "c4a70caa77d8e99c5572f6a7ee4faf6b60b88f88c6a7de86913353a918718c06",
+    "kibitz-runs/2026-10-20-codex-character-clarity-graphics/r3/driver_anchor.md": "ec75afaaa7fceccbfa259f508cfa541a423bb1b3faacabae2705ad3c9b3f2970",
+    "kibitz-runs/2026-10-20-codex-character-clarity-graphics/r3/scope_receipt.md": "c2264c878600bdd451ec8102a4503432d34276c21db6b6325175682df8816e66"
+  }
+}

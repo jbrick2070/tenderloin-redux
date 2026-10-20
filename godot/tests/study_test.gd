@@ -87,7 +87,37 @@ func run() -> void:
 		require(study.min_wall_distance(h_xz) >= 3.25, "history stop %s has >= 3.25m wall clearance" % h_id)
 		require(study.is_walkable_point(h_xz), "history stop %s position is walkable" % h_id)
 	require(study.controls.get_child_count() == 6, "6 responsive control buttons including Walk to neighbor")
-	require(is_equal_approx(study.player_height_m(), 1.72), "player visual height is actual 1.72 metres")
+	require(is_equal_approx(study.player_height_m(), 1.72), "player model is 1.72 metres before the existing presentation scale")
+	var grounded_people: Array[Node3D] = [study.player_visual]
+	for neighbor in study.neighbor_nodes:
+		grounded_people.append(neighbor)
+	require(study.find_children("ContactShadow", "MeshInstance3D", true, false).size() == 6, "only player and five ground-level neighbors receive contact shadows")
+	for person in grounded_people:
+		var contact := person.get_node("ContactShadow") as MeshInstance3D
+		var contact_mat := contact.material_override as StandardMaterial3D
+		require(not contact_mat.no_depth_test and not contact_mat.emission_enabled and contact_mat.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA, "contact shadows respect scene depth and never glow")
+		require(contact.global_position.y >= 0.07 and contact.global_position.y < 0.09, "contact shadow clears the route ribbon and curb with a visible margin")
+		require(contact_mat.render_priority > study.light_pool_material.render_priority, "contact shadows composite after additive evening pools")
+		var shadow_colors: PackedColorArray = contact.mesh.surface_get_arrays(0)[Mesh.ARRAY_COLOR]
+		var min_alpha := 1.0
+		var max_alpha := 0.0
+		for color in shadow_colors:
+			min_alpha = minf(min_alpha, color.a)
+			max_alpha = maxf(max_alpha, color.a)
+		require(max_alpha > 0.3 and is_zero_approx(min_alpha), "contact shadow fades from dark center to transparent edge")
+		var ring := person.get_node("GroundRing") as MeshInstance3D
+		var ring_vertices: PackedVector3Array = ring.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+		for vertex in ring_vertices:
+			require(Vector2(vertex.x, vertex.z).length() >= 0.50, "hollow locator leaves pavement and shoes visible inside")
+	var player_colliders: Array[Node] = study.player.find_children("*", "CollisionShape3D", false, false)
+	require(player_colliders.size() == 1, "presentation marks add no player collision")
+	if player_colliders.size() == 1:
+		var player_collider := (player_colliders[0] as CollisionShape3D).shape as CylinderShape3D
+		require(player_collider != null and is_equal_approx(player_collider.radius, study.PLAYER_RADIUS_M) and is_equal_approx(player_collider.height, study.PLAYER_HEIGHT_M), "graphics preserve physical character dimensions")
+	var grounding_shadow := study.player_visual.get_node("ContactShadow") as MeshInstance3D
+	study.player_visual.remove_child(grounding_shadow)
+	require(study.get_a11y_status_snapshot().player_grounding.shadow_y == null, "missing decorative shadow does not abort accessibility status")
+	study.player_visual.add_child(grounding_shadow)
 	require(study.building_containing_point(study.player_xz()) == "", "player starts outside all building footprints")
 	require(study.is_walkable_point(study.player_xz()), "player start is walkable")
 	var courtyard_tested := false
@@ -151,20 +181,28 @@ func run() -> void:
 
 	# Test direct walking collision against north-side building 201006.0006089
 	study.player.position = study.PLAYER_START
+	var grounding_save: String = JSON.stringify(study.build_save_envelope())
 	var start_z: float = study.player_xz().y
 	for _step in range(25):
 		study.walk_step(Vector2(0.0, -1.0), 0.1)
 		require(study.building_containing_point(study.player_xz()) == "", "walking north into wall never enters building interior")
 		require(study.min_wall_distance(study.player_xz()) >= study.WALK_CLEARANCE_M - 1e-3, "wall clearance maintained during collision")
 	require(study.player_xz().y < start_z and study.player_xz().y > -13.0, "player approaches north wall then stops outside footprint")
+	var north_heading: float = study.player_visual.rotation.y
 
 	# Test angled street wall-sliding eastward along Turk Street
 	study.player.position = study.PLAYER_START
 	var before_east_x: float = study.player_xz().x
 	for _step in range(20):
 		study.walk_step(Vector2(1.0, 0.0), 0.15)
+		study.animate_person_node(study.player_visual, float(_step) * 0.7, 1.0, 0.0)
+		require(Vector2(grounding_shadow.global_position.x, grounding_shadow.global_position.z).is_equal_approx(study.player_xz()), "contact shadow follows real wall-sliding movement")
 		require(study.building_containing_point(study.player_xz()) == "", "eastward slide stays outside all footprints")
 	require(study.player_xz().x > before_east_x + 8.0, "eastward walk slides smoothly along angled Turk sidewalk")
+	require(not is_equal_approx(study.player_visual.rotation.y, north_heading), "grounding probe exercises a real heading change")
+	require(grounding_shadow.position.is_equal_approx(Vector3(0.0, study.CHARACTER_SHADOW_GROUND_Y / study.CHARACTER_VISUAL_SCALE, 0.0)), "walking animation leaves the contact mark centered at ground height")
+	require(JSON.stringify(study.build_save_envelope()) == grounding_save, "character grounding adds no save state")
+	study.animate_person_node(study.player_visual, 0.0, 0.0, 0.0)
 
 	# Test out-of-bounds rejection and nearest walkable snapping
 	require(not study.is_walkable_point(Vector2(-500.0, -500.0)), "distant point outside bounds is not walkable")
@@ -1541,7 +1579,7 @@ func run() -> void:
 	var l_leg_node := study.player_visual.get_node_or_null("LeftLeg") as MeshInstance3D
 	require(l_leg_node != null and not is_zero_approx(l_leg_node.rotation.x), "animate_person_node swings character legs during walking stride")
 	study.animate_person_node(study.player_visual, 0.0, 0.0, 0.0)
-	require(is_equal_approx(study.player_height_m(), study.PLAYER_HEIGHT_M), "animate_person_node preserves exact 1.72m player height")
+	require(is_equal_approx(study.player_height_m(), study.PLAYER_HEIGHT_M), "animate_person_node preserves unscaled 1.72m player model")
 	var bea_nameplate_screen: Vector2 = study.camera.unproject_position(study.neighbors[0].pos + Vector3(0.0, 4.0, 0.0))
 	require(study.handle_scene_tap(bea_nameplate_screen) and study.selected_neighbor == 0, "tapping neighbor upper body / nameplate selects neighbor")
 	var bea_line_1: String = study.talk_with_neighbor(0)

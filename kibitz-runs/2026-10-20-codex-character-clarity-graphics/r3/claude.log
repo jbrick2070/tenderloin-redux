@@ -1,0 +1,19 @@
+STDOUT:
+I wrote the review to `kibitz-runs/2026-10-20-codex-character-clarity-graphics/r3/claude.md`. It's based on reading the source only: I had no shell, so I didn't run git diff, the `public/` fingerprint or any of the five gates. Those are listed as not verified in the review.
+
+**Verdict:** build-ready with fixes. The wiring is sound: build order is safe, no collision was added, saves are unchanged and the shadow follows the character root. Three things need attention before calling the round complete, and the full browser run is still outstanding.
+
+**Must fix:**
+1. **Rings are probably too thin to show.** The neighbor ring band is about 7.5 cm wide in the world and the player's about 11.8 cm. At the closest walking zoom on the 390×667 test size, that works out to roughly 0.65–1.1 pixels for neighbors. The project has no anti-aliasing (MSAA) set, so the rings will likely break up or vanish, especially in overview. The pixel numbers are arithmetic from the code; whether it actually looks broken needs a check of the browser screenshots.
+2. **Evening shadow and light pools draw in an unpredictable order.** Both are see-through and neither records depth, so which one draws on top depends on where the camera is. Over a light pool, the shadow will look washed out in some parts of the map and darkened in others. The fix is one line: `contact_material.render_priority = 1`.
+3. **The height test checks against the wrong surface.** Both tests only require the shadow to sit above the curb (0.052). The actual highest ground layer is the route ribbon at 0.06, which sits under the player while walking. The shadow (about 0.062) clears it by only 2.35 mm, and a small future change would hide the shadow under the ribbon without failing either test.
+
+**Should fix (main items):**
+- The new snapshot code fetches the shadow node without a guard. If it's missing, the whole accessibility snapshot fails, and that feeds every browser assertion.
+- The `walking` field only reflects route-following. Keyboard walking reports `false` even though the legs animate.
+- The native "turning" test never turns (every step goes the same direction), and its "stays flat" check is always true by construction. The walking probe also leaves several game flags changed for later tests.
+- The browser's "player moved" check compares against the start position. The player has already walked before Digit5 is pressed, so it passes even if Digit5 does nothing.
+- Several other ground-level characters (concert listeners, museum docent, counter hosts, clown, mayor, bugler) still have the old filled rings. That contradicts the brief's description of who was left out.
+- `STREET_VIEW_ASSESSMENT.md` wrongly says `update_camera()` sets the orthographic projection; it's actually set once at startup. The doc's other code claims checked out.
+
+The review also suggests cutting the two always-true test assertions and replacing them with one position check.

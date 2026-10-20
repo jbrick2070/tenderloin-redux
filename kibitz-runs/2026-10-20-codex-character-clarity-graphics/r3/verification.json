@@ -1,0 +1,400 @@
+{
+  "verified_at_utc": "2026-10-20T17:53:37.341978+00:00",
+  "baseline": "fcfef6252e7e57b0a20e93d179efe759e9d88acf",
+  "scope": "Player contrast and hollow grounding markers for player plus five core neighbors; optional first-person research only.",
+  "source_sha256": {
+    "godot/main.gd": "4bbfe33c9908f072bf545f2a28eb9ab2665f10d2f94f775f29e5728ae6c25c08",
+    "godot/tests/study_test.gd": "c6a9ee5b4b73a2537ed66b903f48d19418ddf3defedf54ca226499a5b83aae9d",
+    "tests/godot-browser.mjs": "4fea37e65dcb36b1d6981dcd35120204e8ac369267966d3f091262b6d63155c8",
+    "docs/STREET_VIEW_ASSESSMENT.md": "c2e3b18f3d420c86ac8bc727021c91b37ba2174121b406039649c29dbd06c45d"
+  },
+  "all_five_gates_after_final_source_change": true,
+  "gates": [
+    {
+      "command": "npm.cmd run godot:test",
+      "exit_code": 0,
+      "log": {
+        "path": "artifacts/graphics-native-reviewed.log",
+        "sha256": "64b912500ac5e0f72683e28f606a56dbd9b6ba46c949b3aa0bc8c48c3d04a87b",
+        "bytes": 12102,
+        "modified_utc": "2026-10-20T17:45:35.894664+00:00"
+      }
+    },
+    {
+      "command": "npm.cmd run godot:export",
+      "exit_code": 0,
+      "log": {
+        "path": "artifacts/graphics-export-reviewed.log",
+        "sha256": "77bbe5abafd44045c22fb807d2a1c5f69bdee4f7a79bc459bc8a5c8ce7dff476",
+        "bytes": 2404,
+        "modified_utc": "2026-10-20T17:45:49.047377+00:00"
+      }
+    },
+    {
+      "command": "npm.cmd run check",
+      "exit_code": 0,
+      "log": {
+        "path": "artifacts/graphics-check-reviewed.log",
+        "sha256": "bbbf642933db0755ec1b063caec7667a16966ea1db64dadab1526709e88e5537",
+        "bytes": 1337,
+        "modified_utc": "2026-10-20T17:45:29.975294+00:00"
+      }
+    },
+    {
+      "command": "npm.cmd test",
+      "exit_code": 0,
+      "log": {
+        "path": "artifacts/graphics-node-reviewed.log",
+        "sha256": "b0661e75c2f8d9c1976279d9e5072078491795a73c1c55ccca11bf82af6c355e",
+        "bytes": 10802,
+        "modified_utc": "2026-10-20T17:45:54.379427+00:00"
+      }
+    },
+    {
+      "command": "npm.cmd run godot:browser",
+      "exit_code": 0,
+      "log": {
+        "path": "artifacts/graphics-browser-reviewed.log",
+        "sha256": "17f3f8697d2f195b332dd78172348a678e427782f863294ad581b3d9f0ef55b8",
+        "bytes": 35767,
+        "modified_utc": "2026-10-20T17:52:06.142765+00:00"
+      }
+    }
+  ],
+  "node_tests": {
+    "tests": 104,
+    "passed": 104,
+    "failed": 0
+  },
+  "native_performance": {
+    "astar_expanded_cells": 2222,
+    "astar_used": true,
+    "district_boundary_present": true,
+    "object_node_count": 2157,
+    "opening_buildings_count": 58,
+    "pathfind_blackhawk_usec": 146515,
+    "pathfind_blackhawk_waypoints": 3,
+    "pathfind_budget_max_usec": 250000,
+    "pathfind_cold_cache": true,
+    "save_budget_max_bytes": 4096,
+    "save_budget_max_usec": 50000,
+    "save_bytes": 1535,
+    "save_roundtrip_usec": 217,
+    "street_ways_count": 20,
+    "total_buildings_count": 188,
+    "voices_teardown_budget_max_usec": 50000,
+    "voices_teardown_measured": true,
+    "voices_teardown_usec": 1,
+    "wider_buildings_count": 130,
+    "wider_street_ways_count": 41,
+    "within_budget": true
+  },
+  "browser": {
+    "receipt": {
+      "path": "artifacts/godot-browser.json",
+      "sha256": "feb118f718e8b5b6dcc812238394262d9eb38edacdf7fc8e02e78ed9fbfda4cd",
+      "bytes": 38069,
+      "modified_utc": "2026-10-20T17:52:06.136125+00:00"
+    },
+    "errors": [],
+    "external": [],
+    "runs": [
+      {
+        "compactHeaderHeight": 87,
+        "compactInfoToggleVerified": true,
+        "startupOrientationVerified": true,
+        "findMeAndMapVerified": true,
+        "rewardSoundsAndMuteVerified": true,
+        "persistentProgressVerified": true,
+        "surpriseDiscoveryVerified": true,
+        "surpriseKeepsakeReloadVerified": true,
+        "chapter6ConversationVerified": true,
+        "sessionLandmarkTourVerified": true,
+        "fullSaveBytes": 1728,
+        "viewport": {
+          "width": 1100,
+          "height": 760
+        },
+        "keyboardActivationVerified": true,
+        "neighborWalkVerified": true,
+        "muralSaveReloadVerified": true,
+        "rookMusicAuditionVerified": true,
+        "blockCompletionVerified": true,
+        "widerTenderloinVerified": true,
+        "m1EpilogueVerified": true,
+        "m3HostingVerified": true,
+        "m4CivicFilmVerified": true,
+        "m5VoicesIsolatedVerified": true,
+        "m6KeepsakeSvgExportVerified": true,
+        "m6PerfBudgetVerified": true,
+        "browserSaveImportVerified": true,
+        "domA11yLiveVerified": true,
+        "performance": {
+          "astar_expanded_cells": 2222,
+          "astar_used": true,
+          "district_boundary_present": true,
+          "object_node_count": 2157,
+          "opening_buildings_count": 58,
+          "pathfind_blackhawk_usec": 195400,
+          "pathfind_blackhawk_waypoints": 3,
+          "pathfind_budget_max_usec": 250000,
+          "pathfind_cold_cache": true,
+          "save_budget_max_bytes": 4096,
+          "save_budget_max_usec": 50000,
+          "save_bytes": 1535,
+          "save_roundtrip_usec": 200,
+          "street_ways_count": 20,
+          "total_buildings_count": 188,
+          "voices_teardown_budget_max_usec": 50000,
+          "voices_teardown_measured": true,
+          "voices_teardown_usec": 1,
+          "wider_buildings_count": 130,
+          "wider_street_ways_count": 41,
+          "within_budget": true
+        }
+      },
+      {
+        "compactHeaderHeight": 83,
+        "compactInfoToggleVerified": true,
+        "startupOrientationVerified": true,
+        "findMeAndMapVerified": true,
+        "rewardSoundsAndMuteVerified": true,
+        "persistentProgressVerified": true,
+        "surpriseDiscoveryVerified": true,
+        "surpriseKeepsakeReloadVerified": true,
+        "chapter6ConversationVerified": true,
+        "sessionLandmarkTourVerified": true,
+        "fullSaveBytes": 1728,
+        "viewport": {
+          "width": 390,
+          "height": 667
+        },
+        "keyboardActivationVerified": true,
+        "neighborWalkVerified": true,
+        "muralSaveReloadVerified": true,
+        "rookMusicAuditionVerified": true,
+        "blockCompletionVerified": true,
+        "widerTenderloinVerified": true,
+        "m1EpilogueVerified": true,
+        "m3HostingVerified": true,
+        "m4CivicFilmVerified": true,
+        "m5VoicesIsolatedVerified": true,
+        "m6KeepsakeSvgExportVerified": true,
+        "m6PerfBudgetVerified": true,
+        "browserSaveImportVerified": true,
+        "domA11yLiveVerified": true,
+        "performance": {
+          "astar_expanded_cells": 2222,
+          "astar_used": true,
+          "district_boundary_present": true,
+          "object_node_count": 2157,
+          "opening_buildings_count": 58,
+          "pathfind_blackhawk_usec": 209300,
+          "pathfind_blackhawk_waypoints": 3,
+          "pathfind_budget_max_usec": 250000,
+          "pathfind_cold_cache": true,
+          "save_budget_max_bytes": 4096,
+          "save_budget_max_usec": 50000,
+          "save_bytes": 1535,
+          "save_roundtrip_usec": 300,
+          "street_ways_count": 20,
+          "total_buildings_count": 188,
+          "voices_teardown_budget_max_usec": 50000,
+          "voices_teardown_measured": true,
+          "voices_teardown_usec": 1,
+          "wider_buildings_count": 130,
+          "wider_street_ways_count": 41,
+          "within_budget": true
+        }
+      },
+      {
+        "compactHeaderHeight": 97,
+        "compactInfoToggleVerified": true,
+        "startupOrientationVerified": true,
+        "findMeAndMapVerified": true,
+        "rewardSoundsAndMuteVerified": true,
+        "persistentProgressVerified": true,
+        "surpriseDiscoveryVerified": true,
+        "surpriseKeepsakeReloadVerified": true,
+        "chapter6ConversationVerified": true,
+        "sessionLandmarkTourVerified": true,
+        "fullSaveBytes": 1728,
+        "viewport": {
+          "width": 320,
+          "height": 667
+        },
+        "keyboardActivationVerified": true,
+        "neighborWalkVerified": true,
+        "muralSaveReloadVerified": true,
+        "rookMusicAuditionVerified": true,
+        "blockCompletionVerified": true,
+        "widerTenderloinVerified": true,
+        "m1EpilogueVerified": true,
+        "m3HostingVerified": true,
+        "m4CivicFilmVerified": true,
+        "m5VoicesIsolatedVerified": true,
+        "m6KeepsakeSvgExportVerified": true,
+        "m6PerfBudgetVerified": true,
+        "browserSaveImportVerified": true,
+        "domA11yLiveVerified": true,
+        "performance": {
+          "astar_expanded_cells": 2222,
+          "astar_used": true,
+          "district_boundary_present": true,
+          "object_node_count": 2157,
+          "opening_buildings_count": 58,
+          "pathfind_blackhawk_usec": 203000,
+          "pathfind_blackhawk_waypoints": 3,
+          "pathfind_budget_max_usec": 250000,
+          "pathfind_cold_cache": true,
+          "save_budget_max_bytes": 4096,
+          "save_budget_max_usec": 50000,
+          "save_bytes": 1535,
+          "save_roundtrip_usec": 100,
+          "street_ways_count": 20,
+          "total_buildings_count": 188,
+          "voices_teardown_budget_max_usec": 50000,
+          "voices_teardown_measured": true,
+          "voices_teardown_usec": 1,
+          "wider_buildings_count": 130,
+          "wider_street_ways_count": 41,
+          "within_budget": true
+        }
+      }
+    ],
+    "grounding_checks": "Actual Start, lighting toggles, Escape, Digit5 travel, light-pool proximity, arrival and Find Me; fresh-frame path/stride/displacement and contact alignment assertions.",
+    "visual_inspection": "All fifteen fresh screenshots inspected; narrow arrival effects and YOU partially cover feet. Walking and light-pool images supply stronger grounding evidence. PNGs are near the asserted state, not atomic captures."
+  },
+  "screenshots": [
+    {
+      "path": "artifacts/godot-1100-start-oriented.png",
+      "sha256": "5e0afa4d2b39c80ee23f322dd6187549de1a52a1dfe361f05823eb170ff463d2",
+      "bytes": 214156,
+      "modified_utc": "2026-10-20T17:46:22.345067+00:00"
+    },
+    {
+      "path": "artifacts/godot-1100-character-evening.png",
+      "sha256": "a3f3127f67a0b0ea61be84545536b3e6e82e2caf05391326b2307b66cf62312c",
+      "bytes": 210873,
+      "modified_utc": "2026-10-20T17:46:22.442441+00:00"
+    },
+    {
+      "path": "artifacts/godot-1100-character-walking.png",
+      "sha256": "5df1a9f7645ae9b8bc5d1386f76c2a538e1b54cd164402de9359788f3aa2b457",
+      "bytes": 221360,
+      "modified_utc": "2026-10-20T17:46:27.276323+00:00"
+    },
+    {
+      "path": "artifacts/godot-1100-character-light-pool.png",
+      "sha256": "1b94fe19527ceed3672cacbb1a77be829533ba187337ef26e40871d3624abf95",
+      "bytes": 160602,
+      "modified_utc": "2026-10-20T17:46:29.855361+00:00"
+    },
+    {
+      "path": "artifacts/godot-1100-character-arrived.png",
+      "sha256": "8fc37de8a6619316fe4ece82afe9cd9c94af1f5d9a03dac0d2a3f9359664031c",
+      "bytes": 161976,
+      "modified_utc": "2026-10-20T17:46:30.386807+00:00"
+    },
+    {
+      "path": "artifacts/godot-390-start-oriented.png",
+      "sha256": "55e23a95794050915e4650dd4065debba50ced39bb459111ae0eea39d7a2d327",
+      "bytes": 83494,
+      "modified_utc": "2026-10-20T17:48:13.284271+00:00"
+    },
+    {
+      "path": "artifacts/godot-390-character-evening.png",
+      "sha256": "3cd61a26ba7b6b2f4f83b00c2a02d2ddf403f7690d7c1347e68e5cefd902b6ed",
+      "bytes": 82890,
+      "modified_utc": "2026-10-20T17:48:13.351066+00:00"
+    },
+    {
+      "path": "artifacts/godot-390-character-walking.png",
+      "sha256": "aca9432c4bcbf45130efb7c5aee421767176d739a40af1b51d28bbbe750c6fab",
+      "bytes": 93644,
+      "modified_utc": "2026-10-20T17:48:18.204302+00:00"
+    },
+    {
+      "path": "artifacts/godot-390-character-light-pool.png",
+      "sha256": "a420f2dc403a1ea629f3e963f05d6e57c17cda327b809a592a16d41850b04d60",
+      "bytes": 81181,
+      "modified_utc": "2026-10-20T17:48:20.788034+00:00"
+    },
+    {
+      "path": "artifacts/godot-390-character-arrived.png",
+      "sha256": "38be7d96a8881aa8daa669a8f233670e3c846cc3bdd2cfe6739ceb766da7cf47",
+      "bytes": 84894,
+      "modified_utc": "2026-10-20T17:48:21.320155+00:00"
+    },
+    {
+      "path": "artifacts/godot-320-start-oriented.png",
+      "sha256": "a73e418c60cddcbb0c2c7f419f5cbfb1ea43ba085351023328c4b69611feb7b5",
+      "bytes": 70746,
+      "modified_utc": "2026-10-20T17:50:10.351612+00:00"
+    },
+    {
+      "path": "artifacts/godot-320-character-evening.png",
+      "sha256": "b54098566ea861be62615a9f1b7cdf2ac3d7aff38f575159670fc0d311c16702",
+      "bytes": 70909,
+      "modified_utc": "2026-10-20T17:50:10.419965+00:00"
+    },
+    {
+      "path": "artifacts/godot-320-character-walking.png",
+      "sha256": "8334149c66709d26a3b513f360894ca1b8556c76e25bd53a840e06ad9523c5fc",
+      "bytes": 84639,
+      "modified_utc": "2026-10-20T17:50:15.255634+00:00"
+    },
+    {
+      "path": "artifacts/godot-320-character-light-pool.png",
+      "sha256": "88cae07d503c05befdc5142e6f6f704334c7d967ee066497bf960b5f470e3d5d",
+      "bytes": 71889,
+      "modified_utc": "2026-10-20T17:50:17.838837+00:00"
+    },
+    {
+      "path": "artifacts/godot-320-character-arrived.png",
+      "sha256": "7b90d091df775608d2ab057d5f087daf07d1603eb7c9b80cf54db80c38f5dc62",
+      "bytes": 77323,
+      "modified_utc": "2026-10-20T17:50:18.369694+00:00"
+    }
+  ],
+  "live_preview": {
+    "path": "artifacts/codex-character-graphics-live-preview.png",
+    "sha256": "cb0749956d6344e75f50d50a28e1371352f15d6b5fea2a72039b1a28f821f5e3",
+    "bytes": 54682,
+    "modified_utc": "2026-10-20T17:52:43.550109+00:00"
+  },
+  "export_pack": {
+    "path": "artifacts/godot-web/index.pck",
+    "sha256": "75e520238a716f601998dcb418cd91643c1b6794dcb878c42abf86c7667e1a73",
+    "bytes": 1648868,
+    "modified_utc": "2026-10-20T17:45:49.034376+00:00"
+  },
+  "public": {
+    "version": "0.12.0",
+    "fingerprint": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567"
+  },
+  "legacy_browser_save": "Read-only; existing browser import isolation checks passed.",
+  "independent_review": {
+    "skill": "anthropic-skills:kibitz",
+    "round": "r3",
+    "calls": 1,
+    "driver": "codex",
+    "reviewer": "claude",
+    "requested_model": "claude-opus-5-5",
+    "selected_model": "claude-opus-5-5",
+    "requested_effort": "high",
+    "selected_effort": "high",
+    "exit_code": 0,
+    "verdict": "yes-with-fixes",
+    "source_unchanged_during_review": true,
+    "usage_percent": "unknown",
+    "post_review_fixes": "Grounded and applied by Codex, followed by all five gates; no second external review."
+  },
+  "limits": [
+    "First-person is researched, not implemented.",
+    "No physical-phone, full screen-reader, human comfort/listening/pacing, field-observation or deployment validation.",
+    "No change to measured city geometry or physical player dimensions.",
+    "Only six core characters receive new grounding; other shared-builder characters keep previous markers.",
+    "Roadmap remains unfinished."
+  ]
+}

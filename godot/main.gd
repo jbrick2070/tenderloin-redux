@@ -11,6 +11,8 @@ const WALK_SPEED_M_PER_S := 4.8
 const WALK_CORRIDOR_SPEED_M_PER_S := 24.0
 const PLAYER_HEIGHT_M := 1.72
 const PLAYER_RADIUS_M := 0.45
+const CHARACTER_VISUAL_SCALE := 2.15
+const CHARACTER_SHADOW_GROUND_Y := 0.075
 const WALK_CLEARANCE_M := 0.65
 const MAX_STREET_CORRIDOR_M := 12.0
 const ARRIVAL_DISTANCE_M := 1.35
@@ -2503,8 +2505,9 @@ func build_neighbors_and_player() -> void:
 		elif n_id == ROOK_ID:
 			rook_index = i
 		var n_node := make_person_node(n.name, n.coat, n.skin, n.hair, 1.70, false)
+		add_character_grounding(n_node, n.coat, false)
 		n_node.position = n.pos
-		n_node.scale = Vector3(2.15, 2.15, 2.15)
+		n_node.scale = Vector3.ONE * CHARACTER_VISUAL_SCALE
 		attach_neighbor_signature_prop(n_node, n_id)
 		var nameplate := make_label_3d("Nameplate", String(n.name), Vector3(0.0, 2.10, 0.0), Color("fff6df"), 0.0068, 26)
 		nameplate.set_meta("neighbor_index", i)
@@ -2522,8 +2525,9 @@ func build_neighbors_and_player() -> void:
 	col.shape = shape
 	col.position = Vector3(0.0, PLAYER_HEIGHT_M * 0.5, 0.0)
 	player.add_child(col)
-	player_visual = make_person_node("PlayerVisual", Color("f0ce77"), Color("b67f5d"), Color("34392f"), PLAYER_HEIGHT_M, true)
-	player_visual.scale = Vector3(2.15, 2.15, 2.15)
+	player_visual = make_person_node("PlayerVisual", Color("176b78"), Color("b67f5d"), Color("34392f"), PLAYER_HEIGHT_M, true)
+	add_character_grounding(player_visual, Color("ffe866"), true)
+	player_visual.scale = Vector3.ONE * CHARACTER_VISUAL_SCALE
 	# A screen-sized caption below the feet stays clear of nearby speech prompts.
 	player_nameplate = make_label_3d("PlayerNameplate", "YOU", Vector3(0.0, -0.55, 0.0), Color("ffe866"), 0.0070, 24)
 	player_nameplate.outline_size = 10
@@ -3224,6 +3228,44 @@ func person_material(color: Color) -> StandardMaterial3D:
 	result.emission_energy_multiplier = 0.22
 	return result
 
+## Original presentation marks, not pavement markings or physical collision.
+## Only the player and five ground-level neighbors use these; raised performers
+## and the fictional flying chef keep their separate staging.
+func character_ground_mesh(inner_radius: float, outer_radius: float, inner_color: Color, outer_color: Color) -> ArrayMesh:
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in range(48):
+		var a := Vector3(cos(float(i) * TAU / 48.0), 0.0, sin(float(i) * TAU / 48.0))
+		var b := Vector3(cos(float(i + 1) * TAU / 48.0), 0.0, sin(float(i + 1) * TAU / 48.0))
+		for vertex in [[a * inner_radius, inner_color], [b * outer_radius, outer_color], [a * outer_radius, outer_color], [a * inner_radius, inner_color], [b * inner_radius, inner_color], [b * outer_radius, outer_color]]:
+			surface.set_color(vertex[1])
+			surface.set_normal(Vector3.UP)
+			surface.add_vertex(vertex[0])
+	return surface.commit()
+
+func add_character_grounding(person: Node3D, tint: Color, is_player: bool) -> void:
+	var ring := person.get_node("GroundRing") as MeshInstance3D
+	var radius := 0.65 if is_player else 0.60
+	var ink := tint if is_player else tint.lightened(0.30)
+	ring.mesh = character_ground_mesh(radius - (0.10 if is_player else 0.085), radius, ink, ink)
+	ring.position.y = 0.040
+	var marker_material := StandardMaterial3D.new()
+	marker_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	marker_material.vertex_color_use_as_albedo = true
+	marker_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	ring.material_override = marker_material
+	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var contact := MeshInstance3D.new()
+	contact.name = "ContactShadow"
+	contact.mesh = character_ground_mesh(0.0, 0.48, Color(0.035, 0.045, 0.055, 0.46), Color(0.035, 0.045, 0.055, 0.0))
+	contact.position.y = CHARACTER_SHADOW_GROUND_Y / CHARACTER_VISUAL_SCALE # Clears the route ribbon at world y0.06.
+	var contact_material := marker_material.duplicate() as StandardMaterial3D
+	contact_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	contact_material.render_priority = 1 # Composite over the map-wide additive evening pools consistently.
+	contact.material_override = contact_material
+	contact.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	person.add_child(contact)
+
 func make_person_node(node_name: String, coat: Color, skin: Color, hair: Color, total_height: float, is_player: bool) -> Node3D:
 	var root_node := Node3D.new()
 	root_node.name = node_name
@@ -3251,7 +3293,7 @@ func make_person_node(node_name: String, coat: Color, skin: Color, hair: Color, 
 		shoe_cyl.height = shoe_h
 		shoe.mesh = shoe_cyl
 		shoe.position = Vector3(leg_side, shoe_h * 0.5, 0.02)
-		shoe.material_override = person_material(Color("232c29"))
+		shoe.material_override = person_material(Color("e5e0c9") if is_player else Color("232c29"))
 		root_node.add_child(shoe)
 		var leg := MeshInstance3D.new()
 		leg.name = "LeftLeg" if is_left_leg else "RightLeg"
@@ -3285,7 +3327,7 @@ func make_person_node(node_name: String, coat: Color, skin: Color, hair: Color, 
 	collar_cyl.height = collar_h
 	collar.mesh = collar_cyl
 	collar.position = Vector3(0.0, legs_top + torso_h - collar_h * 0.4, 0.0)
-	collar.material_override = person_material(coat.lightened(0.24))
+	collar.material_override = person_material(Color("f2c760") if is_player else coat.lightened(0.24))
 	root_node.add_child(collar)
 	var arm_h := torso_h * 0.80
 	var hand_r := 0.055
@@ -10709,6 +10751,10 @@ func get_a11y_status_snapshot() -> Dictionary:
 			var rect := conv_next_btn.get_global_rect()
 			action_controls.append({"id": "whats_next", "label": conv_next_btn.text, "x": rect.position.x, "y": rect.position.y, "width": rect.size.x, "height": rect.size.y})
 	var vp := bubble_viewport_size()
+	var contact := player_visual.get_node_or_null("ContactShadow") as MeshInstance3D
+	var nearest_pool_distance := INF
+	for pool in light_pool_centers:
+		nearest_pool_distance = minf(nearest_pool_distance, player_xz().distance_to(pool))
 	var marker_screen := Vector2.ZERO
 	var marker_visible := false
 	if guide_marker != null and camera != null:
@@ -10734,6 +10780,8 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"in_wide_overview": in_wide_overview,
 		"cutaway_additions": occluded_additions.size(),
 		"player_screen": {"x": camera.unproject_position(player.position + Vector3.UP).x, "y": camera.unproject_position(player.position + Vector3.UP).y},
+		"player_grounding": {"x": player.position.x, "z": player.position.z, "shadow_x": contact.global_position.x if contact != null else null, "shadow_z": contact.global_position.z if contact != null else null, "shadow_y": contact.global_position.y if contact != null else null, "stride": player_stride_blend, "path_active": not current_path.is_empty(), "nearest_light_pool_distance": nearest_pool_distance},
+		"evening_mode": evening_mode,
 		"play_area": {"x": play_area_rect().position.x, "y": play_area_rect().position.y, "width": play_area_rect().size.x, "height": play_area_rect().size.y},
 		"overlays": scene_overlay_snapshot(),
 		"guide_marker_screen": {"x": marker_screen.x, "y": marker_screen.y, "visible": marker_visible},
