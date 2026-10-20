@@ -1,0 +1,20 @@
+# Driver judgment
+
+One installed Kibitz r3 Claude call completed: exact selected claude-opus-5-5, high, rc0, yes-with-fixes; usage unknown. Source hashes remained unchanged during the call (source_after_review.json). Codex is sole writer/judge. No second external review call.
+
+Must-fix1 CONFIRMED timing risk. Camera view changes synchronously, while container children can retain previous dimensions until layout. Browser now waits for a later published ui_frame with visible reward/title before asserting title lines. Added the same fresh-layout wait around a real museum heading; the320px case must actually wrap. No claim of independently reading Godot engine C++ is made.
+Must-fix2 CONFIRMED measurement mismatch. WORD_SMART rendering can adaptively split long tokens; font measurement now explicitly includes BREAK_ADAPTIVE with mandatory/word boundaries. Native checks include an unbroken long token at all three widths and require every line visible. This closes the clipping case without shrinking or ellipsizing reward headings.
+
+Should-fix1 ACCEPTED conservative rounding: ceil the measured minimum height. Exact engine rounding is not claimed, but this avoids a fractional pixel shortfall. Native checks verify visible/total lines and short-heading height restoration.
+Should-fix2 CONFIRMED width contract: derive content width from actual StyleBox left/right margins rather than hard-coding24.
+Should-fix3 CONFIRMED avoidable fallback: clamp each candidate to the play area before testing and prefer the legal candidate closest to the arrow. This preserves a named label more often in narrow views.
+Should-fix4 CONFIRMED overly conservative clearance: removed growth on obstacle rectangles; keep six-pixel guide outline growth as the single gap contract. Native and browser assertions now agree on the outlined rectangle.
+Should-fix5 CONFIRMED glyph collision risk: reserve a40x40 envelope around the arrow polygon. Candidate ordering prefers nearby placement; no arbitrary140px rejection threshold is added. Native checks require the outlined name not to intersect the glyph envelope. The exact named Talk/objective fixture must retain both labels, so hiding cannot satisfy that regression.
+Should-fix6 INTENTIONAL existing queue behavior, no change. When insufficient street area remains, banner time pauses and explicit Info can show complete reward text. The3D burst title is suppressed during the banner lifetime to avoid unbounded duplicate text over dialogue/controls. Making it visible whenever the banner is queued would bypass the same bounds policy this task protects. Existing queue/reveal, timer and Info tests remain mandatory and pass natively; no new immediate-3D-title guarantee is claimed.
+
+Optional browser outline parity ACCEPTED. Optional player-YOU reservation is outside this bounded fixture: final screenshots must be inspected for player visibility, but arbitrary nameplate/arrow combinations are not claimed exhaustively covered. Narrow objective names retain their existing22-character abbreviation; reward headings are the full wrapping titles being fixed. Existing persistent objective and arrow remain if no extra label slot fits.
+Cut redundant per-frame guide pass ACCEPTED: removed it from update_conversation_ui; the final pass in update_readable_scene_labels resolves current Talk/reward/caption bounds. Direct callers remain.
+
+Invariant spot-checks grounded: export remains artifacts/godot-web; public/ unchanged by source diff. Project uses shared coordinates for Control rects and camera projections. Museum/So What session flags reset on reload, so browser triggers actual rewards. First four final gates pass after fixes; final browser result, source/log hashes and inspected screenshots belong in verification.json/final.md. Physical phones, complete screen readers and human pacing remain unverified.
+
+Final driver visual refinement: the390px museum screenshot put the decorative trailing star alone on a second line. Removed that trailing ornament while keeping the leading reward star and complete heading. This received driver review and a fresh five-gate run, not a second external call.

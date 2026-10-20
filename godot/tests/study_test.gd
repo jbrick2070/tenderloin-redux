@@ -1189,7 +1189,7 @@ func run() -> void:
 		if not (e_lbl_node as Label3D).text.ends_with("(fictional)") or (e_lbl_node as Label3D).text.contains("/5"):
 			eatery_names_ok = false
 	require(eatery_names_ok, "fictional eateries avoid real SF business names (Golden Lotus, Midnight Sun, owl-themed bar), show no made-up ratings, and are labeled fictional")
-	require(study.inspect_so_what_easter_egg() and study.info.text.contains("145 Leavenworth") and study.info.text.contains("361 Turk St") and study.info.text.contains("So What") and study.last_music_cue == "so_what_egg" and study.reward_banner.visible and study.reward_title_label.text.contains("Creator Easter Egg") and study.celebration_burst_node.position.is_equal_approx(study.SO_WHAT_VIEW_TARGET), "inspect_so_what_easter_egg frames 145 Leavenworth 8th Floor & 361 Turk 'So What' awning easter egg and triggers first-time feel-good burst at SO_WHAT_VIEW_TARGET")
+	require(study.inspect_so_what_easter_egg() and study.info.text.contains("145 Leavenworth") and study.info.text.contains("361 Turk St") and study.info.text.contains("So What") and study.last_music_cue == "so_what_egg" and study.reward_banner.visible and study.reward_title_label.text.contains("Found 'So What'!") and study.celebration_burst_node.position.is_equal_approx(study.SO_WHAT_VIEW_TARGET), "inspect_so_what_easter_egg frames 145 Leavenworth 8th Floor & 361 Turk 'So What' awning easter egg and triggers first-time feel-good burst at SO_WHAT_VIEW_TARGET")
 	var burst_before_so_what_revisit: int = study.reward_burst_count
 	require(study.inspect_so_what_easter_egg() and study.reward_burst_count == burst_before_so_what_revisit, "re-inspecting 'So What' Easter Egg does not duplicate feel-good burst")
 	require(study.inspect_tenderloin_museum_hub() and study.active_time_era == "present" and study.info.text.contains("398 Eddy St") and study.info.text.contains("Cadillac Hotel") and study.last_music_cue == "museum_portal" and study.reward_body_label.text.contains("Session era 1/4"), "first inspect_tenderloin_museum_hub call presents 398 Eddy St Cadillac Hotel museum hub and triggers Session era 1/4 museum_portal burst")
@@ -1928,6 +1928,46 @@ func run() -> void:
 	study.visit_next_landmark()
 	require(not study.music_stem_label.text.contains(old_rook_hint), "museum visit clears Rook's completed objective hint")
 	study.end_conversation()
+	# Actual explore objective beside Bea: reward titles wrap and guide text clears Talk.
+	var readable_reward_save: String = JSON.stringify(study.build_save_envelope())
+	var readable_surprises: Dictionary = study.discovered_surprises.duplicate()
+	var readable_hint: String = study.last_hinted_surprise_id
+	study.discovered_surprises.erase("jeffrey_record")
+	study.last_hinted_surprise_id = "jeffrey_record"
+	for text_size in [Vector2i(1100, 760), Vector2i(390, 667), Vector2i(320, 667)]:
+		root.size = text_size
+		await process_frame
+		await process_frame
+		study.player.position = study.PLAYER_START
+		study.set_header_details(false, false)
+		study.frame_player_for_walking()
+		study.update_celebration_burst(5.0)
+		for heading in ["Archive Time-Portal - A neighborhood history session at the former Black Hawk jazz club", "NeighborhoodDiscoveryKeepsakeCelebrationForOurWholeTenderloinCommunity"]:
+			study.trigger_feel_good_burst(heading, "Original historical context remains available in Info.", study.target)
+			await process_frame
+			await process_frame
+			require(study.reward_title_label.get_visible_line_count() == study.reward_title_label.get_line_count(), "full smart-wrapped heading including unbroken token stays visible")
+		study.update_talk_prompt()
+		study.update_guide_marker()
+		study.update_readable_scene_labels()
+		require(study.reward_banner.visible and study.reward_title_label.get_line_count() > 1 and study.reward_title_label.get_visible_line_count() == study.reward_title_label.get_line_count(), "complete long reward title wraps without clipping at %s" % text_size)
+		require(study.reward_banner.get_global_rect().encloses(study.reward_title_label.get_global_rect()), "wrapped title remains inside the reward banner")
+		require(study.guide_arrow.visible and study.guide_arrow_label.visible, "named objective stays visible during long reward at %s" % text_size)
+		verify_scene_overlay_bounds(study, "long reward and guide at %s" % text_size)
+		study.update_celebration_burst(5.0)
+		study.update_talk_prompt()
+		study.update_readable_scene_labels()
+		require(study.talk_prompt_node.visible and study.guide_arrow_label.visible, "Talk and named objective return together after reward at %s" % text_size)
+		verify_scene_overlay_bounds(study, "guide after reward at %s" % text_size)
+		var tall_reward_height: float = study.reward_banner.size.y
+		study.trigger_feel_good_burst("Found 'So What'!", "Full addresses remain in Info.", study.target)
+		await process_frame
+		await process_frame
+		require(study.reward_title_label.get_visible_line_count() == 1 and study.reward_banner.size.y < tall_reward_height, "short heading restores compact reward height after a wrapped one")
+		study.update_celebration_burst(5.0)
+	study.discovered_surprises = readable_surprises
+	study.last_hinted_surprise_id = readable_hint
+	require(JSON.stringify(study.build_save_envelope()) == readable_reward_save, "text layout does not change saved progress")
 	for tap_size in [Vector2i(1100, 760), Vector2i(390, 667), Vector2i(320, 667)]:
 		root.size = tap_size
 		await process_frame
@@ -2468,6 +2508,13 @@ func verify_scene_overlay_bounds(study: Node, context: String) -> void:
 		for previous in occupied:
 			require(not talk.intersects(previous), "talk prompt clears other overlays: " + context)
 		occupied.append(talk)
+	if study.guide_arrow.visible and study.guide_arrow_label.visible:
+		var guide: Rect2 = study.guide_arrow_label.get_global_rect().grow(6.0)
+		require(not guide.intersects(Rect2(study.guide_arrow.position - Vector2(20.0, 20.0), Vector2(40.0, 40.0))), "guide name clears its arrow glyph: " + context)
+		require(study.play_area_rect().encloses(guide), "outlined guide label stays in play area: " + context)
+		for previous in occupied:
+			require(not guide.intersects(previous), "guide label clears other overlays: " + context)
+		occupied.append(guide)
 	for caption in study.visible_scene_captions:
 		var rect: Rect2 = caption.rect
 		require(study.play_area_rect().encloses(rect), "caption stays in play area: " + context)

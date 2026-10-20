@@ -1,0 +1,184 @@
+{
+  "verified_at_utc": "2026-10-20T19:45:42.570973+00:00",
+  "baseline": "413df4cf0da16eb58dd56e09eda0fde35c1271c0",
+  "manual_authorization_after_shift_cutoff": true,
+  "automation_status": "PAUSED",
+  "source_sha256": {
+    "godot/main.gd": "add242b55af342c76480fbd93220e0e04788b18718f08d111defbe73504f88aa",
+    "godot/tests/study_test.gd": "de6266435f9962b99d60fada9f6fbf82dd3ca8f4646c950dbea274cfdd9aeba6",
+    "tests/godot-browser.mjs": "fa42002b22688663c10a010d8052c70d8a43b4faf8f2f57189f8ed8122c7c792"
+  },
+  "all_five_gates_after_final_source_change": true,
+  "gates": [
+    {
+      "command": "npm.cmd run godot:test",
+      "exit_code": 0,
+      "log": {
+        "path": "artifacts/readable-labels-native-reviewed.log",
+        "sha256": "bc4c9f48a7560897dbf4a81bc25d2d5ded9900571fcf58672200e565f1af284d",
+        "bytes": 12102,
+        "modified_utc": "2026-10-20T19:37:13.530981+00:00"
+      }
+    },
+    {
+      "command": "npm.cmd run godot:export",
+      "exit_code": 0,
+      "log": {
+        "path": "artifacts/readable-labels-export-reviewed.log",
+        "sha256": "bb6fab37171e55788bc415710a9755fcb60eeacf76614378403ba2db28ece436",
+        "bytes": 2122,
+        "modified_utc": "2026-10-20T19:37:16.041066+00:00"
+      }
+    },
+    {
+      "command": "npm.cmd run check",
+      "exit_code": 0,
+      "log": {
+        "path": "artifacts/readable-labels-check-reviewed.log",
+        "sha256": "bbbf642933db0755ec1b063caec7667a16966ea1db64dadab1526709e88e5537",
+        "bytes": 1337,
+        "modified_utc": "2026-10-20T19:37:18.863422+00:00"
+      }
+    },
+    {
+      "command": "npm.cmd test",
+      "exit_code": 0,
+      "log": {
+        "path": "artifacts/readable-labels-node-reviewed.log",
+        "sha256": "7e8a65f4774ddd3bfc3bd6775ad9f8edd64ff1cd4e06746d5ea5159bbfb245cc",
+        "bytes": 10793,
+        "modified_utc": "2026-10-20T19:37:27.155381+00:00"
+      }
+    },
+    {
+      "command": "npm.cmd run godot:browser",
+      "exit_code": 0,
+      "log": {
+        "path": "artifacts/readable-labels-browser-reviewed.log",
+        "sha256": "d25a49b67239afc6b3f17887ca176ccee3f8f7bf01d082ffc5e0afdd21c9f8f0",
+        "bytes": 36079,
+        "modified_utc": "2026-10-20T19:43:40.665995+00:00"
+      }
+    }
+  ],
+  "node_tests_passed": 104,
+  "browser_result": {
+    "path": "artifacts/godot-browser.json",
+    "sha256": "b793db6fcf8f9445f292a45b3d0e44e4ae34cd25af51c68ef9d05ce7b760bc35",
+    "bytes": 38453,
+    "modified_utc": "2026-10-20T19:43:40.664137+00:00"
+  },
+  "browser_errors": [],
+  "browser_external": [],
+  "browser_runs": [
+    {
+      "viewport": {
+        "width": 1100,
+        "height": 760
+      },
+      "readable_reward_and_guide_verified": true,
+      "full_save_bytes": 1728,
+      "performance_save_bytes": 1535,
+      "pathfind_blackhawk_usec": 179200,
+      "compact_header_height": 87
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 667
+      },
+      "readable_reward_and_guide_verified": true,
+      "full_save_bytes": 1728,
+      "performance_save_bytes": 1535,
+      "pathfind_blackhawk_usec": 184500,
+      "compact_header_height": 83
+    },
+    {
+      "viewport": {
+        "width": 320,
+        "height": 667
+      },
+      "readable_reward_and_guide_verified": true,
+      "full_save_bytes": 1728,
+      "performance_save_bytes": 1535,
+      "pathfind_blackhawk_usec": 180400,
+      "compact_header_height": 97
+    }
+  ],
+  "export_pack": {
+    "path": "artifacts/godot-web/index.pck",
+    "sha256": "e6e0db7ed5ca81b5958f41f2224af60a5b6f664fda4c00833c9e999d77e1e8b9",
+    "bytes": 1650084,
+    "modified_utc": "2026-10-20T19:37:16.032087+00:00"
+  },
+  "public_runtime": {
+    "version": "0.12.0",
+    "fingerprint": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567"
+  },
+  "review": {
+    "driver": "codex",
+    "partner": "claude",
+    "round": "r3",
+    "requested_model": "claude-opus-5-5",
+    "selected_model": "claude-opus-5-5",
+    "requested_effort": "high",
+    "selected_effort": "high",
+    "exit_code": 0,
+    "verdict": "yes-with-fixes",
+    "usage_percent": "unknown",
+    "source_unchanged_during_review": true,
+    "fixes_verified_by_driver_not_second_external_call": true
+  },
+  "screenshots_inspected": [
+    {
+      "path": "artifacts/godot-1100-wrapped-reward-title.png",
+      "sha256": "670c94edb133f431c7edc30020969ea1e07e835c9f1c64843c48d5bdb1ded416",
+      "bytes": 248772,
+      "modified_utc": "2026-10-20T19:39:36.175798+00:00"
+    },
+    {
+      "path": "artifacts/godot-1100-inspection-resume-walk.png",
+      "sha256": "b2a8346a4fcdac34edd099c3986a3b4cb3f4f88b893fbcd413fd138964575f2f",
+      "bytes": 238323,
+      "modified_utc": "2026-10-20T19:39:37.195005+00:00"
+    },
+    {
+      "path": "artifacts/godot-390-wrapped-reward-title.png",
+      "sha256": "93666a541db3ea885c620f9c1e8c4444717a037e7e532c77981c13c7eeb24cd3",
+      "bytes": 106255,
+      "modified_utc": "2026-10-20T19:41:36.337742+00:00"
+    },
+    {
+      "path": "artifacts/godot-390-inspection-resume-walk.png",
+      "sha256": "e10c15a571132323843a60bb17e8e6bd2281c62ea1e62c366cb0de7eb3f70564",
+      "bytes": 100816,
+      "modified_utc": "2026-10-20T19:41:37.337121+00:00"
+    },
+    {
+      "path": "artifacts/godot-320-wrapped-reward-title.png",
+      "sha256": "2acd1f7ebeec836c48a8ac966ec48bbcd4a02f8daac6263bb3ac0546965a2a46",
+      "bytes": 94336,
+      "modified_utc": "2026-10-20T19:43:39.155921+00:00"
+    },
+    {
+      "path": "artifacts/godot-320-inspection-resume-walk.png",
+      "sha256": "c4bdb0299cd12efcb5fabe1229eb54a952f4bda0c98aeaa45757c6675aa3a7b4",
+      "bytes": 88303,
+      "modified_utc": "2026-10-20T19:43:40.191925+00:00"
+    }
+  ],
+  "live_preview": {
+    "path": "artifacts/codex-readable-rewards-live-preview.png",
+    "sha256": "e293a8cecc129c87cce135b791ce2a40b27fca15a987dd9087fb8d54232c0645",
+    "bytes": 53491,
+    "modified_utc": "2026-10-20T19:44:05.925289+00:00"
+  },
+  "limits": [
+    "Physical phones, complete screen readers and human comfort/pacing unverified.",
+    "Screenshots are near asserted frames, not atomic captures.",
+    "Objective names retain existing narrow-screen abbreviations; reward titles wrap in full.",
+    "Extra guide name hides if no legal space remains; persistent objective and arrow remain.",
+    "Detached hub action buttons/detail row still truncate on phones; separate next layout work.",
+    "No geography, provenance, save schema, sound preference or engine changes."
+  ]
+}

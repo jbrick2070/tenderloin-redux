@@ -5673,6 +5673,7 @@ func build_reward_banner(layer: CanvasLayer) -> void:
 	reward_title_label.name = "RewardTitle"
 	reward_title_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	reward_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	reward_title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	reward_title_label.clip_text = true
 	reward_title_label.add_theme_font_size_override("font_size", 15)
 	reward_title_label.add_theme_color_override("font_color", Color("ffe48f"))
@@ -5698,6 +5699,11 @@ func layout_reward_banner() -> void:
 		return
 	var area := play_area_rect()
 	var w := minf(460.0, maxf(180.0, area.size.x - 16.0))
+	var title_font := reward_title_label.get_theme_font("font")
+	var title_size := reward_title_label.get_theme_font_size("font_size")
+	var title_measure := title_font.get_multiline_string_size(reward_title_label.text, HORIZONTAL_ALIGNMENT_CENTER, w - reward_banner_style.get_margin(SIDE_LEFT) - reward_banner_style.get_margin(SIDE_RIGHT), title_size, -1, TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE)
+	var title_lines := maxi(1, int(ceil(title_measure.y / title_font.get_height(title_size))))
+	reward_title_label.custom_minimum_size.y = ceil(title_measure.y + (title_lines - 1) * reward_title_label.get_theme_constant("line_spacing"))
 	reward_banner.custom_minimum_size = Vector2(w, 0.0)
 	reward_banner.size = Vector2(w, reward_banner.get_combined_minimum_size().y)
 	reward_banner.position = Vector2(area.position.x + (area.size.x - w) * 0.5, area.position.y + 4.0)
@@ -5723,7 +5729,7 @@ func trigger_feel_good_burst(title_str: String, detail_str: String, world_pos: V
 	if reward_banner != null and not keep_finale:
 		if reward_banner_style != null:
 			reward_banner_style.border_color = accent.lightened(0.15)
-		reward_title_label.text = "* %s *" % title_str
+		reward_title_label.text = "* %s" % title_str
 		reward_body_label.text = detail_str
 		reward_banner.modulate = Color.WHITE
 		reward_banner.visible = true
@@ -6548,9 +6554,43 @@ func update_guide_arrow() -> void:
 	guide_arrow_label.size = lbl_size
 	var lbl_pos := -dir.normalized() * 36.0 - lbl_size * 0.5
 	var lbl_global := guide_arrow.position + lbl_pos
-	lbl_global.x = clampf(lbl_global.x, area.position.x + 4.0, maxf(area.position.x + 4.0, area.end.x - lbl_size.x - 4.0))
-	lbl_global.y = clampf(lbl_global.y, area.position.y + 4.0, maxf(area.position.y + 4.0, area.end.y - lbl_size.y - 4.0))
-	guide_arrow_label.position = lbl_global - guide_arrow.position
+	lbl_global.x = clampf(lbl_global.x, area.position.x + 6.0, maxf(area.position.x + 6.0, area.end.x - lbl_size.x - 6.0))
+	lbl_global.y = clampf(lbl_global.y, area.position.y + 6.0, maxf(area.position.y + 6.0, area.end.y - lbl_size.y - 6.0))
+	# Keep the outlined objective name clear of the Talk prompt and transient UI.
+	var occupied: Array[Rect2] = []
+	if reward_banner != null and reward_banner.is_visible_in_tree():
+		occupied.append(reward_banner.get_global_rect())
+	if talk_prompt_node != null and talk_prompt_node.is_visible_in_tree():
+		occupied.append(talk_prompt_screen_rect())
+	if is_story_card_visible():
+		occupied.append(story_card.get_global_rect())
+	for caption in visible_scene_captions:
+		occupied.append(caption.rect)
+	occupied.append(Rect2(guide_arrow.position - Vector2(20.0, 20.0), Vector2(40.0, 40.0)))
+	var candidates: Array[Vector2] = [lbl_global]
+	for reserved in occupied:
+		candidates.append(Vector2(lbl_global.x, reserved.position.y - lbl_size.y - 6.0))
+		candidates.append(Vector2(lbl_global.x, reserved.end.y + 6.0))
+		candidates.append(Vector2(reserved.position.x - lbl_size.x - 6.0, lbl_global.y))
+		candidates.append(Vector2(reserved.end.x + 6.0, lbl_global.y))
+	for i in range(candidates.size()):
+		candidates[i].x = clampf(candidates[i].x, area.position.x + 6.0, maxf(area.position.x + 6.0, area.end.x - lbl_size.x - 6.0))
+		candidates[i].y = clampf(candidates[i].y, area.position.y + 6.0, maxf(area.position.y + 6.0, area.end.y - lbl_size.y - 6.0))
+	candidates.sort_custom(func(a: Vector2, b: Vector2) -> bool: return (a + lbl_size * 0.5).distance_squared_to(guide_arrow.position) < (b + lbl_size * 0.5).distance_squared_to(guide_arrow.position))
+	guide_arrow_label.visible = false
+	for candidate in candidates:
+		var rect := Rect2(candidate, lbl_size).grow(6.0)
+		if not area.encloses(rect):
+			continue
+		var clear := true
+		for reserved in occupied:
+			if rect.intersects(reserved):
+				clear = false
+				break
+		if clear:
+			guide_arrow_label.position = candidate - guide_arrow.position
+			guide_arrow_label.visible = true
+			break
 	guide_arrow.visible = true
 
 func hub_button_for_objective(obj_id: String) -> Button:
@@ -6958,7 +6998,6 @@ func update_conversation_ui(delta: float) -> void:
 		sync_web_a11y_status()
 	var obj := current_objective()
 	update_guide_marker(obj)
-	update_guide_arrow()
 	update_talk_prompt()
 
 func player_height_m() -> float:
@@ -10118,7 +10157,7 @@ func trigger_progress_cue(cue_id: String, reason: String) -> void:
 				burst_pos = BOEDDEKER_VIEW_TARGET
 				burst_accent = Color("7ce8b0")
 			"so_what_egg":
-				burst_title = "Creator Easter Egg — 'So What' at 145 Leavenworth & 361 Turk"
+				burst_title = "Found 'So What'!"
 				burst_detail = "8th-floor corner bay window & 1961 Miles Davis awning"
 				burst_pos = SO_WHAT_VIEW_TARGET
 				burst_accent = Color("ffd45e")
@@ -10720,7 +10759,11 @@ func scene_overlay_snapshot() -> Dictionary:
 		var cp := eatery_counter_points[eatery_guide_idx]
 		var screen := camera.unproject_position(Vector3(cp.x, 1.3, cp.y))
 		counter = {"x": screen.x, "y": screen.y, "index": eatery_guide_idx, "orders": int(eatery_order_counts.get(String(NEIGHBORHOOD_EATERIES[eatery_guide_idx].id), 0))}
-	return {"speech": speech, "reward": control_snapshot(reward_banner), "talk": talk, "captions": captions, "counter": counter}
+	var reward_title := control_snapshot(reward_title_label)
+	reward_title["text"] = reward_title_label.text
+	reward_title["lines"] = reward_title_label.get_line_count()
+	reward_title["visible_lines"] = reward_title_label.get_visible_line_count()
+	return {"speech": speech, "reward": control_snapshot(reward_banner), "reward_title": reward_title, "guide_label": control_snapshot(guide_arrow_label), "talk": talk, "captions": captions, "counter": counter}
 
 func get_a11y_status_snapshot() -> Dictionary:
 	var active_panel := "none"
@@ -12686,6 +12729,7 @@ func update_readable_scene_labels() -> void:
 		if label.is_visible_in_tree():
 			occupied.append(rect.grow(4.0))
 			visible_scene_captions.append({"rect": rect, "id": String(label.get_path()), "text": label.text, "eatery_index": int(label.get_meta("eatery_index", -1))})
+	update_guide_arrow() # Place objective text after the current captions and Talk prompt.
 
 func _process(delta: float) -> void:
 	if player_nameplate != null and camera != null:

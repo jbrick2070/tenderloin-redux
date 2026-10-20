@@ -559,16 +559,17 @@ try {
     await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.announcement.includes('Tap the counter to order'));
     assert.equal((await page.evaluate(() => window.__tenderloinGodotA11ySnapshot)).tour_count, 0, 'Framing a cafe does not count as placing an order');
     function assertReadableOverlays(snap, context) {
-      const { speech, reward, talk, captions } = snap.overlays;
+      const { speech, reward, talk, guide_label, captions } = snap.overlays;
       const overlaps = (a, b) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
       const area = snap.play_area;
       const contained = r => r.x >= area.x - 1 && r.y >= area.y - 1 && r.x + r.width <= area.x + area.width + 1 && r.y + r.height <= area.y + area.height + 1;
       const occupied = [];
-      for (const [name, rect] of [['reward', reward], ['speech', speech], ['talk', talk], ...captions.map(c => [c.id, c])]) {
-        if (['speech', 'reward', 'talk'].includes(name) && !rect.visible) continue;
-        assert.ok(contained(rect), `${context}: ${name} fits the play area`);
-        for (const [other, previous] of occupied) assert.ok(!overlaps(rect, previous), `${context}: ${name} must clear ${other}`);
-        occupied.push([name, rect]);
+      for (const [name, rect] of [['reward', reward], ['speech', speech], ['talk', talk], ['guide', guide_label], ...captions.map(c => [c.id, c])]) {
+        if (['speech', 'reward', 'talk', 'guide'].includes(name) && !rect.visible) continue;
+        const outlined = name === 'guide' ? { ...rect, x: rect.x - 6, y: rect.y - 6, width: rect.width + 12, height: rect.height + 12 } : rect;
+        assert.ok(contained(outlined), `${context}: ${name} fits the play area`);
+        for (const [other, previous] of occupied) assert.ok(!overlaps(outlined, previous), `${context}: ${name} must clear ${other}`);
+        occupied.push([name, outlined]);
       }
     }
     async function clickScenePoint(snap, point) {
@@ -882,9 +883,29 @@ try {
     assert.deepEqual(afterFileBridgeMerge.discovered_surprises, [], 'Fresh browser import does not invent Godot-only surprise discoveries');
     // Actual inspection -> keyboard walk -> routed walk, after existing save checks.
     await page.keyboard.press('Escape');
+    // Exercise a real longer museum heading after the reload, at a fresh layout frame.
+    await page.keyboard.press('Shift+KeyM');
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.overlays.reward_title.text.includes('Archive Time-Portal'));
+    const museumFrame = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.ui_frame);
+    await page.waitForFunction(frame => {
+      const s = window.__tenderloinGodotA11ySnapshot;
+      return s?.ui_frame > frame && s.overlays.reward.visible && s.overlays.reward_title.visible;
+    }, museumFrame);
+    const museumHeading = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.overlays.reward_title);
+    assert.ok(museumHeading.lines > 0 && museumHeading.visible_lines === museumHeading.lines, 'entire actual museum reward heading is visible after layout');
+    if (size.width === 320) assert.ok(museumHeading.lines > 1, 'actual long heading wraps on the narrowest phone');
+    await page.screenshot({ path: `artifacts/godot-${size.width}-wrapped-reward-title.png` });
     await page.keyboard.press('Shift+KeyH');
     await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.camera_view_size === 84 && !window.__tenderloinGodotA11ySnapshot.following_player);
+    const inspectionFrame = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.ui_frame);
+    await page.waitForFunction(frame => {
+      const s = window.__tenderloinGodotA11ySnapshot;
+      return s?.ui_frame > frame && s.overlays.reward.visible && s.overlays.reward_title.visible;
+    }, inspectionFrame);
     const inspection = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+    assert.equal(inspection.overlays.reward_title.text, "* Found 'So What'!");
+    assert.ok(inspection.overlays.reward.visible && inspection.overlays.reward_title.visible, 'actual So What reward remains visible');
+    assert.equal(inspection.overlays.reward_title.visible_lines, inspection.overlays.reward_title.lines, 'entire reward title is visible');
     const resumeSave = await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1'));
     const resumeLegacySave = await page.evaluate(() => localStorage.getItem('tenderloin-redux.save.v1'));
     await page.screenshot({ path: `artifacts/godot-${size.width}-detached-inspection.png` });
@@ -896,6 +917,8 @@ try {
       return s?.ui_frame > frame && s.following_player && s.camera_view_size === 45;
     }, inspection.ui_frame);
     const resumed = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+    assert.ok(resumed.overlays.talk.visible && resumed.overlays.guide_label.visible, 'Talk and objective name both remain visible');
+    assertReadableOverlays(resumed, 'manual resume beside Bea');
     const resumeDistance = Math.hypot(resumed.player_grounding.x - inspection.player_grounding.x, resumed.player_grounding.z - inspection.player_grounding.z);
     assert.ok(resumeDistance > 0.05 && resumeDistance < 8, 'manual resume visibly moves by real walking, not teleportation');
     assert.ok(resumed.player_screen.x >= resumed.play_area.x && resumed.player_screen.x <= resumed.play_area.x + resumed.play_area.width && resumed.player_screen.y >= resumed.play_area.y && resumed.player_screen.y <= resumed.play_area.y + resumed.play_area.height, 'resuming frames the actual player inside the play area');
@@ -913,7 +936,7 @@ try {
     await page.waitForFunction(() => !window.__tenderloinGodotA11ySnapshot?.player_grounding.path_active);
     assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), resumeSave, 'route start and Stop preserve saved progress');
     assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.save.v1')), resumeLegacySave);
-    const explorationEvidence = { inspectionResumeVerified: true, walkingStopControlVerified: true, compactHeaderHeight: startup.header_control.height, compactInfoToggleVerified: true, startupOrientationVerified: true, findMeAndMapVerified: true, rewardSoundsAndMuteVerified: true, persistentProgressVerified: true, surpriseDiscoveryVerified: true, surpriseKeepsakeReloadVerified: true, chapter6ConversationVerified: true, sessionLandmarkTourVerified: true, fullSaveBytes: Buffer.byteLength(saveBeforeTour, 'utf8') };
+    const explorationEvidence = { readableRewardAndGuideVerified: true, inspectionResumeVerified: true, walkingStopControlVerified: true, compactHeaderHeight: startup.header_control.height, compactInfoToggleVerified: true, startupOrientationVerified: true, findMeAndMapVerified: true, rewardSoundsAndMuteVerified: true, persistentProgressVerified: true, surpriseDiscoveryVerified: true, surpriseKeepsakeReloadVerified: true, chapter6ConversationVerified: true, sessionLandmarkTourVerified: true, fullSaveBytes: Buffer.byteLength(saveBeforeTour, 'utf8') };
     runs.push({ ...explorationEvidence, viewport: size, overviewBytes: before.length, selectedBytes: after.length, neighborBytes: neighbor.length, muralBytes: muralShot.length, musicBytes: musicShot.length, blockBytes: blockShot.length, blackhawkBytes: blackhawkShot.length, wideBytes: wideShot.length, keyboardActivationVerified: true, neighborWalkVerified: true, muralSaveReloadVerified: true, rookMusicAuditionVerified: true, blockCompletionVerified: true, widerTenderloinVerified: true, m1EpilogueVerified: true, m3HostingVerified: true, m4CivicFilmVerified: true, m5VoicesIsolatedVerified: true, m6KeepsakeSvgExportVerified: true, m6PerfBudgetVerified: true, perfSnapshot: perfSnap, browserSaveImportVerified: true, domA11yLiveVerified: true });
     await context.close();
   }

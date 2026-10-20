@@ -1,0 +1,20 @@
+STDOUT:
+I've written the review to `kibitz-runs/2026-10-20-codex-readable-rewards-and-guide/r3/claude.md`. The verdict is **yes-with-fixes**. The file tools worked, and the review is based on the real `godot/main.gd`, `godot/tests/study_test.gd` and `tests/godot-browser.mjs`. I didn't run any tests or builds, and I didn't touch any other files.
+
+**Must-fix:**
+- **The browser So What snapshot can be stale.** The test at `tests/godot-browser.mjs:886-890` waits only for `camera_view_size===84`. The snapshot that satisfies that wait is published in the same frame that shows the reward. The reward title's on-screen size is only updated later in that frame. So the snapshot's `lines`/`visible_lines` come from the label's old size, and the assertion can pass or fail by chance. The native test avoids this because it waits two frames first. The fix is to wait for a later snapshot (higher `ui_frame`) before checking line counts.
+- **The title measurement and the label break text differently.** The height calculation at `godot/main.gd:5704` uses default break rules, which leave out the "adaptive" rule the label uses to split a word too long for one line. Because clipping is on, any extra line from such a word is silently cut off. The fix is to pass the same break rules (`BREAK_MANDATORY | BREAK_WORD_BOUND | BREAK_ADAPTIVE`) explicitly.
+
+**Should-fix:**
+- Round the title's minimum height up with `ceil()` so tiny rounding errors can't drop the last line.
+- Work out the banner's inner width from its style margins instead of the hard-coded `- 24.0`.
+- **The guide label gives up too easily on narrow screens.**
+  - It discards off-screen candidate spots instead of sliding them back on screen.
+  - It applies the 6-pixel clearance twice, so the real gap is 10–12 px.
+  - Both hide the label more than needed at 320 px.
+- **The guide label can end up far from its arrow.** Nothing stops it being placed across the screen from the arrow, or on top of the arrow itself.
+- **A reward that doesn't fit can show no title at all.** The banner waits hidden until it fits, and the 3D celebration title is hidden too. Taller multi-line titles make this more likely.
+
+**Cut:** the guide-arrow update at `godot/main.gd:6996`. It runs with last frame's data and is always overwritten by the update at `godot/main.gd:12728` in the same frame.
+
+Some points depend on Godot 4.7 internals I couldn't confirm from the repo (when containers re-lay out their children, and whether box containers round sizes down to whole pixels). I've marked those as assumptions to verify in the review.

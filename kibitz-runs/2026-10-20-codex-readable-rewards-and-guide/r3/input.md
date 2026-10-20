@@ -1,0 +1,13 @@
+# Readable reward headings and objective labels
+
+Creator explicitly authorized this manual round after the shift cutoff: keep going and fix overlapping labels and cut-off reward titles next. Baseline413df4cf0da16eb58dd56e09eda0fde35c1271c0. Automation stays paused. Codex sole writer/judge; review only current three source/test changes and write only claude.md. Do not run tests or builds.
+
+Reward title: enable smart word wrap, measure its full multiline height using its actual font/size and available banner width, include line spacing in minimum height. Existing banner containment/Info fallback/timer and body2-line rules remain. Shorten only So What heading to Found 'So What'!; full addresses/source details stay in inspection Info. Generic long headings must be readable, not ellipsized or shrunk.
+
+Guide label: preserve arrow geometry/direction and real distance. Name/distance label tests its original location and bounded candidates above/below/left/right of occupied reward, Talk, story card and visible scene captions. Six-pixel outline clearance is included. Hide only the label if no collision-free bounded candidate exists; arrow and persistent objective remain. Refresh after readable captions/Talk visibility so captions have priority and the name cannot overlap them. Speech still suppresses guide as before.
+
+Native: real explore objective near Bea across1100/390/320, long title line-count/visible-count and containment, guide clear of Talk/reward/captions; after long reward expires Talk and named objective must both return. Existing cafe bounds/tap regressions stay. At320 a very long three-line reward can temporarily suppress Talk under the existing priority policy; that is deliberate, not a failed guide fixture. Browser: actual So What inspection and W resume scenario from previous checkpoint, short complete heading and Talk/objective both visible/non-overlapping; shared overlay assertions now include guide label. readonly reward-title geometry/lines and guide geometry added to snapshot.
+
+Hard invariants: public/ never modified, fingerprint2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567; legacy savev1 read-only; save<=4096, fallback glyph coverage. No city/provenance/progress/sound/preferences/camera-engine change. All five final gates required at1100x760/390x667/320x667, errors/external empty,104+Node tests. Physical phones, full screen readers, human pacing/comfort unverified. Preserve original untracked historical AGY directory.
+
+Review sequencing, multiline font metrics, narrow bounds and fallback behavior, candidate placement completeness and stale snapshots. Prefer minimal fixes. Native candidate passes; export/browser verification underway. No second external model call, paid media or deployment.

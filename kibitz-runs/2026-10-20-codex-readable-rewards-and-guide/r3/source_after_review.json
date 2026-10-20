@@ -1,0 +1,8 @@
+{
+  "unchanged_during_review": true,
+  "files": {
+    "godot/main.gd": "02582f066c11dd318b41c1f7b6fb3e5d69116e91ce0e22e8c6f7d427aec12e07",
+    "godot/tests/study_test.gd": "a8712561a7eed85097f0969c6d390d7fe52724ad5294d8fff06e3171f0aea610",
+    "tests/godot-browser.mjs": "2bff939e82c551fc46c0f4f4a4707046ce77716345c82d722ddf82ea2aab8a86"
+  }
+}
