@@ -1514,16 +1514,45 @@ func run() -> void:
 	study.blackhawk_discovered = true
 	study.show_conversation(0)
 	require(study.conv_action_ids[0] == "surprise" and study.conv_action_btns[0].text == "Spot Surprise (0/10)", "in explore chapter with undiscovered surprises at desktop width, conversation offers Spot Surprise (0/10)")
-	require(study.run_conversation_action(0) and study.discovered_surprises.size() == 1 and study.block_panel_mode == "talk", "tapping Spot Surprise in conversation discovers the first surprise and keeps block_panel_mode in talk")
-	var first_surp_pt: Vector2 = study.surprise_points.get(study.NEIGHBORHOOD_SURPRISE_IDS[0], Vector2.ZERO)
+	require(study.run_conversation_action(0) and study.discovered_surprises.size() == 1 and study.discovered_surprises.has("mayor_pomp_event") and study.block_panel_mode == "talk", "tapping Spot Surprise while talking with Bea discovers her first paired surprise (mayor_pomp_event) and keeps block_panel_mode in talk")
+	var first_surp_pt: Vector2 = study.surprise_points.get("mayor_pomp_event", Vector2.ZERO)
 	var first_surp_screen: Vector2 = study.camera.unproject_position(Vector3(first_surp_pt.x, 1.8, first_surp_pt.y))
 	require(study.play_area_rect().has_point(first_surp_screen), "tapping Spot Surprise keeps camera framed on the discovered surprise inside play_area_rect")
 	var one_surp_save := JSON.stringify(study.build_save_envelope())
 	require(study.apply_save_envelope(one_surp_save) and study.discovered_surprises.size() == 1 and study.surprise_guide_idx == -1, "restoring save with 1 discovered surprise resets surprise_guide_idx to -1")
 	study.show_conversation(0)
-	require(study.conv_action_btns[0].text == "Spot Surprise (1/10)" and study.run_conversation_action(0) and study.discovered_surprises.size() == 2, "tapping Spot Surprise (1/10) after save restore advances to the next undiscovered surprise (size == 2)")
+	require(study.conv_action_btns[0].text == "Spot Surprise (1/10)" and study.run_conversation_action(0) and study.discovered_surprises.size() == 2 and study.discovered_surprises.has("good_donut_and_bagel"), "tapping Spot Surprise (1/10) with Bea after save restore discovers her second paired surprise (good_donut_and_bagel)")
+	study.show_conversation(3)
+	require(study.run_conversation_action(0) and study.discovered_surprises.size() == 3 and study.discovered_surprises.has("viking_dirt_biker"), "tapping Spot Surprise with Dez discovers Dez's paired surprise (viking_dirt_biker)")
+	for lay_n_id in ["bea", "celeste", "rook", "dez", "thanh"]:
+		require(not study.layout_memory_line(lay_n_id).is_empty(), "layout_memory_line provides a post-opening layout memory for '%s'" % lay_n_id)
 	for s_full_id in study.NEIGHBORHOOD_SURPRISE_IDS:
 		study.discovered_surprises[s_full_id] = true
+	study.celeste_talk_count = 0
+	var celeste_post_lines: Dictionary = {}
+	for _c_t in range(5):
+		var c_tl: String = study.talk_with_celeste()
+		celeste_post_lines[c_tl] = true
+	require(celeste_post_lines.size() == 5 and study.mural_detail_label != null and study.mural_detail_label.text.contains("145 Leavenworth") and study.mural_detail_label.text.count("145 Leavenworth") == 1 and study.info.text.count("145 Leavenworth") == 1, "Celeste has 5 distinct post-mural conversation turns and Turn 5 does not duplicate her surprise memory in mural_detail_label or info.text")
+	var celeste_next: String = study.ask_whats_next()
+	require(celeste_next.begins_with("Celeste: \"") and study.mural_detail_label.text.begins_with("Celeste: \"") and study.speech_bubble_anchor == "celeste", "What's Next? while MuralPanel is open speaks as Celeste and updates mural_detail_label")
+	study.end_conversation()
+	require(not study.mural_panel.visible and study.info.text.begins_with("You said goodbye to Celeste."), "Goodbye from MuralPanel closes the panel and says goodbye to Celeste")
+	study.player.position = Vector3(-50.0, 0.0, 60.0)
+	study.arrived_mural = false
+	require(study.walk_to_mural() and study.walking_to_mural and not study.current_path.is_empty(), "walk_to_mural from west block starts an in-flight walk to the mural board")
+	study.end_conversation()
+	require(not study.walking_to_mural and not study.pending_celeste_talk and study.current_path.is_empty(), "end_conversation cancels in-flight walk_to_mural and clears current_path")
+	study.rook_talk_count = 0
+	var rook_post_lines: Dictionary = {}
+	for _r_t in range(5):
+		var r_tl: String = study.check_sound_with_rook()
+		rook_post_lines[r_tl] = true
+	require(rook_post_lines.size() == 5 and study.music_stem_label.text.contains("361 Turk") and study.music_stem_label.text.count("361 Turk") == 1 and study.info.text.count("361 Turk") == 1, "Rook has 5 distinct post-mural conversation turns and Turn 5 does not duplicate his surprise memory in music_stem_label or info.text")
+	var rook_next: String = study.ask_whats_next()
+	require(rook_next.begins_with("Rook: \"") and study.music_stem_label.text.contains(rook_next) and study.speech_bubble_anchor == "rook", "What's Next? while MusicPanel is open speaks as Rook and updates music_stem_label")
+	study.end_conversation()
+	require(not study.music_panel.visible and study.info.text.begins_with("You said goodbye to Rook."), "Goodbye from MusicPanel closes the panel and says goodbye to Rook")
 	var full_m4_plus_surprises_json := JSON.stringify(study.build_save_envelope())
 	require(full_m4_plus_surprises_json.to_utf8_buffer().size() <= 4096, "full M1-M4 save envelope with all 10 discovered_surprises stays <= 4096 bytes (%d B)" % full_m4_plus_surprises_json.to_utf8_buffer().size())
 	study.reset_mural_state_to_defaults("fresh")

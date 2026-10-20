@@ -2,7 +2,21 @@
 
 Updated 2026-10-20 Pacific / 2026-10-20 UTC. **AGY 4 (`Gemini 4 Argon` High) has resumed as sole writer with the recurring hourly scheduler (`0 * * * *`) active after the Claude Code desktop handoff (`8827618`); Codex automation `build-tenderloin-redux` and Claude scheduled task `tenderloin-3d-improvement` remain PAUSED.** The full game remains unfinished. [Handoff](../session_handoff.md), [active approach](GODOT_APPROACH.md), [roadmap](ROADMAP.md).
 
-## Latest checkpoint — 3D surprise keepsakes, neighbor surprise reflections & one-tap surprise action (`2026-10-20-neighbor-surprise-payoffs`)
+## Latest checkpoint — Neighbor-paired surprise discovery & character panel dialogue parity (`2026-10-20-character-panels-dialogue-parity`)
+
+Builds on `2026-10-20-neighbor-surprise-payoffs` (`6860098`). Browser 0.12.0 and `public/` (SHA256 `2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567`) are untouched.
+
+- **Neighbor-Paired Surprise Discovery (`NEIGHBOR_SURPRISE_PAIRS`, `next_undiscovered_surprise_for_neighbor()`)**:
+  - Tapping `"Spot Surprise (%d/10)"` (`"Find %d/10"` on `< 600 px` phone screens) while talking with any neighbor now prioritizes that neighbor's 2 paired surprises first (`Bea`: `mayor_pomp_event`, `good_donut_and_bagel`; `Celeste`: `hidden_mural_145`, `cutesy_dino`; `Rook`: `jeffrey_record`, `clown_horn_walker`; `Dez`: `viking_dirt_biker`, `magic_carpet_chef`; `Thanh`: `impromptu_drag_show`, `bite_size_nachos`) before falling back to `NEIGHBORHOOD_SURPRISE_IDS`.
+- **5-Turn Post-Mural Dialogue & Layout Memories for Celeste & Rook (`celeste_dialogue_text()`, `rook_dialogue_text()`, `layout_memory_line()`)**:
+  - Expanded Celeste and Rook from 3 post-mural dialogue lines to 5 full turns so their `"Turn %d/5"` panel headers match 5 distinct lines (with Turn 5 weaving in their personal surprise reflection when discovered).
+  - Extended `layout_memory_line()` to all 5 neighbors (`"bea"`, `"celeste"`, `"rook"`, `"dez"`, `"thanh"`), so every neighbor remembers the chosen gathering layout (`"table"` vs `"floor"`).
+- **In-Panel Dialogue Parity Across `MuralPanel`, `MusicPanel`, and `BlockPanel` (`mural_detail_label`, `music_stem_label`, `neighbor_memory_tail()`)**:
+  - Added `mural_detail_label` to `MuralPanel` and enhanced `music_stem_label` in `MusicPanel` so Celeste's and Rook's spoken lines and non-duplicating project/surprise memories (`neighbor_memory_tail()`) appear directly inside their panels on both desktop and phone viewports.
+  - Updated `ask_whats_next()` and `end_conversation()` to resolve the active speaker from `MuralPanel` (`Celeste`) and `MusicPanel` (`Rook`) as well as `BlockPanel`, updating only the visible panel and canceling any in-flight walk/arrival state on `"Goodbye (Esc)"`.
+- **Independent CLI review & verified fixes**: One successful installed Kibitz native Claude CLI call (`--driver agy --only claude`, exact `claude-opus-5-5`, effort `high`, `rc=0`, `VERDICT: yes-with-fixes`). [Raw report](../kibitz-runs/2026-10-20-character-panels-dialogue-parity/r3/claude.md), [scope](../kibitz-runs/2026-10-20-character-panels-dialogue-parity/r3/scope_receipt.md), [driver anchor](../kibitz-runs/2026-10-20-character-panels-dialogue-parity/r3/driver_anchor.md), [judgment](../kibitz-runs/2026-10-20-character-panels-dialogue-parity/r3/judgment.md), [final](../kibitz-runs/2026-10-20-character-panels-dialogue-parity/r3/final.md). All reviewer findings (`end_conversation()` in-flight walk cancellation, `neighbor_memory_tail()` extraction and Turn 5 non-duplication, narrow-viewport memory ordering, and panel-open `last_panel_dialogue` reset) were accepted, applied in `godot/main.gd` and `godot/tests/study_test.gd`, and verified.
+
+## Historical checkpoint — 3D surprise keepsakes, neighbor surprise reflections & one-tap surprise action (`2026-10-20-neighbor-surprise-payoffs`)
 
 Builds on `2026-10-20-story-surprises-character-ui` (`ed5a784`). Browser 0.12.0 and `public/` (SHA256 `2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567`) are untouched.
 

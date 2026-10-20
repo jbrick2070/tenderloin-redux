@@ -1,6 +1,15 @@
 # Session Handoff — Tenderloin Redux — 2026-10-20 Pacific / 2026-10-20 UTC
 
-## Latest AGY / Gemini checkpoint (`2026-10-20-neighbor-surprise-payoffs`)
+## Latest AGY / Gemini checkpoint (`2026-10-20-character-panels-dialogue-parity`)
+
+- **AGY hourly scheduler**: Active (`0 * * * *`, `IsDaemon: true`) with `.build-round.lock` concurrency guard. Codex scheduler `build-tenderloin-redux` and Claude scheduled task `tenderloin-3d-improvement` remain paused.
+- **Shipped in `2026-10-20-character-panels-dialogue-parity` (`godot/main.gd`, `godot/tests/study_test.gd`)**:
+  - **Neighbor-Paired Surprise Discovery (`NEIGHBOR_SURPRISE_PAIRS`, `next_undiscovered_surprise_for_neighbor()`)**: Tapping `"Spot Surprise (%d/10)"` (`"Find %d/10"` on `< 600 px` phone screens) while talking with a neighbor prioritizes that neighbor's 2 paired surprises before falling back to `NEIGHBORHOOD_SURPRISE_IDS`.
+  - **5-Turn Post-Mural Dialogue & Layout Memories for Celeste & Rook (`celeste_dialogue_text()`, `rook_dialogue_text()`, `layout_memory_line()`)**: Expanded Celeste and Rook to 5 post-mural dialogue turns (with Turn 5 weaving in their surprise reflection when discovered) and added `"celeste"` and `"rook"` coverage to `layout_memory_line()`.
+  - **In-Panel Dialogue Parity (`mural_detail_label`, `music_stem_label`, `neighbor_memory_tail()`)**: Added `mural_detail_label` to `MuralPanel`, enhanced `music_stem_label` in `MusicPanel`, unified non-duplicating project/surprise memory formatting via `neighbor_memory_tail()`, and updated `ask_whats_next()` and `end_conversation()` to attribute speech and goodbye to Celeste (`MuralPanel`) and Rook (`MusicPanel`) while cleanly canceling any in-flight walk state.
+  - **Independent CLI QA**: Reviewed by Kibitz native Claude CLI (`--driver agy --only claude`, `claude-opus-5-5`, effort `high`, `rc=0`, `VERDICT: yes-with-fixes`) in `kibitz-runs/2026-10-20-character-panels-dialogue-parity/r3/`; all findings fixed and verified across `godot:test`, `godot:export`, `check`, `test` (104/104), and `godot:browser`.
+
+## Historical AGY / Gemini checkpoint (`2026-10-20-neighbor-surprise-payoffs`)
 
 - **AGY hourly scheduler**: Active (`0 * * * *`, `IsDaemon: true`) with `.build-round.lock` concurrency guard. Codex scheduler `build-tenderloin-redux` and Claude scheduled task `tenderloin-3d-improvement` remain paused.
 - **Shipped in `2026-10-20-neighbor-surprise-payoffs` (`godot/main.gd`, `godot/tests/study_test.gd`)**:

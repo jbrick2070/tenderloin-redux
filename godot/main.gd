@@ -379,6 +379,13 @@ const NEIGHBOR_STORY_BADGES: Dictionary = {
 	"dez": "80 BPM Beatmaker · Easygoing Groove",
 	"thanh": "Tea & Stools Host · Generous & Calm"
 }
+const NEIGHBOR_SURPRISE_PAIRS: Dictionary = {
+	"bea": ["mayor_pomp_event", "good_donut_and_bagel"],
+	"celeste": ["hidden_mural_145", "cutesy_dino"],
+	"rook": ["jeffrey_record", "clown_horn_walker"],
+	"dez": ["viking_dirt_biker", "magic_carpet_chef"],
+	"thanh": ["impromptu_drag_show", "bite_size_nachos"]
+}
 # Field Guide survey tags (tools/field-guide/) -> facade colors and architectural flags.
 # Keep in sync with BUILDING_TAGS in scripts/apply-field-survey.mjs.
 const FIELD_SURVEY_TAG_STYLES: Dictionary = {
@@ -487,6 +494,7 @@ var mural_motif_nodes: Dictionary = {}
 var mural_banner_mesh: MeshInstance3D
 var mural_panel: PanelContainer
 var mural_label: Label
+var mural_detail_label: Label
 var mural_buttons: Array[Button] = []
 var mural_palette_btn: Button
 var mural_sun_btn: Button
@@ -5647,7 +5655,15 @@ func conversation_partner_line(index: int, body: String) -> String:
 ## "What's next?" — the current partner (or whoever is closest) explains the next step.
 func ask_whats_next() -> String:
 	var obj := current_objective()
-	var speaker := talk_partner if talk_partner >= 0 else nearest_neighbor_within(TALK_PROMPT_RADIUS_M)
+	var speaker := -1
+	if mural_panel != null and mural_panel.visible:
+		speaker = celeste_index
+	elif music_panel != null and music_panel.visible:
+		speaker = rook_index
+	elif talk_partner >= 0:
+		speaker = talk_partner
+	else:
+		speaker = nearest_neighbor_within(TALK_PROMPT_RADIUS_M)
 	var hint := String(obj.get("hint", ""))
 	if String(obj.get("id", "")) == "layout" and speaker >= 0:
 		match String(neighbors[speaker].get("id", "")):
@@ -5656,11 +5672,16 @@ func ask_whats_next() -> String:
 			"dez", "celeste":
 				hint = "Bea wants a Long Table for stories and conversation. We'd love an Open Floor for art and music. Both keep the sidewalk clear. Your call!"
 	var line := conversation_partner_line(speaker, hint) if speaker >= 0 else hint
-	if block_panel != null and block_panel.visible:
+	if (block_panel != null and block_panel.visible) or (mural_panel != null and mural_panel.visible) or (music_panel != null and music_panel.visible):
 		last_panel_dialogue = line
 	if speaker >= 0:
 		show_neighbor_speech(speaker, line)
-	update_block_ui()
+	if mural_panel != null and mural_panel.visible:
+		update_mural_ui()
+	elif music_panel != null and music_panel.visible:
+		update_music_ui()
+	elif block_panel != null and block_panel.visible:
+		update_block_ui()
 	if info != null:
 		var way := "Follow the gold marker · tap the street or use WASD to walk" if bool(obj.get("has_target", false)) else "No marker needed: wander and explore"
 		info.text = "%s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, way]
@@ -5668,10 +5689,25 @@ func ask_whats_next() -> String:
 	return line
 
 func end_conversation() -> void:
-	var partner := talk_partner
+	var partner := -1
+	if mural_panel != null and mural_panel.visible:
+		partner = celeste_index
+	elif music_panel != null and music_panel.visible:
+		partner = rook_index
+	elif talk_partner >= 0:
+		partner = talk_partner
+	elif arrived_neighbor >= 0 and arrived_neighbor < neighbors.size():
+		partner = arrived_neighbor
 	talk_partner = -1
 	block_panel_mode = "hub"
 	last_panel_dialogue = ""
+	current_path.clear()
+	walking_to_mural = false
+	walking_to_speaker = false
+	walking_to_history_stop = ""
+	pending_celeste_talk = false
+	pending_rook_talk = false
+	update_route_ribbon(true)
 	show_block_panel(false)
 	show_mural_panel(false)
 	show_music_panel(false)
@@ -5679,6 +5715,7 @@ func end_conversation() -> void:
 	arrived_neighbor = -1
 	arrived_mural = false
 	arrived_speaker = false
+	arrived_history_stop = ""
 	selected_neighbor = -1
 	var who := String(neighbors[partner].name) if partner >= 0 and partner < neighbors.size() else "the block"
 	if not in_overview and not in_wide_overview and player != null:
@@ -5773,6 +5810,21 @@ func run_conversation_action(slot: int) -> bool:
 		show_conversation(partner)
 	return ok
 
+func next_undiscovered_surprise_for_neighbor(neighbor_idx: int = -1) -> int:
+	if neighbor_idx >= 0 and neighbor_idx < neighbors.size():
+		var n_id := String(neighbors[neighbor_idx].get("id", ""))
+		var paired: Array = NEIGHBOR_SURPRISE_PAIRS.get(n_id, [])
+		for p_id in paired:
+			var s_id := String(p_id)
+			if not discovered_surprises.has(s_id):
+				var p_idx := NEIGHBORHOOD_SURPRISE_IDS.find(s_id)
+				if p_idx >= 0:
+					return p_idx
+	for u_i in range(NEIGHBORHOOD_SURPRISE_IDS.size()):
+		if not discovered_surprises.has(NEIGHBORHOOD_SURPRISE_IDS[u_i]):
+			return u_i
+	return -1
+
 func run_conversation_action_id(act_id: String) -> bool:
 	if act_id.begins_with("walk_neighbor:"):
 		return walk_to_neighbor(int(act_id.get_slice(":", 1)))
@@ -5802,12 +5854,7 @@ func run_conversation_action_id(act_id: String) -> bool:
 		"museum":
 			return inspect_tenderloin_museum_hub()
 		"surprise":
-			var next_u := -1
-			for u_i in range(NEIGHBORHOOD_SURPRISE_IDS.size()):
-				if not discovered_surprises.has(NEIGHBORHOOD_SURPRISE_IDS[u_i]):
-					next_u = u_i
-					break
-			return cycle_neighborhood_surprise(next_u)
+			return cycle_neighborhood_surprise(next_undiscovered_surprise_for_neighbor(talk_partner))
 		"hub":
 			block_panel_mode = "hub"
 			show_block_panel(true)
@@ -6229,6 +6276,10 @@ func layout_memory_line(n_id: String) -> String:
 	match n_id:
 		"bea":
 			return "Bea: \"The Long Table worked: everyone had a seat and a story. I promised Dez and Celeste the Open Floor next time.\"" if table else "Bea: \"The Open Floor was the right call today. Next time we try my Long Table, I'm holding you to it.\""
+		"celeste":
+			return "Celeste: \"The Long Table framed our 3/3 easel like a warm neighborhood gallery—and Bea promised us the Open Floor next time.\"" if table else "Celeste: \"Seeing our Open Floor painted tiles beside the 3/3 sidewalk easel made the whole block feel like an art studio.\""
+		"rook":
+			return "Rook: \"The 80 BPM pocket carried right down the Long Table without anyone having to raise their voice.\"" if table else "Rook: \"The Open Floor gave Dez's beat and the 4-part groove plenty of room to breathe across the curb lane.\""
 		"dez":
 			return "Dez: \"The Long Table was cozy. Next time, Open Floor. Bea promised.\"" if table else "Dez: \"Look at that Open Floor! Celeste's lettering and my beat, side by side.\""
 		"thanh":
@@ -6862,6 +6913,10 @@ func walk_to_neighbor(index: int) -> bool:
 	pending_rook_talk = false
 	walking_to_history_stop = ""
 	arrived_history_stop = ""
+	if talk_partner >= 0 and talk_partner != index:
+		talk_partner = -1
+		block_panel_mode = "hub"
+		last_panel_dialogue = ""
 	if index != celeste_index:
 		show_mural_panel(false)
 	if index != rook_index:
@@ -7321,6 +7376,14 @@ func neighbor_greeting_line(n_id: String) -> String:
 	var memory := layout_memory_line(n_id) if block_opened else ""
 	if not memory.is_empty() and options.size() >= 4:
 		options[3] = memory
+	var surp_mem := neighbor_surprise_memory_line(n_id)
+	if not surp_mem.is_empty() and options.size() >= 5:
+		var speaker_name := n_id.capitalize()
+		for nb in neighbors:
+			if String(nb.get("id", "")) == n_id:
+				speaker_name = String(nb.get("name", speaker_name))
+				break
+		options[4] = "%s: \"%s\"" % [speaker_name, surp_mem.trim_prefix("“").trim_suffix("”")]
 	if options.is_empty():
 		return "Choose a conversation topic or neighborhood action below"
 	return options[posmod(maxi(1, int(neighbor_talk_counts.get(n_id, 1))) - 1, options.size())]
@@ -7335,7 +7398,8 @@ func talk_with_neighbor(index: int) -> String:
 	var n: Dictionary = neighbors[index]
 	var n_id := String(n.get("id", ""))
 	var first_visit := not visited_neighbors.has(n_id)
-	neighbor_talk_counts[n_id] = int(neighbor_talk_counts.get(n_id, 0)) + 1
+	var turn_cnt := int(neighbor_talk_counts.get(n_id, 0)) + 1
+	neighbor_talk_counts[n_id] = turn_cnt
 	visited_neighbors[n_id] = true
 	browser_import_message = ""
 	last_panel_dialogue = ""
@@ -7348,7 +7412,7 @@ func talk_with_neighbor(index: int) -> String:
 	suppress_feel_good_burst = prev_sup
 	var line := neighbor_greeting_line(n_id)
 	show_neighbor_speech(index, line)
-	var mem_line := neighbor_project_memory_line(n_id)
+	var mem_line := neighbor_memory_tail(n_id, line, turn_cnt)
 	var sub_b := mem_line if not mem_line.is_empty() else ("Talking with %s (%s) · Click %s again or choose an action below" % [n.name, n.role, n.name])
 	info.text = "%s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, sub_b]
 	announce_a11y_status(line if mem_line.is_empty() else ("%s %s" % [line, mem_line]))
@@ -7399,8 +7463,6 @@ func finish_neighbor_arrival(index: int) -> void:
 		target = Vector3(player.position.x, 1.0, player.position.z)
 		update_camera()
 	update_occlusion(true)
-	var mem_line := neighbor_project_memory_line(n_id)
-	var mem_a11y := (" " + mem_line) if not mem_line.is_empty() else ""
 	if index == celeste_index:
 		pending_rook_talk = false
 		var trigger_talk := pending_celeste_talk
@@ -7415,11 +7477,13 @@ func finish_neighbor_arrival(index: int) -> void:
 		elif newly_visited:
 			save_godot_state()
 		show_mural_panel(true)
-		update_mural_ui()
-		show_neighbor_speech(index, celeste_dialogue_text())
-		var sub_c := mem_line if not mem_line.is_empty() else "Portable sidewalk easel ready · Place Sun, Wave & Rise below"
+		var c_arr_line := celeste_dialogue_text()
+		show_neighbor_speech(index, c_arr_line)
+		var mem_c_arr := neighbor_memory_tail(n_id, c_arr_line, celeste_talk_count)
+		var mem_c_a11y := (" " + mem_c_arr) if not mem_c_arr.is_empty() else ""
+		var sub_c := mem_c_arr if not mem_c_arr.is_empty() else "Portable sidewalk easel ready · Place Sun, Wave & Rise below"
 		info.text = "With %s — %s · %d/3 mural motifs\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, mural_placements.size(), sub_c]
-		announce_a11y_status("Arrived at %s (%s). Portable Mural Board %d/3 motifs.%s" % [n.name, n.role, mural_placements.size(), mem_a11y])
+		announce_a11y_status("Arrived at %s (%s). Portable Mural Board %d/3 motifs.%s" % [n.name, n.role, mural_placements.size(), mem_c_a11y])
 	elif index == rook_index:
 		pending_celeste_talk = false
 		var trigger_rook := pending_rook_talk
@@ -7430,22 +7494,27 @@ func finish_neighbor_arrival(index: int) -> void:
 		if newly_visited:
 			save_godot_state()
 		show_music_panel(true)
-		update_music_ui()
-		show_neighbor_speech(index, rook_dialogue_text())
+		var r_arr_line := rook_dialogue_text()
+		show_neighbor_speech(index, r_arr_line)
+		var mem_r_arr := neighbor_memory_tail(n_id, r_arr_line, rook_talk_count)
+		var mem_r_a11y := (" " + mem_r_arr) if not mem_r_arr.is_empty() else ""
 		var sc_tag := "Soundcheck ready" if rook_soundcheck_done else "Tap Soundcheck below"
-		var sub_r := mem_line if not mem_line.is_empty() else ("Turk St speaker %.1f m clear of wall · Explicit play/audition below" % min_wall_distance(speaker_xz()))
+		var sub_r := mem_r_arr if not mem_r_arr.is_empty() else ("Turk St speaker %.1f m clear of wall · Explicit play/audition below" % min_wall_distance(speaker_xz()))
 		info.text = "With %s — %s · %s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, sc_tag, sub_r]
-		announce_a11y_status("Arrived at %s (%s). %s.%s" % [n.name, n.role, sc_tag, mem_a11y])
+		announce_a11y_status("Arrived at %s (%s). %s.%s" % [n.name, n.role, sc_tag, mem_r_a11y])
 	else:
 		pending_celeste_talk = false
 		pending_rook_talk = false
 		if newly_visited:
 			save_godot_state()
 		show_conversation(index)
-		show_neighbor_speech(index, neighbor_greeting_line(n_id))
-		var sub_b := mem_line if not mem_line.is_empty() else neighbor_greeting_line(n_id)
+		var b_arr_line := neighbor_greeting_line(n_id)
+		show_neighbor_speech(index, b_arr_line)
+		var mem_b_arr := neighbor_memory_tail(n_id, b_arr_line, int(neighbor_talk_counts.get(n_id, 1)))
+		var mem_b_a11y := (" " + mem_b_arr) if not mem_b_arr.is_empty() else ""
+		var sub_b := mem_b_arr if not mem_b_arr.is_empty() else b_arr_line
 		info.text = "With %s — %s · %d/5 neighbors met\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, visited_neighbors.size(), sub_b]
-		announce_a11y_status("Arrived at %s (%s). Visited %d/5 neighbors.%s" % [n.name, n.role, visited_neighbors.size(), mem_a11y])
+		announce_a11y_status("Arrived at %s (%s). Visited %d/5 neighbors.%s" % [n.name, n.role, visited_neighbors.size(), mem_b_a11y])
 
 func finish_mural_arrival() -> void:
 	var stand_pt := mural_stand_xz()
@@ -7513,8 +7582,21 @@ func finish_speaker_arrival() -> void:
 	announce_a11y_status("At Rook's Turk Street Speaker (%s)." % sc_tag)
 
 func celeste_dialogue_text() -> String:
+	var c_surp := neighbor_surprise_memory_line(CELESTE_ID)
 	if mural_completed:
-		return "Celeste: \"Sun, Wave, and Rise are up on our portable board. We made something together without painting anyone's building.\""
+		var completed_options: Array[String] = [
+			"Celeste: \"Sun, Wave, and Rise are up on our portable board. We made something together without painting anyone's building.\"",
+			"Celeste: \"Try cycling Garden, Sunset, or Ocean palettes anytime—even after the board is complete, the colors shift on the easel and in our keepsake.\"",
+			"Celeste: \"Once the block gathering opens, we can host the shared six-tile art panel and help Dez frame our three-shot short film, The Open Seat.\"",
+			"Celeste: \"I love how our freestanding board keeps the Turk Street sidewalk wide open while giving the block a shared canvas.\"",
+			"Celeste: \"Have you walked over to 145 Leavenworth or Boeddeker Park yet? Press Shift+D to spot the hidden mural alcove and Pip the Tiny Dino!\""
+		]
+		var c_lay_mem := layout_memory_line(CELESTE_ID) if block_opened else ""
+		if not c_lay_mem.is_empty():
+			completed_options[3] = c_lay_mem
+		if not c_surp.is_empty():
+			completed_options[4] = "Celeste: \"%s\"" % c_surp.trim_prefix("“").trim_suffix("”")
+		return completed_options[posmod(maxi(1, celeste_talk_count) - 1, completed_options.size())]
 	var options: Array[String] = [
 		"Celeste: \"Welcome to my easel! Add Sun, Wave, and Rise with the buttons below.\"",
 		"Celeste: \"Try Garden, Sunset, or Ocean, or tap Shift Motif to slide your shape around the 6×3 board.\"",
@@ -7522,13 +7604,28 @@ func celeste_dialogue_text() -> String:
 		"Celeste: \"There's no wrong spot for a shape. Put it where it feels right to you.\"",
 		"Celeste: \"When the board is finished, Rook's groove gets another layer—and if you walk over to 145 Leavenworth, look for the hidden mural alcove below the 8th floor (Shift+D)!\""
 	]
+	if not c_surp.is_empty():
+		options[4] = "Celeste: \"%s\"" % c_surp.trim_prefix("“").trim_suffix("”")
 	return options[posmod(maxi(1, celeste_talk_count) - 1, options.size())]
 
 func rook_dialogue_text() -> String:
 	if music_mode == "local" and not local_music_name.is_empty():
 		return "Rook: \"Spinning your local cut (%s) on the Turk Street speaker. It stays in this tab and is never uploaded.\"" % local_music_name
+	var r_surp := neighbor_surprise_memory_line(ROOK_ID)
 	if mural_completed:
-		return "Rook: \"Celeste's finished mural unlocked the last layer. The full 4-part 80 BPM sketch is ready: hit Play Groove or load your own track.\""
+		var completed_options: Array[String] = [
+			"Rook: \"Celeste's finished mural unlocked the last layer. The full 4-part 80 BPM sketch is ready: hit Play Groove or load your own track.\"",
+			"Rook: \"Hear how bass, brush, chords, and lead lock together at 80 BPM? You can cycle volume or pause anytime—the block party stays sound-independent.\"",
+			"Rook: \"During the afternoon schedule and the tenant listening circle, I keep the speaker gentle so every neighbor on Turk Street is heard.\"",
+			"Rook: \"I'll stay off camera when you snap the keepsake photo and shoot The Open Seat, but I'm right here on the sound cue.\"",
+			"Rook: \"If you walk out toward 361 Turk or Jones & Turk, press Shift+D—Jeffrey's lost 1961 LP and Honker Barnaby are right in pocket with our groove!\""
+		]
+		var r_lay_mem := layout_memory_line(ROOK_ID) if block_opened else ""
+		if not r_lay_mem.is_empty():
+			completed_options[3] = r_lay_mem
+		if not r_surp.is_empty():
+			completed_options[4] = "Rook: \"%s\"" % r_surp.trim_prefix("“").trim_suffix("”")
+		return completed_options[posmod(maxi(1, rook_talk_count) - 1, completed_options.size())]
 	var options: Array[String] = [
 		"Rook: \"Speaker's set up on the sidewalk and the soundcheck is done (%s).\"" % active_stem_summary(),
 		"Rook: \"Every neighbor you meet and motif you paint unlocks another layer: bass, brushes, chords, then lead.\"",
@@ -7536,6 +7633,8 @@ func rook_dialogue_text() -> String:
 		"Rook: \"I'd rather stay off camera, but I'll always run the sound.\"",
 		"Rook: \"If you load your own track, it stays in this browser tab. Nothing gets uploaded.\""
 	]
+	if not r_surp.is_empty():
+		options[4] = "Rook: \"%s\"" % r_surp.trim_prefix("“").trim_suffix("”")
 	return options[posmod(maxi(1, rook_talk_count) - 1, options.size())]
 
 func focus_mural_camera() -> void:
@@ -7593,18 +7692,17 @@ func talk_with_celeste() -> String:
 	last_panel_dialogue = ""
 	recompute_music_stems()
 	update_block_3d()
-	show_mural_panel(true)
 	focus_mural_camera()
 	save_godot_state()
-	update_mural_ui()
-	update_block_ui()
 	var prev_sup_cel := suppress_feel_good_burst
 	suppress_feel_good_burst = prev_sup_cel or (celeste_talk_count != 1)
 	trigger_progress_cue("celeste_talk", "Celeste talk")
 	suppress_feel_good_burst = prev_sup_cel
+	show_mural_panel(true)
+	update_block_ui()
 	var line := celeste_dialogue_text()
 	show_neighbor_speech(celeste_index, line)
-	var mem_c := neighbor_project_memory_line(CELESTE_ID)
+	var mem_c := neighbor_memory_tail(CELESTE_ID, line, celeste_talk_count)
 	var sub_c := mem_c if not mem_c.is_empty() else ("Portable Mural Board: %d/3 motifs (%s palette) · Separate Godot save" % [mural_placements.size(), mural_palette.capitalize()])
 	info.text = "%s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, sub_c]
 	announce_a11y_status(line if mem_c.is_empty() else ("%s %s" % [line, mem_c]))
@@ -7635,18 +7733,17 @@ func check_sound_with_rook() -> String:
 	recompute_music_stems()
 	update_speaker_3d()
 	update_block_3d()
-	show_music_panel(true)
 	focus_speaker_camera()
 	save_godot_state()
 	var prev_sup_rook := suppress_feel_good_burst
 	suppress_feel_good_burst = prev_sup_rook or was_sc_done
 	trigger_progress_cue("rook_soundcheck", "Rook soundcheck")
 	suppress_feel_good_burst = prev_sup_rook
-	update_music_ui()
+	show_music_panel(true)
 	update_block_ui()
 	var line := rook_dialogue_text()
 	show_neighbor_speech(rook_index, line)
-	var mem_r := neighbor_project_memory_line(ROOK_ID)
+	var mem_r := neighbor_memory_tail(ROOK_ID, line, rook_talk_count)
 	var sub_r := mem_r if not mem_r.is_empty() else ("Rook's Speaker: %s · Explicit Play/Pause & local Suno audition" % active_stem_summary())
 	info.text = "%s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, sub_r]
 	announce_a11y_status(line if mem_r.is_empty() else ("%s %s" % [line, mem_r]))
@@ -8902,6 +8999,19 @@ func neighbor_project_memory_line(neighbor_id: String) -> String:
 	if not base_mem.is_empty() and not surp_mem.is_empty():
 		return "%s · %s" % [base_mem, surp_mem]
 	return base_mem if not base_mem.is_empty() else surp_mem
+
+func neighbor_memory_tail(n_id: String, spoken_line: String, turn_count: int = 1) -> String:
+	var surp_only := neighbor_surprise_memory_line(n_id)
+	var full_mem := neighbor_project_memory_line(n_id)
+	if full_mem.is_empty():
+		return ""
+	var clean_surp := surp_only.trim_prefix("“").trim_suffix("”")
+	if not clean_surp.is_empty() and spoken_line.contains(clean_surp):
+		return full_mem.trim_suffix(" · " + surp_only) if full_mem != surp_only else ""
+	if not surp_only.is_empty() and full_mem != surp_only:
+		var base_only := full_mem.trim_suffix(" · " + surp_only)
+		return surp_only if (maxi(1, turn_count) % 2 == 0) else base_only
+	return full_mem
 
 func is_test_suite_mode() -> bool:
 	for arg in OS.get_cmdline_user_args():
@@ -12259,7 +12369,11 @@ func refit_after_layout() -> void:
 		wide_overview()
 
 func show_mural_panel(visible_flag: bool) -> void:
+	var was_vis := mural_panel != null and mural_panel.visible
 	if visible_flag:
+		talk_partner = -1
+		if not was_vis:
+			last_panel_dialogue = ""
 		if music_panel != null:
 			music_panel.visible = false
 		if block_panel != null:
@@ -12270,7 +12384,11 @@ func show_mural_panel(visible_flag: bool) -> void:
 			update_mural_ui()
 
 func show_music_panel(visible_flag: bool) -> void:
+	var was_vis := music_panel != null and music_panel.visible
 	if visible_flag:
+		talk_partner = -1
+		if not was_vis:
+			last_panel_dialogue = ""
 		if mural_panel != null:
 			mural_panel.visible = false
 		if block_panel != null:
@@ -12281,8 +12399,11 @@ func show_music_panel(visible_flag: bool) -> void:
 			update_music_ui()
 
 func show_block_panel(visible_flag: bool) -> void:
+	var was_vis := block_panel != null and block_panel.visible
 	if visible_flag:
 		block_panel_mode = "talk" if opening_conversation and talk_partner >= 0 else "hub"
+		if not was_vis:
+			last_panel_dialogue = ""
 		if mural_panel != null:
 			mural_panel.visible = false
 		if music_panel != null:
@@ -12341,6 +12462,17 @@ func update_mural_ui() -> void:
 	var c_badge := String(NEIGHBOR_STORY_BADGES.get("celeste", "Painter"))
 	var c_turn := posmod(maxi(1, celeste_talk_count) - 1, 5) + 1
 	mural_label.text = "Talking with Celeste (Mural Artist · %s · Turn %d/5)  ·  Easel: %s (%s Palette)  ·  Sparks: %d" % [c_badge, c_turn, state_tag, mural_palette.capitalize(), spark_count()]
+	if mural_detail_label != null:
+		var has_custom_c := last_panel_dialogue.begins_with("Celeste: \"")
+		var c_line := last_panel_dialogue if has_custom_c else celeste_dialogue_text()
+		var c_mem := neighbor_memory_tail(CELESTE_ID, c_line, celeste_talk_count)
+		var c_spoken := c_line
+		if not c_mem.is_empty():
+			if is_narrow_layout() and not has_custom_c:
+				c_spoken = "Celeste: %s · %s" % [c_mem, c_line.trim_prefix("Celeste: ")]
+			else:
+				c_spoken = "%s · %s" % [c_line, c_mem]
+		mural_detail_label.text = c_spoken if browser_import_message.is_empty() else ("%s · %s" % [c_spoken, browser_import_message])
 	if mural_palette_btn != null:
 		mural_palette_btn.text = "Palette: %s" % mural_palette.capitalize()
 	if mural_sun_btn != null:
@@ -12363,10 +12495,20 @@ func update_music_ui() -> void:
 	if music_stem_label != null:
 		if not music_error.is_empty():
 			music_stem_label.text = music_error
-		elif music_mode == "local":
-			music_stem_label.text = "Local full track (procedural stems hidden) — %s" % rook_dialogue_text()
 		else:
-			music_stem_label.text = "Groove Stems: %s — %s" % [active_stem_summary(), rook_dialogue_text()]
+			var has_custom_r := last_panel_dialogue.begins_with("Rook: \"")
+			var r_line := last_panel_dialogue if has_custom_r else rook_dialogue_text()
+			var r_mem := neighbor_memory_tail(ROOK_ID, r_line, rook_talk_count)
+			var r_spoken := r_line
+			if not r_mem.is_empty():
+				if is_narrow_layout() and not has_custom_r:
+					r_spoken = "Rook: %s · %s" % [r_mem, r_line.trim_prefix("Rook: ")]
+				else:
+					r_spoken = "%s · %s" % [r_line, r_mem]
+			if music_mode == "local":
+				music_stem_label.text = "Local full track (procedural stems hidden) — %s" % r_spoken
+			else:
+				music_stem_label.text = "Groove Stems: %s — %s" % [active_stem_summary(), r_spoken]
 	if music_play_btn != null:
 		music_play_btn.text = "Pause Groove" if music_playing else "Play Groove"
 	if music_vol_btn != null:
@@ -12384,7 +12526,7 @@ func update_block_ui() -> void:
 	var m_state := "3/3 Ready" if mural_completed else "%d/3" % mural_placements.size()
 	var sc_state := "Soundcheck Ready" if rook_soundcheck_done else "Soundcheck Pending"
 	var open_tag := "Block Party Open!" if block_opened else ("Ready to Open!" if is_block_ready() else "Meet Neighbors & Prepare")
-	var talk_idx := arrived_neighbor if (arrived_neighbor >= 0 and arrived_neighbor < neighbors.size()) else (selected_neighbor if (selected_neighbor >= 0 and selected_neighbor < neighbors.size()) else -1)
+	var talk_idx := talk_partner if (block_panel_mode == "talk" and talk_partner >= 0 and talk_partner < neighbors.size()) else (arrived_neighbor if (arrived_neighbor >= 0 and arrived_neighbor < neighbors.size()) else (selected_neighbor if (selected_neighbor >= 0 and selected_neighbor < neighbors.size()) else -1))
 	if talk_idx >= 0:
 		var active_n: Dictionary = neighbors[talk_idx]
 		var n_id := String(active_n.get("id", ""))
@@ -12401,13 +12543,8 @@ func update_block_ui() -> void:
 			base_detail = last_panel_dialogue
 		elif talk_idx >= 0:
 			var n_id := String(neighbors[talk_idx].get("id", ""))
-			var surp_only := neighbor_surprise_memory_line(n_id)
-			var full_mem := neighbor_project_memory_line(n_id)
-			var mem_line := full_mem
-			if not surp_only.is_empty() and full_mem != surp_only:
-				var base_only := full_mem.trim_suffix(" · " + surp_only)
-				mem_line = surp_only if (int(neighbor_talk_counts.get(n_id, 1)) % 2 == 0) else base_only
 			var greet_line := neighbor_greeting_line(n_id)
+			var mem_line := neighbor_memory_tail(n_id, greet_line, int(neighbor_talk_counts.get(n_id, 1)))
 			var spoken := greet_line if mem_line.is_empty() else ("%s · %s" % [greet_line, mem_line])
 			base_detail = "%s  (Click %s or press T to keep chatting)" % [spoken, String(neighbors[talk_idx].get("name", "neighbor"))]
 		elif block_opened:
@@ -12566,18 +12703,23 @@ func make_ui() -> void:
 	mural_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	mural_panel.offset_left = 12
 	mural_panel.offset_right = -12
-	mural_panel.offset_top = -302
+	mural_panel.offset_top = -324
 	mural_panel.offset_bottom = -130
 	mural_panel.visible = false
 	layer.add_child(mural_panel)
 	var mural_vbox := VBoxContainer.new()
-	mural_vbox.add_theme_constant_override("separation", 3)
+	mural_vbox.add_theme_constant_override("separation", 2)
 	mural_panel.add_child(mural_vbox)
 	mural_label = Label.new()
 	mural_label.clip_text = true
-	mural_label.add_theme_font_size_override("font_size", 17)
+	mural_label.add_theme_font_size_override("font_size", 16)
 	mural_label.add_theme_color_override("font_color", Color("ffe082"))
 	mural_vbox.add_child(mural_label)
+	mural_detail_label = Label.new()
+	mural_detail_label.clip_text = true
+	mural_detail_label.add_theme_font_size_override("font_size", 14)
+	mural_detail_label.add_theme_color_override("font_color", Color("f2ead8"))
+	mural_vbox.add_child(mural_detail_label)
 	mural_buttons.clear()
 	var row1 := HBoxContainer.new()
 	row1.add_theme_constant_override("separation", 4)
@@ -12614,12 +12756,12 @@ func make_ui() -> void:
 	music_panel.add_child(music_vbox)
 	music_label = Label.new()
 	music_label.clip_text = true
-	music_label.add_theme_font_size_override("font_size", 17)
+	music_label.add_theme_font_size_override("font_size", 16)
 	music_label.add_theme_color_override("font_color", Color("ffe082"))
 	music_vbox.add_child(music_label)
 	music_stem_label = Label.new()
 	music_stem_label.clip_text = true
-	music_stem_label.add_theme_font_size_override("font_size", 15)
+	music_stem_label.add_theme_font_size_override("font_size", 14)
 	music_stem_label.add_theme_color_override("font_color", Color("f2ead8"))
 	music_vbox.add_child(music_stem_label)
 	music_buttons.clear()
@@ -12656,12 +12798,12 @@ func make_ui() -> void:
 	block_panel.add_child(block_vbox)
 	block_label = Label.new()
 	block_label.clip_text = true
-	block_label.add_theme_font_size_override("font_size", 17)
+	block_label.add_theme_font_size_override("font_size", 16)
 	block_label.add_theme_color_override("font_color", Color("ffe082"))
 	block_vbox.add_child(block_label)
 	block_detail_label = Label.new()
 	block_detail_label.clip_text = true
-	block_detail_label.add_theme_font_size_override("font_size", 15)
+	block_detail_label.add_theme_font_size_override("font_size", 14)
 	block_detail_label.add_theme_color_override("font_color", Color("f2ead8"))
 	block_vbox.add_child(block_detail_label)
 	block_buttons.clear()
@@ -12760,6 +12902,8 @@ func make_ui() -> void:
 			objective_label.add_theme_font_size_override("font_size", 13 if narrow else 18)
 		if is_instance_valid(mural_label):
 			mural_label.add_theme_font_size_override("font_size", 13 if narrow else 16)
+		if is_instance_valid(mural_detail_label):
+			mural_detail_label.add_theme_font_size_override("font_size", 12 if narrow else 14)
 		if is_instance_valid(music_label):
 			music_label.add_theme_font_size_override("font_size", 13 if narrow else 16)
 		if is_instance_valid(music_stem_label):
@@ -12788,11 +12932,15 @@ func make_ui() -> void:
 		controls.columns = 2 if narrow else 3
 		controls.offset_top = -174 if narrow else -124
 		if is_instance_valid(mural_panel):
-			mural_panel.offset_bottom = -180 if narrow else -130
-			mural_panel.offset_top = -352 if narrow else -302
+			mural_panel.offset_bottom = -176 if narrow else -130
+			mural_panel.offset_top = -368 if narrow else -324
+			if mural_panel.visible:
+				update_mural_ui()
 		if is_instance_valid(music_panel):
 			music_panel.offset_bottom = -176 if narrow else -130
 			music_panel.offset_top = -368 if narrow else -324
+			if music_panel.visible:
+				update_music_ui()
 		if is_instance_valid(block_panel):
 			block_panel.offset_bottom = -176 if narrow else -130
 			block_panel.offset_top = -368 if narrow else -324
