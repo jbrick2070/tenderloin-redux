@@ -273,6 +273,24 @@
     .bldg-inspector {
       border-color: var(--teal);
     }
+    .color-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin: 6px 0 4px;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+    .color-row input[type=color] {
+      width: 44px;
+      height: 32px;
+      padding: 0;
+      border: 1px solid #48666e;
+      border-radius: 6px;
+      background: none;
+      vertical-align: middle;
+    }
   </style>
 </head>
 <body>
@@ -350,14 +368,24 @@
           </label>
           <a id="bldgMapsLink" class="btn" target="_blank" rel="noopener">🗺️ Street View This Footprint</a>
         </div>
+        <strong style="display:block; margin-top:10px;">Building Tags (applied to this footprint in the 3D game):</strong>
+        <div class="tag-grid" id="bldgTagGrid"></div>
+        <div class="color-row">
+          <label>Facade color <input type="color" id="bldgFacadeInput" value="#c4b6a1" /></label>
+          <label>Trim color <input type="color" id="bldgTrimInput" value="#e8e6df" /></label>
+          <button type="button" id="bldgColorsClearBtn">Clear colors</button>
+        </div>
+        <p class="submeta" id="bldgSurveyState"></p>
+        <p class="submeta">To apply: Export Field Pack, save it in <code>tools/field-guide/</code>, then run <code>node scripts/apply-field-survey.mjs --apply</code>.</p>
       </div>
     </section>
   </main>
 
   <script type="module">
-    const ORIGIN = { lon: -122.4112237, lat: 37.783135 };
+    // Same local-metre origin as godot/data/buildings.json (Turk & Taylor OSM node); replaced by cityData.origin once loaded.
+    let ORIGIN = { lon: -122.410784, lat: 37.7832203 };
     const METERS_PER_DEG_LAT = 111320.0;
-    const METERS_PER_DEG_LON = Math.cos((ORIGIN.lat * Math.PI) / 180.0) * 111320.0;
+    let METERS_PER_DEG_LON = Math.cos((ORIGIN.lat * Math.PI) / 180.0) * 111320.0;
 
     function gameXZToLatLon(x, z) {
       return {
@@ -378,8 +406,12 @@
       "Terracotta Ornate Trim", "Angled Bay Windows", "Rounded Bay Windows",
       "Sloped Fabric Awning", "Flat Metal Marquee", "Vertical Neon Blade Sign",
       "Iron Fire Escape", "Arched Mezzanine Windows", "Green Bike Lane",
-      "Continental Crosswalk", "Sidewalk Trees / Planters", "Painted Wall Mural"
+      "Continental Crosswalk", "Sidewalk Trees / Planters", "Painted Wall Mural",
+      "Rooftop Water Tank", "Elevator Penthouse", "Skylights"
     ];
+    // Street-level tags describe the sidewalk/roadway; the rest can be applied to a single building footprint.
+    const STREET_ONLY_TAGS = ["Green Bike Lane", "Continental Crosswalk", "Sidewalk Trees / Planters"];
+    const BUILDING_TAG_CHOICES = SURFACE_TAGS.filter(t => !STREET_ONLY_TAGS.includes(t));
 
     const PHOTO_STOPS = [
       {
@@ -598,6 +630,10 @@
       try {
         const res = await fetch("./buildings.json");
         cityData = await res.json();
+        if (cityData.origin && Number.isFinite(cityData.origin.lat) && Number.isFinite(cityData.origin.lon)) {
+          ORIGIN = { lon: cityData.origin.lon, lat: cityData.origin.lat };
+          METERS_PER_DEG_LON = Math.cos((ORIGIN.lat * Math.PI) / 180.0) * 111320.0;
+        }
         allBuildings = [
           ...(cityData.buildings || []).map(b => ({ ...b, zone: "opening" })),
           ...(cityData.wider_buildings || []).map(b => ({ ...b, zone: "wider" }))
@@ -683,8 +719,11 @@
             else ctx.lineTo(px, py);
           });
           ctx.closePath();
+          const surveyedFacade = hasTag && state.buildings[b.id].facade;
           ctx.fillStyle = isSelected
             ? "#6fd6c5"
+            : surveyedFacade
+            ? surveyedFacade
             : hasTag
             ? "#3ca374"
             : b.zone === "opening"
@@ -953,7 +992,72 @@
         (existing && existing.photos ? ` · ${existing.photos.length} photo(s) tagged` : "");
       document.getElementById("bldgMapsLink").href =
         `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${gps.lat},${gps.lon}`;
+      renderBuildingSurvey(b.id);
     }
+
+    function ensureBuildingRecord(bId) {
+      if (!state.buildings[bId]) state.buildings[bId] = { photos: [] };
+      const rec = state.buildings[bId];
+      if (!Array.isArray(rec.photos)) rec.photos = [];
+      if (!Array.isArray(rec.tags)) rec.tags = [];
+      return rec;
+    }
+
+    function pruneBuildingRecord(bId) {
+      const rec = state.buildings[bId];
+      if (rec && !(rec.photos || []).length && !(rec.tags || []).length && !rec.facade && !rec.trim) delete state.buildings[bId];
+    }
+
+    function renderBuildingSurvey(bId) {
+      const rec = state.buildings[bId] || {};
+      const tags = Array.isArray(rec.tags) ? rec.tags : [];
+      const grid = document.getElementById("bldgTagGrid");
+      grid.innerHTML = "";
+      BUILDING_TAG_CHOICES.forEach(tag => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        const active = tags.includes(tag);
+        btn.className = "tag-btn" + (active ? " selected" : "");
+        btn.setAttribute("aria-pressed", active ? "true" : "false");
+        btn.textContent = tag;
+        btn.addEventListener("click", () => {
+          const r = ensureBuildingRecord(bId);
+          r.tags = r.tags.includes(tag) ? r.tags.filter(t => t !== tag) : [...r.tags, tag];
+          pruneBuildingRecord(bId);
+          saveState();
+          renderBuildingSurvey(bId);
+          drawMap();
+        });
+        grid.appendChild(btn);
+      });
+      document.getElementById("bldgFacadeInput").value = rec.facade || "#c4b6a1";
+      document.getElementById("bldgTrimInput").value = rec.trim || "#e8e6df";
+      const colorNote = [rec.facade && `facade ${rec.facade}`, rec.trim && `trim ${rec.trim}`].filter(Boolean).join(" · ");
+      document.getElementById("bldgSurveyState").textContent =
+        `Surveyed: ${tags.length ? tags.join(", ") : "no tags yet"} · ${colorNote || "colors not set"}`;
+    }
+
+    for (const [inputId, field] of [["bldgFacadeInput", "facade"], ["bldgTrimInput", "trim"]]) {
+      document.getElementById(inputId).addEventListener("input", (e) => {
+        const bId = state.selectedBuildingId;
+        if (!bId) return;
+        ensureBuildingRecord(bId)[field] = e.target.value;
+        saveState();
+        renderBuildingSurvey(bId);
+        drawMap();
+      });
+    }
+
+    document.getElementById("bldgColorsClearBtn").addEventListener("click", () => {
+      const bId = state.selectedBuildingId;
+      if (!bId || !state.buildings[bId]) return;
+      delete state.buildings[bId].facade;
+      delete state.buildings[bId].trim;
+      pruneBuildingRecord(bId);
+      saveState();
+      renderBuildingSurvey(bId);
+      drawMap();
+    });
 
     document.getElementById("bldgPhotoInput").addEventListener("change", async (e) => {
       const bId = state.selectedBuildingId;

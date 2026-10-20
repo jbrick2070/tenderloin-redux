@@ -11,6 +11,16 @@ A peaceful neighborhood adventure set on an accurate map of San Francisco's Tend
 - 🗺️ **[2D Browser Edition](https://jbrick2070.github.io/tenderloin-redux/browser/)** — Illustrated block adventure (`public/`)
 - 📸 **[Field Photo & Surface Guide](https://jbrick2070.github.io/tenderloin-redux/field-guide/)** — Mobile GPS & 14-stop walking guide for capturing Tenderloin building facades (`tools/field-guide/`)
 
+**Bring a field survey into the 3D game:** tag stops or individual buildings (tags plus facade/trim colors) in the Field Guide, tap **Export Field Pack**, save the `tenderloin-field-survey-*.json` file in `tools/field-guide/` (it is gitignored because it holds your photos), then:
+
+```powershell
+npm run field:apply -- --apply
+```
+
+That rewrites only the generated `FIELD_SURVEY_OVERRIDES` block in `godot/main.gd`; run it without `--apply` for a dry run, or with `--clear` to reset. Photos and notes are never copied. Rebuild with `npm run godot:test` and `npm run godot:export`.
+
+**3D extras:** `Shift+L` toggles day/evening light pools, `Shift+E` visits the eateries (tap a counter to order), `Shift+M` opens the museum Time-Portal, and tapping the Boeddeker Park gate frames the park.
+
 The project began as a constructive response to the Tenderloin-set shooter reported as Night Shift by SFist and Tenderloin Night Shift by the San Francisco Chronicle, with the belief that games can inspire care, creativity, and greatness.
 
 **Status:** first local playable in development. The full game remains in progress; see [build status](docs/BUILD_STATUS.md) and [roadmap](docs/ROADMAP.md).

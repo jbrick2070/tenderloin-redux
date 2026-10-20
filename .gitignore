@@ -2,3 +2,4 @@ node_modules/
 artifacts/
 .build-round.lock
 godot/.godot/
+tools/field-guide/tenderloin-field-survey-*.json

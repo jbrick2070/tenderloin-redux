@@ -1093,6 +1093,57 @@ func run() -> void:
 	study.overview()
 	require(not study.is_speech_bubble_visible(), "overview clears the docent bubble")
 
+	# Field Guide survey overrides (scripts/apply-field-survey.mjs -> FIELD_SURVEY_OVERRIDES)
+	var known_ids: Dictionary = {}
+	for k_rec in study.all_buildings:
+		known_ids[String(k_rec.id)] = true
+	var shipped_ok := true
+	for s_id in study.FIELD_SURVEY_OVERRIDES:
+		if not known_ids.has(String(s_id)):
+			shipped_ok = false
+	require(shipped_ok, "every shipped FIELD_SURVEY_OVERRIDES key is a measured sf16_bldgid")
+	var survey_b: Dictionary = {}
+	for cand in study.data.buildings:
+		var cand_ring: Array = cand.polygons[0].rings[0]
+		if float(cand.height_m) >= 12.0 and absf(study.ring_signed_area(cand_ring)) >= 200.0 and not study.neon_blade_site(cand_ring).is_empty():
+			survey_b = cand
+			break
+	require(not survey_b.is_empty(), "found an opening-block footprint suitable for a survey override test")
+	var survey_id := String(survey_b.get("id", ""))
+	var saved_overrides: Dictionary = study.field_survey_overrides
+	study.field_survey_overrides = {survey_id: {"tags": ["Red Brick", "Terracotta Ornate Trim", "Iron Fire Escape", "Rooftop Water Tank", "Vertical Neon Blade Sign", "Not A Tag"], "base": "#123456", "cornice": "bogus", "source": "building"}}
+	var survey_style: Dictionary = study.field_survey_style(survey_id)
+	require(survey_style.get("base") == Color("#123456") and survey_style.get("spandrel") == Color("7e3a2e") and survey_style.get("cornice") == Color("b8643f") and bool(survey_style.get("force_fire_escape", false)) and bool(survey_style.get("roof_water_tank", false)) and bool(survey_style.get("neon_blade", false)), "field_survey_style resolves tag colors and flags, explicit facade hex wins, invalid hex is ignored")
+	require(study.field_survey_style("201006.9999999").is_empty(), "unsurveyed buildings get no survey style")
+	var counts_backup: Dictionary = study.rooftop_feature_counts.duplicate(true)
+	var points_backup: int = study.rooftop_feature_points.size()
+	var spots_backup: int = study.storefront_light_spots.size()
+	var surveyed_built: Dictionary = study.make_building_mesh_and_rect(survey_b, study.vertex_color_material(), Color("d49a6a"))
+	var surveyed_palette: Dictionary = study.last_built_palette
+	var surveyed_kinds: Dictionary = {}
+	for f_i in range(points_backup, study.rooftop_feature_points.size()):
+		var f_rec: Dictionary = study.rooftop_feature_points[f_i]
+		if String(f_rec.id) == survey_id:
+			surveyed_kinds[String(f_rec.kind)] = true
+	study.field_survey_overrides = {}
+	var plain_built: Dictionary = study.make_building_mesh_and_rect(survey_b, study.vertex_color_material(), Color("d49a6a"))
+	var plain_palette: Dictionary = study.last_built_palette
+	require(bool(surveyed_palette.get("surveyed", false)) and surveyed_palette.get("base") == Color("#123456") and surveyed_palette.get("cornice") == Color("b8643f") and not bool(plain_palette.get("surveyed", true)) and plain_palette.get("base") != Color("#123456"), "surveyed facade and trim colors are painted onto the rebuilt 3D building")
+	require(surveyed_kinds.has("water_tanks") and surveyed_kinds.has("neon_blades"), "surveyed Rooftop Water Tank and Vertical Neon Blade Sign tags add those 3D details")
+	var surveyed_mesh: MeshInstance3D = surveyed_built.mesh
+	require(is_equal_approx(surveyed_mesh.get_aabb().size.y, float(survey_b.height_m)), "survey overrides keep the measured LiDAR building height")
+	surveyed_mesh.queue_free()
+	(plain_built.mesh as MeshInstance3D).queue_free()
+	study.rooftop_feature_counts = counts_backup
+	study.rooftop_feature_points.resize(points_backup)
+	study.storefront_light_spots.resize(spots_backup)
+	study.overview()
+	study.field_survey_overrides = {String(study.data.buildings[0].id): {"tags": ["Red Brick", "Iron Fire Escape"], "source": "stop:stop-01-comptons"}}
+	study.choose_next(1)
+	require(study.selected == 0 and study.info.text.contains("Field survey (stop:stop-01-comptons): Red Brick, Iron Fire Escape"), "selecting a surveyed building shows its Field Guide tags")
+	study.field_survey_overrides = saved_overrides
+	study.overview()
+
 	# Godot Web default font (Open Sans SemiBold) coverage: no hex-box glyphs in any 3D or UI text
 	var web_font: Font = ThemeDB.fallback_font
 	var src_text := FileAccess.get_file_as_string("res://main.gd")
