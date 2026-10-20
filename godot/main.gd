@@ -7452,6 +7452,16 @@ func update_route_ribbon(force: bool = false) -> void:
 	st.generate_normals()
 	route_mesh.mesh = st.commit()
 
+## Restore close framing after detached views; retain the existing wide-zoom guard.
+func resume_walking_view() -> void:
+	if not following_player:
+		view_size = 75.0 if (in_overview or in_wide_overview) else 45.0
+	elif view_size > 110.0:
+		view_size = 75.0
+	in_overview = false
+	in_wide_overview = false
+	following_player = true
+
 func walk_step(input_dir: Vector2, delta: float) -> bool:
 	if input_dir.length_squared() < 1e-6 or delta <= 0.0:
 		return false
@@ -7470,9 +7480,6 @@ func walk_step(input_dir: Vector2, delta: float) -> bool:
 	show_music_panel(false)
 	show_block_panel(false)
 	update_route_ribbon(true)
-	in_overview = false
-	in_wide_overview = false
-	following_player = true
 	if selected >= 0:
 		meshes[selected].material_override = building_materials[selected]
 		selected = -1
@@ -7517,8 +7524,7 @@ func walk_step(input_dir: Vector2, delta: float) -> bool:
 			break
 	player.velocity = Vector3.ZERO
 	target = Vector3(player.position.x, 1.0, player.position.z)
-	if view_size > 110.0:
-		view_size = 75.0
+	resume_walking_view()
 	update_camera()
 	update_occlusion(false)
 	update_walking_status()
@@ -7577,15 +7583,13 @@ func walk_to_neighbor(index: int) -> bool:
 		show_music_panel(false)
 	if index in [celeste_index, rook_index]:
 		show_block_panel(false)
-	in_overview = false
-	in_wide_overview = false
-	following_player = true
 	if selected >= 0:
 		meshes[selected].material_override = building_materials[selected]
 		selected = -1
 	var goal := neighbor_xz(index)
 	var dist := player_xz().distance_to(goal)
 	if dist <= ARRIVAL_DISTANCE_M:
+		resume_walking_view()
 		finish_neighbor_arrival(index)
 		return true
 	current_path = find_path(player_xz(), goal)
@@ -7597,8 +7601,7 @@ func walk_to_neighbor(index: int) -> bool:
 		set_header_details(true, false)
 		announce_a11y_status("No walkable route to %s." % n.name)
 		return false
-	if view_size > 110.0:
-		view_size = 75.0
+	resume_walking_view()
 	target = Vector3(player.position.x, 1.0, player.position.z)
 	update_camera()
 	update_occlusion(true)
@@ -7620,15 +7623,13 @@ func walk_to_mural() -> bool:
 	arrived_history_stop = ""
 	show_music_panel(false)
 	show_block_panel(false)
-	in_overview = false
-	in_wide_overview = false
-	following_player = true
 	if selected >= 0:
 		meshes[selected].material_override = building_materials[selected]
 		selected = -1
 	var goal := mural_stand_xz()
 	var dist := player_xz().distance_to(goal)
 	if dist <= ARRIVAL_DISTANCE_M or player_xz().distance_to(mural_xz()) <= 2.0:
+		resume_walking_view()
 		finish_mural_arrival()
 		return true
 	current_path = find_path(player_xz(), goal)
@@ -7641,8 +7642,7 @@ func walk_to_mural() -> bool:
 		set_header_details(true, false)
 		announce_a11y_status("No walkable route to Portable Mural Board.")
 		return false
-	if view_size > 110.0:
-		view_size = 75.0
+	resume_walking_view()
 	target = Vector3(player.position.x, 1.0, player.position.z)
 	update_camera()
 	update_occlusion(true)
@@ -7664,15 +7664,13 @@ func walk_to_speaker() -> bool:
 	arrived_history_stop = ""
 	show_mural_panel(false)
 	show_block_panel(false)
-	in_overview = false
-	in_wide_overview = false
-	following_player = true
 	if selected >= 0:
 		meshes[selected].material_override = building_materials[selected]
 		selected = -1
 	var goal := speaker_stand_xz()
 	var dist := player_xz().distance_to(goal)
 	if dist <= ARRIVAL_DISTANCE_M or player_xz().distance_to(speaker_xz()) <= 1.8:
+		resume_walking_view()
 		finish_speaker_arrival()
 		return true
 	current_path = find_path(player_xz(), goal)
@@ -7685,8 +7683,7 @@ func walk_to_speaker() -> bool:
 		set_header_details(true, false)
 		announce_a11y_status("No walkable route to Rook's Speaker.")
 		return false
-	if view_size > 110.0:
-		view_size = 75.0
+	resume_walking_view()
 	target = Vector3(player.position.x, 1.0, player.position.z)
 	update_camera()
 	update_occlusion(true)
@@ -7713,15 +7710,13 @@ func walk_to_history_stop(stop_id: String) -> bool:
 	show_mural_panel(false)
 	show_music_panel(false)
 	show_block_panel(false)
-	in_overview = false
-	in_wide_overview = false
-	following_player = true
 	if selected >= 0:
 		meshes[selected].material_override = building_materials[selected]
 		selected = -1
 	var goal := history_stop_xz(stop_id)
 	var dist := player_xz().distance_to(goal)
 	if dist <= ARRIVAL_DISTANCE_M:
+		resume_walking_view()
 		finish_history_stop_arrival(stop_id)
 		return true
 	current_path = find_path(player_xz(), goal)
@@ -7734,8 +7729,7 @@ func walk_to_history_stop(stop_id: String) -> bool:
 		set_header_details(true, false)
 		announce_a11y_status("No walkable route to %s." % title_str)
 		return false
-	if view_size > 110.0:
-		view_size = 75.0
+	resume_walking_view()
 	target = Vector3(player.position.x, 1.0, player.position.z)
 	update_camera()
 	update_occlusion(true)
@@ -7966,9 +7960,6 @@ func walk_to_point(goal_xz: Vector2) -> bool:
 	show_mural_panel(false)
 	show_music_panel(false)
 	show_block_panel(false)
-	in_overview = false
-	in_wide_overview = false
-	following_player = true
 	if selected >= 0:
 		meshes[selected].material_override = building_materials[selected]
 		selected = -1
@@ -7981,8 +7972,7 @@ func walk_to_point(goal_xz: Vector2) -> bool:
 		set_header_details(true, false)
 		announce_a11y_status("No walkable route to street point.")
 		return false
-	if view_size > 110.0:
-		view_size = 75.0
+	resume_walking_view()
 	target = Vector3(player.position.x, 1.0, player.position.z)
 	update_camera()
 	update_occlusion(true)
@@ -10780,6 +10770,7 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"reward_sound_last_cue": reward_sound_last_cue,
 		"reward_audio_playing": reward_audio_player != null and reward_audio_player.playing,
 		"camera_view_size": view_size,
+		"following_player": following_player,
 		"in_overview": in_overview,
 		"in_wide_overview": in_wide_overview,
 		"cutaway_additions": occluded_additions.size(),

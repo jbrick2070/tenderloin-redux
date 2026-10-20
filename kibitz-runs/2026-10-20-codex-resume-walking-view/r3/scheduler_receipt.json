@@ -1,0 +1,10 @@
+{
+  "verified_at_utc": "2026-10-20T19:15:34.225800+00:00",
+  "automation_id": "build-tenderloin-redux",
+  "status": "PAUSED",
+  "rrule": "FREQ=HOURLY;INTERVAL=1",
+  "target_thread_id": "01a159d6-60a3-78e1-92ae-4018509d2539",
+  "prompt_sha256": "1d611800116c2ea5becda91762a065732d979a39721a138ede6dbb789a63a68a",
+  "cutoff_utc": "2026-10-20T19:15:00Z",
+  "new_round_after_cutoff": false
+}

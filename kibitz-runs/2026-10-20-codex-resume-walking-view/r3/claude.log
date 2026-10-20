@@ -1,0 +1,17 @@
+STDOUT:
+I wrote the review to `kibitz-runs/2026-10-20-codex-resume-walking-view/r3/claude.md` and changed nothing else. My verdict is **yes-with-fixes**: the six route starters are ordered correctly, but there are two contract defects to fix before building.
+
+Bash is disabled in this session, so I couldn't run `git diff` against the baseline. My picture of the old code comes from `driver_anchor.md`, and the review marks those points "verify".
+
+**Must-fix:**
+1. **Wrong signal for "inspection".** `resume_walking_view()` treats any detached camera as inspection. But every ordinary neighbor arrival also detaches the camera, through `show_conversation` → `frame_conversation` (`godot/main.gd:6191`). So after each conversation, the next walk resets a deliberate zoom (say 70) to 45, which contradicts the spec. The smallest fix is to accept that, correct the spec and pin it with one test. The alternative is a separate inspection flag.
+2. **No ceiling on preserved follow zoom.** A following player who scrolls out to 300–900 keeps that tiny-character view when they walk. That is the defect this round is meant to fix, and a regression from the old >110 shrink. The fix is one line: cap views above 300 back to 75. The 125 test still passes.
+
+**Should-fix:**
+- **Map → 75 is fragile and untested.** Any scroll, drag or rotate on the Map clears the overview flag, so walking then gives 45 instead of 75. No test covers the 75 case.
+- **Immediate arrival is never run by the new tests.** In the real end states the camera is detached again, either by conversation framing or by the history-stop camera.
+- **The failure test misses the changed code.** It fails at the early "no walkable point" check, not at the empty-path branches whose ordering changed.
+- **The browser W check could be distorted.** Verify that the 200 ms W press from the start position can't trigger a neighbor arrival.
+- **Spec wording.** It should say that a blocked keypress still reframes the camera.
+
+**Cut:** the `resume_walking_view()` call in the history-stop immediate-arrival branch has no effect, because the history-stop camera immediately overwrites it. It's harmless to keep.

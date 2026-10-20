@@ -255,6 +255,67 @@ func run() -> void:
 		study.stop_walking()
 	study.overview()
 
+	# Detached landmark views return to the player only on a new walking intent.
+	for resume_case in ["manual", "neighbor", "mural", "speaker", "history", "street"]:
+		study.player.position = study.PLAYER_START
+		study.stop_walking()
+		study.focus_history_stop_camera("blackhawk")
+		study.camera_yaw = 0.3
+		study.camera_pitch_scale = 1.1
+		var resume_save: String = JSON.stringify(study.build_save_envelope())
+		var resume_pos: Vector3 = study.player.position
+		match resume_case:
+			"manual": study.walk_step(Vector2.RIGHT, 0.05)
+			"neighbor": require(study.walk_to_neighbor(4), "detached neighbor route succeeds")
+			"mural": require(study.walk_to_mural(), "detached mural route succeeds")
+			"speaker": require(study.walk_to_speaker(), "detached speaker route succeeds")
+			"history": require(study.walk_to_black_hawk(), "detached history route succeeds")
+			"street": require(study.walk_to_point(study.neighbor_xz(4)), "detached street route succeeds")
+		require(study.following_player and study.view_size == 45.0 and study.target.distance_to(Vector3(study.player.position.x, 1.0, study.player.position.z)) < 0.01, "%s returns inspection to close player framing" % resume_case)
+		require(study.camera_yaw == 0.3 and study.camera_pitch_scale == 1.1, "resume preserves camera-relative heading and pitch")
+		require(study.player.position.distance_to(resume_pos) <= 0.25 and JSON.stringify(study.build_save_envelope()) == resume_save, "camera transition neither teleports nor changes progress")
+		study.view_size = 70.0
+		study.walk_step(Vector2.RIGHT, 0.01)
+		require(study.view_size == 70.0, "manual follow preserves deliberate wide zoom")
+		require(study.walk_to_neighbor(4) and study.view_size == 70.0, "route follow preserves deliberate wide zoom")
+	study.view_size = 400.0
+	study.walk_step(Vector2.RIGHT, 0.01)
+	require(study.view_size == 75.0, "existing extreme follow zoom guard remains")
+	for map_kind in ["block", "district"]:
+		study.stop_walking()
+		if map_kind == "block": study.overview()
+		else: study.wide_overview()
+		require(study.walk_to_neighbor(4) and study.following_player and study.view_size == 75.0, "unadjusted map resumes at established route scale")
+	study.stop_walking()
+	study.focus_history_stop_camera("blackhawk")
+	var failed_view_target: Vector3 = study.target
+	var failed_view_size: float = study.view_size
+	require(not study.walk_to_point(Vector2(-350.0, -350.0)), "invalid detached street request fails")
+	require(not study.following_player and study.target == failed_view_target and study.view_size == failed_view_size and study.header_details_expanded, "failure preserves inspection and reveals diagnostic")
+	require(study.walk_to_neighbor(4) and study.view_size == 45.0, "valid retry after rejection still restores close framing")
+	# Isolate an A* start without changing surveyed geometry, then restore its cache.
+	study.stop_walking()
+	study.player.position = Vector3(study.neighbor_xz(4).x, 0.0, study.neighbor_xz(4).y)
+	study.focus_history_stop_camera("blackhawk")
+	var saved_resume_cache: Dictionary = study.cell_walkable_cache.duplicate()
+	var resume_start: Vector2 = study.nearest_walkable_point(study.player_xz())
+	var resume_goal: Vector2 = study.nearest_walkable_point(study.blackhawk_xz())
+	require(not study.segment_walkable(resume_start, resume_goal), "failure fixture requires A* routing")
+	var resume_cell := Vector2i(int(round(resume_start.x / 2.0)), int(round(resume_start.y / 2.0)))
+	for dx in range(-1, 2):
+		for dy in range(-1, 2):
+			study.cell_walkable_cache[resume_cell + Vector2i(dx, dy)] = false
+	var blocked_resume_save: String = JSON.stringify(study.build_save_envelope())
+	var blocked_resume_target: Vector3 = study.target
+	require(not study.walk_to_point(study.blackhawk_xz()) and study.last_astar_expanded_cells == 1, "isolated A* start exhausts actual path search")
+	require(not study.following_player and study.target == blocked_resume_target and study.view_size == 55.0 and study.header_details_expanded, "path search failure preserves detached camera and explains rejection")
+	require(JSON.stringify(study.build_save_envelope()) == blocked_resume_save and study.player_xz() == study.neighbor_xz(4), "failed search preserves save and player position")
+	study.cell_walkable_cache = saved_resume_cache
+	require(study.walk_to_point(study.blackhawk_xz()) and study.following_player and study.view_size == 45.0, "same route retries successfully after search failure")
+	study.stop_walking()
+	study.set_header_details(false)
+	study.overview()
+
 	# Test cycling and arriving at all 5 neighbors + continuous non-teleporting walk + occlusion cutaway
 	study.player.position = study.PLAYER_START
 	study.selected_neighbor = -1
@@ -293,6 +354,20 @@ func run() -> void:
 		if study.neighbors[i].id == "thanh":
 			thanh_occluded = not study.occluded_buildings.is_empty()
 	require(rook_occluded and thanh_occluded, "camera sightline cutaway activates for occluded neighbor locations")
+	# Conversations are detached local views; leaving them restores walking framing.
+	study.view_size = 70.0
+	require(study.walk_to_neighbor(0) and study.view_size == 45.0, "walking after conversation restores close view")
+	study.stop_walking()
+	for immediate_kind in ["neighbor", "mural", "speaker"]:
+		var immediate_pt: Vector2 = study.neighbor_xz(4) if immediate_kind == "neighbor" else (study.mural_stand_xz() if immediate_kind == "mural" else study.speaker_stand_xz())
+		study.player.position = Vector3(immediate_pt.x, 0.0, immediate_pt.y)
+		study.focus_history_stop_camera("blackhawk")
+		var immediate_save: String = JSON.stringify(study.build_save_envelope())
+		match immediate_kind:
+			"neighbor": require(study.walk_to_neighbor(4) and study.arrived_neighbor == 4 and study.block_panel.visible, "immediate neighbor arrival keeps conversation framing")
+			"mural": require(study.walk_to_mural() and study.arrived_mural and study.mural_panel.visible, "immediate mural arrival opens its panel")
+			"speaker": require(study.walk_to_speaker() and study.arrived_speaker and study.music_panel.visible, "immediate speaker arrival opens its panel")
+		require(study.current_path.is_empty() and study.view_size == 45.0 and JSON.stringify(study.build_save_envelope()) == immediate_save, "repeat immediate arrival preserves progress and local view")
 	study.choose_next_neighbor(1)
 	require(study.selected_neighbor == 0, "neighbor navigation wraps to first neighbor")
 
@@ -588,6 +663,10 @@ func run() -> void:
 		bh_guard += 1
 	require(bh_guard < 2400 and crossed_jones and crossed_leavenworth, "west Turk walk crosses actual Jones Street and Leavenworth Street centerlines")
 	require(study.blackhawk_discovered and study.arrived_history_stop == "blackhawk" and study.history_beacon_meshes["blackhawk"].material_override.emission_enabled, "arriving at Turk & Hyde sets blackhawk_discovered=true and lights 3D Black Hawk beacon")
+	study.focus_history_stop_camera("comptons")
+	var immediate_history_save: String = JSON.stringify(study.build_save_envelope())
+	require(study.walk_to_black_hawk() and study.arrived_history_stop == "blackhawk" and not study.following_player and study.view_size == 55.0 and study.block_panel.visible, "immediate history arrival retains deliberate landmark framing")
+	require(JSON.stringify(study.build_save_envelope()) == immediate_history_save, "repeat immediate history arrival preserves progress")
 	require(study.player_xz().distance_to(study.history_stop_xz("blackhawk")) <= study.ARRIVAL_DISTANCE_M + 1e-3, "player arrives within arrival radius of Former Black Hawk Jazz Club at Turk & Hyde")
 	require(study.last_a11y_announcement.contains("Black Hawk Jazz Club") and study.last_a11y_announcement.contains("Miles Davis"), "arriving at Black Hawk announces Turk & Hyde narrative history stop")
 	require(study.last_music_cue == "history_blackhawk" and study.reward_banner.visible and study.reward_title_label.text.contains("Jazz History") and study.celebration_burst_node.visible, "first discovery of Former Black Hawk Jazz Club triggers history_blackhawk chime and Jazz History feel-good burst")

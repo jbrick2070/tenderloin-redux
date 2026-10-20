@@ -880,7 +880,40 @@ try {
     assert.equal(afterFileBridgeMerge.civic?.phase, 'done', 'File picker bridge monotonic merge must preserve M4 civic done state');
     assert.equal(afterFileBridgeMerge.film?.phase, 'done', 'File picker bridge monotonic merge must preserve M4 film done state');
     assert.deepEqual(afterFileBridgeMerge.discovered_surprises, [], 'Fresh browser import does not invent Godot-only surprise discoveries');
-    const explorationEvidence = { walkingStopControlVerified: true, compactHeaderHeight: startup.header_control.height, compactInfoToggleVerified: true, startupOrientationVerified: true, findMeAndMapVerified: true, rewardSoundsAndMuteVerified: true, persistentProgressVerified: true, surpriseDiscoveryVerified: true, surpriseKeepsakeReloadVerified: true, chapter6ConversationVerified: true, sessionLandmarkTourVerified: true, fullSaveBytes: Buffer.byteLength(saveBeforeTour, 'utf8') };
+    // Actual inspection -> keyboard walk -> routed walk, after existing save checks.
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Shift+KeyH');
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.camera_view_size === 84 && !window.__tenderloinGodotA11ySnapshot.following_player);
+    const inspection = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+    const resumeSave = await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1'));
+    const resumeLegacySave = await page.evaluate(() => localStorage.getItem('tenderloin-redux.save.v1'));
+    await page.screenshot({ path: `artifacts/godot-${size.width}-detached-inspection.png` });
+    await page.keyboard.down('KeyW');
+    await page.waitForTimeout(200);
+    await page.keyboard.up('KeyW');
+    await page.waitForFunction(frame => {
+      const s = window.__tenderloinGodotA11ySnapshot;
+      return s?.ui_frame > frame && s.following_player && s.camera_view_size === 45;
+    }, inspection.ui_frame);
+    const resumed = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+    const resumeDistance = Math.hypot(resumed.player_grounding.x - inspection.player_grounding.x, resumed.player_grounding.z - inspection.player_grounding.z);
+    assert.ok(resumeDistance > 0.05 && resumeDistance < 8, 'manual resume visibly moves by real walking, not teleportation');
+    assert.ok(resumed.player_screen.x >= resumed.play_area.x && resumed.player_screen.x <= resumed.play_area.x + resumed.play_area.width && resumed.player_screen.y >= resumed.play_area.y && resumed.player_screen.y <= resumed.play_area.y + resumed.play_area.height, 'resuming frames the actual player inside the play area');
+    assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), resumeSave, 'manual resume leaves saved progress unchanged');
+    await page.screenshot({ path: `artifacts/godot-${size.width}-inspection-resume-walk.png` });
+    await page.keyboard.press('Shift+KeyH');
+    await page.waitForFunction(() => !window.__tenderloinGodotA11ySnapshot?.following_player && window.__tenderloinGodotA11ySnapshot.camera_view_size === 84);
+    await page.keyboard.press('KeyH');
+    await page.waitForFunction(() => {
+      const s = window.__tenderloinGodotA11ySnapshot;
+      return s?.following_player && s.camera_view_size === 45 && s.player_grounding.path_active;
+    });
+    await page.screenshot({ path: `artifacts/godot-${size.width}-inspection-resume-route.png` });
+    await clickHeaderControl('walk_control');
+    await page.waitForFunction(() => !window.__tenderloinGodotA11ySnapshot?.player_grounding.path_active);
+    assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), resumeSave, 'route start and Stop preserve saved progress');
+    assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.save.v1')), resumeLegacySave);
+    const explorationEvidence = { inspectionResumeVerified: true, walkingStopControlVerified: true, compactHeaderHeight: startup.header_control.height, compactInfoToggleVerified: true, startupOrientationVerified: true, findMeAndMapVerified: true, rewardSoundsAndMuteVerified: true, persistentProgressVerified: true, surpriseDiscoveryVerified: true, surpriseKeepsakeReloadVerified: true, chapter6ConversationVerified: true, sessionLandmarkTourVerified: true, fullSaveBytes: Buffer.byteLength(saveBeforeTour, 'utf8') };
     runs.push({ ...explorationEvidence, viewport: size, overviewBytes: before.length, selectedBytes: after.length, neighborBytes: neighbor.length, muralBytes: muralShot.length, musicBytes: musicShot.length, blockBytes: blockShot.length, blackhawkBytes: blackhawkShot.length, wideBytes: wideShot.length, keyboardActivationVerified: true, neighborWalkVerified: true, muralSaveReloadVerified: true, rookMusicAuditionVerified: true, blockCompletionVerified: true, widerTenderloinVerified: true, m1EpilogueVerified: true, m3HostingVerified: true, m4CivicFilmVerified: true, m5VoicesIsolatedVerified: true, m6KeepsakeSvgExportVerified: true, m6PerfBudgetVerified: true, perfSnapshot: perfSnap, browserSaveImportVerified: true, domA11yLiveVerified: true });
     await context.close();
   }

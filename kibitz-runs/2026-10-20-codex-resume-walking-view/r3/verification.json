@@ -1,0 +1,212 @@
+{
+  "verified_at_utc": "2026-10-20T19:10:31.397369+00:00",
+  "baseline": "cf339d234647df211906c6f28d0f10092089332e",
+  "scope": "Restore useful player framing on a new walking intent from detached inspection, conversation or pan; preserve map and existing wide-zoom policy.",
+  "source_sha256": {
+    "godot/main.gd": "37ae01e440c3cc777f1f122eb34b09cbc7a39c8127320f80c11ea3036206f99c",
+    "godot/tests/study_test.gd": "01b184cb2353e0cb5f47af7c6ad8c473fd0845d24df1b8d6363acb644d91c6b4",
+    "tests/godot-browser.mjs": "4bef3df9c8fd9d4026c2ddc109b9690138c7d38cefa057fcac7dcb25625d389c"
+  },
+  "all_five_gates_after_final_source_change": true,
+  "gates": [
+    {
+      "command": "npm.cmd run godot:test",
+      "exit_code": 0,
+      "log": {
+        "path": "artifacts/resume-view-native-reviewed.log",
+        "sha256": "ff241d13f9072765ae6baa112b3d98eb14ee2edca9cefb26fe149205e2b9825a",
+        "bytes": 12102,
+        "modified_utc": "2026-10-20T19:02:19.322247+00:00"
+      }
+    },
+    {
+      "command": "npm.cmd run godot:export",
+      "exit_code": 0,
+      "log": {
+        "path": "artifacts/resume-view-export-reviewed.log",
+        "sha256": "77bbe5abafd44045c22fb807d2a1c5f69bdee4f7a79bc459bc8a5c8ce7dff476",
+        "bytes": 2404,
+        "modified_utc": "2026-10-20T19:02:21.750684+00:00"
+      }
+    },
+    {
+      "command": "npm.cmd run check",
+      "exit_code": 0,
+      "log": {
+        "path": "artifacts/resume-view-check-reviewed.log",
+        "sha256": "bbbf642933db0755ec1b063caec7667a16966ea1db64dadab1526709e88e5537",
+        "bytes": 1337,
+        "modified_utc": "2026-10-20T19:02:24.242869+00:00"
+      }
+    },
+    {
+      "command": "npm.cmd test",
+      "exit_code": 0,
+      "log": {
+        "path": "artifacts/resume-view-node-reviewed.log",
+        "sha256": "61d649d6c11cf59ea3c9da20f151b52cc27f949cd8b2b8a1ea69b93be1394646",
+        "bytes": 10792,
+        "modified_utc": "2026-10-20T19:02:32.236812+00:00"
+      }
+    },
+    {
+      "command": "npm.cmd run godot:browser",
+      "exit_code": 0,
+      "log": {
+        "path": "artifacts/resume-view-browser-reviewed.log",
+        "sha256": "1bf5e725d0db24706bb43eb4b30789d0865e7430f83b08c23239b07af13e4e37",
+        "bytes": 35965,
+        "modified_utc": "2026-10-20T19:08:42.834179+00:00"
+      }
+    }
+  ],
+  "node_tests_passed": 104,
+  "browser_result": {
+    "path": "artifacts/godot-browser.json",
+    "sha256": "48b5498cb7520040fbf5248535d9a0b0453cc878ce40794b057e05df136b509a",
+    "bytes": 38315,
+    "modified_utc": "2026-10-20T19:08:42.828079+00:00"
+  },
+  "browser_errors": [],
+  "browser_external": [],
+  "browser_runs": [
+    {
+      "viewport": {
+        "width": 1100,
+        "height": 760
+      },
+      "inspection_resume_verified": true,
+      "walking_stop_verified": true,
+      "full_save_bytes": 1728,
+      "performance_save_bytes": 1535,
+      "pathfind_blackhawk_usec": 178200,
+      "compact_header_height": 87,
+      "within_budget": true
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 667
+      },
+      "inspection_resume_verified": true,
+      "walking_stop_verified": true,
+      "full_save_bytes": 1728,
+      "performance_save_bytes": 1535,
+      "pathfind_blackhawk_usec": 166500,
+      "compact_header_height": 83,
+      "within_budget": true
+    },
+    {
+      "viewport": {
+        "width": 320,
+        "height": 667
+      },
+      "inspection_resume_verified": true,
+      "walking_stop_verified": true,
+      "full_save_bytes": 1728,
+      "performance_save_bytes": 1535,
+      "pathfind_blackhawk_usec": 176800,
+      "compact_header_height": 97,
+      "within_budget": true
+    }
+  ],
+  "export_pack": {
+    "path": "artifacts/godot-web/index.pck",
+    "sha256": "40ebd6464b15f48b3364e18fbab8aa97022abc45c88a4c37a30c9a115104721d",
+    "bytes": 1648580,
+    "modified_utc": "2026-10-20T19:02:21.742680+00:00"
+  },
+  "public_runtime": {
+    "version": "0.12.0",
+    "fingerprint": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567"
+  },
+  "review": {
+    "driver": "codex",
+    "partner": "claude",
+    "round": "r3",
+    "requested_model": "claude-opus-5-5",
+    "selected_model": "claude-opus-5-5",
+    "requested_effort": "high",
+    "selected_effort": "high",
+    "exit_code": 0,
+    "verdict": "yes-with-fixes",
+    "usage_percent": "unknown",
+    "source_unchanged_during_review": true,
+    "fixes_verified_by_driver_not_second_external_call": true
+  },
+  "screenshots_inspected": [
+    {
+      "path": "artifacts/godot-1100-detached-inspection.png",
+      "sha256": "920d54f569df565c3cf63a93d4037ef295e8f3360440b6e7c3c190de5cc3bb98",
+      "bytes": 228925,
+      "modified_utc": "2026-10-20T19:04:40.610363+00:00"
+    },
+    {
+      "path": "artifacts/godot-1100-inspection-resume-walk.png",
+      "sha256": "3230af0aae81d3083f098ca2dcedda59693103aca18564f2f9b9768253ebcf9e",
+      "bytes": 240893,
+      "modified_utc": "2026-10-20T19:04:40.895506+00:00"
+    },
+    {
+      "path": "artifacts/godot-1100-inspection-resume-route.png",
+      "sha256": "da93412094cdb96d1ac778d4a1f9dc33b934570011b7b6bb8ed85e832ea9dd66",
+      "bytes": 238855,
+      "modified_utc": "2026-10-20T19:04:41.060904+00:00"
+    },
+    {
+      "path": "artifacts/godot-390-detached-inspection.png",
+      "sha256": "05fa7ef4146f08235120f9f3bebfd1ef2ba44afcd68ddd326278a1ed3b998593",
+      "bytes": 104402,
+      "modified_utc": "2026-10-20T19:06:39.804616+00:00"
+    },
+    {
+      "path": "artifacts/godot-390-inspection-resume-walk.png",
+      "sha256": "01854fc047373b3885201940f04d46c13fc126f6808bec0d0a163ac7c30097df",
+      "bytes": 103934,
+      "modified_utc": "2026-10-20T19:06:40.072495+00:00"
+    },
+    {
+      "path": "artifacts/godot-390-inspection-resume-route.png",
+      "sha256": "57cf278249fa4aa7c91e794837059344d8a40200f6368ac8122cda059fa11dec",
+      "bytes": 104905,
+      "modified_utc": "2026-10-20T19:06:40.206791+00:00"
+    },
+    {
+      "path": "artifacts/godot-320-detached-inspection.png",
+      "sha256": "746891ae9f76b84178a7776fa6af399791c8637d2f66a125f45fa61ed36b5026",
+      "bytes": 94609,
+      "modified_utc": "2026-10-20T19:08:42.105843+00:00"
+    },
+    {
+      "path": "artifacts/godot-320-inspection-resume-walk.png",
+      "sha256": "6c47ffb4a09175b89cbfb9870d5d89acd01247b2bf2f08095f3b4cc5314341d5",
+      "bytes": 90181,
+      "modified_utc": "2026-10-20T19:08:42.368275+00:00"
+    },
+    {
+      "path": "artifacts/godot-320-inspection-resume-route.png",
+      "sha256": "13607675e82bae736e52aac40e922aafae19180e1312f3f0e9abe6a49ed93d55",
+      "bytes": 92747,
+      "modified_utc": "2026-10-20T19:08:42.491342+00:00"
+    }
+  ],
+  "live_preview": {
+    "path": "artifacts/codex-resume-walking-live-preview.png",
+    "sha256": "0991d3f19361110b7b66261927af676e109b61e0391ababefdcba0b65d4f0647",
+    "bytes": 49489,
+    "modified_utc": "2026-10-20T19:09:43.978947+00:00"
+  },
+  "visual_findings": [
+    "Player and YOU visible after manual and routed resume at all three widths; controls fit.",
+    "Existing So What reward title clipping at all three widths and detached hub detail/button truncation remain.",
+    "At320px the objective arrow label overlaps the upper edge of Talk to Bea in manual-resume capture; both mostly readable, player unobstructed. Route capture has no Talk prompt overlap."
+  ],
+  "limits": [
+    "Screenshots are near asserted frames, not atomic.",
+    "Actual browser keyboard/pointer and native inputs tested; physical phones and complete screen readers unverified.",
+    "No human comfort/listening/pacing, field-observation or deployment claim.",
+    "Manual intent reframes even when blocked. Failed paths preserve camera pose/follow and player/save, but can clear old routes/selection/panels.",
+    "Conversation and adjusted-map views count as detached; ordinary follow zoom<=110 retained, larger follow zoom uses existing75 fallback.",
+    "Optional first-person remains research, no implementation or engine migration."
+  ]
+}
