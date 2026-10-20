@@ -958,7 +958,7 @@ func run() -> void:
 
 	# Rooftop details, SF corner turrets, Muni overhead lines & Boeddeker Park
 	var roof_counts: Dictionary = study.rooftop_feature_counts
-	require(int(roof_counts.get("parapets", 0)) >= 150 and int(roof_counts.get("water_tanks", 0)) >= 10 and int(roof_counts.get("penthouses", 0)) >= 10 and int(roof_counts.get("skylights", 0)) >= 40 and int(roof_counts.get("corner_towers", 0)) >= 6, "rooftop parapets, water tanks, elevator penthouses, skylights, and corner turrets are generated across the 188 footprints")
+	require(int(roof_counts.get("parapets", 0)) >= 150 and int(roof_counts.get("lidar_masses", 0)) >= 100 and int(roof_counts.get("water_tanks", 0)) == 0 and int(roof_counts.get("penthouses", 0)) == 0 and int(roof_counts.get("skylights", 0)) == 0 and int(roof_counts.get("vents", 0)) == 0 and int(roof_counts.get("corner_towers", 0)) == 0, "every roof is measured by the 2023 LiDAR: parapets plus measured raised parts, and no rule-placed tanks, penthouses, skylights, vents, or turrets")
 	var roof_items_inside := true
 	for feat in study.rooftop_feature_points:
 		if String(feat.kind) in ["water_tanks", "penthouses", "skylights", "vents"] and study.building_containing_point(feat.xz) != String(feat.id):
@@ -984,7 +984,7 @@ func run() -> void:
 					details_above_roof = false
 	require(details_count >= 150 and details_above_roof, "RooftopDetails child meshes sit on measured roofs while building meshes keep LiDAR heights")
 	# 2023 USGS LiDAR roofs and post-2010 buildings (data/lidar_2023.json)
-	require(study.lidar_roofs.size() == study.data.buildings.size() and int(roof_counts.get("lidar_masses", 0)) >= 40, "every opening-block footprint has a 2023 LiDAR roof record and raised roof parts are drawn")
+	require(study.lidar_roofs.size() == study.all_buildings.size() and int(roof_counts.get("lidar_masses", 0)) >= 100, "all 188 city footprints have a 2023 LiDAR roof record and raised roof parts are drawn")
 	var rule_items_on_lidar := 0
 	for feat in study.rooftop_feature_points:
 		if String(feat.kind) in ["water_tanks", "penthouses", "skylights", "vents"] and study.lidar_roofs.has(String(feat.id)):
@@ -993,15 +993,18 @@ func run() -> void:
 		if study.lidar_roofs.has(String(t_id)):
 			rule_items_on_lidar += 1
 	require(rule_items_on_lidar == 0, "measured LiDAR roofs replace the rule-placed tanks, penthouses, skylights, vents, and stylized corner turrets")
-	var superseded_ok: bool = study.lidar_superseded.size() == 3
-	for o_i in range(study.data.buildings.size()):
-		var o_id := String(study.data.buildings[o_i].id)
-		var o_mesh: MeshInstance3D = study.meshes[o_i]
+	var superseded_ok: bool = study.lidar_superseded.size() == 5
+	var o_meshes: Array = []
+	o_meshes.append_array(study.meshes)
+	o_meshes.append_array(study.wider_meshes)
+	for o_i in range(study.all_buildings.size()):
+		var o_id := String(study.all_buildings[o_i].id)
+		var o_mesh: MeshInstance3D = o_meshes[o_i]
 		var o_body := o_mesh.get_node_or_null("StaticBody3D")
 		if study.is_superseded_building(o_id):
 			if o_mesh.visible or o_mesh.get_node_or_null(study.ROOFTOP_DETAIL_NODE) != null or o_body == null or o_body.process_mode != Node.PROCESS_MODE_DISABLED:
 				superseded_ok = false
-			var o_poly: Dictionary = study.data.buildings[o_i].polygons[0]
+			var o_poly: Dictionary = study.all_buildings[o_i].polygons[0]
 			var o_tri: Array = o_poly.triangles
 			var o_c := (Vector2(o_poly.vertices[o_tri[0]][0], o_poly.vertices[o_tri[0]][1]) + Vector2(o_poly.vertices[o_tri[1]][0], o_poly.vertices[o_tri[1]][1]) + Vector2(o_poly.vertices[o_tri[2]][0], o_poly.vertices[o_tri[2]][1])) / 3.0
 			if study.building_containing_point(o_c) == o_id:
@@ -1009,7 +1012,7 @@ func run() -> void:
 		elif not o_mesh.visible:
 			superseded_ok = false
 	require(superseded_ok, "2010 footprints a newer building replaced are hidden, have no roof details, and leave physics and 2D collision")
-	var adds_ok: bool = study.get_node_or_null(study.CURRENT_BUILDINGS_NODE) != null and study.lidar_additions.size() == 2 and study.addition_meshes.size() == 2
+	var adds_ok: bool = study.get_node_or_null(study.CURRENT_BUILDINGS_NODE) != null and study.lidar_additions.size() == 8 and study.addition_meshes.size() == 8
 	var add_names := []
 	for a_i in range(study.lidar_additions.size()):
 		var a_rec: Dictionary = study.lidar_additions[a_i]
@@ -1027,7 +1030,22 @@ func run() -> void:
 				break
 		if not found_inside:
 			adds_ok = false
-	require(adds_ok and "Livat Mall" in add_names and "Serif" in add_names, "post-2010 buildings (Livat Mall, Serif) stand on current OSM outlines at their LiDAR height and block walking")
+	require(adds_ok and "Livat Mall" in add_names and "Serif" in add_names and "361 TL Residences" in add_names and "145 TL Residences" in add_names and "Prism" in add_names, "buildings the 2010 layer lacks or that were rebuilt (Livat Mall, Serif, Prism, TL Residences, 180 Jones, 993 Market, one unnamed) stand on current OSM outlines at their LiDAR height and block walking")
+	var egg_ok := true
+	for egg in [["StreetLifeDecor/SoWhatEasterEgg/EighthFloor_145Leavenworth", "145 Leavenworth Street", 0.3], ["StreetLifeDecor/SoWhatEasterEgg/SoWhatAwning_361Turk", "361 Turk Street", 1.2]]:
+		var egg_node := study.get_node_or_null(egg[0]) as Node3D
+		var egg_xz := Vector2(egg_node.position.x, egg_node.position.z) if egg_node != null else Vector2(INF, INF)
+		var egg_bld := ""
+		for a_rec in study.lidar_additions:
+			if String(a_rec.address) == egg[1]:
+				egg_bld = String(a_rec.id)
+		if egg_node == null or egg_bld == "" or String(study.nearest_building_info(egg_xz).id) != egg_bld or study.min_wall_distance(egg_xz) > float(egg[2]):
+			egg_ok = false
+	var egg_win := study.get_node_or_null("StreetLifeDecor/SoWhatEasterEgg/EighthFloor_145Leavenworth/EighthFloorWindow") as Node3D
+	for a_rec in study.lidar_additions:
+		if String(a_rec.address) == "145 Leavenworth Street" and (egg_win == null or egg_win.position.y + 1.075 > float(a_rec.height_m) or egg_win.position.y < float(a_rec.height_m) * 7.0 / 8.0):
+			egg_ok = false
+	require(egg_ok, "the 145 Leavenworth 8th-floor window sits on the real TL Residences' 8th floor, and the 361 Turk 'So What' awning on its Turk facade")
 	var sup_idx := -1
 	for o_i in range(study.data.buildings.size()):
 		if study.is_superseded_building(String(study.data.buildings[o_i].id)):

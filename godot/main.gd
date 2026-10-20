@@ -1385,8 +1385,9 @@ func make_building_mesh_and_rect(building: Dictionary, mat: Material, base_col: 
 				spandrel_col = Color("2f3236")
 				plinth_col = Color("5c3324")
 				cornice_col = Color("e6e4dc")
-		elif c0.x >= -365.0 and c0.x <= -285.0 and c0.z >= 22.0 and c0.z <= 75.0:
-			# 361 Turk St (TL Residences): warm terracotta-orange brick & sandy-buff wing
+		elif String(building.get("name", "")).contains("TL Residences"):
+			# 361 Turk St / 145 Leavenworth St (TL Residences, current OSM outlines; not in the 2010
+			# footprints): warm terracotta-orange brick & sandy-buff wing
 			base_col = Color("c66848") if (b_hash % 2 == 0) else Color("dfcba6")
 			spandrel_col = base_col.darkened(0.15)
 			plinth_col = Color("3a3532")
@@ -1656,6 +1657,8 @@ func _ready() -> void:
 		var w_built := make_building_mesh_and_rect(w_building, w_mat, w_base_c)
 		var w_mesh: MeshInstance3D = w_built.mesh
 		var w_rect: Rect2 = w_built.rect
+		if is_superseded_building(String(w_building.id)):
+			hide_superseded_building(w_mesh)
 		wider_meshes.append(w_mesh)
 		wider_building_rects.append(w_rect)
 		all_buildings.append(w_building)
@@ -3207,9 +3210,12 @@ func build_street_life_decor() -> void:
 
 	var so_what_root := Node3D.new()
 	so_what_root.name = "SoWhatEasterEgg"
+	# Both pieces sit on the real TL Residences facades (OSM way 1059931715 at 361 Turk St and way
+	# 1258857968 at 145 Leavenworth St, see data/lidar_2023.json), turned 0.16 rad to the street grid.
 	var turk_awning := Node3D.new()
 	turk_awning.name = "SoWhatAwning_361Turk"
-	turk_awning.position = Vector3(-350.0, 0.0, 65.8)
+	turk_awning.position = Vector3(-372.48, 0.0, 69.96)
+	turk_awning.rotation.y = 0.1599
 	var canopy_frame := MeshInstance3D.new()
 	var c_box := BoxMesh.new()
 	c_box.size = Vector3(6.4, 0.22, 1.8)
@@ -3245,7 +3251,14 @@ func build_street_life_decor() -> void:
 
 	var leav_node := Node3D.new()
 	leav_node.name = "EighthFloor_145Leavenworth"
-	leav_node.position = Vector3(-290.8, 0.0, 99.4)
+	leav_node.position = Vector3(-292.02, 0.0, 92.61)
+	leav_node.rotation.y = 0.1593
+	# The 8th floor of the real building: its 2023 LiDAR height split over its 8 OSM storeys.
+	var floor8_y := 21.9
+	for a_rec in lidar_additions:
+		if String(a_rec.get("address", "")) == "145 Leavenworth Street":
+			var levels := maxi(int(String(a_rec.get("osm_levels", "8"))), 8)
+			floor8_y = float(a_rec.height_m) * 7.0 / float(levels)
 	var leav_canopy := MeshInstance3D.new()
 	var lc_box := BoxMesh.new()
 	lc_box.size = Vector3(1.6, 0.20, 4.2)
@@ -3266,14 +3279,14 @@ func build_street_life_decor() -> void:
 	var ew_box := BoxMesh.new()
 	ew_box.size = Vector3(1.15, 2.15, 2.65)
 	eighth_win.mesh = ew_box
-	eighth_win.position = Vector3(0.35, 24.6, 0.0)
+	eighth_win.position = Vector3(0.35, floor8_y + 1.3, 0.0)
 	eighth_win.material_override = mural_material(Color("ffe082"))
 	leav_node.add_child(eighth_win)
 	var balcony := MeshInstance3D.new()
 	var bal_box := BoxMesh.new()
 	bal_box.size = Vector3(1.38, 0.46, 2.85)
 	balcony.mesh = bal_box
-	balcony.position = Vector3(0.45, 23.65, 0.0)
+	balcony.position = Vector3(0.45, floor8_y + 0.35, 0.0)
 	balcony.material_override = mural_material(Color("2b3648"))
 	leav_node.add_child(balcony)
 	var turntable_lamp := MeshInstance3D.new()
@@ -3282,10 +3295,10 @@ func build_street_life_decor() -> void:
 	tl_cyl.bottom_radius = 0.24
 	tl_cyl.height = 0.45
 	turntable_lamp.mesh = tl_cyl
-	turntable_lamp.position = Vector3(0.65, 24.35, 0.0)
+	turntable_lamp.position = Vector3(0.65, floor8_y + 1.05, 0.0)
 	turntable_lamp.material_override = mural_material(Color("ff9e5e"))
 	leav_node.add_child(turntable_lamp)
-	var leav_lbl := make_label_3d("EighthFloorLabel", "145 Leavenworth · 8th Floor ('So What')", Vector3(1.2, 26.6, 0.0), Color("ffe8a3"), 0.012, 24)
+	var leav_lbl := make_label_3d("EighthFloorLabel", "145 Leavenworth · 8th Floor ('So What')", Vector3(1.2, floor8_y + 4.4, 0.0), Color("ffe8a3"), 0.012, 24)
 	leav_node.add_child(leav_lbl)
 	so_what_root.add_child(leav_node)
 	decor_root.add_child(so_what_root)
@@ -10869,6 +10882,8 @@ func lidar_summary_line(b_id: String, city_h: float) -> String:
 	var rec := lidar_record(b_id)
 	if rec.is_empty():
 		return "no 2023 LiDAR roof yet"
+	if bool(rec.get("too_small", false)):
+		return "too small for a 2023 LiDAR height check"
 	var lidar_med := float(rec.get("median_m", city_h))
 	if absf(lidar_med - city_h) > 5.0:
 		return "2023 LiDAR median roof %.1f m (%s than in 2010)" % [lidar_med, "taller" if lidar_med > city_h else "lower"]

@@ -14,7 +14,7 @@ import {
   origin
 } from '../scripts/build-godot-data.mjs';
 import { deriveStreetTrees, isPlantedTree, splitSpecies, OUTLINE_SNAP_OUT_M, OUTLINE_SNAP_MAX_INSIDE_M } from '../scripts/build-street-trees.mjs';
-import { deriveLidar2023, currentFootprints, rooferFootprints, osmCandidates, PARAMS as LIDAR_PARAMS } from '../scripts/build-lidar-2023.mjs';
+import { deriveLidar2023, currentFootprints, rooferFootprints, rooferPass2Footprints, rooferSkipped, osmCandidates, PARAMS as LIDAR_PARAMS } from '../scripts/build-lidar-2023.mjs';
 
 const raw = await readFile(new URL('../godot/data/source/buildings.geojson', import.meta.url));
 const source = JSON.parse(raw);
@@ -248,14 +248,16 @@ test('real street trees come unmodified from DataSF tkzw-k3nq and are re-derivab
 });
 
 test('2023 LiDAR roofs and post-2010 buildings are re-derivable offline from retained sources', async () => {
-  const rooferBytes = await readFile(new URL('../godot/data/source/roofer_opening_lod13.city.jsonl', import.meta.url));
-  const osmBytes = await readFile(new URL('../godot/data/source/osm_buildings_opening.json', import.meta.url));
-  const manifestBytes = await readFile(new URL('../godot/data/source/lidar_ept_opening_manifest.json', import.meta.url));
+  const rooferBytes = await readFile(new URL('../godot/data/source/roofer_lod13.city.jsonl', import.meta.url));
+  const retryBytes = await readFile(new URL('../godot/data/source/roofer_lod13_pass2.city.jsonl', import.meta.url));
+  const osmBytes = await readFile(new URL('../godot/data/source/osm_buildings.json', import.meta.url));
+  const manifestBytes = await readFile(new URL('../godot/data/source/lidar_ept_manifest.json', import.meta.url));
   const osm = JSON.parse(osmBytes);
   const lidar = JSON.parse(await readFile(new URL('../godot/data/lidar_2023.json', import.meta.url), 'utf8'));
   const sha = b => createHash('sha256').update(b).digest('hex');
   assert.equal(lidar.format, 'tenderloin-redux.lidar-2023.v1');
   assert.equal(lidar.source.roofer.output_sha256, sha(rooferBytes), 'records the retained Roofer output hash');
+  assert.equal(lidar.source.roofer.pass2_output_sha256, sha(retryBytes), 'records the retained Roofer pass-2 output hash');
   assert.equal(lidar.source.osm.sha256, sha(osmBytes), 'records the retained OSM response hash');
   assert.equal(lidar.source.lidar.manifest_sha256, sha(manifestBytes), 'records the LiDAR download manifest hash');
   assert.match(lidar.source.lidar.license, /Public Domain/);
@@ -263,30 +265,41 @@ test('2023 LiDAR roofs and post-2010 buildings are re-derivable offline from ret
   assert.deepEqual(lidar.origin, output.origin);
   const manifest = JSON.parse(manifestBytes);
   assert.equal(manifest.dataset, 'USGS 3DEP CA_SanFrancisco_1_B23');
-  assert.ok(manifest.nodes.length > 100 && manifest.nodes.every(n => /^[0-9a-f]{64}$/.test(n.sha256)), 'every downloaded LiDAR node is listed with a SHA-256');
+  assert.ok(manifest.nodes.length > 500 && manifest.nodes.every(n => /^[0-9a-f]{64}$/.test(n.sha256)), 'every downloaded LiDAR node is listed with a SHA-256');
 
-  const fresh = deriveLidar2023(output, osm, rooferBytes.toString('utf8'));
+  const fresh = deriveLidar2023(output, osm, rooferBytes.toString('utf8'), retryBytes.toString('utf8'));
   assert.deepEqual(lidar.roofs, fresh.roofs, 'roofs match a fresh derivation');
   assert.deepEqual(lidar.additions, fresh.additions, 'additions match a fresh derivation');
   assert.deepEqual(lidar.superseded, fresh.superseded, 'superseded footprints match a fresh derivation');
-  assert.equal(Object.keys(lidar.roofs).length, output.buildings.length, 'every opening-block footprint has a LiDAR roof record');
+  const all2010 = [...output.buildings, ...output.wider_buildings];
+  assert.equal(Object.keys(lidar.roofs).length, all2010.length, 'all 188 footprints have a LiDAR roof record');
 
-  // Roofer ran on exactly the 2010 opening footprints plus the OSM candidates.
+  // Pass 2 covers exactly the footprints pass 1 skipped plus the rebuilt-site OSM outlines.
+  const skipped = rooferSkipped(rooferBytes.toString('utf8'));
+  const pass2 = rooferPass2Footprints(output, osm, rooferBytes.toString('utf8'));
+  const pass2Ids = retryBytes.toString('utf8').trim().split('\n').slice(1).flatMap(l => Object.values(JSON.parse(l).CityObjects).filter(o => o.type === 'Building').map(o => String(o.attributes.bid))).sort();
+  assert.deepEqual(pass2Ids, [...pass2.ids].sort(), 'Roofer pass 2 ran on exactly the skipped footprints and rebuilt-site outlines');
+  assert.deepEqual(lidar.source.roofer.pass2_ids, pass2.ids);
+  assert.ok(skipped.every(id => pass2.ids.includes(id)));
+  for (const id of skipped) assert.ok(lidar.roofs[id]?.roofer_pass2 && Math.abs(lidar.roofs[id].median_m - lidar.roofs[id].city_height_m) < 1.0, `retried roof ${id} matches its 2010 height within 1 m`);
+
+  // Roofer ran on exactly the 2010 footprints plus the OSM candidates.
   const rooferIds = new Set(rooferBytes.toString('utf8').trim().split('\n').slice(1).flatMap(l => Object.values(JSON.parse(l).CityObjects).filter(o => o.type === 'Building').map(o => String(o.attributes.bid))));
   assert.deepEqual([...rooferIds].sort(), rooferFootprints(output, osm).features.map(f => f.properties.bid).sort());
 
   // The city's 2010 survey and the 2023 LiDAR agree on ground and median roof height for most buildings.
-  const kept = output.buildings.filter(b => !lidar.superseded.some(s => s.id === b.id));
+  const kept = all2010.filter(b => !lidar.superseded.some(s => s.id === b.id));
   const dH = kept.map(b => Math.abs(lidar.roofs[b.id].median_m - b.height_m)).sort((a, b) => a - b);
   assert.ok(dH[Math.floor(dH.length * 0.8)] < 1.5, '80% of standing 2010 footprints match the 2023 LiDAR median roof within 1.5 m');
-  const dG = output.buildings.map(b => Math.abs(lidar.roofs[b.id].ground_m - b.ground_m_navd88));
-  assert.ok(Math.max(...dG) < 2.5, 'LiDAR ground and city NAVD88 ground agree within 2.5 m everywhere');
+  assert.ok(all2010.every(b => lidar.roofs[b.id].ground_m === Math.round(b.ground_m_navd88 * 100) / 100), 'heights are measured from the city ground');
+  const dG = all2010.map(b => lidar.roofs[b.id].lidar_ground_m - b.ground_m_navd88).sort((a, b) => a - b);
+  assert.ok(Math.abs(dG[dG.length >> 1]) < 1.0 && dG[0] > -6.5, 'Roofer ground agrees with the city ground (median within 1 m; lower on sloped blocks)');
 
   const pip = (x, z, r) => { let i = false; for (let a = 0, b = r.length - 1; a < r.length; b = a++) { const [xa, za] = r[a], [xb, zb] = r[b]; if ((za > z) !== (zb > z) && x < (xb - xa) * (z - za) / (zb - za) + xa) i = !i; } return i; };
   const segd = (p, a, b) => { const dx = b[0] - a[0], dz = b[1] - a[1], L = dx * dx + dz * dz; const t = L ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dz) / L)) : 0; return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dz); };
   const nearOrInside = (p, polys) => polys.some(pg => pip(p[0], p[1], pg.rings[0]) || pg.rings[0].some((a, i) => segd(p, a, pg.rings[0][(i + 1) % pg.rings[0].length]) < 0.3));
   for (const [id, roof] of Object.entries(lidar.roofs)) {
-    const b = output.buildings.find(x => x.id === id);
+    const b = all2010.find(x => x.id === id);
     for (const m of roof.masses) {
       assert.ok(m.h >= b.height_m + LIDAR_PARAMS.minRiseM - 1e-9 && m.area_m2 >= LIDAR_PARAMS.minMassAreaM2, `${id} raised parts rise above the 2010 median and are not specks`);
       assert.ok(m.triangles.length >= 3 && m.triangles.length % 3 === 0 && m.vertices.length === m.rings.flat().length, `${id} raised parts are triangulated`);
@@ -294,14 +307,27 @@ test('2023 LiDAR roofs and post-2010 buildings are re-derivable offline from ret
     }
   }
 
-  // Both post-2010 buildings are named OSM buildings the 2023 LiDAR confirms.
-  const byName = Object.fromEntries(lidar.additions.map(a => [a.name, a]));
+  // Buildings the 2010 layer lacks are OSM buildings the 2023 LiDAR confirms.
+  const byName = Object.fromEntries(lidar.additions.map(a => [a.name || a.address || a.id, a]));
+  for (const [label, address, levels] of [['361 TL Residences', '361 Turk Street', '8'], ['145 TL Residences', '145 Leavenworth Street', '8'], ['180 Jones Street', '180 Jones Street', '9']]) {
+    const a = byName[label];
+    assert.ok(a && a.address === address && a.osm_levels === levels && a.covered_by_2010_pct < 5, `${address} is missing from the 2010 footprints`);
+    assert.ok(a.height_m > Number(levels) * 2.8 && a.height_m < Number(levels) * 4.0 + 2, `${address}: LiDAR height ${a.height_m} m fits ${levels} storeys`);
+  }
+  assert.ok(byName.Prism && byName.Prism.address === '1028 Market Street' && byName.Prism.reason.startsWith('replaces') && Math.abs(byName.Prism.height_m / Number(byName.Prism.osm_levels) - 3) < 0.5, 'Prism (1028 Market St, 13 storeys) replaced a ~10 m 2010 footprint');
+  assert.ok(byName['993 Market Street'] && byName['993 Market Street'].osm_levels === '1' && byName['993 Market Street'].height_m < 8, '993 Market St is now one storey');
+  assert.equal(lidar.additions.length, 8);
   assert.ok(byName['Livat Mall'] && byName['Livat Mall'].covered_by_2010_pct < 5 && byName['Livat Mall'].height_m > 20, 'Livat Mall (945 Market St) is missing from 2010 and ~28 m tall in 2023');
   assert.ok(byName.Serif && byName.Serif.height_m > 30 && Math.abs(byName.Serif.height_m - Number(byName.Serif.osm_height_m)) < 3, 'Serif (960 Market St) LiDAR height agrees with its OSM height within 3 m');
+  assert.equal(lidar.superseded.length, 5);
   for (const s of lidar.superseded) {
-    assert.ok(s.by === byName.Serif.id && s.inside_pct >= LIDAR_PARAMS.supersededInsidePct && s.lidar_median_m - s.city_height_m > 20, `${s.id} was a ~10 m 2010 building now inside Serif`);
+    const by = lidar.additions.find(a => a.id === s.by);
+    assert.ok(by && by.reason.startsWith('replaces') && s.inside_pct >= LIDAR_PARAMS.supersededInsidePct && Math.abs(s.lidar_median_m - s.city_height_m) > LIDAR_PARAMS.changedHeightDiffM, `${s.id} lies inside rebuilt ${by?.name || s.by} and its 2023 height changed`);
   }
-  assert.ok(osmCandidates(output, osm).length === lidar.additions.length, 'every OSM candidate became an addition');
+  for (const c of osmCandidates(output, osm)) {
+    if (lidar.additions.some(a => a.id === c.id)) continue;
+    assert.ok(c.covered * 100 >= LIDAR_PARAMS.additionMaxCoveredPct, `${c.id} is not an addition because 2010 footprints mostly cover it`);
+  }
   const current = currentFootprints(output, lidar);
   assert.equal(current.length, output.buildings.length + output.wider_buildings.length - lidar.superseded.length + lidar.additions.length);
 });
