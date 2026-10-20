@@ -191,6 +191,7 @@ const BOEDDEKER_PARK_RING: Array[Vector2] = [
 	Vector2(-99.33, -143.69)
 ]
 const BOEDDEKER_PARK_ENTRANCE := Vector2(-126.0, -97.7)
+const BOEDDEKER_VIEW_TARGET := Vector3(-118.0, 2.0, -132.0)
 const SPEECH_BUBBLE_PIXEL := 0.0024
 const SPEECH_BUBBLE_FONT := 24
 const SPEECH_BUBBLE_HEIGHT_M := 5.0
@@ -642,6 +643,7 @@ var button_focus_style: StyleBoxFlat
 var last_exported_keepsake_svg := ""
 var last_voices_teardown_usec := 0
 const MUSEUM_HUB_POS := Vector3(-293.5, 0.0, -64.5)
+const SO_WHAT_VIEW_TARGET := Vector3(-320.0, 14.0, 82.6)
 const NEIGHBORHOOD_EATERIES: Array[Dictionary] = [
 	{
 		"id": "bowl_basil_pho",
@@ -704,8 +706,12 @@ const NEIGHBORHOOD_EATERIES: Array[Dictionary] = [
 		"label_color": "ffe8a3"
 	}
 ]
+# Session-only landmark tour state (reset on fresh/reload; excluded from save envelope to preserve M6 <= 4096 B budget).
 var museum_hub_step := 0
 var active_time_era := "present"
+var visited_museum_eras: Dictionary = {}
+var boeddeker_park_visited := false
+var so_what_visited := false
 var portal_lens_mesh: MeshInstance3D
 var portal_ring_meshes: Array[MeshInstance3D] = []
 var eatery_guide_idx := -1
@@ -829,7 +835,6 @@ var eatery_host_nodes: Array[Node3D] = []
 var eatery_counter_points: Array[Vector2] = []
 var eatery_anim_parts: Array[Dictionary] = []
 var eatery_order_counts: Dictionary = {}
-var eatery_visited: Dictionary = {}
 var eatery_anim_clock := 0.0
 var surprise_root: Node3D
 var surprise_nodes: Dictionary = {}
@@ -4308,10 +4313,13 @@ func inspect_boeddeker_park() -> bool:
 	if selected >= 0:
 		meshes[selected].material_override = building_materials[selected]
 		selected = -1
-	target = Vector3(-118.0, 2.0, -132.0)
+	target = BOEDDEKER_VIEW_TARGET
 	view_size = 96.0
 	update_camera()
 	update_occlusion(true)
+	if not boeddeker_park_visited:
+		boeddeker_park_visited = true
+		trigger_progress_cue("boeddeker_park", "Boeddeker Park")
 	var line := "Boeddeker Park — 240 Eddy St at Jones (OpenStreetMap way %d)" % BOEDDEKER_PARK_OSM_WAY
 	var sub := "Fenced neighborhood park: lawn, %d shade trees, play structure & benches along a winding path · Outline © OpenStreetMap / ODbL; trees, path & furniture are stylized, not surveyed" % boeddeker_tree_points.size()
 	if info != null:
@@ -4949,8 +4957,10 @@ func eatery_counter_interact(target_idx: int = -1) -> bool:
 	var line := String(lines[count % lines.size()])
 	var item := String(items[(count - 1) % items.size()])
 	show_eatery_host_speech(idx, line)
-	var e_pos: Vector3 = rec.get("pos", Vector3.ZERO)
-	trigger_feel_good_burst("Order Up: %s" % item.capitalize(), "%s · Sparks: %d" % [String(rec.get("name", "")), spark_count()], e_pos + Vector3.UP * 2.2, Color(String(rec.get("label_color", "ffe8a3"))))
+	if count == 1:
+		var e_pos: Vector3 = rec.get("pos", Vector3.ZERO)
+		trigger_progress_cue("eatery_order", e_id)
+		trigger_feel_good_burst("Order Up: %s" % item.capitalize(), "%s · Sparks: %d" % [String(rec.get("name", "")), spark_count()], e_pos + Vector3.UP * 2.2, Color(String(rec.get("label_color", "ffe8a3"))))
 	var msg := "Ordering at %s: %s (tap the counter again for more)" % [String(rec.get("name", "")), item]
 	if info != null:
 		info.text = "%s\nHost: \"%s\"\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [msg, line]
@@ -5514,8 +5524,10 @@ func trigger_feel_good_burst(title_str: String, detail_str: String, world_pos: V
 	if suppress_feel_good_burst:
 		return
 	reward_burst_count += 1
-	last_reward_title = title_str
-	if reward_banner != null:
+	var keep_finale := last_reward_title.begins_with("10/10") and reward_banner != null and reward_banner.visible and reward_banner_timer > 1.0 and not title_str.begins_with("10/10")
+	if not keep_finale:
+		last_reward_title = title_str
+	if reward_banner != null and not keep_finale:
 		if reward_banner_style != null:
 			reward_banner_style.border_color = accent.lightened(0.15)
 		reward_title_label.text = "* %s *" % title_str
@@ -6050,6 +6062,8 @@ func conversation_actions() -> Array[Dictionary]:
 		acts.append({"id": "blackhawk", "label": "Walk to Black Hawk"})
 	elif discovered_surprises.size() < NEIGHBORHOOD_SURPRISE_IDS.size() and String(acts[0].id) != "surprise":
 		acts.append({"id": "surprise", "label": "Spot Surprise (%d/%d)" % [discovered_surprises.size(), NEIGHBORHOOD_SURPRISE_IDS.size()]})
+	elif String(obj.get("id", "")) == "explore" and discovered_surprises.size() >= NEIGHBORHOOD_SURPRISE_IDS.size():
+		acts.append({"id": "eateries", "label": "Visit Eateries"})
 	elif String(acts[0].id) != other_id and someone_else != talk_partner:
 		acts.append({"id": other_id, "label": "Talk to %s" % String(neighbors[someone_else].name)})
 	else:
@@ -6110,7 +6124,15 @@ func run_conversation_action_id(act_id: String) -> bool:
 		"blackhawk":
 			return walk_to_or_read_history_stop("blackhawk")
 		"museum":
-			return inspect_tenderloin_museum_hub()
+			last_panel_dialogue = ""
+			var ok_m := inspect_tenderloin_museum_hub()
+			update_block_ui()
+			return ok_m
+		"eateries":
+			last_panel_dialogue = ""
+			var ok_e := cycle_eatery_guide()
+			update_block_ui()
+			return ok_e
 		"surprise":
 			if String(current_objective().get("id", "")) == "explore":
 				return cycle_neighborhood_surprise()
@@ -6146,7 +6168,7 @@ func apply_block_panel_mode() -> void:
 			if has:
 				var lbl := String(acts[s].label)
 				if narrow:
-					lbl = lbl.replace("Go Meet ", "Meet ").replace("All Block Actions", "All Actions").replace("Spot Surprise (", "Find ").replace("/10)", "/10").replace(" with Celeste", "").replace(" with Rook", "").replace(" (Bea)", "").replace(" (Dez & Celeste)", "")
+					lbl = lbl.replace("Go Meet ", "Meet ").replace("All Block Actions", "All Actions").replace("Spot Surprise (", "Find ").replace("/10)", "/10").replace("Visit the Museum", "Museum").replace("Visit Eateries", "Eateries").replace(" with Celeste", "").replace(" with Rook", "").replace(" (Bea)", "").replace(" (Dez & Celeste)", "")
 				conv_action_btns[s].text = lbl
 		if conv_chat_btn != null:
 			conv_chat_btn.text = "Chat More" if narrow else "Keep Chatting (T)"
@@ -7434,16 +7456,34 @@ func inspect_so_what_easter_egg() -> bool:
 	if selected >= 0:
 		meshes[selected].material_override = building_materials[selected]
 		selected = -1
-	target = Vector3(-320.0, 14.0, 82.6)
+	target = SO_WHAT_VIEW_TARGET
 	view_size = 84.0
 	update_camera()
 	update_occlusion(true)
+	if not so_what_visited:
+		so_what_visited = true
+		trigger_progress_cue("so_what_egg", "So What")
 	var line := "145 Leavenworth (8th Floor) & 361 Turk St — 'So What' Musical Awning Easter Egg"
 	var sub := "Dual-address Tenderloin complex (footprints 201006.0001527 & 201006.0003855) · Entrance awning arranged after Miles Davis's 'So What' (Live at the Black Hawk, 1961)"
 	if info != null:
 		info.text = "%s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, sub]
 	announce_a11y_status("%s: %s" % [line, sub])
 	return true
+
+func update_museum_portal_3d() -> void:
+	var lens_col := Color("7be0e6")
+	match active_time_era:
+		"1961_jazz":
+			lens_col = Color("f3c458")
+		"1966_comptons":
+			lens_col = Color("d884b8")
+		"1907_cadillac":
+			lens_col = Color("5ec2c6")
+	if portal_lens_mesh != null:
+		portal_lens_mesh.material_override = mural_material(lens_col)
+	for r_i in range(portal_ring_meshes.size()):
+		if portal_ring_meshes[r_i] != null:
+			portal_ring_meshes[r_i].rotation_degrees = Vector3(90.0, float(museum_hub_step * 30 + r_i * 25), 0.0)
 
 func inspect_tenderloin_museum_hub() -> bool:
 	in_overview = false
@@ -7460,35 +7500,34 @@ func inspect_tenderloin_museum_hub() -> bool:
 	museum_hub_step = (museum_hub_step + 1) % 4
 	var line := ""
 	var sub := ""
-	var lens_col := Color("7be0e6")
+	var era_title := "398 Eddy St Info Hub"
 	match step:
 		0:
 			active_time_era = "present"
-			lens_col = Color("7be0e6")
+			era_title = "398 Eddy St Info Hub"
 			line = "Tenderloin Museum & Central Info Hub — 398 Eddy St (Cadillac Hotel, 1907)"
 			sub = "Cultural center & adventure base (footprint 201006.0001559) · Offers walking tours, live performances & the Living Archive Time-Portal (press Shift+M again to channel past eras!)"
 		1:
 			active_time_era = "1961_jazz"
-			lens_col = Color("f3c458")
+			era_title = "1961 Black Hawk Jazz Era"
 			line = "Tenderloin Museum Time-Portal » 1961: Black Hawk & 'So What' Jazz Era"
 			sub = "Archive Portal tuned to April 1961 · Miles Davis sextet live at Turk & Hyde + the 145 Leavenworth / 361 Turk 'So What' brass-and-teal canopy!"
 		2:
 			active_time_era = "1966_comptons"
-			lens_col = Color("d884b8")
+			era_title = "1966 Compton's Neon"
 			line = "Tenderloin Museum Time-Portal » 1966: Compton's Cafeteria Midnight Neon"
 			sub = "Archive Portal tuned to August 1966 · Late-night jukebox, coffee cups & neon solidarity at Taylor & Turk in the heart of the Tenderloin."
 		3:
 			active_time_era = "1907_cadillac"
-			lens_col = Color("5ec2c6")
+			era_title = "1907 Cadillac Hotel"
 			line = "Tenderloin Museum Time-Portal » 1907: Cadillac Hotel & Great White Way"
 			sub = "Archive Portal tuned to 1907 · Grand reopening of the 4-story Cadillac Hotel at Eddy & Leavenworth with theater-district marquees and supper clubs."
 	var docent_world := MUSEUM_HUB_POS + Vector3(-1.4, 0.0, 1.15) * 1.75
 	show_speech_bubble("museum_docent", docent_world + Vector3.UP * SPEECH_BUBBLE_HEIGHT_M, MUSEUM_DOCENT_LINES[step % MUSEUM_DOCENT_LINES.size()])
-	if portal_lens_mesh != null:
-		portal_lens_mesh.material_override = mural_material(lens_col)
-	for r_i in range(portal_ring_meshes.size()):
-		if portal_ring_meshes[r_i] != null:
-			portal_ring_meshes[r_i].rotation_degrees = Vector3(90.0, float(museum_hub_step * 30 + r_i * 25), 0.0)
+	update_museum_portal_3d()
+	if not visited_museum_eras.has(active_time_era):
+		visited_museum_eras[active_time_era] = true
+		trigger_progress_cue("museum_portal", era_title)
 	if info != null:
 		info.text = "%s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, sub]
 	announce_a11y_status("%s: %s" % [line, sub])
@@ -7514,7 +7553,6 @@ func cycle_eatery_guide(target_idx: int = -1) -> bool:
 	update_camera()
 	update_occlusion(true)
 	var e_id := String(rec.get("id", ""))
-	eatery_visited[e_id] = true
 	if eatery_guide_idx < eatery_counter_nodes.size():
 		eatery_counter_nodes[eatery_guide_idx].visible = true
 		var host_lines: Array = EATERY_HOST_LINES.get(e_id, ["Welcome in!"])
@@ -9578,7 +9616,7 @@ func trigger_progress_cue(cue_id: String, reason: String) -> void:
 	if cue_history.size() > 32:
 		cue_history.pop_front()
 	match cue_id:
-		"mural_complete", "block_opened", "hosting_complete":
+		"mural_complete", "block_opened", "hosting_complete", "civic_complete", "film_complete":
 			cue_arpeggio_freqs = [523.25, 659.25, 1046.50]
 			cue_arpeggio_duration = 0.56
 			cue_chime_freq = 783.99
@@ -9586,6 +9624,18 @@ func trigger_progress_cue(cue_id: String, reason: String) -> void:
 			cue_arpeggio_freqs = [523.25, 659.25, 783.99, 1046.50]
 			cue_arpeggio_duration = 0.68
 			cue_chime_freq = 1046.50
+		"history_comptons":
+			cue_arpeggio_freqs = [523.25, 659.25, 880.00]
+			cue_arpeggio_duration = 0.50
+			cue_chime_freq = 659.25
+		"history_blackhawk", "so_what_egg":
+			cue_arpeggio_freqs = [440.00, 523.25, 659.25, 783.99]
+			cue_arpeggio_duration = 0.54
+			cue_chime_freq = 783.99
+		"museum_portal", "boeddeker_park":
+			cue_arpeggio_freqs = [523.25, 659.25, 783.99, 987.77]
+			cue_arpeggio_duration = 0.52
+			cue_chime_freq = 783.99
 		"rook_soundcheck", "surprise_discovery":
 			if reason == "mayor_pomp_event":
 				cue_arpeggio_freqs = [392.00, 493.88, 587.33]
@@ -9599,7 +9649,7 @@ func trigger_progress_cue(cue_id: String, reason: String) -> void:
 				cue_arpeggio_freqs = [659.25, 830.61, 987.77]
 				cue_arpeggio_duration = 0.48
 				cue_chime_freq = 659.25
-		"mural_motif", "keepsake_photo", "programme_published":
+		"mural_motif", "keepsake_photo", "programme_published", "film_shot", "eatery_order":
 			cue_arpeggio_freqs = [587.33, 739.99, 880.00]
 			cue_arpeggio_duration = 0.44
 			cue_chime_freq = 587.33
@@ -9672,6 +9722,46 @@ func trigger_progress_cue(cue_id: String, reason: String) -> void:
 				burst_title = "All 4 Block Gathering Events Hosted!"
 				burst_detail = "Tenant circle (Q) and neighborhood short film (.) unlocked"
 				burst_accent = Color("ffe066")
+			"civic_complete":
+				burst_title = "Tenant Listening Circle Complete!"
+				burst_detail = "Every neighbor heard · 'The Open Seat' film short (.) unlocked · Sparks: %d" % spark_count()
+				burst_pos = (civic_setup_node.position if civic_setup_node != null else neighbors[0].pos) + Vector3.UP * 1.8
+				burst_accent = Color("d9a2b2")
+			"film_shot":
+				burst_title = "Film Frame Captured — %s" % film_shot_title(reason)
+				burst_detail = "The Open Seat: %d/3 frames captured" % film_captured.size()
+				burst_pos = (film_storyboard_node.position if film_storyboard_node != null else MURAL_POS) + Vector3.UP * 1.8
+				burst_accent = Color("91bac2")
+			"film_complete":
+				burst_title = "Short Film Complete — The Open Seat (3/3)!"
+				burst_detail = "All 3 storyboard frames captured · Sparks: %d" % spark_count()
+				burst_pos = (film_storyboard_node.position if film_storyboard_node != null else MURAL_POS) + Vector3.UP * 1.8
+				burst_accent = Color("ffe066")
+			"history_comptons":
+				burst_title = "Living History — %s" % reason
+				burst_detail = "1966 Compton's Cafeteria Riot plaque at Turk & Taylor · Sparks: %d" % spark_count()
+				burst_pos = history_stop_pos_3d("comptons") + Vector3.UP * 1.8
+				burst_accent = Color("f5a3d0")
+			"history_blackhawk":
+				burst_title = "Jazz History — %s" % reason
+				burst_detail = "1949–63 Black Hawk jazz club site at Turk & Hyde · Sparks: %d" % spark_count()
+				burst_pos = history_stop_pos_3d("blackhawk") + Vector3.UP * 1.8
+				burst_accent = Color("6ec6ff")
+			"museum_portal":
+				burst_title = "Archive Time-Portal — %s" % reason
+				burst_detail = "398 Eddy St (Cadillac Hotel, 1907) · Session era %d/4" % visited_museum_eras.size()
+				burst_pos = MUSEUM_HUB_POS + Vector3.UP * 2.2
+				burst_accent = Color("7be0e6")
+			"boeddeker_park":
+				burst_title = "Neighborhood Green — Boeddeker Park"
+				burst_detail = "240 Eddy St at Jones · %d shade trees, lawn & play area" % boeddeker_tree_points.size()
+				burst_pos = BOEDDEKER_VIEW_TARGET
+				burst_accent = Color("7ce8b0")
+			"so_what_egg":
+				burst_title = "Creator Easter Egg — 'So What' at 145 Leavenworth & 361 Turk"
+				burst_detail = "8th-floor corner bay window & 1961 Miles Davis awning"
+				burst_pos = SO_WHAT_VIEW_TARGET
+				burst_accent = Color("ffd45e")
 		if not burst_title.is_empty():
 			trigger_feel_good_burst(burst_title, burst_detail, burst_pos, burst_accent)
 	update_music_ui()
@@ -10606,6 +10696,14 @@ func reset_mural_state_to_defaults(status_label: String) -> void:
 	discovered_surprises.clear()
 	surprise_guide_idx = -1
 	last_hinted_surprise_id = ""
+	museum_hub_step = 0
+	active_time_era = "present"
+	visited_museum_eras.clear()
+	boeddeker_park_visited = false
+	so_what_visited = false
+	eatery_guide_idx = -1
+	eatery_order_counts.clear()
+	last_reward_title = ""
 	reward_banner_timer = 0.0
 	if reward_banner != null:
 		reward_banner.visible = false
@@ -10656,6 +10754,7 @@ func reset_mural_state_to_defaults(status_label: String) -> void:
 	update_district_boundary_3d()
 	update_history_stops_3d()
 	update_neighborhood_surprises_3d()
+	update_museum_portal_3d()
 	update_mural_ui()
 	update_music_ui()
 	update_block_ui()
@@ -11180,6 +11279,14 @@ func apply_save_envelope(raw_json: String) -> bool:
 	discovered_surprises.clear()
 	surprise_guide_idx = -1
 	last_hinted_surprise_id = ""
+	museum_hub_step = 0
+	active_time_era = "present"
+	visited_museum_eras.clear()
+	boeddeker_park_visited = false
+	so_what_visited = false
+	eatery_guide_idx = -1
+	eatery_order_counts.clear()
+	last_reward_title = ""
 	reward_banner_timer = 0.0
 	if reward_banner != null:
 		reward_banner.visible = false
@@ -11236,6 +11343,7 @@ func apply_save_envelope(raw_json: String) -> bool:
 	update_district_boundary_3d()
 	update_history_stops_3d()
 	update_neighborhood_surprises_3d()
+	update_museum_portal_3d()
 	update_mural_ui()
 	update_music_ui()
 	update_block_ui()

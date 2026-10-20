@@ -421,6 +421,7 @@ func run() -> void:
 		c_guard += 1
 	require(c_guard < 300 and study.history_read and study.arrived_history_stop == "comptons" and study.history_beacon_meshes["comptons"].material_override.emission_enabled, "arriving at Compton's Corner plaque sets history_read=true and lights 3D beacon")
 	require(study.last_a11y_announcement.contains("Compton's Corner") and study.last_a11y_announcement.contains("1966"), "arriving at Compton's Corner announces narrative history plaque")
+	require(study.last_music_cue == "history_comptons" and study.reward_banner.visible and study.reward_title_label.text.contains("Living History") and study.celebration_burst_node.visible, "first discovery of Compton's Corner plaque triggers history_comptons chime and Living History feel-good burst")
 
 	require(study.walk_to_black_hawk(), "walk_to_black_hawk() builds 4-block west Turk Street corridor route to Turk & Hyde")
 	require(study.walking_to_history_stop == "blackhawk" and not study.current_path.is_empty(), "Black Hawk route has walkable west Turk corridor path")
@@ -446,6 +447,7 @@ func run() -> void:
 	require(study.blackhawk_discovered and study.arrived_history_stop == "blackhawk" and study.history_beacon_meshes["blackhawk"].material_override.emission_enabled, "arriving at Turk & Hyde sets blackhawk_discovered=true and lights 3D Black Hawk beacon")
 	require(study.player_xz().distance_to(study.history_stop_xz("blackhawk")) <= study.ARRIVAL_DISTANCE_M + 1e-3, "player arrives within arrival radius of Former Black Hawk Jazz Club at Turk & Hyde")
 	require(study.last_a11y_announcement.contains("Black Hawk Jazz Club") and study.last_a11y_announcement.contains("Miles Davis"), "arriving at Black Hawk announces Turk & Hyde narrative history stop")
+	require(study.last_music_cue == "history_blackhawk" and study.reward_banner.visible and study.reward_title_label.text.contains("Jazz History") and study.celebration_burst_node.visible, "first discovery of Former Black Hawk Jazz Club triggers history_blackhawk chime and Jazz History feel-good burst")
 
 	# Verify return corridor path from Turk & Hyde back east to Bea
 	require(study.walk_to_neighbor(0), "walk_to_neighbor(0) routes from Turk & Hyde back east to Bea")
@@ -735,7 +737,7 @@ func run() -> void:
 	require(study.civic_set_choice("topic", "access") and study.civic_set_choice("format", "dropin") and study.civic_set_choice("notes", "none"), "civic_set_choice updates topic, format, and notes in planning phase")
 	require(study.civic_convene() and study.civic_phase == "meeting" and study.civic_setup_node.visible and study.civic_dropin_group.visible and not study.civic_circle_group.visible, "civic_convene enters meeting phase and shows 3D drop-in table setup")
 	require(not study.is_film_available() and not study.film_start(), "M4 Film Short remains locked while Listening Hour is in meeting phase")
-	require(study.civic_complete() and study.civic_phase == "done" and study.is_film_available(), "civic_complete finishes M4 Listening Hour and unlocks M4 Film Short")
+	require(study.civic_complete() and study.civic_phase == "done" and study.is_film_available() and study.last_music_cue == "civic_complete" and study.reward_banner.visible and study.reward_title_label.text.contains("Tenant Listening Circle Complete!"), "civic_complete finishes M4 Listening Hour, unlocks M4 Film Short, and triggers civic_complete feel-good burst")
 	require(study.neighbor_project_memory_line("bea").find("Making room to come and go gave us a useful place to begin") >= 0 and study.neighbor_project_memory_line("celeste").find("We agreed to keep no meeting notes") >= 0, "neighbors remember completed M4 Listening Hour choices verbatim")
 
 	# M4 Film Short (The Open Seat)
@@ -748,13 +750,13 @@ func run() -> void:
 	require(study.film_hold() and study.film_phase == "hold" and study.film_storyboard_node.visible and study.film_wide_border.visible, "film_hold saves storyboard for another day and displays 3D easel with wide border")
 	require(study.film_begin_shooting() and study.film_phase == "shooting" and study.film_next_shot() == "welcome" and study.film_storyboard_node.visible, "film_begin_shooting transitions from hold to shooting and starts at first ordered shot")
 	require(not study.film_capture_shot("seat") and study.film_captured.is_empty(), "film_capture_shot rejects out-of-order shot capture")
-	require(study.film_capture_shot("welcome") and study.film_captured == ["welcome"] and study.film_next_shot() == "seat", "first ordered shot captures cleanly")
+	require(study.film_capture_shot("welcome") and study.film_captured == ["welcome"] and study.film_next_shot() == "seat" and study.last_music_cue == "film_shot" and study.reward_banner.visible and study.reward_title_label.text.contains("Film Frame Captured"), "first ordered shot captures cleanly and triggers film_shot feel-good burst")
 	var key_period := InputEventKey.new()
 	key_period.pressed = true
 	key_period.keycode = KEY_PERIOD
 	study._unhandled_input(key_period)
 	study._unhandled_input(key_period)
-	require(study.film_phase == "done" and study.film_captured == ["welcome", "seat", "paint"] and study.film_screen_frame == 0, "KEY_PERIOD captures remaining ordered shots and completes The Open Seat")
+	require(study.film_phase == "done" and study.film_captured == ["welcome", "seat", "paint"] and study.film_screen_frame == 0 and study.last_music_cue == "film_complete" and study.reward_banner.visible and study.reward_title_label.text.contains("Short Film Complete"), "KEY_PERIOD captures remaining ordered shots, completes The Open Seat, and triggers film_complete feel-good burst")
 	var seq_before_frame: int = study.save_seq
 	require(study.film_set_screen_frame(2) and study.film_screen_frame == 2 and study.save_seq == seq_before_frame, "film_set_screen_frame updates viewer frame without writing save state")
 	require(study.neighbor_project_memory_line("celeste").find("Dez and I offered our hands, not everyone else’s faces") >= 0 and study.neighbor_project_memory_line("dez").find("We ended on a shared motif") >= 0, "neighbors remember completed M4 Film Short choices verbatim")
@@ -952,11 +954,17 @@ func run() -> void:
 		if not (e_lbl_node as Label3D).text.ends_with("(fictional)") or (e_lbl_node as Label3D).text.contains("/5"):
 			eatery_names_ok = false
 	require(eatery_names_ok, "fictional eateries avoid real SF business names (Golden Lotus, Midnight Sun, owl-themed bar), show no made-up ratings, and are labeled fictional")
-	require(study.inspect_so_what_easter_egg() and study.info.text.contains("145 Leavenworth") and study.info.text.contains("361 Turk St") and study.info.text.contains("So What"), "inspect_so_what_easter_egg frames 145 Leavenworth 8th Floor & 361 Turk 'So What' awning easter egg")
-	require(study.inspect_tenderloin_museum_hub() and study.active_time_era == "present" and study.info.text.contains("398 Eddy St") and study.info.text.contains("Cadillac Hotel"), "first inspect_tenderloin_museum_hub call presents 398 Eddy St Cadillac Hotel museum hub")
-	require(study.inspect_tenderloin_museum_hub() and study.active_time_era == "1961_jazz" and study.info.text.contains("1961"), "second inspect_tenderloin_museum_hub call channels 1961 Black Hawk & 'So What' Jazz Era")
-	require(study.inspect_tenderloin_museum_hub() and study.active_time_era == "1966_comptons" and study.info.text.contains("1966"), "third inspect_tenderloin_museum_hub call channels 1966 Compton's Cafeteria Midnight Neon")
-	require(study.inspect_tenderloin_museum_hub() and study.active_time_era == "1907_cadillac" and study.info.text.contains("1907"), "fourth inspect_tenderloin_museum_hub call channels 1907 Cadillac Hotel & Great White Way")
+	require(study.inspect_so_what_easter_egg() and study.info.text.contains("145 Leavenworth") and study.info.text.contains("361 Turk St") and study.info.text.contains("So What") and study.last_music_cue == "so_what_egg" and study.reward_banner.visible and study.reward_title_label.text.contains("Creator Easter Egg") and study.celebration_burst_node.position.is_equal_approx(study.SO_WHAT_VIEW_TARGET), "inspect_so_what_easter_egg frames 145 Leavenworth 8th Floor & 361 Turk 'So What' awning easter egg and triggers first-time feel-good burst at SO_WHAT_VIEW_TARGET")
+	var burst_before_so_what_revisit: int = study.reward_burst_count
+	require(study.inspect_so_what_easter_egg() and study.reward_burst_count == burst_before_so_what_revisit, "re-inspecting 'So What' Easter Egg does not duplicate feel-good burst")
+	require(study.inspect_tenderloin_museum_hub() and study.active_time_era == "present" and study.info.text.contains("398 Eddy St") and study.info.text.contains("Cadillac Hotel") and study.last_music_cue == "museum_portal" and study.reward_body_label.text.contains("Session era 1/4"), "first inspect_tenderloin_museum_hub call presents 398 Eddy St Cadillac Hotel museum hub and triggers Session era 1/4 museum_portal burst")
+	require(study.inspect_tenderloin_museum_hub() and study.active_time_era == "1961_jazz" and study.info.text.contains("1961") and study.reward_body_label.text.contains("Session era 2/4"), "second inspect_tenderloin_museum_hub call channels 1961 Black Hawk & 'So What' Jazz Era and triggers Session era 2/4 museum_portal burst")
+	require(study.inspect_tenderloin_museum_hub() and study.active_time_era == "1966_comptons" and study.info.text.contains("1966") and study.reward_body_label.text.contains("Session era 3/4"), "third inspect_tenderloin_museum_hub call channels 1966 Compton's Cafeteria Midnight Neon and triggers Session era 3/4 museum_portal burst")
+	require(study.inspect_tenderloin_museum_hub() and study.active_time_era == "1907_cadillac" and study.info.text.contains("1907") and study.reward_body_label.text.contains("Session era 4/4") and study.visited_museum_eras.size() == 4, "fourth inspect_tenderloin_museum_hub call channels 1907 Cadillac Hotel & Great White Way and completes Session era 4/4 museum_portal bursts")
+	var burst_before_museum_revisit: int = study.reward_burst_count
+	require(study.inspect_tenderloin_museum_hub() and study.active_time_era == "present" and study.reward_burst_count == burst_before_museum_revisit, "re-channeling an already-visited museum era does not duplicate feel-good burst")
+	study.museum_hub_step = 0
+	study.active_time_era = "present"
 	require(study.cycle_eatery_guide(0) and study.eatery_guide_idx == 0 and study.info.text.contains("Bowl & Basil Pho Counter") and study.info.text.contains("(fictional)") and not study.info.text.contains("/5"), "cycle_eatery_guide(0) frames the fictional Bowl & Basil Pho Counter, with no made-up rating")
 	require(study.cycle_eatery_guide() and study.eatery_guide_idx == 1 and study.info.text.contains("Saffron Clay-Oven Naan & Curry") and study.info.text.contains("(fictional)"), "cycle_eatery_guide() advances to the fictional Saffron Clay-Oven Naan & Curry")
 
@@ -1107,9 +1115,11 @@ func run() -> void:
 			park_trees_ok = false
 	require(park_trees_ok, "Boeddeker Park trees stand inside the OSM outline and outside all footprints")
 	require(study.is_point_in_boeddeker_park(Vector2(-130.0, -115.0)) and not study.is_point_in_boeddeker_park(Vector2(-130.0, -86.0)), "Boeddeker Park outline lies north of the Eddy St centerline, east of Jones")
-	require(study.inspect_boeddeker_park() and study.info.text.contains("240 Eddy St") and study.info.text.contains("33619301") and study.last_a11y_announcement.contains("Boeddeker Park"), "inspect_boeddeker_park frames and announces Boeddeker Park with OSM provenance")
+	require(study.inspect_boeddeker_park() and study.info.text.contains("240 Eddy St") and study.info.text.contains("33619301") and study.last_a11y_announcement.contains("Boeddeker Park") and study.last_music_cue == "boeddeker_park" and study.reward_banner.visible and study.reward_title_label.text.contains("Boeddeker Park") and study.celebration_burst_node.position.is_equal_approx(study.BOEDDEKER_VIEW_TARGET), "inspect_boeddeker_park frames and announces Boeddeker Park with OSM provenance and first-time feel-good burst at BOEDDEKER_VIEW_TARGET")
 	study.overview()
+	var burst_before_park_revisit: int = study.reward_burst_count
 	study.inspect_boeddeker_park()
+	require(study.reward_burst_count == burst_before_park_revisit, "re-inspecting Boeddeker Park does not duplicate feel-good burst")
 	var park_tap: Vector2 = study.camera.unproject_position(Vector3(study.BOEDDEKER_PARK_ENTRANCE.x, 3.6, study.BOEDDEKER_PARK_ENTRANCE.y))
 	require(not study.is_screen_point_in_ui(park_tap), "Boeddeker Park gate label projects outside UI panels when framed")
 	study.info.text = ""
@@ -1196,9 +1206,10 @@ func run() -> void:
 	require(not study.eatery_counter_nodes[3].visible, "an unvisited eatery counter stays tucked away")
 	require(study.cycle_eatery_guide(3) and study.eatery_counter_nodes[3].visible and study.is_speech_bubble_visible() and study.speech_bubble_anchor == "eatery:morning_star_banh_mi" and study.speech_bubble_text == String(study.EATERY_HOST_LINES["morning_star_banh_mi"][0]), "visiting an eatery opens its counter and the host greets in a speech bubble")
 	var order_before: int = int(study.eatery_order_counts.get("morning_star_banh_mi", 0))
-	require(study.eatery_counter_interact() and int(study.eatery_order_counts.get("morning_star_banh_mi", 0)) == order_before + 1 and study.info.text.contains("Ordering at Morning Star") and study.info.text.contains("banh mi") and study.speech_bubble_text == String(study.EATERY_HOST_LINES["morning_star_banh_mi"][1]), "ordering at the counter serves the house item and the host answers")
+	require(study.eatery_counter_interact() and int(study.eatery_order_counts.get("morning_star_banh_mi", 0)) == order_before + 1 and study.last_music_cue == "eatery_order" and study.reward_banner.visible and study.reward_title_label.text.contains("Order Up:") and study.info.text.contains("Ordering at Morning Star") and study.info.text.contains("banh mi") and study.speech_bubble_text == String(study.EATERY_HOST_LINES["morning_star_banh_mi"][1]), "ordering at the counter serves the house item, triggers eatery_order chime and Order Up burst, and the host answers")
 	var counter_tap: Vector2 = study.camera.unproject_position(Vector3(study.eatery_counter_points[3].x, 1.3, study.eatery_counter_points[3].y))
-	require(not study.is_screen_point_in_ui(counter_tap) and study.handle_scene_tap(counter_tap) and int(study.eatery_order_counts.get("morning_star_banh_mi", 0)) == order_before + 2, "tapping the 3D counter orders again")
+	var burst_before_second_order: int = study.reward_burst_count
+	require(not study.is_screen_point_in_ui(counter_tap) and study.handle_scene_tap(counter_tap) and int(study.eatery_order_counts.get("morning_star_banh_mi", 0)) == order_before + 2 and study.reward_burst_count == burst_before_second_order, "tapping the 3D counter a second time orders the next item without spamming a duplicate feel-good burst")
 	var steam_node: Node3D = null
 	for part in study.eatery_anim_parts:
 		if int(part.idx) == 0 and String(part.kind) == "steam":
@@ -1500,6 +1511,8 @@ func run() -> void:
 		require(study.reward_banner != null and study.reward_banner.visible and study.reward_body_label.text.contains("Sparks:") and study.reward_body_label.text.contains(expected_ks_label) and study.info.text.contains(expected_ks_label) and study.celebration_burst_node != null and study.celebration_burst_node.visible, "discovering surprise '%s' triggers RewardBanner with Sparks count and keepsake label '%s'" % [expected_sid, expected_ks_label])
 	require(study.discovered_surprises.size() == 10 and study.visible_surprise_keepsake_count() == 10 and study.spark_count() == pre_sparks + 10, "discovering all 10 neighborhood surprises reveals all 10 3D keepsakes and increments spark_count by 10")
 	require(study.reward_title_label.text.contains("10/10 Surprises:") and study.reward_body_label.text.contains("All 10/10 Keepsakes!") and study.last_music_cue == "surprise_finale" and study.cue_arpeggio_freqs.size() == 4 and is_equal_approx(study.cue_chime_freq, 1046.50) and is_equal_approx(study.cue_arpeggio_duration, 0.68) and is_equal_approx(study.reward_banner_timer, 4.5), "discovering the 10th surprise triggers the 10/10 All Keepsakes grand finale RewardBanner (4.5s) and explicit surprise_finale 4-note ascending C-major octave fanfare")
+	study.trigger_feel_good_burst("Order Up: Test", "Test", Vector3.ZERO)
+	require(study.reward_title_label.text.contains("10/10 Surprises:") and study.reward_banner_timer > 4.0, "active 4.5s 10/10 grand finale RewardBanner is protected from immediate overwrite by non-finale bursts")
 	require(study.jeffrey_turntable_node.visible and study.hidden_mural_sketch_node.visible and is_equal_approx(study.speaker_beacon_mesh.position.y, 1.54), "discovering jeffrey_record and hidden_mural_145 reveals 3D turntable on RookSpeaker (raising SpeakerBeacon above sleeve) and sketch card on MuralBoard")
 	var prev_disc_rot: float = study.jeffrey_turntable_disc_mesh.rotation.y
 	var prev_tail_rot: float = study.celeste_dino_tail_node.rotation.y
@@ -1588,6 +1601,14 @@ func run() -> void:
 	study.update_guide_marker(explore_obj_all)
 	study.update_guide_arrow()
 	require(String(explore_obj_all.get("id", "")) == "explore" and not bool(explore_obj_all.get("has_target", true)) and String(explore_obj_all.get("text", "")).begins_with("All 10/10 surprises & keepsakes found!") and not study.guide_marker.visible and not study.guide_arrow.visible, "once all 10/10 surprises are discovered, current_objective() celebrates 10/10 completion with has_target=false and hides GuideMarker and GuideArrow")
+	study.show_conversation(0)
+	require(study.conv_action_ids[0] == "museum" and study.conv_action_btns[0].text == "Visit the Museum" and study.conv_action_ids[1] == "eateries" and study.conv_action_btns[1].text == "Visit Eateries" and study.conv_action_ids[2] == "hub", "once all 10/10 surprises are discovered, conversation offers Visit the Museum and Visit Eateries alongside All Block Actions")
+	study.ask_whats_next()
+	require(study.run_conversation_action(0) and study.last_panel_dialogue == "" and study.speech_bubble_anchor == "museum_docent", "tapping Visit the Museum from conversation inspects the Tenderloin Museum Hub and clears stale What's Next prompt")
+	study.ask_whats_next()
+	var prev_eatery_idx: int = study.eatery_guide_idx
+	require(study.run_conversation_action(1) and study.last_panel_dialogue == "" and study.eatery_guide_idx != prev_eatery_idx and study.speech_bubble_anchor.begins_with("eatery:"), "tapping Visit Eateries from conversation cycles to the next neighborhood eatery counter and clears stale What's Next prompt")
+	study.end_conversation()
 	study.celeste_talk_count = 0
 	var celeste_post_lines: Dictionary = {}
 	for _c_t in range(5):
@@ -1615,8 +1636,13 @@ func run() -> void:
 	require(not study.music_panel.visible and study.info.text.begins_with("You said goodbye to Rook."), "Goodbye from MusicPanel closes the panel and says goodbye to Rook")
 	var full_m4_plus_surprises_json := JSON.stringify(study.build_save_envelope())
 	require(full_m4_plus_surprises_json.to_utf8_buffer().size() <= 4096, "full M1-M4 save envelope with all 10 discovered_surprises stays <= 4096 bytes (%d B)" % full_m4_plus_surprises_json.to_utf8_buffer().size())
+	study.inspect_tenderloin_museum_hub()
+	study.inspect_tenderloin_museum_hub()
+	study.inspect_boeddeker_park()
+	study.inspect_so_what_easter_egg()
+	study.eatery_counter_interact(0)
 	study.reset_mural_state_to_defaults("fresh")
-	require(study.discovered_surprises.is_empty() and study.visible_surprise_keepsake_count() == 0 and not study.jeffrey_turntable_node.visible and not study.hidden_mural_sketch_node.visible and is_equal_approx(study.speaker_beacon_mesh.position.y, 1.30) and not study.reward_banner.visible and not study.celebration_burst_node.visible, "reset_mural_state_to_defaults clears discovered_surprises and hides all 10 3D surprise keepsakes and reward banner/burst")
+	require(study.discovered_surprises.is_empty() and study.visible_surprise_keepsake_count() == 0 and not study.jeffrey_turntable_node.visible and not study.hidden_mural_sketch_node.visible and is_equal_approx(study.speaker_beacon_mesh.position.y, 1.30) and not study.reward_banner.visible and not study.celebration_burst_node.visible and study.visited_museum_eras.is_empty() and not study.boeddeker_park_visited and not study.so_what_visited and study.museum_hub_step == 0 and study.active_time_era == "present" and study.eatery_guide_idx == -1 and study.eatery_order_counts.is_empty() and study.portal_ring_meshes[0].rotation_degrees.is_equal_approx(Vector3(90.0, 0.0, 0.0)), "reset_mural_state_to_defaults clears discovered_surprises, hides all 10 3D surprise keepsakes and reward banner/burst, and resets session landmark tour flags and 3D museum portal")
 	require(study.apply_save_envelope(surp_save_json) and study.discovered_surprises.size() == 10 and study.visible_surprise_keepsake_count() == 10 and study.jeffrey_turntable_node.visible and study.hidden_mural_sketch_node.visible and study.surprise_guide_idx == -1, "apply_save_envelope restores all 10 discovered_surprises, all 10 3D surprise keepsakes, and resets surprise_guide_idx")
 	study.reset_mural_state_to_defaults("fresh")
 	study.overview()
@@ -1787,6 +1813,15 @@ func run() -> void:
 			require(study.conv_chat_btn.text == "Chat More" and study.conv_bye_btn.text == "Goodbye" and study.conv_action_btns[2].text == "All Actions", "phone layout uses short conversation labels at %s" % str(size))
 			var find_w: float = ThemeDB.fallback_font.get_string_size("Find 9/10", HORIZONTAL_ALIGNMENT_CENTER, -1, 13).x
 			require(find_w + 16.0 <= study.conv_action_btns[0].size.x, "narrow phone Find 9/10 surprise label fits inside conversation action button width at %s" % str(size))
+			var eat_w: float = ThemeDB.fallback_font.get_string_size("Eateries", HORIZONTAL_ALIGNMENT_CENTER, -1, 13).x
+			require(eat_w + 16.0 <= study.conv_action_btns[0].size.x, "narrow phone Eateries label fits inside conversation action button width at %s" % str(size))
+			study.history_read = false
+			study.read_history_stop("comptons")
+			var comptons_burst_screen: Vector2 = study.camera.unproject_position(study.celebration_burst_node.position)
+			require(study.play_area_rect().has_point(comptons_burst_screen), "3D CelebrationBurst for Compton's projects into visible play_area_rect above bottom panel at %s" % str(size))
+			study.show_conversation(0)
+			await process_frame
+			await process_frame
 		study.frame_conversation(0)
 		var bea_screen: Vector2 = study.camera.unproject_position(study.neighbors[0].pos + Vector3(0.0, 2.2, 0.0))
 		require(study.play_area_rect().has_point(bea_screen), "the conversation camera keeps Bea in the visible 3D area above the panel at %s" % str(size))
