@@ -195,6 +195,8 @@ const SPEECH_BUBBLE_PIXEL := 0.0024
 const SPEECH_BUBBLE_FONT := 24
 const SPEECH_BUBBLE_HEIGHT_M := 5.0
 const SPEECH_BUBBLE_HIDE_TARGET_DIST_M := 45.0
+const GUIDE_MARKER_LIFT_LOW := 4.6
+const GUIDE_MARKER_LIFT_HIGH := 6.6
 const STREET_TREE_DATA_PATH := "res://data/street_trees.json"
 const LIDAR_DATA_PATH := "res://data/lidar_2023.json"
 const CURRENT_BUILDINGS_NODE := "CurrentBuildings"
@@ -863,6 +865,8 @@ var thanh_nacho_bag_node: Node3D
 var character_panel_styles: Dictionary = {}
 var discovered_surprises: Dictionary = {}
 var surprise_guide_idx := -1
+# Session-only hint persistence across conversation panels (cleared on save/reload or reset).
+var last_hinted_surprise_id := ""
 var reward_banner: PanelContainer
 var reward_banner_style: StyleBoxFlat
 var reward_title_label: Label
@@ -5337,6 +5341,8 @@ func inspect_neighborhood_surprise(s_id: String) -> bool:
 	update_occlusion(true)
 	var newly_discovered := not discovered_surprises.has(s_id)
 	discovered_surprises[s_id] = true
+	if last_hinted_surprise_id == s_id:
+		last_hinted_surprise_id = ""
 	update_neighborhood_surprises_3d()
 	if newly_discovered:
 		save_godot_state()
@@ -5348,18 +5354,23 @@ func inspect_neighborhood_surprise(s_id: String) -> bool:
 	var accent := Color(String(rec.get("accent", "f8cc58")))
 	var keepsake_meta: Dictionary = SURPRISE_KEEPSAKE_META.get(s_id, {})
 	var keepsake_label := String(keepsake_meta.get("label", ""))
-	var burst_sub := "%d/%d Surprises · Sparks: %d · %s" % [discovered_surprises.size(), NEIGHBORHOOD_SURPRISE_IDS.size(), spark_count(), badge_str]
+	var all_found := discovered_surprises.size() >= NEIGHBORHOOD_SURPRISE_IDS.size()
+	var surp_tag := "All 10/10 Keepsakes!" if all_found else ("%d/%d Surprises" % [discovered_surprises.size(), NEIGHBORHOOD_SURPRISE_IDS.size()])
+	var burst_sub := "%s · Sparks: %d · %s" % [surp_tag, spark_count(), badge_str]
 	if not keepsake_label.is_empty():
-		burst_sub = "%d/%d Surprises · Sparks: %d · Keepsake: %s" % [discovered_surprises.size(), NEIGHBORHOOD_SURPRISE_IDS.size(), spark_count(), keepsake_label]
+		burst_sub = "%s · Sparks: %d · Keepsake: %s" % [surp_tag, spark_count(), keepsake_label]
 	show_speech_bubble("surprise:%s" % s_id, world_pos + Vector3.UP * (SPEECH_BUBBLE_HEIGHT_M + 0.35), speech_str)
 	if newly_discovered:
-		trigger_progress_cue("surprise_discovery", s_id)
+		var burst_heading := ("10/10 Surprises: %s" % title_str) if all_found else ("Surprise Found: %s" % title_str)
+		trigger_progress_cue("surprise_finale" if all_found else "surprise_discovery", s_id)
 		trigger_feel_good_burst(
-			"Surprise Found: %s" % title_str,
+			burst_heading,
 			burst_sub,
 			world_pos + Vector3.UP * 2.2,
 			accent
 		)
+		if all_found and not suppress_feel_good_burst:
+			reward_banner_timer = 4.5
 		var paired_n_id := String(keepsake_meta.get("neighbor", ""))
 		var p_idx := active_panel_neighbor_idx()
 		var active_panel_n_id := String(neighbors[p_idx].get("id", "")) if p_idx >= 0 else ""
@@ -5374,6 +5385,8 @@ func inspect_neighborhood_surprise(s_id: String) -> bool:
 	update_music_ui()
 	update_block_ui()
 	update_objective_ui()
+	update_guide_marker()
+	update_guide_arrow()
 	var line := "%s — %s (%d/%d Surprises Found)" % [title_str, String(rec.get("street", "")), discovered_surprises.size(), NEIGHBORHOOD_SURPRISE_IDS.size()]
 	var keepsake_suffix := " · Keepsake: %s" % keepsake_label if not keepsake_label.is_empty() else ""
 	var sub := "%s: \"%s\" · %s%s (Shift+D for next surprise)" % [speaker_str, speech_str, summary_str, keepsake_suffix]
@@ -5385,6 +5398,12 @@ func inspect_neighborhood_surprise(s_id: String) -> bool:
 func cycle_neighborhood_surprise(target_idx: int = -1) -> bool:
 	if NEIGHBORHOOD_SURPRISE_IDS.is_empty():
 		return false
+	if target_idx < 0:
+		var obj := current_objective()
+		if String(obj.get("id", "")) == "explore" and obj.has("surprise_id"):
+			target_idx = NEIGHBORHOOD_SURPRISE_IDS.find(String(obj.get("surprise_id", "")))
+		elif not last_hinted_surprise_id.is_empty() and not discovered_surprises.has(last_hinted_surprise_id):
+			target_idx = NEIGHBORHOOD_SURPRISE_IDS.find(last_hinted_surprise_id)
 	if target_idx >= 0 and target_idx < NEIGHBORHOOD_SURPRISE_IDS.size():
 		surprise_guide_idx = target_idx
 	else:
@@ -5589,6 +5608,22 @@ func compass_phrase(from_xz: Vector2, to_xz: Vector2) -> String:
 	var blocks := int(round(dist / 145.0))
 	return "about a block %s" % dir if blocks <= 1 else "about %d blocks %s" % [blocks, dir]
 
+func next_explore_surprise_id() -> String:
+	var p_idx := active_panel_neighbor_idx()
+	if p_idx >= 0 and p_idx < neighbors.size():
+		var n_id := String(neighbors[p_idx].get("id", ""))
+		var paired: Array = NEIGHBOR_SURPRISE_PAIRS.get(n_id, [])
+		for p_s_id in paired:
+			var s_id := String(p_s_id)
+			if not discovered_surprises.has(s_id) and s_id in NEIGHBORHOOD_SURPRISE_IDS:
+				return s_id
+	if not last_hinted_surprise_id.is_empty() and not discovered_surprises.has(last_hinted_surprise_id):
+		return last_hinted_surprise_id
+	for s_id in NEIGHBORHOOD_SURPRISE_IDS:
+		if not discovered_surprises.has(s_id):
+			return s_id
+	return ""
+
 ## The single next thing to do, derived from saved progress. `target` is where the guide
 ## marker points; `neighbor` is who can help (-1 when nobody in particular).
 func current_objective() -> Dictionary:
@@ -5641,7 +5676,30 @@ func current_objective() -> Dictionary:
 		return {"id": "comptons", "neighbor": -1, "has_target": true, "target": COMPTONS_POS, "target_name": "Compton's plaque", "text": "Read the Compton's Cafeteria plaque at Turk & Taylor (J)", "hint": "The Compton's Cafeteria plaque at Turk & Taylor is %s." % compass_phrase(p, comptons_xz())}
 	if not blackhawk_discovered:
 		return {"id": "blackhawk", "neighbor": -1, "has_target": true, "target": BLACKHAWK_POS, "target_name": "Black Hawk site", "text": "Visit the former Black Hawk jazz club at Turk & Hyde (H)", "hint": "The Black Hawk site at Turk & Hyde is %s." % compass_phrase(p, blackhawk_xz())}
-	return {"id": "explore", "neighbor": -1, "has_target": false, "target": Vector3.ZERO, "text": "Explore: surprises (Shift+D), museum Time-Portal (Shift+M), eateries (Shift+E), evening (Shift+L)", "hint": "Take your time. Spot the %d neighborhood surprises (%d/%d found, Shift+D), try the museum's Time-Portal on Eddy, or visit the eateries along Turk." % [NEIGHBORHOOD_SURPRISE_IDS.size(), discovered_surprises.size(), NEIGHBORHOOD_SURPRISE_IDS.size()]}
+	if discovered_surprises.size() < NEIGHBORHOOD_SURPRISE_IDS.size():
+		var next_s_id := next_explore_surprise_id()
+		var s_rec: Dictionary = NEIGHBORHOOD_SURPRISES.get(next_s_id, {})
+		var s_pt: Vector2 = surprise_points.get(next_s_id, Vector2(s_rec.pos.x, s_rec.pos.z))
+		var s_title := String(s_rec.get("title", next_s_id))
+		var s_street := String(s_rec.get("street", ""))
+		return {
+			"id": "explore",
+			"neighbor": -1,
+			"has_target": true,
+			"target": Vector3(s_pt.x, 0.0, s_pt.y),
+			"target_name": s_title,
+			"surprise_id": next_s_id,
+			"text": "Spot %s (%d/%d surprises, Shift+D) · Museum (Shift+M)" % [s_title, discovered_surprises.size(), NEIGHBORHOOD_SURPRISE_IDS.size()],
+			"hint": "Take your time. Spot the %d neighborhood surprises (%d/%d found, Shift+D)—next is %s (%s at %s)—or try the museum's Time-Portal on Eddy and the eateries along Turk." % [NEIGHBORHOOD_SURPRISE_IDS.size(), discovered_surprises.size(), NEIGHBORHOOD_SURPRISE_IDS.size(), s_title, compass_phrase(p, s_pt), s_street]
+		}
+	return {
+		"id": "explore",
+		"neighbor": -1,
+		"has_target": false,
+		"target": Vector3.ZERO,
+		"text": "All 10/10 surprises & keepsakes found! Try Museum (Shift+M), Eateries (Shift+E), Evening (Shift+L)",
+		"hint": "All %d/%d neighborhood surprises and keepsakes are unlocked on our block! Try the museum's Time-Portal on Eddy (Shift+M), visit the eateries along Turk (Shift+E), or switch to evening lights (Shift+L)." % [NEIGHBORHOOD_SURPRISE_IDS.size(), NEIGHBORHOOD_SURPRISE_IDS.size()]
+	}
 
 func update_objective_ui() -> void:
 	if objective_label == null:
@@ -5681,7 +5739,7 @@ func build_guide_marker() -> void:
 
 func guide_marker_anchor(obj: Dictionary) -> Vector3:
 	var t: Vector3 = obj.get("target", Vector3.ZERO)
-	var lift := 6.6 if int(obj.get("neighbor", -1)) >= 0 and String(obj.get("id", "")) != "mural" and String(obj.get("id", "")) != "soundcheck" else 4.6
+	var lift := GUIDE_MARKER_LIFT_HIGH if int(obj.get("neighbor", -1)) >= 0 and String(obj.get("id", "")) != "mural" and String(obj.get("id", "")) != "soundcheck" else GUIDE_MARKER_LIFT_LOW
 	return Vector3(t.x, lift, t.z)
 
 func objective_target_name(obj: Dictionary) -> String:
@@ -5849,6 +5907,7 @@ func ask_whats_next() -> String:
 		var next_idx := next_undiscovered_surprise_for_neighbor(speaker)
 		if next_idx >= 0 and next_idx < NEIGHBORHOOD_SURPRISE_IDS.size():
 			var next_s_id: String = NEIGHBORHOOD_SURPRISE_IDS[next_idx]
+			last_hinted_surprise_id = next_s_id
 			var is_personal_pair: bool = (NEIGHBOR_SURPRISE_PAIRS.get(spk_id, []) as Array).has(next_s_id)
 			var s_rec: Dictionary = NEIGHBORHOOD_SURPRISES.get(next_s_id, {})
 			var s_pt: Vector2 = surprise_points.get(next_s_id, Vector2(s_rec.pos.x, s_rec.pos.z))
@@ -5861,7 +5920,9 @@ func ask_whats_next() -> String:
 			else:
 				hint = "You found both of my favorite block surprises! Next, check out %s %s at %s (%d/%d found, Shift+D)." % [s_title, dir_str, s_street, discovered_surprises.size(), NEIGHBORHOOD_SURPRISE_IDS.size()]
 		else:
+			last_hinted_surprise_id = ""
 			hint = "You've spotted all %d neighborhood surprises and unlocked every keepsake on our block! Try the museum Time-Portal (Shift+M), visit the eateries (Shift+E), or switch to evening lights (Shift+L)." % NEIGHBORHOOD_SURPRISE_IDS.size()
+		obj = current_objective()
 	var line := conversation_partner_line(speaker, hint) if speaker >= 0 else hint
 	if (block_panel != null and block_panel.visible) or (mural_panel != null and mural_panel.visible) or (music_panel != null and music_panel.visible):
 		last_panel_dialogue = line
@@ -5873,6 +5934,10 @@ func ask_whats_next() -> String:
 		update_music_ui()
 	elif block_panel != null and block_panel.visible:
 		update_block_ui()
+	else:
+		update_objective_ui()
+	update_guide_marker(obj)
+	update_guide_arrow()
 	if info != null:
 		var way := "Follow the gold marker · tap the street or use WASD to walk" if bool(obj.get("has_target", false)) else "No marker needed: wander and explore"
 		info.text = "%s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, way]
@@ -5917,6 +5982,8 @@ func end_conversation() -> void:
 		info.text = "You said goodbye to %s.\nNext: %s · %s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [who, String(obj.get("text", "")), way]
 	announce_a11y_status("Said goodbye to %s. Next: %s" % [who, String(obj.get("text", ""))])
 	update_objective_ui()
+	update_guide_marker(obj)
+	update_guide_arrow()
 
 func keep_chatting() -> String:
 	if talk_partner >= 0 and talk_partner < neighbors.size():
@@ -6045,6 +6112,8 @@ func run_conversation_action_id(act_id: String) -> bool:
 		"museum":
 			return inspect_tenderloin_museum_hub()
 		"surprise":
+			if String(current_objective().get("id", "")) == "explore":
+				return cycle_neighborhood_surprise()
 			return cycle_neighborhood_surprise(next_undiscovered_surprise_for_neighbor(talk_partner))
 		"hub":
 			block_panel_mode = "hub"
@@ -6135,10 +6204,17 @@ func update_guide_arrow() -> void:
 	guide_arrow.position = center + dir * t
 	guide_arrow_poly.rotation = dir.angle()
 	var dist := player_xz().distance_to(Vector2(guide_marker_target.x, guide_marker_target.z))
-	guide_arrow_label.text = "%s · %d m" % [guide_marker_target_name, int(round(dist))]
+	var arrow_title := guide_marker_target_name
+	if is_narrow_layout() and arrow_title.length() > 22:
+		arrow_title = arrow_title.substr(0, 21).strip_edges() + "..."
+	guide_arrow_label.text = "%s · %d m" % [arrow_title, int(round(dist))]
 	var lbl_size := guide_arrow_label.get_minimum_size()
 	guide_arrow_label.size = lbl_size
-	guide_arrow_label.position = -dir.normalized() * 36.0 - lbl_size * 0.5
+	var lbl_pos := -dir.normalized() * 36.0 - lbl_size * 0.5
+	var lbl_global := guide_arrow.position + lbl_pos
+	lbl_global.x = clampf(lbl_global.x, area.position.x + 4.0, maxf(area.position.x + 4.0, area.end.x - lbl_size.x - 4.0))
+	lbl_global.y = clampf(lbl_global.y, area.position.y + 4.0, maxf(area.position.y + 4.0, area.end.y - lbl_size.y - 4.0))
+	guide_arrow_label.position = lbl_global - guide_arrow.position
 	guide_arrow.visible = true
 
 func hub_button_for_objective(obj_id: String) -> Button:
@@ -9506,6 +9582,10 @@ func trigger_progress_cue(cue_id: String, reason: String) -> void:
 			cue_arpeggio_freqs = [523.25, 659.25, 1046.50]
 			cue_arpeggio_duration = 0.56
 			cue_chime_freq = 783.99
+		"surprise_finale":
+			cue_arpeggio_freqs = [523.25, 659.25, 783.99, 1046.50]
+			cue_arpeggio_duration = 0.68
+			cue_chime_freq = 1046.50
 		"rook_soundcheck", "surprise_discovery":
 			if reason == "mayor_pomp_event":
 				cue_arpeggio_freqs = [392.00, 493.88, 587.33]
@@ -10525,6 +10605,7 @@ func reset_mural_state_to_defaults(status_label: String) -> void:
 	visited_neighbors.clear()
 	discovered_surprises.clear()
 	surprise_guide_idx = -1
+	last_hinted_surprise_id = ""
 	reward_banner_timer = 0.0
 	if reward_banner != null:
 		reward_banner.visible = false
@@ -11098,6 +11179,7 @@ func apply_save_envelope(raw_json: String) -> bool:
 	last_panel_dialogue = ""
 	discovered_surprises.clear()
 	surprise_guide_idx = -1
+	last_hinted_surprise_id = ""
 	reward_banner_timer = 0.0
 	if reward_banner != null:
 		reward_banner.visible = false
@@ -12029,6 +12111,22 @@ func neighbor_screen_distance(index: int, screen_pos: Vector2) -> float:
 			best_d = d
 	return best_d
 
+func surprise_has_guide_marker(sp: Vector2) -> bool:
+	return guide_marker != null and guide_marker.visible and Vector2(guide_marker_target.x, guide_marker_target.z).distance_to(sp) < 0.5
+
+func surprise_screen_distance(sp: Vector2, screen_pos: Vector2, include_marker: bool = false) -> float:
+	var best_d := INF
+	for h_off in [0.8, 1.6, 2.6]:
+		var d := camera.unproject_position(Vector3(sp.x, h_off, sp.y)).distance_to(screen_pos)
+		if d < best_d:
+			best_d = d
+	if include_marker:
+		for m_y in [GUIDE_MARKER_LIFT_LOW, guide_marker.global_position.y + 0.5 * guide_marker.scale.y]:
+			var md := camera.unproject_position(Vector3(sp.x, m_y, sp.y)).distance_to(screen_pos)
+			if md < best_d:
+				best_d = md
+	return best_d
+
 func handle_scene_tap(screen_pos: Vector2) -> bool:
 	if is_screen_point_in_ui(screen_pos):
 		return false
@@ -12064,14 +12162,20 @@ func handle_scene_tap(screen_pos: Vector2) -> bool:
 	if ((bh_screen_d <= 36.0 and bh_world_d <= 8.5) or bh_world_d <= 3.5) and bh_screen_d < best_screen_d:
 		return walk_to_history_stop("blackhawk")
 	if not in_overview and not in_wide_overview:
+		var best_surp_id := ""
+		var best_surp_screen_d := best_screen_d
 		for s_id in NEIGHBORHOOD_SURPRISE_IDS:
 			if surprise_points.has(s_id):
 				var sp: Vector2 = surprise_points[s_id]
-				var surp_screen := camera.unproject_position(Vector3(sp.x, 1.5, sp.y))
-				var surp_screen_d := surp_screen.distance_to(screen_pos)
+				var has_marker := surprise_has_guide_marker(sp)
+				var surp_screen_d := surprise_screen_distance(sp, screen_pos, has_marker)
 				var surp_world_d := sp.distance_to(ground_xz)
-				if ((surp_screen_d <= 24.0 and surp_world_d <= 4.2) or surp_world_d <= 1.8) and surp_screen_d < best_screen_d:
-					return inspect_neighborhood_surprise(s_id)
+				var max_world_d := 9.5 if has_marker else 5.5
+				if ((surp_screen_d <= 32.0 and surp_world_d <= max_world_d) or surp_world_d <= 2.2) and surp_screen_d < best_surp_screen_d:
+					best_surp_screen_d = surp_screen_d
+					best_surp_id = s_id
+		if not best_surp_id.is_empty():
+			return inspect_neighborhood_surprise(best_surp_id)
 	var turk_ee_screen := camera.unproject_position(Vector3(-350.0, 3.6, 65.8))
 	var leav_ee_screen := camera.unproject_position(Vector3(-290.8, 24.6, 99.4))
 	if turk_ee_screen.distance_to(screen_pos) <= 28.0 or leav_ee_screen.distance_to(screen_pos) <= 28.0:

@@ -1,6 +1,15 @@
 # Session Handoff — Tenderloin Redux — 2026-10-20 Pacific / 2026-10-20 UTC
 
-## Latest AGY / Gemini checkpoint (`2026-10-20-all-neighbor-surprise-keepsakes`)
+## Latest AGY / Gemini checkpoint (`2026-10-20-explore-guide-marker-and-finale`)
+
+- **AGY hourly scheduler**: Active (`0 * * * *`, `IsDaemon: true`) with `.build-round.lock` concurrency guard. Codex scheduler `build-tenderloin-redux` and Claude scheduled task `tenderloin-3d-improvement` remain paused.
+- **Shipped in `2026-10-20-explore-guide-marker-and-finale` (`godot/main.gd`, `godot/tests/study_test.gd`)**:
+  - **Chapter 6 (`"explore"`) 3D Gold `GuideMarker` & Screen-Edge `GuideArrow` Wayfinding (`next_explore_surprise_id()`, `current_objective()`, `last_hinted_surprise_id`)**: Points `GuideMarker` and `GuideArrow` (with narrow-viewport label truncation and `play_area_rect()` clamping) at the next undiscovered neighborhood surprise, prioritizing the open character panel's undiscovered `NEIGHBOR_SURPRISE_PAIRS`, then session-persisted `last_hinted_surprise_id` across `"What's Next?"` -> `"Goodbye (Esc)"`, and then the first undiscovered surprise in `NEIGHBORHOOD_SURPRISE_IDS` (celebrating `"All 10/10 surprises & keepsakes found!"` with `has_target: false` once all 10 are discovered).
+  - **Unified `Shift+D` & Multi-Height 3D Scene Tap Hitbox (`cycle_neighborhood_surprise()`, `surprise_screen_distance()`, `GUIDE_MARKER_LIFT_LOW`)**: Unifies `Shift+D` and `"Spot Surprise"` in `"explore"` mode to resolve through `current_objective().surprise_id`, and samples `[0.8, 1.6, 2.6]` (`surp_world_d <= 5.5`) for all surprises plus `GUIDE_MARKER_LIFT_LOW` (`4.6 m`) and the live `GuideMarker` center (`surp_world_d <= 9.5`) for the active marker-bearing surprise.
+  - **10/10 All Keepsakes Grand Finale (`inspect_neighborhood_surprise()`, `trigger_progress_cue("surprise_finale")`)**: Plays a 4-note ascending C-major octave fanfare (`[523.25, 659.25, 783.99, 1046.50]`, `0.68s`) and shows a 4.5-second `"10/10 Surprises: %s"` / `"All 10/10 Keepsakes!"` `RewardBanner` when the 10th surprise is discovered.
+  - **Independent CLI QA**: Reviewed by Kibitz native Claude CLI (`--driver agy --only claude`, `claude-opus-5-5`, effort `high`, `rc=0`, `VERDICT: yes-with-fixes`) in `kibitz-runs/2026-10-20-explore-guide-marker-and-finale/r3/`; all findings fixed and verified across `godot:test`, `godot:export`, `check`, `test` (104/104), and `godot:browser`.
+
+## Historical AGY / Gemini checkpoint (`2026-10-20-all-neighbor-surprise-keepsakes`)
 
 - **AGY hourly scheduler**: Active (`0 * * * *`, `IsDaemon: true`) with `.build-round.lock` concurrency guard. Codex scheduler `build-tenderloin-redux` and Claude scheduled task `tenderloin-3d-improvement` remain paused.
 - **Shipped in `2026-10-20-all-neighbor-surprise-keepsakes` (`godot/main.gd`, `godot/tests/study_test.gd`)**:

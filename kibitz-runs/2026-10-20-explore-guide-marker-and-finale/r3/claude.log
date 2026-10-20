@@ -1,0 +1,22 @@
+STDOUT:
+The review is written to `kibitz-runs/2026-10-20-explore-guide-marker-and-finale/r3/claude.md`. My verdict is yes-with-fixes. I couldn't run git, so I reviewed the current working-tree `main.gd` and `study_test.gd` rather than an actual diff. Everything below comes from reading the code; I didn't run the game or the tests.
+
+**Must-fix:**
+- **Shift+D can contradict the gold marker.** Three functions pick "the next surprise" in different orders:
+  - The marker logic (`main.gd:5613`) prefers the open panel's neighbor first, then the last hint.
+  - Shift+D (`main.gd:5393`) prefers the last hint first.
+  - The "Spot Surprise" button (`main.gd:6114`) ignores the hint entirely.
+
+  Example: ask Bea "What's Next?", say goodbye, then open Celeste's mural panel. The marker points to Celeste's surprise, but Shift+D opens Bea's. The smallest fix is for Shift+D in explore to use the surprise the current objective already names, and delete its separate lookup.
+- **Shift+D can land on found surprises.** In explore with no panel or hint, it steps to the next index even if that surprise is already found, while the marker shows the first unfound one. The fix above also covers this.
+
+**Should-fix:**
+- **Tap hitbox.** The new 4.6 m tap height is applied to all 10 surprises, but the marker floats above only one. The surprise check also runs before the museum and eatery checks, so a nearby surprise could take a tap meant for them; one surprise sits 7.9 m from an eatery. Whether they actually overlap on screen depends on camera angle and still needs checking.
+- **Panel fallback overrides the hint.** Opening a neighbor whose surprises are all found makes the marker jump to the first unfound surprise, dropping the last hint.
+- **Arrow label overflows on phones.** At 390 and 320 wide, the label can run off both screen edges; a surprise title plus distance is about 400 px.
+- **Finale banner text is cut off.** At 1100, 390 and 320, the title is clipped (at 320 it reads "…Found: Impro"). The tests only check the text content, so they don't catch it.
+- **Fanfare depends on line order.** The 10/10 fanfare works only because the discovery is recorded before the sound cue runs; passing the "all found" flag to the cue removes that dependency.
+
+The review also lists optional items and two cuts. Save/reset handling of the new hint state looked correct.
+
+The GitHub, Slack, Linear and other engineering connectors need authorizing before they can be used: through the claude.ai connector settings, or `/mcp` in an interactive session. None were needed for this review.

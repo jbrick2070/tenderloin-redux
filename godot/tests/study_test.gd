@@ -1499,6 +1499,7 @@ func run() -> void:
 		require(expected_ks_node != null and expected_ks_node.visible and study.visible_surprise_keepsake_count() == s_idx + 1, "discovering surprise '%s' reveals its 3D neighbor keepsake prop (%d/10)" % [expected_sid, s_idx + 1])
 		require(study.reward_banner != null and study.reward_banner.visible and study.reward_body_label.text.contains("Sparks:") and study.reward_body_label.text.contains(expected_ks_label) and study.info.text.contains(expected_ks_label) and study.celebration_burst_node != null and study.celebration_burst_node.visible, "discovering surprise '%s' triggers RewardBanner with Sparks count and keepsake label '%s'" % [expected_sid, expected_ks_label])
 	require(study.discovered_surprises.size() == 10 and study.visible_surprise_keepsake_count() == 10 and study.spark_count() == pre_sparks + 10, "discovering all 10 neighborhood surprises reveals all 10 3D keepsakes and increments spark_count by 10")
+	require(study.reward_title_label.text.contains("10/10 Surprises:") and study.reward_body_label.text.contains("All 10/10 Keepsakes!") and study.last_music_cue == "surprise_finale" and study.cue_arpeggio_freqs.size() == 4 and is_equal_approx(study.cue_chime_freq, 1046.50) and is_equal_approx(study.cue_arpeggio_duration, 0.68) and is_equal_approx(study.reward_banner_timer, 4.5), "discovering the 10th surprise triggers the 10/10 All Keepsakes grand finale RewardBanner (4.5s) and explicit surprise_finale 4-note ascending C-major octave fanfare")
 	require(study.jeffrey_turntable_node.visible and study.hidden_mural_sketch_node.visible and is_equal_approx(study.speaker_beacon_mesh.position.y, 1.54), "discovering jeffrey_record and hidden_mural_145 reveals 3D turntable on RookSpeaker (raising SpeakerBeacon above sleeve) and sketch card on MuralBoard")
 	var prev_disc_rot: float = study.jeffrey_turntable_disc_mesh.rotation.y
 	var prev_tail_rot: float = study.celeste_dino_tail_node.rotation.y
@@ -1524,11 +1525,29 @@ func run() -> void:
 	require(study.apply_save_envelope(saved_m4_json), "restore full M1-M4 save before testing combined M1-M4 + 10-surprise budget")
 	study.history_read = true
 	study.blackhawk_discovered = true
+	study.end_conversation()
+	study.player.position = study.PLAYER_START
+	var explore_obj_0: Dictionary = study.current_objective()
+	var jeffrey_pt: Vector2 = study.surprise_points.get("jeffrey_record", Vector2.ZERO)
+	require(String(explore_obj_0.get("id", "")) == "explore" and bool(explore_obj_0.get("has_target", false)) and String(explore_obj_0.get("surprise_id", "")) == "jeffrey_record" and String(explore_obj_0.get("target_name", "")) == "Jeffrey's Lost 1961 Record" and Vector2(explore_obj_0.target.x, explore_obj_0.target.z).distance_to(jeffrey_pt) < 0.01, "in explore chapter with no active panel or hint, current_objective() targets the first undiscovered surprise (jeffrey_record)")
+	study.update_guide_marker()
+	study.target = Vector3(study.PLAYER_START.x, 1.0, study.PLAYER_START.z)
+	study.view_size = 58.0
+	study.update_camera()
+	study.update_guide_arrow()
+	require(study.guide_marker.visible and Vector2(study.guide_marker.position.x, study.guide_marker.position.z).distance_to(jeffrey_pt) < 0.01 and study.guide_arrow.visible and study.guide_arrow_label.text.begins_with("Jeffrey's Lost 1961 Record · "), "in explore chapter, the 3D gold GuideMarker floats above the target surprise and the off-screen GuideArrow names the surprise and distance")
 	study.show_conversation(0)
+	var bea_obj: Dictionary = study.current_objective()
+	var mayor_pt: Vector2 = study.surprise_points.get("mayor_pomp_event", Vector2.ZERO)
+	require(String(bea_obj.get("surprise_id", "")) == "mayor_pomp_event" and Vector2(bea_obj.target.x, bea_obj.target.z).distance_to(mayor_pt) < 0.01, "while talking with Bea in explore chapter, current_objective() targets Bea's first undiscovered paired surprise (mayor_pomp_event)")
 	require(study.conv_action_ids[0] == "surprise" and study.conv_action_btns[0].text == "Spot Surprise (0/10)", "in explore chapter with undiscovered surprises at desktop width, conversation offers Spot Surprise (0/10)")
 	var bea_explore_hint: String = study.ask_whats_next()
-	require(bea_explore_hint.begins_with("Bea: \"Have you spotted Impromptu 'Mayor Public Event' & Ribbon Cutting yet?") and study.last_panel_dialogue == bea_explore_hint, "ask_whats_next() with Bea in explore chapter gives a personal direction to her first undiscovered paired surprise")
-	require(study.run_conversation_action(0) and study.discovered_surprises.size() == 1 and study.discovered_surprises.has("mayor_pomp_event") and study.bea_mayor_ribbon_node.visible and study.last_panel_dialogue.begins_with("Bea: \"") and study.block_detail_label.text.contains("Block Mayor") and study.block_panel_mode == "talk", "tapping Spot Surprise while talking with Bea discovers her first paired surprise (mayor_pomp_event), reveals MayorRibbonRosette on her walker, and immediately displays her surprise reflection in the panel")
+	require(bea_explore_hint.begins_with("Bea: \"Have you spotted Impromptu 'Mayor Public Event' & Ribbon Cutting yet?") and study.last_panel_dialogue == bea_explore_hint and study.last_hinted_surprise_id == "mayor_pomp_event", "ask_whats_next() with Bea in explore chapter gives a personal direction to her first undiscovered paired surprise and locks last_hinted_surprise_id")
+	study.end_conversation()
+	var post_bye_obj: Dictionary = study.current_objective()
+	require(String(post_bye_obj.get("surprise_id", "")) == "mayor_pomp_event" and study.guide_marker.visible and Vector2(study.guide_marker.position.x, study.guide_marker.position.z).distance_to(mayor_pt) < 0.01, "after saying goodbye to Bea, last_hinted_surprise_id keeps GuideMarker locked onto Bea's hinted surprise (mayor_pomp_event) instead of jumping back to jeffrey_record")
+	study.show_conversation(0)
+	require(study.run_conversation_action(0) and study.discovered_surprises.size() == 1 and study.discovered_surprises.has("mayor_pomp_event") and study.last_hinted_surprise_id == "" and study.bea_mayor_ribbon_node.visible and study.last_panel_dialogue.begins_with("Bea: \"") and study.block_detail_label.text.contains("Block Mayor") and study.block_panel_mode == "talk", "tapping Spot Surprise while talking with Bea discovers her first paired surprise (mayor_pomp_event), clears last_hinted_surprise_id, reveals MayorRibbonRosette on her walker, and immediately displays her surprise reflection in the panel")
 	var custom_diag_before_revisit: String = study.last_panel_dialogue
 	study.inspect_neighborhood_surprise("mayor_pomp_event")
 	require(study.last_panel_dialogue == custom_diag_before_revisit, "re-inspecting an already-discovered surprise does not wipe last_panel_dialogue")
@@ -1536,21 +1555,39 @@ func run() -> void:
 	var first_surp_screen: Vector2 = study.camera.unproject_position(Vector3(first_surp_pt.x, 1.8, first_surp_pt.y))
 	require(study.play_area_rect().has_point(first_surp_screen), "tapping Spot Surprise keeps camera framed on the discovered surprise inside play_area_rect")
 	var one_surp_save := JSON.stringify(study.build_save_envelope())
-	require(study.apply_save_envelope(one_surp_save) and study.discovered_surprises.size() == 1 and study.surprise_guide_idx == -1, "restoring save with 1 discovered surprise resets surprise_guide_idx to -1")
+	require(study.apply_save_envelope(one_surp_save) and study.discovered_surprises.size() == 1 and study.surprise_guide_idx == -1 and study.last_hinted_surprise_id == "", "restoring save with 1 discovered surprise resets surprise_guide_idx to -1 and clears last_hinted_surprise_id")
 	study.show_conversation(0)
 	require(study.conv_action_btns[0].text == "Spot Surprise (1/10)" and study.run_conversation_action(0) and study.discovered_surprises.size() == 2 and study.discovered_surprises.has("good_donut_and_bagel") and study.bea_treat_box_node.visible, "tapping Spot Surprise (1/10) with Bea after save restore discovers her second paired surprise (good_donut_and_bagel) and reveals BakeryTreatBox on her walker")
 	var bea_after_both_hint: String = study.ask_whats_next()
 	require(bea_after_both_hint.begins_with("Bea: \"You found both of my favorite block surprises! Next, check out Jeffrey's Lost 1961 Record"), "after finding both of Bea's paired surprises, ask_whats_next() with Bea points to the next undiscovered block surprise")
 	require(study.run_conversation_action(0) and study.discovered_surprises.size() == 3 and study.discovered_surprises.has("jeffrey_record") and study.last_panel_dialogue == "" and not study.block_detail_label.text.contains("Next, check out Jeffrey"), "tapping Spot Surprise after Bea's fallback hint discovers jeffrey_record and clears the now-resolved hint from Bea's panel")
+	study.last_hinted_surprise_id = "magic_carpet_chef"
+	study.show_conversation(0)
+	require(String(study.current_objective().get("surprise_id", "")) == "magic_carpet_chef", "opening a neighbor panel whose own pairs are already found preserves last_hinted_surprise_id instead of jumping to global fallback")
 	study.show_mural_panel(true)
-	require(study.inspect_neighborhood_surprise("hidden_mural_145") and study.hidden_mural_sketch_node.visible and study.last_panel_dialogue.begins_with("Celeste: \"") and study.mural_detail_label.text.contains("145 Leavenworth"), "discovering hidden_mural_145 while MuralPanel is open immediately sets Celeste's surprise reflection in MuralPanel")
+	require(String(study.current_objective().get("surprise_id", "")) == "hidden_mural_145" and study.cycle_neighborhood_surprise() and study.discovered_surprises.has("hidden_mural_145") and study.hidden_mural_sketch_node.visible and study.last_panel_dialogue.begins_with("Celeste: \"") and study.mural_detail_label.text.contains("145 Leavenworth"), "pressing Shift+D (cycle_neighborhood_surprise) while MuralPanel is open in explore chapter follows current_objective().surprise_id (hidden_mural_145) even if last_hinted_surprise_id was set to another surprise")
+	study.show_mural_panel(false)
+	study.last_hinted_surprise_id = "cutesy_dino"
+	var dino_pt: Vector2 = study.surprise_points.get("cutesy_dino", Vector2.ZERO)
+	study.in_overview = false
+	study.in_wide_overview = false
+	study.target = Vector3(dino_pt.x, 1.8, dino_pt.y)
+	study.view_size = 52.0
+	study.update_camera()
+	study.update_guide_marker()
+	var dino_marker_tap: Vector2 = study.camera.unproject_position(Vector3(dino_pt.x, study.GUIDE_MARKER_LIFT_LOW, dino_pt.y))
+	require(study.guide_marker.visible and not study.is_screen_point_in_ui(dino_marker_tap) and study.handle_scene_tap(dino_marker_tap) and study.discovered_surprises.has("cutesy_dino") and study.celeste_dino_figurine_node.visible, "tapping the 3D floating GuideMarker height (GUIDE_MARKER_LIFT_LOW) above the active objective surprise vignette inspects and discovers the surprise")
 	study.show_conversation(3)
-	require(study.run_conversation_action(0) and study.discovered_surprises.size() == 5 and study.discovered_surprises.has("viking_dirt_biker") and study.dez_viking_charm_node.visible and study.block_detail_label.text.contains("Viking helmet"), "tapping Spot Surprise with Dez discovers Dez's paired surprise (viking_dirt_biker), reveals VikingHornCharm on his notebook, and immediately shows Dez's Viking reflection even when M4 film memory exists on Turn 1")
+	require(study.run_conversation_action(0) and study.discovered_surprises.size() == 6 and study.discovered_surprises.has("viking_dirt_biker") and study.dez_viking_charm_node.visible and study.block_detail_label.text.contains("Viking helmet"), "tapping Spot Surprise with Dez discovers Dez's paired surprise (viking_dirt_biker), reveals VikingHornCharm on his notebook, and immediately shows Dez's Viking reflection even when M4 film memory exists on Turn 1")
 	for lay_n_id in ["bea", "celeste", "rook", "dez", "thanh"]:
 		require(not study.layout_memory_line(lay_n_id).is_empty(), "layout_memory_line provides a post-opening layout memory for '%s'" % lay_n_id)
 	for s_full_id in study.NEIGHBORHOOD_SURPRISE_IDS:
 		study.discovered_surprises[s_full_id] = true
 	study.update_neighborhood_surprises_3d()
+	var explore_obj_all: Dictionary = study.current_objective()
+	study.update_guide_marker(explore_obj_all)
+	study.update_guide_arrow()
+	require(String(explore_obj_all.get("id", "")) == "explore" and not bool(explore_obj_all.get("has_target", true)) and String(explore_obj_all.get("text", "")).begins_with("All 10/10 surprises & keepsakes found!") and not study.guide_marker.visible and not study.guide_arrow.visible, "once all 10/10 surprises are discovered, current_objective() celebrates 10/10 completion with has_target=false and hides GuideMarker and GuideArrow")
 	study.celeste_talk_count = 0
 	var celeste_post_lines: Dictionary = {}
 	for _c_t in range(5):
