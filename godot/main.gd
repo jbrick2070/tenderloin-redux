@@ -565,6 +565,11 @@ var conv_action_btns: Array[Button] = []
 var conv_action_ids: Array[String] = ["", "", ""]
 var guide_marker: Node3D
 var guide_marker_target := Vector3.ZERO
+var guide_marker_target_name := ""
+var guide_arrow: Control
+var guide_arrow_poly: Polygon2D
+var guide_arrow_label: Label
+var button_suggest_style: StyleBoxFlat
 var talk_prompt_node: Node3D
 var talk_prompt_label: Label3D
 var talk_prompt_bg: MeshInstance3D
@@ -4204,11 +4209,11 @@ func current_objective() -> Dictionary:
 					best = i
 		if best >= 0:
 			var n: Dictionary = neighbors[best]
-			return {"id": "meet", "neighbor": best, "has_target": true, "target": n.pos, "text": "Meet %s (%d/%d neighbors met)" % [n.name, met, total], "hint": "%s is %s. Go say hello!" % [n.name, compass_phrase(p, neighbor_xz(best))]}
+			return {"id": "meet", "neighbor": best, "has_target": true, "target": n.pos, "target_name": String(n.name), "text": "Meet %s (%d/%d neighbors met)" % [n.name, met, total], "hint": "%s is %s. Go say hello!" % [n.name, compass_phrase(p, neighbor_xz(best))]}
 		if mural_placements.size() < MURAL_MOTIFS.size():
-			return {"id": "mural", "neighbor": celeste_index, "has_target": true, "target": MURAL_POS, "text": "Paint Sun, Wave and Rise on Celeste's easel (%d/3)" % mural_placements.size(), "hint": "Celeste's easel is %s. Add all three motifs." % compass_phrase(p, mural_xz())}
+			return {"id": "mural", "neighbor": celeste_index, "has_target": true, "target": MURAL_POS, "target_name": "Celeste's easel", "text": "Paint Sun, Wave and Rise on Celeste's easel (%d/3)" % mural_placements.size(), "hint": "Celeste's easel is %s. Add all three motifs." % compass_phrase(p, mural_xz())}
 		if not rook_soundcheck_done:
-			return {"id": "soundcheck", "neighbor": rook_index, "has_target": true, "target": ROOK_SPEAKER_POS, "text": "Run a soundcheck with Rook", "hint": "Rook's speaker is %s. One soundcheck and we're ready." % compass_phrase(p, speaker_xz())}
+			return {"id": "soundcheck", "neighbor": rook_index, "has_target": true, "target": ROOK_SPEAKER_POS, "target_name": "Rook's speaker", "text": "Run a soundcheck with Rook", "hint": "Rook's speaker is %s. One soundcheck and we're ready." % compass_phrase(p, speaker_xz())}
 		return {"id": "open", "neighbor": 0, "has_target": true, "target": bea_pos, "text": "Open the block party with Bea (O)", "hint": "Everyone has met, the mural is painted, and the sound is checked. Let's open the block party!"}
 	var kp := String(keepsake_photo.get("status", "unasked"))
 	if kp == "unasked" and not epilogue_packing:
@@ -4233,9 +4238,9 @@ func current_objective() -> Dictionary:
 	if film_phase != "done":
 		return {"id": "film", "neighbor": neighbor_index_for_id("dez"), "has_target": true, "target": neighbors[maxi(0, neighbor_index_for_id("dez"))].pos, "text": "Make the short film The Open Seat (.)", "hint": "Celeste and I want to make a little three-shot film. Want to help?"}
 	if not history_read:
-		return {"id": "comptons", "neighbor": -1, "has_target": true, "target": COMPTONS_POS, "text": "Read the Compton's Cafeteria plaque at Turk & Taylor (J)", "hint": "The Compton's Cafeteria plaque at Turk & Taylor is %s." % compass_phrase(p, comptons_xz())}
+		return {"id": "comptons", "neighbor": -1, "has_target": true, "target": COMPTONS_POS, "target_name": "Compton's plaque", "text": "Read the Compton's Cafeteria plaque at Turk & Taylor (J)", "hint": "The Compton's Cafeteria plaque at Turk & Taylor is %s." % compass_phrase(p, comptons_xz())}
 	if not blackhawk_discovered:
-		return {"id": "blackhawk", "neighbor": -1, "has_target": true, "target": BLACKHAWK_POS, "text": "Visit the former Black Hawk jazz club at Turk & Hyde (H)", "hint": "The Black Hawk site at Turk & Hyde is %s." % compass_phrase(p, blackhawk_xz())}
+		return {"id": "blackhawk", "neighbor": -1, "has_target": true, "target": BLACKHAWK_POS, "target_name": "Black Hawk site", "text": "Visit the former Black Hawk jazz club at Turk & Hyde (H)", "hint": "The Black Hawk site at Turk & Hyde is %s." % compass_phrase(p, blackhawk_xz())}
 	return {"id": "explore", "neighbor": -1, "has_target": false, "target": Vector3.ZERO, "text": "Explore: museum Time-Portal (Shift+M), eateries (Shift+E), evening (Shift+L)", "hint": "Take your time. Try the museum's Time-Portal on Eddy, or the eateries along Turk."}
 
 func update_objective_ui() -> void:
@@ -4274,10 +4279,17 @@ func guide_marker_anchor(obj: Dictionary) -> Vector3:
 	var lift := 6.6 if int(obj.get("neighbor", -1)) >= 0 and String(obj.get("id", "")) != "mural" and String(obj.get("id", "")) != "soundcheck" else 4.6
 	return Vector3(t.x, lift, t.z)
 
-func update_guide_marker() -> void:
+func objective_target_name(obj: Dictionary) -> String:
+	if obj.has("target_name"):
+		return String(obj.target_name)
+	var n_i := int(obj.get("neighbor", -1))
+	return String(neighbors[n_i].name) if n_i >= 0 and n_i < neighbors.size() else "Next stop"
+
+func update_guide_marker(obj: Dictionary = {}) -> void:
 	if guide_marker == null:
 		return
-	var obj := current_objective()
+	if obj.is_empty():
+		obj = current_objective()
 	var show := bool(obj.get("has_target", false))
 	if show:
 		var t: Vector3 = obj.get("target", Vector3.ZERO)
@@ -4290,6 +4302,7 @@ func update_guide_marker() -> void:
 	if not show:
 		return
 	guide_marker_target = guide_marker_anchor(obj)
+	guide_marker_target_name = objective_target_name(obj)
 	var s := screen_constant_scale(30.0)
 	guide_marker.scale = Vector3.ONE * s
 	guide_marker.position = guide_marker_target + Vector3.UP * (sin(ui_clock * 2.6) * 0.14 * s)
@@ -4545,6 +4558,8 @@ func apply_block_panel_mode() -> void:
 		block_detail_label.clip_text = not talk
 		block_detail_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if talk else TextServer.AUTOWRAP_OFF
 		block_detail_label.max_lines_visible = 2 if talk else -1
+	if not talk:
+		apply_hub_guidance()
 	if talk:
 		var acts := conversation_actions()
 		for s in range(conv_action_btns.size()):
@@ -4570,13 +4585,103 @@ func conv_button(parent: Node, text: String, action: Callable) -> Button:
 	conv_buttons.append(control)
 	return control
 
+## The 3D view between the header and whatever panel or controls sit at the bottom.
+func play_area_rect() -> Rect2:
+	var vp := bubble_viewport_size()
+	var top := 8.0
+	if header_panel != null:
+		top = header_panel.get_global_rect().end.y + 8.0
+	var bottom := vp.y - 8.0
+	if controls != null:
+		bottom = controls.get_global_rect().position.y - 8.0
+	for p in [block_panel, mural_panel, music_panel]:
+		if p != null and p.visible:
+			bottom = minf(bottom, (p as Control).get_global_rect().position.y - 8.0)
+	return Rect2(8.0, top, maxf(vp.x - 16.0, 1.0), maxf(bottom - top, 1.0))
+
+## Edge-of-screen arrow with name and distance when the next target is off-screen.
+func update_guide_arrow() -> void:
+	if guide_arrow == null or camera == null:
+		return
+	if guide_marker == null or not guide_marker.visible:
+		guide_arrow.visible = false
+		return
+	var screen := camera.unproject_position(guide_marker_target)
+	var area := play_area_rect()
+	if area.grow(-12.0).has_point(screen):
+		guide_arrow.visible = false
+		return
+	var center := area.get_center()
+	var dir := screen - center
+	if dir.length_squared() < 1e-4:
+		guide_arrow.visible = false
+		return
+	var inset := area.grow(-26.0)
+	var half := inset.size * 0.5
+	var t := minf(half.x / maxf(absf(dir.x), 1e-4), half.y / maxf(absf(dir.y), 1e-4))
+	guide_arrow.position = center + dir * t
+	guide_arrow_poly.rotation = dir.angle()
+	var dist := player_xz().distance_to(Vector2(guide_marker_target.x, guide_marker_target.z))
+	guide_arrow_label.text = "%s · %d m" % [guide_marker_target_name, int(round(dist))]
+	var lbl_size := guide_arrow_label.get_minimum_size()
+	guide_arrow_label.size = lbl_size
+	guide_arrow_label.position = -dir.normalized() * 36.0 - lbl_size * 0.5
+	guide_arrow.visible = true
+
+func hub_button_for_objective(obj_id: String) -> Button:
+	match obj_id:
+		"meet":
+			return block_next_btn
+		"mural":
+			return block_mural_btn
+		"soundcheck":
+			return block_rook_btn
+		"open":
+			return block_open_btn
+		"photo", "pack", "return":
+			return block_epilogue_btn
+		"programme":
+			return block_programme_btn
+		"civic":
+			return block_civic_btn
+		"film":
+			return block_film_btn
+		"blackhawk":
+			return block_west_btn
+	return null
+
+## Full action list: the suggested next step gets a gold highlight; steps that unlock later are dimmed
+## (still clickable: they explain what to do first).
+func apply_hub_guidance() -> void:
+	var suggested := hub_button_for_objective(String(current_objective().get("id", "")))
+	var locked: Array[Button] = []
+	if not block_opened:
+		if not is_block_ready():
+			locked.append(block_open_btn)
+		locked.append(block_epilogue_btn)
+		locked.append(block_programme_btn)
+	if not is_civic_available() and civic_phase == "idle":
+		locked.append(block_civic_btn)
+	if not is_film_available() and film_phase == "idle":
+		locked.append(block_film_btn)
+	for b in block_buttons:
+		if b == null:
+			continue
+		var is_sug := b == suggested
+		if button_suggest_style != null and button_normal_style != null:
+			b.add_theme_stylebox_override("normal", button_suggest_style if is_sug else button_normal_style)
+		b.modulate = Color(1.0, 1.0, 1.0, 0.55) if (locked.has(b) and not is_sug) else Color.WHITE
+		b.tooltip_text = "Suggested next step" if is_sug else ("Unlocks later" if locked.has(b) else "")
+
 func update_conversation_ui(delta: float) -> void:
 	ui_clock = wrapf(ui_clock + delta, 0.0, 3600.0)
 	objective_refresh_timer -= delta
 	if objective_refresh_timer <= 0.0:
 		objective_refresh_timer = 0.5
 		update_objective_ui()
-	update_guide_marker()
+	var obj := current_objective()
+	update_guide_marker(obj)
+	update_guide_arrow()
 	update_talk_prompt()
 
 func player_height_m() -> float:
@@ -10518,6 +10623,16 @@ func make_ui() -> void:
 	button_hover_style.content_margin_top = 4
 	button_hover_style.content_margin_bottom = 4
 
+	button_suggest_style = StyleBoxFlat.new()
+	button_suggest_style.bg_color = Color(0.36, 0.29, 0.10, 0.96)
+	button_suggest_style.border_color = Color(1.0, 0.85, 0.36, 1.0)
+	button_suggest_style.set_border_width_all(3)
+	button_suggest_style.set_corner_radius_all(6)
+	button_suggest_style.content_margin_left = 8
+	button_suggest_style.content_margin_right = 8
+	button_suggest_style.content_margin_top = 4
+	button_suggest_style.content_margin_bottom = 4
+
 	panel_bg_style = StyleBoxFlat.new()
 	panel_bg_style.bg_color = Color(0.07, 0.11, 0.15, 0.92)
 	panel_bg_style.border_color = Color(0.88, 0.70, 0.30, 0.88)
@@ -10593,7 +10708,7 @@ func make_ui() -> void:
 	mural_vbox.add_child(row3)
 	mural_button(row3, "Shift Motif", func(): move_active_motif(1, 0))
 	mural_button(row3, "Clear Board", func(): clear_mural_board())
-	mural_button(row3, "Step Back", func(): show_mural_panel(false))
+	mural_button(row3, "Goodbye (Esc)", func(): end_conversation())
 	update_mural_ui()
 
 	music_panel = PanelContainer.new()
@@ -10634,7 +10749,7 @@ func make_ui() -> void:
 	m_row3.add_theme_constant_override("separation", 4)
 	music_vbox.add_child(m_row3)
 	music_sketch_btn = music_button(m_row3, "80 BPM Sketch (Active)", func(): use_synth_sketch())
-	music_button(m_row3, "Step Back", func(): show_music_panel(false))
+	music_button(m_row3, "Goodbye (Esc)", func(): end_conversation())
 	update_music_ui()
 
 	block_panel = PanelContainer.new()
@@ -10724,6 +10839,22 @@ func make_ui() -> void:
 	button(controls, "Zoom In (+)", func(): zoom(0.8))
 	button(controls, "Zoom Out (−)", func(): zoom(1.25))
 	button(controls, "Walk & Talk (Next)", func(): choose_next_neighbor(1))
+	guide_arrow = Control.new()
+	guide_arrow.name = "GuideArrow"
+	guide_arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	guide_arrow.visible = false
+	guide_arrow_poly = Polygon2D.new()
+	guide_arrow_poly.polygon = PackedVector2Array([Vector2(18, 0), Vector2(-12, -13), Vector2(-6, 0), Vector2(-12, 13)])
+	guide_arrow_poly.color = Color("ffd25a")
+	guide_arrow.add_child(guide_arrow_poly)
+	guide_arrow_label = Label.new()
+	guide_arrow_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	guide_arrow_label.add_theme_font_size_override("font_size", 15)
+	guide_arrow_label.add_theme_color_override("font_color", Color("ffe48f"))
+	guide_arrow_label.add_theme_color_override("font_outline_color", Color(0.05, 0.09, 0.12, 1.0))
+	guide_arrow_label.add_theme_constant_override("outline_size", 6)
+	guide_arrow.add_child(guide_arrow_label)
+	layer.add_child(guide_arrow)
 	var vp := get_viewport()
 	var resize_controls := func():
 		if not is_instance_valid(controls) or not is_inside_tree():
