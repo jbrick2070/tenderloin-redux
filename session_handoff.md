@@ -1,6 +1,15 @@
 # Session Handoff — Tenderloin Redux — 2026-10-20 Pacific / 2026-10-20 UTC
 
-## Latest AGY / Gemini checkpoint (`2026-10-20-story-surprises-character-ui`)
+## Latest AGY / Gemini checkpoint (`2026-10-20-neighbor-surprise-payoffs`)
+
+- **AGY hourly scheduler**: Active (`0 * * * *`, `IsDaemon: true`) with `.build-round.lock` concurrency guard. Codex scheduler `build-tenderloin-redux` and Claude scheduled task `tenderloin-3d-improvement` remain paused.
+- **Shipped in `2026-10-20-neighbor-surprise-payoffs` (`godot/main.gd`, `godot/tests/study_test.gd`)**:
+  - **3D Surprise Keepsake Payoffs**: Discovering `"jeffrey_record"` reveals `RookSpeaker/JeffreyRecordTurntable` (`jeffrey_turntable_node`, spinning `SpinningVinylLP` on Rook's speaker and raising `SpeakerBeacon` to `y = 1.54` above the propped sleeve); discovering `"hidden_mural_145"` reveals `MuralBoard/HiddenMuralSketchCard` (`hidden_mural_sketch_node` on the right leg of Celeste's portable mural easel).
+  - **Neighbor Surprise Reflections (`neighbor_surprise_memory_line()`)**: Pairs all 10 neighborhood surprises across the 5 neighbors (`Bea`: `mayor_pomp_event`, `good_donut_and_bagel`; `Celeste`: `hidden_mural_145`, `cutesy_dino`; `Rook`: `jeffrey_record`, `clown_horn_walker`; `Dez`: `viking_dirt_biker`, `magic_carpet_chef`; `Thanh`: `impromptu_drag_show`, `bite_size_nachos`), surfaces them in `neighbor_project_memory_line()` while preserving verbatim M4 `film`/`civic` memories, and alternates between M4 memory and surprise reflection by `neighbor_talk_counts` parity in the 2-line `BlockPanel` detail label (`update_block_ui()`) so neither clips on phones.
+  - **One-Tap Conversation Surprise Action (`"surprise"`)**: Offers `"Spot Surprise (%d/10)"` (`"Find %d/10"` on `< 600 px` phone screens) in `conversation_actions()`, advancing directly to the first undiscovered surprise (`run_conversation_action_id("surprise")`) and keeping the camera framed on the discovered vignette.
+  - **Independent CLI QA**: Reviewed by Kibitz native Claude CLI (`--driver agy --only claude`, `claude-opus-5-5`, effort `high`, `rc=0`, `VERDICT: yes-with-fixes`) in `kibitz-runs/2026-10-20-neighbor-surprise-payoffs/r3/`; all 7 findings fixed and verified across `godot:test`, `godot:export`, `check`, `test` (104/104), and `godot:browser`.
+
+## Historical AGY / Gemini checkpoint (`2026-10-20-story-surprises-character-ui`)
 
 - **AGY hourly scheduler**: Resumed (`0 * * * *`, `IsDaemon: true`) with `.build-round.lock` concurrency guard. Codex scheduler `build-tenderloin-redux` and Claude scheduled task `tenderloin-3d-improvement` remain paused.
 - **Shipped in this round (`godot/main.gd`, `godot/tests/study_test.gd`)**:

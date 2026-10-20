@@ -1473,6 +1473,10 @@ func run() -> void:
 	require(study.cutesy_dino_node != null and study.cutesy_dino_tail_node != null and study.cutesy_dino_node.get_node_or_null("DinoHead") != null, "Small cutesy dinosaur surprise includes DinoHead and wagging DinoTailPivot")
 	require(study.magic_carpet_chef_node != null and study.magic_carpet_chef_person != null and study.magic_carpet_chef_person.get_node_or_null("ChefToquePuff") != null, "Wild woman chef surprise includes MagicCarpetRig and ChefZafira with ChefToquePuff")
 	require(study.clown_horn_walker_node != null and study.clown_horn_bulb_mesh != null and study.mayor_event_speaker_node != null and study.mayor_fanfare_bugler_node != null and study.mayor_scissors_node != null, "Clown horn walker and impromptu Mayor Public Event surprises build animated props and speakers")
+	require(study.jeffrey_turntable_node != null and not study.jeffrey_turntable_node.visible and study.hidden_mural_sketch_node != null and not study.hidden_mural_sketch_node.visible, "JeffreyRecordTurntable on RookSpeaker and HiddenMuralSketchCard on MuralBoard start hidden before discovery")
+	var hidden_disc_rot: float = study.jeffrey_turntable_disc_mesh.rotation.y
+	study.update_people_animation(0.25)
+	require(is_equal_approx(study.jeffrey_turntable_disc_mesh.rotation.y, hidden_disc_rot), "Jeffrey's 1961 vinyl LP does not spin while JeffreyRecordTurntable is hidden")
 	var pre_sparks: int = study.spark_count()
 	var key_shift_d := InputEventKey.new()
 	key_shift_d.keycode = KEY_D
@@ -1484,6 +1488,12 @@ func run() -> void:
 		require(study.discovered_surprises.has(expected_sid), "Shift+D discovers surprise '%s'" % expected_sid)
 		require(study.reward_banner != null and study.reward_banner.visible and study.celebration_burst_node != null and study.celebration_burst_node.visible, "discovering surprise '%s' triggers RewardBanner and 3D CelebrationBurst" % expected_sid)
 	require(study.discovered_surprises.size() == 10 and study.spark_count() == pre_sparks + 10, "discovering all 10 neighborhood surprises increments spark_count by 10")
+	require(study.jeffrey_turntable_node.visible and study.hidden_mural_sketch_node.visible and is_equal_approx(study.speaker_beacon_mesh.position.y, 1.54), "discovering jeffrey_record and hidden_mural_145 reveals 3D turntable on RookSpeaker (raising SpeakerBeacon above sleeve) and sketch card on MuralBoard")
+	var prev_disc_rot: float = study.jeffrey_turntable_disc_mesh.rotation.y
+	study.update_people_animation(0.25)
+	require(not is_equal_approx(study.jeffrey_turntable_disc_mesh.rotation.y, prev_disc_rot), "Jeffrey's 1961 vinyl LP spins on RookSpeaker turntable")
+	for n_mem_id in ["bea", "celeste", "rook", "dez", "thanh"]:
+		require(not study.neighbor_surprise_memory_line(n_mem_id).is_empty() and study.neighbor_project_memory_line(n_mem_id).contains(study.neighbor_surprise_memory_line(n_mem_id)), "neighbor '%s' has a personal surprise story reflection" % n_mem_id)
 	var burst_before_revisit: int = study.reward_burst_count
 	var seq_before_revisit: int = study.save_seq
 	study.inspect_neighborhood_surprise("mayor_pomp_event")
@@ -1492,6 +1502,7 @@ func run() -> void:
 	require(int(a11y_surp.get("surprises_found", -1)) == 10 and int(a11y_surp.get("sparks", -1)) == study.spark_count(), "get_a11y_status_snapshot reports surprises_found and sparks")
 	study.talk_with_neighbor(0)
 	require(study.block_label.text.contains("Block Organizer") and study.block_label.text.contains("Turn 1/5") and study.block_label.text.contains("Sparks: "), "BlockPanel talking header includes character badge, conversation turn counter, and Sparks count")
+	require(study.info.text.contains("Block Mayor") and study.info.text.contains("Baker Mae"), "talking with Bea after discovering her surprises surfaces her surprise reflection in header info")
 	for _t_wrap in range(5):
 		study.talk_with_neighbor(0)
 	require(study.block_label.text.contains("Turn 1/5"), "conversation turn counter wraps back to Turn 1/5 on the 6th talk")
@@ -1499,13 +1510,25 @@ func run() -> void:
 	var surp_save_json := JSON.stringify(study.build_save_envelope())
 	require(surp_save_json.to_utf8_buffer().size() <= 4096, "save envelope with all 10 discovered surprises stays under 4096 bytes")
 	require(study.apply_save_envelope(saved_m4_json), "restore full M1-M4 save before testing combined M1-M4 + 10-surprise budget")
+	study.history_read = true
+	study.blackhawk_discovered = true
+	study.show_conversation(0)
+	require(study.conv_action_ids[0] == "surprise" and study.conv_action_btns[0].text == "Spot Surprise (0/10)", "in explore chapter with undiscovered surprises at desktop width, conversation offers Spot Surprise (0/10)")
+	require(study.run_conversation_action(0) and study.discovered_surprises.size() == 1 and study.block_panel_mode == "talk", "tapping Spot Surprise in conversation discovers the first surprise and keeps block_panel_mode in talk")
+	var first_surp_pt: Vector2 = study.surprise_points.get(study.NEIGHBORHOOD_SURPRISE_IDS[0], Vector2.ZERO)
+	var first_surp_screen: Vector2 = study.camera.unproject_position(Vector3(first_surp_pt.x, 1.8, first_surp_pt.y))
+	require(study.play_area_rect().has_point(first_surp_screen), "tapping Spot Surprise keeps camera framed on the discovered surprise inside play_area_rect")
+	var one_surp_save := JSON.stringify(study.build_save_envelope())
+	require(study.apply_save_envelope(one_surp_save) and study.discovered_surprises.size() == 1 and study.surprise_guide_idx == -1, "restoring save with 1 discovered surprise resets surprise_guide_idx to -1")
+	study.show_conversation(0)
+	require(study.conv_action_btns[0].text == "Spot Surprise (1/10)" and study.run_conversation_action(0) and study.discovered_surprises.size() == 2, "tapping Spot Surprise (1/10) after save restore advances to the next undiscovered surprise (size == 2)")
 	for s_full_id in study.NEIGHBORHOOD_SURPRISE_IDS:
 		study.discovered_surprises[s_full_id] = true
 	var full_m4_plus_surprises_json := JSON.stringify(study.build_save_envelope())
 	require(full_m4_plus_surprises_json.to_utf8_buffer().size() <= 4096, "full M1-M4 save envelope with all 10 discovered_surprises stays <= 4096 bytes (%d B)" % full_m4_plus_surprises_json.to_utf8_buffer().size())
 	study.reset_mural_state_to_defaults("fresh")
-	require(study.discovered_surprises.is_empty() and not study.reward_banner.visible and not study.celebration_burst_node.visible, "reset_mural_state_to_defaults clears discovered_surprises and hides reward banner/burst")
-	require(study.apply_save_envelope(surp_save_json) and study.discovered_surprises.size() == 10 and study.surprise_guide_idx == -1, "apply_save_envelope restores all 10 discovered_surprises and resets surprise_guide_idx")
+	require(study.discovered_surprises.is_empty() and not study.jeffrey_turntable_node.visible and not study.hidden_mural_sketch_node.visible and is_equal_approx(study.speaker_beacon_mesh.position.y, 1.30) and not study.reward_banner.visible and not study.celebration_burst_node.visible, "reset_mural_state_to_defaults clears discovered_surprises and hides 3D surprise keepsakes and reward banner/burst")
+	require(study.apply_save_envelope(surp_save_json) and study.discovered_surprises.size() == 10 and study.jeffrey_turntable_node.visible and study.hidden_mural_sketch_node.visible and study.surprise_guide_idx == -1, "apply_save_envelope restores all 10 discovered_surprises, 3D surprise keepsakes, and resets surprise_guide_idx")
 	study.reset_mural_state_to_defaults("fresh")
 	study.overview()
 
@@ -1673,6 +1696,8 @@ func run() -> void:
 		require(study.info.visible == (size.x >= 600), "the header info line steps aside on phones while a conversation panel is open at %s" % str(size))
 		if size.x < 600:
 			require(study.conv_chat_btn.text == "Chat More" and study.conv_bye_btn.text == "Goodbye" and study.conv_action_btns[2].text == "All Actions", "phone layout uses short conversation labels at %s" % str(size))
+			var find_w: float = ThemeDB.fallback_font.get_string_size("Find 9/10", HORIZONTAL_ALIGNMENT_CENTER, -1, 13).x
+			require(find_w + 16.0 <= study.conv_action_btns[0].size.x, "narrow phone Find 9/10 surprise label fits inside conversation action button width at %s" % str(size))
 		study.frame_conversation(0)
 		var bea_screen: Vector2 = study.camera.unproject_position(study.neighbors[0].pos + Vector3(0.0, 2.2, 0.0))
 		require(study.play_area_rect().has_point(bea_screen), "the conversation camera keeps Bea in the visible 3D area above the panel at %s" % str(size))

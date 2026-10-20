@@ -826,6 +826,9 @@ var clown_horn_bulb_mesh: MeshInstance3D
 var mayor_event_speaker_node: Node3D
 var mayor_fanfare_bugler_node: Node3D
 var mayor_scissors_node: Node3D
+var jeffrey_turntable_node: Node3D
+var jeffrey_turntable_disc_mesh: MeshInstance3D
+var hidden_mural_sketch_node: Node3D
 var character_panel_styles: Dictionary = {}
 var discovered_surprises: Dictionary = {}
 var surprise_guide_idx := -1
@@ -2495,6 +2498,15 @@ func build_mural_board() -> void:
 	rise_node.visible = false
 	mural_node.add_child(rise_node)
 	mural_motif_nodes["rise"] = rise_node
+	hidden_mural_sketch_node = Node3D.new()
+	hidden_mural_sketch_node.name = "HiddenMuralSketchCard"
+	hidden_mural_sketch_node.position = Vector3(1.52, 0.88, 0.09)
+	hidden_mural_sketch_node.visible = false
+	add_prop_mesh(hidden_mural_sketch_node, prop_box(Vector3(0.46, 0.56, 0.04)), Vector3.ZERO, material(Color("4a3228")), "SketchBacking")
+	add_prop_mesh(hidden_mural_sketch_node, prop_box(Vector3(0.40, 0.48, 0.05)), Vector3(0.0, 0.0, 0.01), mural_material(Color("283e56")), "SketchCanvas")
+	add_prop_mesh(hidden_mural_sketch_node, prop_sphere(0.08), Vector3(-0.08, 0.04, 0.04), mural_material(Color("f5d57a")), "SketchHoundMotif")
+	add_prop_mesh(hidden_mural_sketch_node, prop_cylinder(0.025, 0.04, 0.18), Vector3(0.09, -0.02, 0.04), mural_material(Color("5fd4ba")), "SketchSaxMotif")
+	mural_node.add_child(hidden_mural_sketch_node)
 	mural_node.add_child(make_label_3d("MuralBoardLabel", "Portable Mural (M)", Vector3(0.0, 3.25, 0.0), Color("ffe394"), 0.012, 22))
 	add_child(mural_node)
 	update_mural_3d()
@@ -2548,6 +2560,18 @@ func build_rook_speaker() -> void:
 	speaker_beacon_mesh.mesh = beacon_box
 	speaker_beacon_mesh.position = Vector3(0.0, 1.30, 0.0)
 	speaker_node.add_child(speaker_beacon_mesh)
+	jeffrey_turntable_node = Node3D.new()
+	jeffrey_turntable_node.name = "JeffreyRecordTurntable"
+	jeffrey_turntable_node.position = Vector3(0.0, 1.20, 0.08)
+	jeffrey_turntable_node.visible = false
+	add_prop_mesh(jeffrey_turntable_node, prop_box(Vector3(0.42, 0.05, 0.32)), Vector3(0.0, 0.025, 0.0), material(Color("5c3d28")), "TurntablePlinth")
+	jeffrey_turntable_disc_mesh = add_prop_mesh(jeffrey_turntable_node, prop_cylinder(0.13, 0.13, 0.02), Vector3(-0.04, 0.06, 0.02), material(Color("16181c")), "SpinningVinylLP")
+	add_prop_mesh(jeffrey_turntable_disc_mesh, prop_cylinder(0.048, 0.048, 0.024), Vector3.ZERO, mural_material(Color("f8cc58")), "VinylCenterLabel")
+	var tonearm := add_prop_mesh(jeffrey_turntable_node, prop_cylinder(0.012, 0.012, 0.16), Vector3(0.11, 0.07, 0.0), mural_material(Color("ffe394")), "TurntableTonearm")
+	tonearm.rotation_degrees = Vector3(90.0, -24.0, 0.0)
+	var mini_sleeve := add_prop_mesh(jeffrey_turntable_node, prop_box(Vector3(0.24, 0.24, 0.024)), Vector3(0.0, 0.16, -0.13), mural_material(Color("225588")), "ProppedRecordSleeve")
+	mini_sleeve.rotation_degrees = Vector3(-14.0, 0.0, 0.0)
+	speaker_node.add_child(jeffrey_turntable_node)
 	speaker_node.add_child(make_label_3d("RookSpeakerLabel", "Rook's Speaker (R / K)", Vector3(0.0, 2.25, 0.0), Color("9ef5e5"), 0.012, 22))
 	add_child(speaker_node)
 	update_speaker_3d()
@@ -3191,6 +3215,8 @@ func update_people_animation(delta: float) -> void:
 		viking_bike_mesh.rotation.z = sin(walk_anim_clock * 2.2) * 0.025
 	if surprise_vinyl_mesh != null:
 		surprise_vinyl_mesh.rotation.y = wrapf(surprise_vinyl_mesh.rotation.y + delta * 2.6, -PI, PI)
+	if jeffrey_turntable_disc_mesh != null and jeffrey_turntable_node != null and jeffrey_turntable_node.visible:
+		jeffrey_turntable_disc_mesh.rotation.y = wrapf(jeffrey_turntable_disc_mesh.rotation.y + delta * (3.6 if music_playing else 1.6), -PI, PI)
 	if cutesy_dino_node != null:
 		cutesy_dino_node.position.y = absf(sin(walk_anim_clock * 5.2)) * 0.14
 		cutesy_dino_node.rotation.z = sin(walk_anim_clock * 2.6) * 0.11
@@ -5116,6 +5142,13 @@ func update_neighborhood_surprises_3d() -> void:
 		else:
 			beacon.material_override = mural_material(accent.darkened(0.28))
 			beacon.scale = Vector3.ONE
+	if hidden_mural_sketch_node != null:
+		hidden_mural_sketch_node.visible = discovered_surprises.has("hidden_mural_145")
+	var has_jeffrey_lp := discovered_surprises.has("jeffrey_record")
+	if jeffrey_turntable_node != null:
+		jeffrey_turntable_node.visible = has_jeffrey_lp
+	if speaker_beacon_mesh != null:
+		speaker_beacon_mesh.position = Vector3(0.0, 1.54 if has_jeffrey_lp else 1.30, -0.06 if has_jeffrey_lp else 0.0)
 
 func inspect_neighborhood_surprise(s_id: String) -> bool:
 	if not NEIGHBORHOOD_SURPRISES.has(s_id):
@@ -5696,7 +5729,10 @@ func conversation_actions() -> Array[Dictionary]:
 		"blackhawk":
 			acts.append({"id": "blackhawk", "label": "Walk to Black Hawk"})
 		_:
-			acts.append({"id": "museum", "label": "Visit the Museum"})
+			if discovered_surprises.size() < NEIGHBORHOOD_SURPRISE_IDS.size():
+				acts.append({"id": "surprise", "label": "Spot Surprise (%d/%d)" % [discovered_surprises.size(), NEIGHBORHOOD_SURPRISE_IDS.size()]})
+			else:
+				acts.append({"id": "museum", "label": "Visit the Museum"})
 	var someone_else := -1
 	for i in range(neighbors.size()):
 		var cand := posmod(talk_partner + 1 + i, neighbors.size())
@@ -5717,6 +5753,8 @@ func conversation_actions() -> Array[Dictionary]:
 		acts.append({"id": "comptons", "label": "See Compton's Plaque"})
 	elif not blackhawk_discovered and String(acts[0].id) != "blackhawk":
 		acts.append({"id": "blackhawk", "label": "Walk to Black Hawk"})
+	elif discovered_surprises.size() < NEIGHBORHOOD_SURPRISE_IDS.size() and String(acts[0].id) != "surprise":
+		acts.append({"id": "surprise", "label": "Spot Surprise (%d/%d)" % [discovered_surprises.size(), NEIGHBORHOOD_SURPRISE_IDS.size()]})
 	elif String(acts[0].id) != other_id and someone_else != talk_partner:
 		acts.append({"id": other_id, "label": "Talk to %s" % String(neighbors[someone_else].name)})
 	else:
@@ -5763,6 +5801,13 @@ func run_conversation_action_id(act_id: String) -> bool:
 			return walk_to_or_read_history_stop("blackhawk")
 		"museum":
 			return inspect_tenderloin_museum_hub()
+		"surprise":
+			var next_u := -1
+			for u_i in range(NEIGHBORHOOD_SURPRISE_IDS.size()):
+				if not discovered_surprises.has(NEIGHBORHOOD_SURPRISE_IDS[u_i]):
+					next_u = u_i
+					break
+			return cycle_neighborhood_surprise(next_u)
 		"hub":
 			block_panel_mode = "hub"
 			show_block_panel(true)
@@ -5794,7 +5839,7 @@ func apply_block_panel_mode() -> void:
 			if has:
 				var lbl := String(acts[s].label)
 				if narrow:
-					lbl = lbl.replace("Go Meet ", "Meet ").replace("All Block Actions", "All Actions").replace(" with Celeste", "").replace(" with Rook", "").replace(" (Bea)", "").replace(" (Dez & Celeste)", "")
+					lbl = lbl.replace("Go Meet ", "Meet ").replace("All Block Actions", "All Actions").replace("Spot Surprise (", "Find ").replace("/10)", "/10").replace(" with Celeste", "").replace(" with Rook", "").replace(" (Bea)", "").replace(" (Dez & Celeste)", "")
 				conv_action_btns[s].text = lbl
 		if conv_chat_btn != null:
 			conv_chat_btn.text = "Chat More" if narrow else "Keep Chatting (T)"
@@ -8781,7 +8826,48 @@ func advance_film_step() -> String:
 	update_block_ui()
 	return "film_complete_frame_%d" % next_idx
 
+func neighbor_surprise_memory_line(neighbor_id: String) -> String:
+	match neighbor_id:
+		"bea":
+			if discovered_surprises.has("mayor_pomp_event") and discovered_surprises.has("good_donut_and_bagel"):
+				return "“The Block Mayor cut a giant ribbon on Eddy & Leavenworth with pomp and circumstance, and Baker Mae shared warm donuts and everything bagels on Eddy & Taylor!”"
+			if discovered_surprises.has("mayor_pomp_event"):
+				return "“Did you see the Block Mayor's impromptu ribbon cutting on Eddy & Leavenworth? All that pomp and circumstance for Neighbor Appreciation Hour!”"
+			if discovered_surprises.has("good_donut_and_bagel"):
+				return "“Baker Mae's pink-frosted glazed donut and toasted everything bagel on Eddy & Taylor are the warmest treat on the block!”"
+		"celeste":
+			if discovered_surprises.has("hidden_mural_145") and discovered_surprises.has("cutesy_dino"):
+				return "“You found my hidden mural below the 8th floor at 145 Leavenworth and met Pip the Tiny Dino by Boeddeker Park—I pinned the sketch to my easel!”"
+			if discovered_surprises.has("hidden_mural_145"):
+				return "“You found my hidden mural alcove at 145 Leavenworth below the 8th-floor bay window! I pinned the golden hound and sax sketch right onto my easel.”"
+			if discovered_surprises.has("cutesy_dino"):
+				return "“Pip the Tiny Dino by Boeddeker Park wagged that pastel tail while I sketched those mint-and-coral back plates!”"
+		"rook":
+			if discovered_surprises.has("jeffrey_record") and discovered_surprises.has("clown_horn_walker"):
+				return "“Jeffrey's 1961 LP from 361 Turk is spinning on top of my speaker, and Honker Barnaby honked right on the downbeat!”"
+			if discovered_surprises.has("jeffrey_record"):
+				return "“You brought Jeffrey's lost 1961 record from the 361 Turk 'So What' awning! Look on top of my speaker—that 33 RPM vinyl is spinning for the whole block.”"
+			if discovered_surprises.has("clown_horn_walker"):
+				return "“Honker Barnaby strolled past Jones & Turk and gave two gentle squeezes on that red-bulb clown horn right in pocket with our groove!”"
+		"dez":
+			if discovered_surprises.has("viking_dirt_biker") and discovered_surprises.has("magic_carpet_chef"):
+				return "“A Viking-helmet dirt biker on the 200 block of Turk and Chef Zafira flying on a magic carpet over Eddy—this neighborhood has the best rhythm in the city!”"
+			if discovered_surprises.has("viking_dirt_biker"):
+				return "“That guy idling on a dirt bike in a horned Viking helmet on the 200 block of Turk nodded right in time with our 80 BPM pocket!”"
+			if discovered_surprises.has("magic_carpet_chef"):
+				return "“Chef Zafira floated above Eddy & Leavenworth on her crimson-and-gold magic carpet tossing star-anise noodles in a flaming copper wok!”"
+		"thanh":
+			if discovered_surprises.has("impromptu_drag_show") and discovered_surprises.has("bite_size_nachos"):
+				return "“Starlight Vee's surprise drag runway at Taylor & Turk and Nacho Captain Rico's bite-sized nacho bags made the whole sidewalk glow!”"
+			if discovered_surprises.has("impromptu_drag_show"):
+				return "“Starlight Vee rolled out a magenta runway near Taylor & Turk for an impromptu drag show right in the Transgender Cultural District!”"
+			if discovered_surprises.has("bite_size_nachos"):
+				return "“Nacho Captain Rico shared warm bite-sized bags of tortilla chips and roasted salsa verde right down the sidewalk from my tea table!”"
+	return ""
+
 func neighbor_project_memory_line(neighbor_id: String) -> String:
+	var surp_mem := neighbor_surprise_memory_line(neighbor_id)
+	var base_mem := ""
 	if film_phase == "done" and is_valid_film_plan(film_result):
 		var ord: Array = film_result.get("order", FILM_SHOTS)
 		var last_shot := film_shot_title(String(ord[2]) if ord.size() >= 3 else "welcome").to_lower()
@@ -8789,31 +8875,33 @@ func neighbor_project_memory_line(neighbor_id: String) -> String:
 		var plan := String(film_result.get("plan", "quiet"))
 		match neighbor_id:
 			"rook":
-				return "“I helped with the cue and stayed out of the picture. A no can belong in a good film too.”"
+				base_mem = "“I helped with the cue and stayed out of the picture. A no can belong in a good film too.”"
 			"celeste":
-				return "“Dez and I offered our hands, not everyone else’s faces. We made the picture together.”" if framing == "wide" else "“Our props told the story without putting anyone on camera. I like that small frame.”"
+				base_mem = "“Dez and I offered our hands, not everyone else’s faces. We made the picture together.”" if framing == "wide" else "“Our props told the story without putting anyone on camera. I like that small frame.”"
 			"thanh":
-				return "“The crew held the take while I used the route. A production should fit around the people who live here.”"
+				base_mem = "“The crew held the take while I used the route. A production should fit around the people who live here.”"
 			"bea":
-				return "“They waited until the conversation finished. Being heard mattered more than rushing a take.”" if plan == "later" else "“We could keep talking while they worked quietly. The film made room for our afternoon.”"
+				base_mem = "“They waited until the conversation finished. Being heard mattered more than rushing a take.”" if plan == "later" else "“We could keep talking while they worked quietly. The film made room for our afternoon.”"
 			"dez":
-				return "“We ended on %s. A different order would tell a different little story.”" % last_shot
-	if civic_phase == "done" and is_valid_civic_plan(civic_result):
+				base_mem = "“We ended on %s. A different order would tell a different little story.”" % last_shot
+	elif civic_phase == "done" and is_valid_civic_plan(civic_result):
 		var topic := String(civic_result.get("topic", "repairs"))
 		var fmt := String(civic_result.get("format", "circle"))
 		var notes := String(civic_result.get("notes", "themes"))
 		match neighbor_id:
 			"bea":
-				return "“We put repairs and staying put into the conversation. One listening hour is a beginning, not a promise that housing problems are solved.”" if topic == "repairs" else "“I still want us to talk about repairs. Making room to come and go gave us a useful place to begin.”"
+				base_mem = "“We put repairs and staying put into the conversation. One listening hour is a beginning, not a promise that housing problems are solved.”" if topic == "repairs" else "“I still want us to talk about repairs. Making room to come and go gave us a useful place to begin.”"
 			"thanh":
-				return "“I could join for a few minutes and leave when I needed to. Keeping the table off the route mattered.”" if fmt == "dropin" else "“I liked hearing everyone together. Next time, could we leave a drop-in moment for people who cannot stay?”"
+				base_mem = "“I could join for a few minutes and leave when I needed to. Keeping the table off the route mattered.”" if fmt == "dropin" else "“I liked hearing everyone together. Next time, could we leave a drop-in moment for people who cannot stay?”"
 			"celeste":
-				return "“The shared request has no names or personal stories attached. Nobody owes us their story.”" if notes == "themes" else "“We agreed to keep no meeting notes. Listening can matter without making a record of someone.”"
+				base_mem = "“The shared request has no names or personal stories attached. Nobody owes us their story.”" if notes == "themes" else "“We agreed to keep no meeting notes. Listening can matter without making a record of someone.”"
 			"rook":
-				return "“No microphone needed. A listening hour can have room for a disagreement and a quiet voice.”"
+				base_mem = "“No microphone needed. A listening hour can have room for a disagreement and a quiet voice.”"
 			"dez":
-				return "“I helped welcome people who just wanted to listen. Nobody had to sign anything or agree to belong.”"
-	return ""
+				base_mem = "“I helped welcome people who just wanted to listen. Nobody had to sign anything or agree to belong.”"
+	if not base_mem.is_empty() and not surp_mem.is_empty():
+		return "%s · %s" % [base_mem, surp_mem]
+	return base_mem if not base_mem.is_empty() else surp_mem
 
 func is_test_suite_mode() -> bool:
 	for arg in OS.get_cmdline_user_args():
@@ -10713,7 +10801,8 @@ func apply_save_envelope(raw_json: String) -> bool:
 	celebration_burst_timer = 0.0
 	if celebration_burst_node != null:
 		celebration_burst_node.visible = false
-	# Additive optional field: gracefully filters unknown entries rather than hard-resetting v1 saves
+	# Additive optional field: gracefully filters unknown entries rather than hard-resetting v1 saves.
+	# Forward-only compatibility: downgrading to a pre-surprise client build is not a supported path.
 	var raw_surprises: Variant = env.get("discovered_surprises", [])
 	if raw_surprises is Array:
 		for s_entry in raw_surprises:
@@ -12312,7 +12401,12 @@ func update_block_ui() -> void:
 			base_detail = last_panel_dialogue
 		elif talk_idx >= 0:
 			var n_id := String(neighbors[talk_idx].get("id", ""))
-			var mem_line := neighbor_project_memory_line(n_id)
+			var surp_only := neighbor_surprise_memory_line(n_id)
+			var full_mem := neighbor_project_memory_line(n_id)
+			var mem_line := full_mem
+			if not surp_only.is_empty() and full_mem != surp_only:
+				var base_only := full_mem.trim_suffix(" · " + surp_only)
+				mem_line = surp_only if (int(neighbor_talk_counts.get(n_id, 1)) % 2 == 0) else base_only
 			var greet_line := neighbor_greeting_line(n_id)
 			var spoken := greet_line if mem_line.is_empty() else ("%s · %s" % [greet_line, mem_line])
 			base_detail = "%s  (Click %s or press T to keep chatting)" % [spoken, String(neighbors[talk_idx].get("name", "neighbor"))]

@@ -2,7 +2,22 @@
 
 Updated 2026-10-20 Pacific / 2026-10-20 UTC. **AGY 4 (`Gemini 4 Argon` High) has resumed as sole writer with the recurring hourly scheduler (`0 * * * *`) active after the Claude Code desktop handoff (`8827618`); Codex automation `build-tenderloin-redux` and Claude scheduled task `tenderloin-3d-improvement` remain PAUSED.** The full game remains unfinished. [Handoff](../session_handoff.md), [active approach](GODOT_APPROACH.md), [roadmap](ROADMAP.md).
 
-## Latest checkpoint — Neighborhood surprises, Character Talk UI & feel-good reward bursts (`2026-10-20-story-surprises-character-ui`)
+## Latest checkpoint — 3D surprise keepsakes, neighbor surprise reflections & one-tap surprise action (`2026-10-20-neighbor-surprise-payoffs`)
+
+Builds on `2026-10-20-story-surprises-character-ui` (`ed5a784`). Browser 0.12.0 and `public/` (SHA256 `2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567`) are untouched.
+
+- **3D Surprise Keepsake Payoffs on Neighbor Props (`godot/main.gd`)**:
+  - **`RookSpeaker/JeffreyRecordTurntable` (`jeffrey_turntable_node`)**: Discovering `"jeffrey_record"` beside the `361 Turk St` `'So What'` awning reveals a 3D portable turntable platter, tonearm, propped blue-and-gold `'So What'` sleeve, and spinning `SpinningVinylLP` (`jeffrey_turntable_disc`) atop Rook's sidewalk speaker (`RookSpeaker`), and raises `SpeakerBeacon` (`y = 1.18 -> 1.54`) above the propped sleeve so the soundcheck indicator stays unobstructed.
+  - **`MuralBoard/HiddenMuralSketchCard` (`hidden_mural_sketch_node`)**: Discovering `"hidden_mural_145"` at `145 Leavenworth St` pins a 3D miniature rooftop-hound-and-twilight-sax tribute card onto the right leg of Celeste's portable mural easel (`MuralBoard`).
+  - Both keepsake nodes sync immediately on discovery, save load, browser save import, and reset (`update_surprise_keepsake_props()`).
+- **Neighbor Surprise Story Reflections (`neighbor_surprise_memory_line()`, `neighbor_project_memory_line()`)**:
+  - Pairs all 10 neighborhood surprises across the 5 neighbors (`Bea`: `mayor_pomp_event`, `good_donut_and_bagel`; `Celeste`: `hidden_mural_145`, `cutesy_dino`; `Rook`: `jeffrey_record`, `clown_horn_walker`; `Dez`: `viking_dirt_biker`, `magic_carpet_chef`; `Thanh`: `impromptu_drag_show`, `bite_size_nachos`) with warm first-person reflections.
+  - Preserves verbatim M4 `film` and `civic` memories in `neighbor_project_memory_line()` while appending or alternating the neighbor's discovered surprise reflection so `update_block_ui()` never clips either line in the 2-line `BlockPanel` detail label on phones.
+- **One-Tap Conversation Surprise Action (`"surprise"` in `conversation_actions()`)**:
+  - When talking with Bea, Dez, or Thanh in `BlockPanel` conversation mode (`block_panel_mode == "talk"`), offers a `"Spot Surprise (%d/10)"` (`"Find %d/10"` on narrow `< 600 px` phone screens) action button alongside the main story objective whenever any neighborhood surprise remains undiscovered. Tapping it (`run_conversation_action_id("surprise")`) advances directly to the first undiscovered surprise and keeps the camera framed on the discovered surprise vignette while preserving conversation mode.
+- **Independent CLI review & verified fixes**: One successful installed Kibitz native Claude CLI call (`--driver agy --only claude`, exact `claude-opus-5-5`, effort `high`, `rc=0`, `VERDICT: yes-with-fixes`). [Raw report](../kibitz-runs/2026-10-20-neighbor-surprise-payoffs/r3/claude.md), [scope](../kibitz-runs/2026-10-20-neighbor-surprise-payoffs/r3/scope_receipt.md), [driver anchor](../kibitz-runs/2026-10-20-neighbor-surprise-payoffs/r3/driver_anchor.md), [judgment](../kibitz-runs/2026-10-20-neighbor-surprise-payoffs/r3/judgment.md), [final](../kibitz-runs/2026-10-20-neighbor-surprise-payoffs/r3/final.md). All 7 reviewer findings (camera framing on `"surprise"` action, `SpeakerBeacon` height clearance, alternating M4/surprise lines in `update_block_ui()`, and test state restoration) were accepted, applied in `godot/main.gd` and `godot/tests/study_test.gd`, and verified.
+
+## Historical checkpoint — Neighborhood surprises, Character Talk UI & feel-good reward bursts (`2026-10-20-story-surprises-character-ui`)
 
 Builds on the 2026-10-19 Claude Code 3D, LiDAR, street-tree, and conversation-first pass (`8827618`). Browser 0.12.0 and `public/` (SHA256 `2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567`) are untouched.
 

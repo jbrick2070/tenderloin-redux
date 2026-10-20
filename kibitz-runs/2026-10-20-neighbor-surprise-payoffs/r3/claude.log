@@ -1,0 +1,21 @@
+STDOUT:
+I wrote the round-3 review to `kibitz-runs/2026-10-20-neighbor-surprise-payoffs/r3/claude.md`. Verdict: **yes-with-fixes**. I read the repo files directly, made no code changes and didn't run the test suite.
+
+**Must-fix before building:**
+1. **Spot Surprise never shows the surprise.** `run_conversation_action` (`main.gd:5773`) treats `"surprise"` as a stay-in-conversation action. After the camera moves to the surprise, the same call snaps it back to the neighbor you're talking to. The surprise's speech bubble and celebration burst then play off-screen. The smallest fix is to remove `"surprise"` from that list.
+2. **The button doesn't find a new surprise.** "Spot Surprise (n/10)" calls `cycle_neighborhood_surprise` (`main.gd:5204`), which just steps to the next index. Loading a save resets that position to -1, so the first tap can land on a surprise already found and nothing happens. The fix is to pass the index of the first undiscovered surprise.
+3. **Test line 1511 may fail.** It only passes if the save captured at `study_test.gd:771` has both history stops already read, so the game is in the explore chapter. I couldn't confirm that without running the suite.
+
+**Should-fix:**
+- **Turntable clips through the speaker beacon.** The new turntable on Rook's speaker overlaps the beacon box. The beacon is always visible once the soundcheck is done, so the overlap is always on screen in the explore chapter.
+- **Surprise memory lines are cut off.** They're appended after the M4 lines, and the talk panel shows only 2 lines. On phones the surprise line is effectively never visible.
+- **Narrow label likely clipped.** "Surprise (9/10)" probably doesn't fit its button at 320 px; that estimate rests on assumed button and glyph widths. No narrow-screen test covers the explore chapter.
+
+**Checked and fine:**
+- Keepsake visibility stays in sync across reset, save restore and the three update functions. The startup build/load order is correct.
+- The existing M4 film and civic memory tests still pass, because they match substrings.
+- The new punctuation (curly quotes, em dash, middle dot) already appears in shipped strings, so it adds no font risk on Web.
+
+**Cut:** the duplicate visibility writes in `update_mural_3d` and `update_speaker_3d`. `update_neighborhood_surprises_3d` already runs after every change to the discovered list, so it can be the only place that sets them.
+
+Several connected services (Box, Runway, Asana, Atlassian, Datadog, GitHub, Linear, Notion, PagerDuty, Slack) need authorizing in your claude.ai connector settings or via `/mcp`. This review didn't need them.
