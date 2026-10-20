@@ -1035,8 +1035,10 @@ func run() -> void:
 	shift_l_ev.keycode = KEY_L
 	study._unhandled_input(shift_l_ev)
 	require(study.evening_mode and is_equal_approx(study.light_pool_material.albedo_color.a, 1.0) and study.world_env.ambient_light_energy < 0.6 and study.sun_light.light_energy < 0.6 and study.last_a11y_announcement.contains("Evening"), "Shift+L switches to evening: lower sun and ambient, glowing light pools")
+	require(study.meshes[0].material_override == study.building_shader_material and study.wider_meshes[0].material_override == study.building_shader_material and is_equal_approx(float(study.building_shader_material.get_shader_parameter("night_glow")), 1.0), "evening mode lights up the windows through the shared building shader")
 	study._unhandled_input(shift_l_ev)
 	require(not study.evening_mode and is_equal_approx(study.world_env.ambient_light_energy, 0.72) and is_equal_approx(study.sun_light.light_energy, 1.25), "Shift+L again restores daylight")
+	require(is_equal_approx(float(study.building_shader_material.get_shader_parameter("night_glow")), 0.0) and study.glass_flag(Color("ffe494"), true).a < 0.65 and study.glass_flag(Color("ffe494"), false).a > 0.65, "daylight turns the window glow off; glass flags mark lit and unlit windows")
 	var plain_l_ev := InputEventKey.new()
 	plain_l_ev.pressed = true
 	plain_l_ev.keycode = KEY_L

@@ -265,10 +265,10 @@ var data: Dictionary
 var camera: Camera3D
 var meshes: Array[MeshInstance3D] = []
 var building_rects: Array[Rect2] = []
-var building_materials: Array[StandardMaterial3D] = []
+var building_materials: Array[Material] = []
 var wider_meshes: Array[MeshInstance3D] = []
 var wider_building_rects: Array[Rect2] = []
-var wider_building_materials: Array[StandardMaterial3D] = []
+var wider_building_materials: Array[Material] = []
 var all_buildings: Array = []
 var all_building_rects: Array[Rect2] = []
 var street_ways: Array = []
@@ -580,7 +580,7 @@ var field_survey_overrides: Dictionary = FIELD_SURVEY_OVERRIDES.duplicate(true)
 var last_built_palette: Dictionary = {}
 var street_intersections: Array[Vector2] = []
 var corner_tower_sites: Dictionary = {}
-var rooftop_material: StandardMaterial3D
+var building_shader_material: ShaderMaterial
 var rooftop_feature_counts: Dictionary = {"parapets": 0, "water_tanks": 0, "penthouses": 0, "skylights": 0, "vents": 0, "corner_towers": 0}
 var rooftop_feature_points: Array[Dictionary] = []
 var trolley_pole_points: Array[Vector2] = []
@@ -696,6 +696,35 @@ func colored_beam(surface: SurfaceTool, a: Vector3, b: Vector3, thickness: float
 	colored_quad(surface, a + side - up, b + side - up, b + side + up, a + side + up, col)
 	colored_quad(surface, a + side + up, b + side + up, b - side + up, a - side + up, col.lightened(0.08))
 	colored_quad(surface, a - side + up, b - side + up, b - side - up, a - side - up, col)
+
+# Vertex-colored building shader. Window glass carries a flag in vertex alpha (< 0.65 lit at night,
+# < 0.95 unlit glass); every other surface is opaque alpha 1. By day it matches the former
+# StandardMaterial3D (vertex color albedo, roughness 1, double-sided); in evening mode lit windows glow.
+const BUILDING_SHADER_CODE := """
+shader_type spatial;
+render_mode cull_disabled;
+uniform float night_glow = 0.0;
+void fragment() {
+	float glass = 1.0 - step(0.95, COLOR.a);
+	float lit = 1.0 - step(0.65, COLOR.a);
+	ALBEDO = mix(COLOR.rgb, COLOR.rgb * 0.42, glass * night_glow);
+	ROUGHNESS = 1.0;
+	EMISSION = COLOR.rgb * lit * night_glow * 0.9;
+}
+"""
+
+func building_material() -> ShaderMaterial:
+	if building_shader_material == null:
+		var sh := Shader.new()
+		sh.code = BUILDING_SHADER_CODE
+		building_shader_material = ShaderMaterial.new()
+		building_shader_material.shader = sh
+		building_shader_material.set_shader_parameter("night_glow", 0.0)
+	return building_shader_material
+
+## Window glass color tagged for the building shader: lit (glows in evening mode) or unlit.
+func glass_flag(col: Color, lit_at_night: bool) -> Color:
+	return Color(col.r, col.g, col.b, 0.5 if lit_at_night else 0.8)
 
 func vertex_color_material() -> StandardMaterial3D:
 	var result := material(Color.WHITE)
@@ -906,7 +935,7 @@ func add_corner_tower(surface: SurfaceTool, site: Dictionary, h: float, pal: Dic
 			var w0 := (base + d0 * r + nrm).lerp(base + d1 * r + nrm, 0.2)
 			var w1 := (base + d0 * r + nrm).lerp(base + d1 * r + nrm, 0.8)
 			var g_col: Color = glass_cols[(rseed + f + s_i * 3) % glass_cols.size()]
-			colored_quad(surface, w0 + Vector3.UP * wy0, w1 + Vector3.UP * wy0, w1 + Vector3.UP * wy1, w0 + Vector3.UP * wy1, g_col)
+			colored_quad(surface, w0 + Vector3.UP * wy0, w1 + Vector3.UP * wy0, w1 + Vector3.UP * wy1, w0 + Vector3.UP * wy1, glass_flag(g_col, (f + s_i) % 3 != 0))
 		colored_prism(surface, base + Vector3.UP * (y0 + story_h - 0.12), r + 0.06, r + 0.06, 0.12, sides, trim_col, no_cap)
 	colored_prism(surface, base + Vector3.UP * shaft_top, r + 0.28, r + 0.28, 0.32, sides, trim_col, trim_col.darkened(0.1))
 	var dome_cols: Array[Color] = [Color("5e9c88"), Color("56606b"), Color("b8643f")]
@@ -1082,9 +1111,7 @@ func build_rooftop_details(building: Dictionary, h: float, pal: Dictionary) -> M
 	var det := MeshInstance3D.new()
 	det.name = ROOFTOP_DETAIL_NODE
 	det.mesh = surface.commit()
-	if rooftop_material == null:
-		rooftop_material = vertex_color_material()
-	det.material_override = rooftop_material
+	det.material_override = building_material()
 	return det
 
 ## Point 20% along the longest outer edge whose outward side faces a street, plus that outward normal.
@@ -1116,7 +1143,7 @@ func set_rooftop_details_visible(b_mesh: MeshInstance3D, visible_flag: bool) -> 
 	if det != null:
 		det.visible = visible_flag
 
-func make_building_mesh_and_rect(building: Dictionary, mat: StandardMaterial3D, base_col: Color = Color("d49a6a")) -> Dictionary:
+func make_building_mesh_and_rect(building: Dictionary, mat: Material, base_col: Color = Color("d49a6a")) -> Dictionary:
 	var surface := SurfaceTool.new()
 	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
 	surface.set_smooth_group(-1)
@@ -1265,7 +1292,7 @@ func make_building_mesh_and_rect(building: Dictionary, mat: StandardMaterial3D, 
 						colored_quad(surface, a, s_a, s_a + Vector3.UP * plinth_h, a + Vector3.UP * plinth_h, plinth_col)
 						colored_quad(surface, s_b, b, b + Vector3.UP * plinth_h, s_b + Vector3.UP * plinth_h, plinth_col)
 						colored_quad(surface, s_a, s_b, s_b + Vector3.UP * sill_y, s_a + Vector3.UP * sill_y, plinth_col)
-						colored_quad(surface, s_a + Vector3.UP * sill_y, s_b + Vector3.UP * sill_y, s_b + Vector3.UP * head_y, s_a + Vector3.UP * head_y, storefront_glow)
+						colored_quad(surface, s_a + Vector3.UP * sill_y, s_b + Vector3.UP * sill_y, s_b + Vector3.UP * head_y, s_a + Vector3.UP * head_y, glass_flag(storefront_glow, true))
 						var transom_col := glass_warm.lerp(cornice_col, 0.35) if mezzanine else cornice_col
 						colored_quad(surface, s_a + Vector3.UP * head_y, s_b + Vector3.UP * head_y, s_b + Vector3.UP * plinth_h, s_a + Vector3.UP * plinth_h, transom_col)
 						if (seg_len >= 5.6 and ((b_hash + i) % 2 == 0)) or force_awning:
@@ -1303,7 +1330,7 @@ func make_building_mesh_and_rect(building: Dictionary, mat: StandardMaterial3D, 
 							var p_wt1 := a.lerp(b, wt1)
 							var p_t1 := a.lerp(b, t1)
 							var w_pick: int = (b_hash + i * 7 + s_i * 13 + bay_i * 5) % 5
-							var win_col := glass_warm if w_pick <= 1 else (glass_amber if w_pick == 2 else glass_sky)
+							var win_col := glass_flag(glass_warm if w_pick <= 1 else (glass_amber if w_pick == 2 else glass_sky), ((b_hash / 3 + i * 11 + s_i * 7 + bay_i * 3) % 9) < 5)
 							if bay_i == fire_bay:
 								# 3D Wrought-Iron Fire Escape balcony platform & railing
 								var fe_out := out_n * 0.50
@@ -1426,8 +1453,7 @@ func _ready() -> void:
 	for idx in range(data.buildings.size()):
 		var building: Dictionary = data.buildings[idx]
 		var base_c: Color = palette[idx % palette.size()]
-		var b_mat := material(Color.WHITE)
-		b_mat.vertex_color_use_as_albedo = true
+		var b_mat := building_material()
 		building_materials.append(b_mat)
 		var built := make_building_mesh_and_rect(building, b_mat, base_c)
 		var b_mesh: MeshInstance3D = built.mesh
@@ -1440,8 +1466,7 @@ func _ready() -> void:
 	for w_idx in range(wider_list.size()):
 		var w_building: Dictionary = wider_list[w_idx]
 		var w_base_c: Color = wider_palette[w_idx % wider_palette.size()]
-		var w_mat := material(Color.WHITE)
-		w_mat.vertex_color_use_as_albedo = true
+		var w_mat := building_material()
 		wider_building_materials.append(w_mat)
 		var w_built := make_building_mesh_and_rect(w_building, w_mat, w_base_c)
 		var w_mesh: MeshInstance3D = w_built.mesh
@@ -3768,6 +3793,8 @@ func apply_time_of_day() -> void:
 		rim_light.light_energy = 0.30 if evening_mode else 0.48
 	if light_pool_material != null:
 		light_pool_material.albedo_color = Color(1.0, 1.0, 1.0, 1.0 if evening_mode else DAY_LIGHT_POOL_ALPHA)
+	if building_shader_material != null:
+		building_shader_material.set_shader_parameter("night_glow", 1.0 if evening_mode else 0.0)
 
 func toggle_evening_lights() -> bool:
 	evening_mode = not evening_mode
