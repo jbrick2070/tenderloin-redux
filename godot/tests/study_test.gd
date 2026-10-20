@@ -1596,15 +1596,21 @@ func run() -> void:
 		require(not study.layout_memory_line(lay_n_id).is_empty(), "layout_memory_line provides a post-opening layout memory for '%s'" % lay_n_id)
 	for s_full_id in study.NEIGHBORHOOD_SURPRISE_IDS:
 		study.discovered_surprises[s_full_id] = true
+	study.visited_museum_eras.clear()
+	study.boeddeker_park_visited = false
+	study.so_what_visited = false
+	study.eatery_order_counts.clear()
+	study.landmark_tour_celebrated = false
 	study.update_neighborhood_surprises_3d()
 	var explore_obj_all: Dictionary = study.current_objective()
 	study.update_guide_marker(explore_obj_all)
 	study.update_guide_arrow()
-	require(String(explore_obj_all.get("id", "")) == "explore" and not bool(explore_obj_all.get("has_target", true)) and String(explore_obj_all.get("text", "")).begins_with("All 10/10 surprises & keepsakes found!") and not study.guide_marker.visible and not study.guide_arrow.visible, "once all 10/10 surprises are discovered, current_objective() celebrates 10/10 completion with has_target=false and hides GuideMarker and GuideArrow")
+	require(String(explore_obj_all.get("id", "")) == "explore" and bool(explore_obj_all.get("has_target", false)) and explore_obj_all.get("tour_id") == "museum:0" and String(explore_obj_all.get("text", "")).contains("0/12 this session") and study.guide_marker.visible, "all 10 keepsakes unlock session-only tour guidance to the first museum era")
 	study.show_conversation(0)
-	require(study.conv_action_ids[0] == "museum" and study.conv_action_btns[0].text == "Visit the Museum" and study.conv_action_ids[1] == "eateries" and study.conv_action_btns[1].text == "Visit Eateries" and study.conv_action_ids[2] == "hub", "once all 10/10 surprises are discovered, conversation offers Visit the Museum and Visit Eateries alongside All Block Actions")
+	require(study.conv_action_ids[0] == "landmark_tour" and study.conv_action_btns[0].text == "Visit the Museum" and study.conv_action_ids[1] == "eateries" and study.conv_action_btns[1].text == "Visit Eateries" and study.conv_action_ids[2] == "hub", "all 10 keepsakes offer the next tour stop plus free eatery exploration and All Block Actions")
 	study.ask_whats_next()
 	require(study.run_conversation_action(0) and study.last_panel_dialogue == "" and study.speech_bubble_anchor == "museum_docent", "tapping Visit the Museum from conversation inspects the Tenderloin Museum Hub and clears stale What's Next prompt")
+	require(study.active_time_era == study.TOUR_MUSEUM_ERAS[0], "first guided stop matches the museum's present-day era")
 	study.ask_whats_next()
 	var prev_eatery_idx: int = study.eatery_guide_idx
 	require(study.run_conversation_action(1) and study.last_panel_dialogue == "" and study.eatery_guide_idx != prev_eatery_idx and study.speech_bubble_anchor.begins_with("eatery:"), "tapping Visit Eateries from conversation cycles to the next neighborhood eatery counter and clears stale What's Next prompt")
@@ -1616,7 +1622,7 @@ func run() -> void:
 		celeste_post_lines[c_tl] = true
 	require(celeste_post_lines.size() == 5 and study.mural_detail_label != null and study.mural_detail_label.text.contains("145 Leavenworth") and study.mural_detail_label.text.count("145 Leavenworth") == 1 and study.info.text.count("145 Leavenworth") == 1, "Celeste has 5 distinct post-mural conversation turns and Turn 5 does not duplicate her surprise memory in mural_detail_label or info.text")
 	var celeste_next: String = study.ask_whats_next()
-	require(celeste_next.begins_with("Celeste: \"You've spotted all 10 neighborhood surprises and unlocked every keepsake on our block!") and study.mural_detail_label.text.begins_with("Celeste: \"") and study.speech_bubble_anchor == "celeste", "What's Next? while MuralPanel is open with all 10 surprises found speaks as Celeste celebrating all 10 keepsakes and updates mural_detail_label")
+	require(celeste_next.begins_with("Celeste: \"All 10 keepsakes are yours!") and celeste_next.contains("this session") and study.mural_detail_label.text.begins_with("Celeste: \"") and study.speech_bubble_anchor == "celeste", "Celeste explains the next session tour stop with her own attribution")
 	study.end_conversation()
 	require(not study.mural_panel.visible and study.info.text.begins_with("You said goodbye to Celeste."), "Goodbye from MuralPanel closes the panel and says goodbye to Celeste")
 	study.player.position = Vector3(-50.0, 0.0, 60.0)
@@ -1631,17 +1637,113 @@ func run() -> void:
 		rook_post_lines[r_tl] = true
 	require(rook_post_lines.size() == 5 and study.music_stem_label.text.contains("361 Turk") and study.music_stem_label.text.count("361 Turk") == 1 and study.info.text.count("361 Turk") == 1, "Rook has 5 distinct post-mural conversation turns and Turn 5 does not duplicate his surprise memory in music_stem_label or info.text")
 	var rook_next: String = study.ask_whats_next()
-	require(rook_next.begins_with("Rook: \"You've spotted all 10 neighborhood surprises and unlocked every keepsake on our block!") and study.music_stem_label.text.contains(rook_next) and study.speech_bubble_anchor == "rook", "What's Next? while MusicPanel is open with all 10 surprises found speaks as Rook celebrating all 10 keepsakes and updates music_stem_label")
+	require(rook_next.begins_with("Rook: \"All 10 keepsakes are yours!") and rook_next.contains("this session") and study.music_stem_label.text.contains(rook_next) and study.speech_bubble_anchor == "rook", "Rook explains the next session tour stop with his own attribution")
 	study.end_conversation()
 	require(not study.music_panel.visible and study.info.text.begins_with("You said goodbye to Rook."), "Goodbye from MusicPanel closes the panel and says goodbye to Rook")
 	var full_m4_plus_surprises_json := JSON.stringify(study.build_save_envelope())
 	require(full_m4_plus_surprises_json.to_utf8_buffer().size() <= 4096, "full M1-M4 save envelope with all 10 discovered_surprises stays <= 4096 bytes (%d B)" % full_m4_plus_surprises_json.to_utf8_buffer().size())
+	var tour_save_before := JSON.stringify(study.build_save_envelope())
+	require(int(study.landmark_tour_state().count) == 1, "viewing an eatery does not count as a first order; museum first visit counts")
+	study.inspect_boeddeker_park()
+	study.inspect_boeddeker_park()
+	study.eatery_counter_interact(5)
+	study.eatery_counter_interact(5)
+	require(int(study.landmark_tour_state().count) == 3 and study.current_objective().tour_id == "museum:1", "out-of-order park/cafe visits count once and preserve earliest unvisited tour stop")
+	for _era in range(3):
+		require(study.visit_next_landmark(), "guided museum action inspects next unvisited era")
+		require(study.active_time_era == study.TOUR_MUSEUM_ERAS[_era + 1], "guided museum ordering matches the actual era")
+	require(study.visited_museum_eras.size() == 4 and study.current_objective().tour_id == "so_what" and study.current_objective().target == Vector3(study.SO_WHAT_AWNING_XZ.x, 0.0, study.SO_WHAT_AWNING_XZ.y), "museum eras advance and the previsited park is skipped; Easter egg marker targets the awning")
+	require(study.visit_next_landmark() and study.so_what_visited, "guided Easter egg inspection advances tour")
+	for _counter in range(5):
+		var tour_obj: Dictionary = study.current_objective()
+		var counter_idx := int(String(tour_obj.tour_id).get_slice(":", 1))
+		var counter_point: Vector2 = study.eatery_counter_points[counter_idx]
+		require(tour_obj.target == Vector3(counter_point.x, 0.0, counter_point.y), "eatery marker points to the actual sidewalk counter")
+		require(study.visit_next_landmark(), "explicit guided order visits the next fictional cafe")
+	require(int(study.landmark_tour_state().count) == 12 and not bool(study.current_objective().has_target), "all 12 session stops complete the tour and remove guidance")
+	require(JSON.stringify(study.build_save_envelope()) == tour_save_before, "all tour interactions leave the Godot save envelope byte-for-byte unchanged")
+	study.discovered_surprises.erase("jeffrey_record")
+	study.reward_banner.visible = false
+	study.update_landmark_tour_completion()
+	require(not study.landmark_tour_celebrated, "previsited tour stops cannot celebrate until all ten surprises are found")
+	study.discovered_surprises["jeffrey_record"] = true
+	study.last_reward_title = "10/10 Surprises: finale test"
+	study.reward_banner.visible = true
+	study.reward_banner_timer = 4.5
+	study.update_landmark_tour_completion()
+	require(not study.landmark_tour_celebrated and study.last_reward_title.begins_with("10/10"), "tour finale waits for the protected keepsake finale")
+	study.update_celebration_burst(4.6)
+	require(not study.reward_banner.visible and not study.landmark_tour_celebrated, "expired keepsake banner hides before the tour completion phase of the frame")
+	study.update_landmark_tour_completion()
+	require(study.landmark_tour_celebrated and study.last_music_cue == "tour_complete" and study.last_reward_title == "Neighborhood Tour Complete!", "tour completion announces and celebrates after earlier banner finishes")
+	var tour_bursts: int = study.reward_burst_count
+	study.update_landmark_tour_completion()
+	require(study.reward_burst_count == tour_bursts and not study.visit_next_landmark(), "completed tour does not award again or dispatch an empty action")
+	require(study.apply_save_envelope(tour_save_before) and not study.landmark_tour_celebrated and int(study.landmark_tour_state().count) == 0 and study.visible_surprise_keepsake_count() == 10, "reload resets optional session tour while all ten physical keepsakes remain saved")
+	study.talk_with_celeste()
+	var old_celeste_hint: String = study.ask_whats_next()
+	study.visit_next_landmark()
+	require(not study.mural_detail_label.text.contains(old_celeste_hint), "museum visit clears Celeste's completed objective hint")
+	study.end_conversation()
+	study.check_sound_with_rook()
+	var old_rook_hint: String = study.ask_whats_next()
+	study.visit_next_landmark()
+	require(not study.music_stem_label.text.contains(old_rook_hint), "museum visit clears Rook's completed objective hint")
+	study.end_conversation()
+	for tap_size in [Vector2i(1100, 760), Vector2i(390, 667), Vector2i(320, 667)]:
+		root.size = tap_size
+		await process_frame
+		await process_frame
+		for pitch in [1.0, 0.55]:
+			study.visited_museum_eras = {"present": true, "1961_jazz": true, "1966_comptons": true, "1907_cadillac": true}
+			study.boeddeker_park_visited = false
+			study.target = Vector3(study.BOEDDEKER_PARK_ENTRANCE.x, 2.0, study.BOEDDEKER_PARK_ENTRANCE.y)
+			study.view_size = 96.0
+			study.camera_pitch_scale = pitch
+			study.in_overview = false
+			study.in_wide_overview = false
+			study.update_camera()
+			study.update_guide_marker()
+			var marker_center: Vector3 = study.guide_marker.global_position + Vector3.UP * 0.5 * study.guide_marker.scale.y
+			var marker_tap: Vector2 = study.camera.unproject_position(marker_center)
+			require(not study.is_screen_point_in_ui(marker_tap) and study.handle_scene_tap(marker_tap) and study.boeddeker_park_visited, "tour marker center activates park at %s pitch %.2f" % [tap_size, pitch])
+		study.so_what_visited = true
+		study.eatery_order_counts.clear()
+		study.eatery_counter_nodes[0].visible = false
+		var first_counter: Vector2 = study.eatery_counter_points[0]
+		study.player.position = Vector3(first_counter.x, 0.0, first_counter.y)
+		study.target = study.player.position + Vector3.UP * 1.3
+		study.view_size = 56.0
+		study.update_camera()
+		study.update_guide_marker()
+		require(study.eatery_counter_nodes[0].visible and not study.guide_marker.visible, "nearby guided counter is visible even when its gold marker hides")
+		var tour_counter_tap: Vector2 = study.camera.unproject_position(study.player.position + Vector3.UP * 1.3)
+		require(not study.is_screen_point_in_ui(tour_counter_tap) and study.handle_scene_tap(tour_counter_tap) and int(study.eatery_order_counts.get(String(study.NEIGHBORHOOD_EATERIES[0].id), 0)) == 1, "walking to and tapping a fresh tour counter orders directly at %s" % tap_size)
+		study.trigger_feel_good_burst("Progress!", "12/12 stops this session\nThanks for exploring!", study.target)
+		await process_frame
+		await process_frame
+		var reward_body_rect: Rect2 = study.reward_body_label.get_global_rect()
+		require(study.reward_body_label.get_visible_line_count() >= 2 and study.reward_banner.get_global_rect().encloses(reward_body_rect) and study.play_area_rect().encloses(study.reward_banner.get_global_rect()), "reward detail displays two readable lines within the banner and play area at %s" % tap_size)
+		study.visited_museum_eras.clear()
+		study.show_conversation(0)
+		await process_frame
+		await process_frame
+		study.visit_next_landmark()
+		await process_frame
+		await process_frame
+		require(bool(study.get_a11y_status_snapshot().guide_marker_screen.visible), "museum tour marker stays in the play area above the conversation at %s" % tap_size)
+		study.end_conversation()
+	root.size = Vector2i(1100, 760)
+	study.camera_pitch_scale = 1.0
+	await process_frame
 	study.inspect_tenderloin_museum_hub()
 	study.inspect_tenderloin_museum_hub()
 	study.inspect_boeddeker_park()
 	study.inspect_so_what_easter_egg()
 	study.eatery_counter_interact(0)
 	study.reset_mural_state_to_defaults("fresh")
+	for reset_counter in study.eatery_counter_nodes:
+		require(not reset_counter.visible, "fresh session hides previously opened eatery counters")
 	require(study.discovered_surprises.is_empty() and study.visible_surprise_keepsake_count() == 0 and not study.jeffrey_turntable_node.visible and not study.hidden_mural_sketch_node.visible and is_equal_approx(study.speaker_beacon_mesh.position.y, 1.30) and not study.reward_banner.visible and not study.celebration_burst_node.visible and study.visited_museum_eras.is_empty() and not study.boeddeker_park_visited and not study.so_what_visited and study.museum_hub_step == 0 and study.active_time_era == "present" and study.eatery_guide_idx == -1 and study.eatery_order_counts.is_empty() and study.portal_ring_meshes[0].rotation_degrees.is_equal_approx(Vector3(90.0, 0.0, 0.0)), "reset_mural_state_to_defaults clears discovered_surprises, hides all 10 3D surprise keepsakes and reward banner/burst, and resets session landmark tour flags and 3D museum portal")
 	require(study.apply_save_envelope(surp_save_json) and study.discovered_surprises.size() == 10 and study.visible_surprise_keepsake_count() == 10 and study.jeffrey_turntable_node.visible and study.hidden_mural_sketch_node.visible and study.surprise_guide_idx == -1, "apply_save_envelope restores all 10 discovered_surprises, all 10 3D surprise keepsakes, and resets surprise_guide_idx")
 	study.reset_mural_state_to_defaults("fresh")

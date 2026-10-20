@@ -27,6 +27,7 @@ const base = 'http://127.0.0.1:' + (process.env.GODOT_PORT || 4174) + '/';
 await mkdir('artifacts', { recursive: true });
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 const errors = [], external = [], runs = [];
+let latestPage = null;
 try {
   for (const size of [{ width: 1100, height: 760 }, { width: 390, height: 667 }, { width: 320, height: 667 }]) {
     const context = await browser.newContext({ viewport: size });
@@ -37,6 +38,7 @@ try {
     }, BROWSER_SAVE_SENTINEL);
     context.on('request', r => { if (!r.url().startsWith(base) && !r.url().startsWith('data:') && !r.url().startsWith('blob:')) external.push(r.url()); });
     const page = await context.newPage();
+    latestPage = page;
     page.on('pageerror', e => errors.push(e.message));
     page.on('console', m => {
       if (m.type() === 'error') errors.push(m.text());
@@ -372,6 +374,78 @@ try {
     assert.equal(a11yDom.snapshot?.film_captured_count, 3, 'A11y snapshot must report film_captured_count === 3');
     assert.equal(a11yDom.snapshot?.voices_enabled, true, 'A11y snapshot must report voices_enabled === true after Slash toggle');
     assert.equal(a11yDom.snapshot?.voices_count, 3, 'A11y snapshot must report 3 verified Tenderloin organization profiles');
+    // Discover through real input, and inspect actual 3D keepsake-node visibility.
+    for (let found = 1; found <= 10; found++) {
+      await page.keyboard.press('Shift+KeyD');
+      await page.waitForFunction((count) => {
+        const snap = window.__tenderloinGodotA11ySnapshot;
+        const save = JSON.parse(localStorage.getItem('tenderloin-redux.godot.save.v1') || '{}');
+        return snap?.surprises_found === count && snap?.keepsakes_visible === count && save.discovered_surprises?.length === count;
+      }, found, { timeout: 10000 });
+      assert.match(await page.locator('#godot-a11y-status').textContent(), /Keepsake:/);
+    }
+    const tenSurprises = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+    assert.match(tenSurprises.last_reward_title, /^10\/10 Surprises:/);
+    assert.equal(tenSurprises.objective_tour_id, 'museum:0');
+    await page.keyboard.press('Shift+KeyD');
+    await page.waitForTimeout(600);
+    const rediscovery = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+    assert.equal(rediscovery.surprises_found, 10);
+    assert.equal(rediscovery.sparks, tenSurprises.sparks, 'Revisiting a surprise cannot award Sparks again');
+    assert.equal(rediscovery.reward_burst_count, tenSurprises.reward_burst_count);
+    await page.keyboard.press('Digit1');
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.conversation_actions?.some(a => a.id === 'landmark_tour'), null, { timeout: 35000 });
+    // Read-only native control geometry; all activation remains real browser clicks.
+    async function clickConversationAction(id) {
+      await page.waitForFunction(actionId => window.__tenderloinGodotA11ySnapshot?.conversation_actions?.some(a => a.id === actionId), id);
+      const previousFrame = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.ui_frame);
+      await page.waitForFunction(frame => window.__tenderloinGodotA11ySnapshot?.ui_frame > frame, previousFrame);
+      const snap = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+      const action = snap.conversation_actions.find(a => a.id === id);
+      assert.ok(action.width >= 44 && action.height >= 44, `${id} must retain a 44px target at ${size.width}`);
+      assert.ok(action.x >= 0 && action.y >= 0 && action.x + action.width <= snap.viewport_width + 1 && action.y + action.height <= snap.viewport_height + 1, `${id} must fit the viewport`);
+      const canvas = await page.locator('#canvas').boundingBox();
+      await page.mouse.click(canvas.x + (action.x + action.width / 2) * canvas.width / snap.viewport_width, canvas.y + (action.y + action.height / 2) * canvas.height / snap.viewport_height);
+    }
+    await page.screenshot({ path: `artifacts/godot-${size.width}-all-keepsakes-conversation.png` });
+    await clickConversationAction('whats_next');
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.announcement.includes('0/12 stops this session'));
+    await clickConversationAction('eateries');
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.announcement.includes('Tap the counter to order'));
+    assert.equal((await page.evaluate(() => window.__tenderloinGodotA11ySnapshot)).tour_count, 0, 'Framing a cafe does not count as placing an order');
+    const saveBeforeTour = await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1'));
+    for (let visited = 1; visited <= 12; visited++) {
+      if (visited === 2) {
+        await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.guide_marker_screen?.visible === true);
+        const snap = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+        const canvas = await page.locator('#canvas').boundingBox();
+        await page.mouse.click(canvas.x + snap.guide_marker_screen.x * canvas.width / snap.viewport_width, canvas.y + snap.guide_marker_screen.y * canvas.height / snap.viewport_height);
+      } else {
+        await clickConversationAction('landmark_tour');
+      }
+      await page.waitForFunction(count => window.__tenderloinGodotA11ySnapshot?.tour_count === count, visited, { timeout: 10000 });
+      const snap = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+      if (visited === 4) {
+        assert.equal(snap.museum_eras_count, 4);
+        assert.equal(snap.objective_tour_id, 'park');
+      }
+      if (visited === 5) assert.equal(snap.park_visited, true);
+      if (visited === 6) assert.equal(snap.so_what_visited, true);
+    }
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.tour_celebrated === true, null, { timeout: 10000 });
+    const tourComplete = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+    assert.equal(tourComplete.last_reward_title, 'Neighborhood Tour Complete!');
+    assert.match(await page.locator('#godot-a11y-summary').textContent(), /Optional tour 12\/12 this session/);
+    assert.equal(tourComplete.objective_tour_id, '');
+    assert.match(tourComplete.announcement, /12 stops visited this session/);
+    assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), saveBeforeTour, 'Tour session progress never writes the Godot save');
+    assert.ok(Buffer.byteLength(saveBeforeTour, 'utf8') <= 4096, 'Full progression plus ten surprises stays inside the save budget');
+    await page.screenshot({ path: `artifacts/godot-${size.width}-tour-complete.png` });
+    await page.keyboard.press('Shift+KeyM');
+    await page.waitForTimeout(600);
+    const tourRevisit = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+    assert.equal(tourRevisit.tour_count, 12);
+    assert.equal(tourRevisit.reward_burst_count, tourComplete.reward_burst_count, 'Revisiting a completed tour never repeats its reward');
     const storageBeforeReload = await page.evaluate(() => ({
       godotSave: window.localStorage.getItem('tenderloin-redux.godot.save.v1'),
       godotSettings: window.localStorage.getItem('tenderloin-redux.godot.settings.v1'),
@@ -439,6 +513,12 @@ try {
     assert.equal(storageAfterReload.browserSave, BROWSER_SAVE_SENTINEL, 'Browser game save sentinel must remain intact after reload and post-reload save');
     assert.equal(storageAfterReload.snapshot?.voices_enabled, true, 'Post-reload snapshot must restore voices_enabled from tenderloin-redux.godot.settings.v1');
     const postReloadSave = JSON.parse(storageAfterReload.godotSave);
+    assert.deepEqual(postReloadSave.discovered_surprises, parsedSave.discovered_surprises, 'All surprise discoveries survive reload');
+    assert.equal(new Set(postReloadSave.discovered_surprises).size, 10);
+    assert.equal(storageAfterReload.snapshot?.keepsakes_visible, 10);
+    assert.equal(storageAfterReload.snapshot?.tour_count, 0, 'Session tour starts fresh on reload');
+    assert.equal(storageAfterReload.snapshot?.tour_celebrated, false);
+    assert.equal(storageAfterReload.snapshot?.objective_tour_id, 'museum:0');
     assert.equal(postReloadSave.celeste_talk_count, parsedSave.celeste_talk_count + 1, 'Post-reload talk must increment restored celeste_talk_count');
     assert.equal(postReloadSave.mural_palette, 'sunset', 'Post-reload save must preserve restored sunset palette');
     assert.equal(postReloadSave.rook_soundcheck_done, true, 'Post-reload save must preserve restored rook_soundcheck_done');
@@ -452,6 +532,15 @@ try {
     assert.deepEqual(postReloadSave.civic, parsedSave.civic, 'Post-reload save must preserve restored M4 civic listening hour');
     assert.deepEqual(postReloadSave.film, parsedSave.film, 'Post-reload save must preserve restored M4 film short');
     assert.deepEqual(postReloadSave.mural_placements, parsedSave.mural_placements, 'Post-reload save must preserve all 3 restored motif placements');
+    // Merge while Godot keepsakes still exist. The later fresh-import fixture deliberately clears them.
+    await page.evaluate(() => window.__tenderloinQueueBrowserSaveJson(JSON.stringify({
+      version: 1,
+      core: { greeted: true, layout: 'table', furniture: {}, litter: [], mural: {}, palette: 'garden', soundcheck: false, opened: false, history: false, blackhawk: false }
+    }), ''));
+    await page.waitForFunction(seq => JSON.parse(localStorage.getItem('tenderloin-redux.godot.save.v1') || '{}').save_seq > seq, postReloadSave.save_seq);
+    const keptSurprises = await page.evaluate(() => JSON.parse(localStorage.getItem('tenderloin-redux.godot.save.v1')));
+    assert.deepEqual(keptSurprises.discovered_surprises, parsedSave.discovered_surprises, 'Partial browser import preserves existing Godot surprise keepsakes');
+    assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.save.v1')), BROWSER_SAVE_SENTINEL, 'Partial file import keeps the browser save read-only');
     // Build a genuine public/core.js v1 save via applyAction + serializeSave with ocean palette, M1 keepsake + loans, M3 hosting, M4 civic (access/dropin/none), M4 film (welcome/seat/paint, wide/later), and optional metadata
     let bState = initialState();
     for (const act of [
@@ -570,11 +659,23 @@ try {
     assert.equal(afterFileBridgeMerge.hosting?.results?.length, 4, 'File picker bridge monotonic merge must preserve M3 completed hosting segments');
     assert.equal(afterFileBridgeMerge.civic?.phase, 'done', 'File picker bridge monotonic merge must preserve M4 civic done state');
     assert.equal(afterFileBridgeMerge.film?.phase, 'done', 'File picker bridge monotonic merge must preserve M4 film done state');
-    runs.push({ viewport: size, overviewBytes: before.length, selectedBytes: after.length, neighborBytes: neighbor.length, muralBytes: muralShot.length, musicBytes: musicShot.length, blockBytes: blockShot.length, blackhawkBytes: blackhawkShot.length, wideBytes: wideShot.length, keyboardActivationVerified: true, neighborWalkVerified: true, muralSaveReloadVerified: true, rookMusicAuditionVerified: true, blockCompletionVerified: true, widerTenderloinVerified: true, m1EpilogueVerified: true, m3HostingVerified: true, m4CivicFilmVerified: true, m5VoicesIsolatedVerified: true, m6KeepsakeSvgExportVerified: true, m6PerfBudgetVerified: true, perfSnapshot: perfSnap, browserSaveImportVerified: true, domA11yLiveVerified: true });
+    assert.deepEqual(afterFileBridgeMerge.discovered_surprises, [], 'Fresh browser import does not invent Godot-only surprise discoveries');
+    const explorationEvidence = { surpriseDiscoveryVerified: true, surpriseKeepsakeReloadVerified: true, chapter6ConversationVerified: true, sessionLandmarkTourVerified: true, fullSaveBytes: Buffer.byteLength(saveBeforeTour, 'utf8') };
+    runs.push({ ...explorationEvidence, viewport: size, overviewBytes: before.length, selectedBytes: after.length, neighborBytes: neighbor.length, muralBytes: muralShot.length, musicBytes: musicShot.length, blockBytes: blockShot.length, blackhawkBytes: blackhawkShot.length, wideBytes: wideShot.length, keyboardActivationVerified: true, neighborWalkVerified: true, muralSaveReloadVerified: true, rookMusicAuditionVerified: true, blockCompletionVerified: true, widerTenderloinVerified: true, m1EpilogueVerified: true, m3HostingVerified: true, m4CivicFilmVerified: true, m5VoicesIsolatedVerified: true, m6KeepsakeSvgExportVerified: true, m6PerfBudgetVerified: true, perfSnapshot: perfSnap, browserSaveImportVerified: true, domA11yLiveVerified: true });
     await context.close();
   }
   assert.deepEqual(external, []);
   assert.deepEqual(errors, []);
   await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
   console.log(JSON.stringify({ runs, errors, external }));
+} catch (error) {
+  if (latestPage && !latestPage.isClosed()) {
+    await latestPage.screenshot({ path: 'artifacts/godot-browser-failure.png' });
+    await writeFile('artifacts/godot-browser-failure.json', JSON.stringify({
+      error: String(error),
+      viewport: latestPage.viewportSize(),
+      snapshot: await latestPage.evaluate(() => window.__tenderloinGodotA11ySnapshot)
+    }, null, 2));
+  }
+  throw error;
 } finally { await browser.close(); }

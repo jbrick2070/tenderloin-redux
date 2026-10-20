@@ -1,0 +1,25 @@
+STDOUT:
+I wrote the review to `kibitz-runs/2026-10-20-codex-session-landmark-tour/r3/claude.md` and changed nothing else. One limit: this lane had no shell, so I couldn't run `git diff` against `1cd1eb1`. The review is based on the current files, not on what changed since the baseline.
+
+**Verdict: yes-with-fixes.** The tour resolver, the reset/reload paths and keeping the tour out of the save file all hold up.
+
+**Must fix before build: the café tour marker points at a counter you can't tap.**
+- The marker for each café stop sits on its sidewalk counter (`godot/main.gd:5656-5658`).
+- Those counters start hidden (`main.gd:4907`). Only "Visit Eateries" / tapping the building makes one visible (`main.gd:7653`).
+- A counter tap only counts if the counter is visible (`main.gd:12435-12443`).
+- The marker also disappears once the player is within 3.5 m (`main.gd:5862`), so you can't tap the marker there either.
+- Result: a player who walks to the gold marker at an unopened café loses it, and tapping the counter spot just walks them there instead of placing an order. The museum, park and So What stops don't have this problem.
+- Smallest fix: in the café loop of `handle_scene_tap`, let the current tour café's counter be tapped even while hidden, and send that tap to `visit_next_landmark()`. Add a native test for it.
+
+**Should fix:**
+- **Delayed-finale test doesn't test the delay.** The native test hides the banner by hand (`study_test.gd:1668-1674`) instead of letting the timer run out. The browser run can't hit this case at all, because its tour starts only after the 10/10 banner is gone.
+- **Marker taps aren't tested in the browser.** All 12 tour stops are triggered through the conversation button. Marker taps are only tested natively.
+- **Museum stop order and era order must match by hand.** `visit_next_landmark` assumes the tour's era list and the museum's era order line up. If either is reordered, the tour gets stuck on one stop.
+- **"12" is hard-coded in five strings** even though the total is computed.
+- **The So What awning coordinates are copied in three places.**
+- **The "Order at Next Cafe" label covers two bars.** Two of the six stops are a "Bar & Lounge" and a "Corner Bar".
+- **The browser click helper can use an old snapshot.** It may read button positions one layout pass old; low risk today.
+
+**Can be cut:** a redundant second UI refresh in `visit_next_landmark`, and a copied set of chapter checks in the tour-completion function that the existing "explore" check already covers.
+
+Several connectors still need authorization before they can be used: Box and Runway through claude.ai connector settings, and Asana, Atlassian, Datadog, GitHub, Linear, Notion, PagerDuty and Slack through `/mcp` in an interactive session. None were needed for this review.

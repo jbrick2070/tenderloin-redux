@@ -1,6 +1,16 @@
 # Session Handoff — Tenderloin Redux — 2026-10-20 Pacific / 2026-10-20 UTC
 
-## Shift Handoff to Codex (`2026-10-20-landmark-discovery-bursts-and-conversation-tour`)
+## Current Codex checkpoint — session landmark tour and reward readability
+
+- **Owner/schedule:** Codex is sole writer. `build-tenderloin-redux` now targets chat `01a159d6-60a3-78e1-92ae-4018509d2539`, hourly, ACTIVE, with an October 20 **12:15 PM America/Los_Angeles cutoff**. Finish any round already started at cutoff, update handoff and pause the heartbeat. AGY remains stood down; leave Claude's `tenderloin-3d-improvement` paused. Lock each round atomically and preserve unrelated files.
+- **New verified behavior:** Chapter 6 after 10/10 keepsakes now guides an optional 12-stop session tour (4 museum eras, park, So What, 6 fictional eatery first orders), with current-objective marker/arrow/hints, explicit conversation actions and a one-shot completion celebration delayed behind earlier banners. Progress uses existing session variables, resets on reload and adds no save fields. Kept all ten physical keepsakes persistent.
+- **UI fixes:** actual tour counters are visible/tappable near the player; marker taps account for elevation; landmark inspections frame above phone conversation panels; Celeste/Rook hints refresh. Reward banners now display their progress body with two visible lines including font spacing. DOM summary reports session tour progress and the next objective.
+- **Evidence:** all five gates passed, 104 Node tests, browser 1100x760 / 390x667 / 320x667 with zero errors/external requests and actual Shift+D, conversation and marker clicks. Full browser save = **1,728 bytes**. Browser runtime fingerprint remains `2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567`. Native glyph/save/geometry/collision checks pass. See `kibitz-runs/2026-10-20-codex-session-landmark-tour/r3/` for the independent Claude Opus 5.5 High r3 review, grounded judgment, retained failures and verification receipt. One successful external call; no model substitution or reviewer source edits.
+- **Creator's latest steering:** make the overall UI friendlier and engaging, with small visible rewards and encouraging sounds that show progress and invite continuation. The heartbeat includes this priority.
+- **Immediate next round:** separate short reward effects from soundtrack playback. Current `trigger_progress_cue()` arms sounds only during synth music, leaving paused music and local/Suno playback silent. Add gentle effects after real input, a visible Sounds toggle and settings-only mute persistence; respect suppression and avoid stacked/replayed restore sounds. Shorten phone headers to preserve neighbor name, turn and Sparks; compact reward copy and avoid overlapping host speech. Use a fresh review topic, one independent Claude review, all five gates, update docs, release lock, commit/push.
+- **Preserve:** initial untracked `kibitz-runs/2026-10-20-landmark-discovery-bursts-and-conversation-tour/` was already present and is not part of Codex's changes. No physical-phone, full screen-reader, human pacing/listening, field-observation or deployment claim.
+
+## Historical shift handoff to Codex (`2026-10-20-landmark-discovery-bursts-and-conversation-tour`)
 
 - **Shift Ownership & Schedulers**:
   - **AGY / Gemini hourly scheduler is STOOD DOWN (cancelled)** at the creator's request, and `.build-round.lock` has been released.
@@ -80,7 +90,7 @@ The creator asked a Claude Code desktop session for a 3-round 3D pass, then for 
 
 ## Core goal
 
-Build the peaceful Tenderloin game described in docs/CONCEPT.md and the complete docs/ROADMAP.md. Creator has now selected **Godot with an isometric/2.5D view and accurate city-sourced buildings**. Continue as **AGY 4 / Gemini 4 Argon High**; do not silently use AGY Opus or change to a costly model.
+Build the peaceful Tenderloin game described in docs/CONCEPT.md and the complete docs/ROADMAP.md. Creator has now selected **Godot with an isometric/2.5D view and accurate city-sourced buildings**. Continue as **Codex / gpt-6.1-sol High**, the current authorized sole writer; preserve the exact independent reviewer pin and bounded shift schedule above.
 
 ## Tech stack and constraints
 

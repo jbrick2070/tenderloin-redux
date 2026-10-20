@@ -1,0 +1,8 @@
+# Retained verification failures
+
+1. `artifacts/codex-tour-browser-initial.log`: desktop run reached discovery/tour completion/reload, then failed `Read-only browser import preserves all Godot surprise keepsakes`, actual `[]` versus ten expected IDs. The existing fresh-import fixture explicitly removes `tenderloin-redux.godot.save.v1` before reloading. The new assertion was placed after that deletion. Corrected the harness: merge-preservation assertion now runs before the reset, and the fresh import must have no Godot-only surprises. No import-code fix was needed.
+2. `artifacts/codex-tour-native-duplicate-test-variable.log`: GDScript parser rejected a second `counter_tap` local in the long native test function. Renamed the new local to `tour_counter_tap`; the next native run passed.
+3. `artifacts/codex-tour-browser-marker-framing-failure.log`: after desktop completion, the 390 px run timed out waiting for the museum marker to be visible above the conversation. Added shared play-area framing for inspected landmarks and native tests with the conversation open.
+4. `artifacts/reward-layout-debug.gd`: visual follow-up showed a font-height-only 36 px body displayed one line despite containing two. The native diagnostic reported `lines=2 visible=1 line_height=18 font_height=18 separation=3`; including theme line spacing gave `size.y=42 lines=2 visible=2`. The native regression now checks visible line count rather than merely the label's rectangle height.
+
+The initial browser result is not counted as a passing gate. Final artifacts use `*-final.log` and the final source hashes in `verification.json`.

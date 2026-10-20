@@ -712,6 +712,10 @@ var active_time_era := "present"
 var visited_museum_eras: Dictionary = {}
 var boeddeker_park_visited := false
 var so_what_visited := false
+var landmark_tour_celebrated := false
+const TOUR_MUSEUM_ERAS := ["present", "1961_jazz", "1966_comptons", "1907_cadillac"]
+const TOUR_MUSEUM_TITLES := ["Museum: Present Day", "Museum: 1961 Jazz", "Museum: 1966 Compton's", "Museum: 1907 Cadillac"]
+const SO_WHAT_AWNING_XZ := Vector2(-350.0, 65.8)
 var portal_lens_mesh: MeshInstance3D
 var portal_ring_meshes: Array[MeshInstance3D] = []
 var eatery_guide_idx := -1
@@ -4315,11 +4319,11 @@ func inspect_boeddeker_park() -> bool:
 		selected = -1
 	target = BOEDDEKER_VIEW_TARGET
 	view_size = 96.0
-	update_camera()
-	update_occlusion(true)
+	frame_landmark_view()
 	if not boeddeker_park_visited:
 		boeddeker_park_visited = true
 		trigger_progress_cue("boeddeker_park", "Boeddeker Park")
+	refresh_landmark_guidance()
 	var line := "Boeddeker Park — 240 Eddy St at Jones (OpenStreetMap way %d)" % BOEDDEKER_PARK_OSM_WAY
 	var sub := "Fenced neighborhood park: lawn, %d shade trees, play structure & benches along a winding path · Outline © OpenStreetMap / ODbL; trees, path & furniture are stylized, not surveyed" % boeddeker_tree_points.size()
 	if info != null:
@@ -4962,6 +4966,7 @@ func eatery_counter_interact(target_idx: int = -1) -> bool:
 		trigger_progress_cue("eatery_order", e_id)
 		trigger_feel_good_burst("Order Up: %s" % item.capitalize(), "%s · Sparks: %d" % [String(rec.get("name", "")), spark_count()], e_pos + Vector3.UP * 2.2, Color(String(rec.get("label_color", "ffe8a3"))))
 	var msg := "Ordering at %s: %s (tap the counter again for more)" % [String(rec.get("name", "")), item]
+	refresh_landmark_guidance()
 	if info != null:
 		info.text = "%s\nHost: \"%s\"\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [msg, line]
 	announce_a11y_status("%s. Host says: %s" % [msg, line])
@@ -5507,6 +5512,7 @@ func build_reward_banner(layer: CanvasLayer) -> void:
 	reward_body_label.clip_text = true
 	reward_body_label.max_lines_visible = 2
 	reward_body_label.add_theme_font_size_override("font_size", 13)
+	reward_body_label.custom_minimum_size.y = 2.0 * (reward_body_label.get_theme_font("font").get_height(13) + reward_body_label.get_theme_constant("line_spacing"))
 	reward_body_label.add_theme_color_override("font_color", Color("9ef5e5"))
 	vbox.add_child(reward_body_label)
 	layer.add_child(reward_banner)
@@ -5517,7 +5523,7 @@ func layout_reward_banner() -> void:
 	var area := play_area_rect()
 	var w := minf(460.0, maxf(180.0, area.size.x - 16.0))
 	reward_banner.custom_minimum_size = Vector2(w, 0.0)
-	reward_banner.size = Vector2(w, 0.0)
+	reward_banner.size = Vector2(w, reward_banner.get_combined_minimum_size().y)
 	reward_banner.position = Vector2(area.position.x + (area.size.x - w) * 0.5, area.position.y + 4.0)
 
 func trigger_feel_good_burst(title_str: String, detail_str: String, world_pos: Vector3, accent: Color = Color("f8cc58")) -> void:
@@ -5638,6 +5644,86 @@ func next_explore_surprise_id() -> String:
 
 ## The single next thing to do, derived from saved progress. `target` is where the guide
 ## marker points; `neighbor` is who can help (-1 when nobody in particular).
+## Session-only tour progress. Reading this never awards progress or changes a save.
+func landmark_tour_state() -> Dictionary:
+	var stops: Array[Dictionary] = []
+	for i in range(TOUR_MUSEUM_ERAS.size()):
+		stops.append({"id": "museum:%d" % i, "name": TOUR_MUSEUM_TITLES[i], "target": MUSEUM_HUB_POS, "done": visited_museum_eras.has(TOUR_MUSEUM_ERAS[i]), "action": "Visit the Museum"})
+	stops.append({"id": "park", "name": "Boeddeker Park", "target": Vector3(BOEDDEKER_PARK_ENTRANCE.x, 0.0, BOEDDEKER_PARK_ENTRANCE.y), "done": boeddeker_park_visited, "action": "Visit the Park"})
+	stops.append({"id": "so_what", "name": "'So What' Easter Egg", "target": Vector3(SO_WHAT_AWNING_XZ.x, 0.0, SO_WHAT_AWNING_XZ.y), "done": so_what_visited, "action": "See 'So What'"})
+	for i in range(NEIGHBORHOOD_EATERIES.size()):
+		var rec: Dictionary = NEIGHBORHOOD_EATERIES[i]
+		var pos: Vector3 = rec.pos
+		if i < eatery_counter_points.size():
+			pos = Vector3(eatery_counter_points[i].x, 0.0, eatery_counter_points[i].y)
+		stops.append({"id": "eatery:%d" % i, "name": "%s (fictional)" % String(rec.name), "target": pos, "done": int(eatery_order_counts.get(String(rec.id), 0)) > 0, "action": "Order at Next Stop"})
+	var count := 0
+	var next: Dictionary = {}
+	for stop in stops:
+		if bool(stop.done):
+			count += 1
+		elif next.is_empty():
+			next = stop
+	return {"count": count, "total": stops.size(), "next": next}
+
+func visit_next_landmark() -> bool:
+	var obj := current_objective()
+	var stop_id := String(obj.get("tour_id", ""))
+	if stop_id.is_empty():
+		return false
+	last_panel_dialogue = ""
+	var ok := false
+	if stop_id.begins_with("museum:"):
+		museum_hub_step = int(stop_id.get_slice(":", 1))
+		ok = inspect_tenderloin_museum_hub()
+	elif stop_id == "park":
+		ok = inspect_boeddeker_park()
+	elif stop_id == "so_what":
+		ok = inspect_so_what_easter_egg()
+	elif stop_id.begins_with("eatery:"):
+		var idx := int(stop_id.get_slice(":", 1))
+		cycle_eatery_guide(idx)
+		ok = eatery_counter_interact(idx)
+	return ok
+
+## Keep inspected landmarks above an open conversation panel, including on phones.
+func frame_landmark_view() -> void:
+	update_camera()
+	var focus := target
+	var area := play_area_rect()
+	var want := Vector2(area.get_center().x, area.position.y + area.size.y * 0.68)
+	pan_camera_by_screen_delta(want - camera.unproject_position(focus))
+	update_occlusion(true)
+
+func refresh_landmark_guidance() -> void:
+	last_panel_dialogue = ""
+	if mural_panel != null and mural_panel.visible:
+		update_mural_ui()
+	if music_panel != null and music_panel.visible:
+		update_music_ui()
+	update_block_ui()
+	update_objective_ui()
+	update_guide_marker()
+	update_guide_arrow()
+
+## Wait for the previous discovery banner to finish, including the protected 10/10 finale.
+## Called from the frame loop so previsited landmarks also celebrate on reaching Chapter 6.
+func update_landmark_tour_completion() -> void:
+	if landmark_tour_celebrated or suppress_feel_good_burst or in_overview or in_wide_overview:
+		return
+	if discovered_surprises.size() < NEIGHBORHOOD_SURPRISE_IDS.size():
+		return
+	if reward_banner != null and reward_banner.visible and reward_banner_timer > 0.0:
+		return
+	var tour := landmark_tour_state()
+	if int(tour.count) != int(tour.total):
+		return
+	if String(current_objective().get("id", "")) != "explore":
+		return
+	landmark_tour_celebrated = true
+	trigger_progress_cue("tour_complete", "All %d session stops" % int(tour.total))
+	announce_a11y_status("Neighborhood Tour Complete! All %d stops visited this session. Your 10 keepsakes stay saved; the optional tour starts fresh next session." % int(tour.total))
+
 func current_objective() -> Dictionary:
 	var p := player_xz() if player != null else Vector2(PLAYER_START.x, PLAYER_START.z)
 	var met := visited_neighbors.size()
@@ -5704,13 +5790,24 @@ func current_objective() -> Dictionary:
 			"text": "Spot %s (%d/%d surprises, Shift+D) · Museum (Shift+M)" % [s_title, discovered_surprises.size(), NEIGHBORHOOD_SURPRISE_IDS.size()],
 			"hint": "Take your time. Spot the %d neighborhood surprises (%d/%d found, Shift+D)—next is %s (%s at %s)—or try the museum's Time-Portal on Eddy and the eateries along Turk." % [NEIGHBORHOOD_SURPRISE_IDS.size(), discovered_surprises.size(), NEIGHBORHOOD_SURPRISE_IDS.size(), s_title, compass_phrase(p, s_pt), s_street]
 		}
+	var tour := landmark_tour_state()
+	var stop: Dictionary = tour.next
+	if not stop.is_empty():
+		var stop_pos: Vector3 = stop.target
+		return {
+			"id": "explore", "neighbor": -1, "has_target": true,
+			"target": stop_pos, "target_name": String(stop.name), "tour_id": String(stop.id),
+			"tour_action": String(stop.action),
+			"text": "Tour %d/%d this session: %s" % [tour.count, tour.total, stop.name],
+			"hint": "All 10 keepsakes are yours! Optional tour: %s, %s. %d/%d stops this session; tour progress starts fresh on reload. Ask a neighbor to show you the stop, or follow the gold marker." % [stop.name, compass_phrase(p, Vector2(stop_pos.x, stop_pos.z)), tour.count, tour.total]
+		}
 	return {
 		"id": "explore",
 		"neighbor": -1,
 		"has_target": false,
 		"target": Vector3.ZERO,
-		"text": "All 10/10 surprises & keepsakes found! Try Museum (Shift+M), Eateries (Shift+E), Evening (Shift+L)",
-		"hint": "All %d/%d neighborhood surprises and keepsakes are unlocked on our block! Try the museum's Time-Portal on Eddy (Shift+M), visit the eateries along Turk (Shift+E), or switch to evening lights (Shift+L)." % [NEIGHBORHOOD_SURPRISE_IDS.size(), NEIGHBORHOOD_SURPRISE_IDS.size()]
+		"text": "All 10 keepsakes saved! Tour %d/%d this session complete!" % [tour.count, tour.total],
+		"hint": "You've visited all %d tour stops this session and found every keepsake! Wander freely, revisit the museum (Shift+M), or switch to evening lights (Shift+L). Your keepsakes stay saved; the optional tour starts fresh on reload." % int(tour.total)
 	}
 
 func update_objective_ui() -> void:
@@ -5765,6 +5862,11 @@ func update_guide_marker(obj: Dictionary = {}) -> void:
 		return
 	if obj.is_empty():
 		obj = current_objective()
+	var tour_id := String(obj.get("tour_id", ""))
+	if tour_id.begins_with("eatery:"):
+		var idx := int(tour_id.get_slice(":", 1))
+		if idx >= 0 and idx < eatery_counter_nodes.size():
+			eatery_counter_nodes[idx].visible = true
 	var show := bool(obj.get("has_target", false))
 	if show:
 		var t: Vector3 = obj.get("target", Vector3.ZERO)
@@ -5933,7 +6035,7 @@ func ask_whats_next() -> String:
 				hint = "You found both of my favorite block surprises! Next, check out %s %s at %s (%d/%d found, Shift+D)." % [s_title, dir_str, s_street, discovered_surprises.size(), NEIGHBORHOOD_SURPRISE_IDS.size()]
 		else:
 			last_hinted_surprise_id = ""
-			hint = "You've spotted all %d neighborhood surprises and unlocked every keepsake on our block! Try the museum Time-Portal (Shift+M), visit the eateries (Shift+E), or switch to evening lights (Shift+L)." % NEIGHBORHOOD_SURPRISE_IDS.size()
+			hint = String(obj.get("hint", ""))
 		obj = current_objective()
 	var line := conversation_partner_line(speaker, hint) if speaker >= 0 else hint
 	if (block_panel != null and block_panel.visible) or (mural_panel != null and mural_panel.visible) or (music_panel != null and music_panel.visible):
@@ -6039,7 +6141,7 @@ func conversation_actions() -> Array[Dictionary]:
 			if discovered_surprises.size() < NEIGHBORHOOD_SURPRISE_IDS.size():
 				acts.append({"id": "surprise", "label": "Spot Surprise (%d/%d)" % [discovered_surprises.size(), NEIGHBORHOOD_SURPRISE_IDS.size()]})
 			else:
-				acts.append({"id": "museum", "label": "Visit the Museum"})
+				acts.append({"id": "landmark_tour", "label": String(obj.tour_action)} if obj.has("tour_id") else {"id": "museum", "label": "Visit the Museum"})
 	var someone_else := -1
 	for i in range(neighbors.size()):
 		var cand := posmod(talk_partner + 1 + i, neighbors.size())
@@ -6128,6 +6230,8 @@ func run_conversation_action_id(act_id: String) -> bool:
 			var ok_m := inspect_tenderloin_museum_hub()
 			update_block_ui()
 			return ok_m
+		"landmark_tour":
+			return visit_next_landmark()
 		"eateries":
 			last_panel_dialogue = ""
 			var ok_e := cycle_eatery_guide()
@@ -6168,7 +6272,7 @@ func apply_block_panel_mode() -> void:
 			if has:
 				var lbl := String(acts[s].label)
 				if narrow:
-					lbl = lbl.replace("Go Meet ", "Meet ").replace("All Block Actions", "All Actions").replace("Spot Surprise (", "Find ").replace("/10)", "/10").replace("Visit the Museum", "Museum").replace("Visit Eateries", "Eateries").replace(" with Celeste", "").replace(" with Rook", "").replace(" (Bea)", "").replace(" (Dez & Celeste)", "")
+					lbl = lbl.replace("Go Meet ", "Meet ").replace("All Block Actions", "All Actions").replace("Spot Surprise (", "Find ").replace("/10)", "/10").replace("Visit the Museum", "Museum").replace("Visit the Park", "Park").replace("Order at Next Stop", "Order Next").replace("Visit Eateries", "Eateries").replace(" with Celeste", "").replace(" with Rook", "").replace(" (Bea)", "").replace(" (Dez & Celeste)", "")
 				conv_action_btns[s].text = lbl
 		if conv_chat_btn != null:
 			conv_chat_btn.text = "Chat More" if narrow else "Keep Chatting (T)"
@@ -6592,6 +6696,7 @@ func update_conversation_ui(delta: float) -> void:
 	if objective_refresh_timer <= 0.0:
 		objective_refresh_timer = 0.5
 		update_objective_ui()
+		sync_web_a11y_status()
 	var obj := current_objective()
 	update_guide_marker(obj)
 	update_guide_arrow()
@@ -7458,11 +7563,11 @@ func inspect_so_what_easter_egg() -> bool:
 		selected = -1
 	target = SO_WHAT_VIEW_TARGET
 	view_size = 84.0
-	update_camera()
-	update_occlusion(true)
+	frame_landmark_view()
 	if not so_what_visited:
 		so_what_visited = true
 		trigger_progress_cue("so_what_egg", "So What")
+	refresh_landmark_guidance()
 	var line := "145 Leavenworth (8th Floor) & 361 Turk St — 'So What' Musical Awning Easter Egg"
 	var sub := "Dual-address Tenderloin complex (footprints 201006.0001527 & 201006.0003855) · Entrance awning arranged after Miles Davis's 'So What' (Live at the Black Hawk, 1961)"
 	if info != null:
@@ -7494,8 +7599,7 @@ func inspect_tenderloin_museum_hub() -> bool:
 		selected = -1
 	target = MUSEUM_HUB_POS + Vector3(0.0, 2.2, 0.0)
 	view_size = 64.0
-	update_camera()
-	update_occlusion(true)
+	frame_landmark_view()
 	var step := museum_hub_step % 4
 	museum_hub_step = (museum_hub_step + 1) % 4
 	var line := ""
@@ -7528,6 +7632,7 @@ func inspect_tenderloin_museum_hub() -> bool:
 	if not visited_museum_eras.has(active_time_era):
 		visited_museum_eras[active_time_era] = true
 		trigger_progress_cue("museum_portal", era_title)
+	refresh_landmark_guidance()
 	if info != null:
 		info.text = "%s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, sub]
 	announce_a11y_status("%s: %s" % [line, sub])
@@ -7550,8 +7655,7 @@ func cycle_eatery_guide(target_idx: int = -1) -> bool:
 		selected = -1
 	target = e_pos + Vector3(0.0, 2.0, 0.0)
 	view_size = 56.0
-	update_camera()
-	update_occlusion(true)
+	frame_landmark_view()
 	var e_id := String(rec.get("id", ""))
 	if eatery_guide_idx < eatery_counter_nodes.size():
 		eatery_counter_nodes[eatery_guide_idx].visible = true
@@ -9620,7 +9724,7 @@ func trigger_progress_cue(cue_id: String, reason: String) -> void:
 			cue_arpeggio_freqs = [523.25, 659.25, 1046.50]
 			cue_arpeggio_duration = 0.56
 			cue_chime_freq = 783.99
-		"surprise_finale":
+		"surprise_finale", "tour_complete":
 			cue_arpeggio_freqs = [523.25, 659.25, 783.99, 1046.50]
 			cue_arpeggio_duration = 0.68
 			cue_chime_freq = 1046.50
@@ -9752,6 +9856,12 @@ func trigger_progress_cue(cue_id: String, reason: String) -> void:
 				burst_detail = "398 Eddy St (Cadillac Hotel, 1907) · Session era %d/4" % visited_museum_eras.size()
 				burst_pos = MUSEUM_HUB_POS + Vector3.UP * 2.2
 				burst_accent = Color("7be0e6")
+			"tour_complete":
+				burst_title = "Neighborhood Tour Complete!"
+				var tour := landmark_tour_state()
+				burst_detail = "%d/%d stops this session · 10 keepsakes saved\nThanks for exploring!" % [tour.count, tour.total]
+				burst_pos = target + Vector3.UP * 1.8
+				burst_accent = Color("ffe066")
 			"boeddeker_park":
 				burst_title = "Neighborhood Green — Boeddeker Park"
 				burst_detail = "240 Eddy St at Jones · %d shade trees, lawn & play area" % boeddeker_tree_points.size()
@@ -10159,6 +10269,7 @@ func setup_web_a11y_bridge() -> void:
 					var hostCur = data.hosting_current ? (" (" + data.hosting_current + ")") : "";
 					var voicesTag = data.voices_enabled ? ("On:" + (data.voices_status || "ready")) : "Off";
 					s.textContent = "Neighbors " + data.visited_count + "/5 · Mural " + data.mural_count + "/3 (" + data.mural_palette + ") · Soundcheck " + (data.soundcheck_done ? "Done" : "Pending") + " · Block " + (data.block_opened ? "Opened" : (data.block_ready ? "Ready" : "In progress")) + " · Compton's " + (data.history_read ? "Read" : "Unread") + " · Black Hawk " + (data.blackhawk_discovered ? "Found" : "Unvisited") + " · District " + (data.district_boundary_visible ? "Shown" : "Hidden") + " · Keepsake " + (data.keepsake_status || "unasked") + " · Loans " + (data.loans_returned_count || 0) + "/3 · Programme " + progLen + "/4 · Hosted " + (data.hosting_completed_count || 0) + "/4" + hostCur + " · Civic " + (data.civic_phase || "idle") + " · Film " + (data.film_phase || "idle") + " (" + (data.film_captured_count || 0) + "/3) · Voices " + voicesTag;
+					s.textContent += " · Surprise keepsakes " + data.keepsakes_visible + "/10 · Optional tour " + data.tour_count + "/" + data.tour_total + " this session · Next: " + data.objective_text;
 				}
 				return true;
 			} catch (_e) {
@@ -10343,7 +10454,28 @@ func get_a11y_status_snapshot() -> Dictionary:
 		active_panel = "mural"
 	elif music_panel != null and music_panel.visible:
 		active_panel = "music"
+	var tour := landmark_tour_state()
+	var obj := current_objective()
+	var action_controls: Array[Dictionary] = []
+	if block_panel != null and block_panel.visible and block_panel_mode == "talk":
+		for i in range(conv_action_btns.size()):
+			var btn: Button = conv_action_btns[i]
+			if btn.is_visible_in_tree():
+				var rect := btn.get_global_rect()
+				action_controls.append({"id": conv_action_ids[i], "label": btn.text, "x": rect.position.x, "y": rect.position.y, "width": rect.size.x, "height": rect.size.y})
+		if conv_next_btn != null and conv_next_btn.is_visible_in_tree():
+			var rect := conv_next_btn.get_global_rect()
+			action_controls.append({"id": "whats_next", "label": conv_next_btn.text, "x": rect.position.x, "y": rect.position.y, "width": rect.size.x, "height": rect.size.y})
+	var vp := bubble_viewport_size()
+	var marker_screen := Vector2.ZERO
+	var marker_visible := false
+	if guide_marker != null and camera != null:
+		var center := guide_marker.global_position + Vector3.UP * 0.5 * guide_marker.scale.y
+		marker_screen = camera.unproject_position(center)
+		marker_visible = guide_marker.visible and not camera.is_position_behind(center) and play_area_rect().has_point(marker_screen) and not is_screen_point_in_ui(marker_screen)
 	return {
+		"ui_frame": Engine.get_process_frames(),
+		"guide_marker_screen": {"x": marker_screen.x, "y": marker_screen.y, "visible": marker_visible},
 		"seq": a11y_announcement_seq,
 		"announcement": last_a11y_announcement,
 		"active_panel": active_panel,
@@ -10382,6 +10514,17 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"wider_buildings_count": wider_meshes.size(),
 		"surprises_found": discovered_surprises.size(),
 		"keepsakes_visible": visible_surprise_keepsake_count(),
+		"objective_tour_id": String(obj.get("tour_id", "")),
+		"objective_text": String(obj.get("text", "")),
+		"tour_count": int(tour.count),
+		"tour_total": int(tour.total),
+		"tour_celebrated": landmark_tour_celebrated,
+		"museum_eras_count": visited_museum_eras.size(),
+		"park_visited": boeddeker_park_visited,
+		"so_what_visited": so_what_visited,
+		"conversation_actions": action_controls,
+		"viewport_width": vp.x,
+		"viewport_height": vp.y,
 		"sparks": spark_count(),
 		"reward_burst_count": reward_burst_count,
 		"last_reward_title": last_reward_title,
@@ -10699,10 +10842,13 @@ func reset_mural_state_to_defaults(status_label: String) -> void:
 	museum_hub_step = 0
 	active_time_era = "present"
 	visited_museum_eras.clear()
+	landmark_tour_celebrated = false
 	boeddeker_park_visited = false
 	so_what_visited = false
 	eatery_guide_idx = -1
 	eatery_order_counts.clear()
+	for counter in eatery_counter_nodes:
+		counter.visible = false
 	last_reward_title = ""
 	reward_banner_timer = 0.0
 	if reward_banner != null:
@@ -11282,10 +11428,13 @@ func apply_save_envelope(raw_json: String) -> bool:
 	museum_hub_step = 0
 	active_time_era = "present"
 	visited_museum_eras.clear()
+	landmark_tour_celebrated = false
 	boeddeker_park_visited = false
 	so_what_visited = false
 	eatery_guide_idx = -1
 	eatery_order_counts.clear()
+	for counter in eatery_counter_nodes:
+		counter.visible = false
 	last_reward_title = ""
 	reward_banner_timer = 0.0
 	if reward_banner != null:
@@ -12129,6 +12278,7 @@ func _process(delta: float) -> void:
 	update_tree_sway(delta)
 	update_eatery_animation(delta)
 	update_celebration_burst(delta)
+	update_landmark_tour_completion()
 	update_conversation_ui(delta)
 
 func _physics_process(delta: float) -> void:
@@ -12240,6 +12390,12 @@ func handle_scene_tap(screen_pos: Vector2) -> bool:
 		return false
 	hide_story_card()
 	var ground_xz := screen_to_ground_xz(screen_pos)
+	var obj := current_objective()
+	if obj.has("tour_id") and guide_marker != null and guide_marker.visible:
+		var marker_pos := guide_marker.global_position + Vector3.UP * 0.5 * guide_marker.scale.y
+		var marker_hit: Variant = Plane(Vector3.UP, marker_pos.y).intersects_ray(camera.project_ray_origin(screen_pos), camera.project_ray_normal(screen_pos))
+		if not camera.is_position_behind(marker_pos) and camera.unproject_position(marker_pos).distance_to(screen_pos) <= 28.0 and marker_hit is Vector3 and marker_hit.distance_to(marker_pos) <= 9.5:
+			return visit_next_landmark()
 	var best_idx := -1
 	var best_screen_d := INF
 	for i in range(neighbors.size()):
@@ -12284,7 +12440,7 @@ func handle_scene_tap(screen_pos: Vector2) -> bool:
 					best_surp_id = s_id
 		if not best_surp_id.is_empty():
 			return inspect_neighborhood_surprise(best_surp_id)
-	var turk_ee_screen := camera.unproject_position(Vector3(-350.0, 3.6, 65.8))
+	var turk_ee_screen := camera.unproject_position(Vector3(SO_WHAT_AWNING_XZ.x, 3.6, SO_WHAT_AWNING_XZ.y))
 	var leav_ee_screen := camera.unproject_position(Vector3(-290.8, 24.6, 99.4))
 	if turk_ee_screen.distance_to(screen_pos) <= 28.0 or leav_ee_screen.distance_to(screen_pos) <= 28.0:
 		return inspect_so_what_easter_egg()
@@ -12298,11 +12454,14 @@ func handle_scene_tap(screen_pos: Vector2) -> bool:
 		var e_pos: Vector3 = NEIGHBORHOOD_EATERIES[e_i].get("pos", Vector3.ZERO)
 		var e_screen := camera.unproject_position(e_pos + Vector3(0.0, 2.2, 0.0))
 		var counter_open := e_i < eatery_counter_nodes.size() and eatery_counter_nodes[e_i].visible
+		var is_tour_counter := String(obj.get("tour_id", "")) == "eatery:%d" % e_i
 		var counter_screen_d := INF
-		if counter_open:
+		if counter_open or is_tour_counter:
 			var cp := eatery_counter_points[e_i]
 			counter_screen_d = camera.unproject_position(Vector3(cp.x, 1.3, cp.y)).distance_to(screen_pos)
 		if e_screen.distance_to(screen_pos) <= 24.0 or counter_screen_d <= 30.0:
+			if is_tour_counter:
+				return visit_next_landmark()
 			if counter_open and e_i == eatery_guide_idx:
 				return eatery_counter_interact(e_i)
 			return cycle_eatery_guide(e_i)
