@@ -3117,7 +3117,7 @@ func fit_roof_rect(polygon: Dictionary, want_len: float, want_wid: float, cleara
 
 ## Creator-reported rooftop spaces at 145 Leavenworth: TL Residences' rooftop dog park with greenery and
 ## a fire pit, and across the street the canopy-covered rooftop playground with green turf at Compass
-## Children's Center. Their existence comes from the creator; layout, sizes, and canopy height are stylized.
+## Children's Center, under a mesh (net) canopy. Their existence comes from the creator; layout, sizes, and canopy height are stylized.
 func build_creator_rooftops() -> void:
 	var root := Node3D.new()
 	root.name = "CreatorRooftops"
@@ -3185,7 +3185,21 @@ func build_creator_rooftops() -> void:
 			var cax: Vector2 = cr.axis
 			var cpp: Vector2 = cr.perp
 			var ch := h + 2.7
-			colored_box(sp, Vector3(cc.x, ch, cc.y), Vector3(float(cr.len) * 0.5, 0.05, float(cr.wid) * 0.5), cax, Color("bdb3a0"), Color("d3c9b4"))
+			# Mesh (net) canopy on a frame: strands every ~0.9 m, so the turf and play pieces show through.
+			var net_col := Color("3c4246")
+			var hl3 := Vector3(cax.x, 0.0, cax.y) * float(cr.len) * 0.5
+			var hw3 := Vector3(cpp.x, 0.0, cpp.y) * float(cr.wid) * 0.5
+			var c3 := Vector3(cc.x, ch, cc.y)
+			for edge in [[c3 - hl3 - hw3, c3 + hl3 - hw3], [c3 - hl3 + hw3, c3 + hl3 + hw3], [c3 - hl3 - hw3, c3 - hl3 + hw3], [c3 + hl3 - hw3, c3 + hl3 + hw3]]:
+				colored_beam(sp, edge[0], edge[1], 0.09, Color("5f666a"))
+			var n_l := int(float(cr.len) / 0.9)
+			for i_n in range(1, n_l):
+				var off := hl3 * (2.0 * float(i_n) / float(n_l) - 1.0)
+				colored_beam(sp, c3 + off - hw3, c3 + off + hw3, 0.03, net_col)
+			var n_w := int(float(cr.wid) / 0.9)
+			for i_n in range(1, n_w):
+				var off_w := hw3 * (2.0 * float(i_n) / float(n_w) - 1.0)
+				colored_beam(sp, c3 + off_w - hl3, c3 + off_w + hl3, 0.03, net_col)
 			for i_l in [-0.5, 0.0, 0.5]:
 				for i_w in [-0.5, 0.5]:
 					var pc: Vector2 = cc + cax * float(cr.len) * float(i_l) + cpp * float(cr.wid) * float(i_w)
