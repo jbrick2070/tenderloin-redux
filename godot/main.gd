@@ -156,6 +156,31 @@ const MUSIC_STEP_SEC := 0.375
 const MUSIC_MAX_LOCAL_BYTES := 40 * 1024 * 1024
 const MUSIC_DECODE_ERROR := "Could not decode audio file. Sketch remains available."
 const MUSIC_FILE_ERROR := "Invalid audio file. Choose an MP3, WAV, or OGG track."
+const ROOFTOP_DETAIL_NODE := "RooftopDetails"
+const CORNER_TOWER_MIN_HEIGHT_M := 15.0
+const CORNER_TOWER_MAX_CORNER_DIST_M := 15.0
+const TROLLEY_STREET_NAMES: Array[String] = ["Turk Street", "Eddy Street"]
+const TROLLEY_POLE_SPACING_M := 30.0
+const TROLLEY_POLE_OFFSET_M := 6.1
+const TROLLEY_WIRE_HEIGHT_M := 5.8
+const TROLLEY_SPAN_HEIGHT_M := 6.4
+const TROLLEY_WIRE_OFFSETS_M: Array[float] = [1.15, 1.75]
+# Boeddeker Park outline: OpenStreetMap way 33619301 (240 Eddy St), (c) OpenStreetMap contributors, ODbL 1.0.
+# Projected with the data/buildings.json local-metre origin; raw response kept in data/source/boeddeker_park.osm.json.
+const BOEDDEKER_PARK_OSM_WAY := 33619301
+const BOEDDEKER_PARK_RING: Array[Vector2] = [
+	Vector2(-159.26, -133.90), Vector2(-156.52, -113.06), Vector2(-154.53, -101.81), Vector2(-153.44, -98.92),
+	Vector2(-150.94, -96.64), Vector2(-146.34, -95.10), Vector2(-112.12, -99.50), Vector2(-109.18, -99.87),
+	Vector2(-109.17, -103.45), Vector2(-106.82, -103.49), Vector2(-107.37, -110.23), Vector2(-95.89, -112.85),
+	Vector2(-99.84, -137.94), Vector2(-90.14, -139.80), Vector2(-90.85, -144.69), Vector2(-75.72, -146.91),
+	Vector2(-82.38, -189.51), Vector2(-86.92, -188.63), Vector2(-90.68, -187.95), Vector2(-106.20, -185.20),
+	Vector2(-99.33, -143.69)
+]
+const BOEDDEKER_PARK_ENTRANCE := Vector2(-126.0, -97.7)
+const BOEDDEKER_PATH_POINTS: Array[Vector2] = [
+	Vector2(-126.0, -98.6), Vector2(-126.5, -114.0), Vector2(-112.0, -125.5),
+	Vector2(-95.5, -141.5), Vector2(-90.5, -160.0), Vector2(-91.0, -180.0)
+]
 
 var data: Dictionary
 var camera: Camera3D
@@ -447,6 +472,20 @@ var last_proximity_neighbor := -1
 var street_signs_root: Node3D
 var concert_musician_nodes: Array[Node3D] = []
 var concert_crowd_nodes: Array[Node3D] = []
+var street_intersections: Array[Vector2] = []
+var corner_tower_sites: Dictionary = {}
+var rooftop_material: StandardMaterial3D
+var rooftop_feature_counts: Dictionary = {"parapets": 0, "water_tanks": 0, "penthouses": 0, "skylights": 0, "vents": 0, "corner_towers": 0}
+var rooftop_feature_points: Array[Dictionary] = []
+var trolley_pole_points: Array[Vector2] = []
+var trolley_wire_runs := 0
+var boeddeker_park_node: Node3D
+var boeddeker_tree_points: Array[Vector2] = []
+var park_tree_canopies: Array[Node3D] = []
+var tree_trunk_mesh: CylinderMesh
+var tree_canopy_mesh: SphereMesh
+var tree_trunk_material: StandardMaterial3D
+var tree_leaf_materials: Array[StandardMaterial3D] = []
 
 func colored_quad(surface: SurfaceTool, p00: Vector3, p10: Vector3, p11: Vector3, p01: Vector3, col: Color) -> void:
 	surface.set_color(col)
@@ -461,6 +500,417 @@ func colored_quad(surface: SurfaceTool, p00: Vector3, p10: Vector3, p11: Vector3
 	surface.add_vertex(p11)
 	surface.set_color(col)
 	surface.add_vertex(p01)
+
+func colored_tri(surface: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, col: Color) -> void:
+	surface.set_color(col)
+	surface.add_vertex(a)
+	surface.set_color(col)
+	surface.add_vertex(b)
+	surface.set_color(col)
+	surface.add_vertex(c)
+
+## Box resting on its center, local X along axis_xz (ground plane); bottom face omitted.
+func colored_box(surface: SurfaceTool, center: Vector3, half: Vector3, axis_xz: Vector2, col: Color, top_col: Color) -> void:
+	var ax2 := axis_xz.normalized() if axis_xz.length_squared() > 1e-8 else Vector2.RIGHT
+	var ax := Vector3(ax2.x, 0.0, ax2.y) * half.x
+	var az := Vector3(-ax2.y, 0.0, ax2.x) * half.z
+	var lo := center + Vector3.DOWN * half.y
+	var hi := center + Vector3.UP * half.y
+	colored_quad(surface, lo - ax - az, lo + ax - az, hi + ax - az, hi - ax - az, col)
+	colored_quad(surface, lo + ax - az, lo + ax + az, hi + ax + az, hi + ax - az, col.darkened(0.10))
+	colored_quad(surface, lo + ax + az, lo - ax + az, hi - ax + az, hi + ax + az, col.darkened(0.04))
+	colored_quad(surface, lo - ax + az, lo - ax - az, hi - ax - az, hi - ax + az, col.darkened(0.14))
+	colored_quad(surface, hi - ax - az, hi + ax - az, hi + ax + az, hi - ax + az, top_col)
+
+## Vertical n-sided prism / frustum; r_top == 0 makes a cone. cap_col with alpha 0 leaves the top open.
+func colored_prism(surface: SurfaceTool, base: Vector3, r_bottom: float, r_top: float, height: float, sides: int, col: Color, cap_col: Color) -> void:
+	var top := base + Vector3.UP * height
+	for s in range(sides):
+		var a0 := TAU * float(s) / float(sides)
+		var a1 := TAU * float(s + 1) / float(sides)
+		var d0 := Vector3(cos(a0), 0.0, sin(a0))
+		var d1 := Vector3(cos(a1), 0.0, sin(a1))
+		var shade := col.darkened(0.12 * (0.5 + 0.5 * sin(a0 + 0.8)))
+		if r_top > 1e-4:
+			colored_quad(surface, base + d0 * r_bottom, base + d1 * r_bottom, top + d1 * r_top, top + d0 * r_top, shade)
+			if cap_col.a > 0.0:
+				colored_tri(surface, top, top + d0 * r_top, top + d1 * r_top, cap_col)
+		else:
+			colored_tri(surface, base + d0 * r_bottom, base + d1 * r_bottom, top, shade)
+
+## Square-section beam between two points (wires, legs, braces, rails).
+func colored_beam(surface: SurfaceTool, a: Vector3, b: Vector3, thickness: float, col: Color) -> void:
+	var d := b - a
+	if d.length_squared() < 1e-8:
+		return
+	var dn := d.normalized()
+	var side := dn.cross(Vector3.UP)
+	if side.length_squared() < 1e-6:
+		side = dn.cross(Vector3.RIGHT)
+	side = side.normalized() * (thickness * 0.5)
+	var up := side.cross(dn).normalized() * (thickness * 0.5)
+	colored_quad(surface, a - side - up, b - side - up, b + side - up, a + side - up, col.darkened(0.15))
+	colored_quad(surface, a + side - up, b + side - up, b + side + up, a + side + up, col)
+	colored_quad(surface, a + side + up, b + side + up, b - side + up, a - side + up, col.lightened(0.08))
+	colored_quad(surface, a - side + up, b - side + up, b - side - up, a - side - up, col)
+
+func vertex_color_material() -> StandardMaterial3D:
+	var result := material(Color.WHITE)
+	result.vertex_color_use_as_albedo = true
+	return result
+
+func ring_signed_area(ring: Array) -> float:
+	var area := 0.0
+	var n := ring.size()
+	for i in range(n):
+		var p0: Array = ring[i]
+		var p1: Array = ring[(i + 1) % n]
+		area += float(p0[0]) * float(p1[1]) - float(p1[0]) * float(p0[1])
+	return area * 0.5
+
+func polygon_edge_clearance(pt: Vector2, polygon: Dictionary) -> float:
+	var best := INF
+	for ring in polygon.rings:
+		var n: int = ring.size()
+		for i in range(n):
+			var p0: Array = ring[i]
+			var p1: Array = ring[(i + 1) % n]
+			best = minf(best, dist_to_segment_2d(pt, Vector2(p0[0], p0[1]), Vector2(p1[0], p1[1])))
+	return best
+
+## Deterministic roof placement: first 7x7 grid sample inside the footprint (holes excluded)
+## with at least `clearance` metres to every roof edge and `avoid_r` metres from earlier roof items.
+func find_roof_spot(polygon: Dictionary, clearance: float, rseed: int, avoid: Array[Vector2], avoid_r: float) -> Vector2:
+	var ring: Array = polygon.rings[0]
+	if ring.is_empty():
+		return Vector2(INF, INF)
+	var r_rect := Rect2(Vector2(ring[0][0], ring[0][1]), Vector2.ZERO)
+	for rp in ring:
+		r_rect = r_rect.expand(Vector2(rp[0], rp[1]))
+	var grid := 7
+	var total := grid * grid
+	var start := posmod(rseed, total)
+	for k in range(total):
+		var cell := (start + k * 17) % total
+		var gx := float(cell % grid) + 0.5
+		var gz := float(cell / grid) + 0.5
+		var cand := r_rect.position + Vector2(r_rect.size.x * gx / float(grid), r_rect.size.y * gz / float(grid))
+		if not is_point_in_building_polygon(cand, polygon):
+			continue
+		if polygon_edge_clearance(cand, polygon) < clearance:
+			continue
+		var clash := false
+		for av in avoid:
+			if av.distance_to(cand) < avoid_r:
+				clash = true
+				break
+		if not clash:
+			return cand
+	return Vector2(INF, INF)
+
+func compute_street_intersections() -> void:
+	street_intersections.clear()
+	var seen: Dictionary = {}
+	for street in street_ways:
+		var s_name := String(street.get("name", ""))
+		for p in street.points:
+			var key := "%.2f,%.2f" % [float(p[0]), float(p[1])]
+			if not seen.has(key):
+				seen[key] = {"pt": Vector2(float(p[0]), float(p[1])), "names": {}}
+			seen[key].names[s_name] = true
+	for key in seen:
+		if seen[key].names.size() >= 2:
+			street_intersections.append(seen[key].pt)
+
+## Convex footprint corner facing a street intersection -> turret site, or {} if the corner is unsuitable.
+func corner_site_for_vertex(polygon: Dictionary, v_i: int, ix: Vector2) -> Dictionary:
+	var ring: Array = polygon.rings[0]
+	var n := ring.size()
+	if n < 3:
+		return {}
+	var v := Vector2(ring[v_i][0], ring[v_i][1])
+	var prev := v
+	var next := v
+	for k in range(1, n):
+		var cand := Vector2(ring[posmod(v_i - k, n)][0], ring[posmod(v_i - k, n)][1])
+		if cand.distance_to(v) >= 2.0:
+			prev = cand
+			break
+	for k in range(1, n):
+		var cand2 := Vector2(ring[(v_i + k) % n][0], ring[(v_i + k) % n][1])
+		if cand2.distance_to(v) >= 2.0:
+			next = cand2
+			break
+	if prev == v or next == v:
+		return {}
+	var bis := (prev - v).normalized() + (next - v).normalized()
+	if bis.length() < 0.9:
+		return {}
+	bis = bis.normalized()
+	if not is_point_in_building_polygon(v + bis * 1.2, polygon):
+		return {}
+	if (ix - v).dot(bis) >= 0.0:
+		return {}
+	return {"vertex": v, "bisector": bis, "center": v + bis * 1.45, "radius": 2.3, "intersection": ix}
+
+## Picks the tallest corner building at each intersection (plus an occasional second tall corner)
+## for a stylized SF corner bay turret. Procedural, not a surveyed per-building claim.
+func compute_corner_tower_sites() -> void:
+	corner_tower_sites.clear()
+	var all_list: Array = []
+	all_list.append_array(data.buildings)
+	all_list.append_array(data.get("wider_buildings", []))
+	for ix in street_intersections:
+		var cands: Array[Dictionary] = []
+		for b in all_list:
+			var h: float = b.height_m
+			if h < CORNER_TOWER_MIN_HEIGHT_M:
+				continue
+			for polygon in b.polygons:
+				var ring: Array = polygon.rings[0]
+				var best_i := -1
+				var best_d := INF
+				for v_i in range(ring.size()):
+					var d := Vector2(ring[v_i][0], ring[v_i][1]).distance_to(ix)
+					if d < best_d:
+						best_d = d
+						best_i = v_i
+				if best_i >= 0 and best_d <= CORNER_TOWER_MAX_CORNER_DIST_M:
+					cands.append({"id": String(b.id), "h": h, "polygon": polygon, "vertex_index": best_i})
+		cands.sort_custom(func(x: Dictionary, y: Dictionary) -> bool: return float(x.h) > float(y.h))
+		var granted := 0
+		for c in cands:
+			if granted >= 2:
+				break
+			var c_id: String = c.id
+			if corner_tower_sites.has(c_id):
+				continue
+			if granted > 0 and not (absi(c_id.hash()) % 3 == 0 and float(c.h) >= 20.0):
+				continue
+			var site := corner_site_for_vertex(c.polygon, int(c.vertex_index), ix)
+			if site.is_empty():
+				continue
+			corner_tower_sites[c_id] = site
+			granted += 1
+
+func add_water_tank(surface: SurfaceTool, base: Vector3, rseed: int) -> float:
+	var timber := Color("5b4636")
+	var cedar := Color("8f6a48") if rseed % 2 == 0 else Color("7c5d43")
+	var hoop := Color("34312e")
+	var no_cap := Color(0, 0, 0, 0)
+	var leg_h := 1.9
+	var corners: Array[Vector3] = [Vector3(-0.92, 0.0, -0.92), Vector3(0.92, 0.0, -0.92), Vector3(0.92, 0.0, 0.92), Vector3(-0.92, 0.0, 0.92)]
+	for c_i in range(4):
+		var c0: Vector3 = corners[c_i]
+		var c1: Vector3 = corners[(c_i + 1) % 4]
+		colored_beam(surface, base + c0 * 1.08, base + c0 * 0.9 + Vector3.UP * leg_h, 0.17, timber)
+		colored_beam(surface, base + c0 + Vector3.UP * 0.25, base + c1 + Vector3.UP * (leg_h - 0.2), 0.08, timber.lightened(0.1))
+	colored_box(surface, base + Vector3(0.0, leg_h + 0.07, 0.0), Vector3(1.35, 0.07, 1.35), Vector2.RIGHT, timber.darkened(0.1), timber.lightened(0.15))
+	var tank_base := base + Vector3.UP * (leg_h + 0.14)
+	var tank_h := 2.3
+	colored_prism(surface, tank_base, 1.22, 1.16, tank_h, 12, cedar, no_cap)
+	for hoop_y in [0.35, 1.15, 1.95]:
+		colored_prism(surface, tank_base + Vector3.UP * float(hoop_y), 1.25, 1.25, 0.08, 12, hoop, no_cap)
+	colored_prism(surface, tank_base + Vector3.UP * tank_h, 1.30, 0.0, 0.75, 12, Color("4c4540"), no_cap)
+	colored_prism(surface, tank_base + Vector3.UP * (tank_h + 0.72), 0.06, 0.06, 0.35, 6, hoop, hoop)
+	return leg_h + 0.14 + tank_h + 1.07
+
+func add_skylight(surface: SurfaceTool, base: Vector3, axis_xz: Vector2) -> void:
+	var ax2 := axis_xz.normalized() if axis_xz.length_squared() > 1e-8 else Vector2.RIGHT
+	var ax := Vector3(ax2.x, 0.0, ax2.y)
+	var az := Vector3(-ax2.y, 0.0, ax2.x)
+	colored_box(surface, base + Vector3.UP * 0.12, Vector3(0.85, 0.12, 0.6), ax2, Color("6f6c66"), Color("85827a"))
+	var y0 := base + Vector3.UP * 0.24
+	var hx := ax * 0.78
+	var hz := az * 0.52
+	var ridge := Vector3.UP * 0.40
+	var glass := Color("9fd3df")
+	colored_quad(surface, y0 - hx - hz, y0 + hx - hz, y0 + hx + ridge, y0 - hx + ridge, glass)
+	colored_quad(surface, y0 + hx + hz, y0 - hx + hz, y0 - hx + ridge, y0 + hx + ridge, glass.darkened(0.12))
+	colored_tri(surface, y0 - hx - hz, y0 - hx + ridge, y0 - hx + hz, glass.darkened(0.2))
+	colored_tri(surface, y0 + hx - hz, y0 + hx + hz, y0 + hx + ridge, glass.darkened(0.2))
+	colored_beam(surface, y0 - hx + ridge, y0 + hx + ridge, 0.06, Color("5d6466"))
+
+## Octagonal SF corner bay turret with per-story windows, belt courses, and a cupola dome + finial.
+func add_corner_tower(surface: SurfaceTool, site: Dictionary, h: float, pal: Dictionary, rseed: int) -> float:
+	var c2: Vector2 = site.center
+	var r := float(site.get("radius", 2.0))
+	var sides := 8
+	var no_cap := Color(0, 0, 0, 0)
+	var base_y := minf(3.6, h * 0.30)
+	var shaft_top := h + 2.0
+	var cornice_c: Color = pal.cornice
+	var base_c: Color = pal.base
+	var wall_col := cornice_c.lerp(base_c, 0.35)
+	var trim_col := cornice_c.lightened(0.15)
+	var glass_cols: Array[Color] = [Color("ffe494"), Color("f5b562"), Color("88c6d8")]
+	var mid_h := shaft_top - base_y
+	var stories := maxi(1, int(floor(mid_h / 3.2)))
+	var story_h := mid_h / float(stories)
+	var base := Vector3(c2.x, 0.0, c2.y)
+	colored_prism(surface, base + Vector3.UP * (base_y - 0.55), r * 0.5, r, 0.55, sides, trim_col.darkened(0.15), no_cap)
+	for s_i in range(stories):
+		var y0 := base_y + float(s_i) * story_h
+		colored_prism(surface, base + Vector3.UP * y0, r, r, story_h, sides, wall_col, no_cap)
+		var wy0 := y0 + story_h * 0.24
+		var wy1 := y0 + story_h * 0.76
+		for f in range(sides):
+			var a0 := TAU * float(f) / float(sides)
+			var a1 := TAU * float(f + 1) / float(sides)
+			var d0 := Vector3(cos(a0), 0.0, sin(a0))
+			var d1 := Vector3(cos(a1), 0.0, sin(a1))
+			var nrm := (d0 + d1).normalized() * 0.035
+			var w0 := (base + d0 * r + nrm).lerp(base + d1 * r + nrm, 0.2)
+			var w1 := (base + d0 * r + nrm).lerp(base + d1 * r + nrm, 0.8)
+			var g_col: Color = glass_cols[(rseed + f + s_i * 3) % glass_cols.size()]
+			colored_quad(surface, w0 + Vector3.UP * wy0, w1 + Vector3.UP * wy0, w1 + Vector3.UP * wy1, w0 + Vector3.UP * wy1, g_col)
+		colored_prism(surface, base + Vector3.UP * (y0 + story_h - 0.12), r + 0.06, r + 0.06, 0.12, sides, trim_col, no_cap)
+	colored_prism(surface, base + Vector3.UP * shaft_top, r + 0.28, r + 0.28, 0.32, sides, trim_col, trim_col.darkened(0.1))
+	var dome_cols: Array[Color] = [Color("5e9c88"), Color("56606b"), Color("b8643f")]
+	var dome_col: Color = dome_cols[rseed % dome_cols.size()]
+	var dome_base := shaft_top + 0.32
+	var dome_r := r * 0.98
+	var steps := 4
+	for k in range(steps):
+		var th0 := (PI * 0.5) * float(k) / float(steps)
+		var th1 := (PI * 0.5) * float(k + 1) / float(steps)
+		var y_a := dome_base + sin(th0) * dome_r * 1.1
+		var y_b := dome_base + sin(th1) * dome_r * 1.1
+		var r_b := cos(th1) * dome_r if k < steps - 1 else 0.0
+		colored_prism(surface, base + Vector3.UP * y_a, cos(th0) * dome_r, r_b, y_b - y_a, sides, dome_col.lightened(0.05 * float(k)), no_cap)
+	var dome_top := dome_base + dome_r * 1.1
+	colored_prism(surface, base + Vector3.UP * dome_top, 0.07, 0.05, 0.9, 6, Color("d8b45a"), Color("d8b45a"))
+	colored_prism(surface, base + Vector3.UP * (dome_top + 0.55), 0.17, 0.17, 0.16, 6, Color("e2c46a"), Color("e2c46a"))
+	return dome_top + 0.9
+
+func record_rooftop_feature(kind: String, b_id: String, xz: Vector2, top_y: float) -> void:
+	rooftop_feature_counts[kind] = int(rooftop_feature_counts.get(kind, 0)) + 1
+	rooftop_feature_points.append({"kind": kind, "id": b_id, "xz": xz, "top": top_y})
+
+## Separate child mesh so building meshes keep their measured LiDAR AABB height; hidden during cutaway.
+func build_rooftop_details(building: Dictionary, h: float, pal: Dictionary) -> MeshInstance3D:
+	var b_id := String(building.get("id", ""))
+	if building.polygons.is_empty() or h < 3.0:
+		return null
+	var rseed := absi(("%s:roof" % b_id).hash())
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	surface.set_smooth_group(-1)
+	var base_col: Color = pal.base
+	var cornice_col: Color = pal.cornice
+	var roof_col: Color = pal.roof
+	var feature_count := 0
+	var main_poly: Dictionary = building.polygons[0]
+	var best_area := 0.0
+	for polygon in building.polygons:
+		var ar := absf(ring_signed_area(polygon.rings[0]))
+		if ar > best_area:
+			best_area = ar
+			main_poly = polygon
+	var main_ring: Array = main_poly.rings[0]
+	var edge_dir := Vector2.RIGHT
+	var longest := 0.0
+	for i in range(main_ring.size()):
+		var ea := Vector2(main_ring[i][0], main_ring[i][1])
+		var eb := Vector2(main_ring[(i + 1) % main_ring.size()][0], main_ring[(i + 1) % main_ring.size()][1])
+		if ea.distance_to(eb) > longest:
+			longest = ea.distance_to(eb)
+			edge_dir = (eb - ea).normalized()
+	# 1. Parapet walls with a light coping cap around every outer roof edge
+	if h >= 6.0:
+		var par_h := 0.55 if h < 12.0 else 0.85
+		var par_t := 0.26
+		for polygon in building.polygons:
+			var ring: Array = polygon.rings[0]
+			var n: int = ring.size()
+			var ccw := ring_signed_area(ring) > 0.0
+			for i in range(n):
+				var a2 := Vector2(ring[i][0], ring[i][1])
+				var b2 := Vector2(ring[(i + 1) % n][0], ring[(i + 1) % n][1])
+				if a2.distance_to(b2) < 0.4:
+					continue
+				var t := (b2 - a2).normalized()
+				var inward := Vector2(-t.y, t.x) if ccw else Vector2(t.y, -t.x)
+				var a := Vector3(a2.x, h, a2.y)
+				var b := Vector3(b2.x, h, b2.y)
+				var in3 := Vector3(inward.x, 0.0, inward.y) * par_t
+				var up := Vector3.UP * par_h
+				colored_quad(surface, a, b, b + up, a + up, cornice_col.darkened(0.06))
+				colored_quad(surface, b + in3, a + in3, a + in3 + up, b + in3 + up, roof_col.lightened(0.12))
+				colored_quad(surface, a + up, b + up, b + in3 + up, a + in3 + up, cornice_col.lightened(0.18))
+		record_rooftop_feature("parapets", b_id, Vector2(main_ring[0][0], main_ring[0][1]), h + par_h)
+		feature_count += 1
+	var placed: Array[Vector2] = []
+	var tower_site: Dictionary = corner_tower_sites.get(b_id, {})
+	if not tower_site.is_empty():
+		var t_top := add_corner_tower(surface, tower_site, h, pal, rseed)
+		placed.append(tower_site.center)
+		record_rooftop_feature("corner_towers", b_id, tower_site.center, t_top)
+		feature_count += 1
+	# 2. Elevator penthouse / stair bulkhead on taller mid-rises
+	if h >= 18.0 and best_area >= 120.0 and (rseed % 3) != 2:
+		var pp := find_roof_spot(main_poly, 2.4, rseed, placed, 4.0)
+		if pp.x < INF:
+			var ph := 2.7
+			var perp := Vector2(-edge_dir.y, edge_dir.x)
+			colored_box(surface, Vector3(pp.x, h + ph * 0.5, pp.y), Vector3(1.7, ph * 0.5, 1.35), edge_dir, base_col.darkened(0.20), roof_col.lightened(0.22))
+			colored_box(surface, Vector3(pp.x, h + ph + 0.09, pp.y), Vector3(1.85, 0.09, 1.5), edge_dir, cornice_col.darkened(0.1), cornice_col.lightened(0.1))
+			var door := pp + perp * 1.37
+			colored_box(surface, Vector3(door.x, h + 1.0, door.y), Vector3(0.42, 1.0, 0.03), edge_dir, Color("3c4a52"), Color("3c4a52"))
+			placed.append(pp)
+			record_rooftop_feature("penthouses", b_id, pp, h + ph + 0.18)
+			feature_count += 1
+	# 3. Wooden water tank on a timber trestle
+	if h >= 14.0 and best_area >= 90.0 and ((rseed / 3) % 4) == 0:
+		var tp := find_roof_spot(main_poly, 2.2, rseed + 11, placed, 4.2)
+		if tp.x < INF:
+			var tank_top := add_water_tank(surface, Vector3(tp.x, h, tp.y), rseed)
+			placed.append(tp)
+			record_rooftop_feature("water_tanks", b_id, tp, h + tank_top)
+			feature_count += 1
+	# 4. Gabled glass skylights over stairwells and light courts
+	if h >= 5.0 and h <= 45.0 and best_area >= 60.0 and (rseed % 5) != 0:
+		var sky_n := 1 + (rseed / 5) % 2
+		for s_i in range(sky_n):
+			var sp := find_roof_spot(main_poly, 1.4, rseed + 29 + s_i * 7, placed, 2.6)
+			if sp.x == INF:
+				break
+			add_skylight(surface, Vector3(sp.x, h, sp.y), edge_dir)
+			placed.append(sp)
+			record_rooftop_feature("skylights", b_id, sp, h + 0.64)
+			feature_count += 1
+	# 5. Brick chimneys on older low-rises, HVAC units elsewhere
+	var vent_n := (rseed / 7) % 3
+	for v_i in range(vent_n):
+		var vp := find_roof_spot(main_poly, 1.0, rseed + 53 + v_i * 13, placed, 2.0)
+		if vp.x == INF:
+			break
+		if h < 20.0 and v_i == 0 and rseed % 2 == 0:
+			colored_box(surface, Vector3(vp.x, h + 0.75, vp.y), Vector3(0.32, 0.75, 0.32), edge_dir, Color("8a4b3a"), Color("5a3a30"))
+			record_rooftop_feature("vents", b_id, vp, h + 1.5)
+		else:
+			colored_box(surface, Vector3(vp.x, h + 0.42, vp.y), Vector3(0.7, 0.42, 0.55), edge_dir, Color("a3a7a5"), Color("c3c6c3"))
+			colored_prism(surface, Vector3(vp.x, h + 0.84, vp.y), 0.3, 0.3, 0.03, 8, Color("4d5354"), Color("4d5354"))
+			record_rooftop_feature("vents", b_id, vp, h + 0.87)
+		placed.append(vp)
+		feature_count += 1
+	if feature_count == 0:
+		return null
+	surface.generate_normals()
+	var det := MeshInstance3D.new()
+	det.name = ROOFTOP_DETAIL_NODE
+	det.mesh = surface.commit()
+	if rooftop_material == null:
+		rooftop_material = vertex_color_material()
+	det.material_override = rooftop_material
+	return det
+
+func set_rooftop_details_visible(b_mesh: MeshInstance3D, visible_flag: bool) -> void:
+	if b_mesh == null:
+		return
+	var det := b_mesh.get_node_or_null(ROOFTOP_DETAIL_NODE) as Node3D
+	if det != null:
+		det.visible = visible_flag
 
 func make_building_mesh_and_rect(building: Dictionary, mat: StandardMaterial3D, base_col: Color = Color("d49a6a")) -> Dictionary:
 	var surface := SurfaceTool.new()
@@ -682,6 +1132,9 @@ func make_building_mesh_and_rect(building: Dictionary, mat: StandardMaterial3D, 
 	col.shape = concave
 	body.add_child(col)
 	building_mesh.add_child(body)
+	var details := build_rooftop_details(building, h, {"base": base_col, "spandrel": spandrel_col, "plinth": plinth_col, "cornice": cornice_col, "roof": roof_col})
+	if details != null:
+		building_mesh.add_child(details)
 	add_child(building_mesh)
 	return {"mesh": building_mesh, "rect": b_rect}
 
@@ -745,6 +1198,8 @@ func _ready() -> void:
 	add_child(ground)
 	build_streets()
 	build_district_boundary()
+	compute_street_intersections()
+	compute_corner_tower_sites()
 	for idx in range(data.buildings.size()):
 		var building: Dictionary = data.buildings[idx]
 		var base_c: Color = palette[idx % palette.size()]
@@ -784,6 +1239,8 @@ func _ready() -> void:
 	build_rook_speaker()
 	build_block_banner()
 	build_street_life_decor()
+	build_muni_overhead_lines()
+	build_boeddeker_park()
 	build_audio_players()
 	camera = Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
@@ -2484,6 +2941,307 @@ func build_street_life_decor() -> void:
 	decor_root.add_child(eateries_root)
 
 	add_child(decor_root)
+
+## Muni trolleybus overhead: a contact-wire pair above the travel lanes of Turk and Eddy
+## (31 Balboa corridor), span wires and hangers between sidewalk poles every ~30 m.
+## Stylized schematic placement, not a surveyed pole inventory.
+func build_muni_overhead_lines() -> void:
+	trolley_pole_points.clear()
+	trolley_wire_runs = 0
+	var lines_root := Node3D.new()
+	lines_root.name = "MuniOverheadLines"
+	var pole_st := SurfaceTool.new()
+	pole_st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	pole_st.set_smooth_group(-1)
+	var wire_st := SurfaceTool.new()
+	wire_st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	wire_st.set_smooth_group(-1)
+	var pole_col := Color("3b4744")
+	var wire_col := Color("1f2427")
+	var area := walk_bounds.grow(-6.0)
+	for street in street_ways:
+		if not TROLLEY_STREET_NAMES.has(String(street.get("name", ""))):
+			continue
+		var p2: Array[Vector2] = []
+		for p in street.points:
+			p2.append(Vector2(float(p[0]), float(p[1])))
+		if p2.size() < 2:
+			continue
+		var normals: Array[Vector2] = []
+		for i in range(p2.size()):
+			var t_in := (p2[i] - p2[i - 1]).normalized() if i > 0 else Vector2.ZERO
+			var t_out := (p2[i + 1] - p2[i]).normalized() if i < p2.size() - 1 else Vector2.ZERO
+			var tng := t_in + t_out
+			if tng.length_squared() < 1e-8:
+				tng = t_out if t_out != Vector2.ZERO else t_in
+			tng = tng.normalized()
+			normals.append(Vector2(-tng.y, tng.x))
+		var walked := 0.0
+		var next_at := 14.0
+		for i in range(p2.size() - 1):
+			var a := p2[i]
+			var b := p2[i + 1]
+			var seg_len := a.distance_to(b)
+			if seg_len < 1e-3:
+				continue
+			if area.has_point(a) or area.has_point(b):
+				for off in TROLLEY_WIRE_OFFSETS_M:
+					var wa := a + normals[i] * off
+					var wb := b + normals[i + 1] * off
+					colored_beam(wire_st, Vector3(wa.x, TROLLEY_WIRE_HEIGHT_M, wa.y), Vector3(wb.x, TROLLEY_WIRE_HEIGHT_M, wb.y), 0.07, wire_col)
+				trolley_wire_runs += 1
+			var t := (b - a) / seg_len
+			var n := Vector2(-t.y, t.x)
+			while next_at <= walked + seg_len:
+				var s := a + t * (next_at - walked)
+				next_at += TROLLEY_POLE_SPACING_M
+				if not area.has_point(s):
+					continue
+				var near_ix := false
+				for ix in street_intersections:
+					if ix.distance_to(s) < 11.0:
+						near_ix = true
+						break
+				if near_ix:
+					continue
+				var pl := s + n * TROLLEY_POLE_OFFSET_M
+				var pr := s - n * TROLLEY_POLE_OFFSET_M
+				if building_containing_point(pl) != "" or building_containing_point(pr) != "":
+					continue
+				if min_wall_distance(pl, 0.4) < 0.4 or min_wall_distance(pr, 0.4) < 0.4:
+					continue
+				for pp in [pl, pr]:
+					colored_prism(pole_st, Vector3(pp.x, 0.0, pp.y), 0.15, 0.10, 7.0, 8, pole_col, pole_col.lightened(0.2))
+					trolley_pole_points.append(pp)
+				colored_beam(wire_st, Vector3(pl.x, TROLLEY_SPAN_HEIGHT_M, pl.y), Vector3(pr.x, TROLLEY_SPAN_HEIGHT_M, pr.y), 0.06, wire_col)
+				for off in TROLLEY_WIRE_OFFSETS_M:
+					var hp := s + n * off
+					colored_beam(wire_st, Vector3(hp.x, TROLLEY_SPAN_HEIGHT_M, hp.y), Vector3(hp.x, TROLLEY_WIRE_HEIGHT_M, hp.y), 0.04, wire_col)
+			walked += seg_len
+	pole_st.generate_normals()
+	var poles := MeshInstance3D.new()
+	poles.name = "TrolleyPoles"
+	poles.mesh = pole_st.commit()
+	poles.material_override = vertex_color_material()
+	lines_root.add_child(poles)
+	wire_st.generate_normals()
+	var wires := MeshInstance3D.new()
+	wires.name = "TrolleyWires"
+	wires.mesh = wire_st.commit()
+	wires.material_override = vertex_color_material()
+	lines_root.add_child(wires)
+	add_child(lines_root)
+
+func ensure_tree_resources() -> void:
+	if tree_trunk_mesh != null:
+		return
+	tree_trunk_mesh = CylinderMesh.new()
+	tree_trunk_mesh.top_radius = 0.12
+	tree_trunk_mesh.bottom_radius = 0.19
+	tree_trunk_mesh.height = 2.2
+	tree_canopy_mesh = SphereMesh.new()
+	tree_canopy_mesh.radius = 1.45
+	tree_canopy_mesh.height = 2.5
+	tree_canopy_mesh.radial_segments = 12
+	tree_canopy_mesh.rings = 6
+	tree_trunk_material = material(Color("5a402d"))
+	tree_leaf_materials.clear()
+	for leaf_hex in ["4e7d5c", "5c8d67", "6a9a5a"]:
+		tree_leaf_materials.append(material(Color(String(leaf_hex))))
+
+## Street/park tree whose "Canopy" pivot sits on the trunk top so it can sway in the wind.
+func make_tree_node(node_name: String, pos: Vector3, scale_f: float, variant: int) -> Node3D:
+	ensure_tree_resources()
+	var tree := Node3D.new()
+	tree.name = node_name
+	tree.position = pos
+	var trunk := MeshInstance3D.new()
+	trunk.name = "Trunk"
+	trunk.mesh = tree_trunk_mesh
+	trunk.scale = Vector3.ONE * scale_f
+	trunk.position = Vector3(0.0, 1.1 * scale_f, 0.0)
+	trunk.material_override = tree_trunk_material
+	tree.add_child(trunk)
+	var canopy := Node3D.new()
+	canopy.name = "Canopy"
+	canopy.position = Vector3(0.0, 2.0 * scale_f, 0.0)
+	var lower := MeshInstance3D.new()
+	lower.name = "CanopyLower"
+	lower.mesh = tree_canopy_mesh
+	lower.scale = Vector3(1.0, 0.9, 1.0) * scale_f
+	lower.position = Vector3(0.0, 0.85 * scale_f, 0.0)
+	lower.material_override = tree_leaf_materials[posmod(variant, tree_leaf_materials.size())]
+	canopy.add_child(lower)
+	var upper := MeshInstance3D.new()
+	upper.name = "CanopyUpper"
+	upper.mesh = tree_canopy_mesh
+	upper.scale = Vector3.ONE * (0.66 * scale_f)
+	upper.position = Vector3(0.28, 1.75, -0.18) * scale_f
+	upper.material_override = tree_leaf_materials[posmod(variant + 1, tree_leaf_materials.size())]
+	canopy.add_child(upper)
+	tree.add_child(canopy)
+	park_tree_canopies.append(canopy)
+	return tree
+
+func is_point_in_boeddeker_park(pt: Vector2) -> bool:
+	return Geometry2D.is_point_in_polygon(pt, PackedVector2Array(BOEDDEKER_PARK_RING))
+
+func boeddeker_edge_clearance(pt: Vector2) -> float:
+	var best := INF
+	var n := BOEDDEKER_PARK_RING.size()
+	for i in range(n):
+		best = minf(best, dist_to_segment_2d(pt, BOEDDEKER_PARK_RING[i], BOEDDEKER_PARK_RING[(i + 1) % n]))
+	return best
+
+func boeddeker_path_distance(pt: Vector2) -> float:
+	var best := INF
+	for i in range(BOEDDEKER_PATH_POINTS.size() - 1):
+		best = minf(best, dist_to_segment_2d(pt, BOEDDEKER_PATH_POINTS[i], BOEDDEKER_PATH_POINTS[i + 1]))
+	return best
+
+## Boeddeker Park (240 Eddy St at Jones): OSM outline lawn with a picket fence, Eddy St gate,
+## winding path, shade trees, benches and a play structure. Furnishings are stylized, not surveyed.
+func build_boeddeker_park() -> void:
+	boeddeker_tree_points.clear()
+	boeddeker_park_node = Node3D.new()
+	boeddeker_park_node.name = "BoeddekerPark"
+	var ring := PackedVector2Array(BOEDDEKER_PARK_RING)
+	var tris := Geometry2D.triangulate_polygon(ring)
+	var lawn_st := SurfaceTool.new()
+	lawn_st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in range(0, tris.size(), 3):
+		for k in range(3):
+			var lp: Vector2 = ring[tris[i + k]]
+			lawn_st.add_vertex(Vector3(lp.x, 0.02, lp.y))
+	lawn_st.generate_normals()
+	var lawn := MeshInstance3D.new()
+	lawn.name = "ParkLawn"
+	lawn.mesh = lawn_st.commit()
+	lawn.material_override = material(Color("5b8f55"))
+	boeddeker_park_node.add_child(lawn)
+	var furn_st := SurfaceTool.new()
+	furn_st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	furn_st.set_smooth_group(-1)
+	var path_col := Color("cdbf9b")
+	for i in range(BOEDDEKER_PATH_POINTS.size() - 1):
+		var pa := BOEDDEKER_PATH_POINTS[i]
+		var pb := BOEDDEKER_PATH_POINTS[i + 1]
+		var pt := (pb - pa).normalized()
+		var pn := Vector2(-pt.y, pt.x) * 1.2
+		colored_quad(furn_st, Vector3(pa.x - pn.x, 0.035, pa.y - pn.y), Vector3(pb.x - pn.x, 0.035, pb.y - pn.y), Vector3(pb.x + pn.x, 0.035, pb.y + pn.y), Vector3(pa.x + pn.x, 0.035, pa.y + pn.y), path_col)
+	for jp in BOEDDEKER_PATH_POINTS:
+		colored_prism(furn_st, Vector3(jp.x, 0.03, jp.y), 1.2, 1.2, 0.008, 10, path_col, path_col)
+	# Iron picket fence with top/bottom rails, open at the Eddy Street gate
+	var iron := Color("2b3a33")
+	var n_ring := ring.size()
+	for i in range(n_ring):
+		var fa: Vector2 = ring[i]
+		var fb: Vector2 = ring[(i + 1) % n_ring]
+		var f_len := fa.distance_to(fb)
+		if f_len < 0.05:
+			continue
+		var pickets := maxi(1, int(f_len / 0.5))
+		var run_start := -1
+		for k in range(pickets + 1):
+			var fp := fa.lerp(fb, float(k) / float(pickets))
+			var at_gate := fp.distance_to(BOEDDEKER_PARK_ENTRANCE) < 2.8
+			if not at_gate:
+				colored_beam(furn_st, Vector3(fp.x, 0.0, fp.y), Vector3(fp.x, 1.15, fp.y), 0.05, iron)
+				if run_start < 0:
+					run_start = k
+			if (at_gate or k == pickets) and run_start >= 0:
+				var end_k := k - 1 if at_gate else k
+				if end_k > run_start:
+					var ra := fa.lerp(fb, float(run_start) / float(pickets))
+					var rb := fa.lerp(fb, float(end_k) / float(pickets))
+					for rail_y in [0.14, 1.1]:
+						colored_beam(furn_st, Vector3(ra.x, float(rail_y), ra.y), Vector3(rb.x, float(rail_y), rb.y), 0.06, iron)
+				run_start = -1
+	# Gate arch over the Eddy Street entrance
+	var gate_dir := (BOEDDEKER_PARK_RING[6] - BOEDDEKER_PARK_RING[5]).normalized()
+	var gate_l := BOEDDEKER_PARK_ENTRANCE - gate_dir * 2.6
+	var gate_r := BOEDDEKER_PARK_ENTRANCE + gate_dir * 2.6
+	for gp in [gate_l, gate_r]:
+		colored_prism(furn_st, Vector3(gp.x, 0.0, gp.y), 0.16, 0.14, 2.9, 8, iron, iron.lightened(0.2))
+	colored_beam(furn_st, Vector3(gate_l.x, 2.8, gate_l.y), Vector3(gate_r.x, 2.8, gate_r.y), 0.16, Color("3f6b52"))
+	# Benches facing the path
+	var bench_wood := Color("8a6544")
+	for b_i in range(1, BOEDDEKER_PATH_POINTS.size() - 1):
+		var bp := BOEDDEKER_PATH_POINTS[b_i]
+		var bt := (BOEDDEKER_PATH_POINTS[b_i + 1] - BOEDDEKER_PATH_POINTS[b_i - 1]).normalized()
+		var bn := Vector2(-bt.y, bt.x)
+		var bc := bp + bn * 2.3
+		if not is_point_in_boeddeker_park(bc) or boeddeker_edge_clearance(bc) < 1.2:
+			bc = bp - bn * 2.3
+		if not is_point_in_boeddeker_park(bc) or boeddeker_edge_clearance(bc) < 1.2:
+			continue
+		colored_box(furn_st, Vector3(bc.x, 0.45, bc.y), Vector3(0.95, 0.05, 0.24), bt, bench_wood, bench_wood.lightened(0.12))
+		var back := bc + (bc - bp).normalized() * 0.24
+		colored_box(furn_st, Vector3(back.x, 0.78, back.y), Vector3(0.95, 0.22, 0.04), bt, bench_wood.darkened(0.08), bench_wood)
+		for leg_s in [-0.8, 0.8]:
+			var lg := bc + bt * float(leg_s)
+			colored_box(furn_st, Vector3(lg.x, 0.2, lg.y), Vector3(0.05, 0.2, 0.2), bt, iron, iron)
+	# Children's play structure in the western lawn
+	var play_c := Vector2(-146.0, -112.0)
+	if is_point_in_boeddeker_park(play_c) and boeddeker_edge_clearance(play_c) >= 3.0:
+		colored_box(furn_st, Vector3(play_c.x, 0.012, play_c.y), Vector3(3.4, 0.012, 3.0), Vector2.RIGHT, Color("b46a4f"), Color("b46a4f"))
+		for sx in [-1.0, 1.0]:
+			for sz in [-1.0, 1.0]:
+				colored_beam(furn_st, Vector3(play_c.x + sx * 1.1, 0.0, play_c.y + sz * 1.1), Vector3(play_c.x + sx * 1.1, 2.6, play_c.y + sz * 1.1), 0.12, Color("2f6e8e"))
+		colored_box(furn_st, Vector3(play_c.x, 1.25, play_c.y), Vector3(1.25, 0.08, 1.25), Vector2.RIGHT, Color("e2b33f"), Color("efc55a"))
+		colored_prism(furn_st, Vector3(play_c.x, 2.6, play_c.y), 1.7, 0.0, 0.9, 4, Color("d9573f"), Color(0, 0, 0, 0))
+		colored_beam(furn_st, Vector3(play_c.x + 1.25, 1.25, play_c.y), Vector3(play_c.x + 3.2, 0.15, play_c.y), 0.5, Color("d9573f"))
+	furn_st.generate_normals()
+	var furn := MeshInstance3D.new()
+	furn.name = "ParkFurnishings"
+	furn.mesh = furn_st.commit()
+	furn.material_override = vertex_color_material()
+	boeddeker_park_node.add_child(furn)
+	# Shade trees on a jittered 6.5 m grid clear of fence, path, play area and footprints
+	var p_rect := Rect2(BOEDDEKER_PARK_RING[0], Vector2.ZERO)
+	for rp in BOEDDEKER_PARK_RING:
+		p_rect = p_rect.expand(rp)
+	var trees_root := Node3D.new()
+	trees_root.name = "ParkTrees"
+	var gx := p_rect.position.x + 3.0
+	while gx < p_rect.end.x and boeddeker_tree_points.size() < 24:
+		var gz := p_rect.position.y + 3.0
+		while gz < p_rect.end.y and boeddeker_tree_points.size() < 24:
+			var jitter_seed := absi(("park:%d:%d" % [int(gx), int(gz)]).hash())
+			var tp := Vector2(gx + float(jitter_seed % 21) / 10.0 - 1.0, gz + float((jitter_seed / 21) % 21) / 10.0 - 1.0)
+			gz += 6.5
+			if not is_point_in_boeddeker_park(tp) or boeddeker_edge_clearance(tp) < 2.6:
+				continue
+			if boeddeker_path_distance(tp) < 2.6 or tp.distance_to(play_c) < 5.2:
+				continue
+			if building_containing_point(tp) != "" or min_wall_distance(tp, 2.5) < 2.5:
+				continue
+			var t_scale := 1.4 + float(jitter_seed % 6) * 0.1
+			trees_root.add_child(make_tree_node("ParkTree_%d" % boeddeker_tree_points.size(), Vector3(tp.x, 0.0, tp.y), t_scale, jitter_seed))
+			boeddeker_tree_points.append(tp)
+		gx += 6.5
+	boeddeker_park_node.add_child(trees_root)
+	var lbl := make_label_3d("BoeddekerParkLabel", "Boeddeker Park · 240 Eddy St", Vector3(BOEDDEKER_PARK_ENTRANCE.x, 3.6, BOEDDEKER_PARK_ENTRANCE.y), Color("c9f5c4"), 0.0125, 24)
+	boeddeker_park_node.add_child(lbl)
+	add_child(boeddeker_park_node)
+
+func inspect_boeddeker_park() -> bool:
+	in_overview = false
+	in_wide_overview = false
+	following_player = false
+	if selected >= 0:
+		meshes[selected].material_override = building_materials[selected]
+		selected = -1
+	target = Vector3(-118.0, 2.0, -132.0)
+	view_size = 96.0
+	update_camera()
+	update_occlusion(true)
+	var line := "Boeddeker Park — 240 Eddy St at Jones (OpenStreetMap way %d)" % BOEDDEKER_PARK_OSM_WAY
+	var sub := "Fenced neighborhood park: lawn, %d shade trees, play structure & benches along a winding path · Outline © OpenStreetMap / ODbL; trees, path & furniture are stylized, not surveyed" % boeddeker_tree_points.size()
+	if info != null:
+		info.text = "%s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, sub]
+	announce_a11y_status("%s: %s" % [line, sub])
+	return true
 
 func player_height_m() -> float:
 	var min_y := INF
@@ -7516,10 +8274,12 @@ func clear_occlusion() -> void:
 	for idx in occluded_buildings:
 		if idx >= 0 and idx < meshes.size():
 			meshes[idx].material_override = chosen_material if idx == selected else building_materials[idx]
+			set_rooftop_details_visible(meshes[idx], true)
 	occluded_buildings.clear()
 	for w_idx in occluded_wider_buildings:
 		if w_idx >= 0 and w_idx < wider_meshes.size():
 			wider_meshes[w_idx].material_override = wider_building_materials[w_idx]
+			set_rooftop_details_visible(wider_meshes[w_idx], true)
 	occluded_wider_buildings.clear()
 	last_occlusion_pos = Vector2(INF, INF)
 	last_occlusion_neighbor = -2
@@ -7605,6 +8365,7 @@ func update_occlusion(force: bool = true) -> void:
 			if building_occludes_point(idx, fp, 1.0):
 				occluded_buildings.append(idx)
 				meshes[idx].material_override = cutaway_material
+				set_rooftop_details_visible(meshes[idx], false)
 				break
 	var wider_list: Array = data.get("wider_buildings", [])
 	for w_idx in range(wider_meshes.size()):
@@ -7612,6 +8373,7 @@ func update_occlusion(force: bool = true) -> void:
 			if building_record_occludes_point(wider_list[w_idx], wider_building_rects[w_idx], fp, 1.0):
 				occluded_wider_buildings.append(w_idx)
 				wider_meshes[w_idx].material_override = cutaway_material
+				set_rooftop_details_visible(wider_meshes[w_idx], false)
 				break
 
 func _process(delta: float) -> void:
@@ -7745,6 +8507,9 @@ func handle_scene_tap(screen_pos: Vector2) -> bool:
 	var museum_screen := camera.unproject_position(MUSEUM_HUB_POS + Vector3(0.0, 2.2, 0.0))
 	if museum_screen.distance_to(screen_pos) <= 28.0:
 		return inspect_tenderloin_museum_hub()
+	var park_screen := camera.unproject_position(Vector3(BOEDDEKER_PARK_ENTRANCE.x, 3.6, BOEDDEKER_PARK_ENTRANCE.y))
+	if park_screen.distance_to(screen_pos) <= 26.0:
+		return inspect_boeddeker_park()
 	for e_i in range(NEIGHBORHOOD_EATERIES.size()):
 		var e_pos: Vector3 = NEIGHBORHOOD_EATERIES[e_i].get("pos", Vector3.ZERO)
 		var e_screen := camera.unproject_position(e_pos + Vector3(0.0, 2.2, 0.0))

@@ -1,0 +1,59 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-10-19T23:41:36Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "way",
+  "id": 33619301,
+  "bounds": {
+    "minlat": 37.7840746,
+    "minlon": -122.4125942,
+    "maxlat": 37.7849227,
+    "maxlon": -122.4116446
+  },
+  "geometry": [
+    { "lat": 37.7844231, "lon": -122.4125942 },
+    { "lat": 37.7842359, "lon": -122.4125630 },
+    { "lat": 37.7841349, "lon": -122.4125404 },
+    { "lat": 37.7841089, "lon": -122.4125280 },
+    { "lat": 37.7840884, "lon": -122.4124996 },
+    { "lat": 37.7840746, "lon": -122.4124473 },
+    { "lat": 37.7841141, "lon": -122.4120584 },
+    { "lat": 37.7841174, "lon": -122.4120250 },
+    { "lat": 37.7841496, "lon": -122.4120248 },
+    { "lat": 37.7841500, "lon": -122.4119981 },
+    { "lat": 37.7842105, "lon": -122.4120044 },
+    { "lat": 37.7842340, "lon": -122.4118739 },
+    { "lat": 37.7844594, "lon": -122.4119188 },
+    { "lat": 37.7844761, "lon": -122.4118085 },
+    { "lat": 37.7845201, "lon": -122.4118166 },
+    { "lat": 37.7845400, "lon": -122.4116446 },
+    { "lat": 37.7849227, "lon": -122.4117203 },
+    { "lat": 37.7849148, "lon": -122.4117720 },
+    { "lat": 37.7849087, "lon": -122.4118147 },
+    { "lat": 37.7848840, "lon": -122.4119911 },
+    { "lat": 37.7845111, "lon": -122.4119130 },
+    { "lat": 37.7844231, "lon": -122.4125942 }
+  ],
+  "tags": {
+    "addr:city": "San Francisco",
+    "addr:country": "US",
+    "addr:housenumber": "240",
+    "addr:postcode": "94102",
+    "addr:state": "CA",
+    "addr:street": "Eddy Street",
+    "leisure": "park",
+    "name": "Boeddeker Park",
+    "opening_hours": "09:00-19:00",
+    "phone": "+1-415-292-2019",
+    "wikidata": "Q48817891"
+  }
+}
+
+  ]
+}

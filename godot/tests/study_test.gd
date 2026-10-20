@@ -181,6 +181,8 @@ func run() -> void:
 			for occ_idx in study.occluded_buildings:
 				require(study.meshes[occ_idx].material_override == study.cutaway_material, "occluding building uses cutaway material")
 				require(is_equal_approx(study.meshes[occ_idx].get_aabb().size.y, study.data.buildings[occ_idx].height_m), "cutaway preserves measured building height")
+				var occ_det: Node3D = study.meshes[occ_idx].get_node_or_null(study.ROOFTOP_DETAIL_NODE)
+				require(occ_det == null or not occ_det.visible, "cutaway hides the occluding building's rooftop details")
 		if study.neighbors[i].id == "thanh":
 			thanh_occluded = not study.occluded_buildings.is_empty()
 	require(rook_occluded and thanh_occluded, "camera sightline cutaway activates for occluded neighbor locations")
@@ -945,6 +947,56 @@ func run() -> void:
 	require(study.cycle_eatery_guide(0) and study.eatery_guide_idx == 0 and study.info.text.contains("Golden Lotus Pho & Noodle House") and study.info.text.contains("★ 4.8"), "cycle_eatery_guide(0) frames Golden Lotus Pho & Noodle House (★ 4.8)")
 	require(study.cycle_eatery_guide() and study.eatery_guide_idx == 1 and study.info.text.contains("Saffron Clay-Oven Naan & Curry") and study.info.text.contains("★ 4.6"), "cycle_eatery_guide() advances to Saffron Clay-Oven Naan & Curry (★ 4.6)")
 
+	# Rooftop details, SF corner turrets, Muni overhead lines & Boeddeker Park
+	var roof_counts: Dictionary = study.rooftop_feature_counts
+	require(int(roof_counts.get("parapets", 0)) >= 150 and int(roof_counts.get("water_tanks", 0)) >= 10 and int(roof_counts.get("penthouses", 0)) >= 10 and int(roof_counts.get("skylights", 0)) >= 40 and int(roof_counts.get("corner_towers", 0)) >= 6, "rooftop parapets, water tanks, elevator penthouses, skylights, and corner turrets are generated across the 188 footprints")
+	var roof_items_inside := true
+	for feat in study.rooftop_feature_points:
+		if String(feat.kind) in ["water_tanks", "penthouses", "skylights", "vents"] and study.building_containing_point(feat.xz) != String(feat.id):
+			roof_items_inside = false
+	require(roof_items_inside, "every rooftop tank, penthouse, skylight, and vent sits inside its own measured footprint")
+	var towers_ok: bool = study.corner_tower_sites.size() == int(roof_counts.get("corner_towers", -1))
+	for t_id in study.corner_tower_sites:
+		var t_site: Dictionary = study.corner_tower_sites[t_id]
+		var t_ix: Vector2 = t_site.intersection
+		var t_vtx: Vector2 = t_site.vertex
+		if t_vtx.distance_to(t_ix) > study.CORNER_TOWER_MAX_CORNER_DIST_M or study.building_containing_point(t_site.center) != String(t_id):
+			towers_ok = false
+	require(towers_ok, "corner turrets sit on convex footprint corners within 15 m of a real OSM intersection")
+	var details_count := 0
+	var details_above_roof := true
+	for b_list in [[study.meshes, study.data.buildings], [study.wider_meshes, study.data.wider_buildings]]:
+		for d_i in range(b_list[0].size()):
+			var d_mesh: MeshInstance3D = b_list[0][d_i]
+			var det: MeshInstance3D = d_mesh.get_node_or_null(study.ROOFTOP_DETAIL_NODE)
+			if det != null:
+				details_count += 1
+				if det.get_aabb().end.y < float(b_list[1][d_i].height_m) - 0.01:
+					details_above_roof = false
+	require(details_count >= 150 and details_above_roof, "RooftopDetails child meshes sit on measured roofs while building meshes keep LiDAR heights")
+	require(study.get_node_or_null("MuniOverheadLines/TrolleyPoles") != null and study.get_node_or_null("MuniOverheadLines/TrolleyWires") != null and study.trolley_pole_points.size() >= 40 and study.trolley_wire_runs >= 20, "Muni trolleybus poles and overhead contact wires run along Turk and Eddy")
+	var poles_ok := true
+	for pole_xz in study.trolley_pole_points:
+		var pole_sd: float = study.min_street_distance(pole_xz)
+		if study.building_containing_point(pole_xz) != "" or pole_sd < 5.2 or pole_sd > 7.5 or not (study.nearest_street_name(pole_xz) in study.TROLLEY_STREET_NAMES):
+			poles_ok = false
+	require(poles_ok, "every trolley pole stands on a Turk/Eddy sidewalk outside all footprints")
+	var park_node: Node3D = study.get_node_or_null("BoeddekerPark")
+	require(park_node != null and park_node.get_node_or_null("ParkLawn") != null and park_node.get_node_or_null("ParkFurnishings") != null and park_node.get_node_or_null("BoeddekerParkLabel") != null and study.boeddeker_tree_points.size() >= 12, "Boeddeker Park has lawn, fence/path/furnishings, label, and shade trees")
+	var park_trees_ok := true
+	for tree_xz in study.boeddeker_tree_points:
+		if not study.is_point_in_boeddeker_park(tree_xz) or study.building_containing_point(tree_xz) != "":
+			park_trees_ok = false
+	require(park_trees_ok, "Boeddeker Park trees stand inside the OSM outline and outside all footprints")
+	require(study.is_point_in_boeddeker_park(Vector2(-130.0, -115.0)) and not study.is_point_in_boeddeker_park(Vector2(-130.0, -86.0)), "Boeddeker Park outline lies north of the Eddy St centerline, east of Jones")
+	require(study.inspect_boeddeker_park() and study.info.text.contains("240 Eddy St") and study.info.text.contains("33619301") and study.last_a11y_announcement.contains("Boeddeker Park"), "inspect_boeddeker_park frames and announces Boeddeker Park with OSM provenance")
+	study.overview()
+	study.inspect_boeddeker_park()
+	var park_tap: Vector2 = study.camera.unproject_position(Vector3(study.BOEDDEKER_PARK_ENTRANCE.x, 3.6, study.BOEDDEKER_PARK_ENTRANCE.y))
+	require(not study.is_screen_point_in_ui(park_tap), "Boeddeker Park gate label projects outside UI panels when framed")
+	study.info.text = ""
+	require(study.handle_scene_tap(park_tap) and study.info.text.contains("Boeddeker Park"), "tapping the Boeddeker Park gate label inspects the park")
+
 	study.overview()
 	var street_screen: Vector2 = study.camera.unproject_position(Vector3(45.0, 0.0, -7.2))
 	require(study.handle_scene_tap(street_screen) and study.selected_neighbor == -1, "tapping projected street point in overview starts street route")
@@ -954,6 +1006,8 @@ func run() -> void:
 	require(study.occluded_buildings.is_empty() and study.selected_neighbor == -1 and not study.mural_panel.visible and not study.music_panel.visible and not study.block_panel.visible, "overview clears cutaway, neighbor selection, mural panel, music panel, and block panel")
 	for i in range(58):
 		require(study.meshes[i].material_override == study.building_materials[i], "overview restores solid neutral building materials")
+		var ov_det: Node3D = study.meshes[i].get_node_or_null(study.ROOFTOP_DETAIL_NODE)
+		require(ov_det == null or ov_det.visible, "overview restores rooftop details hidden by cutaway")
 
 	# Verify 3D mouse/keyboard camera orbit rotation and reset
 	var orig_cam_pos: Vector3 = study.camera.position
