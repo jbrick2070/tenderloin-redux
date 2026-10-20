@@ -1,5 +1,16 @@
 # Session Handoff — Tenderloin Redux — 2026-10-19 Pacific / 2026-10-19 UTC
 
+## Hand-back from the Claude Code desktop session (2026-10-19, `claude-opus-5-5`)
+
+The creator asked a Claude Code desktop session for a 3-round 3D pass, then for autonomous improvements while away, then for one story round before handing the repo back. Everything is committed and pushed to `main`; `.build-round.lock` has been released and the working tree is clean. Details and test evidence are under the "Latest checkpoint — Godot 3D improvement pass" section of `docs/BUILD_STATUS.md`.
+
+- **Pushed work, in order**: rooftop details, SF corner turrets, Muni overhead wires, Boeddeker Park (`68239a2`) → speech bubbles, evening light pools, swaying trees, eatery counters, and the Web-font glyph fix (`332b9a2`) → Field Guide survey importer `scripts/apply-field-survey.mjs` (`9d638b2`) → the conversation-first UX (header "Next:" line, gold guide marker, edge arrow, "Talk to X · T or tap" prompt, conversation mode with Keep Chatting / What's Next? / Goodbye, `f94178c`, `1e3cbb7`) → evening window glow shader (`46a63b4`) → high-DPI phone layout fix and conversation framing (`ebb502c`) → plain-language location header (`69b5ef5`) → five dialogue turns per neighbor (`769bb6e`) → story chapters, story cards, and the Long Table / Open Floor choice (this commit).
+- **Creator direction during this session**: (1) the UI for talking to characters matters as much as the 3D, so keep gameplay intuitive on desktop and phones; (2) be accurate and don't make things up. Only real things go where they really are, with sources (e.g. the Turk/Eddy wires match the 31 Balboa trolleybus, inbound on Eddy and outbound on Turk between Larkin and Mason; no Muni rail is modeled). Label fictional and stylized details as such.
+- **Schedulers**: this session's Claude scheduled task `tenderloin-3d-improvement` is **disabled** (paused, not deleted), and its one run, which never got past its first permission prompt, was stopped. The Codex scheduler remains paused as before. Per this file's earlier sections, AGY's own hourly scheduler is AGY's to resume; check `.build-round.lock` and `git status` first.
+- **Tests now**: `GODOT_STUDY_PASS`, `npm run check`, `npm test` **102** (5 new in `tests/apply-field-survey.test.mjs`), and `npm run godot:browser` with `errors: []`, `external: []`, and every `*Verified` true at 1100×760, 390×667, and 320×667.
+- **Unverified**: a physical phone (only 390×667 at 2× emulation was checked), the GitHub Pages deploy of these commits, real screen readers, and human playtesting of the new conversation flow and story pacing. No external CLI review (Kibitz) was run for these commits.
+- **Note**: the long-running preview server on `127.0.0.1:4174` predates the `/field-guide/` route. Restart `npm run godot:serve` to get it.
+
 ## Core goal
 
 Build the peaceful Tenderloin game described in docs/CONCEPT.md and the complete docs/ROADMAP.md. Creator has now selected **Godot with an isometric/2.5D view and accurate city-sourced buildings**. Continue as **AGY 4 / Gemini 4 Argon High**; do not silently use AGY Opus or change to a costly model.

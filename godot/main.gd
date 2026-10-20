@@ -60,6 +60,18 @@ const KEEPSAKE_BUNTING_Y: Array[String] = [
 const LOAN_IDS: Array[String] = ["table", "paint-case", "speaker"]
 const LOAN_OWNERS: Dictionary = {"table": "thanh", "paint-case": "celeste", "speaker": "rook"}
 const TALK_PROMPT_RADIUS_M := 6.0
+const GATHERING_LAYOUTS: Array[String] = ["table", "floor"]
+const GATHERING_LAYOUT_TITLES: Dictionary = {"table": "Long Table", "floor": "Open Floor"}
+# Story chapters follow docs/CONCEPT.md: a fictional resident helping co-host a gathering that
+# neighbors already started, then the afternoon projects that grow out of it.
+const STORY_CHAPTERS: Array[Dictionary] = [
+	{"num": 1, "title": "Get the Block Ready", "intro": "An afternoon at Turk & Taylor. You live on this block, and your neighbors have already started planning a small gathering. Bea has a plan, Celeste brought paint, Rook knows sound, Dez has a beat, and Thanh is lending supplies. Help them get the block ready. The gathering and the neighbors are fictional; the streets and the history are real."},
+	{"num": 2, "title": "The Gathering", "intro": "The block is open. Take a group photo with whoever wants to be in it, then help give back what was borrowed."},
+	{"num": 3, "title": "Another Afternoon", "intro": "Your neighbors want to do it again. Plan the schedule together, then host it: stories, rhythm, shared art, and a quiet pause."},
+	{"num": 4, "title": "A Listening Hour", "intro": "Some neighbors want to talk about repairs and shared space. Help set up a peaceful listening circle where everyone gets heard."},
+	{"num": 5, "title": "The Open Seat", "intro": "Celeste and Dez want to make a tiny three-shot film about keeping a seat open for someone new."},
+	{"num": 6, "title": "Your Block", "intro": "Everything you started is part of the block now. Wander, revisit the history stops, or just stop and say hi."}
+]
 const LOAN_TITLES: Dictionary = {
 	"table": "Thanh's folding table",
 	"paint-case": "Celeste's paint case",
@@ -552,6 +564,17 @@ var street_signs_root: Node3D
 var concert_musician_nodes: Array[Node3D] = []
 var concert_crowd_nodes: Array[Node3D] = []
 var objective_label: Label
+var gathering_layout := ""
+var gathering_layouts_node: Node3D
+var layout_table_node: Node3D
+var layout_floor_node: Node3D
+var gathering_lights_node: Node3D
+var gathering_layout_center := Vector2.ZERO
+var story_card: PanelContainer
+var story_title_label: Label
+var story_body_label: Label
+var story_continue_btn: Button
+var last_story_chapter := -1
 var block_panel_mode := "hub"
 var opening_conversation := false
 var talk_partner := -1
@@ -1507,6 +1530,7 @@ func _ready() -> void:
 	build_light_pools()
 	build_street_trees()
 	build_eatery_counters()
+	build_gathering_layouts()
 	ensure_speech_bubble()
 	build_guide_marker()
 	build_talk_prompt()
@@ -1525,6 +1549,10 @@ func _ready() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	overview()
+	# Opening story card for the current chapter, shown after the startup overview settles.
+	var start_chapter := current_chapter()
+	last_story_chapter = int(start_chapter.num)
+	show_story_card(start_chapter)
 	# Headless parser/import tests don't pretend to render a screenshot.
 	if "--capture" in OS.get_cmdline_user_args():
 		await get_tree().process_frame
@@ -2476,6 +2504,7 @@ func film_shot_color(shot_id: String) -> Color:
 			return Color("276a5a")
 
 func update_block_3d() -> void:
+	update_layout_3d()
 	if block_banner_node != null:
 		block_banner_node.visible = block_opened
 	if keepsake_frame_node != null:
@@ -4252,6 +4281,8 @@ func current_objective() -> Dictionary:
 		if best >= 0:
 			var n: Dictionary = neighbors[best]
 			return {"id": "meet", "neighbor": best, "has_target": true, "target": n.pos, "target_name": String(n.name), "text": "Meet %s (%d/%d neighbors met)" % [n.name, met, total], "hint": "%s is %s. Go say hello!" % [n.name, compass_phrase(p, neighbor_xz(best))]}
+		if not (gathering_layout in GATHERING_LAYOUTS):
+			return {"id": "layout", "neighbor": 0, "has_target": true, "target": bea_pos, "target_name": "Bea", "text": "Choose the gathering: Bea's Long Table or Dez & Celeste's Open Floor", "hint": "Bea wants a Long Table for stories and conversation. Dez and Celeste want an Open Floor for art and music. Both keep the sidewalk clear. Which should we set up?"}
 		if mural_placements.size() < MURAL_MOTIFS.size():
 			return {"id": "mural", "neighbor": celeste_index, "has_target": true, "target": MURAL_POS, "target_name": "Celeste's easel", "text": "Paint Sun, Wave and Rise on Celeste's easel (%d/3)" % mural_placements.size(), "hint": "Celeste's easel is %s. Add all three motifs." % compass_phrase(p, mural_xz())}
 		if not rook_soundcheck_done:
@@ -4288,7 +4319,12 @@ func current_objective() -> Dictionary:
 func update_objective_ui() -> void:
 	if objective_label == null:
 		return
-	objective_label.text = "Next: %s" % String(current_objective().get("text", ""))
+	var ch := current_chapter()
+	var next_text := String(current_objective().get("text", ""))
+	if is_narrow_layout():
+		objective_label.text = "Ch. %d · Next: %s" % [int(ch.num), next_text]
+	else:
+		objective_label.text = "Chapter %d: %s · Next: %s" % [int(ch.num), String(ch.title), next_text]
 
 func screen_constant_scale(px_per_unit: float) -> float:
 	if camera == null:
@@ -4470,6 +4506,12 @@ func ask_whats_next() -> String:
 	var obj := current_objective()
 	var speaker := talk_partner if talk_partner >= 0 else nearest_neighbor_within(TALK_PROMPT_RADIUS_M)
 	var hint := String(obj.get("hint", ""))
+	if String(obj.get("id", "")) == "layout" and speaker >= 0:
+		match String(neighbors[speaker].get("id", "")):
+			"bea":
+				hint = "I'd love a Long Table for stories and conversation. Dez and Celeste want an Open Floor for art and music. Both keep the sidewalk clear. What do you think?"
+			"dez", "celeste":
+				hint = "Bea wants a Long Table for stories and conversation. We'd love an Open Floor for art and music. Both keep the sidewalk clear. Your call!"
 	var line := conversation_partner_line(speaker, hint) if speaker >= 0 else hint
 	if block_panel != null and block_panel.visible:
 		last_panel_dialogue = line
@@ -4515,6 +4557,11 @@ func keep_chatting() -> String:
 func conversation_actions() -> Array[Dictionary]:
 	var obj := current_objective()
 	var acts: Array[Dictionary] = []
+	if String(obj.get("id", "")) == "layout":
+		acts.append({"id": "layout_table", "label": "Long Table (Bea)"})
+		acts.append({"id": "layout_floor", "label": "Open Floor (Dez & Celeste)"})
+		acts.append({"id": "hub", "label": "All Block Actions"})
+		return acts
 	match String(obj.get("id", "")):
 		"meet":
 			acts.append({"id": "walk_neighbor:%d" % int(obj.neighbor), "label": "Go Meet %s" % String(neighbors[int(obj.neighbor)].name)})
@@ -4574,7 +4621,7 @@ func run_conversation_action(slot: int) -> bool:
 	var partner := talk_partner
 	var ok := run_conversation_action_id(act_id)
 	# Block-wide steps reopen the panel as the full hub; stay in the conversation instead.
-	if ok and partner >= 0 and act_id in ["epilogue", "programme", "civic", "film", "open"] and block_panel != null and block_panel.visible:
+	if ok and partner >= 0 and act_id in ["epilogue", "programme", "civic", "film", "open", "layout_table", "layout_floor"] and block_panel != null and block_panel.visible:
 		show_conversation(partner)
 	return ok
 
@@ -4582,6 +4629,10 @@ func run_conversation_action_id(act_id: String) -> bool:
 	if act_id.begins_with("walk_neighbor:"):
 		return walk_to_neighbor(int(act_id.get_slice(":", 1)))
 	match act_id:
+		"layout_table":
+			return choose_gathering_layout("table")
+		"layout_floor":
+			return choose_gathering_layout("floor")
 		"mural":
 			open_mural_from_block_panel()
 		"soundcheck":
@@ -4633,7 +4684,7 @@ func apply_block_panel_mode() -> void:
 			if has:
 				var lbl := String(acts[s].label)
 				if narrow:
-					lbl = lbl.replace("Go Meet ", "Meet ").replace("All Block Actions", "All Actions").replace(" with Celeste", "").replace(" with Rook", "")
+					lbl = lbl.replace("Go Meet ", "Meet ").replace("All Block Actions", "All Actions").replace(" with Celeste", "").replace(" with Rook", "").replace(" (Bea)", "").replace(" (Dez & Celeste)", "")
 				conv_action_btns[s].text = lbl
 		if conv_chat_btn != null:
 			conv_chat_btn.text = "Chat More" if narrow else "Keep Chatting (T)"
@@ -4748,8 +4799,293 @@ func is_narrow_layout() -> bool:
 func any_side_panel_visible() -> bool:
 	return (block_panel != null and block_panel.visible) or (mural_panel != null and mural_panel.visible) or (music_panel != null and music_panel.visible)
 
+# --- Story: chapters, the story card, and the Long Table / Open Floor gathering choice ---
+
+## Chapter from the furthest progress reached (players may do afternoon projects in any order).
+func current_chapter() -> Dictionary:
+	var idx := 0
+	if block_opened:
+		idx = 1
+		if is_epilogue_done() or not programme_published.is_empty() or not hosting_order.is_empty():
+			idx = 2
+		if is_hosting_done():
+			idx = 3
+		if civic_phase == "done":
+			idx = 4
+		if film_phase == "done":
+			idx = 5
+	return STORY_CHAPTERS[idx]
+
+func build_story_card(layer: CanvasLayer) -> void:
+	var card_style := StyleBoxFlat.new()
+	card_style.bg_color = Color(0.06, 0.10, 0.13, 0.95)
+	card_style.border_color = Color(1.0, 0.85, 0.36, 1.0)
+	card_style.set_border_width_all(2)
+	card_style.set_corner_radius_all(10)
+	card_style.content_margin_left = 14
+	card_style.content_margin_right = 14
+	card_style.content_margin_top = 10
+	card_style.content_margin_bottom = 10
+	story_card = PanelContainer.new()
+	story_card.name = "StoryCard"
+	story_card.add_theme_stylebox_override("panel", card_style)
+	story_card.visible = false
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 6)
+	story_card.add_child(col)
+	story_title_label = Label.new()
+	story_title_label.name = "StoryTitle"
+	story_title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	story_title_label.add_theme_font_size_override("font_size", 22)
+	story_title_label.add_theme_color_override("font_color", Color("ffe48f"))
+	col.add_child(story_title_label)
+	story_body_label = Label.new()
+	story_body_label.name = "StoryBody"
+	story_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	story_body_label.add_theme_font_size_override("font_size", 16)
+	story_body_label.add_theme_color_override("font_color", Color("fff8e8"))
+	col.add_child(story_body_label)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_END
+	col.add_child(row)
+	story_continue_btn = Button.new()
+	story_continue_btn.name = "StoryContinue"
+	story_continue_btn.text = "Continue"
+	story_continue_btn.custom_minimum_size = Vector2(140, 44)
+	story_continue_btn.focus_mode = Control.FOCUS_ALL
+	style_game_button(story_continue_btn)
+	story_continue_btn.add_theme_font_size_override("font_size", 17)
+	story_continue_btn.pressed.connect(func(): hide_story_card())
+	row.add_child(story_continue_btn)
+	layer.add_child(story_card)
+
+func layout_story_card() -> void:
+	if story_card == null:
+		return
+	var vp := bubble_viewport_size()
+	var w := minf(560.0, vp.x - 24.0)
+	var top := 12.0
+	if header_panel != null:
+		top = header_panel.get_global_rect().end.y + 10.0
+	story_card.custom_minimum_size = Vector2(w, 0.0)
+	story_card.size = Vector2(w, 0.0)
+	story_card.position = Vector2((vp.x - w) * 0.5, top)
+
+func show_story_card(chapter: Dictionary) -> void:
+	if story_card == null:
+		return
+	story_title_label.text = "Chapter %d · %s" % [int(chapter.num), String(chapter.title)]
+	story_body_label.text = String(chapter.intro)
+	story_card.visible = true
+	layout_story_card()
+	announce_a11y_status("Chapter %d: %s. %s" % [int(chapter.num), String(chapter.title), String(chapter.intro)])
+
+func hide_story_card() -> void:
+	if story_card != null:
+		story_card.visible = false
+
+func is_story_card_visible() -> bool:
+	return story_card != null and story_card.visible
+
+## Center of the fictional temporary curb-lane closure next to Bea on Turk Street: the north
+## parking lane between Taylor and Mason, so the sidewalk route stays clear.
+func compute_gathering_layout_site() -> Dictionary:
+	var q := nearest_street_point(Vector2(38.0, -8.0))
+	var tng := nearest_street_tangent(q)
+	if tng.x < 0.0:
+		tng = -tng
+	var north := Vector2(-tng.y, tng.x)
+	if north.y > 0.0:
+		north = -north
+	return {"center": q + north * 3.4, "tangent": tng}
+
+func build_gathering_layouts() -> void:
+	var site := compute_gathering_layout_site()
+	gathering_layout_center = site.center
+	var tng: Vector2 = site.tangent
+	gathering_layouts_node = Node3D.new()
+	gathering_layouts_node.name = "GatheringLayouts"
+	gathering_layouts_node.position = Vector3(gathering_layout_center.x, 0.0, gathering_layout_center.y)
+	gathering_layouts_node.rotation.y = atan2(-tng.y, tng.x)
+	var no_cap := Color(0, 0, 0, 0)
+	# Sawhorse barricades at both ends of the fictional closure (shown with either layout)
+	var closure_st := SurfaceTool.new()
+	closure_st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	closure_st.set_smooth_group(-1)
+	for end_x in [-6.3, 6.3]:
+		for leg_z in [-1.0, 1.0]:
+			colored_beam(closure_st, Vector3(float(end_x) - 0.15, 0.0, float(leg_z)), Vector3(float(end_x), 0.9, float(leg_z)), 0.06, Color("d8d4c8"))
+			colored_beam(closure_st, Vector3(float(end_x) + 0.15, 0.0, float(leg_z)), Vector3(float(end_x), 0.9, float(leg_z)), 0.06, Color("d8d4c8"))
+		for stripe in range(4):
+			var z0 := -1.15 + float(stripe) * 0.575
+			colored_box(closure_st, Vector3(float(end_x), 0.92, z0 + 0.29), Vector3(0.04, 0.09, 0.29), Vector2.RIGHT, Color("e8833a") if stripe % 2 == 0 else Color("f4f1ea"), Color("f4f1ea"))
+	closure_st.generate_normals()
+	var closure := MeshInstance3D.new()
+	closure.name = "ClosureBarricades"
+	closure.mesh = closure_st.commit()
+	closure.material_override = vertex_color_material()
+	gathering_layouts_node.add_child(closure)
+	# Bea's Long Table: one long shared table with stools on both sides and Thanh's tea
+	layout_table_node = Node3D.new()
+	layout_table_node.name = "LayoutLongTable"
+	var t_st := SurfaceTool.new()
+	t_st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	t_st.set_smooth_group(-1)
+	colored_box(t_st, Vector3(0.0, 0.76, 0.0), Vector3(4.6, 0.04, 0.45), Vector2.RIGHT, Color("8a6544"), Color("a07a55"))
+	colored_box(t_st, Vector3(0.0, 0.806, 0.0), Vector3(4.4, 0.006, 0.18), Vector2.RIGHT, Color("efe3c4"), Color("efe3c4"))
+	for leg_x in [-4.3, -1.5, 1.5, 4.3]:
+		for leg_z in [-0.38, 0.38]:
+			colored_beam(t_st, Vector3(float(leg_x), 0.0, float(leg_z)), Vector3(float(leg_x), 0.74, float(leg_z)), 0.07, Color("5a402d"))
+	var stool_cols: Array[Color] = [Color("c37e71"), Color("5fb8a6"), Color("d6a449"), Color("8f7fb0")]
+	for s_i in range(8):
+		for side in [-0.95, 0.95]:
+			var sx := -3.85 + float(s_i) * 1.1
+			colored_prism(t_st, Vector3(sx, 0.0, float(side)), 0.05, 0.05, 0.44, 6, Color("2d3532"), no_cap)
+			colored_prism(t_st, Vector3(sx, 0.44, float(side)), 0.22, 0.22, 0.06, 10, stool_cols[(s_i + (1 if side > 0.0 else 0)) % stool_cols.size()], stool_cols[s_i % stool_cols.size()].lightened(0.15))
+	colored_prism(t_st, Vector3(0.0, 0.81, 0.0), 0.12, 0.09, 0.18, 10, Color("6a8d73"), Color("7da586"))
+	for cup_x in [-2.2, -0.9, 0.9, 2.2]:
+		colored_prism(t_st, Vector3(float(cup_x), 0.81, 0.2), 0.045, 0.04, 0.08, 8, Color("f4efe6"), Color("b68a4a"))
+	t_st.generate_normals()
+	var table_mesh := MeshInstance3D.new()
+	table_mesh.name = "LongTableSet"
+	table_mesh.mesh = t_st.commit()
+	table_mesh.material_override = vertex_color_material()
+	layout_table_node.add_child(table_mesh)
+	gathering_layouts_node.add_child(layout_table_node)
+	# Dez & Celeste's Open Floor: an open painted floor, a low riser and mic, and a lettering panel
+	layout_floor_node = Node3D.new()
+	layout_floor_node.name = "LayoutOpenFloor"
+	var f_st := SurfaceTool.new()
+	f_st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	f_st.set_smooth_group(-1)
+	colored_box(f_st, Vector3(-0.6, 0.035, 0.0), Vector3(4.6, 0.008, 1.15), Vector2.RIGHT, Color("2f4f57"), Color("2f4f57"))
+	var tile_cols: Array[Color] = [Color("e8c35a"), Color("5fb8a6"), Color("d9746a")]
+	for tx in range(7):
+		for tz in range(2):
+			if (tx + tz) % 2 == 0:
+				colored_box(f_st, Vector3(-4.2 + float(tx) * 1.2, 0.046, -0.5 + float(tz) * 1.0), Vector3(0.36, 0.004, 0.36), Vector2.RIGHT, tile_cols[(tx + tz) % 3], tile_cols[(tx + tz) % 3])
+	colored_box(f_st, Vector3(4.7, 0.15, 0.0), Vector3(0.8, 0.15, 1.0), Vector2.RIGHT, Color("6e4b33"), Color("8a6544"))
+	colored_beam(f_st, Vector3(4.6, 0.3, 0.0), Vector3(4.6, 1.6, 0.0), 0.04, Color("2d3532"))
+	colored_prism(f_st, Vector3(4.6, 1.6, 0.0), 0.06, 0.05, 0.12, 8, Color("44494b"), Color("44494b"))
+	colored_box(f_st, Vector3(5.3, 0.62, -0.75), Vector3(0.24, 0.32, 0.2), Vector2.RIGHT, Color("2b2b2b"), Color("3a3a3a"))
+	colored_box(f_st, Vector3(-5.3, 1.05, 0.0), Vector3(0.05, 0.6, 0.8), Vector2.RIGHT, Color("f2ead8"), Color("f2ead8"))
+	for band in range(3):
+		colored_box(f_st, Vector3(-5.24, 0.7 + float(band) * 0.32, 0.0), Vector3(0.01, 0.08, 0.66), Vector2.RIGHT, tile_cols[band], tile_cols[band])
+	for st_x in [-3.6, -1.2, 1.2]:
+		colored_prism(f_st, Vector3(float(st_x), 0.0, -1.05), 0.05, 0.05, 0.44, 6, Color("2d3532"), no_cap)
+		colored_prism(f_st, Vector3(float(st_x), 0.44, -1.05), 0.2, 0.2, 0.06, 10, Color("c37e71"), Color("d8988c"))
+	f_st.generate_normals()
+	var floor_mesh := MeshInstance3D.new()
+	floor_mesh.name = "OpenFloorSet"
+	floor_mesh.mesh = f_st.commit()
+	floor_mesh.material_override = vertex_color_material()
+	layout_floor_node.add_child(floor_mesh)
+	gathering_layouts_node.add_child(layout_floor_node)
+	# String lights once the gathering opens
+	gathering_lights_node = Node3D.new()
+	gathering_lights_node.name = "GatheringLights"
+	var l_st := SurfaceTool.new()
+	l_st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	l_st.set_smooth_group(-1)
+	for px in [-5.9, 5.9]:
+		for pz in [-1.25, 1.25]:
+			colored_prism(l_st, Vector3(float(px), 0.0, float(pz)), 0.05, 0.04, 3.1, 6, Color("3b4744"), Color("3b4744"))
+	for pz2 in [-1.25, 1.25]:
+		colored_beam(l_st, Vector3(-5.9, 3.0, float(pz2)), Vector3(5.9, 3.0, float(pz2)), 0.025, Color("2d3532"))
+	l_st.generate_normals()
+	var poles := MeshInstance3D.new()
+	poles.name = "LightPoles"
+	poles.mesh = l_st.commit()
+	poles.material_override = vertex_color_material()
+	gathering_lights_node.add_child(poles)
+	var b_st := SurfaceTool.new()
+	b_st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for bz in [-1.25, 1.25]:
+		for b_i in range(12):
+			colored_prism(b_st, Vector3(-5.4 + float(b_i) * 0.98, 2.86, float(bz)), 0.07, 0.07, 0.12, 6, Color.WHITE, Color.WHITE)
+	b_st.generate_normals()
+	var bulbs := MeshInstance3D.new()
+	bulbs.name = "LightBulbs"
+	bulbs.mesh = b_st.commit()
+	bulbs.material_override = mural_material(Color("ffe394"))
+	gathering_lights_node.add_child(bulbs)
+	gathering_layouts_node.add_child(gathering_lights_node)
+	add_child(gathering_layouts_node)
+	update_layout_3d()
+
+func update_layout_3d() -> void:
+	if gathering_layouts_node == null:
+		return
+	var chosen := gathering_layout in GATHERING_LAYOUTS
+	gathering_layouts_node.visible = chosen
+	layout_table_node.visible = gathering_layout == "table"
+	layout_floor_node.visible = gathering_layout == "floor"
+	gathering_lights_node.visible = chosen and block_opened
+
+## The bounded choice from docs/CONCEPT.md. Either layout keeps the same sidewalk route clear and
+## lets every neighbor take part; the other idea becomes a "next time" promise, not a failure.
+func choose_gathering_layout(layout_id: String) -> bool:
+	if not (layout_id in GATHERING_LAYOUTS) or block_opened:
+		return false
+	gathering_layout = layout_id
+	if String(keepsake_photo.get("status", "unasked")) == "unasked":
+		keepsake_photo["layout"] = layout_id
+	browser_import_message = ""
+	update_block_3d()
+	save_godot_state()
+	update_block_ui()
+	var speaker := talk_partner if talk_partner >= 0 else nearest_neighbor_within(TALK_PROMPT_RADIUS_M)
+	var speaker_id := String(neighbors[speaker].get("id", "")) if speaker >= 0 else ""
+	var body := ""
+	if layout_id == "table":
+		match speaker_id:
+			"bea":
+				body = "Long Table it is: everyone gets a seat and a story. Dez and Celeste's Open Floor goes first in line next time."
+			"dez", "celeste":
+				body = "Long Table it is: everyone gets a seat and a story. Our Open Floor goes first in line next time."
+			_:
+				body = "Long Table it is: everyone gets a seat and a story. The Open Floor idea goes first in line next time."
+	else:
+		match speaker_id:
+			"bea":
+				body = "Open Floor it is: room for Dez's beat and Celeste's lettering. My Long Table goes first in line next time."
+			"dez", "celeste":
+				body = "Open Floor it is: room for the beat and the lettering. Bea's Long Table goes first in line next time."
+			_:
+				body = "Open Floor it is: room for Dez's beat and Celeste's lettering. Bea's Long Table goes first in line next time."
+	var line := conversation_partner_line(speaker, body) if speaker >= 0 else body
+	if speaker >= 0:
+		show_neighbor_speech(speaker, line)
+	if block_panel != null and block_panel.visible:
+		last_panel_dialogue = line
+		update_block_ui()
+	if info != null:
+		info.text = "%s\nThe %s is set up in the curb lane beside Bea · Both layouts keep the sidewalk clear\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, String(GATHERING_LAYOUT_TITLES[layout_id])]
+	announce_a11y_status("Chose the %s. %s" % [String(GATHERING_LAYOUT_TITLES[layout_id]), body])
+	return true
+
+## What a neighbor remembers about the layout choice after the gathering opens.
+func layout_memory_line(n_id: String) -> String:
+	if not (gathering_layout in GATHERING_LAYOUTS):
+		return ""
+	var table := gathering_layout == "table"
+	match n_id:
+		"bea":
+			return "Bea: \"The Long Table worked: everyone had a seat and a story. I promised Dez and Celeste the Open Floor next time.\"" if table else "Bea: \"The Open Floor was the right call today. Next time we try my Long Table, I'm holding you to it.\""
+		"dez":
+			return "Dez: \"The Long Table was cozy. Next time, Open Floor. Bea promised.\"" if table else "Dez: \"Look at that Open Floor! Celeste's lettering and my beat, side by side.\""
+		"thanh":
+			return "Thanh: \"My folding table made a fine Long Table. Plenty of tea to go around.\"" if table else "Thanh: \"The Open Floor gave everyone room to move. I kept the tea by the curb.\""
+	return ""
+
 func update_conversation_ui(delta: float) -> void:
 	ui_clock = wrapf(ui_clock + delta, 0.0, 3600.0)
+	var chapter := current_chapter()
+	if last_story_chapter >= 0 and int(chapter.num) != last_story_chapter:
+		last_story_chapter = int(chapter.num)
+		show_story_card(chapter)
+	if is_story_card_visible():
+		layout_story_card()
 	# On phones the open panel and the speech bubble already carry the words; give the 3D view room.
 	if info != null:
 		var show_info := not (is_narrow_layout() and any_side_panel_visible())
@@ -5825,6 +6161,9 @@ func neighbor_lines(n_id: String) -> Array[String]:
 
 func neighbor_greeting_line(n_id: String) -> String:
 	var options := neighbor_lines(n_id)
+	var memory := layout_memory_line(n_id) if block_opened else ""
+	if not memory.is_empty() and options.size() >= 4:
+		options[3] = memory
 	if options.is_empty():
 		return "Choose a conversation topic or neighborhood action below"
 	return options[posmod(maxi(1, int(neighbor_talk_counts.get(n_id, 1))) - 1, options.size())]
@@ -6187,9 +6526,13 @@ func open_block_gathering() -> bool:
 		update_block_ui()
 		announce_a11y_status("Block gathering already open.")
 		return true
+	if not (gathering_layout in GATHERING_LAYOUTS):
+		gathering_layout = "table"
+		if String(keepsake_photo.get("status", "unasked")) == "unasked":
+			keepsake_photo["layout"] = "table"
 	block_opened = true
 	browser_import_message = ""
-	var line := "Bea: \"Everyone's here, Celeste's 3/3 board is glowing, and Rook's speaker is set—our Turk Street block gathering is open!\""
+	var line := "Bea: \"Everyone's here, Celeste's 3/3 board is glowing, and Rook's speaker is set. Our Turk Street block gathering is open, %s style!\"" % String(GATHERING_LAYOUT_TITLES[gathering_layout])
 	last_panel_dialogue = line
 	update_block_3d()
 	show_block_panel(true)
@@ -8508,6 +8851,7 @@ func build_save_envelope() -> Dictionary:
 		"rook_soundcheck_done": rook_soundcheck_done,
 		"visited_neighbors": v_list,
 		"block_opened": block_opened,
+		"gathering_layout": gathering_layout,
 		"history_read": history_read,
 		"blackhawk_discovered": blackhawk_discovered,
 		"district_boundary_visible": district_boundary_visible,
@@ -8567,6 +8911,7 @@ func reset_mural_state_to_defaults(status_label: String) -> void:
 	rook_soundcheck_done = false
 	visited_neighbors.clear()
 	block_opened = false
+	gathering_layout = ""
 	keepsake_photo = default_keepsake_photo()
 	last_exported_keepsake_svg = ""
 	epilogue_packing = false
@@ -9133,6 +9478,11 @@ func apply_save_envelope(raw_json: String) -> bool:
 	district_boundary_visible = db_vis
 	block_opened = will_open
 	keepsake_photo = ep_res.get("photo", default_keepsake_photo())
+	var lay_val: Variant = env.get("gathering_layout", "")
+	gathering_layout = String(lay_val) if (lay_val is String and String(lay_val) in GATHERING_LAYOUTS) else ""
+	if block_opened and gathering_layout == "":
+		var kp_lay := String(keepsake_photo.get("layout", "table"))
+		gathering_layout = kp_lay if kp_lay in GATHERING_LAYOUTS else "table"
 	last_exported_keepsake_svg = ""
 	epilogue_packing = bool(ep_res.get("packing", false))
 	epilogue_returned = ep_res.get("returned", [] as Array[String])
@@ -9532,6 +9882,8 @@ func import_browser_save_json(raw_json: String) -> bool:
 		for nid in valid_neighbor_ids():
 			next_visited[nid] = true
 	visited_neighbors = next_visited
+	if not (gathering_layout in GATHERING_LAYOUTS) and String(res.get("layout", "")) in GATHERING_LAYOUTS:
+		gathering_layout = String(res.get("layout", ""))
 	block_opened = (block_opened or bool(res.get("opened", false))) and (visited_neighbors.size() >= neighbors.size() and mural_placements.size() == MURAL_MOTIFS.size() and rook_soundcheck_done)
 	if block_opened:
 		var imp_ep: Dictionary = res.get("epilogue", {})
@@ -10001,6 +10353,8 @@ func _physics_process(delta: float) -> void:
 func is_screen_point_in_ui(screen_pos: Vector2) -> bool:
 	if header_panel and header_panel.get_global_rect().has_point(screen_pos):
 		return true
+	if is_story_card_visible() and story_card.get_global_rect().has_point(screen_pos):
+		return true
 	if mural_panel and mural_panel.visible and mural_panel.get_global_rect().has_point(screen_pos):
 		return true
 	if music_panel and music_panel.visible and music_panel.get_global_rect().has_point(screen_pos):
@@ -10032,6 +10386,7 @@ func neighbor_screen_distance(index: int, screen_pos: Vector2) -> float:
 func handle_scene_tap(screen_pos: Vector2) -> bool:
 	if is_screen_point_in_ui(screen_pos):
 		return false
+	hide_story_card()
 	var ground_xz := screen_to_ground_xz(screen_pos)
 	var best_idx := -1
 	var best_screen_d := INF
@@ -10113,6 +10468,10 @@ func pan_camera_by_screen_delta(delta_px: Vector2) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		var k: Key = event.keycode if event.keycode != KEY_NONE else event.physical_keycode
+		if is_story_card_visible() and not (k in [KEY_SHIFT, KEY_CTRL, KEY_ALT, KEY_META]):
+			hide_story_card()
+			if k == KEY_ESCAPE or k == KEY_ENTER or k == KEY_KP_ENTER or k == KEY_SPACE:
+				return
 		match k:
 			KEY_1, KEY_KP_1:
 				if arrived_neighbor == 0:
@@ -10368,6 +10727,7 @@ func choose_next(direction: int) -> void:
 func overview() -> void:
 	in_overview = true
 	hide_speech_bubble()
+	hide_story_card()
 	talk_partner = -1
 	block_panel_mode = "hub"
 	in_wide_overview = false
@@ -10418,6 +10778,7 @@ func wide_overview() -> void:
 	in_overview = false
 	in_wide_overview = true
 	hide_speech_bubble()
+	hide_story_card()
 	following_player = false
 	camera_yaw = 0.0
 	camera_pitch_scale = 1.0
@@ -10956,6 +11317,7 @@ func make_ui() -> void:
 	guide_arrow_label.add_theme_constant_override("outline_size", 6)
 	guide_arrow.add_child(guide_arrow_label)
 	layer.add_child(guide_arrow)
+	build_story_card(layer)
 	var vp := get_viewport()
 	var resize_controls := func():
 		if not is_instance_valid(controls) or not is_inside_tree():

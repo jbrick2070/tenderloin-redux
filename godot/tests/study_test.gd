@@ -1169,7 +1169,7 @@ func run() -> void:
 	var fresh_obj: Dictionary = study.current_objective()
 	require(String(fresh_obj.get("id", "")) == "meet" and int(fresh_obj.get("neighbor", -1)) == 0 and String(fresh_obj.text).begins_with("Meet Bea (0/5"), "a fresh game points you to the nearest neighbor first (Bea)")
 	study.update_objective_ui()
-	require(study.objective_label.text == "Next: %s" % String(fresh_obj.text), "the header shows the next step")
+	require(study.objective_label.text == "Chapter 1: Get the Block Ready · Next: %s" % String(fresh_obj.text), "the header shows the chapter and the next step")
 	study.update_guide_marker()
 	var marker_target: Vector3 = fresh_obj.target
 	require(study.guide_marker.visible and Vector2(study.guide_marker.position.x, study.guide_marker.position.z).distance_to(Vector2(marker_target.x, marker_target.z)) < 0.01 and study.guide_marker.position.y > 5.0, "the gold guide marker floats above the next neighbor")
@@ -1225,6 +1225,69 @@ func run() -> void:
 	require(study.apply_save_envelope(saved_m4_json) and study.block_opened, "restore the full M1-M4 save after the fresh conversation walkthrough")
 	var later_obj: Dictionary = study.current_objective()
 	require(not String(later_obj.get("text", "")).is_empty() and String(later_obj.get("id", "")) != "meet", "after the block opens, the next step moves on to the afternoon projects")
+	study.overview()
+
+	# Story: chapters, story card, and the Long Table / Open Floor gathering choice (docs/CONCEPT.md)
+	study.overview()
+	study.reset_mural_state_to_defaults("fresh")
+	var ch1: Dictionary = study.current_chapter()
+	require(int(ch1.num) == 1 and String(ch1.title) == "Get the Block Ready" and String(ch1.intro).contains("fictional") and String(ch1.intro).contains("streets and the history are real"), "Chapter 1 sets up the story and says plainly what is fictional and what is real")
+	study.last_story_chapter = 0
+	study.update_conversation_ui(0.016)
+	require(study.is_story_card_visible() and study.story_title_label.text == "Chapter 1 · Get the Block Ready" and study.story_body_label.text.contains("your neighbors have already started planning"), "a story card introduces the chapter")
+	require(study.is_screen_point_in_ui(study.story_card.get_global_rect().get_center()), "taps on the story card never walk the player")
+	study.story_continue_btn.emit_signal("pressed")
+	require(not study.is_story_card_visible(), "Continue closes the story card")
+	for lay_n in study.neighbors:
+		study.visited_neighbors[String(lay_n.get("id", ""))] = true
+	var lay_obj: Dictionary = study.current_objective()
+	require(String(lay_obj.get("id", "")) == "layout" and String(lay_obj.text).contains("Long Table") and String(lay_obj.text).contains("Open Floor"), "after meeting everyone, the next step is choosing the gathering layout")
+	require(not study.gathering_layouts_node.visible, "nothing is set up in the street before the choice")
+	study.talk_partner = 0
+	require(study.ask_whats_next().begins_with("Bea: \"I'd love a Long Table"), "Bea pitches her own Long Table in the first person")
+	study.show_conversation(0)
+	require(study.conv_action_ids[0] == "layout_table" and study.conv_action_ids[1] == "layout_floor" and study.conv_action_btns[0].text.begins_with("Long Table") and study.conv_action_btns[1].text.begins_with("Open Floor"), "the conversation offers Long Table and Open Floor")
+	require(study.run_conversation_action(1) and study.gathering_layout == "floor" and study.layout_floor_node.visible and not study.layout_table_node.visible and String(study.keepsake_photo.get("layout", "")) == "floor" and study.block_panel_mode == "talk", "choosing Open Floor sets it up in 3D and remembers it for the keepsake")
+	require(study.last_panel_dialogue.contains("Open Floor it is") and study.last_panel_dialogue.contains("next time"), "the other idea becomes a next-time promise, not a failure")
+	require(study.choose_gathering_layout("table") and study.layout_table_node.visible and not study.layout_floor_node.visible and not study.choose_gathering_layout("roof"), "you can change your mind before opening; unknown layouts are rejected")
+	var lay_c: Vector2 = study.gathering_layout_center
+	var lay_sd: float = study.min_street_distance(lay_c)
+	var lay_ix_ok := true
+	for ix_pt in study.street_intersections:
+		if ix_pt.distance_to(lay_c) < 14.0:
+			lay_ix_ok = false
+	require(study.building_containing_point(lay_c) == "" and lay_sd > 2.5 and lay_sd < 4.6 and lay_ix_ok, "the gathering sits in a fictional curb-lane closure, leaving the sidewalk route and crosswalks clear")
+	var lay_save := JSON.stringify(study.build_save_envelope())
+	study.gathering_layout = ""
+	require(study.apply_save_envelope(lay_save) and study.gathering_layout == "table", "the layout choice survives save and reload")
+	var bad_lay_env: Dictionary = JSON.parse_string(lay_save)
+	bad_lay_env["gathering_layout"] = "roof"
+	require(study.apply_save_envelope(JSON.stringify(bad_lay_env)) and study.gathering_layout == "" and study.visited_neighbors.size() == 5, "an invalid saved layout is dropped without resetting other progress")
+	require(study.choose_gathering_layout("floor"), "choose Open Floor before opening")
+	study.place_mural_motif("sun", 1, 0)
+	study.place_mural_motif("wave", 3, 1)
+	study.place_mural_motif("rise", 5, 2)
+	study.rook_soundcheck_done = true
+	require(study.open_block_gathering() and study.block_opened and study.gathering_lights_node.visible and study.layout_floor_node.visible and study.last_a11y_announcement.contains("block gathering is open, Open Floor style"), "opening the gathering lights up the chosen Open Floor")
+	study.neighbor_talk_counts["bea"] = 4
+	require(study.neighbor_greeting_line("bea").contains("Next time we try my Long Table"), "after opening, Bea remembers the promise to try her Long Table next time")
+	require(study.take_keepsake_photo() and study.build_keepsake_svg().contains("A little room on the Open Floor"), "the keepsake is titled after the chosen layout")
+	study.update_conversation_ui(0.016)
+	require(int(study.current_chapter().num) == 2 and study.is_story_card_visible() and study.story_title_label.text == "Chapter 2 · The Gathering", "opening the block starts Chapter 2 with a story card")
+	var story_esc := InputEventKey.new()
+	story_esc.pressed = true
+	story_esc.keycode = KEY_ESCAPE
+	study._unhandled_input(story_esc)
+	require(not study.is_story_card_visible() and study.block_opened, "Esc closes the story card without doing anything else")
+	study.reset_mural_state_to_defaults("fresh")
+	for lay_n2 in study.neighbors:
+		study.visited_neighbors[String(lay_n2.get("id", ""))] = true
+	study.place_mural_motif("sun", 1, 0)
+	study.place_mural_motif("wave", 3, 1)
+	study.place_mural_motif("rise", 5, 2)
+	study.rook_soundcheck_done = true
+	require(study.open_block_gathering() and study.gathering_layout == "table" and String(study.keepsake_photo.get("layout", "")) == "table", "opening without choosing defaults to Bea's Long Table")
+	require(study.apply_save_envelope(saved_m4_json) and study.block_opened and study.gathering_layout in study.GATHERING_LAYOUTS, "restore the full M1-M4 save after the story walkthrough")
 	study.overview()
 
 	# Godot Web default font (Open Sans SemiBold) coverage: no hex-box glyphs in any 3D or UI text

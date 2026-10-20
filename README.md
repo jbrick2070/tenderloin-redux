@@ -21,6 +21,8 @@ That rewrites only the generated `FIELD_SURVEY_OVERRIDES` block in `godot/main.g
 
 **Talking in 3D:** walk up to a neighbor (or tap them) and press **T** to talk; a speech bubble pops up and the panel offers **Keep Chatting**, **What's Next?**, context actions, and **Goodbye** (Esc). The header always shows your next step, and a gold marker floats over where to go.
 
+**Story:** the 3D game runs in chapters, from "Get the Block Ready" to "Your Block", each introduced by a short story card. Once you've met everyone, choose the gathering: Bea's **Long Table** or Dez and Celeste's **Open Floor**. Your choice is built in the street, neighbors remember it, and the keepsake is named after it.
+
 **3D extras:** `Shift+L` toggles day/evening light pools, `Shift+E` visits the eateries (tap a counter to order), `Shift+M` opens the museum Time-Portal, and tapping the Boeddeker Park gate frames the park.
 
 The project began as a constructive response to the Tenderloin-set shooter reported as Night Shift by SFist and Tenderloin Night Shift by the San Francisco Chronicle, with the belief that games can inspire care, creativity, and greatness.
