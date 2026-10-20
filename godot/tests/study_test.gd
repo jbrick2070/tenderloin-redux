@@ -1046,6 +1046,13 @@ func run() -> void:
 		if String(a_rec.address) == "145 Leavenworth Street" and (egg_win == null or egg_win.position.y + 1.075 > float(a_rec.height_m) or egg_win.position.y < float(a_rec.height_m) * 7.0 / 8.0):
 			egg_ok = false
 	require(egg_ok, "the 145 Leavenworth 8th-floor window sits on the real TL Residences' 8th floor, and the 361 Turk 'So What' awning on its Turk facade")
+	var photo_ok := true
+	for p_id in study.CREATOR_PHOTO_PALETTES:
+		var built: Dictionary = study.built_palettes.get(String(p_id), {})
+		var want: Dictionary = study.CREATOR_PHOTO_PALETTES[p_id]
+		if built.is_empty() or Color(built.base) != Color(String(want.base)) or Color(built.plinth) != Color(String(want.plinth)):
+			photo_ok = false
+	require(photo_ok and study.CREATOR_PHOTO_PALETTES.size() == 3, "TL Residences (145 Leavenworth), Kelly Cullen Community, and Page Hotel use the colors from the creator's own photo")
 	var sup_idx := -1
 	for o_i in range(study.data.buildings.size()):
 		if study.is_superseded_building(String(study.data.buildings[o_i].id)):

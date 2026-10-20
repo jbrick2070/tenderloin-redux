@@ -606,6 +606,21 @@ var objective_refresh_timer := 0.0
 var ui_clock := 0.0
 var field_survey_overrides: Dictionary = FIELD_SURVEY_OVERRIDES.duplicate(true)
 var last_built_palette: Dictionary = {}
+var built_palettes: Dictionary = {}
+# Facade colors picked by eye from the creator's own street photo of 145 Leavenworth (Feb 2025),
+# shared in conversation; the image itself is not copied into the repository. They override the
+# location palettes; Field Guide survey colors still win.
+const CREATOR_PHOTO_PALETTES := {
+	# TL Residences, 145 Leavenworth St (OSM way 1258857968): oxblood panels, black window bays and
+	# railings, dark storefront under the "TL145" sign. The facade builder also uses the cornice color for
+	# bay-window frames, so it is the near-black of the bays (the thin light coping is not modeled).
+	"osm:way/1258857968": {"base": "7b3530", "spandrel": "1d1e21", "plinth": "2a2b2e", "cornice": "26272a"},
+	# Kelly Cullen Community (former YMCA), 220 Golden Gate Ave, south of it: peach-tan brick, cream
+	# cornice and ground-floor pilasters, iron fire escape on the Leavenworth side.
+	"201006.0001527": {"base": "d9b48c", "spandrel": "cfa77e", "plinth": "e2d2b4", "cornice": "eadcc2", "fire_escape": true},
+	# Page Hotel, 161 Leavenworth St, north of it: tan brick over a slate blue-green ground floor.
+	"201006.0013153": {"base": "d3a37e", "spandrel": "c3906b", "plinth": "3e4f54", "cornice": "dcc6a8"}
+}
 var street_intersections: Array[Vector2] = []
 var street_intersection_streets: Array[PackedStringArray] = []
 var corner_tower_sites: Dictionary = {}
@@ -1404,6 +1419,13 @@ func make_building_mesh_and_rect(building: Dictionary, mat: Material, base_col: 
 				spandrel_col = Color("5c5f69")
 				plinth_col = Color("494c54")
 				cornice_col = Color("c5c7cc")
+	var photo_pal: Dictionary = CREATOR_PHOTO_PALETTES.get(String(building.get("id", "")), {})
+	if not photo_pal.is_empty():
+		base_col = Color(String(photo_pal.base))
+		spandrel_col = Color(String(photo_pal.spandrel))
+		plinth_col = Color(String(photo_pal.plinth))
+		cornice_col = Color(String(photo_pal.cornice))
+		roof_col = base_col.darkened(0.36)
 	# On-site Field Guide survey (scripts/apply-field-survey.mjs) overrides the palettes above.
 	var survey := field_survey_style(String(building.get("id", "")))
 	base_col = survey.get("base", base_col)
@@ -1413,9 +1435,10 @@ func make_building_mesh_and_rect(building: Dictionary, mat: Material, base_col: 
 	var force_bays: bool = survey.get("force_bays", false)
 	var force_awning: bool = survey.get("force_awning", false)
 	var flat_marquee: bool = survey.get("flat_marquee", false)
-	var force_fire_escape: bool = survey.get("force_fire_escape", false)
+	var force_fire_escape: bool = survey.get("force_fire_escape", false) or bool(photo_pal.get("fire_escape", false))
 	var mezzanine: bool = survey.get("mezzanine", false)
 	last_built_palette = {"id": String(building.get("id", "")), "base": base_col, "spandrel": spandrel_col, "plinth": plinth_col, "cornice": cornice_col, "surveyed": not survey.is_empty()}
+	built_palettes[String(building.get("id", ""))] = last_built_palette
 	var fire_escape_col := Color("2e3336") if (b_hash % 2 == 0) else Color("dcdad0")
 	for polygon in building.polygons:
 		for r_idx in range(polygon.rings.size()):
