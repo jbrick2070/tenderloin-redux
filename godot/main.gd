@@ -199,6 +199,18 @@ const STREET_TREE_DATA_PATH := "res://data/street_trees.json"
 const LIDAR_DATA_PATH := "res://data/lidar_2023.json"
 const CURRENT_BUILDINGS_NODE := "CurrentBuildings"
 const LIDAR_STOREY_M := 3.2
+# The creator's building, TL Residences at 145 Leavenworth (OSM way 1258857968). From the creator's
+# own photo: 9 window rows above the storefront under the "TL145" sign; the creator's apartment is
+# the 8th row, in the upper-left (south) bay of the front facade; the entrance is at the north end.
+const TL145_ADDRESS := "145 Leavenworth Street"
+const TL145_PHOTO_ROWS := 9
+const TL145_STOREFRONT_M := 4.2
+const TL145_CREATOR_ROW := 8
+const TL145_LEFT_BAY_M := 2.6
+const TL145_ENTRANCE_M := 2.2
+# Across Leavenworth: 140-156 Leavenworth (OSM way 260155578) holds Compass Children's Center
+# (OSM node 11702308291), whose canopy-covered rooftop playground the creator described.
+const COMPASS_ROOF_ID := "201006.0010611"
 const DAY_LIGHT_POOL_ALPHA := 0.28
 const EATERY_HOST_LINES: Dictionary = {
 	"bowl_basil_pho": [
@@ -1699,6 +1711,7 @@ func _ready() -> void:
 	build_rook_speaker()
 	build_block_banner()
 	build_street_life_decor()
+	build_creator_rooftops()
 	load_street_tree_data()
 	build_muni_overhead_lines()
 	build_boeddeker_park()
@@ -3020,6 +3033,181 @@ func sidewalk_safe_point(p: Vector3) -> Vector3:
 	var fixed := sp + away.normalized() * 6.6
 	return Vector3(fixed.x, p.y, fixed.y)
 
+func tl145_record() -> Dictionary:
+	for a_rec in lidar_additions:
+		if String(a_rec.get("address", "")) == TL145_ADDRESS:
+			return a_rec
+	return {}
+
+## The Leavenworth (east-most) edge of TL Residences: north end at the entrance, unit direction south.
+func tl145_front_facade() -> Dictionary:
+	var rec := tl145_record()
+	if rec.is_empty():
+		return {}
+	var ring: Array = rec.polygons[0].rings[0]
+	var best := {}
+	var best_x := -INF
+	for i in range(ring.size()):
+		var a := Vector2(ring[i][0], ring[i][1])
+		var b := Vector2(ring[(i + 1) % ring.size()][0], ring[(i + 1) % ring.size()][1])
+		if a.distance_to(b) < 8.0 or (a.x + b.x) * 0.5 <= best_x:
+			continue
+		best_x = (a.x + b.x) * 0.5
+		var north := a if a.y < b.y else b
+		var south := b if a.y < b.y else a
+		best = {"north": north, "south": south, "dir": (south - north).normalized(), "length": a.distance_to(b)}
+	return best
+
+## Main roof of TL Residences: its highest measured LiDAR roof part, or the median roof.
+func tl145_roof_top() -> float:
+	var rec := tl145_record()
+	if rec.is_empty():
+		return 0.0
+	var top := float(rec.height_m)
+	for m in rec.get("masses", []):
+		top = maxf(top, float(m.h))
+	return top
+
+## Floor level of a window row above the TL145 storefront (rows counted in the creator's photo).
+func tl145_row_floor_y(row: int) -> float:
+	var top := tl145_roof_top()
+	return TL145_STOREFRONT_M + float(row - 1) * (top - TL145_STOREFRONT_M) / float(TL145_PHOTO_ROWS)
+
+## Largest rectangle (from the wanted size down) along the polygon's longest edge that keeps every
+## corner inside with the given edge clearance. Centers come from a 9x9 interior grid, nearest the
+## polygon's area centroid first; {} if nothing fits.
+func fit_roof_rect(polygon: Dictionary, want_len: float, want_wid: float, clearance: float) -> Dictionary:
+	var ring: Array = polygon.rings[0]
+	var axis := Vector2.RIGHT
+	var longest := 0.0
+	var rect := Rect2(Vector2(ring[0][0], ring[0][1]), Vector2.ZERO)
+	var area_c := Vector2.ZERO
+	var area_sum := 0.0
+	for i in range(ring.size()):
+		var a := Vector2(ring[i][0], ring[i][1])
+		var b := Vector2(ring[(i + 1) % ring.size()][0], ring[(i + 1) % ring.size()][1])
+		rect = rect.expand(a)
+		var cr := a.x * b.y - b.x * a.y
+		area_sum += cr
+		area_c += (a + b) * cr
+		if a.distance_to(b) > longest:
+			longest = a.distance_to(b)
+			axis = (b - a).normalized()
+	var centroid := area_c / (3.0 * area_sum) if absf(area_sum) > 1e-6 else rect.get_center()
+	var perp := Vector2(-axis.y, axis.x)
+	var cands: Array[Vector2] = [centroid]
+	for gx in range(9):
+		for gz in range(9):
+			var cand := rect.position + Vector2(rect.size.x * (float(gx) + 0.5) / 9.0, rect.size.y * (float(gz) + 0.5) / 9.0)
+			if is_point_in_building_polygon(cand, polygon):
+				cands.append(cand)
+	cands.sort_custom(func(p: Vector2, q: Vector2) -> bool: return p.distance_squared_to(centroid) < q.distance_squared_to(centroid))
+	for scale in [1.0, 0.85, 0.7, 0.55, 0.4]:
+		var hl: float = want_len * scale * 0.5
+		var hw: float = want_wid * scale * 0.5
+		for center in cands:
+			var ok := is_point_in_building_polygon(center, polygon)
+			for corner in [center + axis * hl + perp * hw, center + axis * hl - perp * hw, center - axis * hl + perp * hw, center - axis * hl - perp * hw]:
+				if not ok:
+					break
+				ok = is_point_in_building_polygon(corner, polygon) and polygon_edge_clearance(corner, polygon) >= clearance
+			if ok:
+				return {"center": center, "axis": axis, "perp": perp, "len": hl * 2.0, "wid": hw * 2.0}
+	return {}
+
+## Creator-reported rooftop spaces at 145 Leavenworth: TL Residences' rooftop dog park with greenery and
+## a fire pit, and across the street the canopy-covered rooftop playground with green turf at Compass
+## Children's Center. Their existence comes from the creator; layout, sizes, and canopy height are stylized.
+func build_creator_rooftops() -> void:
+	var root := Node3D.new()
+	root.name = "CreatorRooftops"
+	add_child(root)
+	var tl := tl145_record()
+	if not tl.is_empty():
+		var top := tl145_roof_top()
+		var deck: Dictionary = tl.polygons[0]
+		for m in tl.get("masses", []):
+			if is_equal_approx(float(m.h), top):
+				deck = {"rings": m.rings}
+		var r := fit_roof_rect(deck, 10.0, 6.0, 0.9)
+		if r.is_empty():
+			# No room on the measured top part: use the whole roof at its median height.
+			top = float(tl.height_m)
+			r = fit_roof_rect(tl.polygons[0], 10.0, 6.0, 0.9)
+		if not r.is_empty():
+			var sf := SurfaceTool.new()
+			sf.begin(Mesh.PRIMITIVE_TRIANGLES)
+			sf.set_smooth_group(-1)
+			var c: Vector2 = r.center
+			var ax: Vector2 = r.axis
+			var pp: Vector2 = r.perp
+			var y := top + 0.02
+			colored_box(sf, Vector3(c.x, y + 0.04, c.y), Vector3(float(r.len) * 0.5, 0.04, float(r.wid) * 0.5), ax, Color("4f7d43"), Color("6a9f55"))
+			for side in [-1.0, 1.0]:
+				for k in range(3):
+					var t := (float(k) - 1.0) * float(r.len) * 0.32
+					var pc: Vector2 = c + ax * t + pp * side * (float(r.wid) * 0.5 - 0.35)
+					colored_box(sf, Vector3(pc.x, y + 0.3, pc.y), Vector3(0.6, 0.22, 0.25), ax, Color("4a4f52"), Color("5c4a3a"))
+					colored_prism(sf, Vector3(pc.x, y + 0.52, pc.y), 0.34, 0.12, 0.75, 7, Color("4f8a45"), Color("67a457"))
+			var fp: Vector2 = c - ax * (float(r.len) * 0.28)
+			colored_prism(sf, Vector3(fp.x, y + 0.08, fp.y), 0.72, 0.68, 0.36, 10, Color("5a5550"), Color("3d3936"))
+			colored_prism(sf, Vector3(fp.x, y + 0.44, fp.y), 0.46, 0.18, 0.28, 8, glass_flag(Color("ff8a3d"), true), glass_flag(Color("ffc06a"), true))
+			for b_i in range(3):
+				var ang := TAU * float(b_i) / 3.0 + 0.4
+				var bd := Vector2(cos(ang), sin(ang))
+				var bc: Vector2 = fp + bd * 1.55
+				colored_box(sf, Vector3(bc.x, y + 0.22, bc.y), Vector3(0.55, 0.2, 0.18), Vector2(-bd.y, bd.x), Color("7a5a3e"), Color("9a7550"))
+			sf.generate_normals()
+			var dog := MeshInstance3D.new()
+			dog.name = "TL145DogPark"
+			dog.mesh = sf.commit()
+			dog.material_override = building_material()
+			root.add_child(dog)
+			root.add_child(make_label_3d("TL145DogParkLabel", "Rooftop dog park & fire pit", Vector3(c.x, top + 2.3, c.y), Color("d9f2c4"), 0.0105, 20))
+	var compass: Dictionary = {}
+	for b in all_buildings:
+		if String(b.id) == COMPASS_ROOF_ID:
+			compass = b
+	if not compass.is_empty() and not compass.polygons.is_empty():
+		var h := float(compass.height_m)
+		var poly: Dictionary = compass.polygons[0]
+		var sp := SurfaceTool.new()
+		sp.begin(Mesh.PRIMITIVE_TRIANGLES)
+		sp.set_smooth_group(-1)
+		var turf := Color("63b34a")
+		for t_i in range(0, poly.triangles.size(), 3):
+			for k in range(3):
+				sp.set_color(turf)
+				sp.add_vertex(point(poly.vertices[poly.triangles[t_i + k]], h + 0.05))
+		var cr := fit_roof_rect(poly, 15.0, 9.0, 0.8)
+		if not cr.is_empty():
+			var cc: Vector2 = cr.center
+			var cax: Vector2 = cr.axis
+			var cpp: Vector2 = cr.perp
+			var ch := h + 2.7
+			colored_box(sp, Vector3(cc.x, ch, cc.y), Vector3(float(cr.len) * 0.5, 0.05, float(cr.wid) * 0.5), cax, Color("bdb3a0"), Color("d3c9b4"))
+			for i_l in [-0.5, 0.0, 0.5]:
+				for i_w in [-0.5, 0.5]:
+					var pc: Vector2 = cc + cax * float(cr.len) * float(i_l) + cpp * float(cr.wid) * float(i_w)
+					colored_prism(sp, Vector3(pc.x, h + 0.05, pc.y), 0.08, 0.08, 2.62, 6, Color("6d7275"), Color("6d7275"))
+			var climb: Vector2 = cc + cax * float(cr.len) * 0.22
+			colored_box(sp, Vector3(climb.x, h + 0.8, climb.y), Vector3(0.8, 0.75, 0.7), cax, Color("3a8fd0"), Color("2f78b0"))
+			var slide: Vector2 = climb + cpp * 1.2
+			colored_box(sp, Vector3(slide.x, h + 0.35, slide.y), Vector3(0.9, 0.3, 0.3), cpp, Color("e0703c"), Color("f08a52"))
+			var house: Vector2 = cc - cax * float(cr.len) * 0.24
+			colored_box(sp, Vector3(house.x, h + 0.6, house.y), Vector3(0.7, 0.55, 0.7), cax, Color("f2b84b"), Color("d9573f"))
+		sp.generate_normals()
+		var play := MeshInstance3D.new()
+		play.name = "CompassRooftopPlayground"
+		play.mesh = sp.commit()
+		play.material_override = building_material()
+		root.add_child(play)
+		var lc := Vector2.ZERO
+		for v in poly.rings[0]:
+			lc += Vector2(v[0], v[1])
+		lc /= float(poly.rings[0].size())
+		root.add_child(make_label_3d("CompassPlaygroundLabel", "Compass Children's Center · rooftop playground", Vector3(lc.x, h + 4.2, lc.y), Color("d9f2c4"), 0.0105, 20))
+
 func build_street_life_decor() -> void:
 	concert_musician_nodes.clear()
 	concert_crowd_nodes.clear()
@@ -3272,16 +3460,22 @@ func build_street_life_decor() -> void:
 	turk_awning.add_child(turk_lbl)
 	so_what_root.add_child(turk_awning)
 
+	# The canopy sits at the entrance under the "TL145" sign (north end of the front facade); the lit
+	# window is the creator's apartment, 8th row above the sign in the left (south) bay.
 	var leav_node := Node3D.new()
 	leav_node.name = "EighthFloor_145Leavenworth"
 	leav_node.position = Vector3(-292.02, 0.0, 92.61)
 	leav_node.rotation.y = 0.1593
-	# The 8th floor of the real building: its 2023 LiDAR height split over its 8 OSM storeys.
 	var floor8_y := 21.9
-	for a_rec in lidar_additions:
-		if String(a_rec.get("address", "")) == "145 Leavenworth Street":
-			var levels := maxi(int(String(a_rec.get("osm_levels", "8"))), 8)
-			floor8_y = float(a_rec.height_m) * 7.0 / float(levels)
+	var win_z := 0.0
+	var front := tl145_front_facade()
+	if not front.is_empty():
+		var f_dir: Vector2 = front.dir
+		var f_ent: Vector2 = Vector2(front.north) + f_dir * TL145_ENTRANCE_M
+		leav_node.position = Vector3(f_ent.x, 0.0, f_ent.y)
+		leav_node.rotation.y = atan2(f_dir.x, f_dir.y)
+		win_z = float(front.length) - TL145_LEFT_BAY_M - TL145_ENTRANCE_M
+		floor8_y = tl145_row_floor_y(TL145_CREATOR_ROW)
 	var leav_canopy := MeshInstance3D.new()
 	var lc_box := BoxMesh.new()
 	lc_box.size = Vector3(1.6, 0.20, 4.2)
@@ -3302,14 +3496,14 @@ func build_street_life_decor() -> void:
 	var ew_box := BoxMesh.new()
 	ew_box.size = Vector3(1.15, 2.15, 2.65)
 	eighth_win.mesh = ew_box
-	eighth_win.position = Vector3(0.35, floor8_y + 1.3, 0.0)
+	eighth_win.position = Vector3(0.35, floor8_y + 1.3, win_z)
 	eighth_win.material_override = mural_material(Color("ffe082"))
 	leav_node.add_child(eighth_win)
 	var balcony := MeshInstance3D.new()
 	var bal_box := BoxMesh.new()
 	bal_box.size = Vector3(1.38, 0.46, 2.85)
 	balcony.mesh = bal_box
-	balcony.position = Vector3(0.45, floor8_y + 0.35, 0.0)
+	balcony.position = Vector3(0.45, floor8_y + 0.35, win_z)
 	balcony.material_override = mural_material(Color("2b3648"))
 	leav_node.add_child(balcony)
 	var turntable_lamp := MeshInstance3D.new()
@@ -3318,10 +3512,10 @@ func build_street_life_decor() -> void:
 	tl_cyl.bottom_radius = 0.24
 	tl_cyl.height = 0.45
 	turntable_lamp.mesh = tl_cyl
-	turntable_lamp.position = Vector3(0.65, floor8_y + 1.05, 0.0)
+	turntable_lamp.position = Vector3(0.65, floor8_y + 1.05, win_z)
 	turntable_lamp.material_override = mural_material(Color("ff9e5e"))
 	leav_node.add_child(turntable_lamp)
-	var leav_lbl := make_label_3d("EighthFloorLabel", "145 Leavenworth · 8th Floor ('So What')", Vector3(1.2, floor8_y + 4.4, 0.0), Color("ffe8a3"), 0.012, 24)
+	var leav_lbl := make_label_3d("EighthFloorLabel", "145 Leavenworth · 8th Floor ('So What')", Vector3(1.2, floor8_y + 4.4, win_z), Color("ffe8a3"), 0.012, 24)
 	leav_node.add_child(leav_lbl)
 	so_what_root.add_child(leav_node)
 	decor_root.add_child(so_what_root)

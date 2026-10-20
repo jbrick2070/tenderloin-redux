@@ -1046,6 +1046,32 @@ func run() -> void:
 		if String(a_rec.address) == "145 Leavenworth Street" and (egg_win == null or egg_win.position.y + 1.075 > float(a_rec.height_m) or egg_win.position.y < float(a_rec.height_m) * 7.0 / 8.0):
 			egg_ok = false
 	require(egg_ok, "the 145 Leavenworth 8th-floor window sits on the real TL Residences' 8th floor, and the 361 Turk 'So What' awning on its Turk facade")
+	var tl_front: Dictionary = study.tl145_front_facade()
+	var tl_egg := study.get_node_or_null("StreetLifeDecor/SoWhatEasterEgg/EighthFloor_145Leavenworth") as Node3D
+	var tl_win_ok := not tl_front.is_empty() and tl_egg != null and egg_win != null
+	if tl_win_ok:
+		var w3: Vector3 = tl_egg.transform * egg_win.position
+		var w2 := Vector2(w3.x, w3.z)
+		var f_south: Vector2 = tl_front.south
+		var floor_y: float = study.tl145_row_floor_y(study.TL145_CREATOR_ROW)
+		var along := (w2 - Vector2(tl_front.north)).dot(Vector2(tl_front.dir))
+		tl_win_ok = study.dist_to_segment_2d(w2, tl_front.north, tl_front.south) < 1.2 and w2.distance_to(f_south) < 3.8 and along > 0.0 and w3.y > floor_y + 0.6 and w3.y < floor_y + 2.0 and w3.y + 1.075 < study.tl145_roof_top()
+	require(tl_win_ok, "the creator's apartment window is on the front facade's left (south) bay, 8th window row above the TL145 storefront")
+	var dog := study.get_node_or_null("CreatorRooftops/TL145DogPark") as MeshInstance3D
+	var play := study.get_node_or_null("CreatorRooftops/CompassRooftopPlayground") as MeshInstance3D
+	var roofs_ok := dog != null and play != null and study.get_node_or_null("CreatorRooftops/TL145DogParkLabel") != null and study.get_node_or_null("CreatorRooftops/CompassPlaygroundLabel") != null
+	if roofs_ok:
+		var d_box := dog.get_aabb()
+		var d_c := Vector2(d_box.get_center().x, d_box.get_center().z)
+		roofs_ok = d_box.position.y >= study.tl145_roof_top() - 0.01 and study.building_containing_point(d_c) == String(study.tl145_record().id)
+		var p_box := play.get_aabb()
+		var compass_h := 0.0
+		for b_rec in study.all_buildings:
+			if String(b_rec.id) == study.COMPASS_ROOF_ID:
+				compass_h = float(b_rec.height_m)
+		var p_c := Vector2(p_box.get_center().x, p_box.get_center().z)
+		roofs_ok = roofs_ok and p_box.position.y >= compass_h - 0.01 and p_box.end.y >= compass_h + 2.6 and study.building_containing_point(p_c) == study.COMPASS_ROOF_ID
+	require(roofs_ok, "TL Residences has its rooftop dog park and fire pit, and Compass Children's Center across Leavenworth its canopy-covered rooftop playground")
 	var photo_ok := true
 	for p_id in study.CREATOR_PHOTO_PALETTES:
 		var built: Dictionary = study.built_palettes.get(String(p_id), {})
