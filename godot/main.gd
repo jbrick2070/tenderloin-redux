@@ -258,6 +258,127 @@ const MUSEUM_DOCENT_LINES: Array[String] = [
 	"1966: at Compton's Cafeteria, trans women and neighbors stood up for each other.",
 	"1907: the Cadillac Hotel opened right here as the city rebuilt after the quake."
 ]
+const NEIGHBORHOOD_SURPRISE_IDS: Array[String] = [
+	"jeffrey_record",
+	"hidden_mural_145",
+	"impromptu_drag_show",
+	"viking_dirt_biker",
+	"cutesy_dino",
+	"magic_carpet_chef",
+	"bite_size_nachos",
+	"good_donut_and_bagel",
+	"clown_horn_walker",
+	"mayor_pomp_event"
+]
+const NEIGHBORHOOD_SURPRISES: Dictionary = {
+	"jeffrey_record": {
+		"title": "Jeffrey's Lost 1961 Record",
+		"badge": "Secret Vinyl Find",
+		"street": "361 Turk St sidewalk (beside the 'So What' awning)",
+		"speaker": "Rook",
+		"speech": "Hold up—that's Jeffrey's lost 1961 'Live at the Black Hawk' LP sleeve tucked in the cedar crate by 361 Turk! Wait till the 8th floor hears we found it.",
+		"summary": "Found Jeffrey's lost 1961 Black Hawk vinyl pressing in the cedar crate beside the 361 Turk St 'So What' awning (fictional neighborhood story moment).",
+		"pos": Vector3(-376.2, 0.0, 62.4),
+		"accent": "f8cc58"
+	},
+	"hidden_mural_145": {
+		"title": "The Hidden Mural at 145 Leavenworth",
+		"badge": "Courtyard Art Discovery",
+		"street": "145 Leavenworth St frontage (below the 8th-floor bay)",
+		"speaker": "Celeste",
+		"speech": "Look tucked beside the 145 Leavenworth archway—a painted courtyard triptych of golden horns, bay windows, and night-blooming jasmine!",
+		"summary": "Spotted the hidden mural alcove at 145 Leavenworth below the 8th-floor turntable window (fictional story artwork on the real TL145 frontage).",
+		"pos": Vector3(-284.5, 0.0, 95.8),
+		"accent": "5fd4ba"
+	},
+	"impromptu_drag_show": {
+		"title": "Surprise Impromptu Drag Show!",
+		"badge": "Sidewalk Encore",
+		"street": "Taylor & Turk (Transgender Cultural District)",
+		"speaker": "Starlight",
+		"speech": "Two-step on the velvet runner, darling! When Taylor and Turk light up, every sidewalk is a main stage!",
+		"summary": "Cheered a joyful impromptu sidewalk drag encore near Compton's Corner in the Transgender Cultural District (fictional celebration on the real corner).",
+		"pos": Vector3(-8.5, 0.0, -18.5),
+		"accent": "f5a3d0"
+	},
+	"viking_dirt_biker": {
+		"title": "Random Guy on a Dirt Bike in a Viking Helmet",
+		"badge": "Street Legend Sighting",
+		"street": "200 block of Turk St (between Jones & Leavenworth)",
+		"speaker": "Viking Rider",
+		"speech": "Skol, neighbor! Just cruising Turk Street at an easy idle—horns polished, helmet strapped, waving hello to the whole block party!",
+		"summary": "Spotted a friendly random guy idling on a dirt bike wearing a horned Viking helmet on the 200 block of Turk St (fictional Tenderloin street moment).",
+		"pos": Vector3(-218.0, 0.0, 39.2),
+		"accent": "ffb35c"
+	},
+	"cutesy_dino": {
+		"title": "Small Cutesy Sidewalk Dinosaur",
+		"badge": "Tiny Prehistoric Pal",
+		"street": "Eddy & Jones sidewalk (by Boeddeker Park)",
+		"speaker": "Pip the Tiny Dino",
+		"speech": "Rawr-chirp! Just waddling past Boeddeker Park for a sunny leaf snack and a tiny stubby-arm wave to the whole block!",
+		"summary": "Met a small cutesy pastel-mint dinosaur doing happy little hops by Boeddeker Park (fictional whimsical neighborhood surprise).",
+		"pos": Vector3(-148.0, 0.0, -52.0),
+		"accent": "7ce8b0"
+	},
+	"magic_carpet_chef": {
+		"title": "Wild Woman Chef on a Magic Carpet",
+		"badge": "Flying Culinary Legend",
+		"street": "Eddy & Leavenworth corridor",
+		"speaker": "Chef Zafira",
+		"speech": "Hold onto your taste buds, honey! When the star anise, garlic, and lemongrass hit the wok, this woven carpet lifts right off the sidewalk!",
+		"summary": "Watched a wild woman chef in a tall white toque soar above the sidewalk on a fringed crimson-and-gold magic carpet (fictional whimsical neighborhood surprise).",
+		"pos": Vector3(-258.0, 0.0, -34.0),
+		"accent": "ff7b9c"
+	},
+	"bite_size_nachos": {
+		"title": "Bite-Sized Bags of Sidewalk Nachos",
+		"badge": "Crunchy Corner Snack",
+		"street": "Turk & Taylor sidewalk",
+		"speaker": "Nacho Captain Rico",
+		"speech": "Grab a bite-sized bag of warm tortilla chips with a little cup of roasted salsa verde—just enough crunch to keep you strolling!",
+		"summary": "Found a sunny crate of bite-sized bags of nachos and salsa verde cups shared on the Turk & Taylor sidewalk (fictional neighborhood snack moment).",
+		"pos": Vector3(-64.0, 0.0, 18.0),
+		"accent": "ffb84d"
+	},
+	"good_donut_and_bagel": {
+		"title": "A Really Good Donut & Everything Bagel",
+		"badge": "Warm Bakery Treat",
+		"street": "Eddy & Taylor sidewalk",
+		"speaker": "Baker Mae",
+		"speech": "Still warm from the rack! Take a pink-frosted glazed donut or a toasted everything bagel with whipped scallion cream cheese—or half of each!",
+		"summary": "Shared a freshly glazed pink-sprinkle donut and a toasted everything bagel on the Eddy & Taylor sidewalk (fictional bakery treat moment).",
+		"pos": Vector3(18.0, 0.0, -56.0),
+		"accent": "ff9ec4"
+	},
+	"clown_horn_walker": {
+		"title": "Guy Walking Around with a Clown Horn",
+		"badge": "Honk-Honk Stroller",
+		"street": "Jones & Turk sidewalk",
+		"speaker": "Honker Barnaby",
+		"speech": "Honk-honk! Just keeping the sidewalk smiling—two gentle squeezes on the red rubber bulb right on Dez's 80 BPM downbeat!",
+		"summary": "Met a cheerful guy strolling along Jones & Turk squeezing a brass-and-red-bulb clown horn in time with the block groove (fictional street character moment).",
+		"pos": Vector3(-124.0, 0.0, 18.0),
+		"accent": "ff6b6b"
+	},
+	"mayor_pomp_event": {
+		"title": "Impromptu 'Mayor Public Event' & Ribbon Cutting",
+		"badge": "A Little Pomp & Circumstance",
+		"street": "Eddy & Leavenworth plaza corner",
+		"speaker": "The Block Mayor",
+		"speech": "Ahem—by the power vested in this tiny velvet podium and oversized golden scissors, I hereby proclaim today Official Neighbor Appreciation Hour! Cue the fanfare!",
+		"summary": "Joined an impromptu 'Mayor Public Event' complete with a miniature podium, velvet rope stanchions, oversized golden ribbon-cutting scissors, and a little pomp and circumstance (fictional civic comedy moment).",
+		"pos": Vector3(-296.0, 0.0, -52.0),
+		"accent": "ffd45e"
+	}
+}
+const NEIGHBOR_STORY_BADGES: Dictionary = {
+	"bea": "Block Organizer · Warm & Steady",
+	"celeste": "Sidewalk Muralist · Bright & Inviting",
+	"rook": "Sound Keeper · Cool & Observant",
+	"dez": "80 BPM Beatmaker · Easygoing Groove",
+	"thanh": "Tea & Stools Host · Generous & Calm"
+}
 # Field Guide survey tags (tools/field-guide/) -> facade colors and architectural flags.
 # Keep in sync with BUILDING_TAGS in scripts/apply-field-survey.mjs.
 const FIELD_SURVEY_TAG_STYLES: Dictionary = {
@@ -688,6 +809,41 @@ var eatery_anim_parts: Array[Dictionary] = []
 var eatery_order_counts: Dictionary = {}
 var eatery_visited: Dictionary = {}
 var eatery_anim_clock := 0.0
+var surprise_root: Node3D
+var surprise_nodes: Dictionary = {}
+var surprise_beacon_meshes: Dictionary = {}
+var surprise_points: Dictionary = {}
+var drag_performer_nodes: Array[Node3D] = []
+var viking_biker_node: Node3D
+var viking_bike_mesh: Node3D
+var surprise_vinyl_mesh: MeshInstance3D
+var cutesy_dino_node: Node3D
+var cutesy_dino_tail_node: Node3D
+var magic_carpet_chef_node: Node3D
+var magic_carpet_chef_person: Node3D
+var clown_horn_walker_node: Node3D
+var clown_horn_bulb_mesh: MeshInstance3D
+var mayor_event_speaker_node: Node3D
+var mayor_fanfare_bugler_node: Node3D
+var mayor_scissors_node: Node3D
+var character_panel_styles: Dictionary = {}
+var discovered_surprises: Dictionary = {}
+var surprise_guide_idx := -1
+var reward_banner: PanelContainer
+var reward_banner_style: StyleBoxFlat
+var reward_title_label: Label
+var reward_body_label: Label
+var reward_banner_timer := 0.0
+var reward_burst_count := 0
+var last_reward_title := ""
+var celebration_burst_node: Node3D
+var celebration_gem_meshes: Array[MeshInstance3D] = []
+var celebration_burst_label: Label3D
+var celebration_burst_timer := 0.0
+var celebration_burst_age := 0.0
+var suppress_feel_good_burst := false
+var cue_arpeggio_freqs: Array[float] = [523.25, 659.25, 783.99]
+var cue_arpeggio_duration := 0.36
 
 func colored_quad(surface: SurfaceTool, p00: Vector3, p10: Vector3, p11: Vector3, p01: Vector3, col: Color) -> void:
 	surface.set_color(col)
@@ -1718,10 +1874,12 @@ func _ready() -> void:
 	build_light_pools()
 	build_street_trees()
 	build_eatery_counters()
+	build_neighborhood_surprises()
 	build_gathering_layouts()
 	ensure_speech_bubble()
 	build_guide_marker()
 	build_talk_prompt()
+	build_celebration_burst()
 	apply_time_of_day()
 	build_audio_players()
 	camera = Camera3D.new()
@@ -3020,6 +3178,43 @@ func update_people_animation(delta: float) -> void:
 		var c_node := concert_crowd_nodes[c_i]
 		if c_node != null:
 			animate_person_node(c_node, walk_anim_clock * 0.95 + float(c_i) * 1.7, 0.18, 0.45)
+	for d_i in range(drag_performer_nodes.size()):
+		var d_node := drag_performer_nodes[d_i]
+		if d_node != null:
+			animate_person_node(d_node, walk_anim_clock * 1.55 + float(d_i) * 1.4, 0.48, 0.92)
+			d_node.rotation.y = sin(walk_anim_clock * 1.2 + float(d_i) * PI) * 0.36
+	if viking_biker_node != null:
+		animate_person_node(viking_biker_node, walk_anim_clock * 1.35 + 0.8, 0.12, 0.72)
+		viking_biker_node.position.y = 0.18 + absf(sin(walk_anim_clock * 4.5)) * 0.035
+	if viking_bike_mesh != null:
+		viking_bike_mesh.position.y = absf(sin(walk_anim_clock * 4.5)) * 0.025
+		viking_bike_mesh.rotation.z = sin(walk_anim_clock * 2.2) * 0.025
+	if surprise_vinyl_mesh != null:
+		surprise_vinyl_mesh.rotation.y = wrapf(surprise_vinyl_mesh.rotation.y + delta * 2.6, -PI, PI)
+	if cutesy_dino_node != null:
+		cutesy_dino_node.position.y = absf(sin(walk_anim_clock * 5.2)) * 0.14
+		cutesy_dino_node.rotation.z = sin(walk_anim_clock * 2.6) * 0.11
+		cutesy_dino_node.rotation.y = sin(walk_anim_clock * 1.5) * 0.28
+	if cutesy_dino_tail_node != null:
+		cutesy_dino_tail_node.rotation.y = sin(walk_anim_clock * 6.4) * 0.35
+	if magic_carpet_chef_node != null:
+		magic_carpet_chef_node.position.y = 1.15 + sin(walk_anim_clock * 2.8) * 0.24
+		magic_carpet_chef_node.rotation.x = sin(walk_anim_clock * 2.1) * 0.09
+		magic_carpet_chef_node.rotation.z = cos(walk_anim_clock * 1.9) * 0.08
+	if magic_carpet_chef_person != null:
+		animate_person_node(magic_carpet_chef_person, walk_anim_clock * 1.8 + 0.5, 0.25, 0.96)
+	if clown_horn_walker_node != null:
+		animate_person_node(clown_horn_walker_node, walk_anim_clock * 1.65, 0.55, 0.88)
+		clown_horn_walker_node.position.x = sin(walk_anim_clock * 1.2) * 0.42
+	if clown_horn_bulb_mesh != null:
+		var sq := 1.0 + sin(walk_anim_clock * 6.5) * 0.22
+		clown_horn_bulb_mesh.scale = Vector3(sq, 1.0 / sq, sq)
+	if mayor_event_speaker_node != null:
+		animate_person_node(mayor_event_speaker_node, walk_anim_clock * 1.25 + 0.3, 0.15, 0.92)
+	if mayor_fanfare_bugler_node != null:
+		animate_person_node(mayor_fanfare_bugler_node, walk_anim_clock * 1.45 + 1.1, 0.20, 0.78)
+	if mayor_scissors_node != null:
+		mayor_scissors_node.rotation_degrees.z = sin(walk_anim_clock * 3.8) * 18.0
 
 ## Hand-placed sidewalk props that fall inside a measured footprint are moved onto the sidewalk.
 func sidewalk_safe_point(p: Vector3) -> Vector3:
@@ -4451,6 +4646,11 @@ func prop_sphere(r: float) -> SphereMesh:
 	m.rings = 5
 	return m
 
+func prop_prism(size: Vector3) -> PrismMesh:
+	var m := PrismMesh.new()
+	m.size = size
+	return m
+
 func add_steam_puffs(props: Node3D, e_idx: int, base: Vector3, count: int) -> void:
 	var steam_mat := translucent_material(Color(1.0, 1.0, 1.0, 0.42))
 	steam_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -4590,11 +4790,541 @@ func eatery_counter_interact(target_idx: int = -1) -> bool:
 	var line := String(lines[count % lines.size()])
 	var item := String(items[(count - 1) % items.size()])
 	show_eatery_host_speech(idx, line)
+	var e_pos: Vector3 = rec.get("pos", Vector3.ZERO)
+	trigger_feel_good_burst("Order Up: %s" % item.capitalize(), "%s · Sparks: %d" % [String(rec.get("name", "")), spark_count()], e_pos + Vector3.UP * 2.2, Color(String(rec.get("label_color", "ffe8a3"))))
 	var msg := "Ordering at %s: %s (tap the counter again for more)" % [String(rec.get("name", "")), item]
 	if info != null:
 		info.text = "%s\nHost: \"%s\"\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [msg, line]
 	announce_a11y_status("%s. Host says: %s" % [msg, line])
 	return true
+
+func surprise_sidewalk_site(raw_pos: Vector3) -> Dictionary:
+	var raw_xz := Vector2(raw_pos.x, raw_pos.z)
+	var sp := nearest_street_point(raw_xz)
+	var away := raw_xz - sp
+	if away.length_squared() < 1e-6:
+		away = Vector2(0.0, 1.0)
+	away = away.normalized()
+	var tangent := Vector2(-away.y, away.x)
+	var avoid: Array[Vector2] = [mural_xz(), speaker_xz(), comptons_xz(), blackhawk_xz(), Vector2(PLAYER_START.x, PLAYER_START.z)]
+	for n in neighbors:
+		var np: Vector3 = n.pos
+		avoid.append(Vector2(np.x, np.z))
+	for c_pt in eatery_counter_points:
+		avoid.append(c_pt)
+	for s_existing in surprise_points.values():
+		avoid.append(s_existing)
+	for shift in [0.0, 2.5, -2.5, 5.0, -5.0, 7.5, -7.5, 10.0, -10.0]:
+		for dist_from_street in [6.2, 5.6, 6.8]:
+			var cand: Vector2 = sp + away * float(dist_from_street) + tangent * float(shift)
+			if building_containing_point(cand) != "" or min_wall_distance(cand, 1.4) < 1.4:
+				continue
+			var clash := false
+			for av in avoid:
+				if av.distance_to(cand) < 2.6:
+					clash = true
+					break
+			if not clash:
+				return {"center": cand, "toward_street": -away}
+	var safe_fb := nearest_walkable_point(raw_xz, WALK_CLEARANCE_M)
+	return {"center": safe_fb, "toward_street": -away}
+
+func build_neighborhood_surprises() -> void:
+	surprise_nodes.clear()
+	surprise_beacon_meshes.clear()
+	surprise_points.clear()
+	drag_performer_nodes.clear()
+	viking_biker_node = null
+	viking_bike_mesh = null
+	surprise_vinyl_mesh = null
+	cutesy_dino_node = null
+	cutesy_dino_tail_node = null
+	magic_carpet_chef_node = null
+	magic_carpet_chef_person = null
+	clown_horn_walker_node = null
+	clown_horn_bulb_mesh = null
+	mayor_event_speaker_node = null
+	mayor_fanfare_bugler_node = null
+	mayor_scissors_node = null
+	surprise_root = Node3D.new()
+	surprise_root.name = "NeighborhoodSurprises"
+	for s_id in NEIGHBORHOOD_SURPRISE_IDS:
+		var rec: Dictionary = NEIGHBORHOOD_SURPRISES.get(s_id, {})
+		var site := surprise_sidewalk_site(rec.get("pos", Vector3.ZERO))
+		var c2: Vector2 = site.center
+		var toward: Vector2 = site.toward_street
+		var accent := Color(String(rec.get("accent", "f8cc58")))
+		var s_node := Node3D.new()
+		s_node.name = "Surprise_%s" % s_id
+		s_node.position = Vector3(c2.x, 0.0, c2.y)
+		s_node.rotation.y = atan2(toward.x, toward.y)
+		if s_id == "jeffrey_record":
+			var crate := add_prop_mesh(s_node, prop_box(Vector3(0.68, 0.44, 0.52)), Vector3(0.0, 0.22, 0.0), material(Color("8a5a36")), "RecordCrate")
+			crate.rotation.y = 0.18
+			var sleeve := add_prop_mesh(s_node, prop_box(Vector3(0.54, 0.54, 0.05)), Vector3(-0.08, 0.54, -0.06), mural_material(Color("2b6e8c")), "AlbumJacket")
+			sleeve.rotation_degrees = Vector3(-12.0, 10.0, 0.0)
+			surprise_vinyl_mesh = add_prop_mesh(s_node, prop_cylinder(0.26, 0.26, 0.02), Vector3(0.12, 0.58, 0.10), material(Color("151719")), "LostVinylLP")
+			surprise_vinyl_mesh.rotation_degrees = Vector3(72.0, 0.0, 0.0)
+			add_prop_mesh(surprise_vinyl_mesh, prop_cylinder(0.09, 0.09, 0.024), Vector3.ZERO, mural_material(Color("f8cc58")), "GoldCenterLabel")
+			s_node.add_child(make_label_3d("SurpriseLabel", "[*] Jeffrey's Lost 1961 Record (Tap / Shift+D)", Vector3(0.0, 2.35, 0.0), Color("ffe699"), 0.0105, 22))
+		elif s_id == "hidden_mural_145":
+			add_prop_mesh(s_node, prop_box(Vector3(1.86, 1.56, 0.14)), Vector3(0.0, 1.18, -0.10), material(Color("3a2b28")), "HiddenMuralFrame")
+			add_prop_mesh(s_node, prop_box(Vector3(1.68, 1.38, 0.16)), Vector3(0.0, 1.18, -0.08), mural_material(Color("5d2c3e")), "HiddenMuralCanvas")
+			var sun_m := add_prop_mesh(s_node, prop_cylinder(0.24, 0.24, 0.06), Vector3(-0.48, 1.32, 0.02), mural_material(Color("f8cc58")), "AlcoveSunDisc")
+			sun_m.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+			for w_i in range(3):
+				add_prop_mesh(s_node, prop_box(Vector3(0.42, 0.09, 0.06)), Vector3(0.0, 1.02 + float(w_i) * 0.16, 0.03), mural_material(Color("5fd4ba") if w_i != 1 else Color("9ef5e5")), "AlcoveWaveBar_%d" % w_i)
+			for r_i in range(3):
+				var sh := 0.22 + float(r_i) * 0.14
+				add_prop_mesh(s_node, prop_box(Vector3(0.12, sh, 0.06)), Vector3(0.36 + float(r_i) * 0.14, 0.90 + sh * 0.5, 0.03), mural_material(Color("ee835c") if r_i < 2 else Color("ffb585")), "AlcoveRiseStep_%d" % r_i)
+			var horn_m := add_prop_mesh(s_node, prop_cylinder(0.14, 0.04, 0.34), Vector3(-0.44, 0.92, 0.04), mural_material(Color("f5d57a")), "AlcoveJazzHorn")
+			horn_m.rotation_degrees = Vector3(0.0, 0.0, -55.0)
+			s_node.add_child(make_label_3d("SurpriseLabel", "[*] 145 Leavenworth Hidden Mural (Tap / Shift+D)", Vector3(0.0, 2.55, 0.0), Color("9ef5e5"), 0.0105, 22))
+		elif s_id == "impromptu_drag_show":
+			add_prop_mesh(s_node, prop_box(Vector3(2.80, 0.10, 1.45)), Vector3(0.0, 0.05, 0.0), mural_material(Color("b83b7d")), "VelvetRunway")
+			add_prop_mesh(s_node, prop_box(Vector3(2.88, 0.04, 1.52)), Vector3(0.0, 0.02, 0.0), mural_material(Color("f8cc58")), "GoldRunwayTrim")
+			for l_i in range(3):
+				add_prop_mesh(s_node, prop_sphere(0.11), Vector3(-0.95 + float(l_i) * 0.95, 0.14, 0.68), mural_material(Color("ffe394") if l_i != 1 else Color("5fd4ba")), "Footlight_%d" % l_i)
+			var queen_a := make_person_node("DragStarlight", Color("e0539c"), Color("8d5b3e"), Color("f5d57a"), 1.76, false)
+			queen_a.position = Vector3(-0.62, 0.10, -0.08)
+			queen_a.scale = Vector3(1.85, 1.85, 1.85)
+			add_prop_mesh(queen_a, prop_cylinder(0.14, 0.11, 0.18), Vector3(0.0, 1.84, 0.0), mural_material(Color("ffe394")), "StarlightCrown")
+			s_node.add_child(queen_a)
+			drag_performer_nodes.append(queen_a)
+			var queen_b := make_person_node("DragVelvet", Color("4ecdc4"), Color("b9825f"), Color("f5a3d0"), 1.74, false)
+			queen_b.position = Vector3(0.62, 0.10, -0.08)
+			queen_b.scale = Vector3(1.85, 1.85, 1.85)
+			add_prop_mesh(queen_b, prop_cylinder(0.13, 0.10, 0.16), Vector3(0.0, 1.82, 0.0), mural_material(Color("f5a3d0")), "VelvetTiara")
+			s_node.add_child(queen_b)
+			drag_performer_nodes.append(queen_b)
+			s_node.add_child(make_label_3d("SurpriseLabel", "[*] Impromptu Drag Show! (Tap / Shift+D)", Vector3(0.0, 3.85, 0.0), Color("f5c2ff"), 0.011, 23))
+		elif s_id == "viking_dirt_biker":
+			var bike_root := Node3D.new()
+			bike_root.name = "DirtBike"
+			for wheel_x in [-0.68, 0.68]:
+				var w_name := "RearTire" if wheel_x < 0.0 else "FrontTire"
+				var tire := add_prop_mesh(bike_root, prop_cylinder(0.38, 0.38, 0.16), Vector3(float(wheel_x), 0.38, 0.0), material(Color("1e2224")), w_name)
+				tire.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+				var hub := add_prop_mesh(bike_root, prop_cylinder(0.16, 0.16, 0.18), Vector3(float(wheel_x), 0.38, 0.0), mural_material(Color("d8d4c8")), "%sHub" % w_name)
+				hub.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+			add_prop_mesh(bike_root, prop_box(Vector3(0.52, 0.32, 0.24)), Vector3(-0.04, 0.48, 0.0), material(Color("3b4245")), "EngineBlock")
+			var frame_bar := add_prop_mesh(bike_root, prop_box(Vector3(1.12, 0.18, 0.22)), Vector3(0.0, 0.74, 0.0), mural_material(Color("e87a2e")), "DirtBikeFrame")
+			frame_bar.rotation_degrees = Vector3(0.0, 0.0, 8.0)
+			var fender := add_prop_mesh(bike_root, prop_box(Vector3(0.46, 0.06, 0.20)), Vector3(0.58, 0.76, 0.0), mural_material(Color("ffb35c")), "FrontFender")
+			fender.rotation_degrees = Vector3(0.0, 0.0, -14.0)
+			for fork_z in [-0.11, 0.11]:
+				var fork := add_prop_mesh(bike_root, prop_cylinder(0.035, 0.035, 0.78), Vector3(0.54, 0.68, float(fork_z)), material(Color("c8c4b8")), "FrontFork_%s" % ("L" if fork_z < 0.0 else "R"))
+				fork.rotation_degrees = Vector3(0.0, 0.0, -20.0)
+			var hbar := add_prop_mesh(bike_root, prop_cylinder(0.03, 0.03, 0.72), Vector3(0.38, 1.06, 0.0), material(Color("2b3033")), "Handlebar")
+			hbar.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+			var pipe := add_prop_mesh(bike_root, prop_cylinder(0.045, 0.035, 0.56), Vector3(-0.48, 0.64, 0.15), material(Color("9ea4a8")), "ExhaustPipe")
+			pipe.rotation_degrees = Vector3(0.0, 0.0, 72.0)
+			s_node.add_child(bike_root)
+			viking_bike_mesh = bike_root
+			var rider := make_person_node("VikingBiker", Color("7a4e2d"), Color("c38c65"), Color("3a2e25"), 1.72, false)
+			rider.position = Vector3(-0.06, 0.18, 0.0)
+			rider.rotation.y = PI * 0.5
+			rider.scale = Vector3(1.85, 1.85, 1.85)
+			var helmet := Node3D.new()
+			helmet.name = "VikingHelmet"
+			helmet.position = Vector3(0.0, 1.66, 0.0)
+			add_prop_mesh(helmet, prop_sphere(0.16), Vector3(0.0, 0.04, 0.0), mural_material(Color("8c969e")), "HelmetDome")
+			add_prop_mesh(helmet, prop_cylinder(0.165, 0.165, 0.05), Vector3(0.0, 0.0, 0.0), mural_material(Color("d6a848")), "HelmetBrowBand")
+			add_prop_mesh(helmet, prop_box(Vector3(0.035, 0.11, 0.04)), Vector3(0.0, -0.04, 0.15), material(Color("8c969e")), "NoseGuard")
+			for horn_side in [-1.0, 1.0]:
+				var h_name := "LeftHorn" if horn_side < 0.0 else "RightHorn"
+				var horn_pivot := Node3D.new()
+				horn_pivot.name = h_name
+				horn_pivot.position = Vector3(horn_side * 0.15, 0.04, 0.0)
+				horn_pivot.rotation_degrees = Vector3(12.0, 0.0, -horn_side * 52.0)
+				add_prop_mesh(horn_pivot, prop_cylinder(0.032, 0.058, 0.22), Vector3(0.0, 0.10, 0.0), mural_material(Color("f4ebd0")), "HornBase")
+				var tip := add_prop_mesh(horn_pivot, prop_cylinder(0.008, 0.032, 0.18), Vector3(-horn_side * 0.05, 0.25, 0.02), mural_material(Color("ffe394")), "HornTip")
+				tip.rotation_degrees = Vector3(0.0, 0.0, horn_side * 34.0)
+				helmet.add_child(horn_pivot)
+			rider.add_child(helmet)
+			s_node.add_child(rider)
+			viking_biker_node = rider
+			s_node.add_child(make_label_3d("SurpriseLabel", "[*] Dirt Biker in a Viking Helmet (Tap / Shift+D)", Vector3(0.0, 3.85, 0.0), Color("ffd27d"), 0.011, 23))
+		elif s_id == "cutesy_dino":
+			var dino_root := Node3D.new()
+			dino_root.name = "CutesyDino"
+			dino_root.scale = Vector3(1.35, 1.35, 1.35)
+			var body_m := add_prop_mesh(dino_root, prop_sphere(0.42), Vector3(0.0, 0.54, 0.0), mural_material(Color("7ce8b0")), "DinoBody")
+			body_m.scale = Vector3(0.95, 0.88, 1.22)
+			var belly_m := add_prop_mesh(dino_root, prop_sphere(0.31), Vector3(0.0, 0.50, 0.16), mural_material(Color("fff3b8")), "DinoBelly")
+			belly_m.scale = Vector3(0.82, 0.78, 0.92)
+			var head_m := add_prop_mesh(dino_root, prop_sphere(0.35), Vector3(0.0, 1.02, 0.30), mural_material(Color("7ce8b0")), "DinoHead")
+			head_m.scale = Vector3(1.02, 0.94, 1.12)
+			for side_s in [-1.0, 1.0]:
+				var side_tag := "L" if side_s < 0.0 else "R"
+				add_prop_mesh(dino_root, prop_sphere(0.068), Vector3(side_s * 0.16, 1.10, 0.58), material(Color("182026")), "DinoEye_%s" % side_tag)
+				add_prop_mesh(dino_root, prop_sphere(0.026), Vector3(side_s * 0.14, 1.13, 0.63), mural_material(Color("ffffff")), "DinoEyeSparkle_%s" % side_tag)
+				add_prop_mesh(dino_root, prop_sphere(0.075), Vector3(side_s * 0.25, 0.98, 0.52), mural_material(Color("ff8fa3")), "DinoCheekBlush_%s" % side_tag)
+				var arm := add_prop_mesh(dino_root, prop_cylinder(0.055, 0.068, 0.24), Vector3(side_s * 0.34, 0.68, 0.26), mural_material(Color("7ce8b0")), "DinoStubArm_%s" % side_tag)
+				arm.rotation_degrees = Vector3(42.0, 0.0, -side_s * 36.0)
+				add_prop_mesh(dino_root, prop_box(Vector3(0.20, 0.16, 0.28)), Vector3(side_s * 0.20, 0.08, 0.08), mural_material(Color("62d198")), "DinoFoot_%s" % side_tag)
+			var tail_pivot := Node3D.new()
+			tail_pivot.name = "DinoTailPivot"
+			tail_pivot.position = Vector3(0.0, 0.44, -0.38)
+			var tail_m := add_prop_mesh(tail_pivot, prop_cylinder(0.05, 0.20, 0.56), Vector3(0.0, 0.06, -0.24), mural_material(Color("7ce8b0")), "DinoTail")
+			tail_m.rotation_degrees = Vector3(68.0, 0.0, 0.0)
+			dino_root.add_child(tail_pivot)
+			cutesy_dino_tail_node = tail_pivot
+			var plate_pos: Array[Vector3] = [
+				Vector3(0.0, 1.34, 0.22),
+				Vector3(0.0, 1.14, -0.04),
+				Vector3(0.0, 0.88, -0.30),
+				Vector3(0.0, 0.66, -0.54)
+			]
+			for p_i in range(plate_pos.size()):
+				var pl_col := Color("ff8fa3") if (p_i % 2 == 0) else Color("ffd45e")
+				var pl := add_prop_mesh(dino_root, prop_box(Vector3(0.09, 0.18, 0.18)), plate_pos[p_i], mural_material(pl_col), "DinoBackPlate_%d" % p_i)
+				pl.rotation_degrees = Vector3(28.0 + float(p_i) * 10.0, 0.0, 0.0)
+			s_node.add_child(dino_root)
+			cutesy_dino_node = dino_root
+			s_node.add_child(make_label_3d("SurpriseLabel", "[*] Small Cutesy Dinosaur (Tap / Shift+D)", Vector3(0.0, 2.55, 0.0), Color("9ef5e5"), 0.011, 23))
+		elif s_id == "magic_carpet_chef":
+			var carpet_root := Node3D.new()
+			carpet_root.name = "MagicCarpetRig"
+			carpet_root.position = Vector3(0.0, 1.15, 0.0)
+			add_prop_mesh(carpet_root, prop_box(Vector3(1.78, 0.06, 2.36)), Vector3(0.0, 0.0, 0.0), mural_material(Color("f8cc58")), "CarpetGoldTrim")
+			add_prop_mesh(carpet_root, prop_box(Vector3(1.62, 0.08, 2.20)), Vector3(0.0, 0.02, 0.0), mural_material(Color("b8255f")), "CarpetCrimsonWeave")
+			var medallion := add_prop_mesh(carpet_root, prop_cylinder(0.46, 0.46, 0.09), Vector3(0.0, 0.03, 0.0), mural_material(Color("5fd4ba")), "CarpetMedallion")
+			medallion.scale = Vector3(1.0, 1.0, 1.35)
+			for cx_s in [-1.0, 1.0]:
+				for cz_s in [-1.0, 1.0]:
+					var t_name := "Tassel_%s_%s" % [("L" if cx_s < 0.0 else "R"), ("F" if cz_s > 0.0 else "B")]
+					add_prop_mesh(carpet_root, prop_cylinder(0.04, 0.08, 0.24), Vector3(cx_s * 0.88, -0.08, cz_s * 1.16), mural_material(Color("ffe394")), t_name)
+			for sp_i in range(3):
+				add_prop_mesh(carpet_root, prop_sphere(0.18 + float(sp_i) * 0.04), Vector3(-0.42 + float(sp_i) * 0.42, -0.26 - float(sp_i % 2) * 0.10, -0.25 + float(sp_i) * 0.25), mural_material(Color("ff9ec4") if sp_i != 1 else Color("ffe394")), "SpiceCloud_%d" % sp_i)
+			var chef := make_person_node("ChefZafira", Color("d9385a"), Color("b97d56"), Color("7a1f45"), 1.74, false)
+			chef.position = Vector3(0.0, 0.06, 0.0)
+			chef.scale = Vector3(1.85, 1.85, 1.85)
+			add_prop_mesh(chef, prop_box(Vector3(0.31, 0.56, 0.23)), Vector3(0.0, 0.92, 0.02), mural_material(Color("fff8eb")), "ChefApron")
+			add_prop_mesh(chef, prop_cylinder(0.13, 0.12, 0.16), Vector3(0.0, 1.76, 0.0), mural_material(Color("fff8eb")), "ChefToqueBand")
+			add_prop_mesh(chef, prop_sphere(0.19), Vector3(0.0, 1.94, 0.0), mural_material(Color("ffffff")), "ChefToquePuff")
+			var wok := add_prop_mesh(chef, prop_cylinder(0.20, 0.11, 0.11), Vector3(-0.34, 1.18, 0.22), mural_material(Color("e07b39")), "FlamingCopperWok")
+			wok.rotation_degrees = Vector3(18.0, 0.0, -16.0)
+			add_prop_mesh(wok, prop_sphere(0.11), Vector3(0.0, 0.10, 0.0), mural_material(Color("ffd45e")), "WokSpiceFlame")
+			var ladle := add_prop_mesh(chef, prop_cylinder(0.024, 0.024, 0.42), Vector3(0.32, 1.32, 0.20), mural_material(Color("f8cc58")), "GoldenSpiceLadle")
+			ladle.rotation_degrees = Vector3(-28.0, 0.0, 24.0)
+			carpet_root.add_child(chef)
+			magic_carpet_chef_person = chef
+			s_node.add_child(carpet_root)
+			magic_carpet_chef_node = carpet_root
+			s_node.add_child(make_label_3d("SurpriseLabel", "[*] Wild Woman Chef on a Magic Carpet (Tap / Shift+D)", Vector3(0.0, 4.95, 0.0), Color("ffb3d1"), 0.011, 23))
+		elif s_id == "bite_size_nachos":
+			add_prop_mesh(s_node, prop_box(Vector3(0.92, 0.48, 0.62)), Vector3(0.0, 0.24, 0.0), material(Color("a36a38")), "NachoSnackCrate")
+			add_prop_mesh(s_node, prop_box(Vector3(0.96, 0.06, 0.66)), Vector3(0.0, 0.50, 0.0), mural_material(Color("ffd45e")), "NachoTrayCloth")
+			for bag_i in range(4):
+				var bx := -0.27 + float(bag_i) * 0.18
+				var bz := -0.06 if (bag_i % 2 == 0) else 0.08
+				var bag_col := Color("ff7b47") if (bag_i % 2 == 0) else Color("f8cc58")
+				var bag := add_prop_mesh(s_node, prop_box(Vector3(0.14, 0.24, 0.10)), Vector3(bx, 0.64, bz), mural_material(bag_col), "MiniNachoBag_%d" % bag_i)
+				bag.rotation_degrees = Vector3(0.0, float(bag_i - 1) * 12.0, 0.0)
+				var chip := add_prop_mesh(s_node, prop_prism(Vector3(0.10, 0.09, 0.03)), Vector3(bx, 0.79, bz), mural_material(Color("ffe380")), "NachoChip_%d" % bag_i)
+				chip.rotation_degrees = Vector3(14.0, float(bag_i) * 22.0, -10.0)
+			for sc_i in range(2):
+				var sx := -0.18 + float(sc_i) * 0.36
+				add_prop_mesh(s_node, prop_cylinder(0.07, 0.055, 0.10), Vector3(sx, 0.58, 0.21), mural_material(Color("5fd4ba") if sc_i == 0 else Color("e8533f")), "SalsaCup_%d" % sc_i)
+			s_node.add_child(make_label_3d("SurpriseLabel", "[*] Bite-Sized Bags of Nachos (Tap / Shift+D)", Vector3(0.0, 2.35, 0.0), Color("ffd45e"), 0.0105, 22))
+		elif s_id == "good_donut_and_bagel":
+			add_prop_mesh(s_node, prop_cylinder(0.46, 0.36, 0.76), Vector3(0.0, 0.38, 0.0), material(Color("8a5e3c")), "BakeryTreatStand")
+			add_prop_mesh(s_node, prop_box(Vector3(0.84, 0.08, 0.58)), Vector3(0.0, 0.80, 0.0), mural_material(Color("ffd9e6")), "PastryBox")
+			add_prop_mesh(s_node, prop_cylinder(0.20, 0.20, 0.09), Vector3(-0.21, 0.88, 0.02), mural_material(Color("d99b52")), "GoodDonutBase")
+			add_prop_mesh(s_node, prop_cylinder(0.18, 0.19, 0.045), Vector3(-0.21, 0.92, 0.02), mural_material(Color("ff7eb3")), "DonutPinkGlaze")
+			add_prop_mesh(s_node, prop_cylinder(0.055, 0.055, 0.06), Vector3(-0.21, 0.93, 0.02), material(Color("ffd9e6")), "DonutCenterHole")
+			for sp_j in range(4):
+				var ang_d := float(sp_j) * PI * 0.5 + 0.3
+				add_prop_mesh(s_node, prop_box(Vector3(0.045, 0.018, 0.018)), Vector3(-0.21 + cos(ang_d) * 0.11, 0.95, 0.02 + sin(ang_d) * 0.11), mural_material(Color("ffe394") if sp_j % 2 == 0 else Color("5fd4ba")), "DonutSprinkle_%d" % sp_j)
+			add_prop_mesh(s_node, prop_cylinder(0.20, 0.20, 0.095), Vector3(0.21, 0.88, -0.02), mural_material(Color("c9843e")), "GoodBagelBase")
+			add_prop_mesh(s_node, prop_cylinder(0.17, 0.18, 0.035), Vector3(0.21, 0.92, -0.02), mural_material(Color("fff8eb")), "BagelCreamCheese")
+			add_prop_mesh(s_node, prop_cylinder(0.05, 0.05, 0.06), Vector3(0.21, 0.93, -0.02), material(Color("ffd9e6")), "BagelCenterHole")
+			for seed_i in range(4):
+				var ang_b := float(seed_i) * PI * 0.5 + 0.7
+				add_prop_mesh(s_node, prop_sphere(0.018), Vector3(0.21 + cos(ang_b) * 0.11, 0.95, -0.02 + sin(ang_b) * 0.11), material(Color("2b2623")), "EverythingSeed_%d" % seed_i)
+			s_node.add_child(make_label_3d("SurpriseLabel", "[*] Good Donut & Everything Bagel (Tap / Shift+D)", Vector3(0.0, 2.35, 0.0), Color("ffb3d1"), 0.0105, 22))
+		elif s_id == "clown_horn_walker":
+			var honker := make_person_node("ClownHornWalker", Color("3b82c4"), Color("d49a72"), Color("d96b38"), 1.73, false)
+			honker.scale = Vector3(1.85, 1.85, 1.85)
+			var horn_rig := Node3D.new()
+			horn_rig.name = "ClownHornProp"
+			horn_rig.position = Vector3(0.28, 1.18, 0.24)
+			var brass_cone := add_prop_mesh(horn_rig, prop_cylinder(0.095, 0.025, 0.34), Vector3(0.0, 0.0, 0.14), mural_material(Color("f8cc58")), "ClownHornBrass")
+			brass_cone.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+			clown_horn_bulb_mesh = add_prop_mesh(horn_rig, prop_sphere(0.095), Vector3(0.0, 0.0, -0.05), mural_material(Color("ff3b47")), "ClownHornBulb")
+			honker.add_child(horn_rig)
+			s_node.add_child(honker)
+			clown_horn_walker_node = honker
+			s_node.add_child(make_label_3d("SurpriseLabel", "[*] Guy with a Clown Horn — Honk! (Tap / Shift+D)", Vector3(0.0, 3.85, 0.0), Color("ff9e9e"), 0.011, 23))
+		elif s_id == "mayor_pomp_event":
+			add_prop_mesh(s_node, prop_box(Vector3(2.90, 0.08, 1.65)), Vector3(0.0, 0.04, 0.0), mural_material(Color("9e1f32")), "CeremonialRedCarpet")
+			add_prop_mesh(s_node, prop_box(Vector3(0.68, 1.12, 0.52)), Vector3(0.0, 0.56, 0.18), material(Color("243b61")), "MayoralPodium")
+			add_prop_mesh(s_node, prop_box(Vector3(0.76, 0.08, 0.58)), Vector3(0.0, 1.14, 0.18), mural_material(Color("f8cc58")), "PodiumGoldTop")
+			var seal := add_prop_mesh(s_node, prop_cylinder(0.18, 0.18, 0.04), Vector3(0.0, 0.76, 0.45), mural_material(Color("ffd45e")), "PodiumSeal")
+			seal.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+			for st_side in [-1.15, 1.15]:
+				var st_tag := "L" if st_side < 0.0 else "R"
+				add_prop_mesh(s_node, prop_cylinder(0.045, 0.055, 0.92), Vector3(float(st_side), 0.46, 0.62), mural_material(Color("f8cc58")), "GoldStanchion_%s" % st_tag)
+				add_prop_mesh(s_node, prop_sphere(0.085), Vector3(float(st_side), 0.96, 0.62), mural_material(Color("ffe394")), "StanchionFinial_%s" % st_tag)
+			add_prop_mesh(s_node, prop_box(Vector3(2.30, 0.09, 0.03)), Vector3(0.0, 0.78, 0.62), mural_material(Color("e62e4d")), "CeremonialRibbon")
+			var scissors_rig := Node3D.new()
+			scissors_rig.name = "GiantGoldScissors"
+			scissors_rig.position = Vector3(0.42, 0.88, 0.66)
+			var blade_a := add_prop_mesh(scissors_rig, prop_box(Vector3(0.56, 0.055, 0.025)), Vector3(0.12, 0.03, 0.0), mural_material(Color("ffe394")), "ScissorBladeA")
+			blade_a.rotation_degrees = Vector3(0.0, 0.0, 16.0)
+			var blade_b := add_prop_mesh(scissors_rig, prop_box(Vector3(0.56, 0.055, 0.025)), Vector3(0.12, -0.03, 0.01), mural_material(Color("f8cc58")), "ScissorBladeB")
+			blade_b.rotation_degrees = Vector3(0.0, 0.0, -16.0)
+			add_prop_mesh(scissors_rig, prop_cylinder(0.09, 0.09, 0.03), Vector3(-0.18, 0.09, 0.0), mural_material(Color("ffd45e")), "ScissorHandleA")
+			add_prop_mesh(scissors_rig, prop_cylinder(0.09, 0.09, 0.03), Vector3(-0.18, -0.09, 0.0), mural_material(Color("ffd45e")), "ScissorHandleB")
+			s_node.add_child(scissors_rig)
+			mayor_scissors_node = scissors_rig
+			var mayor := make_person_node("BlockMayor", Color("26466d"), Color("c68b63"), Color("e8e4dc"), 1.75, false)
+			mayor.position = Vector3(0.0, 0.08, -0.32)
+			mayor.scale = Vector3(1.85, 1.85, 1.85)
+			var sash := add_prop_mesh(mayor, prop_box(Vector3(0.34, 0.52, 0.23)), Vector3(0.0, 1.02, 0.0), mural_material(Color("ffd45e")), "MayoralSash")
+			sash.rotation_degrees = Vector3(0.0, 0.0, 26.0)
+			s_node.add_child(mayor)
+			mayor_event_speaker_node = mayor
+			var bugler := make_person_node("FanfareBugler", Color("8f2447"), Color("a8724d"), Color("f5d57a"), 1.72, false)
+			bugler.position = Vector3(-0.88, 0.08, -0.18)
+			bugler.scale = Vector3(1.80, 1.80, 1.80)
+			var bugle := add_prop_mesh(bugler, prop_cylinder(0.10, 0.022, 0.46), Vector3(0.22, 1.42, 0.28), mural_material(Color("ffe394")), "PompTrumpet")
+			bugle.rotation_degrees = Vector3(78.0, 0.0, 0.0)
+			add_prop_mesh(bugle, prop_box(Vector3(0.02, 0.22, 0.24)), Vector3(0.0, 0.0, -0.14), mural_material(Color("5fd4ba")), "TrumpetBanner")
+			s_node.add_child(bugler)
+			mayor_fanfare_bugler_node = bugler
+			s_node.add_child(make_label_3d("SurpriseLabel", "[*] Impromptu 'Mayor Public Event' (Tap / Shift+D)", Vector3(0.0, 3.95, 0.0), Color("ffe394"), 0.011, 23))
+		var beacon := add_prop_mesh(s_node, prop_sphere(0.18), Vector3(0.0, 1.95, 0.0), material(Color("8a7964")), "SurpriseBeacon")
+		surprise_nodes[s_id] = s_node
+		surprise_beacon_meshes[s_id] = beacon
+		surprise_points[s_id] = c2
+		surprise_root.add_child(s_node)
+	add_child(surprise_root)
+	update_neighborhood_surprises_3d()
+
+func update_neighborhood_surprises_3d() -> void:
+	for s_id in NEIGHBORHOOD_SURPRISE_IDS:
+		if not surprise_beacon_meshes.has(s_id):
+			continue
+		var beacon: MeshInstance3D = surprise_beacon_meshes[s_id]
+		var rec: Dictionary = NEIGHBORHOOD_SURPRISES.get(s_id, {})
+		var accent := Color(String(rec.get("accent", "f8cc58")))
+		if discovered_surprises.has(s_id):
+			beacon.material_override = mural_material(accent)
+			beacon.scale = Vector3.ONE * 1.25
+		else:
+			beacon.material_override = mural_material(accent.darkened(0.28))
+			beacon.scale = Vector3.ONE
+
+func inspect_neighborhood_surprise(s_id: String) -> bool:
+	if not NEIGHBORHOOD_SURPRISES.has(s_id):
+		return false
+	var idx := NEIGHBORHOOD_SURPRISE_IDS.find(s_id)
+	if idx >= 0:
+		surprise_guide_idx = idx
+	var rec: Dictionary = NEIGHBORHOOD_SURPRISES[s_id]
+	var s_pt: Vector2 = surprise_points.get(s_id, Vector2(rec.pos.x, rec.pos.z))
+	var world_pos := Vector3(s_pt.x, 0.0, s_pt.y)
+	in_overview = false
+	in_wide_overview = false
+	following_player = false
+	if selected >= 0:
+		meshes[selected].material_override = building_materials[selected]
+		selected = -1
+	target = world_pos + Vector3(0.0, 1.8, 0.0)
+	view_size = 52.0
+	update_camera()
+	update_occlusion(true)
+	var newly_discovered := not discovered_surprises.has(s_id)
+	discovered_surprises[s_id] = true
+	update_neighborhood_surprises_3d()
+	if newly_discovered:
+		save_godot_state()
+	var title_str := String(rec.get("title", s_id))
+	var badge_str := String(rec.get("badge", "Neighborhood Discovery"))
+	var speaker_str := String(rec.get("speaker", "Neighbor"))
+	var speech_str := String(rec.get("speech", ""))
+	var summary_str := String(rec.get("summary", ""))
+	var accent := Color(String(rec.get("accent", "f8cc58")))
+	show_speech_bubble("surprise:%s" % s_id, world_pos + Vector3.UP * (SPEECH_BUBBLE_HEIGHT_M + 0.35), speech_str)
+	if newly_discovered:
+		trigger_progress_cue("surprise_discovery", s_id)
+		trigger_feel_good_burst(
+			"Surprise Found: %s" % title_str,
+			"%s · %d/%d Surprises · Sparks: %d" % [badge_str, discovered_surprises.size(), NEIGHBORHOOD_SURPRISE_IDS.size(), spark_count()],
+			world_pos + Vector3.UP * 2.2,
+			accent
+		)
+	update_mural_ui()
+	update_music_ui()
+	update_block_ui()
+	update_objective_ui()
+	var line := "%s — %s (%d/%d Surprises Found)" % [title_str, String(rec.get("street", "")), discovered_surprises.size(), NEIGHBORHOOD_SURPRISE_IDS.size()]
+	var sub := "%s: \"%s\" · %s (Shift+D for next surprise)" % [speaker_str, speech_str, summary_str]
+	if info != null:
+		info.text = "%s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, sub]
+	announce_a11y_status("%s. %s says: %s" % [line, speaker_str, speech_str])
+	return true
+
+func cycle_neighborhood_surprise(target_idx: int = -1) -> bool:
+	if NEIGHBORHOOD_SURPRISE_IDS.is_empty():
+		return false
+	if target_idx >= 0 and target_idx < NEIGHBORHOOD_SURPRISE_IDS.size():
+		surprise_guide_idx = target_idx
+	else:
+		surprise_guide_idx = (surprise_guide_idx + 1) % NEIGHBORHOOD_SURPRISE_IDS.size()
+	return inspect_neighborhood_surprise(NEIGHBORHOOD_SURPRISE_IDS[surprise_guide_idx])
+
+func spark_count() -> int:
+	var count := visited_neighbors.size() + mural_placements.size() + discovered_surprises.size()
+	if rook_soundcheck_done:
+		count += 1
+	if gathering_layout in GATHERING_LAYOUTS:
+		count += 1
+	if block_opened:
+		count += 2
+	if String(keepsake_photo.get("status", "unasked")) == "taken":
+		count += 1
+	count += epilogue_returned.size()
+	count += hosting_results.size()
+	if civic_phase == "done":
+		count += 1
+	if film_phase == "done":
+		count += 1
+	if history_read:
+		count += 1
+	if blackhawk_discovered:
+		count += 1
+	return count
+
+func build_celebration_burst() -> void:
+	celebration_gem_meshes.clear()
+	celebration_burst_node = Node3D.new()
+	celebration_burst_node.name = "CelebrationBurst"
+	celebration_burst_node.visible = false
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	st.set_smooth_group(-1)
+	colored_prism(st, Vector3.ZERO, 0.22, 0.0, 0.30, 4, Color.WHITE, Color(0, 0, 0, 0))
+	colored_prism(st, Vector3.ZERO, 0.22, 0.0, -0.30, 4, Color.WHITE.darkened(0.12), Color(0, 0, 0, 0))
+	st.generate_normals()
+	var gem_mesh := st.commit()
+	var gem_colors: Array[Color] = [
+		Color("ffe394"), Color("5fd4ba"), Color("f5a3d0"), Color("f8cc58"),
+		Color("9ef5e5"), Color("ffb35c"), Color("ffe394"), Color("5fd4ba")
+	]
+	for g_i in range(8):
+		var gem := MeshInstance3D.new()
+		gem.name = "SparkGem_%d" % g_i
+		gem.mesh = gem_mesh
+		var g_mat := mural_material(gem_colors[g_i % gem_colors.size()])
+		g_mat.no_depth_test = true
+		g_mat.render_priority = 11
+		gem.material_override = g_mat
+		celebration_burst_node.add_child(gem)
+		celebration_gem_meshes.append(gem)
+	celebration_burst_label = make_label_3d("CelebrationBurstLabel", "* +1 Neighborhood Spark *", Vector3(0.0, 1.45, 0.0), Color("ffe48f"), 0.011, 24)
+	celebration_burst_node.add_child(celebration_burst_label)
+	add_child(celebration_burst_node)
+
+func build_reward_banner(layer: CanvasLayer) -> void:
+	reward_banner_style = StyleBoxFlat.new()
+	reward_banner_style.bg_color = Color(0.08, 0.14, 0.18, 0.94)
+	reward_banner_style.border_color = Color("f8cc58")
+	reward_banner_style.set_border_width_all(2)
+	reward_banner_style.set_corner_radius_all(8)
+	reward_banner_style.content_margin_left = 12
+	reward_banner_style.content_margin_right = 12
+	reward_banner_style.content_margin_top = 5
+	reward_banner_style.content_margin_bottom = 5
+	reward_banner = PanelContainer.new()
+	reward_banner.name = "RewardBanner"
+	reward_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	reward_banner.add_theme_stylebox_override("panel", reward_banner_style)
+	reward_banner.visible = false
+	var vbox := VBoxContainer.new()
+	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_theme_constant_override("separation", 1)
+	reward_banner.add_child(vbox)
+	reward_title_label = Label.new()
+	reward_title_label.name = "RewardTitle"
+	reward_title_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	reward_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	reward_title_label.clip_text = true
+	reward_title_label.add_theme_font_size_override("font_size", 15)
+	reward_title_label.add_theme_color_override("font_color", Color("ffe48f"))
+	vbox.add_child(reward_title_label)
+	reward_body_label = Label.new()
+	reward_body_label.name = "RewardBody"
+	reward_body_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	reward_body_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	reward_body_label.clip_text = true
+	reward_body_label.add_theme_font_size_override("font_size", 13)
+	reward_body_label.add_theme_color_override("font_color", Color("9ef5e5"))
+	vbox.add_child(reward_body_label)
+	layer.add_child(reward_banner)
+
+func layout_reward_banner() -> void:
+	if reward_banner == null:
+		return
+	var area := play_area_rect()
+	var w := minf(460.0, maxf(180.0, area.size.x - 16.0))
+	reward_banner.custom_minimum_size = Vector2(w, 0.0)
+	reward_banner.size = Vector2(w, 0.0)
+	reward_banner.position = Vector2(area.position.x + (area.size.x - w) * 0.5, area.position.y + 4.0)
+
+func trigger_feel_good_burst(title_str: String, detail_str: String, world_pos: Vector3, accent: Color = Color("f8cc58")) -> void:
+	if suppress_feel_good_burst:
+		return
+	reward_burst_count += 1
+	last_reward_title = title_str
+	if reward_banner != null:
+		if reward_banner_style != null:
+			reward_banner_style.border_color = accent.lightened(0.15)
+		reward_title_label.text = "* %s *" % title_str
+		reward_body_label.text = detail_str
+		reward_banner.modulate = Color.WHITE
+		reward_banner.visible = true
+		reward_banner_timer = 3.2
+		layout_reward_banner()
+	if celebration_burst_node != null:
+		celebration_burst_node.position = world_pos
+		celebration_burst_node.visible = true
+		celebration_burst_age = 0.0
+		celebration_burst_timer = 2.0
+		if celebration_burst_label != null:
+			celebration_burst_label.text = "* %s *" % title_str
+			celebration_burst_label.modulate = accent.lightened(0.22)
+		update_celebration_burst(0.01)
+
+func update_celebration_burst(delta: float) -> void:
+	if reward_banner != null and reward_banner.visible:
+		reward_banner_timer -= delta
+		layout_reward_banner()
+		if reward_banner_timer <= 0.45:
+			reward_banner.modulate = Color(1.0, 1.0, 1.0, clampf(reward_banner_timer / 0.45, 0.0, 1.0))
+		if reward_banner_timer <= 0.0 or in_overview or in_wide_overview:
+			reward_banner.visible = false
+	if celebration_burst_node != null and celebration_burst_node.visible:
+		celebration_burst_age += delta
+		celebration_burst_timer -= delta
+		var progress := clampf(celebration_burst_age / 2.0, 0.0, 1.0)
+		var ring_r := 0.55 + progress * 1.65
+		var lift := progress * 1.75
+		for g_i in range(celebration_gem_meshes.size()):
+			var gem := celebration_gem_meshes[g_i]
+			if gem == null:
+				continue
+			var ang := TAU * float(g_i) / float(celebration_gem_meshes.size()) + celebration_burst_age * 2.8
+			var bob := sin(celebration_burst_age * 5.0 + float(g_i)) * 0.16
+			gem.position = Vector3(cos(ang) * ring_r, lift + bob, sin(ang) * ring_r)
+			gem.rotation = Vector3(celebration_burst_age * 2.2, ang, celebration_burst_age * 1.7)
+			gem.scale = Vector3.ONE * clampf(1.15 - progress * 0.75, 0.25, 1.15)
+		if celebration_burst_label != null:
+			celebration_burst_label.position = Vector3(0.0, 1.25 + lift * 0.85, 0.0)
+		if celebration_burst_timer <= 0.0 or in_overview or in_wide_overview:
+			celebration_burst_node.visible = false
 
 func update_eatery_animation(delta: float) -> void:
 	eatery_anim_clock = wrapf(eatery_anim_clock + delta, 0.0, 3600.0)
@@ -4694,7 +5424,7 @@ func current_objective() -> Dictionary:
 		return {"id": "comptons", "neighbor": -1, "has_target": true, "target": COMPTONS_POS, "target_name": "Compton's plaque", "text": "Read the Compton's Cafeteria plaque at Turk & Taylor (J)", "hint": "The Compton's Cafeteria plaque at Turk & Taylor is %s." % compass_phrase(p, comptons_xz())}
 	if not blackhawk_discovered:
 		return {"id": "blackhawk", "neighbor": -1, "has_target": true, "target": BLACKHAWK_POS, "target_name": "Black Hawk site", "text": "Visit the former Black Hawk jazz club at Turk & Hyde (H)", "hint": "The Black Hawk site at Turk & Hyde is %s." % compass_phrase(p, blackhawk_xz())}
-	return {"id": "explore", "neighbor": -1, "has_target": false, "target": Vector3.ZERO, "text": "Explore: museum Time-Portal (Shift+M), eateries (Shift+E), evening (Shift+L)", "hint": "Take your time. Try the museum's Time-Portal on Eddy, or the eateries along Turk."}
+	return {"id": "explore", "neighbor": -1, "has_target": false, "target": Vector3.ZERO, "text": "Explore: surprises (Shift+D), museum Time-Portal (Shift+M), eateries (Shift+E), evening (Shift+L)", "hint": "Take your time. Spot the %d neighborhood surprises (%d/%d found, Shift+D), try the museum's Time-Portal on Eddy, or visit the eateries along Turk." % [NEIGHBORHOOD_SURPRISE_IDS.size(), discovered_surprises.size(), NEIGHBORHOOD_SURPRISE_IDS.size()]}
 
 func update_objective_ui() -> void:
 	if objective_label == null:
@@ -5439,6 +6169,8 @@ func choose_gathering_layout(layout_id: String) -> bool:
 	if block_panel != null and block_panel.visible:
 		last_panel_dialogue = line
 		update_block_ui()
+	var lay_pos := Vector3(gathering_layout_center.x, 2.0, gathering_layout_center.y)
+	trigger_feel_good_burst("Gathering Layout: %s" % String(GATHERING_LAYOUT_TITLES[layout_id]), "Curb lane set up · Sidewalk route stays clear · Sparks: %d" % spark_count(), lay_pos, Color("f8cc58") if layout_id == "table" else Color("5fd4ba"))
 	if info != null:
 		info.text = "%s\nThe %s is set up in the curb lane beside Bea · Both layouts keep the sidewalk clear\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, String(GATHERING_LAYOUT_TITLES[layout_id])]
 	announce_a11y_status("Chose the %s. %s" % [String(GATHERING_LAYOUT_TITLES[layout_id]), body])
@@ -6496,14 +7228,14 @@ func neighbor_lines(n_id: String) -> Array[String]:
 					"Bea: \"Tap 'Plan Party Schedule' to line up stories, rhythm, shared art tiles, and a quiet pause for the block.\"",
 					"Bea: \"Every neighbor's voice belongs here at Turk & Taylor. Have you read the 1966 Compton's plaque on the corner?\"",
 					"Bea: \"Thanks for showing up for the block. That's all a party really is: neighbors deciding to be here for each other.\"",
-					"Bea: \"If you lose track of the afternoon, tap What's Next? and I'll point you the right way.\""
+					"Bea: \"If you lose track of the afternoon, tap What's Next?—or press Shift+D to spot the small cutesy dinosaur by Boeddeker Park and the wild woman chef on a magic carpet!\""
 				]
 			return [
 				"Bea: \"Welcome to Turk & Taylor! Greet all 5 neighbors, add 3 mural motifs, and run Rook's soundcheck to open our block.\"",
 				"Bea: \"I've got the signboard ready by my rollator. Tap Go Meet below and I'll point you to the next neighbor.\"",
 				"Bea: \"Once all 5 of us have met, Celeste's easel is painted, and Rook's speaker is checked, tap 'Open Block Party!' right below.\"",
 				"Bea: \"Boeddeker Park is %s, if you ever want a bench and some trees.\"" % compass_phrase(neighbor_xz(0), BOEDDEKER_PARK_ENTRANCE),
-				"Bea: \"Lost? Tap What's Next? any time and I'll tell you where to head.\""
+				"Bea: \"Lost? Tap What's Next? any time—or press Shift+D if you hear rumors of a small cutesy dinosaur or a wild woman chef on a magic carpet!\""
 			]
 		"dez":
 			if block_opened:
@@ -6512,14 +7244,14 @@ func neighbor_lines(n_id: String) -> Array[String]:
 					"Dez: \"During the rhythm workshop we can toggle an 8-step beat pattern right from the sidewalk, and playing quiet always counts too.\"",
 					"Dez: \"If you stroll out west to Dodge Alley or Turk & Hyde, you can feel that classic Tenderloin jazz history in the air.\"",
 					"Dez: \"Celeste and I want to make a little three-shot film. Ask me when you're ready.\"",
-					"Dez: \"Thanks for keeping the tempo easy. Nobody had to shout all afternoon.\""
+					"Dez: \"Thanks for keeping the tempo easy—and if you spot that random guy on a dirt bike in a Viking helmet or Jeffrey's lost 1961 record by 361 Turk, press Shift+D!\""
 				]
 			return [
 				"Dez: \"80 BPM pocket is locked in near Mason. Use the conversation actions below to meet anyone left or get our block party rolling!\"",
 				"Dez: \"Have you chatted with Rook by the Turk Street speaker yet? Every neighbor you meet and motif you paint unlocks another layer of the groove.\"",
 				"Dez: \"Paint with Celeste, soundcheck with Rook, or take a walk west to the Black Hawk jazz site at Turk & Hyde!\"",
 				"Dez: \"I keep the groove at 80 BPM so nobody has to shout over it.\"",
-				"Dez: \"The Black Hawk at Turk & Hyde had jazz from 1949 to 1963. This block has always had music in it.\""
+				"Dez: \"The Black Hawk at Turk & Hyde had jazz from 1949 to 1963—and rumor has it Jeffrey's lost 1961 record and a guy on a dirt bike in a Viking helmet are out along Turk (Shift+D)!\""
 			]
 		"thanh":
 			if block_opened:
@@ -6528,14 +7260,14 @@ func neighbor_lines(n_id: String) -> Array[String]:
 					"Thanh: \"Whenever the afternoon winds down, tap 'Pack Borrowed Gear' and we'll return the folding table, paint case, and speaker.\"",
 					"Thanh: \"I love seeing the sidewalk stay clear for neighbors passing through while we share stories around the long table.\"",
 					"Thanh: \"More jasmine tea? There's plenty.\"",
-					"Thanh: \"When everyone's ready, we pack up together. Nobody carries it all alone.\""
+					"Thanh: \"When everyone's ready, we pack up together—and don't miss the surprise drag show, bite-sized bags of nachos, fresh donut & bagel, clown horn walker, or the impromptu Mayor Public Event (Shift+D)!\""
 				]
 			return [
 				"Thanh: \"Hot tea and folding stools are stacked on Taylor Street. Once all 5 neighbors, the mural, and the soundcheck are ready, we open the block party!\"",
 				"Thanh: \"Celeste has her portable mural easel set up on Turk Street, and Rook is testing the sidewalk speaker just down the block.\"",
 				"Thanh: \"Tap any action below to meet the rest of the block. We're keeping the through-route clear for everyone on Taylor and Turk.\"",
 				"Thanh: \"The folding table is mine. Borrow it for the party, and we'll carry it back together when we pack up.\"",
-				"Thanh: \"Bea taught me to keep the sidewalk wide enough for walkers and strollers. It matters.\""
+				"Thanh: \"Bea taught me to keep the sidewalk wide enough for walkers, strollers, bite-sized nachos, a good donut or bagel, a guy with a clown horn, and even an impromptu Mayor Public Event (Shift+D)!\""
 			]
 	return []
 
@@ -6557,6 +7289,7 @@ func talk_with_neighbor(index: int) -> String:
 		return check_sound_with_rook()
 	var n: Dictionary = neighbors[index]
 	var n_id := String(n.get("id", ""))
+	var first_visit := not visited_neighbors.has(n_id)
 	neighbor_talk_counts[n_id] = int(neighbor_talk_counts.get(n_id, 0)) + 1
 	visited_neighbors[n_id] = true
 	browser_import_message = ""
@@ -6564,7 +7297,10 @@ func talk_with_neighbor(index: int) -> String:
 	recompute_music_stems()
 	update_block_3d()
 	show_conversation(index)
+	var prev_sup := suppress_feel_good_burst
+	suppress_feel_good_burst = prev_sup or (not first_visit)
 	trigger_progress_cue("neighbor_visit", n.name)
+	suppress_feel_good_burst = prev_sup
 	var line := neighbor_greeting_line(n_id)
 	show_neighbor_speech(index, line)
 	var mem_line := neighbor_project_memory_line(n_id)
@@ -6609,7 +7345,10 @@ func finish_neighbor_arrival(index: int) -> void:
 	recompute_music_stems()
 	update_block_3d()
 	update_block_ui()
+	var prev_sup_arr := suppress_feel_good_burst
+	suppress_feel_good_burst = prev_sup_arr or (not newly_visited)
 	trigger_progress_cue("neighbor_visit", n.name)
+	suppress_feel_good_burst = prev_sup_arr
 	update_route_ribbon(true)
 	if following_player:
 		target = Vector3(player.position.x, 1.0, player.position.z)
@@ -6736,7 +7475,7 @@ func celeste_dialogue_text() -> String:
 		"Celeste: \"Try Garden, Sunset, or Ocean, or tap Shift Motif to slide your shape around the 6×3 board.\"",
 		"Celeste: \"It's a freestanding sidewalk board, so no wall gets painted and nobody's facade changes.\"",
 		"Celeste: \"There's no wrong spot for a shape. Put it where it feels right to you.\"",
-		"Celeste: \"When the board is finished, Rook's groove gets another layer. Art and music, one afternoon.\""
+		"Celeste: \"When the board is finished, Rook's groove gets another layer—and if you walk over to 145 Leavenworth, look for the hidden mural alcove below the 8th floor (Shift+D)!\""
 	]
 	return options[posmod(maxi(1, celeste_talk_count) - 1, options.size())]
 
@@ -6814,7 +7553,10 @@ func talk_with_celeste() -> String:
 	save_godot_state()
 	update_mural_ui()
 	update_block_ui()
+	var prev_sup_cel := suppress_feel_good_burst
+	suppress_feel_good_burst = prev_sup_cel or (celeste_talk_count != 1)
 	trigger_progress_cue("celeste_talk", "Celeste talk")
+	suppress_feel_good_burst = prev_sup_cel
 	var line := celeste_dialogue_text()
 	show_neighbor_speech(celeste_index, line)
 	var mem_c := neighbor_project_memory_line(CELESTE_ID)
@@ -6839,6 +7581,7 @@ func request_rook_soundcheck() -> bool:
 	return false
 
 func check_sound_with_rook() -> String:
+	var was_sc_done := rook_soundcheck_done
 	rook_talk_count += 1
 	visited_neighbors[ROOK_ID] = true
 	rook_soundcheck_done = true
@@ -6850,7 +7593,10 @@ func check_sound_with_rook() -> String:
 	show_music_panel(true)
 	focus_speaker_camera()
 	save_godot_state()
+	var prev_sup_rook := suppress_feel_good_burst
+	suppress_feel_good_burst = prev_sup_rook or was_sc_done
 	trigger_progress_cue("rook_soundcheck", "Rook soundcheck")
+	suppress_feel_good_burst = prev_sup_rook
 	update_music_ui()
 	update_block_ui()
 	var line := rook_dialogue_text()
@@ -8366,17 +9112,99 @@ func trigger_progress_cue(cue_id: String, reason: String) -> void:
 	})
 	if cue_history.size() > 32:
 		cue_history.pop_front()
-	if music_playing and music_mode == "sketch":
-		cue_chime_timer = 0.32
-		match cue_id:
-			"mural_complete":
-				cue_chime_freq = 783.99
-			"rook_soundcheck":
+	match cue_id:
+		"mural_complete", "block_opened", "hosting_complete":
+			cue_arpeggio_freqs = [523.25, 659.25, 1046.50]
+			cue_arpeggio_duration = 0.56
+			cue_chime_freq = 783.99
+		"rook_soundcheck", "surprise_discovery":
+			if reason == "mayor_pomp_event":
+				cue_arpeggio_freqs = [392.00, 493.88, 587.33]
+				cue_arpeggio_duration = 0.62
+				cue_chime_freq = 392.00
+			elif reason == "clown_horn_walker":
+				cue_arpeggio_freqs = [440.00, 554.37, 659.25]
+				cue_arpeggio_duration = 0.42
+				cue_chime_freq = 440.00
+			else:
+				cue_arpeggio_freqs = [659.25, 830.61, 987.77]
+				cue_arpeggio_duration = 0.48
 				cue_chime_freq = 659.25
+		"mural_motif", "keepsake_photo", "programme_published":
+			cue_arpeggio_freqs = [587.33, 739.99, 880.00]
+			cue_arpeggio_duration = 0.44
+			cue_chime_freq = 587.33
+		_:
+			cue_arpeggio_freqs = [523.25, 659.25, 783.99]
+			cue_arpeggio_duration = 0.40
+			cue_chime_freq = 523.25
+	if music_playing and music_mode == "sketch":
+		cue_chime_timer = cue_arpeggio_duration
+	if not suppress_feel_good_burst:
+		var burst_title := ""
+		var burst_detail := ""
+		var burst_pos: Vector3 = player.position if player != null else Vector3(71.5, 0.0, 26.8)
+		var burst_accent := Color("ffd45e")
+		match cue_id:
+			"neighbor_visit":
+				burst_title = "New Neighbor Connected — %s" % reason
+				burst_detail = "Neighbors Met: %d/%d · Groove: %s" % [visited_neighbors.size(), neighbors.size(), active_stem_summary()]
+				var matched_n_idx := arrived_neighbor
+				for n_k in range(neighbors.size()):
+					if String(neighbors[n_k].get("name", "")) == reason:
+						matched_n_idx = n_k
+						break
+				if matched_n_idx >= 0 and matched_n_idx < neighbors.size():
+					burst_pos = neighbors[matched_n_idx].pos
+					burst_accent = Color(neighbors[matched_n_idx].coat).lightened(0.28)
+			"celeste_talk":
+				burst_title = "Artist Spark — Connected with Celeste"
+				burst_detail = "Sidewalk easel unlocked (%d/%d neighbors met)" % [visited_neighbors.size(), neighbors.size()]
+				burst_pos = MURAL_POS
+				burst_accent = Color("ffb84d")
 			"mural_motif":
-				cue_chime_freq = 587.33
-			_:
-				cue_chime_freq = 523.25
+				burst_title = "Mural Spark — Painted %s Motif" % reason.capitalize()
+				burst_detail = "Easel progress: %d/3 motifs · Groove: %s" % [mural_placements.size(), active_stem_summary()]
+				burst_pos = MURAL_POS
+				burst_accent = Color("ff9e5e")
+			"mural_complete":
+				burst_title = "Mural Complete — All 3 Motifs Shining!"
+				burst_detail = "Harmonic pad stem unlocked · Groove: %s" % active_stem_summary()
+				burst_pos = MURAL_POS
+				burst_accent = Color("ffd45e")
+			"rook_soundcheck":
+				burst_title = "Soundcheck Locked In — Sidewalk Lead Stem Live!"
+				burst_detail = "Rook dialed in the corner speaker · %s" % active_stem_summary()
+				burst_pos = ROOK_SPEAKER_POS
+				burst_accent = Color("6ec6ff")
+			"block_opened":
+				burst_title = "Turk Street Block Gathering Open!"
+				burst_detail = "String lights, music, and neighbors fill the sidewalk"
+				burst_pos = MURAL_POS
+				burst_accent = Color("ffe066")
+			"keepsake_photo":
+				burst_title = "Keepsake Moment — Group Photo Captured!"
+				burst_detail = "Press Shift+Y anytime to export your block keepsake SVG"
+				burst_pos = MURAL_POS
+				burst_accent = Color("ff8ad8")
+			"loan_returned":
+				burst_title = "Neighbor Care — Returned %s" % reason.capitalize()
+				burst_detail = "Borrowed gear returned (%d/3)" % epilogue_returned.size()
+				burst_accent = Color("9ef5e5")
+			"programme_published":
+				burst_title = "Evening Programme Published!"
+				burst_detail = "All 4 block gathering segments scheduled on the board"
+				burst_accent = Color("ffd45e")
+			"hosting_segment":
+				burst_title = "Hosted Block Activity — %s" % reason
+				burst_detail = "Block hosting progress: %d/4 activities" % hosting_results.size()
+				burst_accent = Color("ffb84d")
+			"hosting_complete":
+				burst_title = "All 4 Block Gathering Events Hosted!"
+				burst_detail = "Tenant circle (Q) and neighborhood short film (.) unlocked"
+				burst_accent = Color("ffe066")
+		if not burst_title.is_empty():
+			trigger_feel_good_burst(burst_title, burst_detail, burst_pos, burst_accent)
 	update_music_ui()
 
 func apply_music_volume_db() -> void:
@@ -8465,6 +9293,10 @@ func advance_music_clock(delta: float) -> int:
 		return 0
 	if cue_chime_timer > 0.0:
 		cue_chime_timer = maxf(0.0, cue_chime_timer - delta)
+		if not cue_arpeggio_freqs.is_empty() and cue_arpeggio_duration > 0.01:
+			var prog := clampf(1.0 - (cue_chime_timer / cue_arpeggio_duration), 0.0, 0.999)
+			var arp_idx := clampi(int(prog * float(cue_arpeggio_freqs.size())), 0, cue_arpeggio_freqs.size() - 1)
+			cue_chime_freq = cue_arpeggio_freqs[arp_idx]
 	if has_audio_device and sketch_playback == null and sketch_player != null and sketch_player.playing:
 		sketch_playback = sketch_player.get_stream_playback() as AudioStreamGeneratorPlayback
 	var frames_to_gen := 0
@@ -8989,6 +9821,10 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"last_voices_teardown_usec": last_voices_teardown_usec,
 		"total_buildings": all_buildings.size(),
 		"wider_buildings_count": wider_meshes.size(),
+		"surprises_found": discovered_surprises.size(),
+		"sparks": spark_count(),
+		"reward_burst_count": reward_burst_count,
+		"last_reward_title": last_reward_title,
 		"music_playing": music_playing,
 		"music_mode": music_mode,
 		"browser_import_status": browser_import_status
@@ -9220,6 +10056,12 @@ func build_save_envelope() -> Dictionary:
 	for k in visited_neighbors.keys():
 		v_list.append(String(k))
 	v_list.sort()
+	var s_list: Array[String] = []
+	for sk in discovered_surprises.keys():
+		var s_id := String(sk)
+		if s_id in NEIGHBORHOOD_SURPRISE_IDS:
+			s_list.append(s_id)
+	s_list.sort()
 	return {
 		"schema": "tenderloin-redux.godot.save",
 		"version": GODOT_SAVE_VERSION,
@@ -9230,6 +10072,7 @@ func build_save_envelope() -> Dictionary:
 		"mural_placements": mural_placements.duplicate(true),
 		"rook_soundcheck_done": rook_soundcheck_done,
 		"visited_neighbors": v_list,
+		"discovered_surprises": s_list,
 		"block_opened": block_opened,
 		"gathering_layout": gathering_layout,
 		"history_read": history_read,
@@ -9290,6 +10133,14 @@ func reset_mural_state_to_defaults(status_label: String) -> void:
 	mural_completed = false
 	rook_soundcheck_done = false
 	visited_neighbors.clear()
+	discovered_surprises.clear()
+	surprise_guide_idx = -1
+	reward_banner_timer = 0.0
+	if reward_banner != null:
+		reward_banner.visible = false
+	celebration_burst_timer = 0.0
+	if celebration_burst_node != null:
+		celebration_burst_node.visible = false
 	block_opened = false
 	gathering_layout = ""
 	keepsake_photo = default_keepsake_photo()
@@ -9333,6 +10184,7 @@ func reset_mural_state_to_defaults(status_label: String) -> void:
 	update_block_3d()
 	update_district_boundary_3d()
 	update_history_stops_3d()
+	update_neighborhood_surprises_3d()
 	update_mural_ui()
 	update_music_ui()
 	update_block_ui()
@@ -9853,6 +10705,20 @@ func apply_save_envelope(raw_json: String) -> bool:
 	mural_placements = clean_placements
 	rook_soundcheck_done = sc_done
 	visited_neighbors = clean_visited
+	discovered_surprises.clear()
+	surprise_guide_idx = -1
+	reward_banner_timer = 0.0
+	if reward_banner != null:
+		reward_banner.visible = false
+	celebration_burst_timer = 0.0
+	if celebration_burst_node != null:
+		celebration_burst_node.visible = false
+	# Additive optional field: gracefully filters unknown entries rather than hard-resetting v1 saves
+	var raw_surprises: Variant = env.get("discovered_surprises", [])
+	if raw_surprises is Array:
+		for s_entry in raw_surprises:
+			if s_entry is String and String(s_entry) in NEIGHBORHOOD_SURPRISE_IDS:
+				discovered_surprises[String(s_entry)] = true
 	history_read = hr_done
 	blackhawk_discovered = bh_done
 	district_boundary_visible = db_vis
@@ -9895,6 +10761,7 @@ func apply_save_envelope(raw_json: String) -> bool:
 	update_block_3d()
 	update_district_boundary_3d()
 	update_history_stops_3d()
+	update_neighborhood_surprises_3d()
 	update_mural_ui()
 	update_music_ui()
 	update_block_ui()
@@ -10634,6 +11501,11 @@ func update_occlusion(force: bool = true) -> void:
 			focus_points.append(eatery_counter_points[eatery_guide_idx])
 		if framed_xz.distance_to(Vector2(MUSEUM_HUB_POS.x, MUSEUM_HUB_POS.z)) < 12.0:
 			focus_points.append(Vector2(MUSEUM_HUB_POS.x, MUSEUM_HUB_POS.z))
+		for s_id in NEIGHBORHOOD_SURPRISE_IDS:
+			if surprise_points.has(s_id):
+				var sp: Vector2 = surprise_points[s_id]
+				if framed_xz.distance_to(sp) < 14.0:
+					focus_points.append(sp)
 	if selected_neighbor >= 0 and selected_neighbor < neighbors.size():
 		focus_points.append(neighbor_xz(selected_neighbor))
 	if selected_neighbor == celeste_index or arrived_neighbor == celeste_index or walking_to_mural or arrived_mural:
@@ -10674,6 +11546,7 @@ func _process(delta: float) -> void:
 	update_speech_bubble(delta)
 	update_tree_sway(delta)
 	update_eatery_animation(delta)
+	update_celebration_burst(delta)
 	update_conversation_ui(delta)
 
 func _physics_process(delta: float) -> void:
@@ -10693,14 +11566,15 @@ func _physics_process(delta: float) -> void:
 			rotate_camera_by_delta(yaw_dir * delta * 1.65, pitch_dir * delta * 0.75)
 			return
 	var input_vec := Vector2.ZERO
-	if Input.is_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_D):
-		input_vec.x += 1.0
-	if Input.is_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_A):
-		input_vec.x -= 1.0
-	if Input.is_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_S):
-		input_vec.y += 1.0
-	if Input.is_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_W):
-		input_vec.y -= 1.0
+	if not shift_held:
+		if Input.is_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_D):
+			input_vec.x += 1.0
+		if Input.is_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_A):
+			input_vec.x -= 1.0
+		if Input.is_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_S):
+			input_vec.y += 1.0
+		if Input.is_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_W):
+			input_vec.y -= 1.0
 	if get_viewport().gui_get_focus_owner() == null and not shift_held:
 		if Input.is_key_pressed(KEY_RIGHT):
 			input_vec.x += 1.0
@@ -10797,6 +11671,15 @@ func handle_scene_tap(screen_pos: Vector2) -> bool:
 	var bh_world_d := blackhawk_xz().distance_to(ground_xz)
 	if ((bh_screen_d <= 36.0 and bh_world_d <= 8.5) or bh_world_d <= 3.5) and bh_screen_d < best_screen_d:
 		return walk_to_history_stop("blackhawk")
+	if not in_overview and not in_wide_overview:
+		for s_id in NEIGHBORHOOD_SURPRISE_IDS:
+			if surprise_points.has(s_id):
+				var sp: Vector2 = surprise_points[s_id]
+				var surp_screen := camera.unproject_position(Vector3(sp.x, 1.5, sp.y))
+				var surp_screen_d := surp_screen.distance_to(screen_pos)
+				var surp_world_d := sp.distance_to(ground_xz)
+				if ((surp_screen_d <= 24.0 and surp_world_d <= 4.2) or surp_world_d <= 1.8) and surp_screen_d < best_screen_d:
+					return inspect_neighborhood_surprise(s_id)
 	var turk_ee_screen := camera.unproject_position(Vector3(-350.0, 3.6, 65.8))
 	var leav_ee_screen := camera.unproject_position(Vector3(-290.8, 24.6, 99.4))
 	if turk_ee_screen.distance_to(screen_pos) <= 28.0 or leav_ee_screen.distance_to(screen_pos) <= 28.0:
@@ -10992,6 +11875,9 @@ func _unhandled_input(event: InputEvent) -> void:
 					walk_to_or_read_history_stop("blackhawk")
 			KEY_C:
 				toggle_district_boundary()
+			KEY_D:
+				if event.shift_pressed:
+					cycle_neighborhood_surprise()
 			KEY_L:
 				if event.shift_pressed:
 					toggle_evening_lights()
@@ -11127,6 +12013,12 @@ func overview() -> void:
 	in_overview = true
 	hide_speech_bubble()
 	hide_story_card()
+	if reward_banner != null:
+		reward_banner.visible = false
+	reward_banner_timer = 0.0
+	if celebration_burst_node != null:
+		celebration_burst_node.visible = false
+	celebration_burst_timer = 0.0
 	talk_partner = -1
 	block_panel_mode = "hub"
 	in_wide_overview = false
@@ -11178,6 +12070,12 @@ func wide_overview() -> void:
 	in_wide_overview = true
 	hide_speech_bubble()
 	hide_story_card()
+	if reward_banner != null:
+		reward_banner.visible = false
+	reward_banner_timer = 0.0
+	if celebration_burst_node != null:
+		celebration_burst_node.visible = false
+	celebration_burst_timer = 0.0
 	following_player = false
 	camera_yaw = 0.0
 	camera_pitch_scale = 1.0
@@ -11321,11 +12219,39 @@ func motif_button_text(motif_id: String, label_prefix: String) -> String:
 		return "%s%s (%d,%d)" % [prefix, label_prefix, int(c_dict.get("col", 0)), int(c_dict.get("row", 0))]
 	return "%s%s · Paint" % [prefix, label_prefix]
 
+func apply_character_panel_theme(panel: PanelContainer, n_id: String) -> void:
+	if panel == null or panel_bg_style == null:
+		return
+	if n_id.is_empty():
+		panel.add_theme_stylebox_override("panel", panel_bg_style)
+		return
+	if not character_panel_styles.has(n_id):
+		var accent := Color(0.88, 0.70, 0.30, 0.92)
+		for n in neighbors:
+			if String(n.get("id", "")) == n_id:
+				accent = Color(n.get("coat", accent)).lightened(0.24)
+				accent.a = 0.96
+				break
+		var st := StyleBoxFlat.new()
+		st.bg_color = Color(0.06, 0.10, 0.15, 0.95)
+		st.border_color = accent
+		st.set_border_width_all(3)
+		st.set_corner_radius_all(8)
+		st.content_margin_left = 8
+		st.content_margin_right = 8
+		st.content_margin_top = 0
+		st.content_margin_bottom = 0
+		character_panel_styles[n_id] = st
+	panel.add_theme_stylebox_override("panel", character_panel_styles[n_id])
+
 func update_mural_ui() -> void:
 	if mural_label == null:
 		return
+	apply_character_panel_theme(mural_panel, "celeste")
 	var state_tag := "3/3 Complete" if mural_completed else "%d/3 Motifs Painted" % mural_placements.size()
-	mural_label.text = "Talking with Celeste (Mural Artist)  ·  Easel: %s (%s Palette)" % [state_tag, mural_palette.capitalize()]
+	var c_badge := String(NEIGHBOR_STORY_BADGES.get("celeste", "Painter"))
+	var c_turn := posmod(maxi(1, celeste_talk_count) - 1, 5) + 1
+	mural_label.text = "Talking with Celeste (Mural Artist · %s · Turn %d/5)  ·  Easel: %s (%s Palette)  ·  Sparks: %d" % [c_badge, c_turn, state_tag, mural_palette.capitalize(), spark_count()]
 	if mural_palette_btn != null:
 		mural_palette_btn.text = "Palette: %s" % mural_palette.capitalize()
 	if mural_sun_btn != null:
@@ -11338,10 +12264,13 @@ func update_mural_ui() -> void:
 func update_music_ui() -> void:
 	if music_label == null:
 		return
+	apply_character_panel_theme(music_panel, "rook")
 	var play_state := "Playing" if music_playing else "Paused"
 	var mode_desc := "80 BPM Sketch" if music_mode == "sketch" else ("Local: %s" % local_music_name)
 	var sc_state := "Ready" if rook_soundcheck_done else "Pending"
-	music_label.text = "Talking with Rook (Sound & Stories)  ·  %s  ·  %s  ·  Soundcheck: %s" % [play_state, mode_desc, sc_state]
+	var r_badge := String(NEIGHBOR_STORY_BADGES.get("rook", "Sound"))
+	var r_turn := posmod(maxi(1, rook_talk_count) - 1, 5) + 1
+	music_label.text = "Talking with Rook (Sound & Stories · %s · Turn %d/5)  ·  %s  ·  %s  ·  Soundcheck: %s  ·  Sparks: %d" % [r_badge, r_turn, play_state, mode_desc, sc_state, spark_count()]
 	if music_stem_label != null:
 		if not music_error.is_empty():
 			music_stem_label.text = music_error
@@ -11369,9 +12298,14 @@ func update_block_ui() -> void:
 	var talk_idx := arrived_neighbor if (arrived_neighbor >= 0 and arrived_neighbor < neighbors.size()) else (selected_neighbor if (selected_neighbor >= 0 and selected_neighbor < neighbors.size()) else -1)
 	if talk_idx >= 0:
 		var active_n: Dictionary = neighbors[talk_idx]
-		block_label.text = "Talking with %s (%s)  ·  %s  ·  %d/%d Met  ·  Mural %s" % [String(active_n.get("name", "Neighbor")), String(active_n.get("role", "Neighbor")), open_tag, v_count, n_total, m_state]
+		var n_id := String(active_n.get("id", ""))
+		apply_character_panel_theme(block_panel, n_id)
+		var n_badge := String(NEIGHBOR_STORY_BADGES.get(n_id, String(active_n.get("role", "Neighbor"))))
+		var n_turn := posmod(maxi(1, int(neighbor_talk_counts.get(n_id, 1))) - 1, 5) + 1
+		block_label.text = "Talking with %s (%s · %s · Turn %d/5)  ·  %s  ·  %d/%d Met  ·  Mural %s  ·  Sparks: %d" % [String(active_n.get("name", "Neighbor")), String(active_n.get("role", "Neighbor")), n_badge, n_turn, open_tag, v_count, n_total, m_state, spark_count()]
 	else:
-		block_label.text = "Turk St Conversation & Actions  ·  %s  ·  %d/%d Met  ·  Mural %s  ·  %s" % [open_tag, v_count, n_total, m_state, sc_state]
+		apply_character_panel_theme(block_panel, "")
+		block_label.text = "Turk St Conversation & Actions  ·  %s  ·  %d/%d Met  ·  Mural %s  ·  %s  ·  Sparks: %d" % [open_tag, v_count, n_total, m_state, sc_state, spark_count()]
 	if block_detail_label != null:
 		var base_detail := ""
 		if not last_panel_dialogue.is_empty():
@@ -11717,6 +12651,7 @@ func make_ui() -> void:
 	guide_arrow.add_child(guide_arrow_label)
 	layer.add_child(guide_arrow)
 	build_story_card(layer)
+	build_reward_banner(layer)
 	var vp := get_viewport()
 	var resize_controls := func():
 		if not is_instance_valid(controls) or not is_inside_tree():
@@ -11767,6 +12702,7 @@ func make_ui() -> void:
 		if is_instance_valid(block_panel):
 			block_panel.offset_bottom = -176 if narrow else -130
 			block_panel.offset_top = -368 if narrow else -324
+		layout_reward_banner()
 		if in_overview or in_wide_overview:
 			refit_after_layout()
 	vp.size_changed.connect(resize_controls)

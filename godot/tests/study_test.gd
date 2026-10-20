@@ -37,6 +37,10 @@ func make_synthetic_wav_bytes(duration_sec: float = 0.35, freq_hz: float = 330.0
 func run() -> void:
 	root.size = Vector2i(1100, 760)
 	var study = load("res://main.tscn").instantiate()
+	if study == null or study.get_script() == null:
+		print("GODOT_STUDY_FAIL: main.gd failed to compile or attach")
+		quit(1)
+		return
 	root.add_child(study)
 	await process_frame
 	await process_frame
@@ -1460,6 +1464,49 @@ func run() -> void:
 	require(study.block_programme_btn.text.contains("Hosted All 4 Events") and study.block_civic_btn.text.contains("Tenant Circle") and study.block_film_btn.text.contains("Watch Film"), "BlockPanel completed action buttons use natural conversational action phrasing")
 	study.reset_mural_state_to_defaults("fresh")
 	require(study.block_programme_btn.text.contains("Plan Party Schedule") and study.block_civic_btn.text.contains("Hold Tenant Circle") and study.block_film_btn.text.contains("Shoot Short Film"), "BlockPanel fresh action buttons use natural conversational action phrasing")
+	# Verify 10 neighborhood surprises (Jeffrey's lost record, 145 Leavenworth hidden mural, impromptu drag show, Viking dirt biker, small cutesy dinosaur, wild woman chef on a magic carpet, bite-sized bags of nachos, good donut & everything bagel, guy with a clown horn, and impromptu Mayor Public Event), Character Talk UI themes/badges/turns/sparks, and feel-good reward bursts
+	require(study.surprise_root != null and study.NEIGHBORHOOD_SURPRISE_IDS.size() == 10 and study.surprise_nodes.size() == 10, "NeighborhoodSurprises root builds all 10 neighborhood surprise vignettes")
+	for s_id in study.NEIGHBORHOOD_SURPRISE_IDS:
+		var s_pt: Vector2 = study.surprise_points.get(s_id, Vector2.ZERO)
+		require(study.building_containing_point(s_pt) == "", "neighborhood surprise '%s' sits on open sidewalk outside all 188 building footprints" % s_id)
+	require(study.viking_biker_node != null and study.viking_biker_node.get_node_or_null("VikingHelmet") != null and study.viking_bike_mesh != null, "Viking dirt biker surprise includes DirtBike and horned VikingHelmet")
+	require(study.cutesy_dino_node != null and study.cutesy_dino_tail_node != null and study.cutesy_dino_node.get_node_or_null("DinoHead") != null, "Small cutesy dinosaur surprise includes DinoHead and wagging DinoTailPivot")
+	require(study.magic_carpet_chef_node != null and study.magic_carpet_chef_person != null and study.magic_carpet_chef_person.get_node_or_null("ChefToquePuff") != null, "Wild woman chef surprise includes MagicCarpetRig and ChefZafira with ChefToquePuff")
+	require(study.clown_horn_walker_node != null and study.clown_horn_bulb_mesh != null and study.mayor_event_speaker_node != null and study.mayor_fanfare_bugler_node != null and study.mayor_scissors_node != null, "Clown horn walker and impromptu Mayor Public Event surprises build animated props and speakers")
+	var pre_sparks: int = study.spark_count()
+	var key_shift_d := InputEventKey.new()
+	key_shift_d.keycode = KEY_D
+	key_shift_d.pressed = true
+	key_shift_d.shift_pressed = true
+	for s_idx in range(study.NEIGHBORHOOD_SURPRISE_IDS.size()):
+		study._unhandled_input(key_shift_d)
+		var expected_sid: String = study.NEIGHBORHOOD_SURPRISE_IDS[s_idx]
+		require(study.discovered_surprises.has(expected_sid), "Shift+D discovers surprise '%s'" % expected_sid)
+		require(study.reward_banner != null and study.reward_banner.visible and study.celebration_burst_node != null and study.celebration_burst_node.visible, "discovering surprise '%s' triggers RewardBanner and 3D CelebrationBurst" % expected_sid)
+	require(study.discovered_surprises.size() == 10 and study.spark_count() == pre_sparks + 10, "discovering all 10 neighborhood surprises increments spark_count by 10")
+	var burst_before_revisit: int = study.reward_burst_count
+	var seq_before_revisit: int = study.save_seq
+	study.inspect_neighborhood_surprise("mayor_pomp_event")
+	require(study.reward_burst_count == burst_before_revisit and study.save_seq == seq_before_revisit, "re-inspecting an already-discovered surprise does not re-fire reward burst or write save")
+	var a11y_surp: Dictionary = study.get_a11y_status_snapshot()
+	require(int(a11y_surp.get("surprises_found", -1)) == 10 and int(a11y_surp.get("sparks", -1)) == study.spark_count(), "get_a11y_status_snapshot reports surprises_found and sparks")
+	study.talk_with_neighbor(0)
+	require(study.block_label.text.contains("Block Organizer") and study.block_label.text.contains("Turn 1/5") and study.block_label.text.contains("Sparks: "), "BlockPanel talking header includes character badge, conversation turn counter, and Sparks count")
+	for _t_wrap in range(5):
+		study.talk_with_neighbor(0)
+	require(study.block_label.text.contains("Turn 1/5"), "conversation turn counter wraps back to Turn 1/5 on the 6th talk")
+	require(study.character_panel_styles.has("bea") and study.block_panel.get_theme_stylebox("panel") == study.character_panel_styles["bea"], "BlockPanel applies Bea's character-tinted border stylebox when talking")
+	var surp_save_json := JSON.stringify(study.build_save_envelope())
+	require(surp_save_json.to_utf8_buffer().size() <= 4096, "save envelope with all 10 discovered surprises stays under 4096 bytes")
+	require(study.apply_save_envelope(saved_m4_json), "restore full M1-M4 save before testing combined M1-M4 + 10-surprise budget")
+	for s_full_id in study.NEIGHBORHOOD_SURPRISE_IDS:
+		study.discovered_surprises[s_full_id] = true
+	var full_m4_plus_surprises_json := JSON.stringify(study.build_save_envelope())
+	require(full_m4_plus_surprises_json.to_utf8_buffer().size() <= 4096, "full M1-M4 save envelope with all 10 discovered_surprises stays <= 4096 bytes (%d B)" % full_m4_plus_surprises_json.to_utf8_buffer().size())
+	study.reset_mural_state_to_defaults("fresh")
+	require(study.discovered_surprises.is_empty() and not study.reward_banner.visible and not study.celebration_burst_node.visible, "reset_mural_state_to_defaults clears discovered_surprises and hides reward banner/burst")
+	require(study.apply_save_envelope(surp_save_json) and study.discovered_surprises.size() == 10 and study.surprise_guide_idx == -1, "apply_save_envelope restores all 10 discovered_surprises and resets surprise_guide_idx")
+	study.reset_mural_state_to_defaults("fresh")
 	study.overview()
 
 	for size in [Vector2i(1100, 760), Vector2i(390, 667), Vector2i(320, 667)]:

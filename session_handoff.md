@@ -1,4 +1,22 @@
-# Session Handoff — Tenderloin Redux — 2026-10-19 Pacific / 2026-10-19 UTC
+# Session Handoff — Tenderloin Redux — 2026-10-20 Pacific / 2026-10-20 UTC
+
+## Latest AGY / Gemini checkpoint (`2026-10-20-story-surprises-character-ui`)
+
+- **AGY hourly scheduler**: Resumed (`0 * * * *`, `IsDaemon: true`) with `.build-round.lock` concurrency guard. Codex scheduler `build-tenderloin-redux` and Claude scheduled task `tenderloin-3d-improvement` remain paused.
+- **Shipped in this round (`godot/main.gd`, `godot/tests/study_test.gd`)**:
+  - **10 Interactive 3D Neighborhood Surprises** (`NeighborhoodSurprises`, cycled via `Shift+D` or `Surprise 10` button in `BlockPanel`, or discovered by walking up / tapping in street view, persisted in `discovered_surprises` in the Godot v1 save):
+    1. `jeffrey_record` — Jeffrey's Lost 1961 Record beside the `361 Turk St` `'So What'` awning (`Vector3(-376.2, 0.0, 62.4)`).
+    2. `hidden_mural_145` — The Hidden Mural at `145 Leavenworth St` below the 8th-floor bay window (`Vector3(-284.5, 0.0, 95.8)`).
+    3. `impromptu_drag_show` — Surprise Impromptu Drag Show (`Starlight Vee`) near `Taylor & Turk` in the Transgender Cultural District (`Vector3(-8.5, 0.0, -18.5)`).
+    4. `viking_dirt_biker` — Random Guy on a Dirt Bike in a Viking Helmet on the `200 block of Turk St` (`Vector3(-218.0, 0.0, 39.2)`).
+    5. `cutesy_dino` — Small Cutesy Sidewalk Dinosaur (`Pip the Tiny Dino`) with wagging tail by Boeddeker Park (`Vector3(-148.0, 0.0, -52.0)`).
+    6. `magic_carpet_chef` — Wild Woman Chef on a Magic Carpet (`Chef Zafira`) hovering on the `Eddy & Leavenworth` corridor (`Vector3(-258.0, 0.0, -34.0)`).
+    7. `bite_size_nachos` — Bite-Sized Bags of Sidewalk Nachos (`Nacho Captain Rico`) on `Turk & Taylor` (`Vector3(-64.0, 0.0, 18.0)`).
+    8. `good_donut_and_bagel` — A Really Good Donut & Everything Bagel (`Baker Mae`) on `Eddy & Taylor` (`Vector3(18.0, 0.0, -56.0)`).
+    9. `clown_horn_walker` — Guy Walking Around with a Clown Horn (`Honker Barnaby`) on `Jones & Turk` (`Vector3(-124.0, 0.0, 18.0)`).
+    10. `mayor_pomp_event` — Impromptu `'Mayor Public Event'` & Ribbon Cutting (`The Block Mayor` + `FanfareBugler` + `GiantGoldScissors` + 4-note *Pomp and Circumstance* fanfare) on `Eddy & Leavenworth` (`Vector3(-296.0, 0.0, -52.0)`).
+  - **Character Talk UI & Feel-Good Reward Bursts**: Character-tinted panel borders (`apply_character_panel_theme()`), story role badges (`NEIGHBOR_STORY_BADGES`), wrapping conversation turn counters (`Turn 1/5` .. `Turn 5/5`), save-invariant `Sparks: N` (`spark_count()`), top-center `RewardBanner` toast, 3D rising `CelebrationBurst`, and 3-note rising major-triad / *Pomp and Circumstance* chimes on first-time progress milestones.
+  - **Independent CLI QA**: Reviewed by Kibitz native Claude CLI (`--driver agy --only claude`, `claude-opus-5-5`, effort `high`, `rc=0`) in `kibitz-runs/2026-10-20-story-surprises-character-ui/r3/`; all findings fixed and verified across `godot:test`, `godot:export`, `check`, `test` (104/104), and `godot:browser`.
 
 ## Hand-back from the Claude Code desktop session (2026-10-19, `claude-opus-5-5`)
 
