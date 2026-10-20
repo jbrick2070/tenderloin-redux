@@ -1,0 +1,13 @@
+STDOUT:
+My verdict is **yes-with-fixes**: the change works on the paths the tests exercise, but four defects should be fixed before build. The full review is in `kibitz-runs\2026-10-20-2026-10-20-character-panels-dialogue-parity\r3\claude.md`. I read the code but didn't run the test suite.
+
+The four must-fix items:
+
+1. **Goodbye doesn't stop a walk already underway.** `end_conversation` (`godot/main.gd:5688`) leaves the walking and pending-talk flags and the current path untouched. If you press Esc while walking to Celeste or Rook, their panel reopens when you arrive. A leftover pending Rook talk can also mark the soundcheck done on its own later.
+2. **Three panels share one dialogue slot.** After "What's Next?" in the mural panel, Celeste's line shows up in the block panel when you press G. Only the mural and music panels check whose line it is; the block panel doesn't (`godot/main.gd:12500`).
+3. **The surprise memory is repeated in the info text and screen-reader announcement.** On the fifth conversation turn the spoken line already contains it, but the info text and screen-reader announcement add it again. The panels themselves remove the repeat, but that logic is copied three times and never used by the talk functions.
+4. **The new memory text is clipped out of view at every tested width.** The mural and music detail labels are single-line and clipped, and the memory sits after a long dialogue line. On phones the info label is also hidden while a panel is open, so the memory isn't visible anywhere. The existing test only checks the label's text, not what's on screen.
+
+I also listed six should-fix items, mainly that the block panel's header follows a different "who are you talking to" value than its buttons. I suggested cutting two things: the "Turn n/5" counter and the alternating memory display.
+
+On font support: the project uses Godot's default font, which I believe covers the curly quotes and symbols in the dialogue. I didn't confirm that for the web export.
