@@ -1474,9 +1474,17 @@ func run() -> void:
 	require(study.magic_carpet_chef_node != null and study.magic_carpet_chef_person != null and study.magic_carpet_chef_person.get_node_or_null("ChefToquePuff") != null, "Wild woman chef surprise includes MagicCarpetRig and ChefZafira with ChefToquePuff")
 	require(study.clown_horn_walker_node != null and study.clown_horn_bulb_mesh != null and study.mayor_event_speaker_node != null and study.mayor_fanfare_bugler_node != null and study.mayor_scissors_node != null, "Clown horn walker and impromptu Mayor Public Event surprises build animated props and speakers")
 	require(study.jeffrey_turntable_node != null and not study.jeffrey_turntable_node.visible and study.hidden_mural_sketch_node != null and not study.hidden_mural_sketch_node.visible, "JeffreyRecordTurntable on RookSpeaker and HiddenMuralSketchCard on MuralBoard start hidden before discovery")
+	require(study.surprise_keepsake_nodes.size() == 10 and study.SURPRISE_KEEPSAKE_META.size() == 10 and study.visible_surprise_keepsake_count() == 0, "all 10 3D surprise keepsake nodes are registered and start hidden before discovery")
+	for ks_id in study.NEIGHBORHOOD_SURPRISE_IDS:
+		var ks_node: Node3D = study.surprise_keepsake_nodes.get(ks_id, null)
+		var ks_meta: Dictionary = study.SURPRISE_KEEPSAKE_META.get(ks_id, {})
+		var ks_nb: String = String(ks_meta.get("neighbor", ""))
+		require(ks_node != null and not ks_node.visible and ks_node.name == String(ks_meta.get("node", "")) and study.NEIGHBOR_SURPRISE_PAIRS.get(ks_nb, []).has(ks_id), "surprise '%s' has a valid hidden 3D keepsake node matching SURPRISE_KEEPSAKE_META and NEIGHBOR_SURPRISE_PAIRS" % ks_id)
 	var hidden_disc_rot: float = study.jeffrey_turntable_disc_mesh.rotation.y
+	var hidden_dino_y: float = study.celeste_dino_figurine_node.position.y
+	var hidden_carpet_y: float = study.dez_carpet_keepsake_node.position.y
 	study.update_people_animation(0.25)
-	require(is_equal_approx(study.jeffrey_turntable_disc_mesh.rotation.y, hidden_disc_rot), "Jeffrey's 1961 vinyl LP does not spin while JeffreyRecordTurntable is hidden")
+	require(is_equal_approx(study.jeffrey_turntable_disc_mesh.rotation.y, hidden_disc_rot) and is_equal_approx(study.celeste_dino_figurine_node.position.y, hidden_dino_y) and is_equal_approx(study.dez_carpet_keepsake_node.position.y, hidden_carpet_y), "Jeffrey's 1961 vinyl LP, PipDinoMascot, and ZafiraSpiceCarpet do not animate while hidden")
 	var pre_sparks: int = study.spark_count()
 	var key_shift_d := InputEventKey.new()
 	key_shift_d.keycode = KEY_D
@@ -1485,13 +1493,17 @@ func run() -> void:
 	for s_idx in range(study.NEIGHBORHOOD_SURPRISE_IDS.size()):
 		study._unhandled_input(key_shift_d)
 		var expected_sid: String = study.NEIGHBORHOOD_SURPRISE_IDS[s_idx]
+		var expected_ks_label: String = String(study.SURPRISE_KEEPSAKE_META[expected_sid].get("label", ""))
+		var expected_ks_node: Node3D = study.surprise_keepsake_nodes[expected_sid]
 		require(study.discovered_surprises.has(expected_sid), "Shift+D discovers surprise '%s'" % expected_sid)
-		require(study.reward_banner != null and study.reward_banner.visible and study.celebration_burst_node != null and study.celebration_burst_node.visible, "discovering surprise '%s' triggers RewardBanner and 3D CelebrationBurst" % expected_sid)
-	require(study.discovered_surprises.size() == 10 and study.spark_count() == pre_sparks + 10, "discovering all 10 neighborhood surprises increments spark_count by 10")
+		require(expected_ks_node != null and expected_ks_node.visible and study.visible_surprise_keepsake_count() == s_idx + 1, "discovering surprise '%s' reveals its 3D neighbor keepsake prop (%d/10)" % [expected_sid, s_idx + 1])
+		require(study.reward_banner != null and study.reward_banner.visible and study.reward_body_label.text.contains("Sparks:") and study.reward_body_label.text.contains(expected_ks_label) and study.info.text.contains(expected_ks_label) and study.celebration_burst_node != null and study.celebration_burst_node.visible, "discovering surprise '%s' triggers RewardBanner with Sparks count and keepsake label '%s'" % [expected_sid, expected_ks_label])
+	require(study.discovered_surprises.size() == 10 and study.visible_surprise_keepsake_count() == 10 and study.spark_count() == pre_sparks + 10, "discovering all 10 neighborhood surprises reveals all 10 3D keepsakes and increments spark_count by 10")
 	require(study.jeffrey_turntable_node.visible and study.hidden_mural_sketch_node.visible and is_equal_approx(study.speaker_beacon_mesh.position.y, 1.54), "discovering jeffrey_record and hidden_mural_145 reveals 3D turntable on RookSpeaker (raising SpeakerBeacon above sleeve) and sketch card on MuralBoard")
 	var prev_disc_rot: float = study.jeffrey_turntable_disc_mesh.rotation.y
+	var prev_tail_rot: float = study.celeste_dino_tail_node.rotation.y
 	study.update_people_animation(0.25)
-	require(not is_equal_approx(study.jeffrey_turntable_disc_mesh.rotation.y, prev_disc_rot), "Jeffrey's 1961 vinyl LP spins on RookSpeaker turntable")
+	require(not is_equal_approx(study.jeffrey_turntable_disc_mesh.rotation.y, prev_disc_rot) and not is_equal_approx(study.celeste_dino_tail_node.rotation.y, prev_tail_rot) and study.celeste_dino_figurine_node.position.y >= 0.88 and not is_equal_approx(study.rook_clown_horn_bulb_mesh.scale.x, 1.0), "visible 3D keepsakes (Jeffrey's 1961 LP, PipDinoMascot tail/hop, and BarnabyClownHornClip bulb) animate on update_people_animation")
 	for n_mem_id in ["bea", "celeste", "rook", "dez", "thanh"]:
 		require(not study.neighbor_surprise_memory_line(n_mem_id).is_empty() and study.neighbor_project_memory_line(n_mem_id).contains(study.neighbor_surprise_memory_line(n_mem_id)), "neighbor '%s' has a personal surprise story reflection" % n_mem_id)
 	var burst_before_revisit: int = study.reward_burst_count
@@ -1499,7 +1511,7 @@ func run() -> void:
 	study.inspect_neighborhood_surprise("mayor_pomp_event")
 	require(study.reward_burst_count == burst_before_revisit and study.save_seq == seq_before_revisit, "re-inspecting an already-discovered surprise does not re-fire reward burst or write save")
 	var a11y_surp: Dictionary = study.get_a11y_status_snapshot()
-	require(int(a11y_surp.get("surprises_found", -1)) == 10 and int(a11y_surp.get("sparks", -1)) == study.spark_count(), "get_a11y_status_snapshot reports surprises_found and sparks")
+	require(int(a11y_surp.get("surprises_found", -1)) == 10 and int(a11y_surp.get("keepsakes_visible", -1)) == 10 and int(a11y_surp.get("sparks", -1)) == study.spark_count(), "get_a11y_status_snapshot reports surprises_found, keepsakes_visible, and sparks")
 	study.talk_with_neighbor(0)
 	require(study.block_label.text.contains("Block Organizer") and study.block_label.text.contains("Turn 1/5") and study.block_label.text.contains("Sparks: "), "BlockPanel talking header includes character badge, conversation turn counter, and Sparks count")
 	require(study.info.text.contains("Block Mayor") and study.info.text.contains("Baker Mae"), "talking with Bea after discovering her surprises surfaces her surprise reflection in header info")
@@ -1514,20 +1526,31 @@ func run() -> void:
 	study.blackhawk_discovered = true
 	study.show_conversation(0)
 	require(study.conv_action_ids[0] == "surprise" and study.conv_action_btns[0].text == "Spot Surprise (0/10)", "in explore chapter with undiscovered surprises at desktop width, conversation offers Spot Surprise (0/10)")
-	require(study.run_conversation_action(0) and study.discovered_surprises.size() == 1 and study.discovered_surprises.has("mayor_pomp_event") and study.block_panel_mode == "talk", "tapping Spot Surprise while talking with Bea discovers her first paired surprise (mayor_pomp_event) and keeps block_panel_mode in talk")
+	var bea_explore_hint: String = study.ask_whats_next()
+	require(bea_explore_hint.begins_with("Bea: \"Have you spotted Impromptu 'Mayor Public Event' & Ribbon Cutting yet?") and study.last_panel_dialogue == bea_explore_hint, "ask_whats_next() with Bea in explore chapter gives a personal direction to her first undiscovered paired surprise")
+	require(study.run_conversation_action(0) and study.discovered_surprises.size() == 1 and study.discovered_surprises.has("mayor_pomp_event") and study.bea_mayor_ribbon_node.visible and study.last_panel_dialogue.begins_with("Bea: \"") and study.block_detail_label.text.contains("Block Mayor") and study.block_panel_mode == "talk", "tapping Spot Surprise while talking with Bea discovers her first paired surprise (mayor_pomp_event), reveals MayorRibbonRosette on her walker, and immediately displays her surprise reflection in the panel")
+	var custom_diag_before_revisit: String = study.last_panel_dialogue
+	study.inspect_neighborhood_surprise("mayor_pomp_event")
+	require(study.last_panel_dialogue == custom_diag_before_revisit, "re-inspecting an already-discovered surprise does not wipe last_panel_dialogue")
 	var first_surp_pt: Vector2 = study.surprise_points.get("mayor_pomp_event", Vector2.ZERO)
 	var first_surp_screen: Vector2 = study.camera.unproject_position(Vector3(first_surp_pt.x, 1.8, first_surp_pt.y))
 	require(study.play_area_rect().has_point(first_surp_screen), "tapping Spot Surprise keeps camera framed on the discovered surprise inside play_area_rect")
 	var one_surp_save := JSON.stringify(study.build_save_envelope())
 	require(study.apply_save_envelope(one_surp_save) and study.discovered_surprises.size() == 1 and study.surprise_guide_idx == -1, "restoring save with 1 discovered surprise resets surprise_guide_idx to -1")
 	study.show_conversation(0)
-	require(study.conv_action_btns[0].text == "Spot Surprise (1/10)" and study.run_conversation_action(0) and study.discovered_surprises.size() == 2 and study.discovered_surprises.has("good_donut_and_bagel"), "tapping Spot Surprise (1/10) with Bea after save restore discovers her second paired surprise (good_donut_and_bagel)")
+	require(study.conv_action_btns[0].text == "Spot Surprise (1/10)" and study.run_conversation_action(0) and study.discovered_surprises.size() == 2 and study.discovered_surprises.has("good_donut_and_bagel") and study.bea_treat_box_node.visible, "tapping Spot Surprise (1/10) with Bea after save restore discovers her second paired surprise (good_donut_and_bagel) and reveals BakeryTreatBox on her walker")
+	var bea_after_both_hint: String = study.ask_whats_next()
+	require(bea_after_both_hint.begins_with("Bea: \"You found both of my favorite block surprises! Next, check out Jeffrey's Lost 1961 Record"), "after finding both of Bea's paired surprises, ask_whats_next() with Bea points to the next undiscovered block surprise")
+	require(study.run_conversation_action(0) and study.discovered_surprises.size() == 3 and study.discovered_surprises.has("jeffrey_record") and study.last_panel_dialogue == "" and not study.block_detail_label.text.contains("Next, check out Jeffrey"), "tapping Spot Surprise after Bea's fallback hint discovers jeffrey_record and clears the now-resolved hint from Bea's panel")
+	study.show_mural_panel(true)
+	require(study.inspect_neighborhood_surprise("hidden_mural_145") and study.hidden_mural_sketch_node.visible and study.last_panel_dialogue.begins_with("Celeste: \"") and study.mural_detail_label.text.contains("145 Leavenworth"), "discovering hidden_mural_145 while MuralPanel is open immediately sets Celeste's surprise reflection in MuralPanel")
 	study.show_conversation(3)
-	require(study.run_conversation_action(0) and study.discovered_surprises.size() == 3 and study.discovered_surprises.has("viking_dirt_biker"), "tapping Spot Surprise with Dez discovers Dez's paired surprise (viking_dirt_biker)")
+	require(study.run_conversation_action(0) and study.discovered_surprises.size() == 5 and study.discovered_surprises.has("viking_dirt_biker") and study.dez_viking_charm_node.visible and study.block_detail_label.text.contains("Viking helmet"), "tapping Spot Surprise with Dez discovers Dez's paired surprise (viking_dirt_biker), reveals VikingHornCharm on his notebook, and immediately shows Dez's Viking reflection even when M4 film memory exists on Turn 1")
 	for lay_n_id in ["bea", "celeste", "rook", "dez", "thanh"]:
 		require(not study.layout_memory_line(lay_n_id).is_empty(), "layout_memory_line provides a post-opening layout memory for '%s'" % lay_n_id)
 	for s_full_id in study.NEIGHBORHOOD_SURPRISE_IDS:
 		study.discovered_surprises[s_full_id] = true
+	study.update_neighborhood_surprises_3d()
 	study.celeste_talk_count = 0
 	var celeste_post_lines: Dictionary = {}
 	for _c_t in range(5):
@@ -1535,7 +1558,7 @@ func run() -> void:
 		celeste_post_lines[c_tl] = true
 	require(celeste_post_lines.size() == 5 and study.mural_detail_label != null and study.mural_detail_label.text.contains("145 Leavenworth") and study.mural_detail_label.text.count("145 Leavenworth") == 1 and study.info.text.count("145 Leavenworth") == 1, "Celeste has 5 distinct post-mural conversation turns and Turn 5 does not duplicate her surprise memory in mural_detail_label or info.text")
 	var celeste_next: String = study.ask_whats_next()
-	require(celeste_next.begins_with("Celeste: \"") and study.mural_detail_label.text.begins_with("Celeste: \"") and study.speech_bubble_anchor == "celeste", "What's Next? while MuralPanel is open speaks as Celeste and updates mural_detail_label")
+	require(celeste_next.begins_with("Celeste: \"You've spotted all 10 neighborhood surprises and unlocked every keepsake on our block!") and study.mural_detail_label.text.begins_with("Celeste: \"") and study.speech_bubble_anchor == "celeste", "What's Next? while MuralPanel is open with all 10 surprises found speaks as Celeste celebrating all 10 keepsakes and updates mural_detail_label")
 	study.end_conversation()
 	require(not study.mural_panel.visible and study.info.text.begins_with("You said goodbye to Celeste."), "Goodbye from MuralPanel closes the panel and says goodbye to Celeste")
 	study.player.position = Vector3(-50.0, 0.0, 60.0)
@@ -1550,14 +1573,14 @@ func run() -> void:
 		rook_post_lines[r_tl] = true
 	require(rook_post_lines.size() == 5 and study.music_stem_label.text.contains("361 Turk") and study.music_stem_label.text.count("361 Turk") == 1 and study.info.text.count("361 Turk") == 1, "Rook has 5 distinct post-mural conversation turns and Turn 5 does not duplicate his surprise memory in music_stem_label or info.text")
 	var rook_next: String = study.ask_whats_next()
-	require(rook_next.begins_with("Rook: \"") and study.music_stem_label.text.contains(rook_next) and study.speech_bubble_anchor == "rook", "What's Next? while MusicPanel is open speaks as Rook and updates music_stem_label")
+	require(rook_next.begins_with("Rook: \"You've spotted all 10 neighborhood surprises and unlocked every keepsake on our block!") and study.music_stem_label.text.contains(rook_next) and study.speech_bubble_anchor == "rook", "What's Next? while MusicPanel is open with all 10 surprises found speaks as Rook celebrating all 10 keepsakes and updates music_stem_label")
 	study.end_conversation()
 	require(not study.music_panel.visible and study.info.text.begins_with("You said goodbye to Rook."), "Goodbye from MusicPanel closes the panel and says goodbye to Rook")
 	var full_m4_plus_surprises_json := JSON.stringify(study.build_save_envelope())
 	require(full_m4_plus_surprises_json.to_utf8_buffer().size() <= 4096, "full M1-M4 save envelope with all 10 discovered_surprises stays <= 4096 bytes (%d B)" % full_m4_plus_surprises_json.to_utf8_buffer().size())
 	study.reset_mural_state_to_defaults("fresh")
-	require(study.discovered_surprises.is_empty() and not study.jeffrey_turntable_node.visible and not study.hidden_mural_sketch_node.visible and is_equal_approx(study.speaker_beacon_mesh.position.y, 1.30) and not study.reward_banner.visible and not study.celebration_burst_node.visible, "reset_mural_state_to_defaults clears discovered_surprises and hides 3D surprise keepsakes and reward banner/burst")
-	require(study.apply_save_envelope(surp_save_json) and study.discovered_surprises.size() == 10 and study.jeffrey_turntable_node.visible and study.hidden_mural_sketch_node.visible and study.surprise_guide_idx == -1, "apply_save_envelope restores all 10 discovered_surprises, 3D surprise keepsakes, and resets surprise_guide_idx")
+	require(study.discovered_surprises.is_empty() and study.visible_surprise_keepsake_count() == 0 and not study.jeffrey_turntable_node.visible and not study.hidden_mural_sketch_node.visible and is_equal_approx(study.speaker_beacon_mesh.position.y, 1.30) and not study.reward_banner.visible and not study.celebration_burst_node.visible, "reset_mural_state_to_defaults clears discovered_surprises and hides all 10 3D surprise keepsakes and reward banner/burst")
+	require(study.apply_save_envelope(surp_save_json) and study.discovered_surprises.size() == 10 and study.visible_surprise_keepsake_count() == 10 and study.jeffrey_turntable_node.visible and study.hidden_mural_sketch_node.visible and study.surprise_guide_idx == -1, "apply_save_envelope restores all 10 discovered_surprises, all 10 3D surprise keepsakes, and resets surprise_guide_idx")
 	study.reset_mural_state_to_defaults("fresh")
 	study.overview()
 

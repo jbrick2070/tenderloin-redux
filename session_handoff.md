@@ -1,6 +1,14 @@
 # Session Handoff — Tenderloin Redux — 2026-10-20 Pacific / 2026-10-20 UTC
 
-## Latest AGY / Gemini checkpoint (`2026-10-20-character-panels-dialogue-parity`)
+## Latest AGY / Gemini checkpoint (`2026-10-20-all-neighbor-surprise-keepsakes`)
+
+- **AGY hourly scheduler**: Active (`0 * * * *`, `IsDaemon: true`) with `.build-round.lock` concurrency guard. Codex scheduler `build-tenderloin-redux` and Claude scheduled task `tenderloin-3d-improvement` remain paused.
+- **Shipped in `2026-10-20-all-neighbor-surprise-keepsakes` (`godot/main.gd`, `godot/tests/study_test.gd`)**:
+  - **All 10/10 3D Neighbor Surprise Keepsake Props (`SURPRISE_KEEPSAKE_META`, `surprise_keepsake_nodes`, `visible_surprise_keepsake_count()`)**: Added the remaining 8 persistent 3D keepsake props so every neighborhood surprise unlocks a physical 3D keepsake at its paired neighbor's station (`Bea`: `MayorRibbonRosette` + `BakeryTreatBox` on her rollator walker; `Celeste`: `HiddenMuralSketchCard` + animated `PipDinoMascot` on `MuralBoard`; `Rook`: spinning `JeffreyRecordTurntable` + pulsing `BarnabyClownHornClip` on `RookSpeaker`; `Dez`: `VikingHornCharm` on his notebook + bobbing `ZafiraSpiceCarpet` beside him; `Thanh`: `StarlightRunwayCrown` + `RicoMiniNachoBag` on her cedar tea crate).
+  - **Keepsake Payoff Feedback, Immediate Panel Reflection & Personalized Explore Hints (`inspect_neighborhood_surprise()`, `ask_whats_next()`, `active_panel_neighbor_idx()`)**: Surfaced `SURPRISE_KEEPSAKE_META[s_id].label` in `RewardBanner` (with 2-line word wrap and `Sparks:` prefix), `info.text`, and `announce_a11y_status()`; updated `inspect_neighborhood_surprise()` to immediately display the paired neighbor's newly unlocked surprise reflection in their open panel (or clear stale hints when the newly discovered surprise belongs to another neighbor) without wiping dialogue on revisits; and updated `ask_whats_next()` in `"explore"` mode to reuse `next_undiscovered_surprise_for_neighbor(speaker)` for personalized neighbor directions to undiscovered surprises and a 10/10 keepsake celebration.
+  - **Independent CLI QA**: Reviewed by Kibitz native Claude CLI (`--driver agy --only claude`, `claude-opus-5-5`, effort `high`, `rc=0`, `VERDICT: yes-with-fixes`) in `kibitz-runs/2026-10-20-all-neighbor-surprise-keepsakes/r3/`; all findings fixed and verified across `godot:test`, `godot:export`, `check`, `test` (104/104), and `godot:browser`.
+
+## Historical AGY / Gemini checkpoint (`2026-10-20-character-panels-dialogue-parity`)
 
 - **AGY hourly scheduler**: Active (`0 * * * *`, `IsDaemon: true`) with `.build-round.lock` concurrency guard. Codex scheduler `build-tenderloin-redux` and Claude scheduled task `tenderloin-3d-improvement` remain paused.
 - **Shipped in `2026-10-20-character-panels-dialogue-parity` (`godot/main.gd`, `godot/tests/study_test.gd`)**:

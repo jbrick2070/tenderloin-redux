@@ -2,7 +2,33 @@
 
 Updated 2026-10-20 Pacific / 2026-10-20 UTC. **AGY 4 (`Gemini 4 Argon` High) has resumed as sole writer with the recurring hourly scheduler (`0 * * * *`) active after the Claude Code desktop handoff (`8827618`); Codex automation `build-tenderloin-redux` and Claude scheduled task `tenderloin-3d-improvement` remain PAUSED.** The full game remains unfinished. [Handoff](../session_handoff.md), [active approach](GODOT_APPROACH.md), [roadmap](ROADMAP.md).
 
-## Latest checkpoint — Neighbor-paired surprise discovery & character panel dialogue parity (`2026-10-20-character-panels-dialogue-parity`)
+## Latest checkpoint — All 10 neighbor 3D surprise keepsakes & personalized explore hints (`2026-10-20-all-neighbor-surprise-keepsakes`)
+
+Builds on `2026-10-20-character-panels-dialogue-parity` (`eb529a6`). Browser 0.12.0 and `public/` (SHA256 `2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567`) are untouched.
+
+- **All 10/10 Neighborhood Surprises Unlock Persistent 3D Keepsakes at Their Paired Neighbor's Station (`SURPRISE_KEEPSAKE_META`, `surprise_keepsake_nodes`, `visible_surprise_keepsake_count()`)**:
+  - **Bea (`neighbor_nodes[0]/NeighborProp`)**:
+    - `"mayor_pomp_event"` -> `MayorRibbonRosette` (`bea_mayor_ribbon_node`: crimson-and-gold ceremonial ribbon rosette with gold seal and two ribbon tails pinned to Bea's rollator walker bar).
+    - `"good_donut_and_bagel"` -> `BakeryTreatBox` (`bea_treat_box_node`: pastel pink bakery box holding a miniature pink-frosted donut and toasted everything bagel on Bea's rollator walker).
+  - **Celeste (`MuralBoard`)**:
+    - `"hidden_mural_145"` -> `HiddenMuralSketchCard` (`hidden_mural_sketch_node` on the right easel leg).
+    - `"cutesy_dino"` -> `PipDinoMascot` (`celeste_dino_figurine_node` on the left easel leg: wooden ledge + miniature pastel-mint Pip the Tiny Dino with coral crest and wagging tail `celeste_dino_tail_node`).
+  - **Rook (`RookSpeaker`)**:
+    - `"jeffrey_record"` -> `JeffreyRecordTurntable` (`jeffrey_turntable_node` atop `RookSpeaker`).
+    - `"clown_horn_walker"` -> `BarnabyClownHornClip` (`rook_clown_horn_node` on the right side of `RookSpeaker`: brass horn cone and pulsing red squeeze bulb `rook_clown_horn_bulb_mesh`).
+  - **Dez (`neighbor_nodes[3]/NeighborProp`)**:
+    - `"viking_dirt_biker"` -> `VikingHornCharm` (`dez_viking_charm_node` on Dez's field notebook: miniature steel-and-gold Viking helmet emblem with curved horns).
+    - `"magic_carpet_chef"` -> `ZafiraSpiceCarpet` (`dez_carpet_keepsake_node` beside Dez: miniature crimson-and-gold fringed magic carpet mat and copper spice wok that gently bobs when visible).
+  - **Thanh (`neighbor_nodes[4]/NeighborProp`)**:
+    - `"impromptu_drag_show"` -> `StarlightRunwayCrown` (`thanh_starlight_fan_node` on Thanh's cedar tea crate: rose-magenta & teal pleated hand fan and gold star tiara).
+    - `"bite_size_nachos"` -> `RicoMiniNachoBag` (`thanh_nacho_bag_node` beside Thanh's thermos on her cedar tea crate: orange-and-gold bite-sized nacho bag, golden tortilla chip, and salsa verde cup).
+- **Keepsake Payoff Feedback, Immediate Panel Reflection & Personalized Explore Hints (`inspect_neighborhood_surprise()`, `ask_whats_next()`, `active_panel_neighbor_idx()`)**:
+  - `inspect_neighborhood_surprise(s_id)` formats `RewardBanner` body as `"%d/%d Surprises · Sparks: %d · Keepsake: %s"` (with 2-line word wrap on `reward_body_label`), surfaces `SURPRISE_KEEPSAKE_META[s_id].label` in `info.text` and `announce_a11y_status()`, and when `newly_discovered` is true either immediately displays the paired neighbor's newly unlocked surprise reflection in their open panel or clears stale `last_panel_dialogue` hints without wiping dialogue on revisits.
+  - `ask_whats_next()` in `"explore"` mode reuses `next_undiscovered_surprise_for_neighbor(speaker)` to give a personal first-person direction from the active neighbor (`Bea`, `Celeste`, `Rook`, `Dez`, or `Thanh`) to their first undiscovered paired surprise (with `compass_phrase()` direction and street name), or to the next undiscovered block surprise once both of their paired surprises are found, or celebrates unlocking all 10/10 keepsakes when complete.
+  - `get_a11y_status_snapshot()` reports `"keepsakes_visible": visible_surprise_keepsake_count()`.
+- **Independent CLI review & verified fixes**: One successful installed Kibitz native Claude CLI call (`--driver agy --only claude`, exact `claude-opus-5-5`, effort `high`, `rc=0`, `VERDICT: yes-with-fixes`). [Raw report](../kibitz-runs/2026-10-20-all-neighbor-surprise-keepsakes/r3/claude.md), [driver anchor](../kibitz-runs/2026-10-20-all-neighbor-surprise-keepsakes/r3/driver_anchor.md), [final](../kibitz-runs/2026-10-20-all-neighbor-surprise-keepsakes/r3/final.md). All reviewer findings (clearing stale fallback hints when a newly found surprise belongs to another neighbor, shared `active_panel_neighbor_idx()` / `block_panel_neighbor_idx()` speaker resolution, `apply_save_envelope()` `last_panel_dialogue` reset, `announce_a11y_status()` keepsake suffix, `next_undiscovered_surprise_for_neighbor()` reuse in `ask_whats_next()`, and `MuralPanel`-open discovery test coverage) were accepted, applied in `godot/main.gd` and `godot/tests/study_test.gd`, and verified.
+
+## Historical checkpoint — Neighbor-paired surprise discovery & character panel dialogue parity (`2026-10-20-character-panels-dialogue-parity`)
 
 Builds on `2026-10-20-neighbor-surprise-payoffs` (`6860098`). Browser 0.12.0 and `public/` (SHA256 `2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567`) are untouched.
 

@@ -386,6 +386,18 @@ const NEIGHBOR_SURPRISE_PAIRS: Dictionary = {
 	"dez": ["viking_dirt_biker", "magic_carpet_chef"],
 	"thanh": ["impromptu_drag_show", "bite_size_nachos"]
 }
+const SURPRISE_KEEPSAKE_META: Dictionary = {
+	"jeffrey_record": {"neighbor": "rook", "node": "JeffreyRecordTurntable", "label": "Jeffrey's 1961 LP on Rook's speaker"},
+	"clown_horn_walker": {"neighbor": "rook", "node": "BarnabyClownHornClip", "label": "Barnaby's clown horn on Rook's speaker"},
+	"hidden_mural_145": {"neighbor": "celeste", "node": "HiddenMuralSketchCard", "label": "145 Leavenworth sketch on Celeste's easel"},
+	"cutesy_dino": {"neighbor": "celeste", "node": "PipDinoMascot", "label": "Pip the Tiny Dino on Celeste's easel"},
+	"mayor_pomp_event": {"neighbor": "bea", "node": "MayorRibbonRosette", "label": "Golden ribbon rosette on Bea's walker"},
+	"good_donut_and_bagel": {"neighbor": "bea", "node": "BakeryTreatBox", "label": "Mae's donut & bagel box on Bea's walker"},
+	"viking_dirt_biker": {"neighbor": "dez", "node": "VikingHornCharm", "label": "Mini Viking badge on Dez's notebook"},
+	"magic_carpet_chef": {"neighbor": "dez", "node": "ZafiraSpiceCarpet", "label": "Chef Zafira's mini carpet beside Dez"},
+	"impromptu_drag_show": {"neighbor": "thanh", "node": "StarlightRunwayCrown", "label": "Starlight's fan & tiara on Thanh's crate"},
+	"bite_size_nachos": {"neighbor": "thanh", "node": "RicoMiniNachoBag", "label": "Rico's mini nacho bag on Thanh's crate"}
+}
 # Field Guide survey tags (tools/field-guide/) -> facade colors and architectural flags.
 # Keep in sync with BUILDING_TAGS in scripts/apply-field-survey.mjs.
 const FIELD_SURVEY_TAG_STYLES: Dictionary = {
@@ -837,6 +849,17 @@ var mayor_scissors_node: Node3D
 var jeffrey_turntable_node: Node3D
 var jeffrey_turntable_disc_mesh: MeshInstance3D
 var hidden_mural_sketch_node: Node3D
+var surprise_keepsake_nodes: Dictionary = {}
+var bea_mayor_ribbon_node: Node3D
+var bea_treat_box_node: Node3D
+var celeste_dino_figurine_node: Node3D
+var celeste_dino_tail_node: MeshInstance3D
+var rook_clown_horn_node: Node3D
+var rook_clown_horn_bulb_mesh: MeshInstance3D
+var dez_viking_charm_node: Node3D
+var dez_carpet_keepsake_node: Node3D
+var thanh_starlight_fan_node: Node3D
+var thanh_nacho_bag_node: Node3D
 var character_panel_styles: Dictionary = {}
 var discovered_surprises: Dictionary = {}
 var surprise_guide_idx := -1
@@ -1873,6 +1896,7 @@ func _ready() -> void:
 		walk_bounds = b_union.grow(14.0)
 	build_west_intersections()
 	build_history_stops()
+	surprise_keepsake_nodes.clear()
 	build_neighbors_and_player()
 	build_mural_board()
 	build_rook_speaker()
@@ -2282,6 +2306,30 @@ func attach_neighbor_signature_prop(n_node: Node3D, n_id: String) -> void:
 				wheel.position = Vector3(side_x, 0.08, 0.36)
 				wheel.material_override = material(Color("24312b"))
 				prop.add_child(wheel)
+			bea_mayor_ribbon_node = Node3D.new()
+			bea_mayor_ribbon_node.name = "MayorRibbonRosette"
+			bea_mayor_ribbon_node.position = Vector3(-0.14, 0.78, 0.38)
+			bea_mayor_ribbon_node.visible = false
+			var ros_ring := add_prop_mesh(bea_mayor_ribbon_node, prop_cylinder(0.065, 0.065, 0.024), Vector3.ZERO, mural_material(Color("d93848")), "RosetteRing")
+			ros_ring.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+			var ros_seal := add_prop_mesh(bea_mayor_ribbon_node, prop_cylinder(0.038, 0.038, 0.030), Vector3(0.0, 0.0, 0.008), mural_material(Color("ffd45e")), "RosetteGoldSeal")
+			ros_seal.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+			var tail_l := add_prop_mesh(bea_mayor_ribbon_node, prop_box(Vector3(0.032, 0.11, 0.014)), Vector3(-0.022, -0.075, -0.004), mural_material(Color("d93848")), "RibbonTailLeft")
+			tail_l.rotation_degrees = Vector3(0.0, 0.0, 14.0)
+			var tail_r := add_prop_mesh(bea_mayor_ribbon_node, prop_box(Vector3(0.032, 0.11, 0.014)), Vector3(0.022, -0.075, -0.004), mural_material(Color("ffd45e")), "RibbonTailRight")
+			tail_r.rotation_degrees = Vector3(0.0, 0.0, -14.0)
+			prop.add_child(bea_mayor_ribbon_node)
+			surprise_keepsake_nodes["mayor_pomp_event"] = bea_mayor_ribbon_node
+			bea_treat_box_node = Node3D.new()
+			bea_treat_box_node.name = "BakeryTreatBox"
+			bea_treat_box_node.position = Vector3(0.0, 0.54, 0.35)
+			bea_treat_box_node.visible = false
+			add_prop_mesh(bea_treat_box_node, prop_box(Vector3(0.30, 0.04, 0.20)), Vector3.ZERO, material(Color("f5d6df")), "BakeryBoxTray")
+			add_prop_mesh(bea_treat_box_node, prop_cylinder(0.058, 0.058, 0.032), Vector3(-0.068, 0.034, 0.0), mural_material(Color("ff9ec4")), "MiniPinkDonut")
+			add_prop_mesh(bea_treat_box_node, prop_cylinder(0.058, 0.058, 0.032), Vector3(0.068, 0.034, 0.0), material(Color("c9935b")), "MiniEverythingBagel")
+			add_prop_mesh(bea_treat_box_node, prop_cylinder(0.040, 0.040, 0.038), Vector3(0.068, 0.038, 0.0), mural_material(Color("f7f2e4")), "BagelCreamCheese")
+			prop.add_child(bea_treat_box_node)
+			surprise_keepsake_nodes["good_donut_and_bagel"] = bea_treat_box_node
 		"celeste":
 			# Painter palette with 3 bright motif paint dabs + brush
 			var pal := MeshInstance3D.new()
@@ -2340,6 +2388,26 @@ func attach_neighbor_signature_prop(n_node: Node3D, n_id: String) -> void:
 			notebook.position = Vector3(-0.32, 0.96, 0.18)
 			notebook.material_override = material(Color("5fb8a6"))
 			prop.add_child(notebook)
+			dez_viking_charm_node = Node3D.new()
+			dez_viking_charm_node.name = "VikingHornCharm"
+			dez_viking_charm_node.position = Vector3(-0.32, 0.96, 0.22)
+			dez_viking_charm_node.visible = false
+			add_prop_mesh(dez_viking_charm_node, prop_sphere(0.052), Vector3.ZERO, mural_material(Color("c8cfd8")), "MiniVikingDome")
+			add_prop_mesh(dez_viking_charm_node, prop_cylinder(0.055, 0.055, 0.018), Vector3(0.0, -0.01, 0.0), mural_material(Color("ffb35c")), "MiniVikingBand")
+			for h_side in [-1.0, 1.0]:
+				var horn_m := add_prop_mesh(dez_viking_charm_node, prop_cylinder(0.008, 0.022, 0.085), Vector3(float(h_side) * 0.058, 0.024, 0.0), mural_material(Color("fff0cc")), "MiniVikingHorn")
+				horn_m.rotation_degrees = Vector3(0.0, 0.0, float(-h_side) * 38.0)
+			prop.add_child(dez_viking_charm_node)
+			surprise_keepsake_nodes["viking_dirt_biker"] = dez_viking_charm_node
+			dez_carpet_keepsake_node = Node3D.new()
+			dez_carpet_keepsake_node.name = "ZafiraSpiceCarpet"
+			dez_carpet_keepsake_node.position = Vector3(-0.42, 0.14, 0.22)
+			dez_carpet_keepsake_node.visible = false
+			add_prop_mesh(dez_carpet_keepsake_node, prop_box(Vector3(0.34, 0.025, 0.24)), Vector3.ZERO, mural_material(Color("c42b4b")), "MiniCarpetWeave")
+			add_prop_mesh(dez_carpet_keepsake_node, prop_box(Vector3(0.26, 0.030, 0.16)), Vector3(0.0, 0.004, 0.0), mural_material(Color("ffd45e")), "MiniCarpetMedallion")
+			add_prop_mesh(dez_carpet_keepsake_node, prop_cylinder(0.068, 0.038, 0.048), Vector3(0.0, 0.038, 0.0), material(Color("b87344")), "MiniSpiceWok")
+			prop.add_child(dez_carpet_keepsake_node)
+			surprise_keepsake_nodes["magic_carpet_chef"] = dez_carpet_keepsake_node
 		"thanh":
 			# Cedar tea & folding-stool supply crate beside Thanh
 			var crate := MeshInstance3D.new()
@@ -2358,6 +2426,26 @@ func attach_neighbor_signature_prop(n_node: Node3D, n_id: String) -> void:
 			thermos.position = Vector3(0.46, 0.45, 0.14)
 			thermos.material_override = material(Color("6a8d73"))
 			prop.add_child(thermos)
+			thanh_starlight_fan_node = Node3D.new()
+			thanh_starlight_fan_node.name = "StarlightRunwayCrown"
+			thanh_starlight_fan_node.position = Vector3(0.33, 0.36, 0.16)
+			thanh_starlight_fan_node.visible = false
+			for f_i in range(-2, 3):
+				var blade := add_prop_mesh(thanh_starlight_fan_node, prop_box(Vector3(0.028, 0.14, 0.014)), Vector3(float(f_i) * 0.022, 0.06, 0.0), mural_material(Color("f5a3d0") if posmod(f_i, 2) == 0 else Color("5fd4ba")), "FanPleat_%d" % (f_i + 2))
+				blade.rotation_degrees = Vector3(-12.0, 0.0, float(-f_i) * 16.0)
+			add_prop_mesh(thanh_starlight_fan_node, prop_cylinder(0.048, 0.042, 0.036), Vector3(0.0, 0.018, 0.05), mural_material(Color("ffd45e")), "StarlightMiniTiara")
+			prop.add_child(thanh_starlight_fan_node)
+			surprise_keepsake_nodes["impromptu_drag_show"] = thanh_starlight_fan_node
+			thanh_nacho_bag_node = Node3D.new()
+			thanh_nacho_bag_node.name = "RicoMiniNachoBag"
+			thanh_nacho_bag_node.position = Vector3(0.57, 0.38, 0.14)
+			thanh_nacho_bag_node.visible = false
+			add_prop_mesh(thanh_nacho_bag_node, prop_box(Vector3(0.11, 0.13, 0.07)), Vector3(0.0, 0.025, -0.02), mural_material(Color("ffb84d")), "MiniNachoBag")
+			var chip_m := add_prop_mesh(thanh_nacho_bag_node, prop_prism(Vector3(0.065, 0.055, 0.018)), Vector3(0.0, 0.10, -0.02), mural_material(Color("ffe07d")), "MiniTortillaChip")
+			chip_m.rotation_degrees = Vector3(0.0, 18.0, 12.0)
+			add_prop_mesh(thanh_nacho_bag_node, prop_cylinder(0.036, 0.028, 0.045), Vector3(0.055, -0.015, 0.045), mural_material(Color("5fd475")), "MiniSalsaVerdeCup")
+			prop.add_child(thanh_nacho_bag_node)
+			surprise_keepsake_nodes["bite_size_nachos"] = thanh_nacho_bag_node
 	n_node.add_child(prop)
 
 func build_neighbors_and_player() -> void:
@@ -2515,6 +2603,19 @@ func build_mural_board() -> void:
 	add_prop_mesh(hidden_mural_sketch_node, prop_sphere(0.08), Vector3(-0.08, 0.04, 0.04), mural_material(Color("f5d57a")), "SketchHoundMotif")
 	add_prop_mesh(hidden_mural_sketch_node, prop_cylinder(0.025, 0.04, 0.18), Vector3(0.09, -0.02, 0.04), mural_material(Color("5fd4ba")), "SketchSaxMotif")
 	mural_node.add_child(hidden_mural_sketch_node)
+	surprise_keepsake_nodes["hidden_mural_145"] = hidden_mural_sketch_node
+	celeste_dino_figurine_node = Node3D.new()
+	celeste_dino_figurine_node.name = "PipDinoMascot"
+	celeste_dino_figurine_node.position = Vector3(-1.52, 0.88, 0.09)
+	celeste_dino_figurine_node.visible = false
+	add_prop_mesh(celeste_dino_figurine_node, prop_box(Vector3(0.28, 0.04, 0.22)), Vector3(0.0, -0.08, 0.02), material(Color("6a4f3b")), "DinoEaselLedge")
+	add_prop_mesh(celeste_dino_figurine_node, prop_sphere(0.095), Vector3(0.0, 0.02, 0.03), mural_material(Color("7ce8b0")), "PipMiniBody")
+	add_prop_mesh(celeste_dino_figurine_node, prop_sphere(0.072), Vector3(0.05, 0.11, 0.06), mural_material(Color("7ce8b0")), "PipMiniHead")
+	add_prop_mesh(celeste_dino_figurine_node, prop_prism(Vector3(0.045, 0.055, 0.03)), Vector3(-0.02, 0.15, 0.02), mural_material(Color("ff8fa3")), "PipMiniCrest")
+	celeste_dino_tail_node = add_prop_mesh(celeste_dino_figurine_node, prop_cylinder(0.018, 0.042, 0.12), Vector3(-0.09, 0.0, -0.02), mural_material(Color("7ce8b0")), "PipMiniTail")
+	celeste_dino_tail_node.rotation_degrees = Vector3(58.0, -35.0, 0.0)
+	mural_node.add_child(celeste_dino_figurine_node)
+	surprise_keepsake_nodes["cutesy_dino"] = celeste_dino_figurine_node
 	mural_node.add_child(make_label_3d("MuralBoardLabel", "Portable Mural (M)", Vector3(0.0, 3.25, 0.0), Color("ffe394"), 0.012, 22))
 	add_child(mural_node)
 	update_mural_3d()
@@ -2580,6 +2681,16 @@ func build_rook_speaker() -> void:
 	var mini_sleeve := add_prop_mesh(jeffrey_turntable_node, prop_box(Vector3(0.24, 0.24, 0.024)), Vector3(0.0, 0.16, -0.13), mural_material(Color("225588")), "ProppedRecordSleeve")
 	mini_sleeve.rotation_degrees = Vector3(-14.0, 0.0, 0.0)
 	speaker_node.add_child(jeffrey_turntable_node)
+	surprise_keepsake_nodes["jeffrey_record"] = jeffrey_turntable_node
+	rook_clown_horn_node = Node3D.new()
+	rook_clown_horn_node.name = "BarnabyClownHornClip"
+	rook_clown_horn_node.position = Vector3(0.42, 0.90, 0.08)
+	rook_clown_horn_node.visible = false
+	var horn_cone := add_prop_mesh(rook_clown_horn_node, prop_cylinder(0.052, 0.018, 0.22), Vector3(0.04, 0.0, 0.04), mural_material(Color("ffd45e")), "MiniBrassHornCone")
+	horn_cone.rotation_degrees = Vector3(68.0, 22.0, -18.0)
+	rook_clown_horn_bulb_mesh = add_prop_mesh(rook_clown_horn_node, prop_sphere(0.052), Vector3(-0.02, -0.04, -0.04), mural_material(Color("ff5252")), "MiniRedHornBulb")
+	speaker_node.add_child(rook_clown_horn_node)
+	surprise_keepsake_nodes["clown_horn_walker"] = rook_clown_horn_node
 	speaker_node.add_child(make_label_3d("RookSpeakerLabel", "Rook's Speaker (R / K)", Vector3(0.0, 2.25, 0.0), Color("9ef5e5"), 0.012, 22))
 	add_child(speaker_node)
 	update_speaker_3d()
@@ -3225,6 +3336,16 @@ func update_people_animation(delta: float) -> void:
 		surprise_vinyl_mesh.rotation.y = wrapf(surprise_vinyl_mesh.rotation.y + delta * 2.6, -PI, PI)
 	if jeffrey_turntable_disc_mesh != null and jeffrey_turntable_node != null and jeffrey_turntable_node.visible:
 		jeffrey_turntable_disc_mesh.rotation.y = wrapf(jeffrey_turntable_disc_mesh.rotation.y + delta * (3.6 if music_playing else 1.6), -PI, PI)
+	if celeste_dino_figurine_node != null and celeste_dino_figurine_node.visible:
+		celeste_dino_figurine_node.position.y = 0.88 + absf(sin(walk_anim_clock * 4.8)) * 0.035
+		if celeste_dino_tail_node != null:
+			celeste_dino_tail_node.rotation.y = deg_to_rad(-35.0) + sin(walk_anim_clock * 6.4) * 0.32
+	if rook_clown_horn_bulb_mesh != null and rook_clown_horn_node != null and rook_clown_horn_node.visible:
+		var h_sq := 1.0 + sin(walk_anim_clock * 6.5) * 0.18
+		rook_clown_horn_bulb_mesh.scale = Vector3(h_sq, 1.0 / h_sq, h_sq)
+	if dez_carpet_keepsake_node != null and dez_carpet_keepsake_node.visible:
+		dez_carpet_keepsake_node.position.y = 0.14 + sin(walk_anim_clock * 2.8) * 0.035
+		dez_carpet_keepsake_node.rotation.z = cos(walk_anim_clock * 1.9) * 0.06
 	if cutesy_dino_node != null:
 		cutesy_dino_node.position.y = absf(sin(walk_anim_clock * 5.2)) * 0.14
 		cutesy_dino_node.rotation.z = sin(walk_anim_clock * 2.6) * 0.11
@@ -5150,13 +5271,50 @@ func update_neighborhood_surprises_3d() -> void:
 		else:
 			beacon.material_override = mural_material(accent.darkened(0.28))
 			beacon.scale = Vector3.ONE
-	if hidden_mural_sketch_node != null:
-		hidden_mural_sketch_node.visible = discovered_surprises.has("hidden_mural_145")
+	for k_id in surprise_keepsake_nodes.keys():
+		var k_node: Node3D = surprise_keepsake_nodes[k_id]
+		if k_node != null:
+			k_node.visible = discovered_surprises.has(String(k_id))
+	if not discovered_surprises.has("cutesy_dino"):
+		if celeste_dino_figurine_node != null:
+			celeste_dino_figurine_node.position.y = 0.88
+		if celeste_dino_tail_node != null:
+			celeste_dino_tail_node.rotation_degrees = Vector3(58.0, -35.0, 0.0)
+	if not discovered_surprises.has("clown_horn_walker") and rook_clown_horn_bulb_mesh != null:
+		rook_clown_horn_bulb_mesh.scale = Vector3.ONE
+	if not discovered_surprises.has("magic_carpet_chef") and dez_carpet_keepsake_node != null:
+		dez_carpet_keepsake_node.position.y = 0.14
+		dez_carpet_keepsake_node.rotation.z = 0.0
 	var has_jeffrey_lp := discovered_surprises.has("jeffrey_record")
-	if jeffrey_turntable_node != null:
-		jeffrey_turntable_node.visible = has_jeffrey_lp
 	if speaker_beacon_mesh != null:
 		speaker_beacon_mesh.position = Vector3(0.0, 1.54 if has_jeffrey_lp else 1.30, -0.06 if has_jeffrey_lp else 0.0)
+
+func visible_surprise_keepsake_count() -> int:
+	var count := 0
+	for s_id in NEIGHBORHOOD_SURPRISE_IDS:
+		if surprise_keepsake_nodes.has(s_id):
+			var k_node: Node3D = surprise_keepsake_nodes[s_id]
+			if k_node != null and k_node.visible:
+				count += 1
+	return count
+
+func block_panel_neighbor_idx() -> int:
+	if block_panel_mode == "talk" and talk_partner >= 0 and talk_partner < neighbors.size():
+		return talk_partner
+	if arrived_neighbor >= 0 and arrived_neighbor < neighbors.size():
+		return arrived_neighbor
+	if selected_neighbor >= 0 and selected_neighbor < neighbors.size():
+		return selected_neighbor
+	return -1
+
+func active_panel_neighbor_idx() -> int:
+	if mural_panel != null and mural_panel.visible:
+		return celeste_index
+	if music_panel != null and music_panel.visible:
+		return rook_index
+	if block_panel != null and block_panel.visible:
+		return block_panel_neighbor_idx()
+	return -1
 
 func inspect_neighborhood_surprise(s_id: String) -> bool:
 	if not NEIGHBORHOOD_SURPRISES.has(s_id):
@@ -5188,24 +5346,40 @@ func inspect_neighborhood_surprise(s_id: String) -> bool:
 	var speech_str := String(rec.get("speech", ""))
 	var summary_str := String(rec.get("summary", ""))
 	var accent := Color(String(rec.get("accent", "f8cc58")))
+	var keepsake_meta: Dictionary = SURPRISE_KEEPSAKE_META.get(s_id, {})
+	var keepsake_label := String(keepsake_meta.get("label", ""))
+	var burst_sub := "%d/%d Surprises · Sparks: %d · %s" % [discovered_surprises.size(), NEIGHBORHOOD_SURPRISE_IDS.size(), spark_count(), badge_str]
+	if not keepsake_label.is_empty():
+		burst_sub = "%d/%d Surprises · Sparks: %d · Keepsake: %s" % [discovered_surprises.size(), NEIGHBORHOOD_SURPRISE_IDS.size(), spark_count(), keepsake_label]
 	show_speech_bubble("surprise:%s" % s_id, world_pos + Vector3.UP * (SPEECH_BUBBLE_HEIGHT_M + 0.35), speech_str)
 	if newly_discovered:
 		trigger_progress_cue("surprise_discovery", s_id)
 		trigger_feel_good_burst(
 			"Surprise Found: %s" % title_str,
-			"%s · %d/%d Surprises · Sparks: %d" % [badge_str, discovered_surprises.size(), NEIGHBORHOOD_SURPRISE_IDS.size(), spark_count()],
+			burst_sub,
 			world_pos + Vector3.UP * 2.2,
 			accent
 		)
+		var paired_n_id := String(keepsake_meta.get("neighbor", ""))
+		var p_idx := active_panel_neighbor_idx()
+		var active_panel_n_id := String(neighbors[p_idx].get("id", "")) if p_idx >= 0 else ""
+		if not paired_n_id.is_empty() and active_panel_n_id == paired_n_id:
+			var n_idx := neighbor_index_for_id(paired_n_id)
+			var spk_name := String(neighbors[n_idx].name) if n_idx >= 0 else paired_n_id.capitalize()
+			var p_surp := neighbor_surprise_memory_line(paired_n_id).trim_prefix("“").trim_suffix("”")
+			last_panel_dialogue = ("%s: \"%s\"" % [spk_name, p_surp]) if not p_surp.is_empty() else ""
+		else:
+			last_panel_dialogue = ""
 	update_mural_ui()
 	update_music_ui()
 	update_block_ui()
 	update_objective_ui()
 	var line := "%s — %s (%d/%d Surprises Found)" % [title_str, String(rec.get("street", "")), discovered_surprises.size(), NEIGHBORHOOD_SURPRISE_IDS.size()]
-	var sub := "%s: \"%s\" · %s (Shift+D for next surprise)" % [speaker_str, speech_str, summary_str]
+	var keepsake_suffix := " · Keepsake: %s" % keepsake_label if not keepsake_label.is_empty() else ""
+	var sub := "%s: \"%s\" · %s%s (Shift+D for next surprise)" % [speaker_str, speech_str, summary_str, keepsake_suffix]
 	if info != null:
 		info.text = "%s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, sub]
-	announce_a11y_status("%s. %s says: %s" % [line, speaker_str, speech_str])
+	announce_a11y_status("%s%s. %s says: %s" % [line, keepsake_suffix, speaker_str, speech_str])
 	return true
 
 func cycle_neighborhood_surprise(target_idx: int = -1) -> bool:
@@ -5300,7 +5474,9 @@ func build_reward_banner(layer: CanvasLayer) -> void:
 	reward_body_label.name = "RewardBody"
 	reward_body_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	reward_body_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	reward_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	reward_body_label.clip_text = true
+	reward_body_label.max_lines_visible = 2
 	reward_body_label.add_theme_font_size_override("font_size", 13)
 	reward_body_label.add_theme_color_override("font_color", Color("9ef5e5"))
 	vbox.add_child(reward_body_label)
@@ -5655,15 +5831,12 @@ func conversation_partner_line(index: int, body: String) -> String:
 ## "What's next?" — the current partner (or whoever is closest) explains the next step.
 func ask_whats_next() -> String:
 	var obj := current_objective()
-	var speaker := -1
-	if mural_panel != null and mural_panel.visible:
-		speaker = celeste_index
-	elif music_panel != null and music_panel.visible:
-		speaker = rook_index
-	elif talk_partner >= 0:
-		speaker = talk_partner
-	else:
-		speaker = nearest_neighbor_within(TALK_PROMPT_RADIUS_M)
+	var speaker := active_panel_neighbor_idx()
+	if speaker < 0:
+		if talk_partner >= 0 and talk_partner < neighbors.size():
+			speaker = talk_partner
+		else:
+			speaker = nearest_neighbor_within(TALK_PROMPT_RADIUS_M)
 	var hint := String(obj.get("hint", ""))
 	if String(obj.get("id", "")) == "layout" and speaker >= 0:
 		match String(neighbors[speaker].get("id", "")):
@@ -5671,6 +5844,24 @@ func ask_whats_next() -> String:
 				hint = "I'd love a Long Table for stories and conversation. Dez and Celeste want an Open Floor for art and music. Both keep the sidewalk clear. What do you think?"
 			"dez", "celeste":
 				hint = "Bea wants a Long Table for stories and conversation. We'd love an Open Floor for art and music. Both keep the sidewalk clear. Your call!"
+	elif String(obj.get("id", "")) == "explore" and speaker >= 0:
+		var spk_id := String(neighbors[speaker].get("id", ""))
+		var next_idx := next_undiscovered_surprise_for_neighbor(speaker)
+		if next_idx >= 0 and next_idx < NEIGHBORHOOD_SURPRISE_IDS.size():
+			var next_s_id: String = NEIGHBORHOOD_SURPRISE_IDS[next_idx]
+			var is_personal_pair: bool = (NEIGHBOR_SURPRISE_PAIRS.get(spk_id, []) as Array).has(next_s_id)
+			var s_rec: Dictionary = NEIGHBORHOOD_SURPRISES.get(next_s_id, {})
+			var s_pt: Vector2 = surprise_points.get(next_s_id, Vector2(s_rec.pos.x, s_rec.pos.z))
+			var p_xz := player_xz() if player != null else neighbor_xz(speaker)
+			var dir_str := compass_phrase(p_xz, s_pt)
+			var s_title := String(s_rec.get("title", next_s_id))
+			var s_street := String(s_rec.get("street", ""))
+			if is_personal_pair:
+				hint = "Have you spotted %s yet? Look %s at %s (%d/%d surprises found, Shift+D)." % [s_title, dir_str, s_street, discovered_surprises.size(), NEIGHBORHOOD_SURPRISE_IDS.size()]
+			else:
+				hint = "You found both of my favorite block surprises! Next, check out %s %s at %s (%d/%d found, Shift+D)." % [s_title, dir_str, s_street, discovered_surprises.size(), NEIGHBORHOOD_SURPRISE_IDS.size()]
+		else:
+			hint = "You've spotted all %d neighborhood surprises and unlocked every keepsake on our block! Try the museum Time-Portal (Shift+M), visit the eateries (Shift+E), or switch to evening lights (Shift+L)." % NEIGHBORHOOD_SURPRISE_IDS.size()
 	var line := conversation_partner_line(speaker, hint) if speaker >= 0 else hint
 	if (block_panel != null and block_panel.visible) or (mural_panel != null and mural_panel.visible) or (music_panel != null and music_panel.visible):
 		last_panel_dialogue = line
@@ -10020,6 +10211,7 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"total_buildings": all_buildings.size(),
 		"wider_buildings_count": wider_meshes.size(),
 		"surprises_found": discovered_surprises.size(),
+		"keepsakes_visible": visible_surprise_keepsake_count(),
 		"sparks": spark_count(),
 		"reward_burst_count": reward_burst_count,
 		"last_reward_title": last_reward_title,
@@ -10903,6 +11095,7 @@ func apply_save_envelope(raw_json: String) -> bool:
 	mural_placements = clean_placements
 	rook_soundcheck_done = sc_done
 	visited_neighbors = clean_visited
+	last_panel_dialogue = ""
 	discovered_surprises.clear()
 	surprise_guide_idx = -1
 	reward_banner_timer = 0.0
@@ -12526,7 +12719,7 @@ func update_block_ui() -> void:
 	var m_state := "3/3 Ready" if mural_completed else "%d/3" % mural_placements.size()
 	var sc_state := "Soundcheck Ready" if rook_soundcheck_done else "Soundcheck Pending"
 	var open_tag := "Block Party Open!" if block_opened else ("Ready to Open!" if is_block_ready() else "Meet Neighbors & Prepare")
-	var talk_idx := talk_partner if (block_panel_mode == "talk" and talk_partner >= 0 and talk_partner < neighbors.size()) else (arrived_neighbor if (arrived_neighbor >= 0 and arrived_neighbor < neighbors.size()) else (selected_neighbor if (selected_neighbor >= 0 and selected_neighbor < neighbors.size()) else -1))
+	var talk_idx := block_panel_neighbor_idx()
 	if talk_idx >= 0:
 		var active_n: Dictionary = neighbors[talk_idx]
 		var n_id := String(active_n.get("id", ""))
