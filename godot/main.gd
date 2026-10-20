@@ -177,6 +177,59 @@ const BOEDDEKER_PARK_RING: Array[Vector2] = [
 	Vector2(-99.33, -143.69)
 ]
 const BOEDDEKER_PARK_ENTRANCE := Vector2(-126.0, -97.7)
+const SPEECH_BUBBLE_PIXEL := 0.0024
+const SPEECH_BUBBLE_FONT := 24
+const SPEECH_BUBBLE_HEIGHT_M := 5.0
+const SPEECH_BUBBLE_HIDE_TARGET_DIST_M := 45.0
+const STREET_TREE_SPACING_M := 22.0
+const STREET_TREE_OFFSET_M := 6.35
+const DAY_LIGHT_POOL_ALPHA := 0.28
+const EATERY_HOST_LINES: Dictionary = {
+	"golden_lotus_pho": [
+		"Welcome in! The broth has been simmering since sunrise. Pull up a stool.",
+		"One lemongrass beef pho, extra basil and lime, coming right up.",
+		"Crispy imperial rolls just came out of the fryer. Careful, they're hot!"
+	],
+	"saffron_clay_oven": [
+		"Hello, neighbor! The clay oven is roaring. Garlic naan in two minutes.",
+		"Smoky chana masala and a mango lassi for you. Enjoy!",
+		"We stay open late for the night-shift crowd. Come back anytime."
+	],
+	"blue_valve_hifi": [
+		"Evening! The tube amp is warm and a live 1961 jazz set is on the platter.",
+		"A zero-proof botanical highball, shaken. Listen to that upright bass.",
+		"Requests welcome. Every record behind this bar has a neighborhood story."
+	],
+	"morning_star_banh_mi": [
+		"Good morning! The baguettes just came out crackling hot.",
+		"Pickled daikon, carrot, jalapeno, cilantro. And a condensed-milk iced coffee.",
+		"Thanh lends us folding stools for block parties. Neighbors look out for each other."
+	],
+	"brass_owl_tavern": [
+		"Rack 'em up! The neighborhood pool table is open.",
+		"A cold draft for you, and the jukebox is cued to soul 45s.",
+		"Our neon owl lights up the whole corner every evening."
+	],
+	"midnight_sun_diner": [
+		"Counter seats are open. Sourdough griddle cakes?",
+		"Hash browns, extra crispy, and a warm slice of olallieberry pie.",
+		"Refill on coffee? We keep the pot on for the night owls."
+	]
+}
+const EATERY_MENU_ITEMS: Dictionary = {
+	"golden_lotus_pho": ["lemongrass beef pho", "mushroom pho", "imperial rolls"],
+	"saffron_clay_oven": ["garlic naan", "chana masala", "mango lassi"],
+	"blue_valve_hifi": ["botanical highball", "1961 live jazz LP", "neighborhood cocktail"],
+	"morning_star_banh_mi": ["banh mi", "condensed-milk iced coffee", "pickled daikon side"],
+	"brass_owl_tavern": ["cold draft", "rack of pool", "soul 45 on the jukebox"],
+	"midnight_sun_diner": ["sourdough griddle cakes", "hash browns", "olallieberry pie"]
+}
+const MUSEUM_DOCENT_LINES: Array[String] = [
+	"Welcome to the Tenderloin Museum! Tap again and the Time-Portal will take us back.",
+	"1961: Miles Davis played the Black Hawk at Turk & Hyde, just down the street.",
+	"1966: at Compton's Cafeteria, trans women and neighbors stood up for each other.",
+	"1907: the Cadillac Hotel opened right here as the city rebuilt after the quake."
+]
 const BOEDDEKER_PATH_POINTS: Array[Vector2] = [
 	Vector2(-126.0, -98.6), Vector2(-126.5, -114.0), Vector2(-112.0, -125.5),
 	Vector2(-95.5, -141.5), Vector2(-90.5, -160.0), Vector2(-91.0, -180.0)
@@ -390,7 +443,7 @@ const NEIGHBORHOOD_EATERIES: Array[Dictionary] = [
 		"id": "golden_lotus_pho",
 		"name": "Golden Lotus Pho & Noodle House",
 		"kind": "Eatery",
-		"rating": "★ 4.8",
+		"rating": "4.8/5",
 		"street": "400 block of Turk St",
 		"specialty": "24-hour simmered lemongrass beef & mushroom pho, crispy imperial rolls, and iced Thai tea",
 		"pos": Vector3(-384.0, 0.0, 63.8),
@@ -401,7 +454,7 @@ const NEIGHBORHOOD_EATERIES: Array[Dictionary] = [
 		"id": "saffron_clay_oven",
 		"name": "Saffron Clay-Oven Naan & Curry",
 		"kind": "Eatery",
-		"rating": "★ 4.6",
+		"rating": "4.6/5",
 		"street": "Jones St near Eddy",
 		"specialty": "Tandoori clay-oven garlic naan, smoky chana masala, and mango lassi served late",
 		"pos": Vector3(-152.0, 0.0, -28.0),
@@ -412,7 +465,7 @@ const NEIGHBORHOOD_EATERIES: Array[Dictionary] = [
 		"id": "blue_valve_hifi",
 		"name": "The Blue Valve Vinyl & Hi-Fi Bar",
 		"kind": "Bar & Lounge",
-		"rating": "★ 4.7",
+		"rating": "4.7/5",
 		"street": "300 block of Eddy St (near Cadillac Hotel)",
 		"specialty": "Warm tube-amp jazz LPs, zero-proof botanical highballs, and classic neighborhood cocktails",
 		"pos": Vector3(-258.0, 0.0, -71.5),
@@ -423,7 +476,7 @@ const NEIGHBORHOOD_EATERIES: Array[Dictionary] = [
 		"id": "morning_star_banh_mi",
 		"name": "Morning Star Banh Mi & Coffee",
 		"kind": "Eatery",
-		"rating": "★ 4.8",
+		"rating": "4.8/5",
 		"street": "100 block of Turk St",
 		"specialty": "Crackling warm baguettes with pickled daikon-carrot, jalapeño, cilantro, and condensed-milk iced coffee",
 		"pos": Vector3(-54.0, 0.0, 11.2),
@@ -434,7 +487,7 @@ const NEIGHBORHOOD_EATERIES: Array[Dictionary] = [
 		"id": "brass_owl_tavern",
 		"name": "The Brass Owl Neon Tavern & Billiards",
 		"kind": "Corner Bar",
-		"rating": "★ 4.5",
+		"rating": "4.5/5",
 		"street": "Leavenworth St between Turk & Eddy",
 		"specialty": "Vintage neon booths, neighborhood pool table, jukebox soul 45s, and cold draft pours",
 		"pos": Vector3(-312.0, 0.0, -22.0),
@@ -445,7 +498,7 @@ const NEIGHBORHOOD_EATERIES: Array[Dictionary] = [
 		"id": "midnight_sun_diner",
 		"name": "Midnight Sun Diner & Pie Counter",
 		"kind": "Eatery",
-		"rating": "★ 4.7",
+		"rating": "4.7/5",
 		"street": "Taylor St opening block",
 		"specialty": "Sourdough griddle cakes, hash browns, counter stools, and warm olallieberry pie",
 		"pos": Vector3(10.5, 0.0, 26.0),
@@ -486,6 +539,43 @@ var tree_trunk_mesh: CylinderMesh
 var tree_canopy_mesh: SphereMesh
 var tree_trunk_material: StandardMaterial3D
 var tree_leaf_materials: Array[StandardMaterial3D] = []
+var world_env: Environment
+var sun_light: DirectionalLight3D
+var rim_light: DirectionalLight3D
+var evening_mode := false
+var speech_bubble_root: Node3D
+var speech_bubble_node: Node3D
+var speech_bubble_label: Label3D
+var speech_bubble_bg: MeshInstance3D
+var speech_bubble_border: MeshInstance3D
+var speech_bubble_anchor := ""
+var speech_bubble_anchor_pos := Vector3.ZERO
+var speech_bubble_text := ""
+var speech_bubble_timer := 0.0
+var speech_bubble_age := 0.0
+var speech_bubble_box := Vector3(200.0, 60.0, 16.0)
+var speech_bubble_shift := 0.0
+var storefront_light_spots: Array[Dictionary] = []
+var light_pool_centers: Array[Vector2] = []
+var light_pool_material: StandardMaterial3D
+var street_lamp_points: Array[Vector2] = []
+var planter_canopy_nodes: Array[Node3D] = []
+var planter_canopy_base: Array[Vector3] = []
+var street_tree_points: Array[Vector2] = []
+var street_tree_pivots: Array[Vector3] = []
+var street_tree_scales: Array[float] = []
+var street_tree_yaws: Array[float] = []
+var street_tree_lower_mm: MultiMesh
+var street_tree_upper_mm: MultiMesh
+var street_tree_sway_sample := Vector2.ZERO
+var wind_clock := 0.0
+var eatery_counter_nodes: Array[Node3D] = []
+var eatery_host_nodes: Array[Node3D] = []
+var eatery_counter_points: Array[Vector2] = []
+var eatery_anim_parts: Array[Dictionary] = []
+var eatery_order_counts: Dictionary = {}
+var eatery_visited: Dictionary = {}
+var eatery_anim_clock := 0.0
 
 func colored_quad(surface: SurfaceTool, p00: Vector3, p10: Vector3, p11: Vector3, p01: Vector3, col: Color) -> void:
 	surface.set_color(col)
@@ -1043,6 +1133,7 @@ func make_building_mesh_and_rect(building: Dictionary, mat: StandardMaterial3D, 
 					if seg_len >= 4.2 and plinth_h >= 2.6:
 						var s_a := a.lerp(b, 0.16)
 						var s_b := a.lerp(b, 0.84)
+						storefront_light_spots.append({"mid": Vector2(edge_mid.x, edge_mid.z), "normal": Vector2(out_n.x, out_n.z), "half_len": seg_len * 0.34, "glow": storefront_glow, "id": String(building.get("id", ""))})
 						var sill_y := 0.65
 						var head_y := plinth_h - 0.42
 						colored_quad(surface, a, s_a, s_a + Vector3.UP * plinth_h, a + Vector3.UP * plinth_h, plinth_col)
@@ -1180,15 +1271,18 @@ func _ready() -> void:
 	env.ambient_light_energy = 0.72
 	environment.environment = env
 	add_child(environment)
+	world_env = env
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-55, -25, 0)
 	sun.light_energy = 1.25
 	add_child(sun)
+	sun_light = sun
 	var rim_sun := DirectionalLight3D.new()
 	rim_sun.rotation_degrees = Vector3(-38, 145, 0)
 	rim_sun.light_color = Color("ffd8a6")
 	rim_sun.light_energy = 0.48
 	add_child(rim_sun)
+	rim_light = rim_sun
 	var ground := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(960, 560)
@@ -1241,6 +1335,11 @@ func _ready() -> void:
 	build_street_life_decor()
 	build_muni_overhead_lines()
 	build_boeddeker_park()
+	build_light_pools()
+	build_street_trees()
+	build_eatery_counters()
+	ensure_speech_bubble()
+	apply_time_of_day()
 	build_audio_players()
 	camera = Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
@@ -1395,20 +1494,20 @@ func build_street_name_signs() -> void:
 	street_signs_root = Node3D.new()
 	street_signs_root.name = "StreetNameSigns"
 	var corridor_banners: Array[Dictionary] = [
-		{"name": "StreetBanner_TurkOpening", "text": "═ TURK STREET (Opening Block) ═", "pos": Vector3(52.0, 2.8, -11.5), "tint": Color("b8f8eb")},
-		{"name": "StreetBanner_TurkEast", "text": "═ TURK STREET (at Mason) ═", "pos": Vector3(118.0, 2.8, -21.0), "tint": Color("b8f8eb")},
-		{"name": "StreetBanner_Turk100", "text": "═ TURK STREET (100 Block) ═", "pos": Vector3(-72.0, 2.8, 11.5), "tint": Color("b8f8eb")},
-		{"name": "StreetBanner_Turk200", "text": "═ TURK STREET (200–300 Block) ═", "pos": Vector3(-225.0, 2.8, 34.5), "tint": Color("b8f8eb")},
-		{"name": "StreetBanner_Turk400", "text": "═ TURK STREET (400 Block) ═", "pos": Vector3(-372.0, 2.8, 57.5), "tint": Color("b8f8eb")},
-		{"name": "StreetBanner_TaylorSouth", "text": "║ TAYLOR STREET ║", "pos": Vector3(4.5, 2.8, 19.0), "tint": Color("ffe999")},
-		{"name": "StreetBanner_TaylorNorth", "text": "║ TAYLOR STREET ║", "pos": Vector3(-12.0, 2.8, -52.0), "tint": Color("ffe999")},
-		{"name": "StreetBanner_Mason", "text": "║ MASON STREET ║", "pos": Vector3(136.0, 2.8, -10.0), "tint": Color("ffe999")},
-		{"name": "StreetBanner_EddyEast", "text": "═ EDDY STREET (East) ═", "pos": Vector3(42.0, 2.8, -96.0), "tint": Color("b8f8eb")},
-		{"name": "StreetBanner_EddyWest", "text": "═ EDDY STREET (300 Block · Museum Row) ═", "pos": Vector3(-235.0, 2.8, -68.0), "tint": Color("b8f8eb")},
-		{"name": "StreetBanner_Jones", "text": "║ JONES STREET ║", "pos": Vector3(-156.0, 2.8, -22.0), "tint": Color("ffe999")},
-		{"name": "StreetBanner_Leavenworth", "text": "║ LEAVENWORTH STREET ║", "pos": Vector3(-302.0, 2.8, -12.0), "tint": Color("ffe999")},
-		{"name": "StreetBanner_Hyde", "text": "║ HYDE STREET ║", "pos": Vector3(-442.0, 2.8, 12.0), "tint": Color("ffe999")},
-		{"name": "StreetBanner_DodgeAlley", "text": "♪ DODGE ALLEY (Dodge Pl) ♪", "pos": Vector3(-414.0, 2.8, 42.0), "tint": Color("ffd97d")}
+		{"name": "StreetBanner_TurkOpening", "text": "« TURK STREET (Opening Block) »", "pos": Vector3(52.0, 2.8, -11.5), "tint": Color("b8f8eb")},
+		{"name": "StreetBanner_TurkEast", "text": "« TURK STREET (at Mason) »", "pos": Vector3(118.0, 2.8, -21.0), "tint": Color("b8f8eb")},
+		{"name": "StreetBanner_Turk100", "text": "« TURK STREET (100 Block) »", "pos": Vector3(-72.0, 2.8, 11.5), "tint": Color("b8f8eb")},
+		{"name": "StreetBanner_Turk200", "text": "« TURK STREET (200–300 Block) »", "pos": Vector3(-225.0, 2.8, 34.5), "tint": Color("b8f8eb")},
+		{"name": "StreetBanner_Turk400", "text": "« TURK STREET (400 Block) »", "pos": Vector3(-372.0, 2.8, 57.5), "tint": Color("b8f8eb")},
+		{"name": "StreetBanner_TaylorSouth", "text": "| TAYLOR STREET |", "pos": Vector3(4.5, 2.8, 19.0), "tint": Color("ffe999")},
+		{"name": "StreetBanner_TaylorNorth", "text": "| TAYLOR STREET |", "pos": Vector3(-12.0, 2.8, -52.0), "tint": Color("ffe999")},
+		{"name": "StreetBanner_Mason", "text": "| MASON STREET |", "pos": Vector3(136.0, 2.8, -10.0), "tint": Color("ffe999")},
+		{"name": "StreetBanner_EddyEast", "text": "« EDDY STREET (East) »", "pos": Vector3(42.0, 2.8, -96.0), "tint": Color("b8f8eb")},
+		{"name": "StreetBanner_EddyWest", "text": "« EDDY STREET (300 Block · Museum Row) »", "pos": Vector3(-235.0, 2.8, -68.0), "tint": Color("b8f8eb")},
+		{"name": "StreetBanner_Jones", "text": "| JONES STREET |", "pos": Vector3(-156.0, 2.8, -22.0), "tint": Color("ffe999")},
+		{"name": "StreetBanner_Leavenworth", "text": "| LEAVENWORTH STREET |", "pos": Vector3(-302.0, 2.8, -12.0), "tint": Color("ffe999")},
+		{"name": "StreetBanner_Hyde", "text": "| HYDE STREET |", "pos": Vector3(-442.0, 2.8, 12.0), "tint": Color("ffe999")},
+		{"name": "StreetBanner_DodgeAlley", "text": "~ DODGE ALLEY (Dodge Pl) ~", "pos": Vector3(-414.0, 2.8, 42.0), "tint": Color("ffd97d")}
 	]
 	for item in corridor_banners:
 		var lbl := make_label_3d(String(item.name), String(item.text), item.pos, item.tint, 0.0155, 30)
@@ -1736,7 +1835,7 @@ func build_neighbors_and_player() -> void:
 	player.add_child(col)
 	player_visual = make_person_node("PlayerVisual", Color("f0ce77"), Color("b67f5d"), Color("34392f"), PLAYER_HEIGHT_M, true)
 	player_visual.scale = Vector3(2.15, 2.15, 2.15)
-	player_visual.add_child(make_label_3d("PlayerNameplate", "★ YOU (WASD / Tap)", Vector3(0.0, 2.14, 0.0), Color("ffe866"), 0.0070, 26))
+	player_visual.add_child(make_label_3d("PlayerNameplate", "» YOU « (WASD / Tap)", Vector3(0.0, 2.14, 0.0), Color("ffe866"), 0.0070, 26))
 	player.add_child(player_visual)
 	add_child(player)
 
@@ -1851,7 +1950,7 @@ func build_mural_board() -> void:
 	rise_node.visible = false
 	mural_node.add_child(rise_node)
 	mural_motif_nodes["rise"] = rise_node
-	mural_node.add_child(make_label_3d("MuralBoardLabel", "★ Portable Mural (M)", Vector3(0.0, 3.25, 0.0), Color("ffe394"), 0.012, 22))
+	mural_node.add_child(make_label_3d("MuralBoardLabel", "Portable Mural (M)", Vector3(0.0, 3.25, 0.0), Color("ffe394"), 0.012, 22))
 	add_child(mural_node)
 	update_mural_3d()
 
@@ -1904,7 +2003,7 @@ func build_rook_speaker() -> void:
 	speaker_beacon_mesh.mesh = beacon_box
 	speaker_beacon_mesh.position = Vector3(0.0, 1.30, 0.0)
 	speaker_node.add_child(speaker_beacon_mesh)
-	speaker_node.add_child(make_label_3d("RookSpeakerLabel", "♪ Rook's Speaker (R / K)", Vector3(0.0, 2.25, 0.0), Color("9ef5e5"), 0.012, 22))
+	speaker_node.add_child(make_label_3d("RookSpeakerLabel", "Rook's Speaker (R / K)", Vector3(0.0, 2.25, 0.0), Color("9ef5e5"), 0.012, 22))
 	add_child(speaker_node)
 	update_speaker_3d()
 
@@ -2534,9 +2633,24 @@ func update_people_animation(delta: float) -> void:
 		if c_node != null:
 			animate_person_node(c_node, walk_anim_clock * 0.95 + float(c_i) * 1.7, 0.18, 0.45)
 
+## Hand-placed sidewalk props that fall inside a measured footprint are moved onto the sidewalk.
+func sidewalk_safe_point(p: Vector3) -> Vector3:
+	var xz := Vector2(p.x, p.z)
+	if building_containing_point(xz) == "":
+		return p
+	var sp := nearest_street_point(xz)
+	var away := xz - sp
+	if away.length_squared() < 1e-6:
+		return p
+	var fixed := sp + away.normalized() * 6.6
+	return Vector3(fixed.x, p.y, fixed.y)
+
 func build_street_life_decor() -> void:
 	concert_musician_nodes.clear()
 	concert_crowd_nodes.clear()
+	street_lamp_points.clear()
+	planter_canopy_nodes.clear()
+	planter_canopy_base.clear()
 	var decor_root := Node3D.new()
 	decor_root.name = "StreetLifeDecor"
 	# 1. Dodge Alley Block Concert (Dodge Place off north side of 400 block of Turk St near Hyde)
@@ -2678,6 +2792,7 @@ func build_street_life_decor() -> void:
 		Vector3(-398.0, 0.0, 58.2)
 	]
 	for l_idx in range(lamp_coords.size()):
+		lamp_coords[l_idx] = sidewalk_safe_point(lamp_coords[l_idx])
 		var lamp := Node3D.new()
 		lamp.name = "StreetLamp_%d" % l_idx
 		lamp.position = lamp_coords[l_idx]
@@ -2699,6 +2814,7 @@ func build_street_life_decor() -> void:
 		globe.material_override = mural_material(Color("ffe8a3"))
 		lamp.add_child(globe)
 		decor_root.add_child(lamp)
+		street_lamp_points.append(Vector2(lamp_coords[l_idx].x, lamp_coords[l_idx].z))
 
 	var planter_coords: Array[Vector3] = [
 		Vector3(44.0, 0.0, 4.0),
@@ -2710,7 +2826,7 @@ func build_street_life_decor() -> void:
 	for p_idx in range(planter_coords.size()):
 		var planter := Node3D.new()
 		planter.name = "StreetPlanter_%d" % p_idx
-		planter.position = planter_coords[p_idx]
+		planter.position = sidewalk_safe_point(planter_coords[p_idx])
 		var box_inst := MeshInstance3D.new()
 		var p_box := BoxMesh.new()
 		p_box.size = Vector3(0.92, 0.46, 0.92)
@@ -2728,6 +2844,7 @@ func build_street_life_decor() -> void:
 		trunk.material_override = material(Color("5a402d"))
 		planter.add_child(trunk)
 		var canopy := MeshInstance3D.new()
+		canopy.name = "Canopy"
 		var c_sphere := SphereMesh.new()
 		c_sphere.radius = 0.78
 		c_sphere.height = 1.42
@@ -2735,6 +2852,8 @@ func build_street_life_decor() -> void:
 		canopy.position = Vector3(0.0, 2.15, 0.0)
 		canopy.material_override = material(Color("4e7d5c") if p_idx % 2 == 0 else Color("5c8d67"))
 		planter.add_child(canopy)
+		planter_canopy_nodes.append(canopy)
+		planter_canopy_base.append(canopy.position)
 		decor_root.add_child(planter)
 
 	var so_what_root := Node3D.new()
@@ -2817,7 +2936,7 @@ func build_street_life_decor() -> void:
 	turntable_lamp.position = Vector3(0.65, 24.35, 0.0)
 	turntable_lamp.material_override = mural_material(Color("ff9e5e"))
 	leav_node.add_child(turntable_lamp)
-	var leav_lbl := make_label_3d("EighthFloorLabel", "145 Leavenworth · 8th Floor ★ ('So What')", Vector3(1.2, 26.6, 0.0), Color("ffe8a3"), 0.012, 24)
+	var leav_lbl := make_label_3d("EighthFloorLabel", "145 Leavenworth · 8th Floor ('So What')", Vector3(1.2, 26.6, 0.0), Color("ffe8a3"), 0.012, 24)
 	leav_node.add_child(leav_lbl)
 	so_what_root.add_child(leav_node)
 	decor_root.add_child(so_what_root)
@@ -3242,6 +3361,680 @@ func inspect_boeddeker_park() -> bool:
 		info.text = "%s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, sub]
 	announce_a11y_status("%s: %s" % [line, sub])
 	return true
+
+# --- Living streetscape: speech bubbles, light pools, day/evening, tree sway, eatery counters ---
+
+func speech_bubble_material(col: Color, priority: int) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	m.billboard_keep_scale = true
+	m.no_depth_test = true
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.albedo_color = col
+	m.render_priority = priority
+	return m
+
+## One floating billboard Label3D speech bubble shared by every speaker; it is rescaled from the
+## orthographic camera size each frame so it keeps a readable on-screen size at any zoom.
+func ensure_speech_bubble() -> void:
+	if speech_bubble_node != null:
+		return
+	speech_bubble_root = Node3D.new()
+	speech_bubble_root.name = "SpeechBubbles"
+	add_child(speech_bubble_root)
+	speech_bubble_node = Node3D.new()
+	speech_bubble_node.name = "SpeechBubble"
+	speech_bubble_node.visible = false
+	speech_bubble_border = MeshInstance3D.new()
+	speech_bubble_border.name = "SpeechBubbleBorder"
+	speech_bubble_border.material_override = speech_bubble_material(Color(0.11, 0.23, 0.25, 0.95), 10)
+	speech_bubble_node.add_child(speech_bubble_border)
+	speech_bubble_bg = MeshInstance3D.new()
+	speech_bubble_bg.name = "SpeechBubbleBackground"
+	speech_bubble_bg.material_override = speech_bubble_material(Color(1.0, 0.973, 0.91, 0.97), 11)
+	speech_bubble_node.add_child(speech_bubble_bg)
+	speech_bubble_label = Label3D.new()
+	speech_bubble_label.name = "SpeechBubbleText"
+	speech_bubble_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	speech_bubble_label.no_depth_test = true
+	speech_bubble_label.render_priority = 12
+	speech_bubble_label.pixel_size = SPEECH_BUBBLE_PIXEL
+	speech_bubble_label.font_size = SPEECH_BUBBLE_FONT
+	speech_bubble_label.outline_size = 0
+	speech_bubble_label.modulate = Color("1d2b2f")
+	speech_bubble_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	speech_bubble_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	speech_bubble_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	speech_bubble_node.add_child(speech_bubble_label)
+	speech_bubble_root.add_child(speech_bubble_node)
+
+## Chamfered bubble with a downward tail whose tip is the node origin; units are label pixels.
+## `shift` slides the box sideways (tail stays put) to keep the bubble on screen.
+func bubble_shape_mesh(w: float, h: float, tail_h: float, grow: float, shift: float = 0.0) -> ArrayMesh:
+	var px := SPEECH_BUBBLE_PIXEL
+	var x0 := shift - w * 0.5 - grow
+	var x1 := shift + w * 0.5 + grow
+	var y0 := tail_h - grow
+	var y1 := tail_h + h + grow
+	var c := minf(10.0, h * 0.3) + grow * 0.5
+	var outline: Array[Vector2] = [Vector2(x0 + c, y0), Vector2(x1 - c, y0), Vector2(x1, y0 + c), Vector2(x1, y1 - c), Vector2(x1 - c, y1), Vector2(x0 + c, y1), Vector2(x0, y1 - c), Vector2(x0, y0 + c)]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var center := Vector3(0.0, (y0 + y1) * 0.5, 0.0) * px
+	for i in range(outline.size()):
+		var p0 := outline[i]
+		var p1 := outline[(i + 1) % outline.size()]
+		st.add_vertex(center)
+		st.add_vertex(Vector3(p0.x, p0.y, 0.0) * px)
+		st.add_vertex(Vector3(p1.x, p1.y, 0.0) * px)
+	var tw := 11.0 + grow
+	st.add_vertex(Vector3(-tw, y0 + 1.0, 0.0) * px)
+	st.add_vertex(Vector3(tw, y0 + 1.0, 0.0) * px)
+	st.add_vertex(Vector3(0.0, -grow * 1.4, 0.0) * px)
+	return st.commit()
+
+func bubble_viewport_size() -> Vector2:
+	if get_viewport() != null:
+		return get_viewport().get_visible_rect().size
+	return Vector2(1100.0, 760.0)
+
+## Screen pixels per label pixel: ~18 px text on a 760 px-tall window, ~16 px on phones.
+func speech_bubble_screen_scale() -> float:
+	return clampf(bubble_viewport_size().y / 900.0, 0.68, 0.84)
+
+## Node scale that maps one label pixel to speech_bubble_screen_scale() screen pixels.
+func speech_bubble_base_scale() -> float:
+	if camera == null:
+		return 1.0
+	var vp_h := maxf(bubble_viewport_size().y, 1.0)
+	return speech_bubble_screen_scale() * camera.size / (vp_h * SPEECH_BUBBLE_PIXEL)
+
+func speech_bubble_width_px() -> float:
+	var vp_size := bubble_viewport_size()
+	return clampf(vp_size.x * 0.86 / speech_bubble_screen_scale() - 34.0, 180.0, 440.0)
+
+## Sideways box shift (label px) keeping the bubble inside the viewport, tail inside the box.
+func speech_bubble_shift_px() -> float:
+	if camera == null:
+		return 0.0
+	var vp_size := bubble_viewport_size()
+	var s := speech_bubble_screen_scale()
+	var anchor_screen := camera.unproject_position(speech_bubble_anchor_pos)
+	var half := (speech_bubble_box.x * 0.5 + 4.0) * s
+	var margin := 8.0
+	var shift_screen := 0.0
+	if anchor_screen.x - half < margin:
+		shift_screen = margin - (anchor_screen.x - half)
+	elif anchor_screen.x + half > vp_size.x - margin:
+		shift_screen = (vp_size.x - margin) - (anchor_screen.x + half)
+	var max_shift := maxf(0.0, speech_bubble_box.x * 0.5 - 20.0)
+	return clampf(shift_screen / s, -max_shift, max_shift)
+
+func apply_speech_bubble_shape(shift: float) -> void:
+	speech_bubble_shift = shift
+	speech_bubble_label.offset = Vector2(shift, speech_bubble_box.z + speech_bubble_box.y * 0.5)
+	speech_bubble_bg.mesh = bubble_shape_mesh(speech_bubble_box.x, speech_bubble_box.y, speech_bubble_box.z, 0.0, shift)
+	speech_bubble_border.mesh = bubble_shape_mesh(speech_bubble_box.x, speech_bubble_box.y, speech_bubble_box.z, 3.0, shift)
+
+## 'Bea: "Welcome..."' -> 'Welcome...' (the nameplate already says who is talking).
+func spoken_text_from_line(line: String) -> String:
+	var quote_at := line.find(": \"")
+	if quote_at >= 0 and quote_at <= 12 and line.ends_with("\"") and line.length() > quote_at + 4:
+		return line.substr(quote_at + 3, line.length() - quote_at - 4)
+	return line
+
+func show_speech_bubble(anchor_id: String, world_pos: Vector3, text: String, hold_sec: float = -1.0) -> void:
+	ensure_speech_bubble()
+	var body := text.strip_edges()
+	if body.is_empty():
+		hide_speech_bubble()
+		return
+	var width_px := speech_bubble_width_px()
+	var font: Font = speech_bubble_label.font if speech_bubble_label.font != null else ThemeDB.fallback_font
+	var text_size := font.get_multiline_string_size(body, HORIZONTAL_ALIGNMENT_CENTER, width_px, SPEECH_BUBBLE_FONT)
+	var pad := 14.0
+	speech_bubble_box = Vector3(minf(width_px, text_size.x) + pad * 2.0, text_size.y + pad * 1.4, 16.0)
+	speech_bubble_label.width = width_px
+	speech_bubble_label.text = body
+	speech_bubble_text = body
+	speech_bubble_anchor = anchor_id
+	speech_bubble_anchor_pos = world_pos
+	apply_speech_bubble_shape(speech_bubble_shift_px())
+	speech_bubble_node.position = world_pos
+	speech_bubble_node.scale = Vector3.ONE * (0.6 * speech_bubble_base_scale())
+	speech_bubble_node.visible = true
+	speech_bubble_age = 0.0
+	speech_bubble_timer = hold_sec if hold_sec > 0.0 else clampf(4.5 + float(body.length()) * 0.055, 6.0, 14.0)
+
+func show_neighbor_speech(index: int, line: String) -> void:
+	if index < 0 or index >= neighbors.size():
+		return
+	var n_pos: Vector3 = neighbors[index].pos
+	show_speech_bubble(String(neighbors[index].get("id", "")), n_pos + Vector3.UP * SPEECH_BUBBLE_HEIGHT_M, spoken_text_from_line(line))
+
+func hide_speech_bubble() -> void:
+	if speech_bubble_node != null:
+		speech_bubble_node.visible = false
+	speech_bubble_anchor = ""
+	speech_bubble_timer = 0.0
+
+func is_speech_bubble_visible() -> bool:
+	return speech_bubble_node != null and speech_bubble_node.visible
+
+func update_speech_bubble(delta: float) -> void:
+	if not is_speech_bubble_visible():
+		return
+	speech_bubble_age += delta
+	speech_bubble_timer -= delta
+	var pop := clampf(speech_bubble_age / 0.2, 0.0, 1.0)
+	var settle := sin(clampf(speech_bubble_age / 0.32, 0.0, 1.0) * PI) * 0.05
+	speech_bubble_node.scale = Vector3.ONE * ((0.6 + 0.4 * (1.0 - pow(1.0 - pop, 3.0)) + settle) * speech_bubble_base_scale())
+	speech_bubble_node.position = speech_bubble_anchor_pos + Vector3.UP * (sin(speech_bubble_age * 2.1) * 0.06)
+	var want_shift := speech_bubble_shift_px()
+	if absf(want_shift - speech_bubble_shift) > 4.0:
+		apply_speech_bubble_shape(want_shift)
+	var anchor_xz := Vector2(speech_bubble_anchor_pos.x, speech_bubble_anchor_pos.z)
+	if speech_bubble_timer <= 0.0 or Vector2(target.x, target.z).distance_to(anchor_xz) > SPEECH_BUBBLE_HIDE_TARGET_DIST_M:
+		hide_speech_bubble()
+
+func add_light_pool(st: SurfaceTool, center: Vector2, axis_t: Vector2, half_a: float, half_b: float, col: Color, peak_alpha: float) -> void:
+	var t := axis_t.normalized() if axis_t.length_squared() > 1e-8 else Vector2.RIGHT
+	var n := Vector2(-t.y, t.x)
+	var segs := 16
+	var y := 0.045
+	var c3 := Vector3(center.x, y, center.y)
+	var inner := Color(col.r, col.g, col.b, peak_alpha)
+	var mid := Color(col.r, col.g, col.b, peak_alpha * 0.45)
+	var rim := Color(col.r, col.g, col.b, 0.0)
+	for s in range(segs):
+		var a0 := TAU * float(s) / float(segs)
+		var a1 := TAU * float(s + 1) / float(segs)
+		var e0 := center + t * (cos(a0) * half_a) + n * (sin(a0) * half_b)
+		var e1 := center + t * (cos(a1) * half_a) + n * (sin(a1) * half_b)
+		var m0 := center.lerp(e0, 0.55)
+		var m1 := center.lerp(e1, 0.55)
+		st.set_color(inner)
+		st.add_vertex(c3)
+		st.set_color(mid)
+		st.add_vertex(Vector3(m0.x, y, m0.y))
+		st.set_color(mid)
+		st.add_vertex(Vector3(m1.x, y, m1.y))
+		st.set_color(mid)
+		st.add_vertex(Vector3(m0.x, y, m0.y))
+		st.set_color(rim)
+		st.add_vertex(Vector3(e0.x, y, e0.y))
+		st.set_color(rim)
+		st.add_vertex(Vector3(e1.x, y, e1.y))
+		st.set_color(mid)
+		st.add_vertex(Vector3(m0.x, y, m0.y))
+		st.set_color(rim)
+		st.add_vertex(Vector3(e1.x, y, e1.y))
+		st.set_color(mid)
+		st.add_vertex(Vector3(m1.x, y, m1.y))
+
+## Additive warm light pools spilling from street-facing ground-floor storefront windows and
+## from the sidewalk globe lamps; faint by day, glowing in evening mode (Shift+L).
+func build_light_pools() -> void:
+	light_pool_centers.clear()
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for spot in storefront_light_spots:
+		var mid: Vector2 = spot.mid
+		var nrm: Vector2 = spot.normal
+		if nrm.length_squared() < 1e-6:
+			continue
+		nrm = nrm.normalized()
+		var c := mid + nrm * 1.7
+		if building_containing_point(c) != "":
+			nrm = -nrm
+			c = mid + nrm * 1.7
+			if building_containing_point(c) != "":
+				continue
+		var sd := min_street_distance(c)
+		if sd < 5.0 or sd > 11.0:
+			continue
+		var dup := false
+		for p in light_pool_centers:
+			if p.distance_to(c) < 2.2:
+				dup = true
+				break
+		if dup:
+			continue
+		var glow: Color = spot.glow
+		var tint := Color(1.0, 0.82, 0.5) if glow.r > 0.8 else Color(0.62, 0.9, 0.92)
+		add_light_pool(st, c, Vector2(-nrm.y, nrm.x), clampf(float(spot.half_len), 1.3, 4.6), 1.7, tint, 0.55)
+		light_pool_centers.append(c)
+	for lp in street_lamp_points:
+		add_light_pool(st, lp, Vector2.RIGHT, 3.3, 3.3, Color(1.0, 0.86, 0.58), 0.5)
+		light_pool_centers.append(lp)
+	var pools := MeshInstance3D.new()
+	pools.name = "StorefrontLightPools"
+	pools.mesh = st.commit()
+	light_pool_material = StandardMaterial3D.new()
+	light_pool_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	light_pool_material.vertex_color_use_as_albedo = true
+	light_pool_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	light_pool_material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	light_pool_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	light_pool_material.albedo_color = Color(1.0, 1.0, 1.0, DAY_LIGHT_POOL_ALPHA)
+	pools.material_override = light_pool_material
+	add_child(pools)
+
+func apply_time_of_day() -> void:
+	if world_env != null:
+		world_env.background_color = Color("0d1822") if evening_mode else Color("172a2e")
+		world_env.ambient_light_color = Color("b9c2dc") if evening_mode else Color("f2ead8")
+		world_env.ambient_light_energy = 0.48 if evening_mode else 0.72
+	if sun_light != null:
+		sun_light.light_color = Color("ffb27a") if evening_mode else Color.WHITE
+		sun_light.light_energy = 0.42 if evening_mode else 1.25
+	if rim_light != null:
+		rim_light.light_color = Color("ff9f6e") if evening_mode else Color("ffd8a6")
+		rim_light.light_energy = 0.30 if evening_mode else 0.48
+	if light_pool_material != null:
+		light_pool_material.albedo_color = Color(1.0, 1.0, 1.0, 1.0 if evening_mode else DAY_LIGHT_POOL_ALPHA)
+
+func toggle_evening_lights() -> bool:
+	evening_mode = not evening_mode
+	apply_time_of_day()
+	var msg := "Evening on Turk Street: storefront windows and street lamps pool warm light across the sidewalks." if evening_mode else "Daylight over the Tenderloin: the storefront light pools fade back."
+	if info != null:
+		info.text = "%s\nShift+L toggles day / evening · %d stylized storefront & lamp light pools\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [msg, light_pool_centers.size()]
+	announce_a11y_status(msg)
+	return evening_mode
+
+func street_tree_site_ok(c: Vector2, area: Rect2, avoid: Array[Vector2]) -> bool:
+	if not area.has_point(c):
+		return false
+	for ix in street_intersections:
+		if ix.distance_to(c) < 13.0:
+			return false
+	var sd := min_street_distance(c)
+	if sd < 5.4 or sd > 6.8:
+		return false
+	if building_containing_point(c) != "" or min_wall_distance(c, 1.1) < 1.1:
+		return false
+	if is_point_in_boeddeker_park(c) or is_point_in_mural_footprint(c, 0.8) or is_point_in_speaker_footprint(c, 0.8):
+		return false
+	for pp in trolley_pole_points:
+		if pp.distance_to(c) < 4.0:
+			return false
+	for av in avoid:
+		if av.distance_to(c) < 3.2:
+			return false
+	for tp in street_tree_points:
+		if tp.distance_to(c) < 7.0:
+			return false
+	return true
+
+func street_tree_canopy_xforms(i: int, rx: float, rz: float) -> Array[Transform3D]:
+	var s := street_tree_scales[i]
+	var base := Transform3D(Basis.from_euler(Vector3(rx, street_tree_yaws[i], rz)), street_tree_pivots[i])
+	var lower := base * Transform3D(Basis.from_scale(Vector3(1.0, 0.9, 1.0) * s), Vector3(0.0, 0.85 * s, 0.0))
+	var upper := base * Transform3D(Basis.from_scale(Vector3.ONE * (0.66 * s)), Vector3(0.28, 1.75, -0.18) * s)
+	return [lower, upper]
+
+## Curbside street trees in tree wells (MultiMesh: 3 draw calls) clear of corners, poles,
+## lamps, neighbors, props, and footprints. Visual only; they do not block walking.
+func build_street_trees() -> void:
+	street_tree_points.clear()
+	street_tree_pivots.clear()
+	street_tree_scales.clear()
+	street_tree_yaws.clear()
+	ensure_tree_resources()
+	var avoid: Array[Vector2] = []
+	for n in neighbors:
+		var np: Vector3 = n.pos
+		avoid.append(Vector2(np.x, np.z))
+	var fixed_props: Array[Vector2] = [mural_xz(), speaker_xz(), comptons_xz(), blackhawk_xz(), Vector2(MUSEUM_HUB_POS.x, MUSEUM_HUB_POS.z), Vector2(-414.0, 56.0), Vector2(-350.0, 65.8)]
+	avoid.append_array(fixed_props)
+	for e in NEIGHBORHOOD_EATERIES:
+		var ep: Vector3 = e.pos
+		avoid.append(Vector2(ep.x, ep.z))
+	avoid.append_array(street_lamp_points)
+	for pc in planter_canopy_nodes:
+		var planter := pc.get_parent() as Node3D
+		if planter != null:
+			avoid.append(Vector2(planter.position.x, planter.position.z))
+	var area := walk_bounds.grow(-8.0)
+	for street in street_ways:
+		var p2: Array[Vector2] = []
+		for p in street.points:
+			p2.append(Vector2(float(p[0]), float(p[1])))
+		var walked := 0.0
+		var next_at := 9.0
+		for i in range(p2.size() - 1):
+			var a := p2[i]
+			var b := p2[i + 1]
+			var seg_len := a.distance_to(b)
+			if seg_len < 1e-3:
+				continue
+			var t := (b - a) / seg_len
+			var n := Vector2(-t.y, t.x)
+			while next_at <= walked + seg_len:
+				var s := a + t * (next_at - walked)
+				next_at += STREET_TREE_SPACING_M
+				for side in [1.0, -1.0]:
+					var c: Vector2 = s + n * (STREET_TREE_OFFSET_M * float(side))
+					if street_tree_site_ok(c, area, avoid):
+						var h_seed := absi(("street-tree:%d:%d" % [int(c.x * 10.0), int(c.y * 10.0)]).hash())
+						var sc := 1.15 + float(h_seed % 5) * 0.08
+						street_tree_points.append(c)
+						street_tree_scales.append(sc)
+						street_tree_pivots.append(Vector3(c.x, 2.0 * sc, c.y))
+						street_tree_yaws.append(float(h_seed % 628) / 100.0)
+			walked += seg_len
+	var count := street_tree_points.size()
+	var trees_root := Node3D.new()
+	trees_root.name = "StreetTrees"
+	var trunk_mm := MultiMesh.new()
+	trunk_mm.transform_format = MultiMesh.TRANSFORM_3D
+	trunk_mm.mesh = tree_trunk_mesh
+	trunk_mm.instance_count = count
+	street_tree_lower_mm = MultiMesh.new()
+	street_tree_lower_mm.transform_format = MultiMesh.TRANSFORM_3D
+	street_tree_lower_mm.use_colors = true
+	street_tree_lower_mm.mesh = tree_canopy_mesh
+	street_tree_lower_mm.instance_count = count
+	street_tree_upper_mm = MultiMesh.new()
+	street_tree_upper_mm.transform_format = MultiMesh.TRANSFORM_3D
+	street_tree_upper_mm.use_colors = true
+	street_tree_upper_mm.mesh = tree_canopy_mesh
+	street_tree_upper_mm.instance_count = count
+	var leaf_cols: Array[Color] = [Color("4e7d5c"), Color("5c8d67"), Color("6a9a5a"), Color("587f4c")]
+	for i in range(count):
+		var sc := street_tree_scales[i]
+		var pv := street_tree_pivots[i]
+		trunk_mm.set_instance_transform(i, Transform3D(Basis.from_scale(Vector3.ONE * sc), Vector3(pv.x, 1.1 * sc, pv.z)))
+		street_tree_lower_mm.set_instance_color(i, leaf_cols[i % leaf_cols.size()])
+		street_tree_upper_mm.set_instance_color(i, leaf_cols[(i + 1) % leaf_cols.size()].lightened(0.06))
+		var xf := street_tree_canopy_xforms(i, 0.0, 0.0)
+		street_tree_lower_mm.set_instance_transform(i, xf[0])
+		street_tree_upper_mm.set_instance_transform(i, xf[1])
+	var canopy_mat := vertex_color_material()
+	for mm_item in [["StreetTreeTrunks", trunk_mm, tree_trunk_material], ["StreetTreeCanopyLower", street_tree_lower_mm, canopy_mat], ["StreetTreeCanopyUpper", street_tree_upper_mm, canopy_mat]]:
+		var mmi := MultiMeshInstance3D.new()
+		mmi.name = String(mm_item[0])
+		mmi.multimesh = mm_item[1]
+		mmi.material_override = mm_item[2]
+		trees_root.add_child(mmi)
+	add_child(trees_root)
+
+func update_tree_sway(delta: float) -> void:
+	wind_clock = wrapf(wind_clock + delta, 0.0, 3600.0)
+	var gust := 0.75 + 0.25 * sin(wind_clock * 0.37)
+	for i in range(park_tree_canopies.size()):
+		var cn := park_tree_canopies[i]
+		if cn == null:
+			continue
+		var ph := float(i) * 1.37
+		cn.rotation = Vector3(sin(wind_clock * 1.30 + ph) * 0.035 * gust, cn.rotation.y, sin(wind_clock * 0.95 + ph * 1.7) * 0.045 * gust)
+	for p_i in range(planter_canopy_nodes.size()):
+		var pc := planter_canopy_nodes[p_i]
+		if pc == null:
+			continue
+		var pph := float(p_i) * 2.1
+		pc.position = planter_canopy_base[p_i] + Vector3(sin(wind_clock * 1.2 + pph) * 0.06 * gust, 0.0, cos(wind_clock * 0.9 + pph) * 0.05 * gust)
+	if street_tree_lower_mm != null and street_tree_upper_mm != null:
+		for t_i in range(street_tree_points.size()):
+			var tph := float(t_i) * 0.83
+			var sway_rx := sin(wind_clock * 1.25 + tph) * 0.035 * gust
+			var sway_rz := sin(wind_clock * 0.9 + tph * 1.6) * 0.045 * gust
+			if t_i == 0:
+				street_tree_sway_sample = Vector2(sway_rx, sway_rz)
+			var xf := street_tree_canopy_xforms(t_i, sway_rx, sway_rz)
+			street_tree_lower_mm.set_instance_transform(t_i, xf[0])
+			street_tree_upper_mm.set_instance_transform(t_i, xf[1])
+
+func nearest_street_point(pt: Vector2) -> Vector2:
+	var best := INF
+	var best_pt := pt
+	for w_idx in range(street_ways.size()):
+		if rect_distance_2d(street_way_rects[w_idx], pt) >= best:
+			continue
+		var pts: Array = street_ways[w_idx].points
+		for i in range(1, pts.size()):
+			var va := Vector2(pts[i - 1][0], pts[i - 1][1])
+			var vb := Vector2(pts[i][0], pts[i][1])
+			var ab := vb - va
+			var denom := ab.length_squared()
+			var t := 0.0 if denom < 1e-12 else clampf((pt - va).dot(ab) / denom, 0.0, 1.0)
+			var q := va + ab * t
+			var d := pt.distance_to(q)
+			if d < best:
+				best = d
+				best_pt = q
+	return best_pt
+
+## Sidewalk counter site 6.6 m from the street centerline in front of an eatery, nudged along the
+## curb to stay clear of walls, neighbors, and the mural/speaker props.
+func eatery_counter_site(e_pos: Vector3) -> Dictionary:
+	var e2 := Vector2(e_pos.x, e_pos.z)
+	var sp := nearest_street_point(e2)
+	var away := e2 - sp
+	if away.length_squared() < 1e-6:
+		away = Vector2(0.0, 1.0)
+	away = away.normalized()
+	var tangent := Vector2(-away.y, away.x)
+	var avoid: Array[Vector2] = [mural_xz(), speaker_xz()]
+	for n in neighbors:
+		var np: Vector3 = n.pos
+		avoid.append(Vector2(np.x, np.z))
+	for shift in [0.0, 3.0, -3.0, 5.5, -5.5, 8.0, -8.0]:
+		var c: Vector2 = sp + away * 6.6 + tangent * float(shift)
+		if building_containing_point(c) != "" or min_wall_distance(c, 1.7) < 1.7:
+			continue
+		var clash := false
+		for av in avoid:
+			if av.distance_to(c) < 2.8:
+				clash = true
+				break
+		if not clash:
+			return {"center": c, "toward_street": -away}
+	return {"center": sp + away * 6.6, "toward_street": -away}
+
+func add_prop_mesh(parent: Node3D, mesh: Mesh, pos: Vector3, mat: Material, node_name: String = "") -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	if not node_name.is_empty():
+		mi.name = node_name
+	mi.mesh = mesh
+	mi.position = pos
+	mi.material_override = mat
+	parent.add_child(mi)
+	return mi
+
+func prop_cylinder(r_top: float, r_bottom: float, h: float) -> CylinderMesh:
+	var m := CylinderMesh.new()
+	m.top_radius = r_top
+	m.bottom_radius = r_bottom
+	m.height = h
+	m.radial_segments = 14
+	m.rings = 1
+	return m
+
+func prop_box(size: Vector3) -> BoxMesh:
+	var m := BoxMesh.new()
+	m.size = size
+	return m
+
+func prop_sphere(r: float) -> SphereMesh:
+	var m := SphereMesh.new()
+	m.radius = r
+	m.height = r * 2.0
+	m.radial_segments = 10
+	m.rings = 5
+	return m
+
+func add_steam_puffs(props: Node3D, e_idx: int, base: Vector3, count: int) -> void:
+	var steam_mat := translucent_material(Color(1.0, 1.0, 1.0, 0.42))
+	steam_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	for k in range(count):
+		var puff := add_prop_mesh(props, prop_sphere(0.075), base + Vector3(float(k - 1) * 0.06, 0.0, 0.0), steam_mat, "Steam_%d" % k)
+		eatery_anim_parts.append({"idx": e_idx, "kind": "steam", "node": puff, "base": puff.position, "phase": float(k) / float(maxi(1, count))})
+
+## Signature items on each counter top; steam rises, records spin, neon flickers while visited.
+func add_counter_items(props: Node3D, e_idx: int, e_id: String) -> void:
+	var y0 := 1.165
+	match e_id:
+		"golden_lotus_pho":
+			add_prop_mesh(props, prop_cylinder(0.24, 0.13, 0.16), Vector3(-0.35, y0 + 0.08, 0.05), material(Color("efe6d2")), "PhoBowl")
+			add_prop_mesh(props, prop_cylinder(0.215, 0.215, 0.02), Vector3(-0.35, y0 + 0.155, 0.05), mural_material(Color("d58a3a")), "PhoBroth")
+			add_prop_mesh(props, prop_box(Vector3(0.30, 0.05, 0.16)), Vector3(0.45, y0 + 0.025, 0.0), material(Color("c98d3d")), "ImperialRolls")
+			add_steam_puffs(props, e_idx, Vector3(-0.35, y0 + 0.26, 0.05), 3)
+		"saffron_clay_oven":
+			add_prop_mesh(props, prop_box(Vector3(0.36, 0.10, 0.26)), Vector3(-0.32, y0 + 0.05, 0.0), material(Color("8b5a2b")), "NaanBasket")
+			var naan := add_prop_mesh(props, prop_sphere(0.16), Vector3(-0.32, y0 + 0.13, 0.0), material(Color("e8c58a")), "GarlicNaan")
+			naan.scale = Vector3(1.0, 0.22, 0.7)
+			add_prop_mesh(props, prop_cylinder(0.14, 0.09, 0.08), Vector3(0.08, y0 + 0.04, 0.08), material(Color("b5532b")), "ChanaMasala")
+			add_prop_mesh(props, prop_cylinder(0.06, 0.05, 0.20), Vector3(0.45, y0 + 0.10, 0.05), mural_material(Color("f2a541")), "MangoLassi")
+			add_steam_puffs(props, e_idx, Vector3(0.08, y0 + 0.16, 0.08), 2)
+		"blue_valve_hifi":
+			add_prop_mesh(props, prop_box(Vector3(0.46, 0.08, 0.36)), Vector3(0.0, y0 + 0.04, 0.0), material(Color("3a2f2a")), "Turntable")
+			var platter := add_prop_mesh(props, prop_cylinder(0.15, 0.15, 0.015), Vector3(0.0, y0 + 0.087, 0.0), material(Color("141414")), "VinylRecord")
+			add_prop_mesh(platter, prop_cylinder(0.05, 0.05, 0.017), Vector3(0.04, 0.0, 0.0), material(Color("c0392b")), "RecordLabel")
+			eatery_anim_parts.append({"idx": e_idx, "kind": "spin", "node": platter, "base": platter.position, "phase": 0.0})
+			for sx in [-0.95, 0.95]:
+				add_prop_mesh(props, prop_box(Vector3(0.20, 0.38, 0.18)), Vector3(float(sx), y0 + 0.19, -0.05), material(Color("2b2b2b")), "HiFiSpeaker")
+			for tx in [0.26, 0.34]:
+				var tube := add_prop_mesh(props, prop_cylinder(0.025, 0.025, 0.07), Vector3(float(tx), y0 + 0.12, -0.12), mural_material(Color("ff9e5e")), "AmpTube")
+				eatery_anim_parts.append({"idx": e_idx, "kind": "flicker", "node": tube, "base": tube.position, "phase": float(tx) * 9.0})
+		"morning_star_banh_mi":
+			add_prop_mesh(props, prop_cylinder(0.2, 0.2, 0.02), Vector3(-0.25, y0 + 0.01, 0.05), material(Color("f4f1ea")), "Plate")
+			var bread := CapsuleMesh.new()
+			bread.radius = 0.055
+			bread.height = 0.44
+			var baguette := add_prop_mesh(props, bread, Vector3(-0.25, y0 + 0.07, 0.05), material(Color("d9a253")), "BanhMi")
+			baguette.rotation_degrees = Vector3(0.0, 0.0, 90.0)
+			add_prop_mesh(props, prop_box(Vector3(0.34, 0.02, 0.05)), Vector3(-0.25, y0 + 0.115, 0.05), material(Color("6aa84f")), "PickledFilling")
+			add_prop_mesh(props, prop_cylinder(0.06, 0.05, 0.18), Vector3(0.40, y0 + 0.09, 0.05), material(Color("a8744a")), "IcedCoffee")
+			add_prop_mesh(props, prop_cylinder(0.008, 0.008, 0.12), Vector3(0.42, y0 + 0.22, 0.05), material(Color("e74c3c")), "Straw")
+		"brass_owl_tavern":
+			add_prop_mesh(props, prop_cylinder(0.06, 0.05, 0.20), Vector3(-0.40, y0 + 0.10, 0.08), material(Color("e0a83a")), "DraftGlass")
+			add_prop_mesh(props, prop_cylinder(0.062, 0.062, 0.03), Vector3(-0.40, y0 + 0.215, 0.08), material(Color("fbf6e9")), "Foam")
+			var ball_cols: Array[Color] = [Color("f4d03f"), Color("c0392b"), Color("1f3a93")]
+			for b_i in range(3):
+				add_prop_mesh(props, prop_sphere(0.05), Vector3(0.18 + float(b_i) * 0.11, y0 + 0.05, 0.05), material(ball_cols[b_i]), "BilliardBall_%d" % b_i)
+			for ex in [-0.12, 0.12]:
+				var eye := add_prop_mesh(props, prop_sphere(0.09), Vector3(float(ex), 2.42, -0.98), mural_material(Color("f5c2ff")), "NeonOwlEye")
+				eatery_anim_parts.append({"idx": e_idx, "kind": "flicker", "node": eye, "base": eye.position, "phase": 1.7})
+		"midnight_sun_diner":
+			add_prop_mesh(props, prop_cylinder(0.03, 0.03, 0.10), Vector3(-0.30, y0 + 0.05, 0.0), material(Color("b9b2a3")), "PieStandPost")
+			add_prop_mesh(props, prop_cylinder(0.20, 0.20, 0.02), Vector3(-0.30, y0 + 0.11, 0.0), material(Color("d8d0c0")), "PieStand")
+			add_prop_mesh(props, prop_cylinder(0.16, 0.16, 0.06), Vector3(-0.30, y0 + 0.15, 0.0), material(Color("b5476b")), "OlallieberryPie")
+			var dome := add_prop_mesh(props, prop_sphere(0.21), Vector3(-0.30, y0 + 0.15, 0.0), translucent_material(Color(0.87, 0.95, 0.96, 0.32)), "PieDome")
+			dome.scale = Vector3(1.0, 0.8, 1.0)
+			add_prop_mesh(props, prop_cylinder(0.05, 0.05, 0.09), Vector3(0.40, y0 + 0.045, 0.08), material(Color("f4efe6")), "CoffeeMug")
+			add_steam_puffs(props, e_idx, Vector3(0.40, y0 + 0.14, 0.08), 2)
+
+func build_eatery_counters() -> void:
+	eatery_counter_nodes.clear()
+	eatery_host_nodes.clear()
+	eatery_counter_points.clear()
+	eatery_anim_parts.clear()
+	var counters_root := Node3D.new()
+	counters_root.name = "EateryCounters"
+	var host_skins: Array[Color] = [Color("c38c65"), Color("8b5b3f"), Color("704b37"), Color("b67f5d"), Color("966345"), Color("a97650")]
+	var host_hair: Array[Color] = [Color("2a2623"), Color("383c32"), Color("1e2224"), Color("454236"), Color("dad7c6"), Color("3f352c")]
+	for e_idx in range(NEIGHBORHOOD_EATERIES.size()):
+		var e_rec: Dictionary = NEIGHBORHOOD_EATERIES[e_idx]
+		var e_id := String(e_rec.get("id", ""))
+		var site := eatery_counter_site(e_rec.get("pos", Vector3.ZERO))
+		var c2: Vector2 = site.center
+		var toward: Vector2 = site.toward_street
+		var canopy_col := Color(String(e_rec.get("canopy_color", "d97736")))
+		var props := Node3D.new()
+		props.name = "CounterProps_%s" % e_id
+		props.position = Vector3(c2.x, 0.0, c2.y)
+		props.rotation.y = atan2(toward.x, toward.y)
+		props.scale = Vector3.ONE * 1.4
+		props.visible = false
+		var st := SurfaceTool.new()
+		st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		st.set_smooth_group(-1)
+		var no_cap := Color(0, 0, 0, 0)
+		colored_box(st, Vector3(0.0, 0.55, 0.0), Vector3(1.3, 0.55, 0.32), Vector2.RIGHT, Color("6e4b33"), Color("7d5a40"))
+		colored_box(st, Vector3(0.0, 1.13, 0.02), Vector3(1.42, 0.035, 0.4), Vector2.RIGHT, canopy_col.lightened(0.25), canopy_col.lightened(0.4))
+		colored_box(st, Vector3(0.0, 0.35, 0.33), Vector3(1.3, 0.12, 0.012), Vector2.RIGHT, canopy_col, canopy_col)
+		for sx in [-0.8, 0.0, 0.8]:
+			colored_prism(st, Vector3(float(sx), 0.0, 0.8), 0.05, 0.04, 0.7, 6, Color("2d3532"), no_cap)
+			colored_prism(st, Vector3(float(sx), 0.7, 0.8), 0.2, 0.2, 0.07, 10, canopy_col.lightened(0.1), canopy_col.lightened(0.25))
+		for mx in [-0.95, 0.95]:
+			colored_beam(st, Vector3(float(mx), 0.0, -1.05), Vector3(float(mx), 2.55, -1.05), 0.07, Color("2d3532"))
+		colored_box(st, Vector3(0.0, 2.15, -1.05), Vector3(1.05, 0.4, 0.04), Vector2.RIGHT, Color("203238"), Color("203238"))
+		st.generate_normals()
+		var body := MeshInstance3D.new()
+		body.name = "CounterBody"
+		body.mesh = st.commit()
+		body.material_override = vertex_color_material()
+		props.add_child(body)
+		var items: Array = EATERY_MENU_ITEMS.get(e_id, ["house special"])
+		var menu_lbl := make_label_3d("CounterMenuLabel", "Today: %s" % String(items[0]), Vector3(0.0, 2.15, -0.98), Color(String(e_rec.get("label_color", "ffd899"))), 0.0085, 22)
+		menu_lbl.outline_size = 8
+		props.add_child(menu_lbl)
+		var host := make_person_node("CounterHost", canopy_col.lightened(0.15), host_skins[e_idx % host_skins.size()], host_hair[e_idx % host_hair.size()], 1.70, false)
+		host.position = Vector3(0.0, 0.0, -0.75)
+		host.scale = Vector3(1.55, 1.55, 1.55)
+		props.add_child(host)
+		add_counter_items(props, e_idx, e_id)
+		counters_root.add_child(props)
+		eatery_counter_nodes.append(props)
+		eatery_host_nodes.append(host)
+		eatery_counter_points.append(c2)
+	add_child(counters_root)
+
+func show_eatery_host_speech(idx: int, line: String) -> void:
+	if idx < 0 or idx >= eatery_counter_nodes.size():
+		return
+	var props := eatery_counter_nodes[idx]
+	var host_world := props.position + props.basis * Vector3(0.0, 0.0, -0.75)
+	show_speech_bubble("eatery:%s" % String(NEIGHBORHOOD_EATERIES[idx].get("id", "")), host_world + Vector3.UP * SPEECH_BUBBLE_HEIGHT_M, line)
+
+func eatery_counter_interact(target_idx: int = -1) -> bool:
+	var idx := eatery_guide_idx if target_idx < 0 else target_idx
+	if idx < 0 or idx >= NEIGHBORHOOD_EATERIES.size() or idx >= eatery_counter_nodes.size():
+		return false
+	if idx != eatery_guide_idx:
+		cycle_eatery_guide(idx)
+	var rec: Dictionary = NEIGHBORHOOD_EATERIES[idx]
+	var e_id := String(rec.get("id", ""))
+	var count := int(eatery_order_counts.get(e_id, 0)) + 1
+	eatery_order_counts[e_id] = count
+	var lines: Array = EATERY_HOST_LINES.get(e_id, ["Welcome in!"])
+	var items: Array = EATERY_MENU_ITEMS.get(e_id, ["house special"])
+	var line := String(lines[count % lines.size()])
+	var item := String(items[(count - 1) % items.size()])
+	show_eatery_host_speech(idx, line)
+	var msg := "Ordering at %s: %s (tap the counter again for more)" % [String(rec.get("name", "")), item]
+	if info != null:
+		info.text = "%s\nHost: \"%s\"\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [msg, line]
+	announce_a11y_status("%s. Host says: %s" % [msg, line])
+	return true
+
+func update_eatery_animation(delta: float) -> void:
+	eatery_anim_clock = wrapf(eatery_anim_clock + delta, 0.0, 3600.0)
+	for part in eatery_anim_parts:
+		var e_i: int = part.idx
+		if e_i >= eatery_counter_nodes.size() or not eatery_counter_nodes[e_i].visible:
+			continue
+		var nd: Node3D = part.node
+		var ph := float(part.phase)
+		match String(part.kind):
+			"steam":
+				var f := fposmod(eatery_anim_clock * 0.4 + ph, 1.0)
+				var base_p: Vector3 = part.base
+				nd.position = base_p + Vector3(sin(f * TAU + ph * 3.0) * 0.03, f * 0.5, 0.0)
+				nd.scale = Vector3.ONE * (1.0 - f * 0.7)
+			"spin":
+				nd.rotation.y = wrapf(nd.rotation.y + delta * 3.49, -PI, PI)
+			"flicker":
+				var mat := (nd as MeshInstance3D).material_override as StandardMaterial3D
+				if mat != null:
+					var dip := 0.25 if fposmod(eatery_anim_clock * 0.7 + ph, 3.0) < 0.08 else 1.0
+					mat.emission_energy_multiplier = (0.45 + 0.25 * sin(eatery_anim_clock * 6.0 + ph)) * dip
+	if eatery_guide_idx >= 0 and eatery_guide_idx < eatery_host_nodes.size():
+		animate_person_node(eatery_host_nodes[eatery_guide_idx], eatery_anim_clock * 3.0, 0.0, 0.7)
 
 func player_height_m() -> float:
 	var min_y := INF
@@ -4088,7 +4881,7 @@ func inspect_so_what_easter_egg() -> bool:
 	view_size = 84.0
 	update_camera()
 	update_occlusion(true)
-	var line := "145 Leavenworth (8th Floor ★) & 361 Turk St — 'So What' Musical Awning Easter Egg"
+	var line := "145 Leavenworth (8th Floor) & 361 Turk St — 'So What' Musical Awning Easter Egg"
 	var sub := "Dual-address Tenderloin complex (footprints 201006.0001527 & 201006.0003855) · Entrance awning arranged after Miles Davis's 'So What' (Live at the Black Hawk, 1961)"
 	if info != null:
 		info.text = "%s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, sub]
@@ -4120,18 +4913,20 @@ func inspect_tenderloin_museum_hub() -> bool:
 		1:
 			active_time_era = "1961_jazz"
 			lens_col = Color("f3c458")
-			line = "Tenderloin Museum Time-Portal → 1961: Black Hawk & 'So What' Jazz Era"
+			line = "Tenderloin Museum Time-Portal » 1961: Black Hawk & 'So What' Jazz Era"
 			sub = "Archive Portal tuned to April 1961 · Miles Davis sextet live at Turk & Hyde + the 145 Leavenworth / 361 Turk 'So What' brass-and-teal canopy!"
 		2:
 			active_time_era = "1966_comptons"
 			lens_col = Color("d884b8")
-			line = "Tenderloin Museum Time-Portal → 1966: Compton's Cafeteria Midnight Neon"
+			line = "Tenderloin Museum Time-Portal » 1966: Compton's Cafeteria Midnight Neon"
 			sub = "Archive Portal tuned to August 1966 · Late-night jukebox, coffee cups & neon solidarity at Taylor & Turk in the heart of the Tenderloin."
 		3:
 			active_time_era = "1907_cadillac"
 			lens_col = Color("5ec2c6")
-			line = "Tenderloin Museum Time-Portal → 1907: Cadillac Hotel & Great White Way"
+			line = "Tenderloin Museum Time-Portal » 1907: Cadillac Hotel & Great White Way"
 			sub = "Archive Portal tuned to 1907 · Grand reopening of the 4-story Cadillac Hotel at Eddy & Leavenworth with theater-district marquees and supper clubs."
+	var docent_world := MUSEUM_HUB_POS + Vector3(-1.4, 0.0, 1.15) * 1.75
+	show_speech_bubble("museum_docent", docent_world + Vector3.UP * SPEECH_BUBBLE_HEIGHT_M, MUSEUM_DOCENT_LINES[step % MUSEUM_DOCENT_LINES.size()])
 	if portal_lens_mesh != null:
 		portal_lens_mesh.material_override = mural_material(lens_col)
 	for r_i in range(portal_ring_meshes.size()):
@@ -4161,8 +4956,14 @@ func cycle_eatery_guide(target_idx: int = -1) -> bool:
 	view_size = 56.0
 	update_camera()
 	update_occlusion(true)
+	var e_id := String(rec.get("id", ""))
+	eatery_visited[e_id] = true
+	if eatery_guide_idx < eatery_counter_nodes.size():
+		eatery_counter_nodes[eatery_guide_idx].visible = true
+		var host_lines: Array = EATERY_HOST_LINES.get(e_id, ["Welcome in!"])
+		show_eatery_host_speech(eatery_guide_idx, String(host_lines[0]))
 	var line := "%s (%s) — %s" % [String(rec.get("name", "")), String(rec.get("rating", "")), String(rec.get("kind", ""))]
-	var sub := "%s · Specialty: %s (Stop %d/%d · Shift+E for next fictionalized neighborhood spot)" % [String(rec.get("street", "")), String(rec.get("specialty", "")), eatery_guide_idx + 1, NEIGHBORHOOD_EATERIES.size()]
+	var sub := "%s · Specialty: %s (Stop %d/%d · Tap the counter to order · Shift+E for next fictionalized spot)" % [String(rec.get("street", "")), String(rec.get("specialty", "")), eatery_guide_idx + 1, NEIGHBORHOOD_EATERIES.size()]
 	if info != null:
 		info.text = "%s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, sub]
 	announce_a11y_status("%s: %s" % [line, sub])
@@ -4298,6 +5099,7 @@ func talk_with_neighbor(index: int) -> String:
 	update_block_ui()
 	trigger_progress_cue("neighbor_visit", n.name)
 	var line := neighbor_greeting_line(n_id)
+	show_neighbor_speech(index, line)
 	var mem_line := neighbor_project_memory_line(n_id)
 	var sub_b := mem_line if not mem_line.is_empty() else ("Talking with %s (%s) · Click %s again or choose an action below" % [n.name, n.role, n.name])
 	info.text = "%s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, sub_b]
@@ -4365,6 +5167,7 @@ func finish_neighbor_arrival(index: int) -> void:
 			save_godot_state()
 		show_mural_panel(true)
 		update_mural_ui()
+		show_neighbor_speech(index, celeste_dialogue_text())
 		var sub_c := mem_line if not mem_line.is_empty() else "Portable sidewalk easel ready · Place Sun, Wave & Rise below"
 		info.text = "With %s — %s (%d/3 mural motifs · %.2f m from %s%s)\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, mural_placements.size(), nb.distance, nb.id, cut_note, sub_c]
 		announce_a11y_status("Arrived at %s (%s). Portable Mural Board %d/3 motifs.%s" % [n.name, n.role, mural_placements.size(), mem_a11y])
@@ -4379,6 +5182,7 @@ func finish_neighbor_arrival(index: int) -> void:
 			save_godot_state()
 		show_music_panel(true)
 		update_music_ui()
+		show_neighbor_speech(index, rook_dialogue_text())
 		var sc_tag := "Soundcheck ready" if rook_soundcheck_done else "Tap Soundcheck below"
 		var sub_r := mem_line if not mem_line.is_empty() else ("Turk St speaker %.1f m clear of wall · Explicit play/audition below" % min_wall_distance(speaker_xz()))
 		info.text = "With %s — %s (%s · %.2f m from %s%s)\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, sc_tag, nb.distance, nb.id, cut_note, sub_r]
@@ -4390,6 +5194,7 @@ func finish_neighbor_arrival(index: int) -> void:
 			save_godot_state()
 		show_block_panel(true)
 		update_block_ui()
+		show_neighbor_speech(index, neighbor_greeting_line(n_id))
 		var sub_b := mem_line if not mem_line.is_empty() else neighbor_greeting_line(n_id)
 		info.text = "With %s — %s (%d/5 neighbors · %.2f m from %s%s)\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, visited_neighbors.size(), nb.distance, nb.id, cut_note, sub_b]
 		announce_a11y_status("Arrived at %s (%s). Visited %d/5 neighbors.%s" % [n.name, n.role, visited_neighbors.size(), mem_a11y])
@@ -4547,6 +5352,7 @@ func talk_with_celeste() -> String:
 	update_block_ui()
 	trigger_progress_cue("celeste_talk", "Celeste talk")
 	var line := celeste_dialogue_text()
+	show_neighbor_speech(celeste_index, line)
 	var mem_c := neighbor_project_memory_line(CELESTE_ID)
 	var sub_c := mem_c if not mem_c.is_empty() else ("Portable Mural Board: %d/3 motifs (%s palette) · Separate Godot save" % [mural_placements.size(), mural_palette.capitalize()])
 	info.text = "%s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, sub_c]
@@ -4584,6 +5390,7 @@ func check_sound_with_rook() -> String:
 	update_music_ui()
 	update_block_ui()
 	var line := rook_dialogue_text()
+	show_neighbor_speech(rook_index, line)
 	var mem_r := neighbor_project_memory_line(ROOK_ID)
 	var sub_r := mem_r if not mem_r.is_empty() else ("Rook's Speaker: %s · Explicit Play/Pause & local Suno audition" % active_stem_summary())
 	info.text = "%s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, sub_r]
@@ -8344,6 +9151,12 @@ func update_occlusion(force: bool = true) -> void:
 	last_occlusion_pos = p_xz
 	last_occlusion_neighbor = occ_tag
 	var focus_points: Array[Vector2] = [p_xz]
+	if not following_player:
+		var framed_xz := Vector2(target.x, target.z)
+		if eatery_guide_idx >= 0 and eatery_guide_idx < eatery_counter_points.size() and framed_xz.distance_to(eatery_counter_points[eatery_guide_idx]) < 16.0:
+			focus_points.append(eatery_counter_points[eatery_guide_idx])
+		if framed_xz.distance_to(Vector2(MUSEUM_HUB_POS.x, MUSEUM_HUB_POS.z)) < 12.0:
+			focus_points.append(Vector2(MUSEUM_HUB_POS.x, MUSEUM_HUB_POS.z))
 	if selected_neighbor >= 0 and selected_neighbor < neighbors.size():
 		focus_points.append(neighbor_xz(selected_neighbor))
 	if selected_neighbor == celeste_index or arrived_neighbor == celeste_index or walking_to_mural or arrived_mural:
@@ -8381,6 +9194,9 @@ func _process(delta: float) -> void:
 	if music_playing:
 		advance_music_clock(delta)
 	update_people_animation(delta)
+	update_speech_bubble(delta)
+	update_tree_sway(delta)
+	update_eatery_animation(delta)
 
 func _physics_process(delta: float) -> void:
 	var shift_held := Input.is_key_pressed(KEY_SHIFT) or Input.is_physical_key_pressed(KEY_SHIFT)
@@ -8513,7 +9329,14 @@ func handle_scene_tap(screen_pos: Vector2) -> bool:
 	for e_i in range(NEIGHBORHOOD_EATERIES.size()):
 		var e_pos: Vector3 = NEIGHBORHOOD_EATERIES[e_i].get("pos", Vector3.ZERO)
 		var e_screen := camera.unproject_position(e_pos + Vector3(0.0, 2.2, 0.0))
-		if e_screen.distance_to(screen_pos) <= 24.0:
+		var counter_open := e_i < eatery_counter_nodes.size() and eatery_counter_nodes[e_i].visible
+		var counter_screen_d := INF
+		if counter_open:
+			var cp := eatery_counter_points[e_i]
+			counter_screen_d = camera.unproject_position(Vector3(cp.x, 1.3, cp.y)).distance_to(screen_pos)
+		if e_screen.distance_to(screen_pos) <= 24.0 or counter_screen_d <= 30.0:
+			if counter_open and e_i == eatery_guide_idx:
+				return eatery_counter_interact(e_i)
 			return cycle_eatery_guide(e_i)
 	if best_idx >= 0:
 		if arrived_neighbor == best_idx and player_xz().distance_to(neighbor_xz(best_idx)) <= ARRIVAL_DISTANCE_M + 0.5:
@@ -8683,7 +9506,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_C:
 				toggle_district_boundary()
 			KEY_L:
-				wide_overview()
+				if event.shift_pressed:
+					toggle_evening_lights()
+				else:
+					wide_overview()
 			KEY_P:
 				if can_interact_with_mural():
 					cycle_mural_palette()
@@ -8783,6 +9609,7 @@ func choose_next(direction: int) -> void:
 
 func overview() -> void:
 	in_overview = true
+	hide_speech_bubble()
 	in_wide_overview = false
 	following_player = false
 	camera_yaw = 0.0
@@ -8830,6 +9657,7 @@ func overview() -> void:
 func wide_overview() -> void:
 	in_overview = false
 	in_wide_overview = true
+	hide_speech_bubble()
 	following_player = false
 	camera_yaw = 0.0
 	camera_pitch_scale = 1.0

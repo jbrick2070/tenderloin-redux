@@ -944,8 +944,8 @@ func run() -> void:
 	require(study.inspect_tenderloin_museum_hub() and study.active_time_era == "1961_jazz" and study.info.text.contains("1961"), "second inspect_tenderloin_museum_hub call channels 1961 Black Hawk & 'So What' Jazz Era")
 	require(study.inspect_tenderloin_museum_hub() and study.active_time_era == "1966_comptons" and study.info.text.contains("1966"), "third inspect_tenderloin_museum_hub call channels 1966 Compton's Cafeteria Midnight Neon")
 	require(study.inspect_tenderloin_museum_hub() and study.active_time_era == "1907_cadillac" and study.info.text.contains("1907"), "fourth inspect_tenderloin_museum_hub call channels 1907 Cadillac Hotel & Great White Way")
-	require(study.cycle_eatery_guide(0) and study.eatery_guide_idx == 0 and study.info.text.contains("Golden Lotus Pho & Noodle House") and study.info.text.contains("★ 4.8"), "cycle_eatery_guide(0) frames Golden Lotus Pho & Noodle House (★ 4.8)")
-	require(study.cycle_eatery_guide() and study.eatery_guide_idx == 1 and study.info.text.contains("Saffron Clay-Oven Naan & Curry") and study.info.text.contains("★ 4.6"), "cycle_eatery_guide() advances to Saffron Clay-Oven Naan & Curry (★ 4.6)")
+	require(study.cycle_eatery_guide(0) and study.eatery_guide_idx == 0 and study.info.text.contains("Golden Lotus Pho & Noodle House") and study.info.text.contains("4.8/5"), "cycle_eatery_guide(0) frames Golden Lotus Pho & Noodle House (4.8/5)")
+	require(study.cycle_eatery_guide() and study.eatery_guide_idx == 1 and study.info.text.contains("Saffron Clay-Oven Naan & Curry") and study.info.text.contains("4.6/5"), "cycle_eatery_guide() advances to Saffron Clay-Oven Naan & Curry (4.6/5)")
 
 	# Rooftop details, SF corner turrets, Muni overhead lines & Boeddeker Park
 	var roof_counts: Dictionary = study.rooftop_feature_counts
@@ -996,6 +996,123 @@ func run() -> void:
 	require(not study.is_screen_point_in_ui(park_tap), "Boeddeker Park gate label projects outside UI panels when framed")
 	study.info.text = ""
 	require(study.handle_scene_tap(park_tap) and study.info.text.contains("Boeddeker Park"), "tapping the Boeddeker Park gate label inspects the park")
+
+	# Living streetscape: overhead speech bubbles, light pools, day/evening, tree sway, eatery counters
+	study.overview()
+	require(not study.is_speech_bubble_visible(), "overview hides speech bubbles")
+	var bubble_line: String = study.talk_with_neighbor(0)
+	require(study.is_speech_bubble_visible() and study.speech_bubble_anchor == "bea" and study.speech_bubble_text == study.spoken_text_from_line(bubble_line) and not study.speech_bubble_text.begins_with("Bea:") and study.speech_bubble_text.length() > 20, "talk_with_neighbor pops a 3D speech bubble with Bea's spoken words")
+	var bea_pos: Vector3 = study.neighbors[0].pos
+	require(study.speech_bubble_node.position.distance_to(bea_pos + Vector3.UP * study.SPEECH_BUBBLE_HEIGHT_M) < 0.2, "speech bubble floats above the speaking neighbor")
+	require(study.speech_bubble_label.billboard == BaseMaterial3D.BILLBOARD_ENABLED and study.speech_bubble_label.no_depth_test and study.speech_bubble_bg.mesh != null and study.speech_bubble_border.mesh != null, "speech bubble is a billboarded Label3D with background and border meshes")
+	study.update_speech_bubble(0.4)
+	var vp_h: float = study.bubble_viewport_size().y
+	var bubble_screen_w: float = study.speech_bubble_box.x * study.SPEECH_BUBBLE_PIXEL * study.speech_bubble_node.scale.x * vp_h / study.camera.size
+	study.zoom(0.8)
+	study.update_speech_bubble(0.4)
+	var bubble_screen_w2: float = study.speech_bubble_box.x * study.SPEECH_BUBBLE_PIXEL * study.speech_bubble_node.scale.x * vp_h / study.camera.size
+	require(bubble_screen_w > 120.0 and bubble_screen_w < study.bubble_viewport_size().x and absf(bubble_screen_w2 - bubble_screen_w) < bubble_screen_w * 0.08, "speech bubble keeps a readable, zoom-independent on-screen width")
+	study.update_speech_bubble(30.0)
+	require(not study.is_speech_bubble_visible(), "speech bubble fades out after its reading time")
+	study.talk_with_celeste()
+	require(study.is_speech_bubble_visible() and study.speech_bubble_anchor == "celeste", "talking with Celeste shows her speech bubble")
+	study.check_sound_with_rook()
+	require(study.is_speech_bubble_visible() and study.speech_bubble_anchor == "rook", "Rook's soundcheck shows his speech bubble")
+	study.target = Vector3(-400.0, 0.0, 60.0)
+	study.update_speech_bubble(0.1)
+	require(not study.is_speech_bubble_visible(), "speech bubble closes when the view moves away from the speaker")
+	study.overview()
+	require(study.get_node_or_null("StorefrontLightPools") != null and study.light_pool_centers.size() >= 60, "storefront and lamp light pools are built on the sidewalks")
+	var pools_ok := true
+	for pool_xz in study.light_pool_centers:
+		if study.building_containing_point(pool_xz) != "":
+			pools_ok = false
+	require(pools_ok, "every light pool center lies outside all footprints")
+	require(not study.evening_mode and is_equal_approx(study.light_pool_material.albedo_color.a, study.DAY_LIGHT_POOL_ALPHA), "daylight starts with faint light pools")
+	var shift_l_ev := InputEventKey.new()
+	shift_l_ev.pressed = true
+	shift_l_ev.shift_pressed = true
+	shift_l_ev.keycode = KEY_L
+	study._unhandled_input(shift_l_ev)
+	require(study.evening_mode and is_equal_approx(study.light_pool_material.albedo_color.a, 1.0) and study.world_env.ambient_light_energy < 0.6 and study.sun_light.light_energy < 0.6 and study.last_a11y_announcement.contains("Evening"), "Shift+L switches to evening: lower sun and ambient, glowing light pools")
+	study._unhandled_input(shift_l_ev)
+	require(not study.evening_mode and is_equal_approx(study.world_env.ambient_light_energy, 0.72) and is_equal_approx(study.sun_light.light_energy, 1.25), "Shift+L again restores daylight")
+	var plain_l_ev := InputEventKey.new()
+	plain_l_ev.pressed = true
+	plain_l_ev.keycode = KEY_L
+	study._unhandled_input(plain_l_ev)
+	require(study.in_wide_overview and not study.evening_mode, "plain L still opens the wide overview")
+	study.overview()
+	require(study.street_tree_points.size() >= 40 and study.get_node_or_null("StreetTrees/StreetTreeCanopyLower") != null and study.get_node_or_null("StreetTrees/StreetTreeTrunks") != null, "curbside street trees line the Tenderloin sidewalks")
+	var trees_ok := true
+	for st_xz in study.street_tree_points:
+		var t_sd: float = study.min_street_distance(st_xz)
+		if study.building_containing_point(st_xz) != "" or t_sd < 5.4 or t_sd > 6.8:
+			trees_ok = false
+		for pole_xz in study.trolley_pole_points:
+			if pole_xz.distance_to(st_xz) < 4.0:
+				trees_ok = false
+		for n_i in range(study.neighbors.size()):
+			if study.neighbor_xz(n_i).distance_to(st_xz) < 3.2:
+				trees_ok = false
+	require(trees_ok, "street trees stand in curbside wells clear of footprints, trolley poles, and neighbors")
+	var park_canopy: Node3D = study.park_tree_canopies[0]
+	var park_rot_before: Vector3 = park_canopy.rotation
+	var street_sway_before: Vector2 = study.street_tree_sway_sample
+	study.update_tree_sway(0.7)
+	var street_sway_after: Vector2 = study.street_tree_sway_sample
+	require(not park_canopy.rotation.is_equal_approx(park_rot_before) and not street_sway_after.is_equal_approx(street_sway_before), "park and street tree canopies sway in the wind")
+	var calm_xf: Array = study.street_tree_canopy_xforms(0, 0.0, 0.0)
+	var gust_xf: Array = study.street_tree_canopy_xforms(0, street_sway_after.x, street_sway_after.y)
+	require(absf(park_canopy.rotation.x) < 0.06 and absf(park_canopy.rotation.z) < 0.06 and absf(street_sway_after.x) < 0.06 and absf(street_sway_after.y) < 0.06 and (gust_xf[1] as Transform3D).origin.distance_to((calm_xf[1] as Transform3D).origin) < 0.4, "tree sway stays gentle")
+	require(study.get_node_or_null("EateryCounters") != null and study.eatery_counter_nodes.size() == study.NEIGHBORHOOD_EATERIES.size() and study.get_node("StreetLifeDecor/NeighborhoodEateries").get_child_count() == 6, "each eatery has a sidewalk counter set while NeighborhoodEateries keeps its 6 storefronts")
+	var counters_ok := true
+	for c_i in range(study.eatery_counter_points.size()):
+		var c_xz: Vector2 = study.eatery_counter_points[c_i]
+		var c_sd: float = study.min_street_distance(c_xz)
+		if study.building_containing_point(c_xz) != "" or c_sd < 5.5 or c_sd > 7.2 or study.min_wall_distance(c_xz) < 1.6:
+			counters_ok = false
+	require(counters_ok, "eatery counters sit on the sidewalk between curb and storefront")
+	require(not study.eatery_counter_nodes[3].visible, "an unvisited eatery counter stays tucked away")
+	require(study.cycle_eatery_guide(3) and study.eatery_counter_nodes[3].visible and study.is_speech_bubble_visible() and study.speech_bubble_anchor == "eatery:morning_star_banh_mi" and study.speech_bubble_text == String(study.EATERY_HOST_LINES["morning_star_banh_mi"][0]), "visiting an eatery opens its counter and the host greets in a speech bubble")
+	var order_before: int = int(study.eatery_order_counts.get("morning_star_banh_mi", 0))
+	require(study.eatery_counter_interact() and int(study.eatery_order_counts.get("morning_star_banh_mi", 0)) == order_before + 1 and study.info.text.contains("Ordering at Morning Star") and study.info.text.contains("banh mi") and study.speech_bubble_text == String(study.EATERY_HOST_LINES["morning_star_banh_mi"][1]), "ordering at the counter serves the house item and the host answers")
+	var counter_tap: Vector2 = study.camera.unproject_position(Vector3(study.eatery_counter_points[3].x, 1.3, study.eatery_counter_points[3].y))
+	require(not study.is_screen_point_in_ui(counter_tap) and study.handle_scene_tap(counter_tap) and int(study.eatery_order_counts.get("morning_star_banh_mi", 0)) == order_before + 2, "tapping the 3D counter orders again")
+	var steam_node: Node3D = null
+	for part in study.eatery_anim_parts:
+		if int(part.idx) == 0 and String(part.kind) == "steam":
+			steam_node = part.node
+			break
+	require(steam_node != null and study.eatery_counter_nodes[0].visible, "the visited pho counter has steam puffs")
+	var steam_before: Vector3 = steam_node.position
+	study.update_eatery_animation(0.4)
+	require(not steam_node.position.is_equal_approx(steam_before), "steam rises from the pho bowl on a visited counter")
+	study.inspect_tenderloin_museum_hub()
+	require(study.is_speech_bubble_visible() and study.speech_bubble_anchor == "museum_docent", "the museum docent speaks in a bubble at the Time-Portal")
+	study.overview()
+	require(not study.is_speech_bubble_visible(), "overview clears the docent bubble")
+
+	# Godot Web default font (Open Sans SemiBold) coverage: no hex-box glyphs in any 3D or UI text
+	var web_font: Font = ThemeDB.fallback_font
+	var src_text := FileAccess.get_file_as_string("res://main.gd")
+	var missing_glyphs: Dictionary = {}
+	for ch_i in range(src_text.length()):
+		var cp := src_text.unicode_at(ch_i)
+		if cp > 127 and not web_font.has_char(cp):
+			missing_glyphs["U+%04X" % cp] = true
+	require(src_text.length() > 1000 and missing_glyphs.is_empty(), "every non-ASCII character in main.gd exists in the Web default font (missing: %s)" % str(missing_glyphs.keys()))
+	var text_nodes: Array[Node] = study.find_children("*", "Label3D", true, false)
+	text_nodes.append_array(study.find_children("*", "Label", true, false))
+	text_nodes.append_array(study.find_children("*", "Button", true, false))
+	var scene_missing: Dictionary = {}
+	for tn in text_nodes:
+		var t_str: String = tn.text
+		for t_i in range(t_str.length()):
+			var cp2 := t_str.unicode_at(t_i)
+			if cp2 > 127 and not web_font.has_char(cp2):
+				scene_missing["U+%04X" % cp2] = true
+	require(text_nodes.size() > 30 and scene_missing.is_empty(), "every live Label3D/Label/Button renders in the Web default font (missing: %s)" % str(scene_missing.keys()))
 
 	study.overview()
 	var street_screen: Vector2 = study.camera.unproject_position(Vector3(45.0, 0.0, -7.2))
