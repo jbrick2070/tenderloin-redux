@@ -5768,59 +5768,66 @@ func walk_to_point(goal_xz: Vector2) -> bool:
 	announce_a11y_status("Walking to street point (%.1f, %.1f) m." % [safe_goal.x, safe_goal.y])
 	return true
 
-func neighbor_greeting_line(n_id: String) -> String:
-	var turn := posmod(maxi(1, int(neighbor_talk_counts.get(n_id, 1))) - 1, 3)
+## Five conversation turns per neighbor, before and after the block opens. Lines describe game
+## mechanics or facts already in the data (Compton's plaque at Turk & Taylor, the Black Hawk at
+## Turk & Hyde 1949-63, Boeddeker Park's direction computed from the OSM outline).
+func neighbor_lines(n_id: String) -> Array[String]:
 	match n_id:
 		"bea":
 			if block_opened:
-				match turn:
-					0:
-						return "Bea: \"Look at Turk Street come alive! Let's take a group photo, plan our party schedule, or hold our tenant listening circle.\""
-					1:
-						return "Bea: \"Tap 'Plan Party Schedule' below to line up stories, rhythm, shared art tiles, and a quiet pause for the block.\""
-					_:
-						return "Bea: \"Every neighbor's voice belongs here at Turk & Taylor—have you visited the 1966 Compton's plaque or the Museum Time-Portal on Eddy?\""
-			match turn:
-				0:
-					return "Bea: \"Welcome to Turk & Taylor! Greet all 5 neighbors, add 3 mural motifs, and run Rook's soundcheck to open our block.\""
-				1:
-					return "Bea: \"I've got the signboard ready by my rollator—tap 'Meet Next' below to walk over and chat with everyone on the street!\""
-				_:
-					return "Bea: \"Once all 5 of us have met, Celeste's easel is painted, and Rook's speaker is checked, tap 'Open Block Party!' right below.\""
+				return [
+					"Bea: \"Look at Turk Street come alive! Let's take a group photo, plan our party schedule, or hold our tenant listening circle.\"",
+					"Bea: \"Tap 'Plan Party Schedule' to line up stories, rhythm, shared art tiles, and a quiet pause for the block.\"",
+					"Bea: \"Every neighbor's voice belongs here at Turk & Taylor. Have you read the 1966 Compton's plaque on the corner?\"",
+					"Bea: \"Thanks for showing up for the block. That's all a party really is: neighbors deciding to be here for each other.\"",
+					"Bea: \"If you lose track of the afternoon, tap What's Next? and I'll point you the right way.\""
+				]
+			return [
+				"Bea: \"Welcome to Turk & Taylor! Greet all 5 neighbors, add 3 mural motifs, and run Rook's soundcheck to open our block.\"",
+				"Bea: \"I've got the signboard ready by my rollator. Tap Go Meet below and I'll point you to the next neighbor.\"",
+				"Bea: \"Once all 5 of us have met, Celeste's easel is painted, and Rook's speaker is checked, tap 'Open Block Party!' right below.\"",
+				"Bea: \"Boeddeker Park is %s, if you ever want a bench and some trees.\"" % compass_phrase(neighbor_xz(0), BOEDDEKER_PARK_ENTRANCE),
+				"Bea: \"Lost? Tap What's Next? any time and I'll tell you where to head.\""
+			]
 		"dez":
 			if block_opened:
-				match turn:
-					0:
-						return "Dez: \"The block party is jumping! Tap 'Plan Party Schedule' or 'Shoot Short Film' below to collaborate on our afternoon projects.\""
-					1:
-						return "Dez: \"During the rhythm workshop we can toggle an 8-step beat pattern right from the sidewalk—and playing quiet always counts too.\""
-					_:
-						return "Dez: \"If you stroll up to Dodge Alley or out west to Turk & Hyde, you can feel that classic Tenderloin jazz history in the air.\""
-			match turn:
-				0:
-					return "Dez: \"80 BPM pocket is locked in near Mason—use the conversation actions below to meet anyone left or get our block party rolling!\""
-				1:
-					return "Dez: \"Have you chatted with Rook by the Turk Street speaker yet? Every neighbor you meet and motif you paint unlocks another layer of the groove.\""
-				_:
-					return "Dez: \"Tap 'Soundcheck w/ Rook' or 'Paint w/ Celeste' below, or take a walk west to the Black Hawk jazz site at Hyde Street!\""
+				return [
+					"Dez: \"The block party is jumping! Tap 'Plan Party Schedule' or 'Shoot Short Film' to work on our afternoon projects.\"",
+					"Dez: \"During the rhythm workshop we can toggle an 8-step beat pattern right from the sidewalk, and playing quiet always counts too.\"",
+					"Dez: \"If you stroll out west to Dodge Alley or Turk & Hyde, you can feel that classic Tenderloin jazz history in the air.\"",
+					"Dez: \"Celeste and I want to make a little three-shot film. Ask me when you're ready.\"",
+					"Dez: \"Thanks for keeping the tempo easy. Nobody had to shout all afternoon.\""
+				]
+			return [
+				"Dez: \"80 BPM pocket is locked in near Mason. Use the conversation actions below to meet anyone left or get our block party rolling!\"",
+				"Dez: \"Have you chatted with Rook by the Turk Street speaker yet? Every neighbor you meet and motif you paint unlocks another layer of the groove.\"",
+				"Dez: \"Paint with Celeste, soundcheck with Rook, or take a walk west to the Black Hawk jazz site at Turk & Hyde!\"",
+				"Dez: \"I keep the groove at 80 BPM so nobody has to shout over it.\"",
+				"Dez: \"The Black Hawk at Turk & Hyde had jazz from 1949 to 1963. This block has always had music in it.\""
+			]
 		"thanh":
 			if block_opened:
-				match turn:
-					0:
-						return "Thanh: \"Pull up a stool and pour some hot jasmine tea! We can snap a group photo, host the party schedule, or hold our tenant circle.\""
-					1:
-						return "Thanh: \"Whenever the afternoon winds down, tap 'Pack Borrowed Gear' and we'll return the folding table, paint case, and speaker.\""
-					_:
-						return "Thanh: \"I love seeing the sidewalk stay clear for neighbors passing through while we share stories around the long table.\""
-			match turn:
-				0:
-					return "Thanh: \"Hot tea and folding stools are stacked on Taylor Street—once all 5 neighbors, mural & soundcheck are ready, tap Open Block Party!\""
-				1:
-					return "Thanh: \"Celeste has her portable mural easel set up on Turk Street, and Rook is testing the sidewalk monitor just down the block.\""
-				_:
-					return "Thanh: \"Tap any action below to meet the rest of the block—we're keeping the through-route clear for everyone on Taylor and Turk.\""
-		_:
-			return "Choose a conversation topic or neighborhood action below"
+				return [
+					"Thanh: \"Pull up a stool and pour some hot jasmine tea! We can snap a group photo, host the party schedule, or hold our tenant circle.\"",
+					"Thanh: \"Whenever the afternoon winds down, tap 'Pack Borrowed Gear' and we'll return the folding table, paint case, and speaker.\"",
+					"Thanh: \"I love seeing the sidewalk stay clear for neighbors passing through while we share stories around the long table.\"",
+					"Thanh: \"More jasmine tea? There's plenty.\"",
+					"Thanh: \"When everyone's ready, we pack up together. Nobody carries it all alone.\""
+				]
+			return [
+				"Thanh: \"Hot tea and folding stools are stacked on Taylor Street. Once all 5 neighbors, the mural, and the soundcheck are ready, we open the block party!\"",
+				"Thanh: \"Celeste has her portable mural easel set up on Turk Street, and Rook is testing the sidewalk speaker just down the block.\"",
+				"Thanh: \"Tap any action below to meet the rest of the block. We're keeping the through-route clear for everyone on Taylor and Turk.\"",
+				"Thanh: \"The folding table is mine. Borrow it for the party, and we'll carry it back together when we pack up.\"",
+				"Thanh: \"Bea taught me to keep the sidewalk wide enough for walkers and strollers. It matters.\""
+			]
+	return []
+
+func neighbor_greeting_line(n_id: String) -> String:
+	var options := neighbor_lines(n_id)
+	if options.is_empty():
+		return "Choose a conversation topic or neighborhood action below"
+	return options[posmod(maxi(1, int(neighbor_talk_counts.get(n_id, 1))) - 1, options.size())]
 
 func talk_with_neighbor(index: int) -> String:
 	if index < 0 or index >= neighbors.size():
@@ -6004,27 +6011,29 @@ func finish_speaker_arrival() -> void:
 
 func celeste_dialogue_text() -> String:
 	if mural_completed:
-		return "Celeste: \"Sun, Wave, and Rise are shining on our portable board—saved without touching any 2010 wall.\""
-	match posmod(maxi(1, celeste_talk_count) - 1, 3):
-		0:
-			return "Celeste: \"Our freestanding easel sits %.1f m clear of the wall—add Sun, Wave, and Rise below.\"" % min_wall_distance(mural_xz())
-		1:
-			return "Celeste: \"Cycle Garden, Sunset, or Ocean, or tap Shift Motif to move your active shape on the 6×3 board.\""
-		_:
-			return "Celeste: \"Every motif stays on our portable sidewalk board in its own Godot save—no façade is altered.\""
+		return "Celeste: \"Sun, Wave, and Rise are up on our portable board. We made something together without painting anyone's building.\""
+	var options: Array[String] = [
+		"Celeste: \"Welcome to my easel! Add Sun, Wave, and Rise with the buttons below.\"",
+		"Celeste: \"Try Garden, Sunset, or Ocean, or tap Shift Motif to slide your shape around the 6×3 board.\"",
+		"Celeste: \"It's a freestanding sidewalk board, so no wall gets painted and nobody's facade changes.\"",
+		"Celeste: \"There's no wrong spot for a shape. Put it where it feels right to you.\"",
+		"Celeste: \"When the board is finished, Rook's groove gets another layer. Art and music, one afternoon.\""
+	]
+	return options[posmod(maxi(1, celeste_talk_count) - 1, options.size())]
 
 func rook_dialogue_text() -> String:
 	if music_mode == "local" and not local_music_name.is_empty():
-		return "Rook: \"Spinning your local cut (%s) on the Turk Street monitor—tab-local only, never uploaded.\"" % local_music_name
+		return "Rook: \"Spinning your local cut (%s) on the Turk Street speaker. It stays in this tab and is never uploaded.\"" % local_music_name
 	if mural_completed:
-		return "Rook: \"Celeste's 3/3 mural unlocked the full 4-stem 80 BPM sketch—hit Play Groove or load a local track.\""
-	match posmod(maxi(1, rook_talk_count) - 1, 3):
-		0:
-			return "Rook: \"Turk Street speaker is %.1f m clear of the wall—soundcheck locked in (%s).\"" % [min_wall_distance(speaker_xz()), active_stem_summary()]
-		1:
-			return "Rook: \"Every neighbor you meet and motif you paint unlocks another stem—from warm bass to brush drums, chords, and lead.\""
-		_:
-			return "Rook: \"You can keep the street totally quiet or hit Play Groove whenever you want—our block party works either way.\""
+		return "Rook: \"Celeste's finished mural unlocked the last layer. The full 4-part 80 BPM sketch is ready: hit Play Groove or load your own track.\""
+	var options: Array[String] = [
+		"Rook: \"Speaker's set up on the sidewalk and the soundcheck is done (%s).\"" % active_stem_summary(),
+		"Rook: \"Every neighbor you meet and motif you paint unlocks another layer: bass, brushes, chords, then lead.\"",
+		"Rook: \"We can keep the street quiet or play the groove. The party works either way.\"",
+		"Rook: \"I'd rather stay off camera, but I'll always run the sound.\"",
+		"Rook: \"If you load your own track, it stays in this browser tab. Nothing gets uploaded.\""
+	]
+	return options[posmod(maxi(1, rook_talk_count) - 1, options.size())]
 
 func focus_mural_camera() -> void:
 	in_overview = false

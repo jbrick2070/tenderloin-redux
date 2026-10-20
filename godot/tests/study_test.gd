@@ -1157,6 +1157,15 @@ func run() -> void:
 	study.overview()
 	study.reset_mural_state_to_defaults("fresh")
 	study.player.position = study.PLAYER_START
+	var turns_ok := true
+	for t_id in ["bea", "dez", "thanh"]:
+		var t_lines: Array = study.neighbor_lines(t_id)
+		var uniq: Dictionary = {}
+		for tl in t_lines:
+			uniq[tl] = true
+		if t_lines.size() != 5 or uniq.size() != 5:
+			turns_ok = false
+	require(turns_ok and String(study.neighbor_lines("bea")[3]).contains("Boeddeker Park is about a block northwest"), "each neighbor has five distinct conversation turns; Bea's park direction is computed from the OSM outline")
 	var fresh_obj: Dictionary = study.current_objective()
 	require(String(fresh_obj.get("id", "")) == "meet" and int(fresh_obj.get("neighbor", -1)) == 0 and String(fresh_obj.text).begins_with("Meet Bea (0/5"), "a fresh game points you to the nearest neighbor first (Bea)")
 	study.update_objective_ui()
