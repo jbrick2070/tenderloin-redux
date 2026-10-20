@@ -1144,6 +1144,52 @@ func run() -> void:
 	study.field_survey_overrides = saved_overrides
 	study.overview()
 
+	# Conversation-first UX: next-step line, guide marker, talk prompt, dialogue choices, goodbye
+	require(study.compass_phrase(Vector2.ZERO, Vector2(52.0, 0.0)) == "about 50 m east" and study.compass_phrase(Vector2.ZERO, Vector2(0.0, -300.0)) == "about 2 blocks north" and study.compass_phrase(Vector2.ZERO, Vector2(-150.0, 0.0)) == "about a block west" and study.compass_phrase(Vector2.ZERO, Vector2(4.0, 3.0)) == "right here" and study.compass_phrase(Vector2.ZERO, Vector2(40.0, 40.0)) == "about 60 m southeast", "compass_phrase gives honest metre/block directions (+x east, +z south)")
+	study.overview()
+	study.reset_mural_state_to_defaults("fresh")
+	study.player.position = study.PLAYER_START
+	var fresh_obj: Dictionary = study.current_objective()
+	require(String(fresh_obj.get("id", "")) == "meet" and int(fresh_obj.get("neighbor", -1)) == 0 and String(fresh_obj.text).begins_with("Meet Bea (0/5"), "a fresh game points you to the nearest neighbor first (Bea)")
+	study.update_objective_ui()
+	require(study.objective_label.text == "Next: %s" % String(fresh_obj.text), "the header shows the next step")
+	study.update_guide_marker()
+	var marker_target: Vector3 = fresh_obj.target
+	require(study.guide_marker.visible and Vector2(study.guide_marker.position.x, study.guide_marker.position.z).distance_to(Vector2(marker_target.x, marker_target.z)) < 0.01 and study.guide_marker.position.y > 5.0, "the gold guide marker floats above the next neighbor")
+	var bea_xz: Vector2 = study.neighbor_xz(0)
+	study.player.position = Vector3(bea_xz.x + 3.0, 0.0, bea_xz.y)
+	study.update_guide_marker()
+	require(not study.guide_marker.visible, "the guide marker steps aside once you are next to the target")
+	study.hide_speech_bubble()
+	study.follow_player()
+	study.update_talk_prompt()
+	require(study.talk_prompt_node.visible and study.talk_prompt_neighbor == 0 and study.talk_prompt_label.text == "Talk to Bea · T or tap", "standing near Bea shows a 'Talk to Bea · T or tap' prompt")
+	study.player.position = study.PLAYER_START
+	var t_ev := InputEventKey.new()
+	t_ev.pressed = true
+	t_ev.keycode = KEY_T
+	study._unhandled_input(t_ev)
+	require(study.selected_neighbor == 0 or study.arrived_neighbor == 0, "T talks to the nearby neighbor (Bea) instead of walking off to Celeste")
+	study.stop_walking()
+	var hello_line: String = study.talk_with_neighbor(0)
+	require(study.block_panel.visible and study.block_panel_mode == "talk" and study.talk_partner == 0 and study.conv_rows[0].visible and study.conv_rows[1].visible and not study.block_action_rows[0].visible and study.block_detail_label.text.contains("Bea:"), "talking opens conversation mode with dialogue choices instead of the full action wall")
+	require(study.conv_action_btns[0].text == "Go Meet Celeste" or study.conv_action_btns[0].text.begins_with("Go Meet "), "the first conversation action follows the next objective")
+	require(study.conv_action_btns[2].text == "All Block Actions" and study.conv_chat_btn.text == "Keep Chatting (T)" and study.conv_next_btn.text == "What's Next?" and study.conv_bye_btn.text == "Goodbye (Esc)", "conversation offers Keep Chatting, What's Next?, Goodbye, and All Block Actions")
+	var next_line: String = study.ask_whats_next()
+	require(next_line.begins_with("Bea: \"") and next_line.contains("Go say hello!") and study.is_speech_bubble_visible() and study.speech_bubble_anchor == "bea" and study.info.text.contains("gold marker"), "What's Next? has Bea explain the next step in her bubble")
+	require(study.keep_chatting() != "" and study.block_panel_mode == "talk", "Keep Chatting continues the conversation")
+	require(study.run_conversation_action(2) and study.block_panel.visible and study.block_panel_mode == "hub" and study.block_action_rows[0].visible and not study.conv_rows[0].visible, "All Block Actions switches to the full action list")
+	study.show_conversation(0)
+	var esc_ev := InputEventKey.new()
+	esc_ev.pressed = true
+	esc_ev.keycode = KEY_ESCAPE
+	study._unhandled_input(esc_ev)
+	require(not study.block_panel.visible and study.talk_partner == -1 and not study.is_speech_bubble_visible() and study.info.text.contains("You said goodbye to Bea") and study.info.text.contains("Next: "), "Esc says goodbye: panel and bubble close and the next step is shown")
+	require(study.apply_save_envelope(saved_m4_json) and study.block_opened, "restore the full M1-M4 save after the fresh conversation walkthrough")
+	var later_obj: Dictionary = study.current_objective()
+	require(not String(later_obj.get("text", "")).is_empty() and String(later_obj.get("id", "")) != "meet", "after the block opens, the next step moves on to the afternoon projects")
+	study.overview()
+
 	# Godot Web default font (Open Sans SemiBold) coverage: no hex-box glyphs in any 3D or UI text
 	var web_font: Font = ThemeDB.fallback_font
 	var src_text := FileAccess.get_file_as_string("res://main.gd")
@@ -1360,6 +1406,28 @@ func run() -> void:
 		Input.parse_input_event(accept)
 		await process_frame
 		require(study.block_opened and study.block_banner_node.visible, "ui_accept on block Open button opens block gathering and reveals 3D banner at %s" % str(size))
+		study.show_conversation(0)
+		await process_frame
+		await process_frame
+		var conv_rect: Rect2 = study.block_panel.get_global_rect()
+		require(study.header_panel.get_global_rect().end.y <= conv_rect.position.y and conv_rect.end.y <= study.controls.get_global_rect().position.y, "header, conversation panel, and bottom controls do not overlap at %s" % str(size))
+		for c_btn in study.conv_buttons:
+			if c_btn.visible:
+				var cbr: Rect2 = c_btn.get_global_rect()
+				require(cbr.size.x >= 44 and cbr.size.y >= 44 and cbr.position.x >= 0 and cbr.end.x <= size.x and cbr.end.y <= size.y, "conversation buttons are >= 44px and on screen at %s" % str(size))
+				require(c_btn.focus_mode == Control.FOCUS_ALL and c_btn.has_theme_stylebox_override("focus"), "conversation buttons have keyboard focus rings")
+		study.conv_next_btn.grab_focus()
+		accept = InputEventAction.new()
+		accept.action = "ui_accept"
+		accept.pressed = true
+		Input.parse_input_event(accept)
+		await process_frame
+		accept = InputEventAction.new()
+		accept.action = "ui_accept"
+		accept.pressed = false
+		Input.parse_input_event(accept)
+		await process_frame
+		require(study.last_panel_dialogue.begins_with("Bea: \""), "ui_accept on What's Next? asks Bea for the next step at %s" % str(size))
 		study.overview()
 	study.clear_godot_save()
 	study.clear_godot_settings()

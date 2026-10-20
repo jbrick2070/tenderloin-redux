@@ -58,6 +58,8 @@ const KEEPSAKE_BUNTING_Y: Array[String] = [
 	"86.75204712999698", "79.5657117545147", "72"
 ]
 const LOAN_IDS: Array[String] = ["table", "paint-case", "speaker"]
+const LOAN_OWNERS: Dictionary = {"table": "thanh", "paint-case": "celeste", "speaker": "rook"}
+const TALK_PROMPT_RADIUS_M := 6.0
 const LOAN_TITLES: Dictionary = {
 	"table": "Thanh's folding table",
 	"paint-case": "Celeste's paint case",
@@ -549,6 +551,26 @@ var last_proximity_neighbor := -1
 var street_signs_root: Node3D
 var concert_musician_nodes: Array[Node3D] = []
 var concert_crowd_nodes: Array[Node3D] = []
+var objective_label: Label
+var block_panel_mode := "hub"
+var opening_conversation := false
+var talk_partner := -1
+var conv_rows: Array[HBoxContainer] = []
+var block_action_rows: Array[HBoxContainer] = []
+var conv_buttons: Array[Button] = []
+var conv_chat_btn: Button
+var conv_next_btn: Button
+var conv_bye_btn: Button
+var conv_action_btns: Array[Button] = []
+var conv_action_ids: Array[String] = ["", "", ""]
+var guide_marker: Node3D
+var guide_marker_target := Vector3.ZERO
+var talk_prompt_node: Node3D
+var talk_prompt_label: Label3D
+var talk_prompt_bg: MeshInstance3D
+var talk_prompt_neighbor := -1
+var objective_refresh_timer := 0.0
+var ui_clock := 0.0
 var field_survey_overrides: Dictionary = FIELD_SURVEY_OVERRIDES.duplicate(true)
 var last_built_palette: Dictionary = {}
 var street_intersections: Array[Vector2] = []
@@ -1441,6 +1463,8 @@ func _ready() -> void:
 	build_street_trees()
 	build_eatery_counters()
 	ensure_speech_bubble()
+	build_guide_marker()
+	build_talk_prompt()
 	apply_time_of_day()
 	build_audio_players()
 	camera = Camera3D.new()
@@ -3163,9 +3187,11 @@ func build_street_life_decor() -> void:
 
 	add_child(decor_root)
 
-## Muni trolleybus overhead: a contact-wire pair above the travel lanes of Turk and Eddy
-## (31 Balboa corridor), span wires and hangers between sidewalk poles every ~30 m.
-## Stylized schematic placement, not a surveyed pole inventory.
+## Muni trolleybus overhead: a contact-wire pair above the travel lanes of Turk and Eddy, span
+## wires and hangers between sidewalk poles every ~30 m. The 31 Balboa trolleybus runs through
+## the Tenderloin on these streets (inbound on Eddy, outbound on Turk between Larkin and Mason;
+## SFMTA route page and Wikipedia "31 Balboa"). Pole spacing and lane side are schematic,
+## not a surveyed overhead inventory.
 func build_muni_overhead_lines() -> void:
 	trolley_pole_points.clear()
 	trolley_wire_runs = 0
@@ -4137,6 +4163,421 @@ func update_eatery_animation(delta: float) -> void:
 					mat.emission_energy_multiplier = (0.45 + 0.25 * sin(eatery_anim_clock * 6.0 + ph)) * dip
 	if eatery_guide_idx >= 0 and eatery_guide_idx < eatery_host_nodes.size():
 		animate_person_node(eatery_host_nodes[eatery_guide_idx], eatery_anim_clock * 3.0, 0.0, 0.7)
+
+# --- Conversation-first UX: objective guidance, guide marker, talk prompt, dialogue choices ---
+
+func neighbor_index_for_id(n_id: String) -> int:
+	for i in range(neighbors.size()):
+		if String(neighbors[i].get("id", "")) == n_id:
+			return i
+	return -1
+
+## Plain-language direction from one map point to another. Game axes follow the DataSF/OSM
+## local-metre projection: +x is east, +z is south. One Tenderloin block is about 145 m.
+func compass_phrase(from_xz: Vector2, to_xz: Vector2) -> String:
+	var d := to_xz - from_xz
+	var dist := d.length()
+	if dist < 10.0:
+		return "right here"
+	var sectors: Array[String] = ["east", "northeast", "north", "northwest", "west", "southwest", "south", "southeast"]
+	var dir: String = sectors[posmod(int(round(atan2(-d.y, d.x) / (PI / 4.0))), 8)]
+	if dist < 100.0:
+		return "about %d m %s" % [int(round(dist / 10.0)) * 10, dir]
+	var blocks := int(round(dist / 145.0))
+	return "about a block %s" % dir if blocks <= 1 else "about %d blocks %s" % [blocks, dir]
+
+## The single next thing to do, derived from saved progress. `target` is where the guide
+## marker points; `neighbor` is who can help (-1 when nobody in particular).
+func current_objective() -> Dictionary:
+	var p := player_xz() if player != null else Vector2(PLAYER_START.x, PLAYER_START.z)
+	var met := visited_neighbors.size()
+	var total := neighbors.size()
+	var bea_pos: Vector3 = neighbors[0].pos if total > 0 else PLAYER_START
+	if not block_opened:
+		var best := -1
+		var best_d := INF
+		for i in range(total):
+			if not visited_neighbors.has(String(neighbors[i].get("id", ""))):
+				var d := p.distance_to(neighbor_xz(i))
+				if d < best_d:
+					best_d = d
+					best = i
+		if best >= 0:
+			var n: Dictionary = neighbors[best]
+			return {"id": "meet", "neighbor": best, "has_target": true, "target": n.pos, "text": "Meet %s (%d/%d neighbors met)" % [n.name, met, total], "hint": "%s is %s. Go say hello!" % [n.name, compass_phrase(p, neighbor_xz(best))]}
+		if mural_placements.size() < MURAL_MOTIFS.size():
+			return {"id": "mural", "neighbor": celeste_index, "has_target": true, "target": MURAL_POS, "text": "Paint Sun, Wave and Rise on Celeste's easel (%d/3)" % mural_placements.size(), "hint": "Celeste's easel is %s. Add all three motifs." % compass_phrase(p, mural_xz())}
+		if not rook_soundcheck_done:
+			return {"id": "soundcheck", "neighbor": rook_index, "has_target": true, "target": ROOK_SPEAKER_POS, "text": "Run a soundcheck with Rook", "hint": "Rook's speaker is %s. One soundcheck and we're ready." % compass_phrase(p, speaker_xz())}
+		return {"id": "open", "neighbor": 0, "has_target": true, "target": bea_pos, "text": "Open the block party with Bea (O)", "hint": "Everyone has met, the mural is painted, and the sound is checked. Let's open the block party!"}
+	var kp := String(keepsake_photo.get("status", "unasked"))
+	if kp == "unasked" and not epilogue_packing:
+		return {"id": "photo", "neighbor": 0, "has_target": true, "target": bea_pos, "text": "Take the group keepsake photo (Y)", "hint": "Let's take a group photo by the mural. Rook would rather stay off camera."}
+	if not is_epilogue_done():
+		if not epilogue_packing:
+			return {"id": "pack", "neighbor": neighbor_index_for_id("thanh"), "has_target": true, "target": neighbors[maxi(0, neighbor_index_for_id("thanh"))].pos, "text": "Pack up the borrowed gear (Y)", "hint": "Time to pack up and give back what we borrowed."}
+		for lid in LOAN_IDS:
+			if not epilogue_returned.has(lid):
+				var owner_i := maxi(0, neighbor_index_for_id(String(LOAN_OWNERS.get(lid, "thanh"))))
+				var loan_title := String(LOAN_TITLES.get(lid, lid))
+				return {"id": "return", "neighbor": owner_i, "has_target": true, "target": neighbors[owner_i].pos, "text": "Return %s (Y) · %d/3 returned" % [loan_title, epilogue_returned.size()], "hint": "Next, return %s. %s is %s." % [loan_title, neighbors[owner_i].name, compass_phrase(p, neighbor_xz(owner_i))]}
+	if not is_hosting_done():
+		var prog_text := "Plan the party schedule with Bea (Z)"
+		if programme_published.size() == PROGRAMME_SEGMENTS.size() and hosting_order.is_empty():
+			prog_text = "Start hosting the afternoon (Z)"
+		elif not hosting_order.is_empty():
+			prog_text = "Host the next activity: %s (Z) · %d/4" % [programme_title(current_hosting_activity()), hosting_results.size()]
+		return {"id": "programme", "neighbor": 0, "has_target": true, "target": bea_pos, "text": prog_text, "hint": "Let's line up the afternoon: stories, rhythm, shared art, and a quiet pause."}
+	if civic_phase != "done":
+		return {"id": "civic", "neighbor": 0, "has_target": true, "target": bea_pos, "text": "Hold the tenant listening circle (Q)", "hint": "Let's hold a peaceful tenant listening circle so every neighbor is heard."}
+	if film_phase != "done":
+		return {"id": "film", "neighbor": neighbor_index_for_id("dez"), "has_target": true, "target": neighbors[maxi(0, neighbor_index_for_id("dez"))].pos, "text": "Make the short film The Open Seat (.)", "hint": "Celeste and I want to make a little three-shot film. Want to help?"}
+	if not history_read:
+		return {"id": "comptons", "neighbor": -1, "has_target": true, "target": COMPTONS_POS, "text": "Read the Compton's Cafeteria plaque at Turk & Taylor (J)", "hint": "The Compton's Cafeteria plaque at Turk & Taylor is %s." % compass_phrase(p, comptons_xz())}
+	if not blackhawk_discovered:
+		return {"id": "blackhawk", "neighbor": -1, "has_target": true, "target": BLACKHAWK_POS, "text": "Visit the former Black Hawk jazz club at Turk & Hyde (H)", "hint": "The Black Hawk site at Turk & Hyde is %s." % compass_phrase(p, blackhawk_xz())}
+	return {"id": "explore", "neighbor": -1, "has_target": false, "target": Vector3.ZERO, "text": "Explore: museum Time-Portal (Shift+M), eateries (Shift+E), evening (Shift+L)", "hint": "Take your time. Try the museum's Time-Portal on Eddy, or the eateries along Turk."}
+
+func update_objective_ui() -> void:
+	if objective_label == null:
+		return
+	objective_label.text = "Next: %s" % String(current_objective().get("text", ""))
+
+func screen_constant_scale(px_per_unit: float) -> float:
+	if camera == null:
+		return 1.0
+	return px_per_unit * camera.size / maxf(bubble_viewport_size().y, 1.0)
+
+## Floating gold diamond above the current objective target (screen-constant size).
+func build_guide_marker() -> void:
+	guide_marker = Node3D.new()
+	guide_marker.name = "GuideMarker"
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	st.set_smooth_group(-1)
+	var gold := Color("ffd25a")
+	colored_prism(st, Vector3(0.0, 0.5, 0.0), 0.36, 0.0, 0.5, 4, gold, Color(0, 0, 0, 0))
+	colored_prism(st, Vector3(0.0, 0.5, 0.0), 0.36, 0.0, -0.5, 4, gold.darkened(0.15), Color(0, 0, 0, 0))
+	st.generate_normals()
+	var gem := MeshInstance3D.new()
+	gem.name = "GuideGem"
+	gem.mesh = st.commit()
+	var gem_mat := mural_material(gold)
+	gem_mat.no_depth_test = true
+	gem_mat.render_priority = 9
+	gem.material_override = gem_mat
+	guide_marker.add_child(gem)
+	add_child(guide_marker)
+
+func guide_marker_anchor(obj: Dictionary) -> Vector3:
+	var t: Vector3 = obj.get("target", Vector3.ZERO)
+	var lift := 6.6 if int(obj.get("neighbor", -1)) >= 0 and String(obj.get("id", "")) != "mural" and String(obj.get("id", "")) != "soundcheck" else 4.6
+	return Vector3(t.x, lift, t.z)
+
+func update_guide_marker() -> void:
+	if guide_marker == null:
+		return
+	var obj := current_objective()
+	var show := bool(obj.get("has_target", false))
+	if show:
+		var t: Vector3 = obj.get("target", Vector3.ZERO)
+		var near := player_xz().distance_to(Vector2(t.x, t.z)) < 3.5
+		var n_i := int(obj.get("neighbor", -1))
+		var engaged := n_i >= 0 and talk_partner == n_i and block_panel != null and block_panel.visible
+		if near or engaged:
+			show = false
+	guide_marker.visible = show
+	if not show:
+		return
+	guide_marker_target = guide_marker_anchor(obj)
+	var s := screen_constant_scale(30.0)
+	guide_marker.scale = Vector3.ONE * s
+	guide_marker.position = guide_marker_target + Vector3.UP * (sin(ui_clock * 2.6) * 0.14 * s)
+	guide_marker.rotation.y = wrapf(ui_clock * 1.4, -PI, PI)
+
+func build_talk_prompt() -> void:
+	talk_prompt_node = Node3D.new()
+	talk_prompt_node.name = "TalkPrompt"
+	talk_prompt_node.visible = false
+	talk_prompt_bg = MeshInstance3D.new()
+	talk_prompt_bg.name = "TalkPromptBackground"
+	talk_prompt_bg.material_override = speech_bubble_material(Color(0.07, 0.11, 0.15, 0.92), 10)
+	talk_prompt_node.add_child(talk_prompt_bg)
+	talk_prompt_label = Label3D.new()
+	talk_prompt_label.name = "TalkPromptText"
+	talk_prompt_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	talk_prompt_label.no_depth_test = true
+	talk_prompt_label.render_priority = 12
+	talk_prompt_label.pixel_size = SPEECH_BUBBLE_PIXEL
+	talk_prompt_label.font_size = 22
+	talk_prompt_label.outline_size = 0
+	talk_prompt_label.modulate = Color("ffe48f")
+	talk_prompt_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	talk_prompt_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	talk_prompt_node.add_child(talk_prompt_label)
+	add_child(talk_prompt_node)
+
+func nearest_neighbor_within(radius: float) -> int:
+	if player == null:
+		return -1
+	var p := player_xz()
+	var best := -1
+	var best_d := radius
+	for i in range(neighbors.size()):
+		var d := p.distance_to(neighbor_xz(i))
+		if d <= best_d:
+			best_d = d
+			best = i
+	return best
+
+## "Talk to Bea · T or tap" above the nearest neighbor you are not already talking with.
+func update_talk_prompt() -> void:
+	if talk_prompt_node == null:
+		return
+	var idx := nearest_neighbor_within(TALK_PROMPT_RADIUS_M)
+	if idx >= 0:
+		var n_id := String(neighbors[idx].get("id", ""))
+		var talking := is_speech_bubble_visible() and speech_bubble_anchor == n_id
+		var in_panel := (talk_partner == idx and block_panel != null and block_panel.visible) or (idx == celeste_index and mural_panel != null and mural_panel.visible) or (idx == rook_index and music_panel != null and music_panel.visible)
+		if talking or in_panel or in_overview or in_wide_overview:
+			idx = -1
+	if idx < 0:
+		talk_prompt_node.visible = false
+		talk_prompt_neighbor = -1
+		return
+	if idx != talk_prompt_neighbor:
+		talk_prompt_neighbor = idx
+		var prompt := "Talk to %s · T or tap" % String(neighbors[idx].name)
+		talk_prompt_label.text = prompt
+		var font: Font = ThemeDB.fallback_font
+		var sz := font.get_string_size(prompt, HORIZONTAL_ALIGNMENT_CENTER, -1, 22)
+		talk_prompt_label.offset = Vector2(0.0, 12.0 + (sz.y + 14.0) * 0.5)
+		talk_prompt_bg.mesh = bubble_shape_mesh(sz.x + 24.0, sz.y + 14.0, 12.0, 0.0)
+	var n_pos: Vector3 = neighbors[idx].pos
+	talk_prompt_node.position = n_pos + Vector3.UP * SPEECH_BUBBLE_HEIGHT_M
+	talk_prompt_node.scale = Vector3.ONE * speech_bubble_base_scale()
+	talk_prompt_node.visible = true
+
+## Talk to someone close by: chat if you are already beside them, otherwise walk over and the
+## conversation starts on arrival. Returns false when nobody is within `radius` metres.
+func talk_to_nearby_neighbor(radius: float = 8.0) -> bool:
+	var idx := nearest_neighbor_within(radius)
+	if idx < 0:
+		return false
+	if idx == celeste_index:
+		if arrived_neighbor == celeste_index or arrived_mural:
+			talk_with_celeste()
+		elif walk_to_neighbor(celeste_index):
+			if arrived_neighbor == celeste_index:
+				talk_with_celeste()
+			else:
+				pending_celeste_talk = true
+		return true
+	if idx == rook_index:
+		return request_rook_soundcheck()
+	if arrived_neighbor == idx:
+		talk_with_neighbor(idx)
+	else:
+		walk_to_neighbor(idx)
+	return true
+
+func show_conversation(index: int) -> void:
+	talk_partner = index
+	opening_conversation = true
+	show_block_panel(true)
+	opening_conversation = false
+
+func conversation_partner_line(index: int, body: String) -> String:
+	if index < 0 or index >= neighbors.size():
+		return body
+	return "%s: \"%s\"" % [String(neighbors[index].name), body]
+
+## "What's next?" — the current partner (or whoever is closest) explains the next step.
+func ask_whats_next() -> String:
+	var obj := current_objective()
+	var speaker := talk_partner if talk_partner >= 0 else nearest_neighbor_within(TALK_PROMPT_RADIUS_M)
+	var hint := String(obj.get("hint", ""))
+	var line := conversation_partner_line(speaker, hint) if speaker >= 0 else hint
+	last_panel_dialogue = line
+	if speaker >= 0:
+		show_neighbor_speech(speaker, line)
+	update_block_ui()
+	if info != null:
+		var way := "Follow the gold marker · tap the street or use WASD to walk" if bool(obj.get("has_target", false)) else "No marker needed: wander and explore"
+		info.text = "%s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, way]
+	announce_a11y_status("Next: %s. %s" % [String(obj.get("text", "")), hint])
+	return line
+
+func end_conversation() -> void:
+	var partner := talk_partner
+	talk_partner = -1
+	block_panel_mode = "hub"
+	last_panel_dialogue = ""
+	show_block_panel(false)
+	show_mural_panel(false)
+	show_music_panel(false)
+	hide_speech_bubble()
+	arrived_neighbor = -1
+	arrived_mural = false
+	arrived_speaker = false
+	selected_neighbor = -1
+	var who := String(neighbors[partner].name) if partner >= 0 and partner < neighbors.size() else "the block"
+	var obj := current_objective()
+	if info != null:
+		var way := "Follow the gold marker to your next stop" if bool(obj.get("has_target", false)) else "Wander and explore at your own pace"
+		info.text = "You said goodbye to %s.\nNext: %s · %s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [who, String(obj.get("text", "")), way]
+	announce_a11y_status("Said goodbye to %s. Next: %s" % [who, String(obj.get("text", ""))])
+	update_objective_ui()
+
+func keep_chatting() -> String:
+	if talk_partner >= 0 and talk_partner < neighbors.size():
+		return talk_with_neighbor(talk_partner)
+	return ""
+
+## The three context actions offered while chatting: the next objective, meeting someone else,
+## and the full block action list.
+func conversation_actions() -> Array[Dictionary]:
+	var obj := current_objective()
+	var acts: Array[Dictionary] = []
+	match String(obj.get("id", "")):
+		"meet":
+			acts.append({"id": "walk_neighbor:%d" % int(obj.neighbor), "label": "Go Meet %s" % String(neighbors[int(obj.neighbor)].name)})
+		"mural":
+			acts.append({"id": "mural", "label": "Paint with Celeste"})
+		"soundcheck":
+			acts.append({"id": "soundcheck", "label": "Soundcheck with Rook"})
+		"open":
+			acts.append({"id": "open", "label": "Open Block Party!"})
+		"photo":
+			acts.append({"id": "epilogue", "label": "Take Group Photo"})
+		"pack", "return":
+			acts.append({"id": "epilogue", "label": "Pack Gear" if String(obj.id) == "pack" else "Return Gear (%d/3)" % epilogue_returned.size()})
+		"programme":
+			acts.append({"id": "programme", "label": block_programme_btn.text if block_programme_btn != null else "Plan Party Schedule"})
+		"civic":
+			acts.append({"id": "civic", "label": block_civic_btn.text if block_civic_btn != null else "Hold Tenant Circle"})
+		"film":
+			acts.append({"id": "film", "label": block_film_btn.text if block_film_btn != null else "Shoot Short Film"})
+		"comptons":
+			acts.append({"id": "comptons", "label": "Walk to Compton's"})
+		"blackhawk":
+			acts.append({"id": "blackhawk", "label": "Walk to Black Hawk"})
+		_:
+			acts.append({"id": "museum", "label": "Visit the Museum"})
+	var someone_else := -1
+	for i in range(neighbors.size()):
+		var cand := posmod(talk_partner + 1 + i, neighbors.size())
+		if cand != talk_partner and not visited_neighbors.has(String(neighbors[cand].get("id", ""))):
+			someone_else = cand
+			break
+	if someone_else < 0:
+		someone_else = posmod(talk_partner + 1, maxi(1, neighbors.size()))
+	for i in range(neighbors.size()):
+		var cand2 := posmod(talk_partner + 1 + i, neighbors.size())
+		if cand2 != talk_partner and "walk_neighbor:%d" % cand2 != String(acts[0].id) and not visited_neighbors.has(String(neighbors[cand2].get("id", ""))):
+			someone_else = cand2
+			break
+	var other_id := "walk_neighbor:%d" % someone_else
+	if String(acts[0].id) != other_id and someone_else != talk_partner and not visited_neighbors.has(String(neighbors[someone_else].get("id", ""))):
+		acts.append({"id": other_id, "label": "Talk to %s" % String(neighbors[someone_else].name)})
+	elif not history_read and String(acts[0].id) != "comptons":
+		acts.append({"id": "comptons", "label": "See Compton's Plaque"})
+	elif not blackhawk_discovered and String(acts[0].id) != "blackhawk":
+		acts.append({"id": "blackhawk", "label": "Walk to Black Hawk"})
+	elif String(acts[0].id) != other_id and someone_else != talk_partner:
+		acts.append({"id": other_id, "label": "Talk to %s" % String(neighbors[someone_else].name)})
+	else:
+		acts.append({"id": "museum", "label": "Visit the Museum"})
+	acts.append({"id": "hub", "label": "All Block Actions"})
+	return acts
+
+func run_conversation_action(slot: int) -> bool:
+	if slot < 0 or slot >= conv_action_ids.size():
+		return false
+	var act_id := conv_action_ids[slot]
+	var partner := talk_partner
+	var ok := run_conversation_action_id(act_id)
+	# Block-wide steps reopen the panel as the full hub; stay in the conversation instead.
+	if ok and partner >= 0 and act_id in ["epilogue", "programme", "civic", "film", "open"] and block_panel != null and block_panel.visible:
+		show_conversation(partner)
+	return ok
+
+func run_conversation_action_id(act_id: String) -> bool:
+	if act_id.begins_with("walk_neighbor:"):
+		return walk_to_neighbor(int(act_id.get_slice(":", 1)))
+	match act_id:
+		"mural":
+			open_mural_from_block_panel()
+		"soundcheck":
+			return request_rook_soundcheck()
+		"open":
+			return open_block_gathering()
+		"epilogue":
+			advance_epilogue_step()
+		"programme":
+			advance_programme_and_hosting_step()
+		"civic":
+			advance_civic_step()
+		"film":
+			advance_film_step()
+		"comptons":
+			return walk_to_or_read_history_stop("comptons")
+		"blackhawk":
+			return walk_to_or_read_history_stop("blackhawk")
+		"museum":
+			return inspect_tenderloin_museum_hub()
+		"hub":
+			block_panel_mode = "hub"
+			show_block_panel(true)
+		_:
+			return false
+	return true
+
+func apply_block_panel_mode() -> void:
+	var talk := block_panel_mode == "talk" and talk_partner >= 0
+	for r in conv_rows:
+		if r != null:
+			r.visible = talk
+	for r in block_action_rows:
+		if r != null:
+			r.visible = not talk
+	if block_detail_label != null:
+		block_detail_label.clip_text = not talk
+		block_detail_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if talk else TextServer.AUTOWRAP_OFF
+		block_detail_label.max_lines_visible = 2 if talk else -1
+	if talk:
+		var acts := conversation_actions()
+		for s in range(conv_action_btns.size()):
+			var has := s < acts.size()
+			conv_action_btns[s].visible = has
+			conv_action_ids[s] = String(acts[s].id) if has else ""
+			if has:
+				conv_action_btns[s].text = String(acts[s].label)
+		if conv_chat_btn != null:
+			conv_chat_btn.text = "Keep Chatting (T)"
+
+func conv_button(parent: Node, text: String, action: Callable) -> Button:
+	var control := Button.new()
+	control.text = text
+	control.clip_text = true
+	control.custom_minimum_size = Vector2(44, 44)
+	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	control.focus_mode = Control.FOCUS_ALL
+	style_game_button(control)
+	control.add_theme_font_size_override("font_size", 16)
+	control.pressed.connect(action)
+	parent.add_child(control)
+	conv_buttons.append(control)
+	return control
+
+func update_conversation_ui(delta: float) -> void:
+	ui_clock = wrapf(ui_clock + delta, 0.0, 3600.0)
+	objective_refresh_timer -= delta
+	if objective_refresh_timer <= 0.0:
+		objective_refresh_timer = 0.5
+		update_objective_ui()
+	update_guide_marker()
+	update_talk_prompt()
 
 func player_height_m() -> float:
 	var min_y := INF
@@ -5197,8 +5638,7 @@ func talk_with_neighbor(index: int) -> String:
 	last_panel_dialogue = ""
 	recompute_music_stems()
 	update_block_3d()
-	show_block_panel(true)
-	update_block_ui()
+	show_conversation(index)
 	trigger_progress_cue("neighbor_visit", n.name)
 	var line := neighbor_greeting_line(n_id)
 	show_neighbor_speech(index, line)
@@ -5294,8 +5734,7 @@ func finish_neighbor_arrival(index: int) -> void:
 		pending_rook_talk = false
 		if newly_visited:
 			save_godot_state()
-		show_block_panel(true)
-		update_block_ui()
+		show_conversation(index)
 		show_neighbor_speech(index, neighbor_greeting_line(n_id))
 		var sub_b := mem_line if not mem_line.is_empty() else neighbor_greeting_line(n_id)
 		info.text = "With %s — %s (%d/5 neighbors · %.2f m from %s%s)\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, visited_neighbors.size(), nb.distance, nb.id, cut_note, sub_b]
@@ -9299,6 +9738,7 @@ func _process(delta: float) -> void:
 	update_speech_bubble(delta)
 	update_tree_sway(delta)
 	update_eatery_animation(delta)
+	update_conversation_ui(delta)
 
 func _physics_process(delta: float) -> void:
 	var shift_held := Input.is_key_pressed(KEY_SHIFT) or Input.is_physical_key_pressed(KEY_SHIFT)
@@ -9537,6 +9977,8 @@ func _unhandled_input(event: InputEvent) -> void:
 					talk_with_neighbor(arrived_neighbor)
 				elif selected_neighbor == celeste_index or walking_to_mural:
 					pending_celeste_talk = true
+				elif talk_to_nearby_neighbor(8.0):
+					pass
 				else:
 					if walk_to_neighbor(celeste_index):
 						if arrived_neighbor == celeste_index:
@@ -9618,7 +10060,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_N, KEY_BRACKETRIGHT: choose_next_neighbor(1)
 			KEY_B, KEY_BRACKETLEFT: choose_next_neighbor(-1)
 			KEY_F: follow_player()
-			KEY_ESCAPE, KEY_X: stop_walking()
+			KEY_ESCAPE, KEY_X:
+				var any_panel := (block_panel != null and block_panel.visible) or (mural_panel != null and mural_panel.visible) or (music_panel != null and music_panel.visible)
+				if current_path.is_empty() and any_panel:
+					end_conversation()
+				else:
+					stop_walking()
 	elif event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
 			if not is_screen_point_in_ui(event.position):
@@ -9717,6 +10164,8 @@ func choose_next(direction: int) -> void:
 func overview() -> void:
 	in_overview = true
 	hide_speech_bubble()
+	talk_partner = -1
+	block_panel_mode = "hub"
 	in_wide_overview = false
 	following_player = false
 	camera_yaw = 0.0
@@ -9844,7 +10293,7 @@ func zoom(factor: float) -> void:
 	update_occlusion(true)
 
 func overview_text() -> String:
-	return "%d city footprints · 2010 survey · PDDL · Streets © OpenStreetMap / ODbL\nRight-drag / Shift+Arrows: Rotate 3D · Scroll: Zoom · Left-drag: Pan\nWASD/Tap: Walk · Neighbors (1–5) · Block (G) · Museum (Shift+M) · Eateries (Shift+E)" % data.buildings.size()
+	return "Tap a neighbor to walk over and talk · T talks · Esc says goodbye\nWASD/arrows walk · drag pans · right-drag rotates · scroll zooms · G: all block actions\n%d city footprints · 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % data.buildings.size()
 
 func wide_overview_text() -> String:
 	var dist_state := "Shown" if district_boundary_visible else "Hidden"
@@ -9882,6 +10331,7 @@ func show_music_panel(visible_flag: bool) -> void:
 
 func show_block_panel(visible_flag: bool) -> void:
 	if visible_flag:
+		block_panel_mode = "talk" if opening_conversation and talk_partner >= 0 else "hub"
 		if mural_panel != null:
 			mural_panel.visible = false
 		if music_panel != null:
@@ -9892,6 +10342,7 @@ func show_block_panel(visible_flag: bool) -> void:
 			update_block_ui()
 
 func toggle_block_panel() -> void:
+	block_panel_mode = "hub"
 	var next_vis := true
 	if block_panel != null:
 		next_vis = not block_panel.visible
@@ -10037,6 +10488,8 @@ func update_block_ui() -> void:
 		block_district_btn.text = "District Border: On" if district_boundary_visible else "District Border: Off"
 	if block_import_btn != null:
 		block_import_btn.text = "Web Save Loaded" if browser_import_status == "imported" else "Import Web Save"
+	apply_block_panel_mode()
+	update_objective_ui()
 
 func make_ui() -> void:
 	button_focus_style = StyleBoxFlat.new()
@@ -10092,6 +10545,12 @@ func make_ui() -> void:
 	title.add_theme_font_size_override("font_size", 26)
 	title.add_theme_color_override("font_color", Color("ffe48f"))
 	column.add_child(title)
+	objective_label = Label.new()
+	objective_label.name = "ObjectiveLabel"
+	objective_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	objective_label.add_theme_font_size_override("font_size", 18)
+	objective_label.add_theme_color_override("font_color", Color("9ef5e5"))
+	column.add_child(objective_label)
 	info = Label.new()
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info.text = overview_text()
@@ -10202,6 +10661,25 @@ func make_ui() -> void:
 	block_detail_label.add_theme_color_override("font_color", Color("f2ead8"))
 	block_vbox.add_child(block_detail_label)
 	block_buttons.clear()
+	conv_buttons.clear()
+	conv_rows.clear()
+	conv_action_btns.clear()
+	var c_row1 := HBoxContainer.new()
+	c_row1.name = "ConversationChoices"
+	c_row1.add_theme_constant_override("separation", 4)
+	block_vbox.add_child(c_row1)
+	conv_chat_btn = conv_button(c_row1, "Keep Chatting (T)", func(): keep_chatting())
+	conv_next_btn = conv_button(c_row1, "What's Next?", func(): ask_whats_next())
+	conv_bye_btn = conv_button(c_row1, "Goodbye (Esc)", func(): end_conversation())
+	var c_row2 := HBoxContainer.new()
+	c_row2.name = "ConversationActions"
+	c_row2.add_theme_constant_override("separation", 4)
+	block_vbox.add_child(c_row2)
+	for slot in range(3):
+		var slot_i := slot
+		conv_action_btns.append(conv_button(c_row2, "...", func(): run_conversation_action(slot_i)))
+	conv_rows.append(c_row1)
+	conv_rows.append(c_row2)
 	var b_row1 := HBoxContainer.new()
 	b_row1.add_theme_constant_override("separation", 4)
 	block_vbox.add_child(b_row1)
@@ -10224,6 +10702,10 @@ func make_ui() -> void:
 	block_district_btn = block_button(b_row3, "District Border: On", func(): toggle_district_boundary())
 	block_import_btn = block_button(b_row3, "Import Web Save", func(): import_browser_save_from_web_storage())
 	block_button(b_row3, "Step Back", func(): show_block_panel(false))
+	block_action_rows.clear()
+	block_action_rows.append(b_row1)
+	block_action_rows.append(b_row2)
+	block_action_rows.append(b_row3)
 	update_block_ui()
 
 	controls = GridContainer.new()
@@ -10251,6 +10733,8 @@ func make_ui() -> void:
 			title.add_theme_font_size_override("font_size", 18 if narrow else 26)
 		if is_instance_valid(info):
 			info.add_theme_font_size_override("font_size", 13 if narrow else 19)
+		if is_instance_valid(objective_label):
+			objective_label.add_theme_font_size_override("font_size", 13 if narrow else 18)
 		if is_instance_valid(mural_label):
 			mural_label.add_theme_font_size_override("font_size", 13 if narrow else 16)
 		if is_instance_valid(music_label):
@@ -10273,6 +10757,9 @@ func make_ui() -> void:
 			if is_instance_valid(b):
 				b.add_theme_font_size_override("font_size", sub_btn_font)
 		for b in block_buttons:
+			if is_instance_valid(b):
+				b.add_theme_font_size_override("font_size", sub_btn_font)
+		for b in conv_buttons:
 			if is_instance_valid(b):
 				b.add_theme_font_size_override("font_size", sub_btn_font)
 		controls.columns = 2 if narrow else 3
