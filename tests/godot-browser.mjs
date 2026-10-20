@@ -131,7 +131,8 @@ try {
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.active_panel === 'none');
     const beforeThanh = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
-    // Visit Thanh on the west end of the block (Mason & Golden Gate) via Digit5 before heading east along Turk St
+    const saveBeforeStop = await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1'));
+    // Preserve the established Thanh approach used by the lighting regression.
     await page.keyboard.press('Digit5');
     await page.waitForFunction(previous => {
       const s = window.__tenderloinGodotA11ySnapshot, p = s?.player_grounding;
@@ -141,6 +142,38 @@ try {
     assertGrounded(walkingGrounding, 'walking');
     // PNGs are visual evidence near the asserted frame, not atomic frame captures.
     await page.screenshot({ path: `artifacts/godot-${size.width}-character-walking.png` });
+    const activeWalk = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+    assert.equal(activeWalk.walk_control_text, 'Stop Walking');
+    assert.ok(Math.hypot(activeWalk.player_grounding.x - 11.10, activeWalk.player_grounding.z - 24.97) > 25, 'Thanh remains over 25m away before the Stop gesture, avoiding an arrival race');
+    const stop = activeWalk.walk_control;
+    assert.ok(stop.visible && stop.width >= 44 && stop.height >= 44 && stop.x >= 0 && stop.y >= 0 && stop.x + stop.width <= activeWalk.viewport_width + 1 && stop.y + stop.height <= activeWalk.viewport_height + 1, 'Stop Walking stays visible and tappable');
+    const stopCanvas = await page.locator('#canvas').boundingBox();
+    await page.mouse.move(stopCanvas.x + (stop.x + stop.width / 2) * stopCanvas.width / activeWalk.viewport_width, stopCanvas.y + (stop.y + stop.height / 2) * stopCanvas.height / activeWalk.viewport_height);
+    await page.mouse.down();
+    await page.waitForFunction(frame => {
+      const s = window.__tenderloinGodotA11ySnapshot;
+      return s?.ui_frame > frame && !s.player_grounding.path_active && s.walk_control_text === 'Walk & Talk (Next)' && s.announcement.startsWith('Walking stopped.');
+    }, activeWalk.ui_frame);
+    const stoppedWalk = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+    // Hold through multiple updates, then release: a Stop press must not become Next.
+    await page.waitForFunction(frame => window.__tenderloinGodotA11ySnapshot?.ui_frame > frame + 3, stoppedWalk.ui_frame);
+    await page.mouse.up();
+    await page.waitForTimeout(900);
+    const steadyWalk = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+    assert.ok(steadyWalk.ui_frame > stoppedWalk.ui_frame + 3 && steadyWalk.player_grounding.stride < 0.1, 'fresh stopped frames settle the walking animation');
+    assert.equal(steadyWalk.player_grounding.path_active, false);
+    assert.equal(steadyWalk.walk_control_text, 'Walk & Talk (Next)');
+    assert.ok(Math.hypot(steadyWalk.player_grounding.x - stoppedWalk.player_grounding.x, steadyWalk.player_grounding.z - stoppedWalk.player_grounding.z) < 0.001, 'stopped player stays still after release');
+    assert.equal(steadyWalk.visited_count, beforeThanh.visited_count, 'stopping does not mark the neighbor visited');
+    assert.equal(steadyWalk.reward_sound_count, beforeThanh.reward_sound_count, 'stopping does not award or play a reward');
+    assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), saveBeforeStop, 'stop leaves progress save unchanged');
+    assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.save.v1')), BROWSER_SAVE_SENTINEL, 'stop preserves legacy save');
+    await page.screenshot({ path: `artifacts/godot-${size.width}-walking-stopped.png` });
+    await page.keyboard.press('Digit5');
+    await page.waitForFunction(previous => {
+      const s = window.__tenderloinGodotA11ySnapshot, p = s?.player_grounding;
+      return s?.ui_frame > previous.frame && p?.path_active && s.walk_control_text === 'Stop Walking' && Math.hypot(p.x - previous.x, p.z - previous.z) > 0.1;
+    }, { frame: steadyWalk.ui_frame, x: steadyWalk.player_grounding.x, z: steadyWalk.player_grounding.z });
     await page.keyboard.press('Shift+KeyL');
     await page.waitForFunction(() => {
       const s = window.__tenderloinGodotA11ySnapshot;
@@ -161,6 +194,7 @@ try {
       return p && !p.path_active && p.stride < 0.1;
     });
     assertGrounded(await page.evaluate(() => window.__tenderloinGodotA11ySnapshot), 'arrived');
+    assert.equal((await page.evaluate(() => window.__tenderloinGodotA11ySnapshot)).walk_control_text, 'Walk & Talk (Next)', 'arrival restores normal walking action');
     await page.keyboard.press('KeyF');
     await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.active_panel === 'none' && window.__tenderloinGodotA11ySnapshot?.overlays.speech.anchor === '');
     await page.screenshot({ path: `artifacts/godot-${size.width}-character-arrived.png` });
@@ -846,7 +880,7 @@ try {
     assert.equal(afterFileBridgeMerge.civic?.phase, 'done', 'File picker bridge monotonic merge must preserve M4 civic done state');
     assert.equal(afterFileBridgeMerge.film?.phase, 'done', 'File picker bridge monotonic merge must preserve M4 film done state');
     assert.deepEqual(afterFileBridgeMerge.discovered_surprises, [], 'Fresh browser import does not invent Godot-only surprise discoveries');
-    const explorationEvidence = { compactHeaderHeight: startup.header_control.height, compactInfoToggleVerified: true, startupOrientationVerified: true, findMeAndMapVerified: true, rewardSoundsAndMuteVerified: true, persistentProgressVerified: true, surpriseDiscoveryVerified: true, surpriseKeepsakeReloadVerified: true, chapter6ConversationVerified: true, sessionLandmarkTourVerified: true, fullSaveBytes: Buffer.byteLength(saveBeforeTour, 'utf8') };
+    const explorationEvidence = { walkingStopControlVerified: true, compactHeaderHeight: startup.header_control.height, compactInfoToggleVerified: true, startupOrientationVerified: true, findMeAndMapVerified: true, rewardSoundsAndMuteVerified: true, persistentProgressVerified: true, surpriseDiscoveryVerified: true, surpriseKeepsakeReloadVerified: true, chapter6ConversationVerified: true, sessionLandmarkTourVerified: true, fullSaveBytes: Buffer.byteLength(saveBeforeTour, 'utf8') };
     runs.push({ ...explorationEvidence, viewport: size, overviewBytes: before.length, selectedBytes: after.length, neighborBytes: neighbor.length, muralBytes: muralShot.length, musicBytes: musicShot.length, blockBytes: blockShot.length, blackhawkBytes: blackhawkShot.length, wideBytes: wideShot.length, keyboardActivationVerified: true, neighborWalkVerified: true, muralSaveReloadVerified: true, rookMusicAuditionVerified: true, blockCompletionVerified: true, widerTenderloinVerified: true, m1EpilogueVerified: true, m3HostingVerified: true, m4CivicFilmVerified: true, m5VoicesIsolatedVerified: true, m6KeepsakeSvgExportVerified: true, m6PerfBudgetVerified: true, perfSnapshot: perfSnap, browserSaveImportVerified: true, domA11yLiveVerified: true });
     await context.close();
   }

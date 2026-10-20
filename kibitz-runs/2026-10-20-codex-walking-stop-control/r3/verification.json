@@ -1,0 +1,186 @@
+{
+  "verified_at_utc": "2026-10-20T18:24:32.256738+00:00",
+  "baseline": "ef7f997342781f57fa282fa22a012eca57a448e4",
+  "scope": "One on-screen walking stop control and safe Celeste/Rook retries after route cancellation.",
+  "source_sha256": {
+    "godot/main.gd": "f8479c6a38043a7d08aa9684dc18e40120f62cb1a40a15d038b1fc94f88fead7",
+    "godot/tests/study_test.gd": "bab34837aa21d673e4729772e4e80104b2bb3338b4f0a06ffc6091771eb84936",
+    "tests/godot-browser.mjs": "82d4ebe15b7be5cb538fc3f63d0d7750c5dc8fbc6a88708db2b2df919224f0dc"
+  },
+  "all_five_gates_after_final_source_change": true,
+  "gates": [
+    {
+      "command": "npm.cmd run godot:test",
+      "exit_code": 0,
+      "log": {
+        "path": "artifacts/walking-stop-native-reviewed.log",
+        "sha256": "e03a1967b0430847e7ec833b6fdcc2f3c187ab6e4787f654bad45b4d2d313a10",
+        "bytes": 12102,
+        "modified_utc": "2026-10-20T18:15:14.197112+00:00"
+      }
+    },
+    {
+      "command": "npm.cmd run godot:export",
+      "exit_code": 0,
+      "log": {
+        "path": "artifacts/walking-stop-export-reviewed.log",
+        "sha256": "bb6fab37171e55788bc415710a9755fcb60eeacf76614378403ba2db28ece436",
+        "bytes": 2122,
+        "modified_utc": "2026-10-20T18:15:22.598469+00:00"
+      }
+    },
+    {
+      "command": "npm.cmd run check",
+      "exit_code": 0,
+      "log": {
+        "path": "artifacts/walking-stop-check-reviewed.log",
+        "sha256": "bbbf642933db0755ec1b063caec7667a16966ea1db64dadab1526709e88e5537",
+        "bytes": 1337,
+        "modified_utc": "2026-10-20T18:15:08.391714+00:00"
+      }
+    },
+    {
+      "command": "npm.cmd test",
+      "exit_code": 0,
+      "log": {
+        "path": "artifacts/walking-stop-node-reviewed.log",
+        "sha256": "9e8bc728c630bb96a9b0df8d36e88ad2d422b7323b4d1b284ddd5caa85883fcd",
+        "bytes": 10795,
+        "modified_utc": "2026-10-20T18:15:14.368764+00:00"
+      }
+    },
+    {
+      "command": "npm.cmd run godot:browser",
+      "exit_code": 0,
+      "log": {
+        "path": "artifacts/walking-stop-browser-reviewed.log",
+        "sha256": "745ed15bbb7db90de27ff26f7114b84dec0cf5ecea9a4983cdd6982d875893c4",
+        "bytes": 35869,
+        "modified_utc": "2026-10-20T18:21:31.258101+00:00"
+      }
+    }
+  ],
+  "node_tests_passed": 104,
+  "browser_result": {
+    "path": "artifacts/godot-browser.json",
+    "sha256": "092c16e4b7aea1b351754ffe7c9820f8c77db1e75e694507136525d92ff8149d",
+    "bytes": 38195,
+    "modified_utc": "2026-10-20T18:21:31.255095+00:00"
+  },
+  "browser_errors": [],
+  "browser_external": [],
+  "browser_runs": [
+    {
+      "viewport": {
+        "width": 1100,
+        "height": 760
+      },
+      "walking_stop_control_verified": true,
+      "full_save_bytes": 1728,
+      "compact_header_height": 87,
+      "pathfind_blackhawk_usec": 168900,
+      "performance_save_bytes": 1535,
+      "within_budget": true
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 667
+      },
+      "walking_stop_control_verified": true,
+      "full_save_bytes": 1728,
+      "compact_header_height": 83,
+      "pathfind_blackhawk_usec": 181600,
+      "performance_save_bytes": 1535,
+      "within_budget": true
+    },
+    {
+      "viewport": {
+        "width": 320,
+        "height": 667
+      },
+      "walking_stop_control_verified": true,
+      "full_save_bytes": 1728,
+      "compact_header_height": 97,
+      "pathfind_blackhawk_usec": 182500,
+      "performance_save_bytes": 1535,
+      "within_budget": true
+    }
+  ],
+  "export_pack": {
+    "path": "artifacts/godot-web/index.pck",
+    "sha256": "9fae1073bf0644e97c49b73c31d123edb3cc470a3b88c4fbabdb7e04306f8ed8",
+    "bytes": 1648468,
+    "modified_utc": "2026-10-20T18:15:22.578457+00:00"
+  },
+  "public_runtime": {
+    "version": "0.12.0",
+    "fingerprint": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567"
+  },
+  "review": {
+    "driver": "codex",
+    "partner": "claude",
+    "round": "r3",
+    "requested_model": "claude-opus-5-5",
+    "selected_model": "claude-opus-5-5",
+    "requested_effort": "high",
+    "selected_effort": "high",
+    "exit_code": 0,
+    "verdict": "yes-with-fixes",
+    "usage_percent": "unknown",
+    "source_unchanged_during_review": true,
+    "fixes_verified_by_driver_not_second_external_call": true
+  },
+  "screenshots_inspected": [
+    {
+      "path": "artifacts/godot-1100-character-walking.png",
+      "sha256": "6c70aed1a36efb2966c75f716de8c68cbcd1b96bc12d702d42cef364350a31f3",
+      "bytes": 221491,
+      "modified_utc": "2026-10-20T18:15:48.813793+00:00"
+    },
+    {
+      "path": "artifacts/godot-1100-walking-stopped.png",
+      "sha256": "bc4422506a7278ae7ab83c79dc8666dce157b1c51e87e12415e08ed6c236a0fc",
+      "bytes": 218962,
+      "modified_utc": "2026-10-20T18:15:50.229151+00:00"
+    },
+    {
+      "path": "artifacts/godot-390-character-walking.png",
+      "sha256": "70fc422c98b18e18810f34ec152ca64262c9d1eb57cafc8b14cf132e676225a0",
+      "bytes": 91046,
+      "modified_utc": "2026-10-20T18:17:40.522596+00:00"
+    },
+    {
+      "path": "artifacts/godot-390-walking-stopped.png",
+      "sha256": "b8e4c582ca62cfea915afa910bb4bd6a7a5e9f5dcc0623ce347a5cbe6ea37129",
+      "bytes": 91687,
+      "modified_utc": "2026-10-20T18:17:41.940776+00:00"
+    },
+    {
+      "path": "artifacts/godot-320-character-walking.png",
+      "sha256": "56fde279473a36598bbbc4321c9a95f5b33bedb5d456423d184ce3bd3a4448ba",
+      "bytes": 82240,
+      "modified_utc": "2026-10-20T18:19:38.923467+00:00"
+    },
+    {
+      "path": "artifacts/godot-320-walking-stopped.png",
+      "sha256": "3f2da275261f4da4dee2efae77a87834acf04c8d99e99b319e51390bcf7e37de",
+      "bytes": 81430,
+      "modified_utc": "2026-10-20T18:19:40.340477+00:00"
+    }
+  ],
+  "live_preview": {
+    "path": "artifacts/codex-walking-stop-live-preview.png",
+    "sha256": "d970f39da37c4cc13af8ffc9591986318a58ca2d03676c260772b37c720f228a",
+    "bytes": 51423,
+    "modified_utc": "2026-10-20T18:23:30.450969+00:00"
+  },
+  "limits": [
+    "Screenshots are near asserted browser frames, not atomic captures.",
+    "Browser pointer input and native keyboard input tested; physical phones and complete screen readers remain unverified.",
+    "No human comfort, pacing, listening, field-observation or deployment claim.",
+    "Press mode activates on touch/mouse down; sliding off does not cancel.",
+    "Selected-neighbor context remains for Next cycling; Stop refreshes cutaway after clearing active route flags.",
+    "No first-person implementation or engine migration."
+  ]
+}

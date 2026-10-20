@@ -1,0 +1,15 @@
+STDOUT:
+My verdict on the stop-walking control plan is **yes, with fixes**. The review is at `kibitz-runs/2026-10-20-codex-walking-stop-control/r3/claude.md`. I read the code but didn't run any builds or tests.
+
+**Must fix before build:**
+1. **Some inputs do nothing after a Stop.** `stop_walking` (`godot/main.gd:12458`) leaves `selected_neighbor` pointing at the cancelled target. Three checks still read that as "a route to Celeste or Rook is in progress": `main.gd:8390` (the R key and the "Soundcheck w/ Rook" button), `main.gd:13009` (E) and `main.gd:13024` (T). After a Stop, they set a pending-talk flag with no route behind it, so the press does nothing. The fix is to add `not current_path.is_empty() and` to each of the three checks. Walk & Talk still cycles to the next neighbor as before.
+2. **No test covers this.** The stop tests (`godot/tests/study_test.gd:215-235`) only check that walking stopped. They need a follow-up step: after Stop, ask for Rook's soundcheck again (and press E for Celeste) and require that a route starts or the player arrives.
+
+**Should fix:**
+- `walk_control` is found by position with `controls.get_child(5)` (`main.gd:13961`). If a button is ever added before it, the label switching and press-on-down behaviour land on the wrong button with no error. Making `button()` return the Button, as `mural_button()` already does, fixes it.
+- The native press/hold/release test sends a synthetic action for one frame and never sends a held-key repeat. Holding Enter on a real keyboard sends repeats. I couldn't confirm from the repo whether Godot 4.7.2 buttons ignore them.
+- The browser test can race arrival. If the player reaches Thanh before the mouse press, the press starts a new walk and the test times out. It fails safely, but it's flaky.
+- After a Stop, building cut-aways stay aimed at the cancelled neighbor until the player moves again.
+- The button keeps keyboard focus after a click. Arrow-key walking is then blocked, and the next Enter starts a new walk.
+
+The rest of the wiring checked out: the label updates on every path that starts or ends a route, and a mouse release on the button can't trigger a tap on the street.

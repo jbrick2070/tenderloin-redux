@@ -1,0 +1,15 @@
+# Review scope: permanent walking stop control
+
+Baseline main ef7f997342781f57fa282fa22a012eca57a448e4. Codex is sole writer with its atomic round lock. This bounded usability round makes the existing sixth Walk & Talk (Next) control say Stop Walking while a route is active. No new layout row, camera mode, geography, save schema or reward behavior.
+
+Read godot/main.gd, godot/tests/study_test.gd and tests/godot-browser.mjs. Return source-grounded findings in the required review file only. Do not edit implementation or run builds/tests. Review input behavior, state transitions, native fixture side effects, browser real-input assertions and preservation boundaries. The new control is a canvas Button; read-only snapshot geometry is used to click it in browser tests, not an action mutation hook.
+
+Implementation: retained walk_control reference; update_walk_control runs at the beginning of update_route_ribbon before both early returns, selecting labels from current_path alone. activate_walk_control stops an active route using existing stop_walking, otherwise chooses next neighbor. BaseButton.ACTION_MODE_BUTTON_PRESS dispatches on initial press so release cannot become a new route after the label changes. Stop clears pending Celeste/Rook/history arrivals and announces a short confirmation only when a route was active. Existing selected_neighbor semantics remain, so Walk & Talk cycles to the next neighbor; it does not resume the cancelled route.
+
+Native checks: ordinary neighbor, deferred mural conversation, deferred Rook soundcheck and street routes; preserved save/position and no later advance; normal arrival and rejected route restore label. Real ui_accept press/hold/release at all three viewports checks immediate stop, preserved camera/save and no release-triggered route. The early Celeste fixture explicitly creates a mural route plus pending_celeste_talk; the existing later KEY_E tests remain responsible for genuine deferred-conversation entry.
+
+Browser checks: existing long Digit5 route proves fresh-frame displacement/stride; verify visible44px Stop control, hold mouse down until stopped, wait several fresh frames, release, then verify fresh settled stride, no route/motion/reward/visit/save change. Restart with Digit5 and retain arrival/light-pool checks. Test at1100x760,390x667,320x667. Browser validation is pending at fanout; do not claim it passed.
+
+Native GODOT_STUDY_PASS, check and104 Node tests already pass after fixing an invalid test fixture that called the immediate Celeste dialogue function. The first failure log is retained. Final export/browser and post-review gates remain required.
+
+Hard boundaries: never modify public/ (0.12.0 fingerprint2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567); browser save tenderloin-redux.save.v1 read-only; Godot save<=4096; all non-ASCII glyphs supported; no geometry/provenance changes. Preserve initial untracked historical AGY review folder. Optional first-person remains researched only. No physical-phone/full-screen-reader/human-pacing/deployment claims.

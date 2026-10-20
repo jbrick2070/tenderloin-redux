@@ -465,6 +465,7 @@ var wall_material: StandardMaterial3D
 var chosen_material: StandardMaterial3D
 var cutaway_material: StandardMaterial3D
 var controls: GridContainer
+var walk_control: Button
 var header_panel: PanelContainer
 var overview_size := 400.0
 var in_overview := true
@@ -7420,6 +7421,7 @@ func find_path(start_xz: Vector2, goal_xz: Vector2) -> Array[Vector2]:
 	return smooth
 
 func update_route_ribbon(force: bool = false) -> void:
+	update_walk_control()
 	if current_path.is_empty():
 		route_mesh.mesh = null
 		last_ribbon_count = 0
@@ -8385,7 +8387,7 @@ func request_rook_soundcheck() -> bool:
 	if arrived_neighbor == rook_index or arrived_speaker:
 		check_sound_with_rook()
 		return true
-	if selected_neighbor == rook_index or walking_to_speaker:
+	if not current_path.is_empty() and (selected_neighbor == rook_index or walking_to_speaker):
 		pending_rook_talk = true
 		return true
 	if walk_to_neighbor(rook_index):
@@ -10767,6 +10769,8 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"start_control": control_snapshot(story_continue_btn),
 		"info_control": control_snapshot(header_panel.find_child("HeaderInfoToggle", true, false) as Control),
 		"header_control": control_snapshot(header_panel),
+		"walk_control": control_snapshot(walk_control),
+		"walk_control_text": walk_control.text if walk_control != null else "",
 		"header_details_expanded": header_details_expanded,
 		"progress_text": progress_label.text if progress_label != null else "",
 		"conversation_header": block_label.text if block_label != null else "",
@@ -12452,6 +12456,7 @@ func advance_walk(delta: float) -> bool:
 	return true
 
 func stop_walking() -> void:
+	var was_walking := not current_path.is_empty()
 	current_path.clear()
 	walking_to_mural = false
 	walking_to_speaker = false
@@ -12460,6 +12465,23 @@ func stop_walking() -> void:
 	pending_rook_talk = false
 	update_route_ribbon(true)
 	update_walking_status()
+	if was_walking:
+		update_occlusion(true)
+		announce_a11y_status("Walking stopped. Tap a street to choose a route, or Walk & Talk for the next neighbor.")
+
+## One permanent control gives touch players the same route stop as Escape.
+func update_walk_control() -> void:
+	if walk_control == null:
+		return
+	var walking := not current_path.is_empty()
+	walk_control.text = "Stop Walking" if walking else "Walk & Talk (Next)"
+	walk_control.tooltip_text = "Stop here without changing progress. Escape also stops." if walking else "Walk to the next neighbor and talk on arrival."
+
+func activate_walk_control() -> void:
+	if not current_path.is_empty():
+		stop_walking()
+	else:
+		choose_next_neighbor(1)
 
 func follow_player() -> void:
 	in_overview = false
@@ -12985,7 +13007,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					cycle_eatery_guide()
 				elif arrived_neighbor == celeste_index or arrived_mural:
 					talk_with_celeste()
-				elif selected_neighbor == celeste_index or walking_to_mural:
+				elif not current_path.is_empty() and (selected_neighbor == celeste_index or walking_to_mural):
 					pending_celeste_talk = true
 				else:
 					if walk_to_neighbor(celeste_index):
@@ -13000,7 +13022,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					check_sound_with_rook()
 				elif arrived_neighbor >= 0 and arrived_neighbor < neighbors.size():
 					talk_with_neighbor(arrived_neighbor)
-				elif selected_neighbor == celeste_index or walking_to_mural:
+				elif not current_path.is_empty() and (selected_neighbor == celeste_index or walking_to_mural):
 					pending_celeste_talk = true
 				elif talk_to_nearby_neighbor(8.0):
 					pass
@@ -13936,7 +13958,10 @@ func make_ui() -> void:
 	button(controls, "Find Me", frame_player_for_walking)
 	button(controls, "Zoom In (+)", func(): zoom(0.8))
 	button(controls, "Zoom Out (−)", func(): zoom(1.25))
-	button(controls, "Walk & Talk (Next)", func(): choose_next_neighbor(1))
+	walk_control = button(controls, "", activate_walk_control)
+	# Act on press so arrival between press and release cannot start another route.
+	walk_control.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
+	update_walk_control()
 	guide_arrow = Control.new()
 	guide_arrow.name = "GuideArrow"
 	guide_arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -14046,7 +14071,7 @@ func style_game_button(control: Button) -> void:
 	control.add_theme_color_override("font_hover_color", Color("ffe898"))
 	control.add_theme_color_override("font_focus_color", Color("ffe898"))
 
-func button(parent: Node, text: String, action: Callable) -> void:
+func button(parent: Node, text: String, action: Callable) -> Button:
 	var control := Button.new()
 	control.text = text
 	control.clip_text = true
@@ -14057,6 +14082,7 @@ func button(parent: Node, text: String, action: Callable) -> void:
 	control.add_theme_font_size_override("font_size", 20)
 	control.pressed.connect(action)
 	parent.add_child(control)
+	return control
 
 func mural_button(parent: Node, text: String, action: Callable) -> Button:
 	var control := Button.new()

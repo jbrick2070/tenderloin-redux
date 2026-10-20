@@ -211,6 +211,50 @@ func run() -> void:
 	var snapped: Vector2 = study.nearest_walkable_point(interior_pt)
 	require(study.is_walkable_point(snapped) and study.building_containing_point(snapped) == "", "interior point snaps to walkable sidewalk")
 
+	# Stop works for ordinary routes and cancels deferred conversations as well.
+	for stop_case in ["neighbor", "mural", "celeste", "celeste_t", "rook", "street"]:
+		study.player.position = study.PLAYER_START
+		match stop_case:
+			"neighbor": study.walk_to_neighbor(3)
+			"mural":
+				study.walk_to_mural()
+				study.pending_celeste_talk = true
+			"celeste", "celeste_t":
+				var start_talk := InputEventKey.new()
+				start_talk.keycode = KEY_E
+				start_talk.pressed = true
+				study._unhandled_input(start_talk)
+			"rook": study.request_rook_soundcheck()
+			"street": study.walk_to_point(study.neighbor_xz(4))
+		require(not study.current_path.is_empty() and study.walk_control.text == "Stop Walking", "%s route exposes the stop control" % stop_case)
+		if stop_case in ["mural", "celeste", "celeste_t"]:
+			require(study.pending_celeste_talk, "Celeste stop fixture has a deferred conversation")
+		if stop_case == "rook":
+			require(study.pending_rook_talk, "Rook stop fixture has a deferred soundcheck")
+		# T prefers a nearby neighbor; move clear of Bea before testing Celeste retry.
+		study.advance_walk(4.0 if stop_case == "celeste_t" else 0.1)
+		if stop_case == "celeste_t":
+			require(study.nearest_neighbor_within(8.0) < 0, "T retry fixture is outside the nearby-conversation radius")
+		var stop_position: Vector3 = study.player.position
+		var stop_save: String = JSON.stringify(study.build_save_envelope())
+		study.activate_walk_control()
+		require(study.current_path.is_empty() and study.route_mesh.mesh == null and not study.pending_celeste_talk and not study.pending_rook_talk and not study.walking_to_mural and not study.walking_to_speaker, "stop clears the route and deferred actions")
+		require(not study.advance_walk(2.0) and study.player.position.is_equal_approx(stop_position), "stopped route cannot keep moving or arrive later")
+		require(JSON.stringify(study.build_save_envelope()) == stop_save and study.walk_control.text == "Walk & Talk (Next)", "stopping preserves progress and restores the normal action")
+		if stop_case == "rook":
+			require(study.request_rook_soundcheck() and not study.current_path.is_empty() and study.pending_rook_talk, "soundcheck requested after Stop starts a fresh route")
+		elif stop_case in ["celeste", "celeste_t"]:
+			var retry_talk := InputEventKey.new()
+			retry_talk.keycode = KEY_T if stop_case == "celeste_t" else KEY_E
+			retry_talk.pressed = true
+			study._unhandled_input(retry_talk)
+			require(not study.current_path.is_empty() and study.pending_celeste_talk and study.selected_neighbor == study.celeste_index, "%s after stopping Celeste starts a fresh deferred route" % stop_case)
+		elif stop_case == "neighbor":
+			study.activate_walk_control()
+			require(study.selected_neighbor == 4 and not study.current_path.is_empty(), "Walk & Talk after Stop retains ordinary Next cycling")
+		study.stop_walking()
+	study.overview()
+
 	# Test cycling and arriving at all 5 neighbors + continuous non-teleporting walk + occlusion cutaway
 	study.player.position = study.PLAYER_START
 	study.selected_neighbor = -1
@@ -232,6 +276,7 @@ func run() -> void:
 			guard += 1
 		require(guard < 400, "neighbor route finishes within bounded steps")
 		require(study.arrived_neighbor == i, "arrived at neighbor %s" % study.neighbors[i].name)
+		require(study.walk_control.text == "Walk & Talk (Next)", "arrival restores the ordinary walking action")
 		var final_d: float = study.player_xz().distance_to(study.neighbor_xz(i))
 		require(final_d <= study.ARRIVAL_DISTANCE_M + 1e-3 and final_d >= 0.70, "arrival stops within <= 1.35m without overlapping neighbor")
 		require(study.info.text.contains(study.neighbors[i].name), "arrival updates info with neighbor name")
@@ -672,6 +717,7 @@ func run() -> void:
 	var wide_street_screen: Vector2 = study.camera.unproject_position(Vector3(45.0, 0.0, -7.2))
 	require(study.handle_scene_tap(wide_street_screen) and study.selected_neighbor == -1 and not study.current_path.is_empty(), "zoomed-out wide_overview tap ~23m from Bea routes to street point rather than selecting neighbor (world_d <= 8.5 bound)")
 	require(not study.walk_to_point(Vector2(-350.0, -350.0)) and study.current_path.is_empty(), "unreachable point far from any street is rejected without routing back to PLAYER_START")
+	require(study.walk_control.text == "Walk & Talk (Next)", "rejected route restores the normal walking action")
 	require(study.header_details_expanded and study.info.visible and study.info.text.begins_with("No walkable"), "blocked navigation reveals its explanation in the compact header")
 	study.set_header_details(false)
 	study.wide_overview()
@@ -2064,7 +2110,8 @@ func run() -> void:
 		Input.parse_input_event(accept)
 		await process_frame
 		require(next.text == "Find Me" and study.following_player and study.view_size == 45.0 and study.selected == -1, "ui_accept activates Find Me walking view")
-		var walk_btn: Button = study.controls.get_child(5)
+		var walk_btn: Button = study.walk_control
+		require(study.current_path.is_empty() and walk_btn.text == "Walk & Talk (Next)", "keyboard Next fixture begins without an active route")
 		walk_btn.grab_focus()
 		require(walk_btn.has_focus(), "Walk to neighbor button focus available")
 		var prev_neighbor: int = study.selected_neighbor
@@ -2080,6 +2127,35 @@ func run() -> void:
 		await process_frame
 		var expected_neighbor: int = 0 if prev_neighbor < 0 else (prev_neighbor + 1) % study.neighbors.size()
 		require(study.selected_neighbor == expected_neighbor and (not study.current_path.is_empty() or study.arrived_neighbor == expected_neighbor), "ui_accept on Walk to neighbor activates neighbor route")
+		# A held Stop gesture must not become a new walk when the label changes.
+		require(study.walk_to_black_hawk() and not study.current_path.is_empty(), "stop-control fixture starts a real distant route")
+		require(walk_btn.text == "Stop Walking", "active route exposes Stop Walking at every viewport")
+		var stopped_save: String = JSON.stringify(study.build_save_envelope())
+		var stopped_camera: Vector3 = study.target
+		walk_btn.grab_focus()
+		accept = InputEventAction.new()
+		accept.action = "ui_accept"
+		accept.pressed = true
+		Input.parse_input_event(accept)
+		await process_frame
+		var stopped_pos: Vector3 = study.player.position
+		require(study.current_path.is_empty() and study.route_mesh.mesh == null and study.walking_to_history_stop == "", "ui_accept stops immediately on press and removes the route")
+		require(not study.advance_walk(1.0), "held stop cannot advance a cleared route")
+		var echo_enter := InputEventKey.new()
+		echo_enter.keycode = KEY_ENTER
+		echo_enter.pressed = true
+		echo_enter.echo = true
+		Input.parse_input_event(echo_enter)
+		await process_frame
+		require(study.current_path.is_empty(), "held Enter key repeat cannot reactivate Next")
+		accept = InputEventAction.new()
+		accept.action = "ui_accept"
+		accept.pressed = false
+		Input.parse_input_event(accept)
+		await process_frame
+		require(study.current_path.is_empty() and study.player.position.is_equal_approx(stopped_pos) and study.target.is_equal_approx(stopped_camera), "releasing Stop never starts a new route or reframes the camera")
+		require(walk_btn.text == "Walk & Talk (Next)" and study.last_a11y_announcement.begins_with("Walking stopped."), "stopping restores the action and announces confirmation")
+		require(JSON.stringify(study.build_save_envelope()) == stopped_save, "stopping grants no progress and changes no save fields")
 		study.block_opened = false
 		study.clear_mural_board()
 		study.show_mural_panel(true)

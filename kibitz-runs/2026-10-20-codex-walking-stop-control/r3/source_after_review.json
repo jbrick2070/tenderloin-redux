@@ -1,0 +1,11 @@
+{
+  "unchanged_during_review": true,
+  "files": {
+    "godot/main.gd": "875d12584c6c7ec381283a9e1113e3c00795b0a11fcd137a22efacc6770d4059",
+    "godot/tests/study_test.gd": "d05593f318fc00ce024925553ccd7051faa179fcdd6c4a959ead506867dbe6e2",
+    "tests/godot-browser.mjs": "28f6acc1978cf30bdf7473af65a6678e2e4d463b45dbe7eadf0d9dd3308556c5",
+    "kibitz-runs/2026-10-20-codex-walking-stop-control/r3/review_scope.md": "d19403edc5f4b416273981f66d7fa8d0d8532fd16af8fe9f55d9ce18d5bd90a4",
+    "kibitz-runs/2026-10-20-codex-walking-stop-control/r3/driver_anchor.md": "fe15c8a5926e3f6af77f842744bda7d8411ae324984d073ef261ab4a0d38b775",
+    "kibitz-runs/2026-10-20-codex-walking-stop-control/r3/scope_receipt.md": "feba95397c79955367be87bd44e5423e3e25b6658a78286a867c5004ee0b61f3"
+  }
+}
