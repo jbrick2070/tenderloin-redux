@@ -195,11 +195,10 @@ const SPEECH_BUBBLE_PIXEL := 0.0024
 const SPEECH_BUBBLE_FONT := 24
 const SPEECH_BUBBLE_HEIGHT_M := 5.0
 const SPEECH_BUBBLE_HIDE_TARGET_DIST_M := 45.0
-const STREET_TREE_SPACING_M := 22.0
-const STREET_TREE_OFFSET_M := 6.35
+const STREET_TREE_DATA_PATH := "res://data/street_trees.json"
 const DAY_LIGHT_POOL_ALPHA := 0.28
 const EATERY_HOST_LINES: Dictionary = {
-	"golden_lotus_pho": [
+	"bowl_basil_pho": [
 		"Welcome in! The broth has been simmering since sunrise. Pull up a stool.",
 		"One lemongrass beef pho, extra basil and lime, coming right up.",
 		"Crispy imperial rolls just came out of the fryer. Careful, they're hot!"
@@ -219,24 +218,24 @@ const EATERY_HOST_LINES: Dictionary = {
 		"Pickled daikon, carrot, jalapeno, cilantro. And a condensed-milk iced coffee.",
 		"Thanh lends us folding stools for block parties. Neighbors look out for each other."
 	],
-	"brass_owl_tavern": [
+	"copper_cue_tavern": [
 		"Rack 'em up! The neighborhood pool table is open.",
 		"A cold draft for you, and the jukebox is cued to soul 45s.",
-		"Our neon owl lights up the whole corner every evening."
+		"Our neon sign lights up the whole corner every evening."
 	],
-	"midnight_sun_diner": [
+	"open_seat_diner": [
 		"Counter seats are open. Sourdough griddle cakes?",
 		"Hash browns, extra crispy, and a warm slice of olallieberry pie.",
 		"Refill on coffee? We keep the pot on for the night owls."
 	]
 }
 const EATERY_MENU_ITEMS: Dictionary = {
-	"golden_lotus_pho": ["lemongrass beef pho", "mushroom pho", "imperial rolls"],
+	"bowl_basil_pho": ["lemongrass beef pho", "mushroom pho", "imperial rolls"],
 	"saffron_clay_oven": ["garlic naan", "chana masala", "mango lassi"],
 	"blue_valve_hifi": ["botanical highball", "1961 live jazz LP", "neighborhood cocktail"],
 	"morning_star_banh_mi": ["banh mi", "condensed-milk iced coffee", "pickled daikon side"],
-	"brass_owl_tavern": ["cold draft", "rack of pool", "soul 45 on the jukebox"],
-	"midnight_sun_diner": ["sourdough griddle cakes", "hash browns", "olallieberry pie"]
+	"copper_cue_tavern": ["cold draft", "rack of pool", "soul 45 on the jukebox"],
+	"open_seat_diner": ["sourdough griddle cakes", "hash browns", "olallieberry pie"]
 }
 const MUSEUM_DOCENT_LINES: Array[String] = [
 	"Welcome to the Tenderloin Museum! Tap again and the Time-Portal will take us back.",
@@ -478,10 +477,9 @@ var last_voices_teardown_usec := 0
 const MUSEUM_HUB_POS := Vector3(-293.5, 0.0, -64.5)
 const NEIGHBORHOOD_EATERIES: Array[Dictionary] = [
 	{
-		"id": "golden_lotus_pho",
-		"name": "Golden Lotus Pho & Noodle House",
+		"id": "bowl_basil_pho",
+		"name": "Bowl & Basil Pho Counter",
 		"kind": "Eatery",
-		"rating": "4.8/5",
 		"street": "400 block of Turk St",
 		"specialty": "24-hour simmered lemongrass beef & mushroom pho, crispy imperial rolls, and iced Thai tea",
 		"pos": Vector3(-384.0, 0.0, 63.8),
@@ -492,7 +490,6 @@ const NEIGHBORHOOD_EATERIES: Array[Dictionary] = [
 		"id": "saffron_clay_oven",
 		"name": "Saffron Clay-Oven Naan & Curry",
 		"kind": "Eatery",
-		"rating": "4.6/5",
 		"street": "Jones St near Eddy",
 		"specialty": "Tandoori clay-oven garlic naan, smoky chana masala, and mango lassi served late",
 		"pos": Vector3(-152.0, 0.0, -28.0),
@@ -503,7 +500,6 @@ const NEIGHBORHOOD_EATERIES: Array[Dictionary] = [
 		"id": "blue_valve_hifi",
 		"name": "The Blue Valve Vinyl & Hi-Fi Bar",
 		"kind": "Bar & Lounge",
-		"rating": "4.7/5",
 		"street": "300 block of Eddy St (near Cadillac Hotel)",
 		"specialty": "Warm tube-amp jazz LPs, zero-proof botanical highballs, and classic neighborhood cocktails",
 		"pos": Vector3(-258.0, 0.0, -71.5),
@@ -514,7 +510,6 @@ const NEIGHBORHOOD_EATERIES: Array[Dictionary] = [
 		"id": "morning_star_banh_mi",
 		"name": "Morning Star Banh Mi & Coffee",
 		"kind": "Eatery",
-		"rating": "4.8/5",
 		"street": "100 block of Turk St",
 		"specialty": "Crackling warm baguettes with pickled daikon-carrot, jalapeño, cilantro, and condensed-milk iced coffee",
 		"pos": Vector3(-54.0, 0.0, 11.2),
@@ -522,10 +517,9 @@ const NEIGHBORHOOD_EATERIES: Array[Dictionary] = [
 		"label_color": "ffe699"
 	},
 	{
-		"id": "brass_owl_tavern",
-		"name": "The Brass Owl Neon Tavern & Billiards",
+		"id": "copper_cue_tavern",
+		"name": "Copper Cue Tavern & Billiards",
 		"kind": "Corner Bar",
-		"rating": "4.5/5",
 		"street": "Leavenworth St between Turk & Eddy",
 		"specialty": "Vintage neon booths, neighborhood pool table, jukebox soul 45s, and cold draft pours",
 		"pos": Vector3(-312.0, 0.0, -22.0),
@@ -533,10 +527,9 @@ const NEIGHBORHOOD_EATERIES: Array[Dictionary] = [
 		"label_color": "f5c2ff"
 	},
 	{
-		"id": "midnight_sun_diner",
-		"name": "Midnight Sun Diner & Pie Counter",
+		"id": "open_seat_diner",
+		"name": "Open Seat Diner & Pie Counter",
 		"kind": "Eatery",
-		"rating": "4.7/5",
 		"street": "Taylor St opening block",
 		"specialty": "Sourdough griddle cakes, hash browns, counter stools, and warm olallieberry pie",
 		"pos": Vector3(10.5, 0.0, 26.0),
@@ -639,6 +632,9 @@ var street_lamp_points: Array[Vector2] = []
 var planter_canopy_nodes: Array[Node3D] = []
 var planter_canopy_base: Array[Vector3] = []
 var street_tree_points: Array[Vector2] = []
+var street_tree_ids: Array[String] = []
+var street_tree_species: Array[String] = []
+var street_tree_source: Dictionary = {}
 var street_tree_pivots: Array[Vector3] = []
 var street_tree_scales: Array[float] = []
 var street_tree_yaws: Array[float] = []
@@ -1525,6 +1521,7 @@ func _ready() -> void:
 	build_rook_speaker()
 	build_block_banner()
 	build_street_life_decor()
+	load_street_tree_data()
 	build_muni_overhead_lines()
 	build_boeddeker_park()
 	build_light_pools()
@@ -3221,7 +3218,8 @@ func build_street_life_decor() -> void:
 	museum_root.add_child(portal_lbl)
 	decor_root.add_child(museum_root)
 
-	# Fictionalized Neighborhood Bars & Eateries with Google-style Star Ratings
+	# Fictional neighborhood bars and eateries. Names were checked against real San Francisco businesses
+	# (2026-10-19) to avoid confusion with real places; no star ratings or reviews are shown.
 	var eateries_root := Node3D.new()
 	eateries_root.name = "NeighborhoodEateries"
 	for e_idx in range(NEIGHBORHOOD_EATERIES.size()):
@@ -3254,7 +3252,7 @@ func build_street_life_decor() -> void:
 		bistro_tbl.position = Vector3(1.3, 0.39, 0.65)
 		bistro_tbl.material_override = mural_material(Color("4a3b32"))
 		e_node.add_child(bistro_tbl)
-		var e_lbl := make_label_3d("EateryLabel_%d" % e_idx, "%s · %s" % [String(e_rec.get("name", "")), String(e_rec.get("rating", ""))], Vector3(0.0, 4.15, 0.0), Color(String(e_rec.get("label_color", "ffd899"))), 0.0115, 21)
+		var e_lbl := make_label_3d("EateryLabel_%d" % e_idx, "%s (fictional)" % String(e_rec.get("name", "")), Vector3(0.0, 4.15, 0.0), Color(String(e_rec.get("label_color", "ffd899"))), 0.0115, 21)
 		e_node.add_child(e_lbl)
 		eateries_root.add_child(e_node)
 	decor_root.add_child(eateries_root)
@@ -3330,6 +3328,13 @@ func build_muni_overhead_lines() -> void:
 				if building_containing_point(pl) != "" or building_containing_point(pr) != "":
 					continue
 				if min_wall_distance(pl, 0.4) < 0.4 or min_wall_distance(pr, 0.4) < 0.4:
+					continue
+				var near_tree := false
+				for tree_pt in street_tree_points:
+					if tree_pt.distance_to(pl) < 1.5 or tree_pt.distance_to(pr) < 1.5:
+						near_tree = true
+						break
+				if near_tree:
 					continue
 				for pp in [pl, pr]:
 					colored_prism(pole_st, Vector3(pp.x, 0.0, pp.y), 0.15, 0.10, 7.0, 8, pole_col, pole_col.lightened(0.2))
@@ -3849,29 +3854,6 @@ func toggle_evening_lights() -> bool:
 	announce_a11y_status(msg)
 	return evening_mode
 
-func street_tree_site_ok(c: Vector2, area: Rect2, avoid: Array[Vector2]) -> bool:
-	if not area.has_point(c):
-		return false
-	for ix in street_intersections:
-		if ix.distance_to(c) < 13.0:
-			return false
-	var sd := min_street_distance(c)
-	if sd < 5.4 or sd > 6.8:
-		return false
-	if building_containing_point(c) != "" or min_wall_distance(c, 1.1) < 1.1:
-		return false
-	if is_point_in_boeddeker_park(c) or is_point_in_mural_footprint(c, 0.8) or is_point_in_speaker_footprint(c, 0.8):
-		return false
-	for pp in trolley_pole_points:
-		if pp.distance_to(c) < 4.0:
-			return false
-	for av in avoid:
-		if av.distance_to(c) < 3.2:
-			return false
-	for tp in street_tree_points:
-		if tp.distance_to(c) < 7.0:
-			return false
-	return true
 
 func street_tree_canopy_xforms(i: int, rx: float, rz: float) -> Array[Transform3D]:
 	var s := street_tree_scales[i]
@@ -3880,56 +3862,58 @@ func street_tree_canopy_xforms(i: int, rx: float, rz: float) -> Array[Transform3
 	var upper := base * Transform3D(Basis.from_scale(Vector3.ONE * (0.66 * s)), Vector3(0.28, 1.75, -0.18) * s)
 	return [lower, upper]
 
-## Curbside street trees in tree wells (MultiMesh: 3 draw calls) clear of corners, poles,
-## lamps, neighbors, props, and footprints. Visual only; they do not block walking.
-func build_street_trees() -> void:
+## Real street trees from the San Francisco Street Tree Inventory (DataSF tkzw-k3nq, PDDL 1.0),
+## derived offline by scripts/build-street-trees.mjs into data/street_trees.json: one tree per
+## city record, sized by trunk diameter and tinted by species. Visual only; they don't block walking.
+func load_street_tree_data() -> void:
 	street_tree_points.clear()
 	street_tree_pivots.clear()
 	street_tree_scales.clear()
 	street_tree_yaws.clear()
+	street_tree_ids.clear()
+	street_tree_species.clear()
+	street_tree_source = {}
+	var raw := FileAccess.get_file_as_string(STREET_TREE_DATA_PATH)
+	var parsed: Variant = JSON.parse_string(raw) if not raw.is_empty() else null
+	if not parsed is Dictionary:
+		push_warning("Missing data/street_trees.json; run node scripts/build-street-trees.mjs.")
+		return
+	street_tree_source = parsed.get("source", {})
+	for t in parsed.get("trees", []):
+		if not t is Dictionary:
+			continue
+		var c := Vector2(float(t.get("x", 0.0)), float(t.get("z", 0.0)))
+		var dbh := float(t.get("dbh_in", 0))
+		var sc := clampf(0.85 + dbh * 0.035, 0.85, 1.9) if dbh > 0.0 else 1.1
+		var t_id := String(t.get("id", ""))
+		street_tree_points.append(c)
+		street_tree_scales.append(sc)
+		street_tree_pivots.append(Vector3(c.x, 2.0 * sc, c.y))
+		street_tree_yaws.append(float(absi(t_id.hash()) % 628) / 100.0)
+		street_tree_ids.append(t_id)
+		street_tree_species.append(String(t.get("species", "")))
+
+func street_tree_leaf_color(species: String, i: int) -> Color:
+	var sp := species.to_lower()
+	if sp.contains("london plane") or sp.contains("sycamore"):
+		return Color("6a9a5a")
+	if sp.contains("brisbane box"):
+		return Color("4e7d5c")
+	if sp.contains("xmas") or sp.contains("christmas"):
+		return Color("3f6e4a")
+	if sp.contains("ficus") or sp.contains("laurel fig"):
+		return Color("3d6b45")
+	if sp.contains("pear"):
+		return Color("7aa36a")
+	if sp.contains("ash"):
+		return Color("6f9a60")
+	var fallback: Array[Color] = [Color("5c8d67"), Color("587f4c"), Color("668f58")]
+	return fallback[i % fallback.size()]
+
+func build_street_trees() -> void:
 	ensure_tree_resources()
-	var avoid: Array[Vector2] = []
-	for n in neighbors:
-		var np: Vector3 = n.pos
-		avoid.append(Vector2(np.x, np.z))
-	var fixed_props: Array[Vector2] = [mural_xz(), speaker_xz(), comptons_xz(), blackhawk_xz(), Vector2(MUSEUM_HUB_POS.x, MUSEUM_HUB_POS.z), Vector2(-414.0, 56.0), Vector2(-350.0, 65.8)]
-	avoid.append_array(fixed_props)
-	for e in NEIGHBORHOOD_EATERIES:
-		var ep: Vector3 = e.pos
-		avoid.append(Vector2(ep.x, ep.z))
-	avoid.append_array(street_lamp_points)
-	for pc in planter_canopy_nodes:
-		var planter := pc.get_parent() as Node3D
-		if planter != null:
-			avoid.append(Vector2(planter.position.x, planter.position.z))
-	var area := walk_bounds.grow(-8.0)
-	for street in street_ways:
-		var p2: Array[Vector2] = []
-		for p in street.points:
-			p2.append(Vector2(float(p[0]), float(p[1])))
-		var walked := 0.0
-		var next_at := 9.0
-		for i in range(p2.size() - 1):
-			var a := p2[i]
-			var b := p2[i + 1]
-			var seg_len := a.distance_to(b)
-			if seg_len < 1e-3:
-				continue
-			var t := (b - a) / seg_len
-			var n := Vector2(-t.y, t.x)
-			while next_at <= walked + seg_len:
-				var s := a + t * (next_at - walked)
-				next_at += STREET_TREE_SPACING_M
-				for side in [1.0, -1.0]:
-					var c: Vector2 = s + n * (STREET_TREE_OFFSET_M * float(side))
-					if street_tree_site_ok(c, area, avoid):
-						var h_seed := absi(("street-tree:%d:%d" % [int(c.x * 10.0), int(c.y * 10.0)]).hash())
-						var sc := 1.15 + float(h_seed % 5) * 0.08
-						street_tree_points.append(c)
-						street_tree_scales.append(sc)
-						street_tree_pivots.append(Vector3(c.x, 2.0 * sc, c.y))
-						street_tree_yaws.append(float(h_seed % 628) / 100.0)
-			walked += seg_len
+	if street_tree_points.is_empty():
+		load_street_tree_data()
 	var count := street_tree_points.size()
 	var trees_root := Node3D.new()
 	trees_root.name = "StreetTrees"
@@ -3947,13 +3931,13 @@ func build_street_trees() -> void:
 	street_tree_upper_mm.use_colors = true
 	street_tree_upper_mm.mesh = tree_canopy_mesh
 	street_tree_upper_mm.instance_count = count
-	var leaf_cols: Array[Color] = [Color("4e7d5c"), Color("5c8d67"), Color("6a9a5a"), Color("587f4c")]
 	for i in range(count):
 		var sc := street_tree_scales[i]
 		var pv := street_tree_pivots[i]
 		trunk_mm.set_instance_transform(i, Transform3D(Basis.from_scale(Vector3.ONE * sc), Vector3(pv.x, 1.1 * sc, pv.z)))
-		street_tree_lower_mm.set_instance_color(i, leaf_cols[i % leaf_cols.size()])
-		street_tree_upper_mm.set_instance_color(i, leaf_cols[(i + 1) % leaf_cols.size()].lightened(0.06))
+		var leaf := street_tree_leaf_color(street_tree_species[i] if i < street_tree_species.size() else "", i)
+		street_tree_lower_mm.set_instance_color(i, leaf)
+		street_tree_upper_mm.set_instance_color(i, leaf.lightened(0.07))
 		var xf := street_tree_canopy_xforms(i, 0.0, 0.0)
 		street_tree_lower_mm.set_instance_transform(i, xf[0])
 		street_tree_upper_mm.set_instance_transform(i, xf[1])
@@ -4082,7 +4066,7 @@ func add_steam_puffs(props: Node3D, e_idx: int, base: Vector3, count: int) -> vo
 func add_counter_items(props: Node3D, e_idx: int, e_id: String) -> void:
 	var y0 := 1.165
 	match e_id:
-		"golden_lotus_pho":
+		"bowl_basil_pho":
 			add_prop_mesh(props, prop_cylinder(0.24, 0.13, 0.16), Vector3(-0.35, y0 + 0.08, 0.05), material(Color("efe6d2")), "PhoBowl")
 			add_prop_mesh(props, prop_cylinder(0.215, 0.215, 0.02), Vector3(-0.35, y0 + 0.155, 0.05), mural_material(Color("d58a3a")), "PhoBroth")
 			add_prop_mesh(props, prop_box(Vector3(0.30, 0.05, 0.16)), Vector3(0.45, y0 + 0.025, 0.0), material(Color("c98d3d")), "ImperialRolls")
@@ -4114,16 +4098,16 @@ func add_counter_items(props: Node3D, e_idx: int, e_id: String) -> void:
 			add_prop_mesh(props, prop_box(Vector3(0.34, 0.02, 0.05)), Vector3(-0.25, y0 + 0.115, 0.05), material(Color("6aa84f")), "PickledFilling")
 			add_prop_mesh(props, prop_cylinder(0.06, 0.05, 0.18), Vector3(0.40, y0 + 0.09, 0.05), material(Color("a8744a")), "IcedCoffee")
 			add_prop_mesh(props, prop_cylinder(0.008, 0.008, 0.12), Vector3(0.42, y0 + 0.22, 0.05), material(Color("e74c3c")), "Straw")
-		"brass_owl_tavern":
+		"copper_cue_tavern":
 			add_prop_mesh(props, prop_cylinder(0.06, 0.05, 0.20), Vector3(-0.40, y0 + 0.10, 0.08), material(Color("e0a83a")), "DraftGlass")
 			add_prop_mesh(props, prop_cylinder(0.062, 0.062, 0.03), Vector3(-0.40, y0 + 0.215, 0.08), material(Color("fbf6e9")), "Foam")
 			var ball_cols: Array[Color] = [Color("f4d03f"), Color("c0392b"), Color("1f3a93")]
 			for b_i in range(3):
 				add_prop_mesh(props, prop_sphere(0.05), Vector3(0.18 + float(b_i) * 0.11, y0 + 0.05, 0.05), material(ball_cols[b_i]), "BilliardBall_%d" % b_i)
 			for ex in [-0.12, 0.12]:
-				var eye := add_prop_mesh(props, prop_sphere(0.09), Vector3(float(ex), 2.42, -0.98), mural_material(Color("f5c2ff")), "NeonOwlEye")
+				var eye := add_prop_mesh(props, prop_sphere(0.09), Vector3(float(ex), 2.42, -0.98), mural_material(Color("f5c2ff")), "NeonCueBall")
 				eatery_anim_parts.append({"idx": e_idx, "kind": "flicker", "node": eye, "base": eye.position, "phase": 1.7})
-		"midnight_sun_diner":
+		"open_seat_diner":
 			add_prop_mesh(props, prop_cylinder(0.03, 0.03, 0.10), Vector3(-0.30, y0 + 0.05, 0.0), material(Color("b9b2a3")), "PieStandPost")
 			add_prop_mesh(props, prop_cylinder(0.20, 0.20, 0.02), Vector3(-0.30, y0 + 0.11, 0.0), material(Color("d8d0c0")), "PieStand")
 			add_prop_mesh(props, prop_cylinder(0.16, 0.16, 0.06), Vector3(-0.30, y0 + 0.15, 0.0), material(Color("b5476b")), "OlallieberryPie")
@@ -6040,7 +6024,7 @@ func cycle_eatery_guide(target_idx: int = -1) -> bool:
 		eatery_counter_nodes[eatery_guide_idx].visible = true
 		var host_lines: Array = EATERY_HOST_LINES.get(e_id, ["Welcome in!"])
 		show_eatery_host_speech(eatery_guide_idx, String(host_lines[0]))
-	var line := "%s (%s) — %s" % [String(rec.get("name", "")), String(rec.get("rating", "")), String(rec.get("kind", ""))]
+	var line := "%s — %s (fictional)" % [String(rec.get("name", "")), String(rec.get("kind", ""))]
 	var sub := "%s · Specialty: %s (Stop %d/%d · Tap the counter to order · Shift+E for next fictionalized spot)" % [String(rec.get("street", "")), String(rec.get("specialty", "")), eatery_guide_idx + 1, NEIGHBORHOOD_EATERIES.size()]
 	if info != null:
 		info.text = "%s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, sub]

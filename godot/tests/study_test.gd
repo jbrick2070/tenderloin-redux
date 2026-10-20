@@ -938,14 +938,23 @@ func run() -> void:
 	var museum_node: Node3D = decor_node.get_node_or_null("TenderloinMuseumHub")
 	require(museum_node != null and museum_node.get_node_or_null("ArchiveTimePortal") != null and study.portal_ring_meshes.size() == 3 and study.portal_lens_mesh != null, "TenderloinMuseumHub at 398 Eddy (Cadillac Hotel) includes 3-ring ArchiveTimePortal and PortalLens")
 	var eateries_node: Node3D = decor_node.get_node_or_null("NeighborhoodEateries")
-	require(eateries_node != null and eateries_node.get_child_count() == 6, "NeighborhoodEateries includes all 6 fictionalized Tenderloin bars and eateries with star ratings")
+	require(eateries_node != null and eateries_node.get_child_count() == 6, "NeighborhoodEateries includes all 6 fictional Tenderloin bars and eateries")
+	var eatery_names_ok := true
+	for e_check in study.NEIGHBORHOOD_EATERIES:
+		var e_name := String(e_check.get("name", ""))
+		if e_check.has("rating") or e_name.contains("Golden Lotus") or e_name.contains("Midnight Sun") or e_name.contains("Owl"):
+			eatery_names_ok = false
+	for e_lbl_node in eateries_node.find_children("EateryLabel_*", "Label3D", true, false):
+		if not (e_lbl_node as Label3D).text.ends_with("(fictional)") or (e_lbl_node as Label3D).text.contains("/5"):
+			eatery_names_ok = false
+	require(eatery_names_ok, "fictional eateries avoid real SF business names (Golden Lotus, Midnight Sun, owl-themed bar), show no made-up ratings, and are labeled fictional")
 	require(study.inspect_so_what_easter_egg() and study.info.text.contains("145 Leavenworth") and study.info.text.contains("361 Turk St") and study.info.text.contains("So What"), "inspect_so_what_easter_egg frames 145 Leavenworth 8th Floor & 361 Turk 'So What' awning easter egg")
 	require(study.inspect_tenderloin_museum_hub() and study.active_time_era == "present" and study.info.text.contains("398 Eddy St") and study.info.text.contains("Cadillac Hotel"), "first inspect_tenderloin_museum_hub call presents 398 Eddy St Cadillac Hotel museum hub")
 	require(study.inspect_tenderloin_museum_hub() and study.active_time_era == "1961_jazz" and study.info.text.contains("1961"), "second inspect_tenderloin_museum_hub call channels 1961 Black Hawk & 'So What' Jazz Era")
 	require(study.inspect_tenderloin_museum_hub() and study.active_time_era == "1966_comptons" and study.info.text.contains("1966"), "third inspect_tenderloin_museum_hub call channels 1966 Compton's Cafeteria Midnight Neon")
 	require(study.inspect_tenderloin_museum_hub() and study.active_time_era == "1907_cadillac" and study.info.text.contains("1907"), "fourth inspect_tenderloin_museum_hub call channels 1907 Cadillac Hotel & Great White Way")
-	require(study.cycle_eatery_guide(0) and study.eatery_guide_idx == 0 and study.info.text.contains("Golden Lotus Pho & Noodle House") and study.info.text.contains("4.8/5"), "cycle_eatery_guide(0) frames Golden Lotus Pho & Noodle House (4.8/5)")
-	require(study.cycle_eatery_guide() and study.eatery_guide_idx == 1 and study.info.text.contains("Saffron Clay-Oven Naan & Curry") and study.info.text.contains("4.6/5"), "cycle_eatery_guide() advances to Saffron Clay-Oven Naan & Curry (4.6/5)")
+	require(study.cycle_eatery_guide(0) and study.eatery_guide_idx == 0 and study.info.text.contains("Bowl & Basil Pho Counter") and study.info.text.contains("(fictional)") and not study.info.text.contains("/5"), "cycle_eatery_guide(0) frames the fictional Bowl & Basil Pho Counter, with no made-up rating")
+	require(study.cycle_eatery_guide() and study.eatery_guide_idx == 1 and study.info.text.contains("Saffron Clay-Oven Naan & Curry") and study.info.text.contains("(fictional)"), "cycle_eatery_guide() advances to the fictional Saffron Clay-Oven Naan & Curry")
 
 	# Rooftop details, SF corner turrets, Muni overhead lines & Boeddeker Park
 	var roof_counts: Dictionary = study.rooftop_feature_counts
@@ -1045,19 +1054,19 @@ func run() -> void:
 	study._unhandled_input(plain_l_ev)
 	require(study.in_wide_overview and not study.evening_mode, "plain L still opens the wide overview")
 	study.overview()
-	require(study.street_tree_points.size() >= 40 and study.get_node_or_null("StreetTrees/StreetTreeCanopyLower") != null and study.get_node_or_null("StreetTrees/StreetTreeTrunks") != null, "curbside street trees line the Tenderloin sidewalks")
+	var tree_file: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/street_trees.json"))
+	require(String(tree_file.get("source", {}).get("license", "")) == "PDDL 1.0" and study.street_tree_points.size() == tree_file.get("trees", []).size() and study.street_tree_points.size() > 300 and study.get_node_or_null("StreetTrees/StreetTreeCanopyLower") != null and study.get_node_or_null("StreetTrees/StreetTreeTrunks") != null, "every real DataSF street tree record in the modeled area is planted in the scene")
 	var trees_ok := true
-	for st_xz in study.street_tree_points:
-		var t_sd: float = study.min_street_distance(st_xz)
-		if study.building_containing_point(st_xz) != "" or t_sd < 5.4 or t_sd > 6.8:
+	for t_i in range(study.street_tree_points.size()):
+		var st_xz: Vector2 = study.street_tree_points[t_i]
+		var t_rec: Dictionary = tree_file.trees[t_i]
+		if study.building_containing_point(st_xz) != "" or st_xz.distance_to(Vector2(float(t_rec.x), float(t_rec.z))) > 0.01 or study.street_tree_ids[t_i] != String(t_rec.id):
 			trees_ok = false
 		for pole_xz in study.trolley_pole_points:
-			if pole_xz.distance_to(st_xz) < 4.0:
+			if pole_xz.distance_to(st_xz) < 1.5:
 				trees_ok = false
-		for n_i in range(study.neighbors.size()):
-			if study.neighbor_xz(n_i).distance_to(st_xz) < 3.2:
-				trees_ok = false
-	require(trees_ok, "street trees stand in curbside wells clear of footprints, trolley poles, and neighbors")
+	require(trees_ok, "street trees keep their surveyed positions outside every footprint, and schematic trolley poles step aside")
+	require(study.street_tree_leaf_color("Sycamore, London Plane", 0) != study.street_tree_leaf_color("Brisbane Box", 0), "street tree canopies are tinted by species")
 	var park_canopy: Node3D = study.park_tree_canopies[0]
 	var park_rot_before: Vector3 = park_canopy.rotation
 	var street_sway_before: Vector2 = study.street_tree_sway_sample

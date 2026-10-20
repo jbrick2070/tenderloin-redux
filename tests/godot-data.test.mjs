@@ -13,6 +13,7 @@ import {
   project,
   origin
 } from '../scripts/build-godot-data.mjs';
+import { deriveStreetTrees, isPlantedTree, splitSpecies } from '../scripts/build-street-trees.mjs';
 
 const raw = await readFile(new URL('../godot/data/source/buildings.geojson', import.meta.url));
 const source = JSON.parse(raw);
@@ -195,7 +196,7 @@ test('M6 release quality: docs/ASSETS.md, godot/data/SOURCES.md, export_presets.
   assert.ok(incMatch, 'export_presets.cfg must declare include_filter');
   assert.ok(excMatch, 'export_presets.cfg must declare exclude_filter');
   const includedFiles = incMatch[1].split(',').map(s => s.trim()).filter(Boolean);
-  assert.deepEqual(includedFiles, ['data/buildings.json', 'data/neighborhood_voices.json', 'ENGINE_LICENSE.txt']);
+  assert.deepEqual(includedFiles, ['data/buildings.json', 'data/neighborhood_voices.json', 'data/street_trees.json', 'ENGINE_LICENSE.txt']);
   for (const relPath of includedFiles) {
     const buf = await readFile(new URL('../godot/' + relPath, import.meta.url));
     assert.ok(buf.byteLength > 0, `godot/${relPath} must exist and be non-empty`);
@@ -207,4 +208,27 @@ test('M6 release quality: docs/ASSETS.md, godot/data/SOURCES.md, export_presets.
     'godot/main.gd must not use runtime network client classes or browser network calls'
   );
   assert.ok(!/TenderVoice/i.test(mainGd), 'godot/main.gd must not reference legacy TenderVoice');
+});
+
+test('real street trees come unmodified from DataSF tkzw-k3nq and are re-derivable offline', async () => {
+  const rawBytes = await readFile(new URL('../godot/data/source/street_trees_tkzw-k3nq.json', import.meta.url));
+  const records = JSON.parse(rawBytes);
+  const derived = JSON.parse(await readFile(new URL('../godot/data/street_trees.json', import.meta.url), 'utf8'));
+  assert.equal(derived.format, 'tenderloin-redux.street-trees.v1');
+  assert.equal(derived.source.license, 'PDDL 1.0');
+  assert.equal(derived.source.raw_sha256, createHash('sha256').update(rawBytes).digest('hex'), 'derived file records the retained raw source hash');
+  assert.deepEqual(derived.origin, output.origin, 'trees use the buildings.json projection origin');
+  const { trees, report } = deriveStreetTrees(records, output);
+  assert.deepEqual(derived.trees, trees, 'street_trees.json matches a fresh offline derivation');
+  assert.equal(derived.report.kept, trees.length);
+  assert.ok(trees.length > 300, 'hundreds of real trees inside the modeled area');
+  assert.ok(report.notTree > 0 && records.filter(r => !isPlantedTree(r)).every(r => /potential site/i.test(r.species)), 'only empty "Potential Site" basins are dropped as non-trees');
+  const byId = new Map(records.map(r => [String(r.treeid), r]));
+  for (const tree of trees) {
+    const rec = byId.get(tree.id);
+    assert.ok(rec, `tree ${tree.id} exists in the city record`);
+    const [x, z] = project([Number(rec.longitude), Number(rec.latitude)]);
+    assert.ok(Math.abs(x - tree.x) < 0.006 && Math.abs(z - tree.z) < 0.006, `tree ${tree.id} keeps its surveyed position`);
+    assert.equal(tree.species, splitSpecies(rec.species).common);
+  }
 });
