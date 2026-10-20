@@ -1146,6 +1146,7 @@ func run() -> void:
 	study.field_survey_overrides = saved_overrides
 	study.overview()
 
+	require(is_equal_approx(study.apply_device_pixel_ratio(), 1.0) and is_equal_approx(study.get_tree().root.content_scale_factor, 1.0), "desktop/headless keeps a 1x UI scale; the Web build scales UI by devicePixelRatio")
 	# Conversation-first UX: next-step line, guide marker, talk prompt, dialogue choices, goodbye
 	require(study.compass_phrase(Vector2.ZERO, Vector2(52.0, 0.0)) == "about 50 m east" and study.compass_phrase(Vector2.ZERO, Vector2(0.0, -300.0)) == "about 2 blocks north" and study.compass_phrase(Vector2.ZERO, Vector2(-150.0, 0.0)) == "about a block west" and study.compass_phrase(Vector2.ZERO, Vector2(4.0, 3.0)) == "right here" and study.compass_phrase(Vector2.ZERO, Vector2(40.0, 40.0)) == "about 60 m southeast", "compass_phrase gives honest metre/block directions (+x east, +z south)")
 	study.overview()
@@ -1176,7 +1177,7 @@ func run() -> void:
 	var hello_line: String = study.talk_with_neighbor(0)
 	require(study.block_panel.visible and study.block_panel_mode == "talk" and study.talk_partner == 0 and study.conv_rows[0].visible and study.conv_rows[1].visible and not study.block_action_rows[0].visible and study.block_detail_label.text.contains("Bea:"), "talking opens conversation mode with dialogue choices instead of the full action wall")
 	require(study.conv_action_btns[0].text == "Go Meet Celeste" or study.conv_action_btns[0].text.begins_with("Go Meet "), "the first conversation action follows the next objective")
-	require(study.conv_action_btns[2].text == "All Block Actions" and study.conv_chat_btn.text == "Keep Chatting (T)" and study.conv_next_btn.text == "What's Next?" and study.conv_bye_btn.text == "Goodbye (Esc)", "conversation offers Keep Chatting, What's Next?, Goodbye, and All Block Actions")
+	require(study.conv_action_btns[2].text == "All Block Actions" and study.conv_chat_btn.text == "Keep Chatting (T)" and study.conv_next_btn.text == "What's Next?" and study.conv_bye_btn.text == "Goodbye (Esc)" and not study.is_narrow_layout(), "conversation offers Keep Chatting, What's Next?, Goodbye, and All Block Actions")
 	var next_line: String = study.ask_whats_next()
 	require(next_line.begins_with("Bea: \"") and next_line.contains("Go say hello!") and study.is_speech_bubble_visible() and study.speech_bubble_anchor == "bea" and study.info.text.contains("gold marker"), "What's Next? has Bea explain the next step in her bubble")
 	require(study.keep_chatting() != "" and study.block_panel_mode == "talk", "Keep Chatting continues the conversation")
@@ -1202,7 +1203,11 @@ func run() -> void:
 	study.show_block_panel(true)
 	require(study.block_panel_mode == "hub" and study.block_next_btn.get_theme_stylebox("normal") == study.button_suggest_style and study.block_open_btn.modulate.a < 0.9 and study.block_epilogue_btn.modulate.a < 0.9 and is_equal_approx(study.block_mural_btn.modulate.a, 1.0), "the full action list highlights the suggested step and dims steps that unlock later")
 	study.show_block_panel(false)
-	require(study.mural_buttons[7].text == "Goodbye (Esc)" and study.music_buttons[5].text == "Goodbye (Esc)", "Celeste's and Rook's panels end the chat with the same Goodbye (Esc)")
+	require(study.mural_buttons[7].text == "What's Next?" and study.mural_buttons[8].text == "Goodbye (Esc)" and study.music_buttons[5].text == "What's Next?" and study.music_buttons[6].text == "Goodbye (Esc)", "Celeste's and Rook's panels offer What's Next? and the same Goodbye (Esc)")
+	var whats_next_btn: Button = study.controls.get_child(0)
+	study.overview()
+	whats_next_btn.emit_signal("pressed")
+	require(whats_next_btn.text == "What's Next?" and (study.info.text.contains("Follow the gold marker") or study.info.text.contains("wander")), "the bottom-bar What's Next? button gives guidance from anywhere")
 	require(study.apply_save_envelope(saved_m4_json) and study.block_opened, "restore the full M1-M4 save after the fresh conversation walkthrough")
 	var later_obj: Dictionary = study.current_objective()
 	require(not String(later_obj.get("text", "")).is_empty() and String(later_obj.get("id", "")) != "meet", "after the block opens, the next step moves on to the afternoon projects")
@@ -1333,7 +1338,7 @@ func run() -> void:
 		study.show_mural_panel(true)
 		await process_frame
 		await process_frame
-		require(study.mural_buttons.size() == 8, "MuralPanel has all 8 interactive buttons")
+		require(study.mural_buttons.size() == 9, "MuralPanel has all 9 interactive buttons")
 		var mp_rect: Rect2 = study.mural_panel.get_global_rect()
 		require(mp_rect.position.x >= 0 and mp_rect.end.x <= size.x and mp_rect.position.y >= top - 2 and mp_rect.end.y <= bottom + 2, "mural panel fits cleanly between header and bottom controls")
 		for m_btn in study.mural_buttons:
@@ -1368,7 +1373,7 @@ func run() -> void:
 		await process_frame
 		await process_frame
 		require(study.music_panel.visible and not study.mural_panel.visible and not study.block_panel.visible, "check_sound_with_rook opens MusicPanel and hides MuralPanel/BlockPanel")
-		require(study.music_buttons.size() == 6, "MusicPanel has all 6 interactive buttons")
+		require(study.music_buttons.size() == 7, "MusicPanel has all 7 interactive buttons")
 		var mus_rect: Rect2 = study.music_panel.get_global_rect()
 		var mus_header_end_y: float = study.header_panel.get_global_rect().end.y
 		var mus_controls_pos_y: float = study.controls.get_global_rect().position.y
@@ -1427,6 +1432,12 @@ func run() -> void:
 		study.show_conversation(0)
 		await process_frame
 		await process_frame
+		require(study.info.visible == (size.x >= 600), "the header info line steps aside on phones while a conversation panel is open at %s" % str(size))
+		if size.x < 600:
+			require(study.conv_chat_btn.text == "Chat More" and study.conv_bye_btn.text == "Goodbye" and study.conv_action_btns[2].text == "All Actions", "phone layout uses short conversation labels at %s" % str(size))
+		study.frame_conversation(0)
+		var bea_screen: Vector2 = study.camera.unproject_position(study.neighbors[0].pos + Vector3(0.0, 2.2, 0.0))
+		require(study.play_area_rect().has_point(bea_screen), "the conversation camera keeps Bea in the visible 3D area above the panel at %s" % str(size))
 		var conv_rect: Rect2 = study.block_panel.get_global_rect()
 		require(study.header_panel.get_global_rect().end.y <= conv_rect.position.y and conv_rect.end.y <= study.controls.get_global_rect().position.y, "header, conversation panel, and bottom controls do not overlap at %s" % str(size))
 		for c_btn in study.conv_buttons:

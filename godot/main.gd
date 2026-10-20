@@ -1385,7 +1385,19 @@ func make_building_mesh_and_rect(building: Dictionary, mat: Material, base_col: 
 	add_child(building_mesh)
 	return {"mesh": building_mesh, "rect": b_rect}
 
+## On the Web the canvas renders at device pixels (window.devicePixelRatio). Lay the UI out in CSS
+## pixels so phones get the narrow layout, readable text, and >= 44 px touch targets; 3D still
+## renders at full device resolution.
+func apply_device_pixel_ratio() -> float:
+	var dpr := 1.0
+	if OS.has_feature("web"):
+		dpr = clampf(DisplayServer.screen_get_scale(), 1.0, 4.0)
+	if get_tree() != null and get_tree().root != null and dpr > 1.01:
+		get_tree().root.content_scale_factor = dpr
+	return dpr
+
 func _ready() -> void:
+	apply_device_pixel_ratio()
 	save_path = resolve_save_path()
 	settings_path = resolve_settings_path()
 	var parsed = JSON.parse_string(FileAccess.get_file_as_string("res://data/buildings.json"))
@@ -4426,6 +4438,24 @@ func show_conversation(index: int) -> void:
 	opening_conversation = true
 	show_block_panel(true)
 	opening_conversation = false
+	frame_conversation(index)
+
+## Keep the speaker (and their bubble) in the visible 3D area above the open panel.
+func frame_conversation(index: int) -> void:
+	if camera == null or index < 0 or index >= neighbors.size() or in_wide_overview:
+		return
+	var n_pos: Vector3 = neighbors[index].pos
+	var focus := Vector3(n_pos.x, 2.2, n_pos.z)
+	in_overview = false
+	following_player = false
+	if view_size > 90.0:
+		view_size = 58.0
+	target = focus
+	update_camera()
+	var area := play_area_rect()
+	var want := Vector2(area.get_center().x, area.position.y + area.size.y * 0.66)
+	pan_camera_by_screen_delta(want - camera.unproject_position(focus))
+	update_occlusion(true)
 
 func conversation_partner_line(index: int, body: String) -> String:
 	if index < 0 or index >= neighbors.size():
@@ -4438,7 +4468,8 @@ func ask_whats_next() -> String:
 	var speaker := talk_partner if talk_partner >= 0 else nearest_neighbor_within(TALK_PROMPT_RADIUS_M)
 	var hint := String(obj.get("hint", ""))
 	var line := conversation_partner_line(speaker, hint) if speaker >= 0 else hint
-	last_panel_dialogue = line
+	if block_panel != null and block_panel.visible:
+		last_panel_dialogue = line
 	if speaker >= 0:
 		show_neighbor_speech(speaker, line)
 	update_block_ui()
@@ -4462,6 +4493,8 @@ func end_conversation() -> void:
 	arrived_speaker = false
 	selected_neighbor = -1
 	var who := String(neighbors[partner].name) if partner >= 0 and partner < neighbors.size() else "the block"
+	if not in_overview and not in_wide_overview and player != null:
+		follow_player()
 	var obj := current_objective()
 	if info != null:
 		var way := "Follow the gold marker to your next stop" if bool(obj.get("has_target", false)) else "Wander and explore at your own pace"
@@ -4588,15 +4621,21 @@ func apply_block_panel_mode() -> void:
 	if not talk:
 		apply_hub_guidance()
 	if talk:
+		var narrow := is_narrow_layout()
 		var acts := conversation_actions()
 		for s in range(conv_action_btns.size()):
 			var has := s < acts.size()
 			conv_action_btns[s].visible = has
 			conv_action_ids[s] = String(acts[s].id) if has else ""
 			if has:
-				conv_action_btns[s].text = String(acts[s].label)
+				var lbl := String(acts[s].label)
+				if narrow:
+					lbl = lbl.replace("Go Meet ", "Meet ").replace("All Block Actions", "All Actions").replace(" with Celeste", "").replace(" with Rook", "")
+				conv_action_btns[s].text = lbl
 		if conv_chat_btn != null:
-			conv_chat_btn.text = "Keep Chatting (T)"
+			conv_chat_btn.text = "Chat More" if narrow else "Keep Chatting (T)"
+		if conv_bye_btn != null:
+			conv_bye_btn.text = "Goodbye" if narrow else "Goodbye (Esc)"
 
 func conv_button(parent: Node, text: String, action: Callable) -> Button:
 	var control := Button.new()
@@ -4630,7 +4669,7 @@ func play_area_rect() -> Rect2:
 func update_guide_arrow() -> void:
 	if guide_arrow == null or camera == null:
 		return
-	if guide_marker == null or not guide_marker.visible:
+	if guide_marker == null or not guide_marker.visible or is_speech_bubble_visible():
 		guide_arrow.visible = false
 		return
 	var screen := camera.unproject_position(guide_marker_target)
@@ -4700,8 +4739,19 @@ func apply_hub_guidance() -> void:
 		b.modulate = Color(1.0, 1.0, 1.0, 0.55) if (locked.has(b) and not is_sug) else Color.WHITE
 		b.tooltip_text = "Suggested next step" if is_sug else ("Unlocks later" if locked.has(b) else "")
 
+func is_narrow_layout() -> bool:
+	return bubble_viewport_size().x < 600.0
+
+func any_side_panel_visible() -> bool:
+	return (block_panel != null and block_panel.visible) or (mural_panel != null and mural_panel.visible) or (music_panel != null and music_panel.visible)
+
 func update_conversation_ui(delta: float) -> void:
 	ui_clock = wrapf(ui_clock + delta, 0.0, 3600.0)
+	# On phones the open panel and the speech bubble already carry the words; give the 3D view room.
+	if info != null:
+		var show_info := not (is_narrow_layout() and any_side_panel_visible())
+		if info.visible != show_info:
+			info.visible = show_info
 	objective_refresh_timer -= delta
 	if objective_refresh_timer <= 0.0:
 		objective_refresh_timer = 0.5
@@ -10735,6 +10785,7 @@ func make_ui() -> void:
 	mural_vbox.add_child(row3)
 	mural_button(row3, "Shift Motif", func(): move_active_motif(1, 0))
 	mural_button(row3, "Clear Board", func(): clear_mural_board())
+	mural_button(row3, "What's Next?", func(): ask_whats_next())
 	mural_button(row3, "Goodbye (Esc)", func(): end_conversation())
 	update_mural_ui()
 
@@ -10776,6 +10827,7 @@ func make_ui() -> void:
 	m_row3.add_theme_constant_override("separation", 4)
 	music_vbox.add_child(m_row3)
 	music_sketch_btn = music_button(m_row3, "80 BPM Sketch (Active)", func(): use_synth_sketch())
+	music_button(m_row3, "What's Next?", func(): ask_whats_next())
 	music_button(m_row3, "Goodbye (Esc)", func(): end_conversation())
 	update_music_ui()
 
@@ -10860,7 +10912,7 @@ func make_ui() -> void:
 	controls.offset_top = -124
 	controls.offset_bottom = -12
 	layer.add_child(controls)
-	button(controls, "« Prev Building", func(): choose_next(-1))
+	button(controls, "What's Next?", func(): ask_whats_next())
 	button(controls, "Map Overview", overview)
 	button(controls, "Next Building »", func(): choose_next(1))
 	button(controls, "Zoom In (+)", func(): zoom(0.8))
@@ -10889,6 +10941,7 @@ func make_ui() -> void:
 		var narrow := vp.get_visible_rect().size.x < 600
 		if is_instance_valid(title):
 			title.add_theme_font_size_override("font_size", 18 if narrow else 26)
+			title.text = "TENDERLOIN REDUX" if narrow else "TENDERLOIN REDUX / Godot block walk & study"
 		if is_instance_valid(info):
 			info.add_theme_font_size_override("font_size", 13 if narrow else 19)
 		if is_instance_valid(objective_label):
