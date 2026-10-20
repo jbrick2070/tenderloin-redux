@@ -579,6 +579,7 @@ var ui_clock := 0.0
 var field_survey_overrides: Dictionary = FIELD_SURVEY_OVERRIDES.duplicate(true)
 var last_built_palette: Dictionary = {}
 var street_intersections: Array[Vector2] = []
+var street_intersection_streets: Array[PackedStringArray] = []
 var corner_tower_sites: Dictionary = {}
 var building_shader_material: ShaderMaterial
 var rooftop_feature_counts: Dictionary = {"parapets": 0, "water_tanks": 0, "penthouses": 0, "skylights": 0, "vents": 0, "corner_towers": 0}
@@ -790,9 +791,11 @@ func compute_street_intersections() -> void:
 			if not seen.has(key):
 				seen[key] = {"pt": Vector2(float(p[0]), float(p[1])), "names": {}}
 			seen[key].names[s_name] = true
+	street_intersection_streets.clear()
 	for key in seen:
 		if seen[key].names.size() >= 2:
 			street_intersections.append(seen[key].pt)
+			street_intersection_streets.append(PackedStringArray(seen[key].names.keys()))
 
 ## Convex footprint corner facing a street intersection -> turret site, or {} if the corner is unsuitable.
 func corner_site_for_vertex(polygon: Dictionary, v_i: int, ix: Vector2) -> Dictionary:
@@ -5323,13 +5326,27 @@ func walk_step(input_dir: Vector2, delta: float) -> bool:
 	update_walking_status()
 	return moved
 
-func update_walking_status() -> void:
-	var p := player_xz()
-	var nb := nearest_building_info(p)
-	var occ_total := occluded_buildings.size() + occluded_wider_buildings.size()
-	var cut_note := " · %d cutaway" % occ_total if occ_total > 0 else ""
+## "On Turk Street, near Taylor Street" from the real OSM street network (nearest intersection).
+func location_phrase(p: Vector2) -> String:
 	var st_name := nearest_street_name(p)
-	info.text = "On %s · Pos (%.1f, %.1f) m · %.2f m from %s%s\nWASD/Arrows or tap street to walk · 1–5 neighbors · M mural · R/K music · G block · H/J/C west\nCity 2010 PDDL footprints · Streets © OpenStreetMap / ODbL" % [st_name, p.x, p.y, nb.distance, nb.id, cut_note]
+	var best := -1
+	var best_d := 80.0
+	for i in range(street_intersections.size()):
+		var d := p.distance_to(street_intersections[i])
+		if d < best_d:
+			best_d = d
+			best = i
+	if best >= 0 and best < street_intersection_streets.size():
+		var names := street_intersection_streets[best]
+		if names.has(st_name):
+			for nm in names:
+				if nm != st_name:
+					return "On %s, near %s" % [st_name, nm]
+		return "On %s, near %s" % [st_name, " & ".join(names)]
+	return "On %s" % st_name
+
+func update_walking_status() -> void:
+	info.text = "%s\nTap the street or use WASD/arrows to walk · T talks to people nearby · G: all block actions\nCity 2010 PDDL footprints · Streets © OpenStreetMap / ODbL" % location_phrase(player_xz())
 
 func choose_next_neighbor(direction: int = 1) -> bool:
 	if selected_neighbor >= 0:
@@ -5872,8 +5889,6 @@ func finish_neighbor_arrival(index: int) -> void:
 		target = Vector3(player.position.x, 1.0, player.position.z)
 		update_camera()
 	update_occlusion(true)
-	var nb := nearest_building_info(player_xz())
-	var cut_note := " · %d cutaway" % occluded_buildings.size() if not occluded_buildings.is_empty() else ""
 	var mem_line := neighbor_project_memory_line(n_id)
 	var mem_a11y := (" " + mem_line) if not mem_line.is_empty() else ""
 	if index == celeste_index:
@@ -5893,7 +5908,7 @@ func finish_neighbor_arrival(index: int) -> void:
 		update_mural_ui()
 		show_neighbor_speech(index, celeste_dialogue_text())
 		var sub_c := mem_line if not mem_line.is_empty() else "Portable sidewalk easel ready · Place Sun, Wave & Rise below"
-		info.text = "With %s — %s (%d/3 mural motifs · %.2f m from %s%s)\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, mural_placements.size(), nb.distance, nb.id, cut_note, sub_c]
+		info.text = "With %s — %s · %d/3 mural motifs\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, mural_placements.size(), sub_c]
 		announce_a11y_status("Arrived at %s (%s). Portable Mural Board %d/3 motifs.%s" % [n.name, n.role, mural_placements.size(), mem_a11y])
 	elif index == rook_index:
 		pending_celeste_talk = false
@@ -5909,7 +5924,7 @@ func finish_neighbor_arrival(index: int) -> void:
 		show_neighbor_speech(index, rook_dialogue_text())
 		var sc_tag := "Soundcheck ready" if rook_soundcheck_done else "Tap Soundcheck below"
 		var sub_r := mem_line if not mem_line.is_empty() else ("Turk St speaker %.1f m clear of wall · Explicit play/audition below" % min_wall_distance(speaker_xz()))
-		info.text = "With %s — %s (%s · %.2f m from %s%s)\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, sc_tag, nb.distance, nb.id, cut_note, sub_r]
+		info.text = "With %s — %s · %s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, sc_tag, sub_r]
 		announce_a11y_status("Arrived at %s (%s). %s.%s" % [n.name, n.role, sc_tag, mem_a11y])
 	else:
 		pending_celeste_talk = false
@@ -5919,7 +5934,7 @@ func finish_neighbor_arrival(index: int) -> void:
 		show_conversation(index)
 		show_neighbor_speech(index, neighbor_greeting_line(n_id))
 		var sub_b := mem_line if not mem_line.is_empty() else neighbor_greeting_line(n_id)
-		info.text = "With %s — %s (%d/5 neighbors · %.2f m from %s%s)\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, visited_neighbors.size(), nb.distance, nb.id, cut_note, sub_b]
+		info.text = "With %s — %s · %d/5 neighbors met\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [n.name, n.role, visited_neighbors.size(), sub_b]
 		announce_a11y_status("Arrived at %s (%s). Visited %d/5 neighbors.%s" % [n.name, n.role, visited_neighbors.size(), mem_a11y])
 
 func finish_mural_arrival() -> void:
@@ -5953,8 +5968,7 @@ func finish_mural_arrival() -> void:
 		save_godot_state()
 	show_mural_panel(true)
 	update_mural_ui()
-	var nb := nearest_building_info(player_xz())
-	info.text = "At Portable Mural Board with Celeste (%d/3 motifs · %s palette · %.2f m from %s)\nFreestanding sidewalk easel — no building façade painted\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [mural_placements.size(), mural_palette.capitalize(), nb.distance, nb.id]
+	info.text = "At Celeste's portable mural board · %d/3 motifs · %s palette\nA freestanding sidewalk easel: no building façade is painted\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [mural_placements.size(), mural_palette.capitalize()]
 	announce_a11y_status("At Portable Mural Board with Celeste (%d/3 motifs, %s palette)." % [mural_placements.size(), mural_palette.capitalize()])
 
 func finish_speaker_arrival() -> void:
@@ -5984,9 +5998,8 @@ func finish_speaker_arrival() -> void:
 		return
 	show_music_panel(true)
 	update_music_ui()
-	var nb := nearest_building_info(player_xz())
 	var sc_tag := active_stem_summary() if rook_soundcheck_done else "Tap Soundcheck below"
-	info.text = "At Rook's Turk St Speaker (%s · %.2f m from %s)\nFreestanding sidewalk monitor · Play sketch or audition local Suno file\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [sc_tag, nb.distance, nb.id]
+	info.text = "At Rook's Turk Street speaker · %s\nPlay the sketch or audition your own local track (never uploaded)\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % sc_tag
 	announce_a11y_status("At Rook's Turk Street Speaker (%s)." % sc_tag)
 
 func celeste_dialogue_text() -> String:

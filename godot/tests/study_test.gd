@@ -1147,6 +1147,11 @@ func run() -> void:
 	study.overview()
 
 	require(is_equal_approx(study.apply_device_pixel_ratio(), 1.0) and is_equal_approx(study.get_tree().root.content_scale_factor, 1.0), "desktop/headless keeps a 1x UI scale; the Web build scales UI by devicePixelRatio")
+	require(study.location_phrase(Vector2(study.PLAYER_START.x, study.PLAYER_START.z)) == "On Turk Street, near Taylor Street" and study.street_intersection_streets.size() == study.street_intersections.size(), "the walking header names your street and the nearest real cross street")
+	study.player.position = study.PLAYER_START
+	study.update_walking_status()
+	require(study.info.text.begins_with("On Turk Street, near Taylor Street
+") and not study.info.text.contains("Pos ("), "walking status uses plain location words instead of coordinates and footprint IDs")
 	# Conversation-first UX: next-step line, guide marker, talk prompt, dialogue choices, goodbye
 	require(study.compass_phrase(Vector2.ZERO, Vector2(52.0, 0.0)) == "about 50 m east" and study.compass_phrase(Vector2.ZERO, Vector2(0.0, -300.0)) == "about 2 blocks north" and study.compass_phrase(Vector2.ZERO, Vector2(-150.0, 0.0)) == "about a block west" and study.compass_phrase(Vector2.ZERO, Vector2(4.0, 3.0)) == "right here" and study.compass_phrase(Vector2.ZERO, Vector2(40.0, 40.0)) == "about 60 m southeast", "compass_phrase gives honest metre/block directions (+x east, +z south)")
 	study.overview()
