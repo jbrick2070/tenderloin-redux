@@ -47,19 +47,67 @@ try {
     await page.goto(base);
     await page.locator('#status').waitFor({ state: 'hidden', timeout: 60000 });
     await page.waitForTimeout(1200);
+    async function clickHeaderControl(key) {
+      const prev = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.ui_frame);
+      await page.waitForFunction(frame => window.__tenderloinGodotA11ySnapshot?.ui_frame > frame, prev);
+      const snap = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+      const control = snap[key];
+      assert.ok(control?.visible && control.width >= 44 && control.height >= 44, `${key} has a visible 44px target`);
+      assert.ok(control.x >= 0 && control.y >= 0 && control.x + control.width <= snap.viewport_width + 1 && control.y + control.height <= snap.viewport_height + 1, `${key} fits viewport`);
+      const canvas = await page.locator('#canvas').boundingBox();
+      await page.mouse.click(canvas.x + (control.x + control.width / 2) * canvas.width / snap.viewport_width, canvas.y + (control.y + control.height / 2) * canvas.height / snap.viewport_height);
+    }
+    const startup = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+    assert.equal(startup.reward_sounds_enabled, true);
+    assert.equal(startup.reward_audio_unlocked, false);
+    assert.equal(startup.reward_sound_count, 0);
+    assert.equal(startup.reward_audio_playing, false);
+    assert.equal(startup.header_details_expanded, false);
+    assert.ok(startup.header_control.height <= 130, 'compact header leaves room for the game');
+    await page.mouse.move(size.width / 2, 30);
+    await page.mouse.wheel(0, -100);
+    await page.waitForTimeout(600);
+    assert.equal((await page.evaluate(() => window.__tenderloinGodotA11ySnapshot)).reward_audio_unlocked, false, 'wheel is not a sound-unlock gesture');
+    await clickHeaderControl('start_control');
+    await page.waitForFunction(() => !window.__tenderloinGodotA11ySnapshot?.in_overview && window.__tenderloinGodotA11ySnapshot?.camera_view_size <= 58);
+    const oriented = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+    assert.equal(oriented.reward_audio_unlocked, true);
+    assert.equal(oriented.music_playing, false);
+    assert.ok(oriented.cutaway_additions > 0, 'newer foreground buildings must fade for the starting character');
+    assert.ok(oriented.player_screen.x >= oriented.play_area.x && oriented.player_screen.x <= oriented.play_area.x + oriented.play_area.width && oriented.player_screen.y >= oriented.play_area.y && oriented.player_screen.y <= oriented.play_area.y + oriented.play_area.height, 'Start frames the actual avatar inside the playable scene');
+    assert.match(oriented.progress_text, /Sparks: 0 · Keepsakes: 0\/10/);
+    await page.screenshot({ path: `artifacts/godot-${size.width}-start-oriented.png` });
+    await clickHeaderControl('info_control');
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.header_details_expanded === true);
+    await page.waitForTimeout(150);
+    const details = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+    assert.ok(details.header_control.height <= startup.header_control.height + 100, 'expanded details stay within a bounded scroll area');
+    await page.screenshot({ path: `artifacts/godot-${size.width}-header-info.png` });
+    await clickHeaderControl('info_control');
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.header_details_expanded === false);
+    await page.mouse.click(size.width * (size.width < 600 ? .75 : .50), size.height - (size.width < 600 ? 148 : 98));
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.in_wide_overview === true);
     const before = await page.screenshot({ path: `artifacts/godot-${size.width}-overview.png` });
+    await page.mouse.click(size.width * (size.width < 600 ? .25 : .17), size.height - (size.width < 600 ? 148 : 98));
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.header_details_expanded === true, null, { timeout: 5000 });
+    await clickHeaderControl('info_control');
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.header_details_expanded === false);
     // Native Godot Control buttons are canvas pixels, not DOM accessibility nodes.
-    // Next is button index 2: desktop right/top row; phone left/middle row.
+    // Find Me is button index 2: desktop right/top row; phone left/middle row.
     // Grid: 12px side/bottom margin, 50px buttons, 4px row gap, 2/3 columns.
     await page.mouse.click(size.width * (size.width < 600 ? .25 : .83), size.height - 98);
     await page.waitForTimeout(300);
-    const after = await page.screenshot({ path: `artifacts/godot-${size.width}-selected.png` });
-    assert.notDeepEqual(before, after, `Next building must change view at ${size.width}`);
+    const after = await page.screenshot({ path: `artifacts/godot-${size.width}-find-me.png` });
+    assert.notDeepEqual(before, after, `Find Me returns from the Tenderloin map at ${size.width}`);
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.camera_view_size === 45);
+    await page.mouse.click(size.width * (size.width < 600 ? .75 : .17), size.height - (size.width < 600 ? 98 : 38));
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.camera_view_size < 45);
     await page.keyboard.press('Tab');
     await page.keyboard.press('Enter');
     await page.waitForTimeout(150);
     const keyboard = await page.screenshot();
-    assert.notDeepEqual(after, keyboard, 'Tab then Enter must visibly activate Zoom in');
+    await page.waitForFunction(() => Math.abs(window.__tenderloinGodotA11ySnapshot?.camera_view_size - 45) < 0.01);
+    assert.notDeepEqual(before, keyboard, 'Zoom in followed by Tab/Enter on Zoom out retains the close walking view');
     // Click "Walk to neighbor" (button index 5: bottom-right of 3x2 desktop or 2x3 phone grid)
     await page.mouse.click(size.width * (size.width < 600 ? .75 : .83), size.height - 38);
     await page.waitForTimeout(900);
@@ -288,7 +336,7 @@ try {
     await page.evaluate(() => window.__tenderloinRequestPerfSnapshot());
     await page.waitForFunction(() => Boolean(window.__tenderloinLastPerfSnapshot), null, { timeout: 10000 });
     const perfSnap = await page.evaluate(() => window.__tenderloinLastPerfSnapshot);
-    assert.equal(perfSnap.within_budget, true, 'Godot Web Wasm runtime performance snapshot must meet all M6 budgets');
+    assert.equal(perfSnap.within_budget, true, `Godot Web Wasm runtime performance snapshot must meet all M6 budgets: ${JSON.stringify({ ...perfSnap, svg_samples: undefined })}`);
     assert.equal(perfSnap.total_buildings_count, 188);
     assert.equal(perfSnap.pathfind_cold_cache, true, 'Pathfinding benchmark must run with cold cell_walkable_cache');
     assert.equal(perfSnap.astar_used, true, 'Pathfinding benchmark from Thanh (Taylor St) to Black Hawk (Turk & Hyde) must exercise A* search');
@@ -376,6 +424,16 @@ try {
     assert.equal(a11yDom.snapshot?.voices_count, 3, 'A11y snapshot must report 3 verified Tenderloin organization profiles');
     // Discover through real input, and inspect actual 3D keepsake-node visibility.
     for (let found = 1; found <= 10; found++) {
+      if (found === 2 || found === 3) {
+        const beforeToggleSound = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.reward_sound_count);
+        await clickHeaderControl('sounds_control');
+        await page.waitForFunction(enabled => window.__tenderloinGodotA11ySnapshot?.reward_sounds_enabled === enabled, found === 3);
+        await page.waitForTimeout(850);
+        const afterToggleSound = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+        assert.equal(afterToggleSound.reward_sound_count, beforeToggleSound, 'unmute does not replay missed sounds');
+        assert.equal(afterToggleSound.reward_audio_playing, false);
+      }
+      const soundCountBefore = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.reward_sound_count);
       await page.keyboard.press('Shift+KeyD');
       await page.waitForFunction((count) => {
         const snap = window.__tenderloinGodotA11ySnapshot;
@@ -383,6 +441,14 @@ try {
         return snap?.surprises_found === count && snap?.keepsakes_visible === count && save.discovered_surprises?.length === count;
       }, found, { timeout: 10000 });
       assert.match(await page.locator('#godot-a11y-status').textContent(), /Keepsake:/);
+      const rewardSnap = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+      assert.equal(rewardSnap.reward_sound_count, soundCountBefore + (found === 2 ? 0 : 1), 'fresh rewards obey sound preference with music paused');
+      assert.equal(rewardSnap.music_playing, false);
+      assert.match(rewardSnap.progress_text, new RegExp(`Keepsakes: ${found}/10`));
+      if (found === 1) {
+        assert.equal(rewardSnap.reward_audio_playing, true, 'the real Web audio player starts an unmuted effect');
+        await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.reward_audio_playing === false);
+      }
     }
     const tenSurprises = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
     assert.match(tenSurprises.last_reward_title, /^10\/10 Surprises:/);
@@ -393,6 +459,7 @@ try {
     assert.equal(rediscovery.surprises_found, 10);
     assert.equal(rediscovery.sparks, tenSurprises.sparks, 'Revisiting a surprise cannot award Sparks again');
     assert.equal(rediscovery.reward_burst_count, tenSurprises.reward_burst_count);
+    assert.equal(rediscovery.reward_sound_count, tenSurprises.reward_sound_count, 'revisits do not replay sounds');
     await page.keyboard.press('Digit1');
     await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.conversation_actions?.some(a => a.id === 'landmark_tour'), null, { timeout: 35000 });
     // Read-only native control geometry; all activation remains real browser clicks.
@@ -408,6 +475,7 @@ try {
       await page.mouse.click(canvas.x + (action.x + action.width / 2) * canvas.width / snap.viewport_width, canvas.y + (action.y + action.height / 2) * canvas.height / snap.viewport_height);
     }
     await page.screenshot({ path: `artifacts/godot-${size.width}-all-keepsakes-conversation.png` });
+    if (size.width < 600) assert.match((await page.evaluate(() => window.__tenderloinGodotA11ySnapshot)).conversation_header, /^Bea · Turn \d\/5 · Sparks: \d+$/);
     await clickConversationAction('whats_next');
     await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.announcement.includes('0/12 stops this session'));
     await clickConversationAction('eateries');
@@ -446,6 +514,10 @@ try {
     const tourRevisit = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
     assert.equal(tourRevisit.tour_count, 12);
     assert.equal(tourRevisit.reward_burst_count, tourComplete.reward_burst_count, 'Revisiting a completed tour never repeats its reward');
+    const progressBeforeMute = await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1'));
+    await clickHeaderControl('sounds_control');
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.reward_sounds_enabled === false);
+    assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), progressBeforeMute, 'sound preference cannot mutate game progress');
     const storageBeforeReload = await page.evaluate(() => ({
       godotSave: window.localStorage.getItem('tenderloin-redux.godot.save.v1'),
       godotSettings: window.localStorage.getItem('tenderloin-redux.godot.settings.v1'),
@@ -468,6 +540,7 @@ try {
     assert.ok(storageBeforeReload.godotSettings, `Godot Web export must persist M5 settings to tenderloin-redux.godot.settings.v1 at ${size.width}`);
     const parsedSettings = JSON.parse(storageBeforeReload.godotSettings);
     assert.equal(parsedSettings.schema, 'tenderloin-redux.godot.settings.v1');
+    assert.equal(parsedSettings.reward_sounds, false);
     assert.equal(parsedSettings.neighborhood_voices, true);
     assert.ok(!storageBeforeReload.godotSave.includes('suno-browser-test.wav'), 'Local Suno audio filename must stay tab-local and never persist in save JSON');
     const parsedSave = JSON.parse(storageBeforeReload.godotSave);
@@ -496,6 +569,13 @@ try {
     await page.reload();
     await page.locator('#status').waitFor({ state: 'hidden', timeout: 60000 });
     await page.waitForTimeout(600);
+    const soundReload = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+    assert.equal(soundReload.reward_sounds_enabled, false);
+    assert.equal(soundReload.reward_audio_unlocked, false);
+    assert.equal(soundReload.reward_sound_count, 0);
+    assert.equal(soundReload.reward_audio_playing, false);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => !window.__tenderloinGodotA11ySnapshot?.in_overview && window.__tenderloinGodotA11ySnapshot?.camera_view_size <= 58);
     // Prove load_godot_state() and load_godot_settings() restored both game save and M5 settings on reload:
     // press KeyE to walk to Celeste and talk, triggering a fresh save from Godot memory.
     await page.keyboard.press('KeyE');
@@ -660,7 +740,7 @@ try {
     assert.equal(afterFileBridgeMerge.civic?.phase, 'done', 'File picker bridge monotonic merge must preserve M4 civic done state');
     assert.equal(afterFileBridgeMerge.film?.phase, 'done', 'File picker bridge monotonic merge must preserve M4 film done state');
     assert.deepEqual(afterFileBridgeMerge.discovered_surprises, [], 'Fresh browser import does not invent Godot-only surprise discoveries');
-    const explorationEvidence = { surpriseDiscoveryVerified: true, surpriseKeepsakeReloadVerified: true, chapter6ConversationVerified: true, sessionLandmarkTourVerified: true, fullSaveBytes: Buffer.byteLength(saveBeforeTour, 'utf8') };
+    const explorationEvidence = { compactHeaderHeight: startup.header_control.height, compactInfoToggleVerified: true, startupOrientationVerified: true, findMeAndMapVerified: true, rewardSoundsAndMuteVerified: true, persistentProgressVerified: true, surpriseDiscoveryVerified: true, surpriseKeepsakeReloadVerified: true, chapter6ConversationVerified: true, sessionLandmarkTourVerified: true, fullSaveBytes: Buffer.byteLength(saveBeforeTour, 'utf8') };
     runs.push({ ...explorationEvidence, viewport: size, overviewBytes: before.length, selectedBytes: after.length, neighborBytes: neighbor.length, muralBytes: muralShot.length, musicBytes: musicShot.length, blockBytes: blockShot.length, blackhawkBytes: blackhawkShot.length, wideBytes: wideShot.length, keyboardActivationVerified: true, neighborWalkVerified: true, muralSaveReloadVerified: true, rookMusicAuditionVerified: true, blockCompletionVerified: true, widerTenderloinVerified: true, m1EpilogueVerified: true, m3HostingVerified: true, m4CivicFilmVerified: true, m5VoicesIsolatedVerified: true, m6KeepsakeSvgExportVerified: true, m6PerfBudgetVerified: true, perfSnapshot: perfSnap, browserSaveImportVerified: true, domA11yLiveVerified: true });
     await context.close();
   }
@@ -674,7 +754,8 @@ try {
     await writeFile('artifacts/godot-browser-failure.json', JSON.stringify({
       error: String(error),
       viewport: latestPage.viewportSize(),
-      snapshot: await latestPage.evaluate(() => window.__tenderloinGodotA11ySnapshot)
+      snapshot: await latestPage.evaluate(() => window.__tenderloinGodotA11ySnapshot),
+      performance: await latestPage.evaluate(() => window.__tenderloinLastPerfSnapshot || null)
     }, null, 2));
   }
   throw error;

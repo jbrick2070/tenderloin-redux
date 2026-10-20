@@ -1,0 +1,18 @@
+STDOUT:
+I wrote the review to `kibitz-runs/2026-10-20-codex-reward-sounds-and-orientation/r3/claude.md`. My verdict is **yes-with-fixes**. I only read the files: there was no shell, so I couldn't run `git diff` or the gates.
+
+**Must fix:**
+1. **Most of the new reward moments make no sound.** The sound only plays for cues that have a banner title set inside `trigger_progress_cue` (`godot/main.gd:9963`). Keepsake discoveries, the 10/10 finale and eatery orders show their banners through a separate call (`main.gd:5444`, `5030`), so they never reach the sound. Their note tables are dead code. The browser test expects one sound per discovery (`tests/godot-browser.mjs:415`), so I expect that gate to fail. Check it against the driver's run.
+2. **Resizing the window during the Start card cancels the zoom to the player.** A resize while on the map overview re-runs `overview()` (`main.gd:13652` → `13036` → `12887`). That hides the card and clears the flag that makes "Start Exploring" zoom in. Rotating a phone is enough to trigger it. The native test sets that flag by hand after the resize, which hides the bug.
+
+**Should fix:**
+- The Start framing uses a different camera target from the follow loop (`main.gd:6565` vs `12187`), so the camera jumps on the first step.
+- Pressing WASD or an arrow key on the Start card closes it without zooming in. The player then walks around in map view.
+- Nothing grabs focus for the Start button. After someone clicks the Sounds toggle, Enter/Space toggles sound again instead of starting, and arrow keys stop moving the player.
+- Sound unlocks on input browsers don't count as a real user gesture (mouse wheel, Escape, touch start). The sound counter can then go up for notes nobody heard, and a note might play late. That last part is an assumption about how Godot web handles audio.
+- On the web, a failed browser-storage save falls back to a file, but loading never reads that file. So "Sounds: Off" can fail to survive a reload in a private window.
+- The native orientation test never goes through the real startup sequence or the keyboard path.
+
+I also listed two things to cut: the per-surprise note variants (only if fix 1 isn't taken) and the 60% screen pan in `continue_story`.
+
+Several connectors need sign-in before they work: Box, Runway, Asana, Atlassian, Datadog, GitHub, Linear, Notion, PagerDuty and Slack. The claude.ai ones are authorized in claude.ai connector settings; the plugin ones via `/mcp` in an interactive session. None of them were needed for this review.

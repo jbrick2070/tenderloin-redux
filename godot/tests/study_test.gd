@@ -46,6 +46,26 @@ func run() -> void:
 	await process_frame
 	await process_frame
 	await process_frame
+	require(study.startup_story_pending and study.is_story_card_visible(), "real startup presents Start before accepting")
+	root.size = Vector2i(390, 667)
+	await process_frame
+	await process_frame
+	await process_frame
+	await process_frame
+	require(study.startup_story_pending and study.is_story_card_visible(), "resizing startup preserves the Start contract")
+	var initial_start_save: String = JSON.stringify(study.build_save_envelope())
+	var initial_start_position: Vector3 = study.player.position
+	var initial_start_key := InputEventKey.new()
+	initial_start_key.keycode = KEY_SPACE
+	initial_start_key.pressed = true
+	study._unhandled_input(initial_start_key)
+	require(not study.in_overview and study.view_size == 45.0 and study.player.position == initial_start_position and JSON.stringify(study.build_save_envelope()) == initial_start_save, "real startup keyboard acceptance frames without moving or mutating progress")
+	require(study.lidar_additions[2].id == "osm:way/1072899109" and study.occluded_additions.has(2) and study.addition_meshes[2].material_override == study.cutaway_material, "Serif addition fades instead of hiding the starting player behind its roof")
+	study.overview()
+	require(study.occluded_additions.is_empty() and study.addition_meshes[2].material_override == study.addition_materials[2], "overview restores addition materials")
+	root.size = Vector2i(1100, 760)
+	await process_frame
+	await process_frame
 	require(study.meshes.size() == 58, "58 actual building meshes")
 	require(study.wider_meshes.size() == 130, "130 wider Tenderloin building meshes")
 	require(study.all_buildings.size() == 188, "188 total measured Tenderloin building footprints")
@@ -298,6 +318,43 @@ func run() -> void:
 	# Test procedural stem progression, Bea-only visit persistence, explicit playback, local Suno WAV audition, invalid/corrupt rejection, and save/reload
 	study.clear_godot_save()
 	require(not study.music_playing and study.music_mode == "sketch", "music starts paused in sketch mode after reset")
+	study.set_reward_sounds_enabled(true, false)
+	study.reward_audio_unlocked = false
+	var reward_wheel := InputEventMouseButton.new()
+	reward_wheel.button_index = MOUSE_BUTTON_WHEEL_UP
+	reward_wheel.pressed = true
+	study._input(reward_wheel)
+	study._input(InputEventMouseMotion.new())
+	require(not study.reward_audio_unlocked, "wheel and pointer motion cannot unlock sound")
+	var reward_before_input: int = study.reward_sound_count
+	study.trigger_progress_cue("mural_motif", "test locked cue")
+	require(study.reward_sound_count == reward_before_input, "reward effects never play or queue before input")
+	var reward_press := InputEventMouseButton.new()
+	reward_press.button_index = MOUSE_BUTTON_LEFT
+	reward_press.pressed = true
+	study._input(reward_press)
+	require(study.reward_audio_unlocked and study.reward_sound_count == reward_before_input, "input unlocks future effects without replaying startup cues")
+	study.trigger_progress_cue("mural_motif", "test independent cue")
+	require(study.reward_sound_count == reward_before_input + 1 and not study.music_playing, "reward sound is admitted with music paused")
+	var reward_stream: AudioStreamWAV = study.reward_audio_player.stream
+	require(reward_stream.loop_mode == AudioStreamWAV.LOOP_DISABLED and reward_stream.data.size() <= 33076 and reward_stream.get_length() <= 0.75, "reward PCM stays bounded and never loops")
+	var reward_peak := 0
+	for reward_sample in range(0, reward_stream.data.size(), 2):
+		reward_peak = maxi(reward_peak, absi(reward_stream.data.decode_s16(reward_sample)))
+	require(reward_peak > 100 and reward_peak < 5000 and reward_stream.data.decode_s16(0) == 0 and absi(reward_stream.data.decode_s16(reward_stream.data.size() - 2)) < 30, "soft reward PCM has audible energy, low peak and smooth endpoints")
+	study.suppress_feel_good_burst = true
+	study.trigger_progress_cue("mural_motif", "suppressed")
+	study.suppress_feel_good_burst = false
+	require(study.reward_sound_count == reward_before_input + 1, "suppressed/repeated progress cannot emit reward effects")
+	var sound_save_before: String = JSON.stringify(study.build_save_envelope())
+	study.set_reward_sounds_enabled(false)
+	study.trigger_progress_cue("mural_motif", "muted")
+	require(study.reward_sound_count == reward_before_input + 1 and not study.reward_audio_player.playing, "mute prevents and stops reward audio")
+	study.set_reward_sounds_enabled(true, false)
+	study.load_godot_settings()
+	require(not study.reward_sounds_enabled and JSON.stringify(study.build_save_envelope()) == sound_save_before, "mute persists in settings without altering game progress")
+	study.clear_godot_settings()
+	require(study.reward_sounds_enabled and study.reward_sound_count == reward_before_input + 1, "reset/unmute never queues missed effects")
 	require(study.unlocked_stems() == ["bass"], "fresh state starts with 1 stem (bass)")
 	study.finish_neighbor_arrival(0)
 	require(study.unlocked_stems() == ["bass", "brush"], "visiting Bea unlocks brush stem (2/4 stems)")
@@ -351,6 +408,9 @@ func run() -> void:
 	var valid_wav: PackedByteArray = make_synthetic_wav_bytes(0.35, 330.0, 22050)
 	require(study.load_local_music_bytes("suno-tl-sketch.wav", valid_wav), "valid synthetic WAV bytes load into local audition player")
 	require(study.music_mode == "local" and study.local_music_name == "suno-tl-sketch.wav" and study.music_playing and study.music_error == "", "local WAV audition activates local mode and clears errors")
+	var reward_before_local: int = study.reward_sound_count
+	study.trigger_progress_cue("mural_motif", "local track independent")
+	require(study.reward_sound_count == reward_before_local + 1 and study.music_mode == "local" and study.music_playing and study.local_music_name == "suno-tl-sketch.wav", "reward effects work over local music without changing the track")
 	require(study.music_stem_label.text.contains("procedural stems hidden"), "local full-track mode hides procedural stem labels")
 	require(not study.load_local_music_bytes("readme.txt", valid_wav), "unsupported file extension rejected")
 	require(study.music_error == study.MUSIC_FILE_ERROR and study.music_mode == "local" and study.local_music_name == "suno-tl-sketch.wav", "invalid extension sets MUSIC_FILE_ERROR and preserves active local track")
@@ -574,6 +634,18 @@ func run() -> void:
 	var wide_street_screen: Vector2 = study.camera.unproject_position(Vector3(45.0, 0.0, -7.2))
 	require(study.handle_scene_tap(wide_street_screen) and study.selected_neighbor == -1 and not study.current_path.is_empty(), "zoomed-out wide_overview tap ~23m from Bea routes to street point rather than selecting neighbor (world_d <= 8.5 bound)")
 	require(not study.walk_to_point(Vector2(-350.0, -350.0)) and study.current_path.is_empty(), "unreachable point far from any street is rejected without routing back to PLAYER_START")
+	require(study.header_details_expanded and study.info.visible and study.info.text.begins_with("No walkable"), "blocked navigation reveals its explanation in the compact header")
+	study.set_header_details(false)
+	study.wide_overview()
+	await process_frame
+	await process_frame
+	await process_frame
+	require(not study.walk_to_point(Vector2(-350.0, -350.0)), "unreachable tap is rejected from the wide map")
+	await process_frame
+	await process_frame
+	await process_frame
+	require(study.info.visible and study.info.text.begins_with("No walkable") and study.last_a11y_announcement.begins_with("No walkable"), "map layout cannot overwrite the visible route failure after deferred frames")
+	study.set_header_details(false)
 
 	# Round 7: M1 Afternoon Keepsake & Loan Returns + M3 Second Afternoon Programme Planning & Hosting
 	study.block_opened = false
@@ -1206,10 +1278,13 @@ func run() -> void:
 	require(not study.eatery_counter_nodes[3].visible, "an unvisited eatery counter stays tucked away")
 	require(study.cycle_eatery_guide(3) and study.eatery_counter_nodes[3].visible and study.is_speech_bubble_visible() and study.speech_bubble_anchor == "eatery:morning_star_banh_mi" and study.speech_bubble_text == String(study.EATERY_HOST_LINES["morning_star_banh_mi"][0]), "visiting an eatery opens its counter and the host greets in a speech bubble")
 	var order_before: int = int(study.eatery_order_counts.get("morning_star_banh_mi", 0))
+	var order_sound_before: int = study.reward_sound_count
 	require(study.eatery_counter_interact() and int(study.eatery_order_counts.get("morning_star_banh_mi", 0)) == order_before + 1 and study.last_music_cue == "eatery_order" and study.reward_banner.visible and study.reward_title_label.text.contains("Order Up:") and study.info.text.contains("Ordering at Morning Star") and study.info.text.contains("banh mi") and study.speech_bubble_text == String(study.EATERY_HOST_LINES["morning_star_banh_mi"][1]), "ordering at the counter serves the house item, triggers eatery_order chime and Order Up burst, and the host answers")
 	var counter_tap: Vector2 = study.camera.unproject_position(Vector3(study.eatery_counter_points[3].x, 1.3, study.eatery_counter_points[3].y))
 	var burst_before_second_order: int = study.reward_burst_count
+	require(study.reward_sound_count == order_sound_before + 1, "first eatery order sounds independently of its external banner")
 	require(not study.is_screen_point_in_ui(counter_tap) and study.handle_scene_tap(counter_tap) and int(study.eatery_order_counts.get("morning_star_banh_mi", 0)) == order_before + 2 and study.reward_burst_count == burst_before_second_order, "tapping the 3D counter a second time orders the next item without spamming a duplicate feel-good burst")
+	require(study.reward_sound_count == order_sound_before + 1, "repeat eatery orders do not replay a reward sound")
 	var steam_node: Node3D = null
 	for part in study.eatery_anim_parts:
 		if int(part.idx) == 0 and String(part.kind) == "steam":
@@ -1510,7 +1585,7 @@ func run() -> void:
 		require(expected_ks_node != null and expected_ks_node.visible and study.visible_surprise_keepsake_count() == s_idx + 1, "discovering surprise '%s' reveals its 3D neighbor keepsake prop (%d/10)" % [expected_sid, s_idx + 1])
 		require(study.reward_banner != null and study.reward_banner.visible and study.reward_body_label.text.contains("Sparks:") and study.reward_body_label.text.contains(expected_ks_label) and study.info.text.contains(expected_ks_label) and study.celebration_burst_node != null and study.celebration_burst_node.visible, "discovering surprise '%s' triggers RewardBanner with Sparks count and keepsake label '%s'" % [expected_sid, expected_ks_label])
 	require(study.discovered_surprises.size() == 10 and study.visible_surprise_keepsake_count() == 10 and study.spark_count() == pre_sparks + 10, "discovering all 10 neighborhood surprises reveals all 10 3D keepsakes and increments spark_count by 10")
-	require(study.reward_title_label.text.contains("10/10 Surprises:") and study.reward_body_label.text.contains("All 10/10 Keepsakes!") and study.last_music_cue == "surprise_finale" and study.cue_arpeggio_freqs.size() == 4 and is_equal_approx(study.cue_chime_freq, 1046.50) and is_equal_approx(study.cue_arpeggio_duration, 0.68) and is_equal_approx(study.reward_banner_timer, 4.5), "discovering the 10th surprise triggers the 10/10 All Keepsakes grand finale RewardBanner (4.5s) and explicit surprise_finale 4-note ascending C-major octave fanfare")
+	require(study.reward_title_label.text.contains("10/10 Surprises:") and study.reward_body_label.text.contains("All 10/10 Keepsakes!") and study.last_music_cue == "surprise_finale" and study.cue_arpeggio_freqs.size() == 4 and is_equal_approx(study.cue_arpeggio_duration, 0.68) and is_equal_approx(study.reward_banner_timer, 4.5), "discovering the 10th surprise triggers the 10/10 All Keepsakes grand finale RewardBanner (4.5s) and explicit surprise_finale 4-note ascending C-major octave fanfare")
 	study.trigger_feel_good_burst("Order Up: Test", "Test", Vector3.ZERO)
 	require(study.reward_title_label.text.contains("10/10 Surprises:") and study.reward_banner_timer > 4.0, "active 4.5s 10/10 grand finale RewardBanner is protected from immediate overwrite by non-finale bursts")
 	require(study.jeffrey_turntable_node.visible and study.hidden_mural_sketch_node.visible and is_equal_approx(study.speaker_beacon_mesh.position.y, 1.54), "discovering jeffrey_record and hidden_mural_145 reveals 3D turntable on RookSpeaker (raising SpeakerBeacon above sleeve) and sketch card on MuralBoard")
@@ -1694,6 +1769,8 @@ func run() -> void:
 		root.size = tap_size
 		await process_frame
 		await process_frame
+		# This block tests world taps after the chapter card has been accepted.
+		study.hide_story_card()
 		for pitch in [1.0, 0.55]:
 			study.visited_museum_eras = {"present": true, "1961_jazz": true, "1966_comptons": true, "1907_cadillac": true}
 			study.boeddeker_park_visited = false
@@ -1783,7 +1860,6 @@ func run() -> void:
 		var next: Button = study.controls.get_child(2)
 		next.grab_focus()
 		require(next.has_focus(), "keyboard focus available")
-		var previous_index: int = study.selected
 		var accept := InputEventAction.new()
 		accept.action = "ui_accept"
 		accept.pressed = true
@@ -1794,7 +1870,7 @@ func run() -> void:
 		accept.pressed = false
 		Input.parse_input_event(accept)
 		await process_frame
-		require(study.selected == (previous_index + 1) % 58, "ui_accept press/release activates focused button")
+		require(next.text == "Find Me" and study.following_player and study.view_size == 45.0 and study.selected == -1, "ui_accept activates Find Me walking view")
 		var walk_btn: Button = study.controls.get_child(5)
 		walk_btn.grab_focus()
 		require(walk_btn.has_focus(), "Walk to neighbor button focus available")
@@ -1907,10 +1983,26 @@ func run() -> void:
 		Input.parse_input_event(accept)
 		await process_frame
 		require(study.block_opened and study.block_banner_node.visible, "ui_accept on block Open button opens block gathering and reveals 3D banner at %s" % str(size))
+		study.set_header_details(false, false)
 		study.show_conversation(0)
 		await process_frame
 		await process_frame
-		require(study.info.visible == (size.x >= 600), "the header info line steps aside on phones while a conversation panel is open at %s" % str(size))
+		require(not study.info.visible and not study.header_details_expanded, "the header stays compact during conversations at %s" % str(size))
+		study.header_details_expanded = true
+		study.update_conversation_ui(0.0)
+		require(study.info.visible, "Info can reveal descriptions and sources at %s" % str(size))
+		var prior_details: String = study.info.text
+		study.info.text = "Details and sources\n".repeat(20) + "Final uncertainty and source line"
+		await process_frame
+		await process_frame
+		var details_scroll: VScrollBar = study.info.get_v_scroll_bar()
+		require(details_scroll.max_value > details_scroll.page and study.info.size.y <= 91.0, "long Info content scrolls within a bounded panel at %s" % str(size))
+		study.info.scroll_to_line(study.info.get_line_count() - 1)
+		await process_frame
+		require(details_scroll.value > 0 and is_equal_approx(details_scroll.value, details_scroll.max_value - details_scroll.page), "final Info lines remain reachable at %s" % str(size))
+		study.info.text = prior_details
+		study.header_details_expanded = false
+		study.update_conversation_ui(0.0)
 		if size.x < 600:
 			require(study.conv_chat_btn.text == "Chat More" and study.conv_bye_btn.text == "Goodbye" and study.conv_action_btns[2].text == "All Actions", "phone layout uses short conversation labels at %s" % str(size))
 			var find_w: float = ThemeDB.fallback_font.get_string_size("Find 9/10", HORIZONTAL_ALIGNMENT_CENTER, -1, 13).x
@@ -1947,7 +2039,56 @@ func run() -> void:
 		await process_frame
 		require(study.last_panel_dialogue.begins_with("Bea: \""), "ui_accept on What's Next? asks Bea for the next step at %s" % str(size))
 		study.overview()
+	for start_size in [Vector2i(1100, 760), Vector2i(390, 667), Vector2i(320, 667)]:
+		root.size = start_size
+		study.overview()
+		await process_frame
+		await process_frame
+		study.show_story_card(study.current_chapter())
+		study.startup_story_pending = true
+		var start_position: Vector3 = study.player.position
+		var start_save: String = JSON.stringify(study.build_save_envelope())
+		study.story_continue_btn.emit_signal("pressed")
+		await process_frame
+		await process_frame
+		require(not study.in_overview and study.following_player and study.view_size <= 58.0 and study.play_area_rect().has_point(study.camera.unproject_position(study.player.position + Vector3.UP)), "Start frames the avatar in usable scene at %s" % start_size)
+		require(study.player.position == start_position and JSON.stringify(study.build_save_envelope()) == start_save, "orientation never moves the player or changes progress")
+		require(study.progress_label.visible and study.progress_label.text.contains("Sparks:") and study.progress_label.text.contains("Keepsakes:"), "persistent score remains visible after Start")
+		var later_target: Vector3 = study.target
+		study.show_story_card(study.current_chapter())
+		study.story_continue_btn.emit_signal("pressed")
+		require(study.target == later_target, "later chapter Continue preserves camera framing")
+		study.show_conversation(0)
+		study.show_neighbor_speech(0, "Bea: \"See you on the sidewalk.\"")
+		var find_me_route: Array = study.current_path.duplicate()
+		var find_me_music: bool = study.music_playing
+		var find_me_save: String = JSON.stringify(study.build_save_envelope())
+		study.frame_player_for_walking()
+		require(not study.any_side_panel_visible() and not study.is_speech_bubble_visible() and study.talk_partner == -1 and study.current_path == find_me_route and study.music_playing == find_me_music and JSON.stringify(study.build_save_envelope()) == find_me_save, "Find Me clears conversation overlays while preserving route, music and progress")
+		study.overview()
+		require(study.in_overview, "Map Overview remains available after Start")
+	study.show_conversation(0)
+	study.last_panel_dialogue = "Bea: \"A previous conversation.\""
+	study.wide_overview()
+	require(study.talk_partner == -1 and study.block_panel_mode == "hub" and study.last_panel_dialogue.is_empty(), "Tenderloin Map clears old conversation context")
+	study.player.position = Vector3(-50.0, 0.0, 60.0)
+	require(study.nearest_neighbor_within(study.TALK_PROMPT_RADIUS_M) == -1, "solo hint fixture is away from all neighbors")
+	study.frame_player_for_walking()
+	study.set_header_details(false)
+	var solo_hint: String = study.ask_whats_next()
+	await process_frame
+	await process_frame
+	await process_frame
+	require(study.info.visible and study.info.text.contains(solo_hint), "What's Next shows a visible answer away from neighbors")
+	study.set_header_details(false)
 	study.clear_godot_save()
+	study.clear_godot_settings()
+	var legacy_settings := FileAccess.open(study.settings_path, FileAccess.WRITE)
+	legacy_settings.store_string('{"schema":"tenderloin-redux.godot.settings.v1","version":1,"neighborhood_voices":false}')
+	legacy_settings.close()
+	study.set_reward_sounds_enabled(false, false)
+	study.load_godot_settings()
+	require(study.reward_sounds_enabled and not study.voices_enabled, "older settings without reward_sounds retain compatible default")
 	study.clear_godot_settings()
 	if "--force-failure" in OS.get_cmdline_user_args():
 		require(false, "harness failure sentinel")

@@ -449,11 +449,14 @@ var lidar_roofs: Dictionary = {}
 var lidar_superseded: Dictionary = {}
 var lidar_additions: Array = []
 var addition_meshes: Array[MeshInstance3D] = []
+var addition_rects: Array[Rect2] = []
+var addition_materials: Array[Material] = []
+var occluded_additions: Array[int] = []
 var street_ways: Array = []
 var street_way_rects: Array[Rect2] = []
 var walk_bounds := Rect2(-40.0, -65.0, 210.0, 140.0)
 var selected := -1
-var info: Label
+var info: RichTextLabel
 var target := Vector3(65, 0, -12)
 var view_size := 250.0
 var wall_material: StandardMaterial3D
@@ -545,6 +548,16 @@ var sketch_generator: AudioStreamGenerator
 var sketch_playback: AudioStreamGeneratorPlayback
 var sketch_player: AudioStreamPlayer
 var local_audio_player: AudioStreamPlayer
+var reward_audio_player: AudioStreamPlayer
+var reward_sounds_enabled := true
+var reward_audio_unlocked := false
+var reward_sound_count := 0
+var reward_sound_last_cue := ""
+var sounds_btn: Button
+var progress_label: Label
+var header_details_expanded := false
+var player_nameplate: Label3D
+var readable_scene_labels: Array[Label3D] = []
 var music_mode := "sketch"
 var music_playing := false
 var music_volume := 0.70
@@ -555,8 +568,6 @@ var sketch_phase := 0.0
 var sketch_frames_pushed := 0
 var last_pre_gain_rms := 0.0
 var last_sample_rms := 0.0
-var cue_chime_timer := 0.0
-var cue_chime_freq := 523.25
 var cue_history: Array[Dictionary] = []
 var last_music_cue := "ready"
 var unlocked_stem_mask := 1
@@ -744,6 +755,7 @@ var story_card: PanelContainer
 var story_title_label: Label
 var story_body_label: Label
 var story_continue_btn: Button
+var startup_story_pending := false
 var last_story_chapter := -1
 var block_panel_mode := "hub"
 var opening_conversation := false
@@ -1297,6 +1309,9 @@ func build_current_buildings() -> void:
 	current_buildings.clear()
 	current_building_rects.clear()
 	addition_meshes.clear()
+	addition_rects.clear()
+	addition_materials.clear()
+	occluded_additions.clear()
 	for idx in range(all_buildings.size()):
 		if is_superseded_building(String(all_buildings[idx].id)):
 			continue
@@ -1314,6 +1329,8 @@ func build_current_buildings() -> void:
 		a_mesh.reparent(root)
 		a_mesh.name = "Addition_%d" % a_idx
 		addition_meshes.append(a_mesh)
+		addition_rects.append(built.rect)
+		addition_materials.append(a_mesh.material_override)
 		current_buildings.append(rec)
 		current_building_rects.append(built.rect)
 
@@ -1947,6 +1964,8 @@ func _ready() -> void:
 	var start_chapter := current_chapter()
 	last_story_chapter = int(start_chapter.num)
 	show_story_card(start_chapter)
+	startup_story_pending = true
+	story_continue_btn.text = "Start Exploring"
 	# Headless parser/import tests don't pretend to render a screenshot.
 	if "--capture" in OS.get_cmdline_user_args():
 		await get_tree().process_frame
@@ -2178,6 +2197,10 @@ func make_label_3d(node_name: String, text_str: String, pos: Vector3, tint: Colo
 	lbl.position = pos
 	lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	lbl.no_depth_test = true
+	if node_name in ["Nameplate", "HistoryStopLabel", "MuralBoardLabel", "RookSpeakerLabel", "ConcertBannerLabel", "AwningLabel361Turk", "MuseumHubLabel", "TimePortalLabel", "BoeddekerParkLabel", "CounterMenuLabel", "SurpriseLabel"] or node_name.begins_with("EateryLabel_"):
+		lbl.set_meta("map_pixel_size", pixel_sz)
+		lbl.set_meta("full_text", text_str)
+		readable_scene_labels.append(lbl)
 	lbl.render_priority = 12
 	lbl.pixel_size = pixel_sz
 	lbl.font_size = font_sz
@@ -2477,7 +2500,10 @@ func build_neighbors_and_player() -> void:
 		n_node.position = n.pos
 		n_node.scale = Vector3(2.15, 2.15, 2.15)
 		attach_neighbor_signature_prop(n_node, n_id)
-		n_node.add_child(make_label_3d("Nameplate", "[%d] %s · %s" % [i + 1, n.name, String(n.get("role", "")).split(" ")[0]], Vector3(0.0, 2.10, 0.0), Color("fff6df"), 0.0068, 26))
+		var nameplate := make_label_3d("Nameplate", String(n.name), Vector3(0.0, 2.10, 0.0), Color("fff6df"), 0.0068, 26)
+		nameplate.set_meta("neighbor_index", i)
+		nameplate.set_meta("neighbor_id", n_id)
+		n_node.add_child(nameplate)
 		add_child(n_node)
 		neighbor_nodes.append(n_node)
 	player = CharacterBody3D.new()
@@ -2492,7 +2518,10 @@ func build_neighbors_and_player() -> void:
 	player.add_child(col)
 	player_visual = make_person_node("PlayerVisual", Color("f0ce77"), Color("b67f5d"), Color("34392f"), PLAYER_HEIGHT_M, true)
 	player_visual.scale = Vector3(2.15, 2.15, 2.15)
-	player_visual.add_child(make_label_3d("PlayerNameplate", "» YOU « (WASD / Tap)", Vector3(0.0, 2.14, 0.0), Color("ffe866"), 0.0070, 26))
+	# A screen-sized caption below the feet stays clear of nearby speech prompts.
+	player_nameplate = make_label_3d("PlayerNameplate", "YOU", Vector3(0.0, -0.55, 0.0), Color("ffe866"), 0.0070, 24)
+	player_nameplate.outline_size = 10
+	player_visual.add_child(player_nameplate)
 	player.add_child(player_visual)
 	add_child(player)
 
@@ -3092,8 +3121,63 @@ func build_audio_players() -> void:
 	local_audio_player.name = "LocalAudioPlayer"
 	local_audio_player.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
 	add_child(local_audio_player)
+	reward_audio_player = AudioStreamPlayer.new()
+	reward_audio_player.name = "RewardAudioPlayer"
+	reward_audio_player.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
+	reward_audio_player.max_polyphony = 1
+	add_child(reward_audio_player)
 	apply_music_volume_db()
 	recompute_music_stems()
+
+## Original short bell notes with a soft attack/release; one bounded, non-looping stream.
+func make_reward_sound() -> AudioStreamWAV:
+	var rate := 22050
+	var duration := clampf(cue_arpeggio_duration, 0.1, 0.75)
+	var frames := int(ceil(duration * rate))
+	var pcm := PackedByteArray()
+	pcm.resize(frames * 2)
+	var notes := maxi(1, cue_arpeggio_freqs.size())
+	var note_duration := duration / notes
+	for i in range(frames):
+		var t := float(i) / rate
+		var note := mini(int(t / note_duration), notes - 1)
+		var local_t := t - note * note_duration
+		var freq := cue_arpeggio_freqs[note] if not cue_arpeggio_freqs.is_empty() else 523.25
+		var envelope := minf(local_t / 0.012, 1.0) * minf(maxf(0.0, note_duration - local_t) / 0.035, 1.0)
+		var sample := (sin(TAU * freq * local_t) + 0.15 * sin(TAU * freq * 2.0 * local_t)) * envelope * 0.12
+		pcm.encode_s16(i * 2, int(round(sample * 32767.0)))
+	var stream := AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = rate
+	stream.stereo = false
+	stream.loop_mode = AudioStreamWAV.LOOP_DISABLED
+	stream.data = pcm
+	return stream
+
+func play_reward_sound(cue_id: String) -> void:
+	if not reward_sounds_enabled or not reward_audio_unlocked or suppress_feel_good_burst or reward_audio_player == null:
+		return
+	# Replace the previous note instead of stacking or queueing old rewards.
+	reward_audio_player.stop()
+	reward_audio_player.stream = make_reward_sound()
+	reward_sound_count += 1
+	reward_sound_last_cue = cue_id
+	if AudioServer.get_driver_name() != "Dummy":
+		reward_audio_player.play()
+
+func set_reward_sounds_enabled(enabled: bool, persist := true) -> void:
+	reward_sounds_enabled = enabled
+	if not enabled and reward_audio_player != null:
+		reward_audio_player.stop()
+	if sounds_btn != null:
+		sounds_btn.text = "Sounds: On" if enabled else "Sounds: Off"
+		sounds_btn.set_pressed_no_signal(enabled)
+	if persist:
+		save_godot_settings()
+
+func toggle_reward_sounds() -> void:
+	set_reward_sounds_enabled(not reward_sounds_enabled)
+	announce_a11y_status("Reward sounds %s. Music has its own controls." % ("on" if reward_sounds_enabled else "off"))
 
 func mural_palette_color(palette_id: String, completed: bool) -> Color:
 	match palette_id:
@@ -5811,6 +5895,8 @@ func current_objective() -> Dictionary:
 	}
 
 func update_objective_ui() -> void:
+	if progress_label != null:
+		progress_label.text = "Sparks: %d · Keepsakes: %d/10" % [spark_count(), discovered_surprises.size()]
 	if objective_label == null:
 		return
 	var ch := current_chapter()
@@ -6055,6 +6141,8 @@ func ask_whats_next() -> String:
 	if info != null:
 		var way := "Follow the gold marker · tap the street or use WASD to walk" if bool(obj.get("has_target", false)) else "No marker needed: wander and explore"
 		info.text = "%s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, way]
+		if not any_side_panel_visible() and (speaker < 0 or in_overview or in_wide_overview):
+			set_header_details(true, false)
 	announce_a11y_status("Next: %s. %s" % [String(obj.get("text", "")), hint])
 	return line
 
@@ -6276,6 +6364,8 @@ func apply_block_panel_mode() -> void:
 				conv_action_btns[s].text = lbl
 		if conv_chat_btn != null:
 			conv_chat_btn.text = "Chat More" if narrow else "Keep Chatting (T)"
+		if conv_next_btn != null:
+			conv_next_btn.text = "Next Step" if narrow else "What's Next?"
 		if conv_bye_btn != null:
 			conv_bye_btn.text = "Goodbye" if narrow else "Goodbye (Esc)"
 
@@ -6316,6 +6406,9 @@ func update_guide_arrow() -> void:
 		return
 	var screen := camera.unproject_position(guide_marker_target)
 	var area := play_area_rect()
+	if area.size.x <= 24.0 or area.size.y <= 24.0:
+		guide_arrow.visible = false
+		return
 	if area.grow(-12.0).has_point(screen):
 		guide_arrow.visible = false
 		return
@@ -6450,7 +6543,7 @@ func build_story_card(layer: CanvasLayer) -> void:
 	story_continue_btn.focus_mode = Control.FOCUS_ALL
 	style_game_button(story_continue_btn)
 	story_continue_btn.add_theme_font_size_override("font_size", 17)
-	story_continue_btn.pressed.connect(func(): hide_story_card())
+	story_continue_btn.pressed.connect(continue_story)
 	row.add_child(story_continue_btn)
 	layer.add_child(story_card)
 
@@ -6471,13 +6564,46 @@ func show_story_card(chapter: Dictionary) -> void:
 		return
 	story_title_label.text = "Chapter %d · %s" % [int(chapter.num), String(chapter.title)]
 	story_body_label.text = String(chapter.intro)
+	story_continue_btn.text = "Continue"
+	startup_story_pending = false
 	story_card.visible = true
 	layout_story_card()
+	story_continue_btn.call_deferred("grab_focus")
 	announce_a11y_status("Chapter %d: %s. %s" % [int(chapter.num), String(chapter.title), String(chapter.intro)])
 
 func hide_story_card() -> void:
+	startup_story_pending = false
 	if story_card != null:
 		story_card.visible = false
+
+func continue_story() -> void:
+	var orient := is_story_card_visible() and startup_story_pending
+	hide_story_card()
+	if not orient or player == null:
+		return
+	frame_player_for_walking()
+
+func frame_player_for_walking() -> void:
+	# Keep the player's position and progress; only bring the local scene into view.
+	hide_story_card()
+	hide_speech_bubble()
+	talk_partner = -1
+	block_panel_mode = "hub"
+	last_panel_dialogue = ""
+	show_block_panel(false)
+	show_mural_panel(false)
+	show_music_panel(false)
+	follow_player()
+	camera_yaw = 0.0
+	camera_pitch_scale = 1.0
+	view_size = 45.0
+	target = Vector3(player.position.x, 1.0, player.position.z)
+	update_camera()
+	update_occlusion(true)
+	update_guide_marker()
+	get_viewport().gui_release_focus()
+	info.text = "You're here. %s.\nFollow the gold marker or tap What's Next?" % location_phrase(player_xz())
+	announce_a11y_status("You're here. %s. Follow the gold marker or tap What's Next?" % String(current_objective().text))
 
 func is_story_card_visible() -> bool:
 	return story_card != null and story_card.visible
@@ -6679,6 +6805,18 @@ func layout_memory_line(n_id: String) -> String:
 			return "Thanh: \"My folding table made a fine Long Table. Plenty of tea to go around.\"" if table else "Thanh: \"The Open Floor gave everyone room to move. I kept the tea by the curb.\""
 	return ""
 
+func set_header_details(expanded: bool, refit_map := true) -> void:
+	header_details_expanded = expanded
+	if info != null:
+		info.visible = expanded
+		if expanded:
+			info.scroll_to_line(0)
+	var toggle := header_panel.find_child("HeaderInfoToggle", true, false) as Button
+	if toggle != null:
+		toggle.set_pressed_no_signal(expanded)
+	if refit_map and (in_overview or in_wide_overview):
+		refit_after_layout()
+
 func update_conversation_ui(delta: float) -> void:
 	ui_clock = wrapf(ui_clock + delta, 0.0, 3600.0)
 	var chapter := current_chapter()
@@ -6687,9 +6825,9 @@ func update_conversation_ui(delta: float) -> void:
 		show_story_card(chapter)
 	if is_story_card_visible():
 		layout_story_card()
-	# On phones the open panel and the speech bubble already carry the words; give the 3D view room.
+	# Keep details available on demand while leaving room for the street.
 	if info != null:
-		var show_info := not (is_narrow_layout() and any_side_panel_visible())
+		var show_info := header_details_expanded
 		if info.visible != show_info:
 			info.visible = show_info
 	objective_refresh_timer -= delta
@@ -7334,6 +7472,7 @@ func walk_to_neighbor(index: int) -> bool:
 	if current_path.is_empty():
 		update_route_ribbon(true)
 		info.text = "No walkable route to %s\nWASD/Arrows or tap street to walk\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % n.name
+		set_header_details(true, false)
 		announce_a11y_status("No walkable route to %s." % n.name)
 		return false
 	if view_size > 110.0:
@@ -7377,6 +7516,7 @@ func walk_to_mural() -> bool:
 		walking_to_mural = false
 		update_route_ribbon(true)
 		info.text = "No walkable route to Portable Mural Board\nWASD/Arrows or tap street to walk\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL"
+		set_header_details(true, false)
 		announce_a11y_status("No walkable route to Portable Mural Board.")
 		return false
 	if view_size > 110.0:
@@ -7420,6 +7560,7 @@ func walk_to_speaker() -> bool:
 		walking_to_speaker = false
 		update_route_ribbon(true)
 		info.text = "No walkable route to Rook's Speaker\nWASD/Arrows or tap street to walk\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL"
+		set_header_details(true, false)
 		announce_a11y_status("No walkable route to Rook's Speaker.")
 		return false
 	if view_size > 110.0:
@@ -7468,6 +7609,7 @@ func walk_to_history_stop(stop_id: String) -> bool:
 		walking_to_history_stop = ""
 		update_route_ribbon(true)
 		info.text = "No walkable route to %s\nWASD/Arrows or tap street to walk\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % title_str
+		set_header_details(true, false)
 		announce_a11y_status("No walkable route to %s." % title_str)
 		return false
 	if view_size > 110.0:
@@ -7686,6 +7828,7 @@ func walk_to_point(goal_xz: Vector2) -> bool:
 		current_path.clear()
 		update_route_ribbon(true)
 		info.text = "No walkable street point near (%.1f, %.1f) m\nTap a street corridor or use WASD/Arrows\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [goal_xz.x, goal_xz.y]
+		set_header_details(true, false)
 		announce_a11y_status("No walkable street point here.")
 		return false
 	selected_neighbor = -1
@@ -7713,6 +7856,7 @@ func walk_to_point(goal_xz: Vector2) -> bool:
 	if current_path.is_empty():
 		update_route_ribbon(true)
 		info.text = "No walkable route to point (%.1f, %.1f) m\nWASD/Arrows or tap street to walk\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [safe_goal.x, safe_goal.y]
+		set_header_details(true, false)
 		announce_a11y_status("No walkable route to street point.")
 		return false
 	if view_size > 110.0:
@@ -9445,7 +9589,8 @@ func save_godot_settings() -> bool:
 	var env := {
 		"schema": "tenderloin-redux.godot.settings.v1",
 		"version": 1,
-		"neighborhood_voices": voices_enabled
+		"neighborhood_voices": voices_enabled,
+		"reward_sounds": reward_sounds_enabled
 	}
 	var raw_json := JSON.stringify(env)
 	var wrote := false
@@ -9462,12 +9607,13 @@ func save_godot_settings() -> bool:
 	return wrote
 
 func load_godot_settings() -> bool:
+	set_reward_sounds_enabled(true, false)
 	var raw_str := ""
 	if OS.has_feature("web"):
 		var web_val: Variant = JavaScriptBridge.eval("try { window.localStorage.getItem('%s') || ''; } catch (_e) { ''; }" % GODOT_SETTINGS_WEB_STORAGE_KEY, true)
 		if web_val is String and not String(web_val).strip_edges().is_empty():
 			raw_str = String(web_val)
-	elif not settings_path.is_empty() and FileAccess.file_exists(settings_path):
+	if raw_str.is_empty() and not settings_path.is_empty() and FileAccess.file_exists(settings_path):
 		raw_str = FileAccess.get_file_as_string(settings_path)
 	var trimmed := raw_str.strip_edges()
 	if trimmed.is_empty() or not trimmed.begins_with("{") or not trimmed.ends_with("}"):
@@ -9482,12 +9628,16 @@ func load_godot_settings() -> bool:
 		set_voices_enabled(false, false)
 		return false
 	var nv_val: Variant = env.get("neighborhood_voices", false)
+	var sounds_val: Variant = env.get("reward_sounds", true)
+	if sounds_val is bool:
+		set_reward_sounds_enabled(bool(sounds_val), false)
 	if not (nv_val is bool):
 		set_voices_enabled(false, false)
 		return false
 	return set_voices_enabled(bool(nv_val), false)
 
 func clear_godot_settings() -> void:
+	set_reward_sounds_enabled(true, false)
 	voices_custom_json_override = ""
 	voices_simulate_error = false
 	if not settings_path.is_empty() and FileAccess.file_exists(settings_path):
@@ -9723,46 +9873,34 @@ func trigger_progress_cue(cue_id: String, reason: String) -> void:
 		"mural_complete", "block_opened", "hosting_complete", "civic_complete", "film_complete":
 			cue_arpeggio_freqs = [523.25, 659.25, 1046.50]
 			cue_arpeggio_duration = 0.56
-			cue_chime_freq = 783.99
 		"surprise_finale", "tour_complete":
 			cue_arpeggio_freqs = [523.25, 659.25, 783.99, 1046.50]
 			cue_arpeggio_duration = 0.68
-			cue_chime_freq = 1046.50
 		"history_comptons":
 			cue_arpeggio_freqs = [523.25, 659.25, 880.00]
 			cue_arpeggio_duration = 0.50
-			cue_chime_freq = 659.25
 		"history_blackhawk", "so_what_egg":
 			cue_arpeggio_freqs = [440.00, 523.25, 659.25, 783.99]
 			cue_arpeggio_duration = 0.54
-			cue_chime_freq = 783.99
 		"museum_portal", "boeddeker_park":
 			cue_arpeggio_freqs = [523.25, 659.25, 783.99, 987.77]
 			cue_arpeggio_duration = 0.52
-			cue_chime_freq = 783.99
 		"rook_soundcheck", "surprise_discovery":
 			if reason == "mayor_pomp_event":
 				cue_arpeggio_freqs = [392.00, 493.88, 587.33]
 				cue_arpeggio_duration = 0.62
-				cue_chime_freq = 392.00
 			elif reason == "clown_horn_walker":
 				cue_arpeggio_freqs = [440.00, 554.37, 659.25]
 				cue_arpeggio_duration = 0.42
-				cue_chime_freq = 440.00
 			else:
 				cue_arpeggio_freqs = [659.25, 830.61, 987.77]
 				cue_arpeggio_duration = 0.48
-				cue_chime_freq = 659.25
 		"mural_motif", "keepsake_photo", "programme_published", "film_shot", "eatery_order":
 			cue_arpeggio_freqs = [587.33, 739.99, 880.00]
 			cue_arpeggio_duration = 0.44
-			cue_chime_freq = 587.33
 		_:
 			cue_arpeggio_freqs = [523.25, 659.25, 783.99]
 			cue_arpeggio_duration = 0.40
-			cue_chime_freq = 523.25
-	if music_playing and music_mode == "sketch":
-		cue_chime_timer = cue_arpeggio_duration
 	if not suppress_feel_good_burst:
 		var burst_title := ""
 		var burst_detail := ""
@@ -9859,7 +9997,7 @@ func trigger_progress_cue(cue_id: String, reason: String) -> void:
 			"tour_complete":
 				burst_title = "Neighborhood Tour Complete!"
 				var tour := landmark_tour_state()
-				burst_detail = "%d/%d stops this session · 10 keepsakes saved\nThanks for exploring!" % [tour.count, tour.total]
+				burst_detail = "%d/%d stops · 10 keepsakes\nThanks for exploring!" % [tour.count, tour.total]
 				burst_pos = target + Vector3.UP * 1.8
 				burst_accent = Color("ffe066")
 			"boeddeker_park":
@@ -9872,6 +10010,8 @@ func trigger_progress_cue(cue_id: String, reason: String) -> void:
 				burst_detail = "8th-floor corner bay window & 1961 Miles Davis awning"
 				burst_pos = SO_WHAT_VIEW_TARGET
 				burst_accent = Color("ffd45e")
+		if not burst_title.is_empty() or cue_id in ["surprise_discovery", "surprise_finale", "eatery_order"]:
+			play_reward_sound(cue_id)
 		if not burst_title.is_empty():
 			trigger_feel_good_burst(burst_title, burst_detail, burst_pos, burst_accent)
 	update_music_ui()
@@ -9923,7 +10063,6 @@ func stop_music_playback() -> void:
 	if local_audio_player != null and local_audio_player.playing:
 		local_audio_player.stop()
 	sketch_playback = null
-	cue_chime_timer = 0.0
 	last_pre_gain_rms = 0.0
 	last_sample_rms = 0.0
 	update_speaker_3d()
@@ -9960,12 +10099,6 @@ func advance_music_clock(delta: float) -> int:
 		last_pre_gain_rms = 0.0
 		last_sample_rms = 0.0
 		return 0
-	if cue_chime_timer > 0.0:
-		cue_chime_timer = maxf(0.0, cue_chime_timer - delta)
-		if not cue_arpeggio_freqs.is_empty() and cue_arpeggio_duration > 0.01:
-			var prog := clampf(1.0 - (cue_chime_timer / cue_arpeggio_duration), 0.0, 0.999)
-			var arp_idx := clampi(int(prog * float(cue_arpeggio_freqs.size())), 0, cue_arpeggio_freqs.size() - 1)
-			cue_chime_freq = cue_arpeggio_freqs[arp_idx]
 	if has_audio_device and sketch_playback == null and sketch_player != null and sketch_player.playing:
 		sketch_playback = sketch_player.get_stream_playback() as AudioStreamGeneratorPlayback
 	var frames_to_gen := 0
@@ -10001,8 +10134,6 @@ func advance_music_clock(delta: float) -> int:
 			sig += c_sig * 0.16
 		if (unlocked_stem_mask & 8) != 0:
 			sig += sin(TAU * lead_f * t + sin(TAU * 5.0 * t) * 0.25) * 0.14
-		if cue_chime_timer > 0.0:
-			sig += sin(TAU * cue_chime_freq * t) * 0.15
 		var sample := clampf(sig, -0.95, 0.95)
 		sum_sq += sample * sample
 		if sketch_playback != null:
@@ -10446,6 +10577,12 @@ func measure_local_performance() -> Dictionary:
 		"within_budget": budget_ok
 	}
 
+func control_snapshot(control: Control) -> Dictionary:
+	if control == null:
+		return {}
+	var rect := control.get_global_rect()
+	return {"x": rect.position.x, "y": rect.position.y, "width": rect.size.x, "height": rect.size.y, "visible": control.is_visible_in_tree()}
+
 func get_a11y_status_snapshot() -> Dictionary:
 	var active_panel := "none"
 	if block_panel != null and block_panel.visible:
@@ -10475,6 +10612,24 @@ func get_a11y_status_snapshot() -> Dictionary:
 		marker_visible = guide_marker.visible and not camera.is_position_behind(center) and play_area_rect().has_point(marker_screen) and not is_screen_point_in_ui(marker_screen)
 	return {
 		"ui_frame": Engine.get_process_frames(),
+		"sounds_control": control_snapshot(sounds_btn),
+		"start_control": control_snapshot(story_continue_btn),
+		"info_control": control_snapshot(header_panel.find_child("HeaderInfoToggle", true, false) as Control),
+		"header_control": control_snapshot(header_panel),
+		"header_details_expanded": header_details_expanded,
+		"progress_text": progress_label.text if progress_label != null else "",
+		"conversation_header": block_label.text if block_label != null else "",
+		"reward_sounds_enabled": reward_sounds_enabled,
+		"reward_audio_unlocked": reward_audio_unlocked,
+		"reward_sound_count": reward_sound_count,
+		"reward_sound_last_cue": reward_sound_last_cue,
+		"reward_audio_playing": reward_audio_player != null and reward_audio_player.playing,
+		"camera_view_size": view_size,
+		"in_overview": in_overview,
+		"in_wide_overview": in_wide_overview,
+		"cutaway_additions": occluded_additions.size(),
+		"player_screen": {"x": camera.unproject_position(player.position + Vector3.UP).x, "y": camera.unproject_position(player.position + Vector3.UP).y},
+		"play_area": {"x": play_area_rect().position.x, "y": play_area_rect().position.y, "width": play_area_rect().size.x, "height": play_area_rect().size.y},
 		"guide_marker_screen": {"x": marker_screen.x, "y": marker_screen.y, "visible": marker_visible},
 		"seq": a11y_announcement_seq,
 		"announcement": last_a11y_announcement,
@@ -10826,6 +10981,8 @@ func save_godot_state() -> bool:
 	return wrote
 
 func reset_mural_state_to_defaults(status_label: String) -> void:
+	if reward_audio_player != null:
+		reward_audio_player.stop()
 	celeste_talk_count = 0
 	rook_talk_count = 0
 	neighbor_talk_counts.clear()
@@ -11293,6 +11450,8 @@ func validate_godot_optional(raw_opt: Variant) -> Dictionary:
 	return {"ok": true, "optional": (raw_opt as Dictionary).duplicate(true)}
 
 func apply_save_envelope(raw_json: String) -> bool:
+	if reward_audio_player != null:
+		reward_audio_player.stop()
 	var trimmed := raw_json.strip_edges()
 	if trimmed.is_empty():
 		reset_mural_state_to_defaults("fresh")
@@ -12122,6 +12281,7 @@ func advance_walk(delta: float) -> bool:
 				pending_rook_talk = false
 				update_route_ribbon(true)
 				info.text = "Route blocked to %s (%.1f m remaining)\nUse WASD/Arrows or tap another street point\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [dest_name, dist_after]
+				set_header_details(true, false)
 				announce_a11y_status("Route blocked to %s." % dest_name)
 	elif current_path.is_empty():
 		update_route_ribbon(true)
@@ -12163,6 +12323,11 @@ func clear_occlusion() -> void:
 			wider_meshes[w_idx].material_override = wider_building_materials[w_idx]
 			set_rooftop_details_visible(wider_meshes[w_idx], true)
 	occluded_wider_buildings.clear()
+	for a_idx in occluded_additions:
+		if a_idx >= 0 and a_idx < addition_meshes.size():
+			addition_meshes[a_idx].material_override = addition_materials[a_idx]
+			set_rooftop_details_visible(addition_meshes[a_idx], true)
+	occluded_additions.clear()
 	last_occlusion_pos = Vector2(INF, INF)
 	last_occlusion_neighbor = -2
 
@@ -12268,8 +12433,53 @@ func update_occlusion(force: bool = true) -> void:
 				wider_meshes[w_idx].material_override = cutaway_material
 				set_rooftop_details_visible(wider_meshes[w_idx], false)
 				break
+	for a_idx in range(addition_meshes.size()):
+		for fp in focus_points:
+			if building_record_occludes_point(lidar_additions[a_idx], addition_rects[a_idx], fp, 1.0):
+				occluded_additions.append(a_idx)
+				addition_meshes[a_idx].material_override = cutaway_material
+				set_rooftop_details_visible(addition_meshes[a_idx], false)
+				break
+
+func update_readable_scene_labels() -> void:
+	var map_view := in_overview or in_wide_overview
+	var wrap_width := minf(320.0, bubble_viewport_size().x - 32.0)
+	for label in readable_scene_labels:
+		if not is_instance_valid(label) or not label.is_inside_tree():
+			continue
+		label.autowrap_mode = TextServer.AUTOWRAP_OFF if map_view else TextServer.AUTOWRAP_WORD_SMART
+		label.width = wrap_width
+		label.outline_size = 6 if map_view else 10
+		var desired_text := String(label.get_meta("full_text"))
+		if not map_view:
+			desired_text = desired_text.replace(" (Tap / Shift+D)", "").trim_prefix("[*] ")
+			if label.name == "MuseumHubLabel":
+				desired_text = "Tenderloin Museum\n398 Eddy · Time-Portal"
+		if label.text != desired_text:
+			label.text = desired_text
+		if map_view:
+			label.pixel_size = float(label.get_meta("map_pixel_size"))
+			label.visible = true
+			continue
+		label.pixel_size = screen_constant_scale(1.0) / maxf(label.global_basis.get_scale().y, 0.001)
+		var label_xz := Vector2(label.global_position.x, label.global_position.z)
+		label.visible = label_xz.distance_to(Vector2(target.x, target.z)) <= 55.0
+		var caption_size := ThemeDB.fallback_font.get_multiline_string_size(label.text, HORIZONTAL_ALIGNMENT_CENTER, wrap_width, label.font_size) + Vector2(20.0, 20.0)
+		var caption_center := camera.unproject_position(label.global_position)
+		label.visible = label.visible and play_area_rect().encloses(Rect2(caption_center - caption_size * 0.5, caption_size))
+		if label.name == "TimePortalLabel":
+			label.visible = false # Combined with the hub caption in the close view.
+		if label.has_meta("neighbor_index"):
+			var neighbor_i := int(label.get_meta("neighbor_index"))
+			if talk_prompt_node != null and talk_prompt_node.visible and talk_prompt_neighbor == neighbor_i:
+				label.visible = false # The larger Talk prompt already includes this name.
+			if is_speech_bubble_visible() and speech_bubble_anchor == String(label.get_meta("neighbor_id")):
+				label.visible = false
 
 func _process(delta: float) -> void:
+	if player_nameplate != null and camera != null:
+		player_nameplate.pixel_size = screen_constant_scale(1.0) / player_visual.scale.y
+		player_nameplate.visible = not in_overview and not in_wide_overview
 	poll_web_audio()
 	if music_playing:
 		advance_music_clock(delta)
@@ -12280,6 +12490,7 @@ func _process(delta: float) -> void:
 	update_celebration_burst(delta)
 	update_landmark_tour_completion()
 	update_conversation_ui(delta)
+	update_readable_scene_labels()
 
 func _physics_process(delta: float) -> void:
 	var shift_held := Input.is_key_pressed(KEY_SHIFT) or Input.is_physical_key_pressed(KEY_SHIFT)
@@ -12491,13 +12702,26 @@ func pan_camera_by_screen_delta(delta_px: Vector2) -> void:
 	target.z = clampf(target.z, walk_bounds.position.y, walk_bounds.end.y)
 	update_camera()
 
+func _input(event: InputEvent) -> void:
+	# Observe real input before Controls consume it; never replay cues from loading.
+	var key_activation: bool = event is InputEventKey and event.pressed and not event.echo and event.keycode not in [KEY_ESCAPE, KEY_SHIFT, KEY_CTRL, KEY_ALT, KEY_META]
+	var mouse_activation: bool = event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_MIDDLE]
+	if key_activation or mouse_activation or (event is InputEventScreenTouch and not event.pressed):
+		reward_audio_unlocked = true
+	if event is InputEventKey and event.pressed and startup_story_pending and event.keycode in [KEY_W, KEY_A, KEY_S, KEY_D, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT]:
+		continue_story()
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		var k: Key = event.keycode if event.keycode != KEY_NONE else event.physical_keycode
 		if is_story_card_visible() and not (k in [KEY_SHIFT, KEY_CTRL, KEY_ALT, KEY_META]):
-			hide_story_card()
 			if k == KEY_ESCAPE or k == KEY_ENTER or k == KEY_KP_ENTER or k == KEY_SPACE:
+				continue_story()
 				return
+			if startup_story_pending and k in [KEY_W, KEY_A, KEY_S, KEY_D, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT]:
+				continue_story()
+			else:
+				hide_story_card()
 		match k:
 			KEY_1, KEY_KP_1:
 				if arrived_neighbor == 0:
@@ -12651,7 +12875,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					cycle_mural_palette()
 			KEY_N, KEY_BRACKETRIGHT: choose_next_neighbor(1)
 			KEY_B, KEY_BRACKETLEFT: choose_next_neighbor(-1)
-			KEY_F: follow_player()
+			KEY_F: frame_player_for_walking()
 			KEY_ESCAPE, KEY_X:
 				var any_panel := (block_panel != null and block_panel.visible) or (mural_panel != null and mural_panel.visible) or (music_panel != null and music_panel.visible)
 				if current_path.is_empty() and any_panel:
@@ -12833,6 +13057,9 @@ func wide_overview() -> void:
 	in_wide_overview = true
 	hide_speech_bubble()
 	hide_story_card()
+	talk_partner = -1
+	block_panel_mode = "hub"
+	last_panel_dialogue = ""
 	if reward_banner != null:
 		reward_banner.visible = false
 	reward_banner_timer = 0.0
@@ -12913,7 +13140,7 @@ func projected_wider_bounds() -> Rect2:
 func zoom(factor: float) -> void:
 	in_overview = false
 	in_wide_overview = false
-	view_size = clampf(view_size * factor, 45, maxf(900, overview_size * 2.5))
+	view_size = clampf(view_size * factor, 24, maxf(900, overview_size * 2.5))
 	update_camera()
 	update_occlusion(true)
 
@@ -12927,10 +13154,17 @@ func wide_overview_text() -> String:
 func refit_after_layout() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
+	var card_up := is_story_card_visible()
+	var pending := startup_story_pending
 	if in_overview:
 		overview()
 	elif in_wide_overview:
 		wide_overview()
+	if card_up:
+		story_card.visible = true
+		startup_story_pending = pending
+		layout_story_card()
+		story_continue_btn.call_deferred("grab_focus")
 
 func show_mural_panel(visible_flag: bool) -> void:
 	var was_vis := mural_panel != null and mural_panel.visible
@@ -13026,6 +13260,8 @@ func update_mural_ui() -> void:
 	var c_badge := String(NEIGHBOR_STORY_BADGES.get("celeste", "Painter"))
 	var c_turn := posmod(maxi(1, celeste_talk_count) - 1, 5) + 1
 	mural_label.text = "Talking with Celeste (Mural Artist · %s · Turn %d/5)  ·  Easel: %s (%s Palette)  ·  Sparks: %d" % [c_badge, c_turn, state_tag, mural_palette.capitalize(), spark_count()]
+	if is_narrow_layout():
+		mural_label.text = "Celeste · Turn %d/5 · Sparks: %d" % [c_turn, spark_count()]
 	if mural_detail_label != null:
 		var has_custom_c := last_panel_dialogue.begins_with("Celeste: \"")
 		var c_line := last_panel_dialogue if has_custom_c else celeste_dialogue_text()
@@ -13056,6 +13292,8 @@ func update_music_ui() -> void:
 	var r_badge := String(NEIGHBOR_STORY_BADGES.get("rook", "Sound"))
 	var r_turn := posmod(maxi(1, rook_talk_count) - 1, 5) + 1
 	music_label.text = "Talking with Rook (Sound & Stories · %s · Turn %d/5)  ·  %s  ·  %s  ·  Soundcheck: %s  ·  Sparks: %d" % [r_badge, r_turn, play_state, mode_desc, sc_state, spark_count()]
+	if is_narrow_layout():
+		music_label.text = "Rook · Turn %d/5 · Sparks: %d" % [r_turn, spark_count()]
 	if music_stem_label != null:
 		if not music_error.is_empty():
 			music_stem_label.text = music_error
@@ -13098,9 +13336,13 @@ func update_block_ui() -> void:
 		var n_badge := String(NEIGHBOR_STORY_BADGES.get(n_id, String(active_n.get("role", "Neighbor"))))
 		var n_turn := posmod(maxi(1, int(neighbor_talk_counts.get(n_id, 1))) - 1, 5) + 1
 		block_label.text = "Talking with %s (%s · %s · Turn %d/5)  ·  %s  ·  %d/%d Met  ·  Mural %s  ·  Sparks: %d" % [String(active_n.get("name", "Neighbor")), String(active_n.get("role", "Neighbor")), n_badge, n_turn, open_tag, v_count, n_total, m_state, spark_count()]
+		if is_narrow_layout():
+			block_label.text = "%s · Turn %d/5 · Sparks: %d" % [String(active_n.get("name", "Neighbor")), n_turn, spark_count()]
 	else:
 		apply_character_panel_theme(block_panel, "")
 		block_label.text = "Turk St Conversation & Actions  ·  %s  ·  %d/%d Met  ·  Mural %s  ·  %s  ·  Sparks: %d" % [open_tag, v_count, n_total, m_state, sc_state, spark_count()]
+		if is_narrow_layout():
+			block_label.text = "Block Actions · Sparks: %d" % spark_count()
 	if block_detail_label != null:
 		var base_detail := ""
 		if not last_panel_dialogue.is_empty():
@@ -13111,6 +13353,8 @@ func update_block_ui() -> void:
 			var mem_line := neighbor_memory_tail(n_id, greet_line, int(neighbor_talk_counts.get(n_id, 1)))
 			var spoken := greet_line if mem_line.is_empty() else ("%s · %s" % [greet_line, mem_line])
 			base_detail = "%s  (Click %s or press T to keep chatting)" % [spoken, String(neighbors[talk_idx].get("name", "neighbor"))]
+			if is_narrow_layout():
+				base_detail = spoken
 		elif block_opened:
 			base_detail = "The Turk Street block party is open! Choose a conversation or neighborhood activity below:"
 		else:
@@ -13242,24 +13486,71 @@ func make_ui() -> void:
 	layer.add_child(header_panel)
 	var column := VBoxContainer.new()
 	header_panel.add_child(column)
+	var title_row := HBoxContainer.new()
+	column.add_child(title_row)
+	var title_stack := VBoxContainer.new()
+	title_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_stack.add_theme_constant_override("separation", 0)
+	title_row.add_child(title_stack)
 	var title := Label.new()
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.text = "TENDERLOIN REDUX / Godot block walk & study"
-	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	title.add_theme_font_size_override("font_size", 26)
+	title.clip_text = true
+	title.add_theme_font_size_override("font_size", 20)
 	title.add_theme_color_override("font_color", Color("ffe48f"))
-	column.add_child(title)
+	title_stack.add_child(title)
+	sounds_btn = Button.new()
+	sounds_btn.name = "RewardSoundsToggle"
+	sounds_btn.custom_minimum_size = Vector2(94, 44)
+	sounds_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	sounds_btn.toggle_mode = true
+	sounds_btn.tooltip_text = "Gentle reward sounds. Music has separate controls with Rook."
+	sounds_btn.add_theme_font_size_override("font_size", 13)
+	style_game_button(sounds_btn)
+	sounds_btn.pressed.connect(toggle_reward_sounds)
+	title_row.add_child(sounds_btn)
+	set_reward_sounds_enabled(reward_sounds_enabled, false)
+	var details_btn := Button.new()
+	details_btn.name = "HeaderInfoToggle"
+	details_btn.text = "Info"
+	details_btn.custom_minimum_size = Vector2(44, 44)
+	details_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	details_btn.toggle_mode = true
+	details_btn.tooltip_text = "Show or hide details and map sources"
+	details_btn.add_theme_font_size_override("font_size", 12)
+	style_game_button(details_btn)
+	details_btn.pressed.connect(func():
+		set_header_details(details_btn.button_pressed)
+	)
+	title_row.add_child(details_btn)
+	progress_label = Label.new()
+	progress_label.name = "ProgressSummary"
+	progress_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	progress_label.add_theme_font_size_override("font_size", 12)
+	progress_label.add_theme_color_override("font_color", Color("ffe48f"))
+	title_stack.add_child(progress_label)
 	objective_label = Label.new()
 	objective_label.name = "ObjectiveLabel"
 	objective_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	objective_label.add_theme_font_size_override("font_size", 18)
+	objective_label.max_lines_visible = 2
+	objective_label.add_theme_font_size_override("font_size", 14)
 	objective_label.add_theme_color_override("font_color", Color("9ef5e5"))
 	column.add_child(objective_label)
-	info = Label.new()
+	info = RichTextLabel.new()
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	info.custom_minimum_size.y = 90
+	info.scroll_active = true
+	info.focus_mode = Control.FOCUS_ALL
 	info.text = overview_text()
-	info.add_theme_font_size_override("font_size", 19)
-	info.add_theme_color_override("font_color", Color("fff8e8"))
+	info.visible = false
+	info.add_theme_font_size_override("normal_font_size", 12)
+	info.add_theme_color_override("default_color", Color("fff8e8"))
 	column.add_child(info)
+	var attribution := Label.new()
+	attribution.text = "City: DataSF / PDDL · Streets: OSM / ODbL"
+	attribution.add_theme_font_size_override("font_size", 10)
+	attribution.add_theme_color_override("font_color", Color("b8c7c8"))
+	column.add_child(attribution)
 
 	mural_panel = PanelContainer.new()
 	mural_panel.name = "MuralPanel"
@@ -13429,8 +13720,8 @@ func make_ui() -> void:
 	controls.offset_bottom = -12
 	layer.add_child(controls)
 	button(controls, "What's Next?", func(): ask_whats_next())
-	button(controls, "Map Overview", overview)
-	button(controls, "Next Building »", func(): choose_next(1))
+	button(controls, "Tenderloin Map", wide_overview)
+	button(controls, "Find Me", frame_player_for_walking)
 	button(controls, "Zoom In (+)", func(): zoom(0.8))
 	button(controls, "Zoom Out (−)", func(): zoom(1.25))
 	button(controls, "Walk & Talk (Next)", func(): choose_next_neighbor(1))
@@ -13458,12 +13749,14 @@ func make_ui() -> void:
 			return
 		var narrow := vp.get_visible_rect().size.x < 600
 		if is_instance_valid(title):
-			title.add_theme_font_size_override("font_size", 18 if narrow else 26)
-			title.text = "TENDERLOIN REDUX" if narrow else "TENDERLOIN REDUX / Godot block walk & study"
+			title.add_theme_font_size_override("font_size", 16 if narrow else 20)
+			title.text = "TL REDUX" if narrow else "TENDERLOIN REDUX"
 		if is_instance_valid(info):
-			info.add_theme_font_size_override("font_size", 13 if narrow else 19)
+			info.add_theme_font_size_override("normal_font_size", 11 if narrow else 12)
 		if is_instance_valid(objective_label):
-			objective_label.add_theme_font_size_override("font_size", 13 if narrow else 18)
+			objective_label.add_theme_font_size_override("font_size", 12 if narrow else 14)
+		if is_instance_valid(progress_label):
+			progress_label.add_theme_font_size_override("font_size", 11 if narrow else 12)
 		if is_instance_valid(mural_label):
 			mural_label.add_theme_font_size_override("font_size", 13 if narrow else 16)
 		if is_instance_valid(mural_detail_label):
@@ -13508,6 +13801,7 @@ func make_ui() -> void:
 		if is_instance_valid(block_panel):
 			block_panel.offset_bottom = -176 if narrow else -130
 			block_panel.offset_top = -368 if narrow else -324
+			update_block_ui()
 		layout_reward_banner()
 		if in_overview or in_wide_overview:
 			refit_after_layout()
@@ -13519,6 +13813,9 @@ func make_ui() -> void:
 			sketch_player.stream = null
 		if local_audio_player != null:
 			local_audio_player.stream = null
+		if reward_audio_player != null:
+			reward_audio_player.stop()
+			reward_audio_player.stream = null
 		sketch_generator = null
 		if vp.size_changed.is_connected(resize_controls):
 			vp.size_changed.disconnect(resize_controls)
