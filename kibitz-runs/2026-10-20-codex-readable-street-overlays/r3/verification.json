@@ -1,0 +1,371 @@
+{
+  "round": "2026-10-20-codex-readable-street-overlays",
+  "verified_at": "2026-10-20T10:25:59.363706-07:00",
+  "baseline_head": "c5f29e70db3b04da19ce382e2b00c032fdd397b9",
+  "review": {
+    "runner": "installed Kibitz",
+    "driver": "codex",
+    "round": "r3",
+    "only": "claude",
+    "external_calls": 1,
+    "requested_model": "claude-opus-5-5",
+    "selected_model": "claude-opus-5-5",
+    "requested_effort": "high",
+    "selected_effort": "high",
+    "return_code": 0,
+    "verdict": "yes-with-fixes",
+    "usage_percent": "unknown",
+    "review_source_unchanged": true,
+    "post_review_fixes": "Driver grounded findings and added regression coverage. Final Info-prefix fix received driver verification, not a second external call. All five gates rerun after final source change."
+  },
+  "gates": {
+    "godot:test": {
+      "path": "artifacts/overlays-native-verified.log",
+      "bytes": 12102,
+      "sha256": "d4dbe75a97b9bc78de0cccc09e28f619c6782cffefea65aab3a2dfc29ac68605",
+      "passed": true
+    },
+    "godot:export": {
+      "path": "artifacts/overlays-export-verified.log",
+      "bytes": 2404,
+      "sha256": "77bbe5abafd44045c22fb807d2a1c5f69bdee4f7a79bc459bc8a5c8ce7dff476",
+      "passed": true
+    },
+    "check": {
+      "path": "artifacts/overlays-check-verified.log",
+      "bytes": 1337,
+      "sha256": "bbbf642933db0755ec1b063caec7667a16966ea1db64dadab1526709e88e5537",
+      "passed": true
+    },
+    "test": {
+      "path": "artifacts/overlays-node-verified.log",
+      "bytes": 10799,
+      "sha256": "b489c6e2b911af06742013aa4e39efb7bfcfbfb26d1bdad42e67b20a235cae9a",
+      "passed": true
+    },
+    "godot:browser": {
+      "path": "artifacts/overlays-browser-verified.log",
+      "bytes": 35767,
+      "sha256": "05d826f5b718347011dc0c94e96f2f469f38aaf96b52bd18346a7794a154ef64",
+      "passed": true
+    }
+  },
+  "node_tests": {
+    "tests": 104,
+    "passed": 104,
+    "failed": 0
+  },
+  "native_perf": {
+    "astar_expanded_cells": 2222,
+    "astar_used": true,
+    "district_boundary_present": true,
+    "object_node_count": 2151,
+    "opening_buildings_count": 58,
+    "pathfind_blackhawk_usec": 144695,
+    "pathfind_blackhawk_waypoints": 3,
+    "pathfind_budget_max_usec": 250000,
+    "pathfind_cold_cache": true,
+    "save_budget_max_bytes": 4096,
+    "save_budget_max_usec": 50000,
+    "save_bytes": 1535,
+    "save_roundtrip_usec": 229,
+    "street_ways_count": 20,
+    "total_buildings_count": 188,
+    "voices_teardown_budget_max_usec": 50000,
+    "voices_teardown_measured": true,
+    "voices_teardown_usec": 1,
+    "wider_buildings_count": 130,
+    "wider_street_ways_count": 41,
+    "within_budget": true
+  },
+  "browser": {
+    "path": "artifacts/godot-browser.json",
+    "bytes": 38069,
+    "sha256": "9a7416e2f767b28ce3ba43fec829c59c5dab531e4a5eb3798bc6832aa865114e",
+    "runs": [
+      {
+        "compactHeaderHeight": 87,
+        "compactInfoToggleVerified": true,
+        "startupOrientationVerified": true,
+        "findMeAndMapVerified": true,
+        "rewardSoundsAndMuteVerified": true,
+        "persistentProgressVerified": true,
+        "surpriseDiscoveryVerified": true,
+        "surpriseKeepsakeReloadVerified": true,
+        "chapter6ConversationVerified": true,
+        "sessionLandmarkTourVerified": true,
+        "fullSaveBytes": 1728,
+        "viewport": {
+          "width": 1100,
+          "height": 760
+        },
+        "overviewBytes": 248984,
+        "selectedBytes": 212032,
+        "neighborBytes": 224431,
+        "muralBytes": 216566,
+        "musicBytes": 214893,
+        "blockBytes": 165839,
+        "blackhawkBytes": 207004,
+        "wideBytes": 246165,
+        "keyboardActivationVerified": true,
+        "neighborWalkVerified": true,
+        "muralSaveReloadVerified": true,
+        "rookMusicAuditionVerified": true,
+        "blockCompletionVerified": true,
+        "widerTenderloinVerified": true,
+        "m1EpilogueVerified": true,
+        "m3HostingVerified": true,
+        "m4CivicFilmVerified": true,
+        "m5VoicesIsolatedVerified": true,
+        "m6KeepsakeSvgExportVerified": true,
+        "m6PerfBudgetVerified": true,
+        "perfSnapshot": {
+          "astar_expanded_cells": 2222,
+          "astar_used": true,
+          "district_boundary_present": true,
+          "object_node_count": 2151,
+          "opening_buildings_count": 58,
+          "pathfind_blackhawk_usec": 166700,
+          "pathfind_blackhawk_waypoints": 3,
+          "pathfind_budget_max_usec": 250000,
+          "pathfind_cold_cache": true,
+          "save_budget_max_bytes": 4096,
+          "save_budget_max_usec": 50000,
+          "save_bytes": 1535,
+          "save_roundtrip_usec": 200,
+          "street_ways_count": 20,
+          "total_buildings_count": 188,
+          "voices_teardown_budget_max_usec": 50000,
+          "voices_teardown_measured": true,
+          "voices_teardown_usec": 1,
+          "wider_buildings_count": 130,
+          "wider_street_ways_count": 41,
+          "within_budget": true
+        },
+        "browserSaveImportVerified": true,
+        "domA11yLiveVerified": true
+      },
+      {
+        "compactHeaderHeight": 83,
+        "compactInfoToggleVerified": true,
+        "startupOrientationVerified": true,
+        "findMeAndMapVerified": true,
+        "rewardSoundsAndMuteVerified": true,
+        "persistentProgressVerified": true,
+        "surpriseDiscoveryVerified": true,
+        "surpriseKeepsakeReloadVerified": true,
+        "chapter6ConversationVerified": true,
+        "sessionLandmarkTourVerified": true,
+        "fullSaveBytes": 1728,
+        "viewport": {
+          "width": 390,
+          "height": 667
+        },
+        "overviewBytes": 86881,
+        "selectedBytes": 82761,
+        "neighborBytes": 91605,
+        "muralBytes": 97618,
+        "musicBytes": 95207,
+        "blockBytes": 87336,
+        "blackhawkBytes": 94606,
+        "wideBytes": 88412,
+        "keyboardActivationVerified": true,
+        "neighborWalkVerified": true,
+        "muralSaveReloadVerified": true,
+        "rookMusicAuditionVerified": true,
+        "blockCompletionVerified": true,
+        "widerTenderloinVerified": true,
+        "m1EpilogueVerified": true,
+        "m3HostingVerified": true,
+        "m4CivicFilmVerified": true,
+        "m5VoicesIsolatedVerified": true,
+        "m6KeepsakeSvgExportVerified": true,
+        "m6PerfBudgetVerified": true,
+        "perfSnapshot": {
+          "astar_expanded_cells": 2222,
+          "astar_used": true,
+          "district_boundary_present": true,
+          "object_node_count": 2151,
+          "opening_buildings_count": 58,
+          "pathfind_blackhawk_usec": 176200,
+          "pathfind_blackhawk_waypoints": 3,
+          "pathfind_budget_max_usec": 250000,
+          "pathfind_cold_cache": true,
+          "save_budget_max_bytes": 4096,
+          "save_budget_max_usec": 50000,
+          "save_bytes": 1535,
+          "save_roundtrip_usec": 300,
+          "street_ways_count": 20,
+          "total_buildings_count": 188,
+          "voices_teardown_budget_max_usec": 50000,
+          "voices_teardown_measured": true,
+          "voices_teardown_usec": 1,
+          "wider_buildings_count": 130,
+          "wider_street_ways_count": 41,
+          "within_budget": true
+        },
+        "browserSaveImportVerified": true,
+        "domA11yLiveVerified": true
+      },
+      {
+        "compactHeaderHeight": 97,
+        "compactInfoToggleVerified": true,
+        "startupOrientationVerified": true,
+        "findMeAndMapVerified": true,
+        "rewardSoundsAndMuteVerified": true,
+        "persistentProgressVerified": true,
+        "surpriseDiscoveryVerified": true,
+        "surpriseKeepsakeReloadVerified": true,
+        "chapter6ConversationVerified": true,
+        "sessionLandmarkTourVerified": true,
+        "fullSaveBytes": 1728,
+        "viewport": {
+          "width": 320,
+          "height": 667
+        },
+        "overviewBytes": 68322,
+        "selectedBytes": 69714,
+        "neighborBytes": 84479,
+        "muralBytes": 90857,
+        "musicBytes": 86373,
+        "blockBytes": 77557,
+        "blackhawkBytes": 85584,
+        "wideBytes": 70288,
+        "keyboardActivationVerified": true,
+        "neighborWalkVerified": true,
+        "muralSaveReloadVerified": true,
+        "rookMusicAuditionVerified": true,
+        "blockCompletionVerified": true,
+        "widerTenderloinVerified": true,
+        "m1EpilogueVerified": true,
+        "m3HostingVerified": true,
+        "m4CivicFilmVerified": true,
+        "m5VoicesIsolatedVerified": true,
+        "m6KeepsakeSvgExportVerified": true,
+        "m6PerfBudgetVerified": true,
+        "perfSnapshot": {
+          "astar_expanded_cells": 2222,
+          "astar_used": true,
+          "district_boundary_present": true,
+          "object_node_count": 2151,
+          "opening_buildings_count": 58,
+          "pathfind_blackhawk_usec": 179300,
+          "pathfind_blackhawk_waypoints": 3,
+          "pathfind_budget_max_usec": 250000,
+          "pathfind_cold_cache": true,
+          "save_budget_max_bytes": 4096,
+          "save_budget_max_usec": 50000,
+          "save_bytes": 1535,
+          "save_roundtrip_usec": 300,
+          "street_ways_count": 20,
+          "total_buildings_count": 188,
+          "voices_teardown_budget_max_usec": 50000,
+          "voices_teardown_measured": true,
+          "voices_teardown_usec": 1,
+          "wider_buildings_count": 130,
+          "wider_street_ways_count": 41,
+          "within_budget": true
+        },
+        "browserSaveImportVerified": true,
+        "domA11yLiveVerified": true
+      }
+    ],
+    "errors": [],
+    "external": []
+  },
+  "overlay_interactions_asserted_by_passing_browser_suite": [
+    "All six eateries at all three viewports",
+    "Actual banner tap does not order through overlay",
+    "Fresh ui_frame and deferred speech reading-time preservation on both phone widths",
+    "Full host line after reward",
+    "Large caption restoration and actual outer-edge caption tap",
+    "Repeat order does not add burst, sound, Sparks, tour count or save writes"
+  ],
+  "source_sha256": {
+    "godot/main.gd": "ba0a6a55684cc469814d0d48c1a63978e00db38576f2c396cb2589737e8e57be",
+    "godot/tests/study_test.gd": "1c6365b9b9adcac84341cec6d0a7e5848d7f879e4a4512ffed6362bc150487f3",
+    "tests/godot-browser.mjs": "781b510c6fbcb8aa8f0c5be8f3c5784df91b5cb45c32a4d5eae49981d6f8a4b1"
+  },
+  "export_pack": {
+    "path": "artifacts/godot-web/index.pck",
+    "bytes": 1646020,
+    "sha256": "4b9d68b763cf7bb41bf67af0cc56591b569a6abda18a81a74c29ee04b7077ba2"
+  },
+  "public": {
+    "version": "0.12.0",
+    "fingerprint": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567",
+    "tracked_diff_empty": true
+  },
+  "legacy_browser_save_v1": "read-only; import/regression checks passed",
+  "screenshots": [
+    {
+      "path": "artifacts/godot-1100-order-overlays.png",
+      "bytes": 266659,
+      "sha256": "c667c5e581a4f1e15349ba11501fe308559b284347082748df8db0060c917c50"
+    },
+    {
+      "path": "artifacts/godot-1100-tour-complete.png",
+      "bytes": 219700,
+      "sha256": "520470cd5f5505776f2d3d6824acd90a5d8b041dd1d0c84eb4b2bcd3185062ef"
+    },
+    {
+      "path": "artifacts/godot-1100-host-after-reward.png",
+      "bytes": 212941,
+      "sha256": "08bb513965b6a48ecc7f6dcf442fdd0ac65d6c6262fa08bc76057418f966bb39"
+    },
+    {
+      "path": "artifacts/godot-1100-captions-restored.png",
+      "bytes": 216210,
+      "sha256": "09c92ccde8f2f851c32567c075427e19358db791953222bc132c50e273b01113"
+    },
+    {
+      "path": "artifacts/godot-390-order-overlays.png",
+      "bytes": 110394,
+      "sha256": "f137c106ecd785f94e668dfa244549fef21d8c5096086c804f902db65471d329"
+    },
+    {
+      "path": "artifacts/godot-390-tour-complete.png",
+      "bytes": 89782,
+      "sha256": "faae14d31526c5eda599dea85160e827535d234751fd60c7a6c4907bca10bdc3"
+    },
+    {
+      "path": "artifacts/godot-390-host-after-reward.png",
+      "bytes": 89896,
+      "sha256": "de90d5785d1e7f431a92261f660810aef25ca86e9d22fb7d9b9992be497c0526"
+    },
+    {
+      "path": "artifacts/godot-390-captions-restored.png",
+      "bytes": 97602,
+      "sha256": "5d344186ab71ba6863d9e1163048cd61ac424073e81a943ce905a5ca6f246e6a"
+    },
+    {
+      "path": "artifacts/godot-320-order-overlays.png",
+      "bytes": 95262,
+      "sha256": "e2c778e8924f39dee334b2892a65995d27b39d6d2e70c3c72b05c7eb1061f09a"
+    },
+    {
+      "path": "artifacts/godot-320-tour-complete.png",
+      "bytes": 81333,
+      "sha256": "b285e6d9ba56155c2a6a8ce4f40dd07e398c94544281a07681b96e6c65093695"
+    },
+    {
+      "path": "artifacts/godot-320-host-after-reward.png",
+      "bytes": 80642,
+      "sha256": "3c03288524a8416c4760a1644defe02074fc0871c558f738ca66a4a242ed1b29"
+    },
+    {
+      "path": "artifacts/godot-320-captions-restored.png",
+      "bytes": 87713,
+      "sha256": "76f21d8fa2bed153faa18091570151594dfb511930cb1661b5dec5d772c95456"
+    }
+  ],
+  "screenshot_review": "Final desktop, 390px and 320px host/reward/caption states visually inspected by driver",
+  "limits": [
+    "No physical phone testing",
+    "No full screen-reader certification",
+    "No human listening or pacing assessment",
+    "No new field observations",
+    "No deployment",
+    "Full roadmap remains unfinished"
+  ]
+}

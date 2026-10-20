@@ -1,0 +1,11 @@
+{
+  "unchanged_during_review": true,
+  "files": {
+    "godot/main.gd": "f33242b3d7a3fdadd1f3b5f602a3c06a8791a70b1224310deb56feb50cc82f51",
+    "godot/tests/study_test.gd": "1ff9876a549ca859020657bf9ae69a204eb105d187315d4416863f2388bc7f8d",
+    "tests/godot-browser.mjs": "4190927669cfed53ed89ba6a542a3d009bfc1abdb99e533b8164c9391042d47b",
+    "kibitz-runs/2026-10-20-codex-readable-street-overlays/r3/review_scope.md": "bfcd5592e872d1325aaa736d67d831cb40108e6e3b7b788b5888e57f4cb4b3b5",
+    "kibitz-runs/2026-10-20-codex-readable-street-overlays/r3/driver_anchor.md": "17c80555e94a5a64d124a4ec3589109e53cab3613c68ebe2b1ea0351dda3e14f",
+    "kibitz-runs/2026-10-20-codex-readable-street-overlays/r3/scope_receipt.md": "5bc9825eb7581ad99db7f34eae2f3467d8de6a248c6137ed8932125ce298ec3b"
+  }
+}

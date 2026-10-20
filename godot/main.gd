@@ -558,6 +558,7 @@ var progress_label: Label
 var header_details_expanded := false
 var player_nameplate: Label3D
 var readable_scene_labels: Array[Label3D] = []
+var visible_scene_captions: Array[Dictionary] = []
 var music_mode := "sketch"
 var music_playing := false
 var music_volume := 0.70
@@ -650,6 +651,7 @@ var browser_import_message := ""
 var last_a11y_announcement := ""
 var a11y_announcement_seq := 0
 var last_synced_a11y_json := ""
+var a11y_sync_pending := false
 var button_focus_style: StyleBoxFlat
 var last_exported_keepsake_svg := ""
 var last_voices_teardown_usec := 0
@@ -829,6 +831,9 @@ var speech_bubble_timer := 0.0
 var speech_bubble_age := 0.0
 var speech_bubble_box := Vector3(200.0, 60.0, 16.0)
 var speech_bubble_shift := 0.0
+var speech_bubble_deferred := false
+var speech_bubble_in_info := false
+var speech_opened_info := false
 var storefront_light_spots: Array[Dictionary] = []
 var light_pool_centers: Array[Vector2] = []
 var light_pool_material: StandardMaterial3D
@@ -893,6 +898,7 @@ var reward_banner_style: StyleBoxFlat
 var reward_title_label: Label
 var reward_body_label: Label
 var reward_banner_timer := 0.0
+var reward_info_prefix := ""
 var reward_burst_count := 0
 var last_reward_title := ""
 var celebration_burst_node: Node3D
@@ -2201,7 +2207,7 @@ func make_label_3d(node_name: String, text_str: String, pos: Vector3, tint: Colo
 		lbl.set_meta("map_pixel_size", pixel_sz)
 		lbl.set_meta("full_text", text_str)
 		readable_scene_labels.append(lbl)
-	lbl.render_priority = 12
+	lbl.render_priority = 8 # World text stays behind opaque speech backgrounds (10/11).
 	lbl.pixel_size = pixel_sz
 	lbl.font_size = font_sz
 	lbl.outline_size = 12
@@ -4096,6 +4102,7 @@ func build_street_life_decor() -> void:
 		bistro_tbl.material_override = mural_material(Color("4a3b32"))
 		e_node.add_child(bistro_tbl)
 		var e_lbl := make_label_3d("EateryLabel_%d" % e_idx, "%s (fictional)" % String(e_rec.get("name", "")), Vector3(0.0, 4.15, 0.0), Color(String(e_rec.get("label_color", "ffd899"))), 0.0115, 21)
+		e_lbl.set_meta("eatery_index", e_idx)
 		e_node.add_child(e_lbl)
 		eateries_root.add_child(e_node)
 	decor_root.add_child(eateries_root)
@@ -4505,25 +4512,27 @@ func speech_bubble_base_scale() -> float:
 	return speech_bubble_screen_scale() * camera.size / (vp_h * SPEECH_BUBBLE_PIXEL)
 
 func speech_bubble_width_px() -> float:
-	var vp_size := bubble_viewport_size()
-	return clampf(vp_size.x * 0.86 / speech_bubble_screen_scale() - 34.0, 180.0, 440.0)
+	# Include padding and border when fitting a phone, without reducing the font.
+	return clampf((play_area_rect().size.x - 12.0) / speech_bubble_screen_scale() - 34.0, 120.0, 440.0)
 
-## Sideways box shift (label px) keeping the bubble inside the viewport, tail inside the box.
-func speech_bubble_shift_px() -> float:
-	if camera == null:
-		return 0.0
-	var vp_size := bubble_viewport_size()
-	var s := speech_bubble_screen_scale()
-	var anchor_screen := camera.unproject_position(speech_bubble_anchor_pos)
-	var half := (speech_bubble_box.x * 0.5 + 4.0) * s
-	var margin := 8.0
-	var shift_screen := 0.0
-	if anchor_screen.x - half < margin:
-		shift_screen = margin - (anchor_screen.x - half)
-	elif anchor_screen.x + half > vp_size.x - margin:
-		shift_screen = (vp_size.x - margin) - (anchor_screen.x + half)
-	var max_shift := maxf(0.0, speech_bubble_box.x * 0.5 - 20.0)
-	return clampf(shift_screen / s, -max_shift, max_shift)
+func refresh_speech_bubble_wrap() -> void:
+	var width_px := speech_bubble_width_px()
+	if is_equal_approx(speech_bubble_label.width, width_px) and speech_bubble_label.text == speech_bubble_text:
+		return
+	var font: Font = speech_bubble_label.font if speech_bubble_label.font != null else ThemeDB.fallback_font
+	var text_size := font.get_multiline_string_size(speech_bubble_text, HORIZONTAL_ALIGNMENT_CENTER, width_px, SPEECH_BUBBLE_FONT)
+	speech_bubble_box = Vector3(minf(width_px, text_size.x) + 28.0, text_size.y + 12.0, 10.0)
+	speech_bubble_label.width = width_px
+	speech_bubble_label.text = speech_bubble_text
+	apply_speech_bubble_shape(0.0)
+
+## Bounds of the actual billboard, including its border, tail and animated scale.
+func speech_bubble_screen_rect() -> Rect2:
+	if not is_speech_bubble_visible() or camera == null:
+		return Rect2()
+	var anchor := camera.unproject_position(speech_bubble_node.global_position)
+	var s := SPEECH_BUBBLE_PIXEL * speech_bubble_node.scale.y / screen_constant_scale(1.0)
+	return Rect2(anchor + Vector2(speech_bubble_shift - speech_bubble_box.x * 0.5 - 3.0, -speech_bubble_box.z - speech_bubble_box.y - 3.0) * s, Vector2(speech_bubble_box.x + 6.0, speech_bubble_box.y + speech_bubble_box.z + 7.2) * s)
 
 func apply_speech_bubble_shape(shift: float) -> void:
 	speech_bubble_shift = shift
@@ -4539,26 +4548,23 @@ func spoken_text_from_line(line: String) -> String:
 	return line
 
 func show_speech_bubble(anchor_id: String, world_pos: Vector3, text: String, hold_sec: float = -1.0) -> void:
+	hide_speech_bubble()
 	ensure_speech_bubble()
 	var body := text.strip_edges()
 	if body.is_empty():
 		hide_speech_bubble()
 		return
-	var width_px := speech_bubble_width_px()
-	var font: Font = speech_bubble_label.font if speech_bubble_label.font != null else ThemeDB.fallback_font
-	var text_size := font.get_multiline_string_size(body, HORIZONTAL_ALIGNMENT_CENTER, width_px, SPEECH_BUBBLE_FONT)
-	var pad := 14.0
-	speech_bubble_box = Vector3(minf(width_px, text_size.x) + pad * 2.0, text_size.y + pad * 1.4, 16.0)
-	speech_bubble_label.width = width_px
-	speech_bubble_label.text = body
 	speech_bubble_text = body
+	refresh_speech_bubble_wrap()
 	speech_bubble_anchor = anchor_id
 	speech_bubble_anchor_pos = world_pos
-	apply_speech_bubble_shape(speech_bubble_shift_px())
+	apply_speech_bubble_shape(0.0)
 	speech_bubble_node.position = world_pos
 	speech_bubble_node.scale = Vector3.ONE * (0.6 * speech_bubble_base_scale())
 	speech_bubble_node.visible = true
 	speech_bubble_age = 0.0
+	speech_bubble_deferred = false
+	speech_bubble_in_info = false
 	speech_bubble_timer = hold_sec if hold_sec > 0.0 else clampf(4.5 + float(body.length()) * 0.055, 6.0, 14.0)
 
 func show_neighbor_speech(index: int, line: String) -> void:
@@ -4567,29 +4573,67 @@ func show_neighbor_speech(index: int, line: String) -> void:
 	var n_pos: Vector3 = neighbors[index].pos
 	show_speech_bubble(String(neighbors[index].get("id", "")), n_pos + Vector3.UP * SPEECH_BUBBLE_HEIGHT_M, spoken_text_from_line(line))
 
+func release_speech_info() -> void:
+	if speech_opened_info:
+		speech_opened_info = false
+		set_header_details(false, false)
+
 func hide_speech_bubble() -> void:
 	if speech_bubble_node != null:
 		speech_bubble_node.visible = false
 	speech_bubble_anchor = ""
 	speech_bubble_timer = 0.0
+	speech_bubble_deferred = false
+	speech_bubble_in_info = false
+	release_speech_info()
 
 func is_speech_bubble_visible() -> bool:
 	return speech_bubble_node != null and speech_bubble_node.visible
 
 func update_speech_bubble(delta: float) -> void:
-	if not is_speech_bubble_visible():
+	if speech_bubble_node == null or speech_bubble_anchor.is_empty():
 		return
-	speech_bubble_age += delta
-	speech_bubble_timer -= delta
-	var pop := clampf(speech_bubble_age / 0.2, 0.0, 1.0)
-	var settle := sin(clampf(speech_bubble_age / 0.32, 0.0, 1.0) * PI) * 0.05
-	speech_bubble_node.scale = Vector3.ONE * ((0.6 + 0.4 * (1.0 - pow(1.0 - pop, 3.0)) + settle) * speech_bubble_base_scale())
-	speech_bubble_node.position = speech_bubble_anchor_pos + Vector3.UP * (sin(speech_bubble_age * 2.1) * 0.06)
-	var want_shift := speech_bubble_shift_px()
-	if absf(want_shift - speech_bubble_shift) > 4.0:
-		apply_speech_bubble_shape(want_shift)
+	if speech_bubble_in_info and not header_details_expanded:
+		hide_speech_bubble() # Explicitly closing Info dismisses its dialogue.
+		return
 	var anchor_xz := Vector2(speech_bubble_anchor_pos.x, speech_bubble_anchor_pos.z)
-	if speech_bubble_timer <= 0.0 or Vector2(target.x, target.z).distance_to(anchor_xz) > SPEECH_BUBBLE_HIDE_TARGET_DIST_M:
+	if in_overview or in_wide_overview or Vector2(target.x, target.z).distance_to(anchor_xz) > SPEECH_BUBBLE_HIDE_TARGET_DIST_M:
+		hide_speech_bubble()
+		return
+	refresh_speech_bubble_wrap()
+	var pop := clampf((speech_bubble_age + delta) / 0.2, 0.0, 1.0)
+	speech_bubble_node.scale = Vector3.ONE * ((0.6 + 0.4 * (1.0 - pow(1.0 - pop, 3.0))) * speech_bubble_base_scale())
+	speech_bubble_node.position = speech_bubble_anchor_pos + Vector3.UP * (sin(speech_bubble_age * 2.1) * 0.06)
+	speech_bubble_node.visible = true
+	var area := play_area_rect().grow(-2.0)
+	var banner_visible := reward_banner != null and reward_banner.is_visible_in_tree()
+	if banner_visible:
+		var bottom := area.end.y
+		area.position.y = maxf(area.position.y, reward_banner.get_global_rect().end.y + 6.0)
+		area.size.y = maxf(0.0, bottom - area.position.y)
+	var rect := speech_bubble_screen_rect()
+	# Reserve full size from the start: never pop in briefly then disappear.
+	var full_size := Vector2(speech_bubble_box.x + 6.0, speech_bubble_box.y + speech_bubble_box.z + 7.2) * speech_bubble_screen_scale()
+	speech_bubble_deferred = full_size.x > area.size.x or full_size.y > area.size.y
+	if speech_bubble_deferred:
+		speech_bubble_node.visible = false
+		if banner_visible:
+			return # Its complete reading time starts when the reward has cleared.
+		if not speech_bubble_in_info and info != null:
+			speech_bubble_in_info = true
+			var reward_prefix := reward_info_prefix if reward_banner_timer > 0.0 and info.text.begins_with(reward_info_prefix) else ""
+			info.text = reward_prefix + speech_bubble_text + "\n\n" + info.text.trim_prefix(reward_prefix)
+			var was_collapsed := not header_details_expanded
+			set_header_details(true, false)
+			speech_opened_info = was_collapsed
+			announce_a11y_status("Full dialogue in Info: " + speech_bubble_text)
+	else:
+		var fitted := Vector2(clampf(rect.position.x, area.position.x, area.end.x - rect.size.x), clampf(rect.position.y, area.position.y, area.end.y - rect.size.y))
+		var shift := fitted - rect.position
+		speech_bubble_node.position += (camera.global_basis.x * shift.x - camera.global_basis.y * shift.y) * screen_constant_scale(1.0)
+		speech_bubble_age += delta
+	speech_bubble_timer -= delta
+	if speech_bubble_timer <= 0.0:
 		hide_speech_bubble()
 
 func add_light_pool(st: SurfaceTool, center: Vector2, axis_t: Vector2, half_a: float, half_b: float, col: Color, peak_alpha: float) -> void:
@@ -5010,6 +5054,7 @@ func build_eatery_counters() -> void:
 		props.add_child(body)
 		var items: Array = EATERY_MENU_ITEMS.get(e_id, ["house special"])
 		var menu_lbl := make_label_3d("CounterMenuLabel", "Today: %s" % String(items[0]), Vector3(0.0, 2.15, -0.98), Color(String(e_rec.get("label_color", "ffd899"))), 0.0085, 22)
+		menu_lbl.set_meta("eatery_index", e_idx)
 		menu_lbl.outline_size = 8
 		props.add_child(menu_lbl)
 		var host := make_person_node("CounterHost", canopy_col.lightened(0.15), host_skins[e_idx % host_skins.size()], host_hair[e_idx % host_hair.size()], 1.70, false)
@@ -5028,7 +5073,8 @@ func show_eatery_host_speech(idx: int, line: String) -> void:
 		return
 	var props := eatery_counter_nodes[idx]
 	var host_world := props.position + props.basis * Vector3(0.0, 0.0, -0.75)
-	show_speech_bubble("eatery:%s" % String(NEIGHBORHOOD_EATERIES[idx].get("id", "")), host_world + Vector3.UP * SPEECH_BUBBLE_HEIGHT_M, line)
+	var rec: Dictionary = NEIGHBORHOOD_EATERIES[idx]
+	show_speech_bubble("eatery:%s" % String(rec.get("id", "")), host_world + Vector3.UP * SPEECH_BUBBLE_HEIGHT_M, "%s (fictional)\n%s" % [String(rec.get("name", "")), line])
 
 func eatery_counter_interact(target_idx: int = -1) -> bool:
 	var idx := eatery_guide_idx if target_idx < 0 else target_idx
@@ -5604,17 +5650,31 @@ func build_reward_banner(layer: CanvasLayer) -> void:
 func layout_reward_banner() -> void:
 	if reward_banner == null:
 		return
+	if reward_banner_timer <= 0.0:
+		reward_banner.visible = false
+		return
 	var area := play_area_rect()
 	var w := minf(460.0, maxf(180.0, area.size.x - 16.0))
 	reward_banner.custom_minimum_size = Vector2(w, 0.0)
 	reward_banner.size = Vector2(w, reward_banner.get_combined_minimum_size().y)
 	reward_banner.position = Vector2(area.position.x + (area.size.x - w) * 0.5, area.position.y + 4.0)
+	# Expanded Info can leave a very short street strip. Keep the reward queued
+	# until it fits, instead of covering dialogue controls or spending its timer.
+	reward_banner.visible = not in_overview and not in_wide_overview and area.encloses(reward_banner.get_global_rect())
+	if not reward_banner.visible and header_details_expanded and not speech_opened_info and not in_overview and not in_wide_overview:
+		# Respect deliberately opened Info. Show the complete reward there while
+		# preserving the requested explanation and sources below it.
+		var prefix := "%s\n%s\n\n" % [reward_title_label.text, reward_body_label.text]
+		if not info.text.begins_with(prefix):
+			info.text = prefix + info.text.trim_prefix(reward_info_prefix)
+			info.scroll_to_line(0)
+		reward_info_prefix = prefix
 
 func trigger_feel_good_burst(title_str: String, detail_str: String, world_pos: Vector3, accent: Color = Color("f8cc58")) -> void:
 	if suppress_feel_good_burst:
 		return
 	reward_burst_count += 1
-	var keep_finale := last_reward_title.begins_with("10/10") and reward_banner != null and reward_banner.visible and reward_banner_timer > 1.0 and not title_str.begins_with("10/10")
+	var keep_finale := last_reward_title.begins_with("10/10") and reward_banner != null and reward_banner_timer > 1.0 and not title_str.begins_with("10/10")
 	if not keep_finale:
 		last_reward_title = title_str
 	if reward_banner != null and not keep_finale:
@@ -5637,13 +5697,15 @@ func trigger_feel_good_burst(title_str: String, detail_str: String, world_pos: V
 		update_celebration_burst(0.01)
 
 func update_celebration_burst(delta: float) -> void:
-	if reward_banner != null and reward_banner.visible:
-		reward_banner_timer -= delta
+	if reward_banner != null and reward_banner_timer > 0.0:
 		layout_reward_banner()
+		if reward_banner.visible or (header_details_expanded and not speech_opened_info):
+			reward_banner_timer -= delta
 		if reward_banner_timer <= 0.45:
 			reward_banner.modulate = Color(1.0, 1.0, 1.0, clampf(reward_banner_timer / 0.45, 0.0, 1.0))
 		if reward_banner_timer <= 0.0 or in_overview or in_wide_overview:
 			reward_banner.visible = false
+			reward_banner_timer = 0.0
 	if celebration_burst_node != null and celebration_burst_node.visible:
 		celebration_burst_age += delta
 		celebration_burst_timer -= delta
@@ -5661,6 +5723,7 @@ func update_celebration_burst(delta: float) -> void:
 			gem.scale = Vector3.ONE * clampf(1.15 - progress * 0.75, 0.25, 1.15)
 		if celebration_burst_label != null:
 			celebration_burst_label.position = Vector3(0.0, 1.25 + lift * 0.85, 0.0)
+			celebration_burst_label.visible = reward_banner == null or reward_banner_timer <= 0.0
 		if celebration_burst_timer <= 0.0 or in_overview or in_wide_overview:
 			celebration_burst_node.visible = false
 
@@ -5772,6 +5835,7 @@ func visit_next_landmark() -> bool:
 
 ## Keep inspected landmarks above an open conversation panel, including on phones.
 func frame_landmark_view() -> void:
+	release_speech_info()
 	update_camera()
 	var focus := target
 	var area := play_area_rect()
@@ -5797,7 +5861,7 @@ func update_landmark_tour_completion() -> void:
 		return
 	if discovered_surprises.size() < NEIGHBORHOOD_SURPRISE_IDS.size():
 		return
-	if reward_banner != null and reward_banner.visible and reward_banner_timer > 0.0:
+	if reward_banner != null and reward_banner_timer > 0.0:
 		return
 	var tour := landmark_tour_state()
 	if int(tour.count) != int(tour.total):
@@ -6013,7 +6077,7 @@ func update_talk_prompt() -> void:
 	var idx := nearest_neighbor_within(TALK_PROMPT_RADIUS_M)
 	if idx >= 0:
 		var n_id := String(neighbors[idx].get("id", ""))
-		var talking := is_speech_bubble_visible() and speech_bubble_anchor == n_id
+		var talking := speech_bubble_anchor == n_id
 		var in_panel := (talk_partner == idx and block_panel != null and block_panel.visible) or (idx == celeste_index and mural_panel != null and mural_panel.visible) or (idx == rook_index and music_panel != null and music_panel.visible)
 		if talking or in_panel or in_overview or in_wide_overview:
 			idx = -1
@@ -6033,6 +6097,15 @@ func update_talk_prompt() -> void:
 	talk_prompt_node.position = n_pos + Vector3.UP * SPEECH_BUBBLE_HEIGHT_M
 	talk_prompt_node.scale = Vector3.ONE * speech_bubble_base_scale()
 	talk_prompt_node.visible = true
+
+func talk_prompt_screen_rect() -> Rect2:
+	if talk_prompt_node == null or not talk_prompt_node.is_visible_in_tree():
+		return Rect2()
+	var text_size := ThemeDB.fallback_font.get_string_size(talk_prompt_label.text, HORIZONTAL_ALIGNMENT_CENTER, -1, 22)
+	var scale_px := SPEECH_BUBBLE_PIXEL * talk_prompt_node.scale.y / screen_constant_scale(1.0)
+	var size := Vector2(text_size.x + 24.0, text_size.y + 26.0) * scale_px
+	var anchor := camera.unproject_position(talk_prompt_node.global_position)
+	return Rect2(anchor - Vector2(size.x * 0.5, size.y), size)
 
 ## Talk to someone close by: chat if you are already beside them, otherwise walk over and the
 ## conversation starts on arrival. Returns false when nobody is within `radius` metres.
@@ -6068,6 +6141,7 @@ func show_conversation(index: int) -> void:
 func frame_conversation(index: int) -> void:
 	if camera == null or index < 0 or index >= neighbors.size() or in_wide_overview:
 		return
+	release_speech_info()
 	var n_pos: Vector3 = neighbors[index].pos
 	var focus := Vector3(n_pos.x, 2.2, n_pos.z)
 	in_overview = false
@@ -6401,7 +6475,7 @@ func play_area_rect() -> Rect2:
 func update_guide_arrow() -> void:
 	if guide_arrow == null or camera == null:
 		return
-	if guide_marker == null or not guide_marker.visible or is_speech_bubble_visible():
+	if guide_marker == null or not guide_marker.visible or not speech_bubble_anchor.is_empty():
 		guide_arrow.visible = false
 		return
 	var screen := camera.unproject_position(guide_marker_target)
@@ -6806,6 +6880,7 @@ func layout_memory_line(n_id: String) -> String:
 	return ""
 
 func set_header_details(expanded: bool, refit_map := true) -> void:
+	speech_opened_info = false # Explicit Info, route and hint requests take ownership.
 	header_details_expanded = expanded
 	if info != null:
 		info.visible = expanded
@@ -6814,6 +6889,9 @@ func set_header_details(expanded: bool, refit_map := true) -> void:
 	var toggle := header_panel.find_child("HeaderInfoToggle", true, false) as Button
 	if toggle != null:
 		toggle.set_pressed_no_signal(expanded)
+	# Visibility updates minimum height immediately; retain width and apply that
+	# height before camera framing or overlay fitting reads the playable area.
+	header_panel.size.y = header_panel.get_combined_minimum_size().y
 	if refit_map and (in_overview or in_wide_overview):
 		refit_after_layout()
 
@@ -10583,6 +10661,33 @@ func control_snapshot(control: Control) -> Dictionary:
 	var rect := control.get_global_rect()
 	return {"x": rect.position.x, "y": rect.position.y, "width": rect.size.x, "height": rect.size.y, "visible": control.is_visible_in_tree()}
 
+func rect_snapshot(rect: Rect2) -> Dictionary:
+	return {"x": rect.position.x, "y": rect.position.y, "width": rect.size.x, "height": rect.size.y}
+
+func scene_overlay_snapshot() -> Dictionary:
+	var captions: Array[Dictionary] = []
+	for caption in visible_scene_captions:
+		var item := rect_snapshot(caption.rect)
+		item["id"] = caption.id
+		item["text"] = caption.text
+		item["eatery_index"] = caption.eatery_index
+		captions.append(item)
+	var speech := rect_snapshot(speech_bubble_screen_rect())
+	speech["visible"] = is_speech_bubble_visible()
+	speech["deferred"] = speech_bubble_deferred
+	speech["in_info"] = speech_bubble_in_info
+	speech["anchor"] = speech_bubble_anchor
+	speech["text"] = speech_bubble_text
+	speech["remaining"] = speech_bubble_timer
+	var talk := rect_snapshot(talk_prompt_screen_rect())
+	talk["visible"] = talk_prompt_node != null and talk_prompt_node.is_visible_in_tree()
+	var counter: Dictionary = {}
+	if eatery_guide_idx >= 0 and eatery_guide_idx < eatery_counter_points.size():
+		var cp := eatery_counter_points[eatery_guide_idx]
+		var screen := camera.unproject_position(Vector3(cp.x, 1.3, cp.y))
+		counter = {"x": screen.x, "y": screen.y, "index": eatery_guide_idx, "orders": int(eatery_order_counts.get(String(NEIGHBORHOOD_EATERIES[eatery_guide_idx].id), 0))}
+	return {"speech": speech, "reward": control_snapshot(reward_banner), "talk": talk, "captions": captions, "counter": counter}
+
 func get_a11y_status_snapshot() -> Dictionary:
 	var active_panel := "none"
 	if block_panel != null and block_panel.visible:
@@ -10630,6 +10735,7 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"cutaway_additions": occluded_additions.size(),
 		"player_screen": {"x": camera.unproject_position(player.position + Vector3.UP).x, "y": camera.unproject_position(player.position + Vector3.UP).y},
 		"play_area": {"x": play_area_rect().position.x, "y": play_area_rect().position.y, "width": play_area_rect().size.x, "height": play_area_rect().size.y},
+		"overlays": scene_overlay_snapshot(),
 		"guide_marker_screen": {"x": marker_screen.x, "y": marker_screen.y, "visible": marker_visible},
 		"seq": a11y_announcement_seq,
 		"announcement": last_a11y_announcement,
@@ -10699,6 +10805,13 @@ func announce_a11y_status(msg: String) -> void:
 func sync_web_a11y_status() -> void:
 	if not OS.has_feature("web"):
 		return
+	a11y_sync_pending = true
+
+## Publish one complete frame after speech and captions have been composed.
+func flush_web_a11y_status() -> void:
+	if not a11y_sync_pending:
+		return
+	a11y_sync_pending = false
 	var payload := JSON.stringify(get_a11y_status_snapshot())
 	if payload == last_synced_a11y_json:
 		return
@@ -11007,6 +11120,7 @@ func reset_mural_state_to_defaults(status_label: String) -> void:
 	for counter in eatery_counter_nodes:
 		counter.visible = false
 	last_reward_title = ""
+	hide_speech_bubble()
 	reward_banner_timer = 0.0
 	if reward_banner != null:
 		reward_banner.visible = false
@@ -11595,6 +11709,7 @@ func apply_save_envelope(raw_json: String) -> bool:
 	for counter in eatery_counter_nodes:
 		counter.visible = false
 	last_reward_title = ""
+	hide_speech_bubble()
 	reward_banner_timer = 0.0
 	if reward_banner != null:
 		reward_banner.visible = false
@@ -12441,10 +12556,33 @@ func update_occlusion(force: bool = true) -> void:
 				set_rooftop_details_visible(addition_meshes[a_idx], false)
 				break
 
+func scene_caption_priority(label: Label3D) -> int:
+	if label.has_meta("eatery_index"):
+		return (0 if int(label.get_meta("eatery_index")) == eatery_guide_idx else 2) + (1 if label.name == "CounterMenuLabel" else 0)
+	return 4
+
 func update_readable_scene_labels() -> void:
 	var map_view := in_overview or in_wide_overview
 	var wrap_width := minf(320.0, bubble_viewport_size().x - 32.0)
-	for label in readable_scene_labels:
+	visible_scene_captions.clear()
+	var occupied: Array[Rect2] = []
+	if reward_banner != null and reward_banner.is_visible_in_tree():
+		occupied.append(reward_banner.get_global_rect().grow(6.0))
+	if is_speech_bubble_visible():
+		occupied.append(speech_bubble_screen_rect().grow(6.0))
+	if talk_prompt_node != null and talk_prompt_node.is_visible_in_tree():
+		var talk_rect := talk_prompt_screen_rect()
+		var talk_fits := play_area_rect().encloses(talk_rect)
+		for reserved in occupied:
+			talk_fits = talk_fits and not talk_rect.intersects(reserved)
+		talk_prompt_node.visible = talk_fits
+		if talk_fits:
+			occupied.append(talk_rect.grow(4.0))
+	if is_story_card_visible():
+		occupied.append(story_card.get_global_rect())
+	var ordered := readable_scene_labels.duplicate()
+	ordered.sort_custom(func(a: Label3D, b: Label3D) -> bool: return scene_caption_priority(a) < scene_caption_priority(b))
+	for label in ordered:
 		if not is_instance_valid(label) or not label.is_inside_tree():
 			continue
 		label.autowrap_mode = TextServer.AUTOWRAP_OFF if map_view else TextServer.AUTOWRAP_WORD_SMART
@@ -12464,17 +12602,29 @@ func update_readable_scene_labels() -> void:
 		label.pixel_size = screen_constant_scale(1.0) / maxf(label.global_basis.get_scale().y, 0.001)
 		var label_xz := Vector2(label.global_position.x, label.global_position.z)
 		label.visible = label_xz.distance_to(Vector2(target.x, target.z)) <= 55.0
-		var caption_size := ThemeDB.fallback_font.get_multiline_string_size(label.text, HORIZONTAL_ALIGNMENT_CENTER, wrap_width, label.font_size) + Vector2(20.0, 20.0)
+		var measure_key := "%s|%s|%d" % [label.text, wrap_width, label.font_size]
+		if label.get_meta("caption_measure_key", "") != measure_key:
+			label.set_meta("caption_measure_key", measure_key)
+			label.set_meta("caption_size", ThemeDB.fallback_font.get_multiline_string_size(label.text, HORIZONTAL_ALIGNMENT_CENTER, wrap_width, label.font_size) + Vector2(20.0, 20.0))
+		var caption_size: Vector2 = label.get_meta("caption_size")
 		var caption_center := camera.unproject_position(label.global_position)
-		label.visible = label.visible and play_area_rect().encloses(Rect2(caption_center - caption_size * 0.5, caption_size))
+		var rect := Rect2(caption_center - caption_size * 0.5, caption_size)
+		label.visible = label.visible and not camera.is_position_behind(label.global_position) and play_area_rect().encloses(rect)
 		if label.name == "TimePortalLabel":
 			label.visible = false # Combined with the hub caption in the close view.
 		if label.has_meta("neighbor_index"):
 			var neighbor_i := int(label.get_meta("neighbor_index"))
 			if talk_prompt_node != null and talk_prompt_node.visible and talk_prompt_neighbor == neighbor_i:
 				label.visible = false # The larger Talk prompt already includes this name.
-			if is_speech_bubble_visible() and speech_bubble_anchor == String(label.get_meta("neighbor_id")):
+			if speech_bubble_anchor == String(label.get_meta("neighbor_id")):
 				label.visible = false
+		for reserved in occupied:
+			if rect.intersects(reserved):
+				label.visible = false
+				break
+		if label.is_visible_in_tree():
+			occupied.append(rect.grow(4.0))
+			visible_scene_captions.append({"rect": rect, "id": String(label.get_path()), "text": label.text, "eatery_index": int(label.get_meta("eatery_index", -1))})
 
 func _process(delta: float) -> void:
 	if player_nameplate != null and camera != null:
@@ -12484,13 +12634,16 @@ func _process(delta: float) -> void:
 	if music_playing:
 		advance_music_clock(delta)
 	update_people_animation(delta)
-	update_speech_bubble(delta)
 	update_tree_sway(delta)
 	update_eatery_animation(delta)
-	update_celebration_burst(delta)
 	update_landmark_tour_completion()
 	update_conversation_ui(delta)
+	update_celebration_burst(delta)
+	update_speech_bubble(delta)
+	if reward_banner_timer > 0.0:
+		layout_reward_banner() # Speech may have opened or released Info this frame.
 	update_readable_scene_labels()
+	flush_web_a11y_status()
 
 func _physics_process(delta: float) -> void:
 	var shift_held := Input.is_key_pressed(KEY_SHIFT) or Input.is_physical_key_pressed(KEY_SHIFT)
@@ -12548,6 +12701,10 @@ func _physics_process(delta: float) -> void:
 		advance_walk(delta * (2.2 if OS.has_feature("web") else 1.0))
 
 func is_screen_point_in_ui(screen_pos: Vector2) -> bool:
+	if reward_banner != null and reward_banner.is_visible_in_tree() and reward_banner.get_global_rect().has_point(screen_pos):
+		return true
+	if is_speech_bubble_visible() and speech_bubble_screen_rect().has_point(screen_pos):
+		return true
 	if header_panel and header_panel.get_global_rect().has_point(screen_pos):
 		return true
 	if is_story_card_visible() and story_card.get_global_rect().has_point(screen_pos):
@@ -12607,6 +12764,10 @@ func handle_scene_tap(screen_pos: Vector2) -> bool:
 		var marker_hit: Variant = Plane(Vector3.UP, marker_pos.y).intersects_ray(camera.project_ray_origin(screen_pos), camera.project_ray_normal(screen_pos))
 		if not camera.is_position_behind(marker_pos) and camera.unproject_position(marker_pos).distance_to(screen_pos) <= 28.0 and marker_hit is Vector3 and marker_hit.distance_to(marker_pos) <= 9.5:
 			return visit_next_landmark()
+	update_readable_scene_labels() # Hit targets follow the current camera and visibility.
+	for caption in visible_scene_captions:
+		if int(caption.eatery_index) >= 0 and (caption.rect as Rect2).has_point(screen_pos):
+			return activate_eatery(int(caption.eatery_index))
 	var best_idx := -1
 	var best_screen_d := INF
 	for i in range(neighbors.size()):
@@ -12671,11 +12832,7 @@ func handle_scene_tap(screen_pos: Vector2) -> bool:
 			var cp := eatery_counter_points[e_i]
 			counter_screen_d = camera.unproject_position(Vector3(cp.x, 1.3, cp.y)).distance_to(screen_pos)
 		if e_screen.distance_to(screen_pos) <= 24.0 or counter_screen_d <= 30.0:
-			if is_tour_counter:
-				return visit_next_landmark()
-			if counter_open and e_i == eatery_guide_idx:
-				return eatery_counter_interact(e_i)
-			return cycle_eatery_guide(e_i)
+			return activate_eatery(e_i)
 	if best_idx >= 0:
 		if arrived_neighbor == best_idx and player_xz().distance_to(neighbor_xz(best_idx)) <= ARRIVAL_DISTANCE_M + 0.5:
 			if best_idx == celeste_index:
@@ -12689,6 +12846,13 @@ func handle_scene_tap(screen_pos: Vector2) -> bool:
 				return true
 		return walk_to_neighbor(best_idx)
 	return walk_to_point(ground_xz)
+
+func activate_eatery(index: int) -> bool:
+	if String(current_objective().get("tour_id", "")) == "eatery:%d" % index:
+		return visit_next_landmark()
+	if eatery_counter_nodes[index].visible and index == eatery_guide_idx:
+		return eatery_counter_interact(index)
+	return cycle_eatery_guide(index)
 
 func pan_camera_by_screen_delta(delta_px: Vector2) -> void:
 	in_overview = false

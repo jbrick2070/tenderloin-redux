@@ -481,6 +481,23 @@ try {
     await clickConversationAction('eateries');
     await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.announcement.includes('Tap the counter to order'));
     assert.equal((await page.evaluate(() => window.__tenderloinGodotA11ySnapshot)).tour_count, 0, 'Framing a cafe does not count as placing an order');
+    function assertReadableOverlays(snap, context) {
+      const { speech, reward, talk, captions } = snap.overlays;
+      const overlaps = (a, b) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+      const area = snap.play_area;
+      const contained = r => r.x >= area.x - 1 && r.y >= area.y - 1 && r.x + r.width <= area.x + area.width + 1 && r.y + r.height <= area.y + area.height + 1;
+      const occupied = [];
+      for (const [name, rect] of [['reward', reward], ['speech', speech], ['talk', talk], ...captions.map(c => [c.id, c])]) {
+        if (['speech', 'reward', 'talk'].includes(name) && !rect.visible) continue;
+        assert.ok(contained(rect), `${context}: ${name} fits the play area`);
+        for (const [other, previous] of occupied) assert.ok(!overlaps(rect, previous), `${context}: ${name} must clear ${other}`);
+        occupied.push([name, rect]);
+      }
+    }
+    async function clickScenePoint(snap, point) {
+      const canvas = await page.locator('#canvas').boundingBox();
+      await page.mouse.click(canvas.x + point.x * canvas.width / snap.viewport_width, canvas.y + point.y * canvas.height / snap.viewport_height);
+    }
     const saveBeforeTour = await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1'));
     for (let visited = 1; visited <= 12; visited++) {
       if (visited === 2) {
@@ -499,6 +516,14 @@ try {
       }
       if (visited === 5) assert.equal(snap.park_visited, true);
       if (visited === 6) assert.equal(snap.so_what_visited, true);
+      if (visited >= 7) {
+        const frame = snap.ui_frame;
+        await page.waitForFunction(previous => window.__tenderloinGodotA11ySnapshot.ui_frame > previous, frame);
+        const composed = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+        assertReadableOverlays(composed, `${size.width}px eatery ${visited - 6}`);
+        assert.match(composed.overlays.speech.text, /\(fictional\)/, 'host dialogue retains venue identity and fiction disclosure');
+        if (visited === 7) await page.screenshot({ path: `artifacts/godot-${size.width}-order-overlays.png` });
+      }
     }
     await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.tour_celebrated === true, null, { timeout: 10000 });
     const tourComplete = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
@@ -509,6 +534,44 @@ try {
     assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), saveBeforeTour, 'Tour session progress never writes the Godot save');
     assert.ok(Buffer.byteLength(saveBeforeTour, 'utf8') <= 4096, 'Full progression plus ten surprises stays inside the save budget');
     await page.screenshot({ path: `artifacts/godot-${size.width}-tour-complete.png` });
+    assertReadableOverlays(tourComplete, `${size.width}px tour reward`);
+    // Ordinary mouse input on a banner must not activate the scene behind it.
+    if (tourComplete.overlays.reward.visible) {
+      const r = tourComplete.overlays.reward;
+      await clickScenePoint(tourComplete, { x: r.x + r.width / 2, y: r.y + r.height / 2 });
+      await page.waitForFunction(frame => window.__tenderloinGodotA11ySnapshot.ui_frame > frame, tourComplete.ui_frame);
+      const afterBannerTap = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+      assert.equal(afterBannerTap.overlays.counter.orders, tourComplete.overlays.counter.orders);
+      assert.ok(afterBannerTap.ui_frame > tourComplete.ui_frame, 'banner tap check observes a fresh composed frame');
+      if (size.width < 600) {
+        assert.equal(tourComplete.overlays.speech.deferred, true, 'phone reward postpones host speech');
+        assert.equal(afterBannerTap.overlays.speech.deferred, true, 'speech remains deferred during this reward');
+        assert.equal(afterBannerTap.overlays.speech.remaining, tourComplete.overlays.speech.remaining, 'deferred speech keeps all reading time');
+      }
+    }
+    await page.waitForFunction(() => {
+      const o = window.__tenderloinGodotA11ySnapshot?.overlays;
+      return o && !o.reward.visible && o.speech.visible && !o.speech.deferred;
+    }, null, { timeout: 10000 });
+    const hostSpeaking = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+    assertReadableOverlays(hostSpeaking, `${size.width}px host after reward`);
+    assert.ok(hostSpeaking.overlays.speech.remaining > 3, 'host receives real reading time after the banner');
+    await page.screenshot({ path: `artifacts/godot-${size.width}-host-after-reward.png` });
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.overlays?.speech.anchor === '', null, { timeout: 20000 });
+    const restored = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+    assertReadableOverlays(restored, `${size.width}px restored captions`);
+    const venueCaption = restored.overlays.captions.find(c => c.eatery_index === restored.overlays.counter.index && c.id.includes('EateryLabel_'));
+    assert.ok(venueCaption, 'large venue caption returns after dialogue ends');
+    assert.match(venueCaption.text, /\(fictional\)/);
+    await page.screenshot({ path: `artifacts/godot-${size.width}-captions-restored.png` });
+    await clickScenePoint(restored, { x: venueCaption.x + 5, y: venueCaption.y + venueCaption.height / 2 });
+    await page.waitForFunction(count => window.__tenderloinGodotA11ySnapshot?.overlays?.counter?.orders === count, restored.overlays.counter.orders + 1);
+    const captionTapped = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+    assert.equal(captionTapped.tour_count, 12);
+    assert.equal(captionTapped.sparks, tourComplete.sparks);
+    assert.equal(captionTapped.reward_burst_count, tourComplete.reward_burst_count);
+    assert.equal(captionTapped.reward_sound_count, tourComplete.reward_sound_count);
+    assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), saveBeforeTour, 'caption taps and overlay lifecycle never mutate progress storage');
     await page.keyboard.press('Shift+KeyM');
     await page.waitForTimeout(600);
     const tourRevisit = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);

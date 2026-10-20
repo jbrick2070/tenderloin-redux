@@ -1,0 +1,20 @@
+STDOUT:
+I wrote the review to `kibitz-runs/2026-10-20-codex-readable-street-overlays/r3/claude.md` and changed no other files.
+
+**Verdict: yes-with-fixes.** The update order works as described: the reward banner is laid out first, then the speech bubble, then the captions, then the snapshot is published. The real taps also go through the normal input path. One limit: I had no shell, so I couldn't run `git diff`. I reviewed the current source instead, which means I can't always tell new lines from older ones; the review marks where that matters.
+
+**Must-fix:**
+1. **Rewards can stay hidden with no way out except a manual tap.** The code expands Info in 9 places but never collapses it; only the player's own toggle does (`main.gd:13632`). The new rule holds a reward back while Info is expanded and doesn't run down its timer (`main.gd:5645`). So on phones, a reward that comes after a blocked-route notice, a What's Next answer or a too-long line waits until the player closes Info. The native test passes only because it closes Info by hand first (`study_test.gd:1916-1918`). Reset and restore also leave the old dialogue sitting in Info.
+2. **No reward title shows while the banner is held back.** The floating 3D title is hidden whenever the reward timer is running (`main.gd:5700`), even when the banner isn't on screen, so only the gems appear. It should check whether the banner is actually visible.
+3. **The browser "deferred speech keeps all reading time" check can pass without testing anything.** The snapshot only refreshes on announcements or every 0.5 s, and the test waits just 350 ms after the blocked banner tap (`godot-browser.mjs:539-547`). It often compares a snapshot with itself.
+
+**Should-fix:**
+- **Stale published layout:** in the frame where speech moves into Info, the published layout probably still reflects the old header size. This assumes Godot updates container layout a frame late.
+- **Flicker while speech waits:** while speech waits behind the banner, that neighbor's Talk prompt and nameplate pop back for up to 3.2 s.
+- **Overlap gaps:** captions don't avoid the Talk prompt, the gold marker or the chapter card, and neither the native nor the browser overlap checks cover them.
+- **Tap order:** a tap on an eatery caption is checked before neighbors and surprises, so a neighbor under a wide caption can't be tapped.
+- **Dialogue lost:** if the player closes Info while a too-long line still doesn't fit on screen, the line is shown nowhere.
+- **Finale overwritten:** a held-back 10/10 finale banner is replaced by the next reward.
+- **Order text lost:** an eatery order's message in Info is overwritten when the host line moves into Info.
+
+The review also lists two pieces of dead code that are safe to remove: a duplicate check on the published snapshot that never triggers, and an unused bubble-shift parameter.

@@ -1276,10 +1276,10 @@ func run() -> void:
 			counters_ok = false
 	require(counters_ok, "eatery counters sit on the sidewalk between curb and storefront")
 	require(not study.eatery_counter_nodes[3].visible, "an unvisited eatery counter stays tucked away")
-	require(study.cycle_eatery_guide(3) and study.eatery_counter_nodes[3].visible and study.is_speech_bubble_visible() and study.speech_bubble_anchor == "eatery:morning_star_banh_mi" and study.speech_bubble_text == String(study.EATERY_HOST_LINES["morning_star_banh_mi"][0]), "visiting an eatery opens its counter and the host greets in a speech bubble")
+	require(study.cycle_eatery_guide(3) and study.eatery_counter_nodes[3].visible and study.is_speech_bubble_visible() and study.speech_bubble_anchor == "eatery:morning_star_banh_mi" and study.speech_bubble_text == String(study.NEIGHBORHOOD_EATERIES[3].name) + " (fictional)\n" + String(study.EATERY_HOST_LINES["morning_star_banh_mi"][0]), "visiting an eatery opens its counter and the host greets in a speech bubble")
 	var order_before: int = int(study.eatery_order_counts.get("morning_star_banh_mi", 0))
 	var order_sound_before: int = study.reward_sound_count
-	require(study.eatery_counter_interact() and int(study.eatery_order_counts.get("morning_star_banh_mi", 0)) == order_before + 1 and study.last_music_cue == "eatery_order" and study.reward_banner.visible and study.reward_title_label.text.contains("Order Up:") and study.info.text.contains("Ordering at Morning Star") and study.info.text.contains("banh mi") and study.speech_bubble_text == String(study.EATERY_HOST_LINES["morning_star_banh_mi"][1]), "ordering at the counter serves the house item, triggers eatery_order chime and Order Up burst, and the host answers")
+	require(study.eatery_counter_interact() and int(study.eatery_order_counts.get("morning_star_banh_mi", 0)) == order_before + 1 and study.last_music_cue == "eatery_order" and study.reward_banner.visible and study.reward_title_label.text.contains("Order Up:") and study.info.text.contains("Ordering at Morning Star") and study.info.text.contains("banh mi") and study.speech_bubble_text == String(study.NEIGHBORHOOD_EATERIES[3].name) + " (fictional)\n" + String(study.EATERY_HOST_LINES["morning_star_banh_mi"][1]), "ordering at the counter serves the house item, triggers eatery_order chime and Order Up burst, and the host answers")
 	var counter_tap: Vector2 = study.camera.unproject_position(Vector3(study.eatery_counter_points[3].x, 1.3, study.eatery_counter_points[3].y))
 	var burst_before_second_order: int = study.reward_burst_count
 	require(study.reward_sound_count == order_sound_before + 1, "first eatery order sounds independently of its external banner")
@@ -1769,9 +1769,14 @@ func run() -> void:
 		root.size = tap_size
 		await process_frame
 		await process_frame
-		# This block tests world taps after the chapter card has been accepted.
+		# Tap fixtures start with transient overlays cleared, as a player can wait for them.
+		study.hide_speech_bubble()
+		study.update_celebration_burst(4.0)
+		study.set_header_details(false, false)
 		study.hide_story_card()
 		for pitch in [1.0, 0.55]:
+			study.update_celebration_burst(4.0)
+			study.hide_speech_bubble()
 			study.visited_museum_eras = {"present": true, "1961_jazz": true, "1966_comptons": true, "1907_cadillac": true}
 			study.boeddeker_park_visited = false
 			study.target = Vector3(study.BOEDDEKER_PARK_ENTRANCE.x, 2.0, study.BOEDDEKER_PARK_ENTRANCE.y)
@@ -1784,6 +1789,8 @@ func run() -> void:
 			var marker_center: Vector3 = study.guide_marker.global_position + Vector3.UP * 0.5 * study.guide_marker.scale.y
 			var marker_tap: Vector2 = study.camera.unproject_position(marker_center)
 			require(not study.is_screen_point_in_ui(marker_tap) and study.handle_scene_tap(marker_tap) and study.boeddeker_park_visited, "tour marker center activates park at %s pitch %.2f" % [tap_size, pitch])
+		study.update_celebration_burst(4.0)
+		study.hide_speech_bubble()
 		study.so_what_visited = true
 		study.eatery_order_counts.clear()
 		study.eatery_counter_nodes[0].visible = false
@@ -1808,8 +1815,156 @@ func run() -> void:
 		study.visit_next_landmark()
 		await process_frame
 		await process_frame
+		study.update_celebration_burst(4.0)
+		study.update_speech_bubble(30.0)
 		require(bool(study.get_a11y_status_snapshot().guide_marker_screen.visible), "museum tour marker stays in the play area above the conversation at %s" % tap_size)
 		study.end_conversation()
+	# Compose the actual captions, host speech and rewards with the tour panel open.
+	for overlay_size in [Vector2i(1100, 760), Vector2i(390, 667), Vector2i(320, 667)]:
+		root.size = overlay_size
+		study.camera_pitch_scale = 1.0
+		study.set_header_details(false, false)
+		study.show_conversation(0)
+		await process_frame
+		await process_frame
+		var overlay_save: String = JSON.stringify(study.build_save_envelope())
+		for e_i in range(study.NEIGHBORHOOD_EATERIES.size()):
+			study.update_celebration_burst(4.0)
+			study.set_header_details(false, false)
+			study.cycle_eatery_guide(e_i)
+			study.hide_speech_bubble()
+			await process_frame
+			await process_frame
+			study.update_readable_scene_labels()
+			study.update_celebration_burst(4.0)
+			study.update_readable_scene_labels()
+			var baseline_ids: Array[String] = []
+			var tappable_caption := Rect2()
+			for caption in study.visible_scene_captions:
+				baseline_ids.append(String(caption.id))
+				if int(caption.eatery_index) == e_i:
+					tappable_caption = caption.rect
+			require(tappable_caption.has_area(), "active eatery has a readable caption before speech at %s stop %d" % [overlay_size, e_i])
+			study.eatery_counter_interact(e_i)
+			study.trigger_feel_good_burst("A little progress!", "Thanks for exploring this fictional cafe.", study.target)
+			await process_frame
+			await process_frame
+			study.update_speech_bubble(0.4)
+			study.update_readable_scene_labels()
+			verify_scene_overlay_bounds(study, "%s stop %d during reward" % [overlay_size, e_i])
+			var reading_time: float = study.speech_bubble_timer
+			if study.speech_bubble_deferred:
+				study.update_speech_bubble(0.5)
+				require(is_equal_approx(study.speech_bubble_timer, reading_time), "hidden host speech retains its full reading time")
+			var order_before_overlay: int = int(study.eatery_order_counts.get(String(study.NEIGHBORHOOD_EATERIES[e_i].id), 0))
+			require(not study.handle_scene_tap(study.reward_banner.get_global_rect().get_center()), "reward banner cannot click through to the scene")
+			study.update_celebration_burst(4.0)
+			study.update_speech_bubble(0.4)
+			study.update_readable_scene_labels()
+			require(study.is_speech_bubble_visible() and not study.speech_bubble_deferred and study.speech_bubble_text.contains("(fictional)"), "complete host speech appears after reward at %s stop %d" % [overlay_size, e_i])
+			verify_scene_overlay_bounds(study, "%s stop %d after reward" % [overlay_size, e_i])
+			require(not study.handle_scene_tap(study.speech_bubble_screen_rect().get_center()), "host speech cannot click through to the scene")
+			var counter_point: Vector2 = study.eatery_counter_points[e_i]
+			var physical_tap: Vector2 = study.camera.unproject_position(Vector3(counter_point.x, 1.3, counter_point.y))
+			if study.is_screen_point_in_ui(physical_tap):
+				require(not study.handle_scene_tap(physical_tap) and int(study.eatery_order_counts.get(String(study.NEIGHBORHOOD_EATERIES[e_i].id), 0)) == order_before_overlay, "covered counter cannot receive a tap through dialogue")
+			else:
+				require(study.handle_scene_tap(physical_tap), "uncovered physical counter remains tappable during host dialogue")
+				order_before_overlay += 1
+			study.update_speech_bubble(30.0)
+			study.update_readable_scene_labels()
+			var restored_ids: Array[String] = []
+			for caption in study.visible_scene_captions:
+				restored_ids.append(String(caption.id))
+			require(restored_ids == baseline_ids, "all previously readable captions return after transients at %s stop %d" % [overlay_size, e_i])
+			require(not study.is_screen_point_in_ui(physical_tap) and study.handle_scene_tap(physical_tap), "physical counter is tappable after dialogue at %s stop %d" % [overlay_size, e_i])
+			order_before_overlay += 1
+			study.update_speech_bubble(30.0)
+			study.update_readable_scene_labels()
+			var burst_count: int = study.reward_burst_count
+			var sound_count: int = study.reward_sound_count
+			var tour_count: int = int(study.landmark_tour_state().count)
+			var edge_tap: Vector2 = tappable_caption.position + Vector2(5.0, tappable_caption.size.y * 0.5)
+			require(study.handle_scene_tap(edge_tap) and int(study.eatery_order_counts.get(String(study.NEIGHBORHOOD_EATERIES[e_i].id), 0)) == order_before_overlay + 1, "outer edge of visible caption orders at its own eatery at %s stop %d" % [overlay_size, e_i])
+			require(study.reward_burst_count == burst_count and study.reward_sound_count == sound_count and int(study.landmark_tour_state().count) == tour_count, "repeat caption tap cannot duplicate rewards or tour progress")
+		require(JSON.stringify(study.build_save_envelope()) == overlay_save, "overlay layout and repeat orders never mutate the save")
+		study.end_conversation()
+	study.hide_speech_bubble()
+	study.update_celebration_burst(4.0)
+	root.size = Vector2i(1100, 760)
+	await process_frame
+	study.layout_reward_banner()
+	require(not study.reward_banner.visible and study.reward_banner_timer <= 0.0, "resizing cannot resurrect an expired reward")
+	study.cycle_eatery_guide(0)
+	study.update_speech_bubble(0.4)
+	var original_speech: String = study.speech_bubble_text
+	var wide_wrap: float = study.speech_bubble_label.width
+	root.size = Vector2i(320, 667)
+	await process_frame
+	await process_frame
+	study.update_speech_bubble(0.4)
+	require(study.speech_bubble_label.width < wide_wrap and study.speech_bubble_text == original_speech and study.play_area_rect().encloses(study.speech_bubble_screen_rect()), "resizing active dialogue rewraps its full text at the same font size")
+	study.update_celebration_burst(4.0)
+	study.show_conversation(0)
+	study.show_speech_bubble("long-dialogue-fixture", study.target, "A complete line for the bounded Info panel. ".repeat(25), 20.0)
+	await process_frame
+	await process_frame
+	require(study.speech_bubble_in_info and study.header_details_expanded and study.info.text.begins_with(study.speech_bubble_text), "dialogue too tall for the scene remains complete in scrollable Info")
+	study.trigger_feel_good_burst("Progress while reading", "Saved progress stays visible above.", study.target)
+	await process_frame
+	await process_frame
+	study.update_celebration_burst(0.0)
+	var queued_reward_time: float = study.reward_banner_timer
+	require(not study.reward_banner.visible and queued_reward_time > 0.0, "reward queues when expanded Info leaves insufficient room")
+	study.update_celebration_burst(1.0)
+	require(is_equal_approx(queued_reward_time, study.reward_banner_timer), "queued reward retains its display time")
+	study.update_speech_bubble(30.0)
+	require(not study.header_details_expanded, "speech expiry automatically releases only its owned Info")
+	await process_frame
+	await process_frame
+	study.update_celebration_burst(0.0)
+	require(study.reward_banner.visible and study.play_area_rect().encloses(study.reward_banner.get_global_rect()), "queued reward appears fully after Info closes")
+	study.update_celebration_burst(4.0)
+	study.show_speech_bubble("long-replacement-fixture", study.target, "A line kept in Info for replacement. ".repeat(25), 20.0)
+	study.update_speech_bubble(0.1)
+	require(study.speech_opened_info, "oversized dialogue owns only automatically opened Info")
+	study.cycle_eatery_guide(5)
+	await process_frame
+	await process_frame
+	study.update_speech_bubble(0.4)
+	study.hide_speech_bubble()
+	study.update_readable_scene_labels()
+	var replacement_visible := false
+	for caption in study.visible_scene_captions:
+		replacement_visible = replacement_visible or int(caption.eatery_index) == 5
+	require(not study.header_details_expanded and replacement_visible, "replacement releases Info before framing its readable eatery caption")
+	study.show_speech_bubble("explicit-info-fixture", study.target, "A full line while Info is chosen. ".repeat(25), 20.0)
+	study.update_speech_bubble(0.1)
+	study.set_header_details(true, false) # A user/route/hint request takes ownership.
+	study.hide_speech_bubble()
+	require(study.header_details_expanded, "explicit Info request survives speech cleanup")
+	study.trigger_feel_good_burst("Progress in Info", "One more friendly stop.", study.target)
+	study.update_celebration_burst(0.1)
+	require(not study.reward_banner.visible and study.info.text.contains("Progress in Info") and study.info.text.contains("One more friendly stop."), "deliberately expanded Info displays the full reward without covering controls")
+	study.show_speech_bubble("shared-info-fixture", study.target, "Full host words sharing Info with a reward. ".repeat(25), 20.0)
+	study.update_speech_bubble(0.1)
+	study.layout_reward_banner()
+	require(study.info.text.count("Progress in Info") == 1 and study.info.text.contains(study.speech_bubble_text), "simultaneous reward and full speech share Info without repeating the reward")
+	study.set_header_details(false, false)
+	study.update_celebration_burst(4.0)
+	study.show_speech_bubble("dismiss-info-fixture", study.target, "A full line that can be dismissed. ".repeat(25), 20.0)
+	study.update_speech_bubble(0.1)
+	study.set_header_details(false, false)
+	study.update_speech_bubble(0.1)
+	require(study.speech_bubble_anchor.is_empty(), "closing Info explicitly dismisses its oversized speech")
+	study.end_conversation()
+	var reset_overlay_save: String = JSON.stringify(study.build_save_envelope())
+	study.show_eatery_host_speech(0, "A pending host line.")
+	require(study.apply_save_envelope(reset_overlay_save) and study.speech_bubble_anchor.is_empty() and not study.speech_bubble_deferred, "save restore clears pending speech along with session rewards")
+	study.show_eatery_host_speech(0, "Another pending host line.")
+	study.reset_mural_state_to_defaults("overlay reset fixture")
+	require(study.speech_bubble_anchor.is_empty() and not study.speech_bubble_deferred, "fresh reset clears pending speech")
+	study.apply_save_envelope(reset_overlay_save)
 	root.size = Vector2i(1100, 760)
 	study.camera_pitch_scale = 1.0
 	await process_frame
@@ -2101,3 +2256,28 @@ func run() -> void:
 
 
 
+
+func verify_scene_overlay_bounds(study: Node, context: String) -> void:
+	var occupied: Array[Rect2] = []
+	if study.reward_banner.visible:
+		var banner: Rect2 = study.reward_banner.get_global_rect()
+		require(study.play_area_rect().encloses(banner), "reward stays in play area: " + context)
+		occupied.append(banner)
+	if study.is_speech_bubble_visible():
+		var speech: Rect2 = study.speech_bubble_screen_rect()
+		require(study.play_area_rect().encloses(speech), "full speech including border and tail stays in play area: " + context)
+		for previous in occupied:
+			require(not speech.intersects(previous), "speech clears reward: " + context)
+		occupied.append(speech)
+	if study.talk_prompt_node.is_visible_in_tree():
+		var talk: Rect2 = study.talk_prompt_screen_rect()
+		require(study.play_area_rect().encloses(talk), "talk prompt stays in play area: " + context)
+		for previous in occupied:
+			require(not talk.intersects(previous), "talk prompt clears other overlays: " + context)
+		occupied.append(talk)
+	for caption in study.visible_scene_captions:
+		var rect: Rect2 = caption.rect
+		require(study.play_area_rect().encloses(rect), "caption stays in play area: " + context)
+		for previous in occupied:
+			require(not rect.intersects(previous), "caption clears other text: " + context)
+		occupied.append(rect)
