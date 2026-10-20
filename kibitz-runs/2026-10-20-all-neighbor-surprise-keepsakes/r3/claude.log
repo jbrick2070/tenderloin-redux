@@ -1,0 +1,20 @@
+STDOUT:
+My verdict is yes-with-fixes. The review is written to `kibitz-runs/2026-10-20-all-neighbor-surprise-keepsakes/r3/claude.md`. The tool check passed before I started.
+
+**Must fix:** the review document says `inspect_neighborhood_surprise` clears `last_panel_dialogue`, but the code doesn't. It only replaces it when the surprise just found belongs to the neighbor whose panel is open (`godot/main.gd:5345-5359`). So an open panel can keep showing an out-of-date hint. You can trigger it with the panel's own button:
+1. With both of Bea's surprises found, What's Next has Bea say "Next, check out Jeffrey's Lost 1961 Record".
+2. Tapping "Spot Surprise" finds `jeffrey_record`, which is Rook's surprise, not Bea's.
+3. Bea's panel still tells the player to go find the record they just found.
+
+The fix is one `else` that sets it to `""`, plus a regression test.
+
+**Should fix:**
+- **Who is speaking:** `ask_whats_next` and `inspect_neighborhood_surprise` decide which neighbor is talking in different ways. In "hub" mode (or with no conversation partner), Bea can give the hint, the player finds her surprise, and her reflection never shows.
+- **Save restore:** a successful `apply_save_envelope` doesn't clear `last_panel_dialogue`, although the reset path does.
+- **Screen readers:** the keepsake label appears in the reward banner and `info.text`, but not in the accessibility announcement.
+- **Duplicated logic:** the What's Next hint picks its target with a copy of `next_undiscovered_surprise_for_neighbor`, so the hint and the button could drift apart.
+- **Test gaps:** no test finds a surprise while Celeste's or Rook's panel is open, or finds one that belongs to a different neighbor.
+
+**Cut candidate:** `keepsakes_visible` always equals `surprises_found`. I found nothing in the repo that reads it. The web export page may live outside the repo, so that still needs checking.
+
+I checked build order, initialization, the restore sequence and coordinate handling, and found no defects there.
