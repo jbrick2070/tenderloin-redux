@@ -1,0 +1,20 @@
+# Driver judgment
+
+One independent Claude CLI call, requested/selected claude-opus-5-5 at high effort, rc0, verdict yes-with-fixes. Auth receipt reports first-party Max login; quota usage unknown. No separate provider runtime model ID was exposed. Source hashes match before/after review. Reviewer read real files but had no shell/git; driver used current diff to distinguish inherited behavior. The runner prepended its own date to an already dated topic; raw output was collected in `kibitz-runs/2026-10-20-2026-10-20-codex-tablet-action-fitting/r3`, then consolidated here. Original quota receipt is ignored under artifacts; organization ID redacted in this committed copy. Anchor/scope/source hashes predate fanout. This is r3 only, not a completed four-round campaign.
+
+- MUST1 long titles at600/1050: CONFIRMED coverage gap. Added native long-state fixtures at both widths, every active page, real text-fit and controls bounds; final native passes. No breakpoint or panel-offset relaxation needed.
+- SHOULD1 semantic snapshot page counts: CONFIRMED misleading without the new flag. Desktop now reports page0/count1; underlying preferred-page state remains intact. Native asserts the desktop snapshot.
+- SHOULD2 phone-dependent primary tests: CONFIRMED. Main hub checks now use the paging flag/helper rather than the phone breakpoint. Phone-specific conversation copy remains phone-specific.
+- SHOULD3 browser focus evidence: CONFIRMED. Added assertion that paged-to-paged resize retains page2 after actual Next clicks. Native separately verifies focus on the actual Button.
+- SHOULD4 disappearing nav focus: CONFIRMED source path. Transfer focus to the current page's first visible action before hiding navigation; native1049→1050 test covers this.
+- SHOULD5 null-safe viewport helper: CONFIRMED cheap consistency improvement. Paging now uses bubble_viewport_size like the established phone helper.
+- SHOULD6 short landscape heights: CONFIRMED untested, pre-existing limitation. Acceptance remains heights667/760 only. Heights below667, including1024x600 and844x390 landscape, are explicitly unverified; no claim of universal responsive coverage.
+- SHOULD7 suggested action focus: CONFIRMED inherited mismatch. Focus the actual visible suggested action when entering the hub; fallback remains first action of its page. Existing actual-mural objective test still passes.
+- Optional readiness header: compact page/Sparks header is intended for this paged hub. Persistent top objective/progress remain. No factual source or callback changes.
+- Optional text_fits concern: keep actual production smart-wrap measurement plus panel enclosure/no-control-overlap assertions and inspected screenshots. Changing break flags would test a different renderer. No acceptance based on text_fits alone.
+- Optional shared breakpoint constant: one production literal plus explicit boundary expectations in tests is adequate for this bounded change.
+- Optional Previous reassignment / fewer browser widths: safe but unnecessary; retained nine-width actual browser sweep as requested. No larger refactor.
+
+## Driver-observed framing follow-up after review
+
+Initial all-five-gate pass exposed a visual problem in actual600/1000px screenshots: menu clear of controls but character lower body behind its upper edge. Driver reused the existing orthographic screen-space translation calculation in update_camera, limited to player-follow with the hub visible. Character is framed in the remaining play area without changing zoom, yaw/pitch, world position, progress or independent panned/inspection views. Open/close, resize and Info layout refresh camera framing. Native checks head/feet/YOU area, unchanged follow/zoom/heading, independently inspected view preservation and Find Me exit. Browser now checks projected player, actual unchanged world position and zoom on every page/width. This final addition and review fixes receive driver source grounding and all five fresh gates, not a second independent review call.

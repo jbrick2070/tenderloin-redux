@@ -980,7 +980,7 @@ try {
     await page.keyboard.press('KeyG');
     await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.block_panel_control.visible && window.__tenderloinGodotA11ySnapshot?.block_hub_actions.length > 0);
     const openedHub = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
-    if (openedHub.viewport_width < 600) {
+    if (openedHub.block_hub_paged) {
       for (let priorPage = openedHub.block_hub_page; priorPage > 0; priorPage--) {
         await clickHeaderControl('block_page_previous');
         await page.waitForFunction(expected => window.__tenderloinGodotA11ySnapshot?.block_hub_page === expected, priorPage - 1);
@@ -989,12 +989,12 @@ try {
     const hubSave = await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1'));
     const hubOrigin = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.player_grounding);
     const hubSeen = [];
-    for (let hubPage = 0; hubPage < (openedHub.viewport_width < 600 ? openedHub.block_hub_pages : 1); hubPage++) {
+    for (let hubPage = 0; hubPage < (openedHub.block_hub_paged ? openedHub.block_hub_pages : 1); hubPage++) {
       await page.waitForFunction(expected => window.__tenderloinGodotA11ySnapshot?.block_hub_page === expected, hubPage);
       const fresh = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.ui_frame);
       await page.waitForFunction(frame => window.__tenderloinGodotA11ySnapshot?.ui_frame > frame, fresh);
       const hub = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
-      assert.equal(hub.block_hub_actions.length, size.width < 600 ? 4 : 12);
+      assert.equal(hub.block_hub_actions.length, openedHub.block_hub_paged ? 4 : 12);
       assert.ok(hub.block_close_control.visible, 'Close stays visible on every page');
       for (const action of [...hub.block_hub_actions, hub.block_close_control]) {
         assert.ok(action.width >= 44 && action.height >= 44, 'hub controls have 44px targets');
@@ -1006,11 +1006,11 @@ try {
       }
       assert.ok(hub.block_panel_control.y >= hub.header_control.y + hub.header_control.height && hub.block_panel_control.y + hub.block_panel_control.height <= hub.controls_control.y, 'hub preserves header and walking controls');
       await page.screenshot({ path: `artifacts/godot-${size.width}-action-page-${hubPage + 1}.png` });
-      if (size.width < 600 && hubPage < openedHub.block_hub_pages - 1) await clickHeaderControl('block_page_next');
+      if (openedHub.block_hub_paged && hubPage < openedHub.block_hub_pages - 1) await clickHeaderControl('block_page_next');
     }
     assert.deepEqual(hubSeen, Array.from({ length: 12 }, (_, i) => i), 'every hub action remains reachable in order');
     assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), hubSave, 'paging does not change progress');
-    if (size.width < 600) {
+    if (openedHub.block_hub_paged) {
       await clickHeaderControl('block_page_next');
       await page.waitForTimeout(100);
       assert.equal((await page.evaluate(() => window.__tenderloinGodotA11ySnapshot)).block_hub_page, 2, 'Next clamps at the final page');
@@ -1036,7 +1036,7 @@ try {
     await page.keyboard.press('KeyG');
     await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.block_panel_control.visible);
     const reopenedHub = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
-    if (reopenedHub.viewport_width < 600) {
+    if (reopenedHub.block_hub_paged) {
       for (let nextPage = reopenedHub.block_hub_page + 1; nextPage < reopenedHub.block_hub_pages; nextPage++) {
         await clickHeaderControl('block_page_next');
         await page.waitForFunction(expected => window.__tenderloinGodotA11ySnapshot?.block_hub_page === expected, nextPage);
@@ -1055,6 +1055,63 @@ try {
     await page.waitForFunction(() => !window.__tenderloinGodotA11ySnapshot?.block_panel_control.visible);
     const explorationEvidence = { readableHubActionsVerified: true, boundedHubDetailsVerified: true, defaultMusicOnVerified: true, runningAudioContextVerified: true, touchMusicToggleVerified: true, readableRewardAndGuideVerified: true, inspectionResumeVerified: true, walkingStopControlVerified: true, compactHeaderHeight: startup.header_control.height, compactInfoToggleVerified: true, startupOrientationVerified: true, findMeAndMapVerified: true, rewardSoundsAndMuteVerified: true, persistentProgressVerified: true, surpriseDiscoveryVerified: true, surpriseKeepsakeReloadVerified: true, chapter6ConversationVerified: true, sessionLandmarkTourVerified: true, fullSaveBytes: Buffer.byteLength(saveBeforeTour, 'utf8') };
     runs.push({ ...explorationEvidence, viewport: size, overviewBytes: before.length, selectedBytes: after.length, neighborBytes: neighbor.length, muralBytes: muralShot.length, musicBytes: musicShot.length, blockBytes: blockShot.length, blackhawkBytes: blackhawkShot.length, wideBytes: wideShot.length, keyboardActivationVerified: true, neighborWalkVerified: true, muralSaveReloadVerified: true, rookMusicAuditionVerified: true, blockCompletionVerified: true, widerTenderloinVerified: true, m1EpilogueVerified: true, m3HostingVerified: true, m4CivicFilmVerified: true, m5VoicesIsolatedVerified: true, m6KeepsakeSvgExportVerified: true, m6PerfBudgetVerified: true, perfSnapshot: perfSnap, browserSaveImportVerified: true, domA11yLiveVerified: true });
+    if (size.width === 1100) {
+      const sweepSave = await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1'));
+      await page.keyboard.press('KeyF');
+      await page.keyboard.press('KeyG');
+      let previousPaged = false;
+      let sweepPlayer = null;
+      let sweepZoom = null;
+      for (const width of [1000, 900, 800, 700, 600, 599, 1049, 1050, 1100]) {
+        await page.setViewportSize({ width, height: 667 });
+        await page.waitForFunction(w => window.__tenderloinGodotA11ySnapshot?.viewport_width === w, width);
+        const resizeFrame = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.ui_frame);
+        await page.waitForFunction(f => window.__tenderloinGodotA11ySnapshot?.ui_frame > f + 2, resizeFrame);
+        const resized = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+        assert.equal(resized.block_hub_paged, width < 1050, 'tablet paging is independent of the phone layout');
+        if (previousPaged && resized.block_hub_paged) assert.equal(resized.block_hub_page, 2, 'resize keeps the focused final page visible');
+        previousPaged = resized.block_hub_paged;
+        if (sweepPlayer === null) {
+          sweepPlayer = resized.player_grounding;
+          sweepZoom = resized.camera_view_size;
+        }
+        for (let previous = resized.block_hub_page; resized.block_hub_paged && previous > 0; previous--) {
+          await clickHeaderControl('block_page_previous');
+          await page.waitForFunction(p => window.__tenderloinGodotA11ySnapshot?.block_hub_page === p, previous - 1);
+        }
+        const seen = [];
+        for (let actionPage = 0; actionPage < (resized.block_hub_paged ? 3 : 1); actionPage++) {
+          const frame = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.ui_frame);
+          await page.waitForFunction(f => window.__tenderloinGodotA11ySnapshot?.ui_frame > f + 2, frame);
+          const s = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+          assert.equal(s.block_hub_actions.length, s.block_hub_paged ? 4 : 12);
+          assert.ok(s.block_panel_control.y >= s.header_control.y + s.header_control.height);
+          assert.ok(s.block_panel_control.y + s.block_panel_control.height <= s.controls_control.y, `hub stays above walking controls at ${width}`);
+          assert.ok(s.block_panel_control.y - s.header_control.y - s.header_control.height >= 180, 'hub leaves a useful scene area');
+          assert.ok(s.player_screen.x >= s.play_area.x && s.player_screen.x <= s.play_area.x + s.play_area.width && s.player_screen.y >= s.play_area.y && s.player_screen.y <= s.play_area.y + s.play_area.height, 'followed character stays above the menu');
+          assert.equal(s.player_grounding.x, sweepPlayer.x);
+          assert.equal(s.player_grounding.z, sweepPlayer.z);
+          assert.equal(s.camera_view_size, sweepZoom, 'hub framing preserves close-view zoom');
+          for (const a of [...s.block_hub_actions, s.block_close_control, ...(s.block_hub_paged ? [s.block_page_previous, s.block_page_next] : [])]) {
+            assert.ok(a.visible && a.width >= 44 && a.height >= 44);
+            assert.ok(a.x >= s.block_panel_control.x && a.y >= s.block_panel_control.y && a.x + a.width <= s.block_panel_control.x + s.block_panel_control.width + 1 && a.y + a.height <= s.block_panel_control.y + s.block_panel_control.height + 1, `tablet control stays enclosed at ${width}`);
+          }
+          for (const a of s.block_hub_actions) {
+            assert.equal(a.text_fits, true, `full tablet title: ${a.text} at ${width}`);
+            seen.push(a.id);
+          }
+          if (actionPage === 0 || width === 600) await page.screenshot({ path: `artifacts/godot-${width}-tablet-actions-${actionPage + 1}.png` });
+          if (s.block_hub_paged && actionPage < 2) {
+            await clickHeaderControl('block_page_next');
+            await page.waitForFunction(p => window.__tenderloinGodotA11ySnapshot?.block_hub_page === p, actionPage + 1);
+          }
+        }
+        assert.deepEqual(seen, Array.from({ length: 12 }, (_, i) => i));
+      }
+      assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), sweepSave, 'tablet paging and resize preserve progress');
+      await clickHeaderControl('block_close_control');
+      runs[runs.length - 1].intermediateHubWidthsVerified = [599, 600, 700, 800, 900, 1000, 1049, 1050, 1100];
+    }
     await context.close();
   }
   assert.deepEqual(external, []);

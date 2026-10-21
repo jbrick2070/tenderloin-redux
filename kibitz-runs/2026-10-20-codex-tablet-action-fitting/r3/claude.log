@@ -1,0 +1,18 @@
+STDOUT:
+I've written the review to `kibitz-runs/2026-10-20-2026-10-20-codex-tablet-action-fitting/r3/claude.md`. My file tools worked, but I had no shell, so I never ran `git diff`. The findings are against the current working-tree files, and wherever I couldn't tell old code from new I wrote "verify". I didn't run any tests.
+
+**Verdict: yes, with fixes.** The resize, focus and paging order works for the paths the tests cover.
+
+**Must fix:**
+- **Long labels are only tested at 320px** (`godot/tests/study_test.gd:2517`). Neither the 600px tablet page nor 1050px is tested with them. At 1050 each of the six columns is only about 165px wide, so long labels will probably wrap onto two lines. Taller rows make the panel grow down over the walking controls, which is the same failure as the original 43px overlap. The fix is test-only: run the existing long-label fixture at 600 and 1050 too.
+
+**Should fix:**
+1. **Snapshot reports stale paging:** `block_hub_page` and `block_hub_pages` are reported even when paging is off. At 1100 it can say "page 2 of 3" while all 12 actions are visible.
+2. **Tests still use the phone breakpoint:** the main hub tests decide paging with `< 600` rather than the new `block_hub_paged` flag. They pass only because no required test size falls between 600 and 1049.
+3. **Browser sweep doesn't check focus on resize:** it never checks that resizing keeps the focused action's page. It just pages back to the start, so only the native test covers that claim.
+4. **Keyboard focus is lost at 1049→1050:** if focus is on Previous or Next, those buttons get hidden and focus goes nowhere.
+5. **Breakpoint reads the screen size differently:** the new check reads the viewport directly, while the existing 600px check goes through a helper that won't fail when no viewport is available.
+6. **Short screens are untested:** every new sweep runs at 667px tall. Landscape sizes like 1024x600 and 844x390 aren't covered.
+7. **One test name overclaims:** the test at `study_test.gd:2462` says the suggested action gets focus. It passes only because that action is first on its page; the code focuses the first action of the page.
+
+The file also has optional items and two suggested cuts: a redundant label reassignment, and dropping three widths from the browser sweep.

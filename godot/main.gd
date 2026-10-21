@@ -6490,7 +6490,11 @@ func apply_block_panel_mode() -> void:
 	if not talk:
 		apply_hub_guidance()
 		if block_panel.visible and (prior_focus == null or prior_focus in conv_buttons):
-			block_buttons[block_hub_page * BLOCK_ACTIONS_PER_PAGE].grab_focus()
+			var suggested := hub_button_for_objective(String(current_objective().get("id", "")))
+			if suggested != null and suggested.is_visible_in_tree():
+				suggested.grab_focus()
+			else:
+				block_buttons[block_hub_page * BLOCK_ACTIONS_PER_PAGE].grab_focus()
 	if talk:
 		var narrow := is_narrow_layout()
 		var acts := conversation_actions()
@@ -6513,15 +6517,21 @@ func apply_block_panel_mode() -> void:
 func block_action_page_count() -> int:
 	return maxi(1, ceili(float(BLOCK_ACTION_COUNT) / BLOCK_ACTIONS_PER_PAGE))
 
+func uses_paged_block_actions() -> bool:
+	# Six long action columns need desktop space; keep the panel bounded on tablets.
+	return bubble_viewport_size().x < 1050.0
+
 func layout_block_action_pages() -> void:
 	if block_actions_grid == null:
 		return
-	var narrow := is_narrow_layout()
+	var narrow := uses_paged_block_actions()
 	var count := block_action_page_count()
 	block_hub_page = clampi(block_hub_page, 0, count - 1)
 	block_actions_grid.columns = 2 if narrow else 6
 	for i in range(mini(BLOCK_ACTION_COUNT, block_buttons.size())):
 		block_buttons[i].visible = not narrow or i / BLOCK_ACTIONS_PER_PAGE == block_hub_page
+	if not narrow and (block_page_prev.has_focus() or block_page_next.has_focus()):
+		block_buttons[block_hub_page * BLOCK_ACTIONS_PER_PAGE].grab_focus()
 	block_page_prev.visible = narrow
 	block_page_next.visible = narrow
 	block_page_prev.disabled = block_hub_page == 0
@@ -6534,7 +6544,7 @@ func layout_block_action_pages() -> void:
 		block_label.text = "Block Actions · %d/%d · Sparks: %d" % [block_hub_page + 1, count, spark_count()]
 
 func change_block_action_page(step: int) -> void:
-	if block_panel_mode != "hub" or block_panel == null or not block_panel.visible or not is_narrow_layout():
+	if block_panel_mode != "hub" or block_panel == null or not block_panel.visible or not uses_paged_block_actions():
 		return
 	var next := clampi(block_hub_page + step, 0, block_action_page_count() - 1)
 	if next == block_hub_page:
@@ -7035,6 +7045,8 @@ func set_header_details(expanded: bool, refit_map := true) -> void:
 	header_panel.size.y = header_panel.get_combined_minimum_size().y
 	if refit_map and (in_overview or in_wide_overview):
 		refit_after_layout()
+	elif following_player and block_panel != null and block_panel.visible and block_panel_mode == "hub":
+		update_camera()
 
 func update_conversation_ui(delta: float) -> void:
 	ui_clock = wrapf(ui_clock + delta, 0.0, 3600.0)
@@ -10910,8 +10922,9 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"conversation_header": block_label.text if block_label != null else "",
 		"block_panel_control": control_snapshot(block_panel),
 		"controls_control": control_snapshot(controls),
-		"block_hub_page": block_hub_page,
-		"block_hub_pages": block_action_page_count(),
+		"block_hub_page": block_hub_page if uses_paged_block_actions() else 0,
+		"block_hub_pages": block_action_page_count() if uses_paged_block_actions() else 1,
+		"block_hub_paged": uses_paged_block_actions(),
 		"block_page_previous": control_snapshot(block_page_prev),
 		"block_page_next": control_snapshot(block_page_next),
 		"block_close_control": control_snapshot(block_close_btn),
@@ -13324,6 +13337,17 @@ func update_camera() -> void:
 	camera.position = target + get_camera_offset_vec() * offset_scale
 	camera.look_at(target)
 	camera.force_update_transform()
+	# The menu should leave the followed character in the remaining scene area.
+	# Keep inspection/panned views, heading and zoom under the player's control.
+	if following_player and block_panel != null and block_panel.visible and block_panel_mode == "hub":
+		var focus := player.position + Vector3.UP
+		var ppm := (camera.unproject_position(target + camera.global_basis.y) - camera.unproject_position(target)).length()
+		if ppm > 1e-5:
+			var delta := play_area_rect().get_center() - camera.unproject_position(focus)
+			target -= camera.global_basis.x * delta.x / ppm - camera.global_basis.y * delta.y / ppm
+			camera.position = target + get_camera_offset_vec() * offset_scale
+			camera.look_at(target)
+			camera.force_update_transform()
 
 func choose_next(direction: int) -> void:
 	in_overview = false
@@ -13602,6 +13626,9 @@ func show_block_panel(visible_flag: bool) -> void:
 		block_panel.visible = visible_flag
 		if visible_flag:
 			update_block_ui()
+		if following_player:
+			target = player.position + Vector3.UP
+			update_camera.call_deferred()
 
 func toggle_block_panel() -> void:
 	block_panel_mode = "hub"
@@ -14164,7 +14191,7 @@ func make_ui() -> void:
 		if not is_instance_valid(controls) or not is_inside_tree():
 			return
 		var narrow := vp.get_visible_rect().size.x < 600
-		if narrow and block_panel.visible and block_panel_mode == "hub":
+		if uses_paged_block_actions() and block_panel.visible and block_panel_mode == "hub":
 			var focused_index := block_buttons.find(get_viewport().gui_get_focus_owner())
 			if focused_index >= 0 and focused_index < BLOCK_ACTION_COUNT:
 				block_hub_page = focused_index / BLOCK_ACTIONS_PER_PAGE
@@ -14205,7 +14232,7 @@ func make_ui() -> void:
 				b.add_theme_font_size_override("font_size", sub_btn_font)
 		for b in block_buttons:
 			if is_instance_valid(b):
-				b.add_theme_font_size_override("font_size", sub_btn_font)
+				b.add_theme_font_size_override("font_size", 13 if uses_paged_block_actions() else sub_btn_font)
 		for b in conv_buttons:
 			if is_instance_valid(b):
 				b.add_theme_font_size_override("font_size", sub_btn_font)
@@ -14225,6 +14252,8 @@ func make_ui() -> void:
 			block_panel.offset_bottom = -176 if narrow else -130
 			block_panel.offset_top = -368 if narrow else -336
 			update_block_ui()
+			if following_player and block_panel.visible and block_panel_mode == "hub":
+				update_camera.call_deferred()
 		layout_reward_banner()
 		if in_overview or in_wide_overview:
 			refit_after_layout()

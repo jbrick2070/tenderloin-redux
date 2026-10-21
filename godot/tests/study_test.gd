@@ -2444,7 +2444,7 @@ func run() -> void:
 		var blk_header_end_y: float = study.header_panel.get_global_rect().end.y
 		var blk_controls_pos_y: float = study.controls.get_global_rect().position.y
 		require(blk_rect.position.x >= 0 and blk_rect.end.x <= size.x and blk_header_end_y <= blk_rect.position.y and blk_rect.end.y <= blk_controls_pos_y, "header, BlockPanel, and bottom controls do not overlap at %s" % str(size))
-		if size.x < 600:
+		if study.uses_paged_block_actions():
 			var motifs_before_hub: Dictionary = study.mural_placements.duplicate(true)
 			study.mural_placements.clear()
 			study.show_block_panel(false)
@@ -2473,14 +2473,14 @@ func run() -> void:
 		var hub_save: String = JSON.stringify(study.build_save_envelope())
 		var hub_position: Vector3 = study.player.position
 		var hub_seen: Array[int] = []
-		for hub_page in range(study.block_action_page_count() if size.x < 600 else 1):
+		for hub_page in range(study.block_action_page_count() if study.uses_paged_block_actions() else 1):
 			study.layout_block_action_pages()
 			await process_frame
 			await process_frame
 			blk_rect = study.block_panel.get_global_rect()
 			require(study.header_panel.get_global_rect().end.y <= blk_rect.position.y and blk_rect.end.y <= study.controls.get_global_rect().position.y, "each action page fits between header and walking controls")
 			var hub_actions: Array = study.block_action_snapshots()
-			require(hub_actions.size() == (4 if size.x < 600 else 12), "readable action page count at %s" % size)
+			require(hub_actions.size() == (4 if study.uses_paged_block_actions() else 12), "readable action page count at %s" % size)
 			for item in hub_actions:
 				hub_seen.append(int(item.id))
 				require(bool(item.text_fits), "full action title fits the actual font and button box: %s at %s" % [item.text, size])
@@ -2492,7 +2492,7 @@ func run() -> void:
 				require(blk_rect.encloses(bkr), "visible action and Close buttons fit inside the bounded panel")
 				require(blk_btn.focus_mode == Control.FOCUS_ALL and blk_btn.has_theme_stylebox_override("focus"), "block buttons have keyboard focus ring stylebox")
 			require(study.block_close_btn.is_visible_in_tree(), "Close stays available on every action page")
-			if size.x < 600 and hub_page < 2:
+			if study.uses_paged_block_actions() and hub_page < 2:
 				study.block_page_next.grab_focus()
 				var page_accept := InputEventAction.new()
 				page_accept.action = "ui_accept"
@@ -2509,7 +2509,7 @@ func run() -> void:
 			expected_actions.append(action_id)
 		require(hub_seen == expected_actions and study.player.position == hub_position and JSON.stringify(study.build_save_envelope()) == hub_save, "all12 actions reachable once without changing player or save")
 		study.change_block_action_page(1)
-		require(study.block_hub_page == (2 if size.x < 600 else 0), "last page clamps; desktop paging is a no-op")
+		require(study.block_hub_page == (2 if study.uses_paged_block_actions() else 0), "last page clamps; desktop paging is a no-op")
 		study.block_hub_page = 0
 		study.layout_block_action_pages()
 		await process_frame
@@ -2660,6 +2660,92 @@ func run() -> void:
 		study.overview()
 		require(study.in_overview, "Map Overview remains available after Start")
 		study.stop_music_playback()
+	# Regression: at600px the old six-column hub grew43px over walking controls.
+	study.hide_story_card()
+	study.frame_player_for_walking()
+	study.show_block_panel(true)
+	var tablet_save: String = JSON.stringify(study.build_save_envelope())
+	var tablet_position: Vector3 = study.player.position
+	var tablet_zoom: float = study.view_size
+	var tablet_yaw: float = study.camera_yaw
+	var tablet_pitch: float = study.camera_pitch_scale
+	for tablet_width in [599, 600, 700, 800, 900, 1000, 1049, 1050, 1100]:
+		root.size = Vector2i(tablet_width, 667)
+		await process_frame
+		await process_frame
+		var paged: bool = tablet_width < 1050
+		require(study.uses_paged_block_actions() == paged, "hub breakpoint is independent of the phone controls breakpoint")
+		study.block_hub_page = 0
+		study.layout_block_action_pages()
+		var tablet_seen: Array[int] = []
+		for tablet_page in range(3 if paged else 1):
+			await process_frame
+			await process_frame
+			var tablet_rect: Rect2 = study.block_panel.get_global_rect()
+			for body_height in [-1.0, 0.0, study.PLAYER_HEIGHT_M * study.CHARACTER_VISUAL_SCALE]:
+				require(study.play_area_rect().has_point(study.camera.unproject_position(study.player.position + Vector3.UP * body_height)), "followed character and YOU area stay above the tablet menu")
+			require(tablet_rect.position.y >= study.header_panel.get_global_rect().end.y and tablet_rect.end.y <= study.controls.get_global_rect().position.y, "intermediate hub never overlaps walking controls at %d" % tablet_width)
+			require(tablet_rect.position.y - study.header_panel.get_global_rect().end.y >= 180, "intermediate hub retains a useful scene area")
+			var tablet_actions: Array = study.block_action_snapshots()
+			require(tablet_actions.size() == (4 if paged else 12), "intermediate page has the expected action count")
+			for tablet_action in tablet_actions:
+				tablet_seen.append(int(tablet_action.id))
+				require(bool(tablet_action.text_fits), "intermediate full title fits: %s at %d" % [tablet_action.text, tablet_width])
+			for tablet_button in [study.block_close_btn, study.block_page_prev, study.block_page_next]:
+				if tablet_button.is_visible_in_tree():
+					require(tablet_rect.encloses(tablet_button.get_global_rect()) and tablet_button.size.x >= 44 and tablet_button.size.y >= 44, "intermediate navigation remains enclosed and tappable")
+			if paged and tablet_page < 2:
+				study.change_block_action_page(1)
+				require(study.block_buttons[(tablet_page + 1) * 4].has_focus(), "intermediate paging retains keyboard focus")
+		var tablet_expected: Array[int] = []
+		for tablet_id in range(12):
+			tablet_expected.append(tablet_id)
+		require(tablet_seen == tablet_expected, "all intermediate-width actions remain reachable once")
+		if tablet_width in [600, 1050]:
+			var tablet_titles: Array[String] = []
+			var tablet_long_titles := ["Open Block Party!", "Visit Next Neighbor", "Gear Returned (3/3)", "Hosted All 4 Events", "Paint w/ Celeste (0/3)", "Soundcheck w/ Rook (OK)", "Black Hawk Site (OK)", "Tenant Circle (Done)", "Roll Camera (Clear)", "Local Stories: Err", "District Border: Off", "Web Save Loaded"]
+			for title_id in range(12):
+				tablet_titles.append(study.block_buttons[title_id].text)
+				study.block_buttons[title_id].text = tablet_long_titles[title_id]
+			for title_page in range(3 if paged else 1):
+				study.block_hub_page = title_page
+				study.layout_block_action_pages()
+				await process_frame
+				await process_frame
+				var long_rect: Rect2 = study.block_panel.get_global_rect()
+				require(long_rect.end.y <= study.controls.get_global_rect().position.y, "long-state titles cannot grow into controls at %d" % tablet_width)
+				for title_action in study.block_action_snapshots():
+					require(bool(title_action.text_fits), "long-state title fits at the tablet/desktop boundary")
+			for title_id in range(12):
+				study.block_buttons[title_id].text = tablet_titles[title_id]
+	study.block_west_btn.grab_focus()
+	root.size = Vector2i(1049, 667)
+	await process_frame
+	await process_frame
+	require(study.block_hub_page == 1 and study.block_west_btn.has_focus() and study.block_west_btn.is_visible_in_tree(), "crossing the tablet breakpoint preserves the focused later action")
+	study.block_hub_page = 0
+	study.layout_block_action_pages()
+	study.block_page_next.grab_focus()
+	root.size = Vector2i(1050, 667)
+	await process_frame
+	await process_frame
+	require(study.block_open_btn.has_focus(), "disappearing tablet page navigation hands focus to a visible action")
+	var desktop_hub_snapshot: Dictionary = study.get_a11y_status_snapshot()
+	require(desktop_hub_snapshot.block_hub_page == 0 and desktop_hub_snapshot.block_hub_pages == 1 and not desktop_hub_snapshot.block_hub_paged, "desktop snapshot reports one complete action view")
+	require(study.following_player and study.view_size == tablet_zoom and study.camera_yaw == tablet_yaw and study.camera_pitch_scale == tablet_pitch, "hub framing preserves follow, zoom and heading")
+	require(JSON.stringify(study.build_save_envelope()) == tablet_save and study.player.position == tablet_position, "tablet resizing and paging leave walking and progress unchanged")
+	study.following_player = false
+	study.target += Vector3(3.0, 0.0, 2.0)
+	study.update_camera()
+	var inspected_hub_target: Vector3 = study.target
+	study.show_block_panel(false)
+	study.show_block_panel(true)
+	await process_frame
+	await process_frame
+	require(study.target == inspected_hub_target and not study.following_player, "opening hub preserves a separately inspected camera view")
+	study.frame_player_for_walking()
+	await process_frame
+	require(study.play_area_rect().has_point(study.camera.unproject_position(study.player.position + Vector3.UP)) and study.view_size == 45.0, "Find Me exits the menu to the close walking view")
 	study.show_conversation(0)
 	study.last_panel_dialogue = "Bea: \"A previous conversation.\""
 	study.wide_overview()
@@ -2760,4 +2846,3 @@ func reference_min_wall_distance(study, pt: Vector2, cutoff: float = INF) -> flo
 						if cutoff < INF:
 							return best
 	return best
-
