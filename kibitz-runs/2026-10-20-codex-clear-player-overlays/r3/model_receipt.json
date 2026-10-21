@@ -1,0 +1,18 @@
+{
+  "driver": "codex",
+  "only_reviewer": "claude",
+  "round": "r3",
+  "actual_independent_calls": 1,
+  "requested_model": "claude-opus-5-5",
+  "harness_selected_model": "claude-opus-5-5",
+  "provider_reported_runtime_model": null,
+  "provider_runtime_model_limit": "not separately exposed; selection receipt and CLI rc0 retained",
+  "requested_effort": "high",
+  "selected_effort": "high",
+  "budget_receipt": "budget=medium\nmodel=claude-opus-5-5\neffort=high\nnote=(none)",
+  "quota_usage": "unknown",
+  "review_exit_code": 0,
+  "review_verdict": "yes-with-fixes",
+  "source_unchanged_during_review": true,
+  "review_sha256": "4e8069e7a963c24a72e6b7cea2bcf218810d1361c3d311381637b913f34c2ecd"
+}

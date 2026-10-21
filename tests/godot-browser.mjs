@@ -25,6 +25,7 @@ const BROWSER_SAVE_SENTINEL = JSON.stringify({ schema: 'tenderloin-redux.save', 
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : 'playwright');
 const base = 'http://127.0.0.1:' + (process.env.GODOT_PORT || 4174) + '/';
 await mkdir('artifacts', { recursive: true });
+let queuedActivityRewardChecks = 0;
 const browser = await chromium.launch({ channel: 'chrome', headless: true, ignoreDefaultArgs: ['--autoplay-policy=no-user-gesture-required'], args: ['--autoplay-policy=user-gesture-required'] });
 const errors = [], external = [], runs = [];
 let latestPage = null;
@@ -85,6 +86,16 @@ try {
       const readSave = await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1'));
       const s = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
       const d = s[key];
+      assertReadableOverlays(s, `${s.viewport_width}px ${stage} activity`);
+      if (stage === 'mural' || stage.startsWith('mural-') || stage === 'music' || stage.startsWith('music-')) {
+        assert.equal(s.header_details_expanded, false, 'current activity instructions supersede stale speech without expanding Info');
+        const p = s.overlays.player, a = s.play_area;
+        assert.ok(p.x >= a.x && p.y >= a.y && p.x + p.width <= a.x + a.width && p.y + p.height <= a.y + a.height, 'the actual activity player and YOU reservation remain in the scene');
+      }
+      if (s.overlays.speech.in_activity) {
+        assert.ok(d.text.includes(s.overlays.speech.text), 'the complete deferred dialogue remains in the existing activity instructions');
+        assert.equal(s.header_details_expanded, false, 'repeated activity dialogue does not expand Info over the player');
+      }
       assert.ok(d.control.visible && d.control.height >= d.min_height - 1 && d.control.height <= 50, 'description has a bounded two-line reading area at its actual font size');
       assert.ok(d.panel.y >= s.header_control.y + s.header_control.height && d.panel.y + d.panel.height <= s.controls_control.y, 'activity stays between header and walking controls');
       assert.ok(d.control.x >= d.panel.x && d.control.y >= d.panel.y && d.control.x + d.control.width <= d.panel.x + d.panel.width + 1 && d.control.y + d.control.height <= d.panel.y + d.panel.height + 1);
@@ -330,8 +341,25 @@ try {
       await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.viewport_width === 1100);
     }
     const beforeMuralClose = await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1'));
+    const waitingReward = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+    if (waitingReward.overlays.reward.remaining > 0 && !waitingReward.overlays.reward.visible && !waitingReward.header_details_expanded) {
+      queuedActivityRewardChecks++;
+      await page.waitForFunction(frame => window.__tenderloinGodotA11ySnapshot.ui_frame > frame + 3, waitingReward.ui_frame);
+      await page.waitForTimeout(1100);
+      const stillWaiting = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+      assert.ok(stillWaiting.ui_frame > waitingReward.ui_frame, 'queued timer comparison uses a fresh published snapshot');
+      assert.equal(stillWaiting.overlays.reward.remaining, waitingReward.overlays.reward.remaining, 'a crowded activity retains the complete reward reading time');
+      assert.deepEqual(stillWaiting.camera_pose, waitingReward.camera_pose, 'waiting for reward space preserves manual camera intent');
+    }
     await clickActivityButton('mural_detail', 8);
     await page.waitForFunction(() => !window.__tenderloinGodotA11ySnapshot?.mural_detail.control.visible);
+    if (waitingReward.overlays.reward.remaining > 0 && !waitingReward.overlays.reward.visible && !waitingReward.header_details_expanded) {
+      await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.overlays.reward.visible);
+      const releasedReward = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+      assert.ok(releasedReward.overlays.reward.remaining > 2.5, 'closing the real activity releases its queued reward with reading time');
+      assertReadableOverlays(releasedReward, `${size.width}px queued mural reward after Close`);
+      await page.screenshot({ path: `artifacts/godot-${size.width}-reward-after-activity.png` });
+    }
     assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), beforeMuralClose);
     // Press KeyR to walk to Rook on Turk Street and run soundcheck on arrival
     await page.keyboard.press('KeyR');
@@ -692,7 +720,7 @@ try {
     await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.announcement.includes('Tap the counter to order'));
     assert.equal((await page.evaluate(() => window.__tenderloinGodotA11ySnapshot)).tour_count, 0, 'Framing a cafe does not count as placing an order');
     function assertReadableOverlays(snap, context) {
-      const { speech, reward, talk, guide_label, captions } = snap.overlays;
+      const { player, speech, reward, talk, guide_label, captions } = snap.overlays;
       const overlaps = (a, b) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
       const area = snap.play_area;
       const contained = r => r.x >= area.x - 1 && r.y >= area.y - 1 && r.x + r.width <= area.x + area.width + 1 && r.y + r.height <= area.y + area.height + 1;
@@ -701,6 +729,7 @@ try {
         if (['speech', 'reward', 'talk', 'guide'].includes(name) && !rect.visible) continue;
         const outlined = name === 'guide' ? { ...rect, x: rect.x - 6, y: rect.y - 6, width: rect.width + 12, height: rect.height + 12 } : rect;
         assert.ok(contained(outlined), `${context}: ${name} fits the play area`);
+        if (name === 'speech' || name === 'reward') assert.ok(!overlaps(rect, player), `${context}: ${name} clears the player's body and YOU marker`);
         for (const [other, previous] of occupied) assert.ok(!overlaps(outlined, previous), `${context}: ${name} must clear ${other}`);
         occupied.push([name, outlined]);
       }
@@ -1211,7 +1240,8 @@ try {
   assert.deepEqual(external, []);
   assert.deepEqual(errors, []);
   await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
-  console.log(JSON.stringify({ runs, errors, external }));
+  assert.ok(queuedActivityRewardChecks > 0, 'at least one actual crowded activity exercises queued reward timer and Close delivery');
+  console.log(JSON.stringify({ runs, queuedActivityRewardChecks, errors, external }));
 } catch (error) {
   if (latestPage && !latestPage.isClosed()) {
     await latestPage.screenshot({ path: 'artifacts/godot-browser-failure.png' });

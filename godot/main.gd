@@ -848,6 +848,8 @@ var speech_bubble_box := Vector3(200.0, 60.0, 16.0)
 var speech_bubble_shift := 0.0
 var speech_bubble_deferred := false
 var speech_bubble_in_info := false
+var speech_bubble_in_activity := false
+var speech_bubble_activity_matched := false
 var speech_opened_info := false
 var storefront_light_spots: Array[Dictionary] = []
 var light_pool_centers: Array[Vector2] = []
@@ -913,6 +915,7 @@ var reward_banner_style: StyleBoxFlat
 var reward_title_label: Label
 var reward_body_label: Label
 var reward_banner_timer := 0.0
+var reward_banner_milestone := false
 var reward_info_prefix := ""
 var reward_burst_count := 0
 var last_reward_title := ""
@@ -4642,10 +4645,28 @@ func hide_speech_bubble() -> void:
 	speech_bubble_timer = 0.0
 	speech_bubble_deferred = false
 	speech_bubble_in_info = false
+	speech_bubble_in_activity = false
+	speech_bubble_activity_matched = false
 	release_speech_info()
 
 func is_speech_bubble_visible() -> bool:
 	return speech_bubble_node != null and speech_bubble_node.visible
+
+func speech_activity_detail() -> RichTextLabel:
+	for detail in [mural_detail_label, music_stem_label]:
+		if detail != null and detail.is_visible_in_tree() and not speech_bubble_text.is_empty() and detail.text.contains(speech_bubble_text):
+			return detail
+	return null
+
+func announce_speech_location(location: String) -> void:
+	var notice := "Full dialogue in %s." % location
+	var spoken := speech_bubble_text.replace("\n", " ").strip_edges()
+	# Keep the earned-progress context when this same line was just announced.
+	if last_a11y_announcement.contains(spoken):
+		if not last_a11y_announcement.ends_with(notice):
+			announce_a11y_status(last_a11y_announcement + " " + notice)
+	else:
+		announce_a11y_status(notice + " " + spoken)
 
 func update_speech_bubble(delta: float) -> void:
 	if speech_bubble_node == null or speech_bubble_anchor.is_empty():
@@ -4653,6 +4674,12 @@ func update_speech_bubble(delta: float) -> void:
 	if speech_bubble_in_info and not header_details_expanded:
 		hide_speech_bubble() # Explicitly closing Info dismisses its dialogue.
 		return
+	var activity_detail := speech_activity_detail()
+	if speech_bubble_activity_matched and activity_detail == null:
+		# New activity instructions supersede a line already available there.
+		hide_speech_bubble()
+		return
+	speech_bubble_activity_matched = speech_bubble_activity_matched or activity_detail != null
 	var anchor_xz := Vector2(speech_bubble_anchor_pos.x, speech_bubble_anchor_pos.z)
 	if in_overview or in_wide_overview or Vector2(target.x, target.z).distance_to(anchor_xz) > SPEECH_BUBBLE_HIDE_TARGET_DIST_M:
 		hide_speech_bubble()
@@ -4664,29 +4691,33 @@ func update_speech_bubble(delta: float) -> void:
 	speech_bubble_node.visible = true
 	var area := play_area_rect().grow(-2.0)
 	var banner_visible := reward_banner != null and reward_banner.is_visible_in_tree()
-	if banner_visible:
-		var bottom := area.end.y
-		area.position.y = maxf(area.position.y, reward_banner.get_global_rect().end.y + 6.0)
-		area.size.y = maxf(0.0, bottom - area.position.y)
-	var rect := speech_bubble_screen_rect()
+	var reward_rect := reward_banner.get_global_rect().grow(3.0) if banner_visible else Rect2()
 	# Reserve full size from the start: never pop in briefly then disappear.
 	var full_size := Vector2(speech_bubble_box.x + 6.0, speech_bubble_box.y + speech_bubble_box.z + 7.2) * speech_bubble_screen_scale()
-	speech_bubble_deferred = full_size.x > area.size.x or full_size.y > area.size.y
+	var full_position := camera.unproject_position(speech_bubble_node.global_position) + Vector2(speech_bubble_shift - speech_bubble_box.x * 0.5 - 3.0, -speech_bubble_box.z - speech_bubble_box.y - 3.0) * speech_bubble_screen_scale()
+	var fitted := fit_overlay_around_player(Rect2(full_position, full_size), area, reward_rect)
+	speech_bubble_deferred = not fitted.has_area()
+	var was_in_activity := speech_bubble_in_activity
+	speech_bubble_in_activity = speech_bubble_deferred and not speech_bubble_in_info and speech_activity_detail() != null
 	if speech_bubble_deferred:
 		speech_bubble_node.visible = false
-		if banner_visible:
+		if speech_bubble_in_activity:
+			# The same complete dialogue is already in this scrollable activity.
+			# Avoid expanding another panel over the character just to repeat it.
+			if not was_in_activity:
+				announce_speech_location("the activity instructions")
+		elif banner_visible:
 			return # Its complete reading time starts when the reward has cleared.
-		if not speech_bubble_in_info and info != null:
+		elif not speech_bubble_in_info and info != null:
 			speech_bubble_in_info = true
 			var reward_prefix := reward_info_prefix if reward_banner_timer > 0.0 and info.text.begins_with(reward_info_prefix) else ""
 			info.text = reward_prefix + speech_bubble_text + "\n\n" + info.text.trim_prefix(reward_prefix)
 			var was_collapsed := not header_details_expanded
 			set_header_details(true, false)
 			speech_opened_info = was_collapsed
-			announce_a11y_status("Full dialogue in Info: " + speech_bubble_text)
+			announce_speech_location("Info")
 	else:
-		var fitted := Vector2(clampf(rect.position.x, area.position.x, area.end.x - rect.size.x), clampf(rect.position.y, area.position.y, area.end.y - rect.size.y))
-		var shift := fitted - rect.position
+		var shift := fitted.position - full_position
 		speech_bubble_node.position += (camera.global_basis.x * shift.x - camera.global_basis.y * shift.y) * screen_constant_scale(1.0)
 		speech_bubble_age += delta
 	speech_bubble_timer -= delta
@@ -5721,9 +5752,12 @@ func layout_reward_banner() -> void:
 	reward_banner.custom_minimum_size = Vector2(w, 0.0)
 	reward_banner.size = Vector2(w, reward_banner.get_combined_minimum_size().y)
 	reward_banner.position = Vector2(area.position.x + (area.size.x - w) * 0.5, area.position.y + 4.0)
+	var fitted := fit_overlay_around_player(reward_banner.get_global_rect(), area)
+	if fitted.has_area():
+		reward_banner.position = fitted.position
 	# Expanded Info can leave a very short street strip. Keep the reward queued
 	# until it fits, instead of covering dialogue controls or spending its timer.
-	reward_banner.visible = not in_overview and not in_wide_overview and area.encloses(reward_banner.get_global_rect())
+	reward_banner.visible = not in_overview and not in_wide_overview and fitted.has_area()
 	if not reward_banner.visible and header_details_expanded and not speech_opened_info and not in_overview and not in_wide_overview:
 		# Respect deliberately opened Info. Show the complete reward there while
 		# preserving the requested explanation and sources below it.
@@ -5733,14 +5767,16 @@ func layout_reward_banner() -> void:
 			info.scroll_to_line(0)
 		reward_info_prefix = prefix
 
-func trigger_feel_good_burst(title_str: String, detail_str: String, world_pos: Vector3, accent: Color = Color("f8cc58")) -> void:
+func trigger_feel_good_burst(title_str: String, detail_str: String, world_pos: Vector3, accent: Color = Color("f8cc58"), milestone := false) -> void:
 	if suppress_feel_good_burst:
 		return
 	reward_burst_count += 1
 	var keep_finale := last_reward_title.begins_with("10/10") and reward_banner != null and reward_banner_timer > 1.0 and not title_str.begins_with("10/10")
+	keep_finale = keep_finale or (reward_banner != null and reward_banner_timer > 0.0 and not reward_banner.visible and reward_banner_milestone and not milestone)
 	if not keep_finale:
 		last_reward_title = title_str
 	if reward_banner != null and not keep_finale:
+		reward_banner_milestone = milestone
 		if reward_banner_style != null:
 			reward_banner_style.border_color = accent.lightened(0.15)
 		reward_title_label.text = "* %s" % title_str
@@ -6567,6 +6603,62 @@ func conv_button(parent: Node, text: String, action: Callable) -> Button:
 	parent.add_child(control)
 	conv_buttons.append(control)
 	return control
+
+## Conservative screen bounds of the articulated player, ground ring and YOU.
+## Eight projected corners follow zoom, pose and the existing enlarged visual.
+func player_overlay_rect() -> Rect2:
+	if camera == null or player_visual == null or not player_visual.is_visible_in_tree() or in_overview or in_wide_overview or camera.is_position_behind(player_visual.global_position):
+		return Rect2()
+	var bounds := Rect2(camera.unproject_position(player_visual.global_position), Vector2.ZERO)
+	for x in [-0.70, 0.70]:
+		for y in [-0.05, PLAYER_HEIGHT_M + 0.05]:
+			for z in [-0.70, 0.70]:
+				bounds = bounds.expand(camera.unproject_position(player_visual.to_global(Vector3(x, y, z))))
+	if player_nameplate != null and player_nameplate.is_visible_in_tree():
+		# Label3D is billboarded: its local glyph quad uses the camera's axes,
+		# not the character's rotated axes. Include its actual alignment/offset.
+		var quad := player_nameplate.get_aabb()
+		var pixels := player_nameplate.global_basis.get_scale().y / screen_constant_scale(1.0)
+		var center := camera.unproject_position(player_nameplate.global_position)
+		var label_rect := Rect2(center + Vector2(quad.position.x, -quad.end.y) * pixels, Vector2(quad.size.x, quad.size.y) * pixels)
+		bounds = bounds.merge(label_rect.grow(float(player_nameplate.outline_size)))
+	return bounds.grow(4.0)
+
+## Keep full-size text clear of the player without moving anyone's camera.
+## An empty result uses the existing queued reward / scrollable Info paths.
+func fit_overlay_around_player(wanted: Rect2, area: Rect2, extra_blocked: Rect2 = Rect2()) -> Rect2:
+	if wanted.size.x > area.size.x or wanted.size.y > area.size.y:
+		return Rect2()
+	var blocked := player_overlay_rect()
+	if blocked.has_area():
+		blocked = blocked.grow(2.0) # Billboard/world conversion can round subpixels.
+	var regions: Array[Rect2] = [area]
+	for obstacle in [blocked, extra_blocked]:
+		if not obstacle.has_area():
+			continue
+		var remaining: Array[Rect2] = []
+		for region in regions:
+			if not region.intersects(obstacle):
+				remaining.append(region)
+				continue
+			var cut := region.intersection(obstacle)
+			remaining.append(Rect2(region.position, Vector2(region.size.x, cut.position.y - region.position.y)))
+			remaining.append(Rect2(Vector2(region.position.x, cut.end.y), Vector2(region.size.x, region.end.y - cut.end.y)))
+			remaining.append(Rect2(region.position, Vector2(cut.position.x - region.position.x, region.size.y)))
+			remaining.append(Rect2(Vector2(cut.end.x, region.position.y), Vector2(region.end.x - cut.end.x, region.size.y)))
+		regions = remaining
+	var best := Rect2()
+	var distance := INF
+	for region in regions:
+		if region.size.x < wanted.size.x or region.size.y < wanted.size.y:
+			continue
+		var pos := Vector2(clampf(wanted.position.x, region.position.x, region.end.x - wanted.size.x), clampf(wanted.position.y, region.position.y, region.end.y - wanted.size.y))
+		var candidate := Rect2(pos, wanted.size)
+		var movement := pos.distance_squared_to(wanted.position)
+		if area.encloses(candidate) and (not blocked.has_area() or not candidate.intersects(blocked)) and (not extra_blocked.has_area() or not candidate.intersects(extra_blocked)) and movement < distance:
+			best = candidate
+			distance = movement
+	return best
 
 ## The 3D view between the header and whatever panel or controls sit at the bottom.
 func play_area_rect() -> Rect2:
@@ -10264,7 +10356,7 @@ func trigger_progress_cue(cue_id: String, reason: String) -> void:
 		if not burst_title.is_empty() or cue_id in ["surprise_discovery", "surprise_finale", "eatery_order"]:
 			play_reward_sound(cue_id)
 		if not burst_title.is_empty():
-			trigger_feel_good_burst(burst_title, burst_detail, burst_pos, burst_accent)
+			trigger_feel_good_burst(burst_title, burst_detail, burst_pos, burst_accent, cue_id in ["mural_complete", "block_opened", "hosting_complete", "civic_complete", "film_complete", "surprise_finale", "tour_complete"])
 	update_music_ui()
 
 func apply_music_volume_db() -> void:
@@ -10878,6 +10970,7 @@ func scene_overlay_snapshot() -> Dictionary:
 	speech["visible"] = is_speech_bubble_visible()
 	speech["deferred"] = speech_bubble_deferred
 	speech["in_info"] = speech_bubble_in_info
+	speech["in_activity"] = speech_bubble_in_activity
 	speech["anchor"] = speech_bubble_anchor
 	speech["text"] = speech_bubble_text
 	speech["remaining"] = speech_bubble_timer
@@ -10892,7 +10985,9 @@ func scene_overlay_snapshot() -> Dictionary:
 	reward_title["text"] = reward_title_label.text
 	reward_title["lines"] = reward_title_label.get_line_count()
 	reward_title["visible_lines"] = reward_title_label.get_visible_line_count()
-	return {"speech": speech, "reward": control_snapshot(reward_banner), "reward_title": reward_title, "guide_label": control_snapshot(guide_arrow_label), "talk": talk, "captions": captions, "counter": counter}
+	var reward := control_snapshot(reward_banner)
+	reward["remaining"] = reward_banner_timer
+	return {"player": rect_snapshot(player_overlay_rect()), "speech": speech, "reward": reward, "reward_title": reward_title, "guide_label": control_snapshot(guide_arrow_label), "talk": talk, "captions": captions, "counter": counter}
 
 func get_a11y_status_snapshot() -> Dictionary:
 	var active_panel := "none"

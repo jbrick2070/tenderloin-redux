@@ -1,0 +1,86 @@
+{
+  "baseline": "dd1f0680ee42c014574fc724ee6e06ba6058d159",
+  "gates": {
+    "native": "GODOT_STUDY_PASS",
+    "export": "PASS",
+    "check": "PASS",
+    "node_tests": 104,
+    "browser": "PASS"
+  },
+  "queued_activity_reward_checks": 2,
+  "errors": [],
+  "external": [],
+  "runs": [
+    {
+      "viewport": {
+        "width": 1100,
+        "height": 760
+      },
+      "save_bytes": 1728,
+      "perf_save_bytes": 1535,
+      "cold_route_usec": 100700
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 667
+      },
+      "save_bytes": 1728,
+      "perf_save_bytes": 1535,
+      "cold_route_usec": 176200
+    },
+    {
+      "viewport": {
+        "width": 320,
+        "height": 667
+      },
+      "save_bytes": 1728,
+      "perf_save_bytes": 1535,
+      "cold_route_usec": 161700
+    }
+  ],
+  "public_fingerprint": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567",
+  "independent_review_calls": 1,
+  "model": "claude-opus-5-5",
+  "effort": "high",
+  "quota_usage": "unknown",
+  "screenshots_inspected": 8,
+  "live_preview": "actual410x872; reward observed, saved proof after expiry",
+  "automation_status": "ACTIVE",
+  "automation_interval_minutes": 30,
+  "hashes": {
+    "godot/main.gd": "0efd7904f8b95e0dc95ba8b81c76a4d97a440641ae244ea96466787f6eff57fb",
+    "godot/tests/study_test.gd": "1ac1b1e0bac49162bf12e5c727d10f015cdc02bff8208605dda3e4d31b709e19",
+    "tests/godot-browser.mjs": "6de833406526dfc305d924a0a94eb7bb21b562e96ac2f0f91e46919c736884c4",
+    "docs/BUILD_STATUS.md": "d27cd4fc8055adc16f9716615bd1fc43321efe2729dd5c1f62e92437b27c9aaa",
+    "session_handoff.md": "051943330e59a2e47fc299731c6503d68dcedea26b6672c8ca60b9359b511cea",
+    "artifacts/godot-web/index.pck": "bb26f766cb96a869f837f18efa49d518fdeffd2f8015891ef1d6357907501240",
+    "kibitz-runs\\2026-10-20-codex-clear-player-overlays\\r3\\driver_anchor.md": "e933c08b9f8fb054a2c8705182a262e4c13c1ef5b281980ccffc0adc3aaf9061",
+    "kibitz-runs\\2026-10-20-codex-clear-player-overlays\\r3\\review_scope.md": "82c7667c8bc7a8be37a2f05a9119ccd14f42c364f462ad92acb2925ae082d1b1",
+    "kibitz-runs\\2026-10-20-codex-clear-player-overlays\\r3\\scope_receipt.md": "ee36eae2fa489c3057a8ddef4f3c7085db431e6b95e86a69c6b3c9959169f02e",
+    "kibitz-runs\\2026-10-20-codex-clear-player-overlays\\r3\\input.md": "82c7667c8bc7a8be37a2f05a9119ccd14f42c364f462ad92acb2925ae082d1b1",
+    "kibitz-runs\\2026-10-20-codex-clear-player-overlays\\r3\\claude.md": "4e8069e7a963c24a72e6b7cea2bcf218810d1361c3d311381637b913f34c2ecd",
+    "kibitz-runs\\2026-10-20-codex-clear-player-overlays\\r3\\claude.log": "06bec89a001e54c6699b9a88b127218a48438128aafb53347bdb321c6131f462",
+    "kibitz-runs\\2026-10-20-codex-clear-player-overlays\\r3\\model_receipt.json": "61d9f9e50d9ad5d1a2856c5dda417c0ed71cdac34b7b0353e030e5d145245b10",
+    "kibitz-runs\\2026-10-20-codex-clear-player-overlays\\r3\\judgment.md": "d1e3d0eefa404a91c772f720fdd68d0b2944b598f4a5d6ca03d96d54d33f622e",
+    "kibitz-runs\\2026-10-20-codex-clear-player-overlays\\r3\\final.md": "ef3a4d306c69754216f33ef7de60dd65f77120588e6d240395d6459428211fb1",
+    "kibitz-runs\\2026-10-20-codex-clear-player-overlays\\r3\\source-comparison.json": "539ee61a614e996774f3167bd383923c29f9d3e5cc2348c72befcb2dce863c5b",
+    "artifacts/overlay-native-final.log": "92aec8f10685a8b8fc9681b3c815c9432a0df54c77892c08abf37332a1b7d5a6",
+    "artifacts/overlay-export-final.log": "77bbe5abafd44045c22fb807d2a1c5f69bdee4f7a79bc459bc8a5c8ce7dff476",
+    "artifacts/overlay-check-final.log": "bbbf642933db0755ec1b063caec7667a16966ea1db64dadab1526709e88e5537",
+    "artifacts/overlay-node-final.log": "7a819335914bdf9cffb207e0cd04f18e7d89be83095d277cb418f2d32cb7176b",
+    "artifacts/overlay-browser-final.log": "a2a56d4307a3032b4e558019e62716f95fa62ec12bf3d392bde5f46ba656e61a",
+    "artifacts\\codex-clear-player-1100-mural.png": "a80966ed09316539224f0e3d2538c5ae72041a27342281a9f75ce1e78bafcd98",
+    "artifacts\\codex-clear-player-320-mural.png": "56027231141b0fd91b81cab616f8525c9669277f98eff23566aa6ba536fbc4aa",
+    "artifacts\\codex-clear-player-320-music.png": "e6a839e21b82264272dba4ed47d6ca1c92fa709f0f05712b2bb71501d2004d55",
+    "artifacts\\codex-clear-player-320-reward.png": "7cb805befb5c67a0375c3583a786baa72ae04196415f64273aefe4fa9a2b3cc4",
+    "artifacts\\codex-clear-player-390-mural.png": "a9c7718b9abe7224b7458575834bfc5ecc6a714d424e9831f732b0308923f6c8",
+    "artifacts\\codex-clear-player-390-music.png": "bbd7fd44519a0f64a80c728939af97d95a66ea5555e0a10c54ef7b057a0000a1",
+    "artifacts\\codex-clear-player-390-reward.png": "e4f6fd1137e51004ca4bd47ccedea05ea10c418d385396113eda886fbd2b487d",
+    "artifacts\\codex-clear-player-600-mural.png": "b21c3b526552bb28be25e34d9854734f186b0fb824a4117af4b1fa29621cf58e",
+    "artifacts\\codex-clear-player-live-preview.png": "a1a4c87e3e8128ff121ab9bed5b6725a262ded4864d567667d01825aef44e0e2",
+    "artifacts/overlay-browser-live-announcement-failure.json": "d9b4a4139366b02271b4a37d1ba561d20a24168608c970b0d1f905c33c31d99b",
+    "artifacts/overlay-browser-live-announcement-failure.png": "455de1fd4c68ea43cf2a7d6e4bf485ac68dd8981dc2e1ba2b340655c3c9f54c4",
+    "artifacts/overlay-browser-reviewed-failure.log": "be29eb4948ac0012f58a54da04e51f00bb9e913183dafe3ed1b728eabee37af2"
+  }
+}

@@ -2041,8 +2041,14 @@ func run() -> void:
 		study.update_talk_prompt()
 		study.update_guide_marker()
 		study.update_readable_scene_labels()
-		require(study.reward_banner.visible and study.reward_title_label.get_line_count() > 1 and study.reward_title_label.get_visible_line_count() == study.reward_title_label.get_line_count(), "complete long reward title wraps without clipping at %s" % text_size)
+		require((study.reward_banner.visible or study.reward_banner_timer > 0.0) and study.reward_title_label.get_line_count() > 1 and study.reward_title_label.get_visible_line_count() == study.reward_title_label.get_line_count(), "complete long reward title wraps without clipping or remains queued at %s" % text_size)
 		require(study.reward_banner.get_global_rect().encloses(study.reward_title_label.get_global_rect()), "wrapped title remains inside the reward banner")
+		if not study.reward_banner.visible:
+			study.set_header_details(true, false)
+			study.layout_reward_banner()
+			require(study.info.text.contains(study.reward_title_label.text) and study.info.text.contains(study.reward_body_label.text), "a queued long heading is delivered complete in deliberate Info at this width")
+			study.update_celebration_burst(5.0)
+			study.set_header_details(false, false)
 		require(study.guide_arrow.visible and study.guide_arrow_label.visible, "named objective stays visible during long reward at %s" % text_size)
 		verify_scene_overlay_bounds(study, "long reward and guide at %s" % text_size)
 		study.update_celebration_burst(5.0)
@@ -2147,17 +2153,26 @@ func run() -> void:
 			study.update_readable_scene_labels()
 			verify_scene_overlay_bounds(study, "%s stop %d during reward" % [overlay_size, e_i])
 			var reading_time: float = study.speech_bubble_timer
-			if study.speech_bubble_deferred:
+			if study.speech_bubble_deferred and not study.speech_bubble_in_info:
 				study.update_speech_bubble(0.5)
 				require(is_equal_approx(study.speech_bubble_timer, reading_time), "hidden host speech retains its full reading time")
 			var order_before_overlay: int = int(study.eatery_order_counts.get(String(study.NEIGHBORHOOD_EATERIES[e_i].id), 0))
-			require(not study.handle_scene_tap(study.reward_banner.get_global_rect().get_center()), "reward banner cannot click through to the scene")
+			if study.reward_banner.visible:
+				require(not study.handle_scene_tap(study.reward_banner.get_global_rect().get_center()), "reward banner cannot click through to the scene")
+			else:
+				require(study.reward_banner_timer > 0.0, "crowded scene retains its reward")
+				study.set_header_details(true, false)
+				study.layout_reward_banner()
+				require(study.info.text.contains(study.reward_title_label.text), "queued reward is complete in deliberately opened Info")
 			study.update_celebration_burst(4.0)
+			if study.header_details_expanded and not study.speech_opened_info:
+				study.set_header_details(false, false)
 			study.update_speech_bubble(0.4)
 			study.update_readable_scene_labels()
-			require(study.is_speech_bubble_visible() and not study.speech_bubble_deferred and study.speech_bubble_text.contains("(fictional)"), "complete host speech appears after reward at %s stop %d" % [overlay_size, e_i])
+			require((study.is_speech_bubble_visible() or (study.speech_bubble_in_info and study.info.text.contains(study.speech_bubble_text))) and study.speech_bubble_text.contains("(fictional)"), "complete host speech appears in scene or Info after reward at %s stop %d" % [overlay_size, e_i])
 			verify_scene_overlay_bounds(study, "%s stop %d after reward" % [overlay_size, e_i])
-			require(not study.handle_scene_tap(study.speech_bubble_screen_rect().get_center()), "host speech cannot click through to the scene")
+			if study.is_speech_bubble_visible():
+				require(not study.handle_scene_tap(study.speech_bubble_screen_rect().get_center()), "host speech cannot click through to the scene")
 			var counter_point: Vector2 = study.eatery_counter_points[e_i]
 			var physical_tap: Vector2 = study.camera.unproject_position(Vector3(counter_point.x, 1.3, counter_point.y))
 			if study.is_screen_point_in_ui(physical_tap):
@@ -2166,6 +2181,8 @@ func run() -> void:
 				require(study.handle_scene_tap(physical_tap), "uncovered physical counter remains tappable during host dialogue")
 				order_before_overlay += 1
 			study.update_speech_bubble(30.0)
+			await process_frame
+			await process_frame
 			study.update_readable_scene_labels()
 			var restored_ids: Array[String] = []
 			for caption in study.visible_scene_captions:
@@ -2201,9 +2218,11 @@ func run() -> void:
 	study.update_celebration_burst(4.0)
 	study.show_conversation(0)
 	study.show_speech_bubble("long-dialogue-fixture", study.target, "A complete line for the bounded Info panel. ".repeat(25), 20.0)
+	study.announce_a11y_status("Keepsake: a new memory. Neighbor says: " + study.speech_bubble_text)
 	await process_frame
 	await process_frame
 	require(study.speech_bubble_in_info and study.header_details_expanded and study.info.text.begins_with(study.speech_bubble_text), "dialogue too tall for the scene remains complete in scrollable Info")
+	require(study.last_a11y_announcement.contains("Keepsake:") and study.last_a11y_announcement.ends_with("Full dialogue in Info."), "Info fallback retains the earned-progress live announcement alongside the dialogue location")
 	study.trigger_feel_good_burst("Progress while reading", "Saved progress stays visible above.", study.target)
 	await process_frame
 	await process_frame
@@ -2779,6 +2798,95 @@ func run() -> void:
 	study.update_mural_ui()
 	study.update_music_ui()
 	require(study.player.position == activity_position and JSON.stringify(study.build_save_envelope()) == activity_save, "reading and closing activity details change neither walking nor progress")
+	# Real activity arrivals: overlays respect the enlarged player without panning.
+	for clearance_width in [320, 390, 600, 1100]:
+		root.size = Vector2i(clearance_width, 667)
+		await process_frame
+		await process_frame
+		for clearance_kind in ["mural", "music"]:
+			study.hide_speech_bubble()
+			study.reward_banner_timer = 0.0
+			study.layout_reward_banner()
+			study.set_header_details(false, false)
+			study.show_mural_panel(false)
+			study.show_music_panel(false)
+			var stand: Vector2 = study.mural_stand_xz() if clearance_kind == "mural" else study.speaker_stand_xz()
+			study.player.position = Vector3(stand.x, 0.0, stand.y)
+			if clearance_kind == "mural":
+				study.focus_mural_camera()
+				study.show_mural_panel(true)
+			else:
+				study.focus_speaker_camera()
+				study.show_music_panel(true)
+			await process_frame
+			await process_frame
+			var body: Rect2 = study.player_overlay_rect()
+			require(body.has_area() and body.intersects(study.play_area_rect()), "arrival fixture projects the real player into the activity scene")
+			for phase in [0.0, 0.8, 1.6, 3.14, 4.7]:
+				study.animate_person_node(study.player_visual, phase, 1.0, 0.55)
+				for mesh in study.player_visual.get_children():
+					if mesh is MeshInstance3D or mesh == study.player_nameplate:
+						for corner in range(8):
+							var world_corner: Vector3 = mesh.to_global(mesh.get_aabb().get_endpoint(corner))
+							if mesh == study.player_nameplate:
+								var glyph_corner: Vector3 = mesh.get_aabb().get_endpoint(corner) * mesh.global_basis.get_scale()
+								world_corner = mesh.global_position + study.camera.global_basis * glyph_corner
+							var pixel: Vector2 = study.camera.unproject_position(world_corner)
+							require(body.has_point(pixel), "player reservation contains stride/gesture mesh and Label3D quad corners: %s phase %s pixel %s bounds %s" % [mesh.name, phase, pixel, body])
+			study.animate_person_node(study.player_visual, 0.0, 0.0, 0.0)
+			var clear_area: Rect2 = study.play_area_rect().grow(-2.0)
+			var small: Rect2 = study.fit_overlay_around_player(Rect2(body.get_center(), Vector2(30, 24)), clear_area)
+			require(small.has_area() and clear_area.encloses(small) and not small.intersects(body), "nearest free region fits a small overlay around the real character")
+			require(not study.fit_overlay_around_player(clear_area, clear_area).has_area(), "a full scene overlay cannot cover a visible character")
+			var roomy_area := Rect2(body.position - Vector2(100, 100), body.size + Vector2(200, 200))
+			var lower_reward := Rect2(Vector2(roomy_area.position.x, body.end.y + 20), Vector2(roomy_area.size.x, 80))
+			var upper_speech: Rect2 = study.fit_overlay_around_player(Rect2(lower_reward.position, Vector2(roomy_area.size.x - 4, 30)), roomy_area, lower_reward)
+			require(upper_speech.has_area() and upper_speech.end.y < body.position.y and not upper_speech.intersects(lower_reward), "a reward below the character leaves the upper speech region usable")
+			var stationary_target: Vector3 = study.target
+			var stationary_zoom: float = study.view_size
+			study.last_panel_dialogue = ""
+			study.music_error = ""
+			study.update_mural_ui()
+			study.update_music_ui()
+			var arrival_line: String = study.celeste_dialogue_text() if clearance_kind == "mural" else study.rook_dialogue_text()
+			study.show_neighbor_speech(study.celeste_index if clearance_kind == "mural" else study.rook_index, arrival_line)
+			for pop_delta in [0.02, 0.04, 0.08, 0.08]:
+				study.update_speech_bubble(pop_delta)
+				if study.is_speech_bubble_visible():
+					require(not study.speech_bubble_screen_rect().intersects(study.player_overlay_rect()), "animated speech frames stay clear of the player")
+			if study.is_speech_bubble_visible():
+				require(not study.speech_bubble_screen_rect().intersects(study.player_overlay_rect()), "visible activity speech clears body and YOU")
+			else:
+				require(study.speech_bubble_in_activity and study.speech_activity_detail() != null and not study.header_details_expanded, "crowded activity dialogue stays complete in its existing instructions without covering the character with Info")
+			require(study.speech_bubble_activity_matched, "arrival dialogue was available in the activity instructions")
+			var matching_detail: RichTextLabel = study.speech_activity_detail()
+			study.set_activity_detail(matching_detail, "Newer activity instructions supersede the welcome line.")
+			study.update_speech_bubble(0.02)
+			require(study.speech_bubble_anchor.is_empty() and not study.header_details_expanded, "replaced activity instructions dismiss stale dialogue without expanding Info")
+			study.update_mural_ui()
+			study.update_music_ui()
+			study.trigger_feel_good_burst("Mural Complete - all three motifs", "Your contribution stays in the progress counter.", study.player.position, Color("f8cc58"), true)
+			study.update_celebration_burst(0.0)
+			if study.reward_banner.visible:
+				require(not study.reward_banner.get_global_rect().intersects(study.player_overlay_rect()), "visible activity reward clears body and YOU")
+			else:
+				var waiting_time: float = study.reward_banner_timer
+				study.trigger_feel_good_burst("A smaller motif adjustment", "The completion reward takes priority while queued.", study.player.position)
+				require(study.last_reward_title == "Mural Complete - all three motifs" and study.reward_banner_milestone, "queued milestone survives a lower-priority follow-up reward")
+				study.update_celebration_burst(0.5)
+				require(is_equal_approx(waiting_time, study.reward_banner_timer), "hidden activity reward keeps its reading time")
+				study.set_header_details(true, false)
+				study.layout_reward_banner()
+				require(study.info.text.contains(study.reward_title_label.text) and study.info.text.contains(study.reward_body_label.text), "deliberate Info reveals the complete queued activity reward")
+			require(study.target == stationary_target and study.view_size == stationary_zoom and study.player_xz() == stand and JSON.stringify(study.build_save_envelope()) == activity_save, "overlay fitting preserves camera intent, player position and saved progress")
+			study.update_celebration_burst(4.0)
+			study.hide_speech_bubble()
+			study.set_header_details(false, false)
+			study.show_mural_panel(false)
+			study.show_music_panel(false)
+	study.player.position = activity_position
+	study.last_panel_dialogue = activity_original_dialogue
+	study.music_error = activity_original_error
 	# This fixture intentionally closes panels; the next independent suite resets its view/layout with Find Me.
 	# Regression: at600px the old six-column hub grew43px over walking controls.
 	study.hide_story_card()
@@ -2906,10 +3014,12 @@ func verify_scene_overlay_bounds(study: Node, context: String) -> void:
 	if study.reward_banner.visible:
 		var banner: Rect2 = study.reward_banner.get_global_rect()
 		require(study.play_area_rect().encloses(banner), "reward stays in play area: " + context)
+		require(not banner.intersects(study.player_overlay_rect()), "reward clears the player and YOU: " + context)
 		occupied.append(banner)
 	if study.is_speech_bubble_visible():
 		var speech: Rect2 = study.speech_bubble_screen_rect()
 		require(study.play_area_rect().encloses(speech), "full speech including border and tail stays in play area: " + context)
+		require(not speech.intersects(study.player_overlay_rect()), "speech clears the player and YOU: " + context)
 		for previous in occupied:
 			require(not speech.intersects(previous), "speech clears reward: " + context)
 		occupied.append(speech)

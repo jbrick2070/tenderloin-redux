@@ -1,0 +1,17 @@
+STDOUT:
+I've written the review to `kibitz-runs/2026-10-20-codex-clear-player-overlays/r3/claude.md`. My verdict is **yes-with-fixes**: the overlay geometry is sound, but the speech/reward hand-off and the browser evidence need fixes first. Bash was disabled in this session, so I couldn't run `git diff` against dd1f068. Every finding comes from reading the current files, and anything I couldn't place before or after the baseline is marked "verify: baseline".
+
+The three must-fix items:
+- **Browser timer check can pass without testing anything.** The test waits 350 ms and expects the hidden reward's timer to be unchanged. But the browser snapshot only refreshes every 0.5 s (`main.gd:7128-7132`), so the check often compares two copies of the same old snapshot.
+- **The queued-reward and panel-Close checks can be skipped silently.** They only run if the reward happens to be hidden at that moment (`tests/godot-browser.mjs:339`, `:347`). Nothing asserts that any screen size actually went down that path.
+- **Speech assumes the reward is always at the top of the screen.** The reward can now be placed below or beside the player. When that happens, speech loses all the space above the reward and stays hidden until the reward finishes (`main.gd:4674-4678`).
+
+The six should-fix items, in short:
+- The native test only checks the player's mesh at rest. It never checks walking or gesture poses, and it never checks the YOU label.
+- Once speech falls back to Info, it stays there and keeps Info expanded, even after a bubble would fit again.
+- A held reward can be overwritten by a later one before anyone sees it. For example, "Mural Complete" can be replaced by a "Painted X Motif" while the panel is open.
+- Opening the map view throws away any pending reward. This may predate this round.
+- Two old test assertions were loosened to accept a held reward, but nothing checks that the reward is later shown.
+- The speech bubble's reserved space is placed using its animated size during the opening pop, so it can jump. The tests never exercise those frames.
+
+The only cut I suggest is the stacked 4 px + 2 px padding around the player; one of them is enough.
