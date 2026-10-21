@@ -1,0 +1,16 @@
+STDOUT:
+The review is written to `kibitz-runs/2026-10-21-codex-audible-circle-ideas/r1/claude.md`. My verdict is **no**: the input is a brief with no design chosen yet, and it leaves three things open that would let a proposal meet its wording without working for the player.
+
+The three blockers:
+1. **No control owns the new sound's mute or volume.** The brief keeps Music and reward Sounds independent and forbids new save keys, so either the preview has no global quiet control or it borrows one whose label says something else.
+2. **The soundtrack will drown it out.** Music is on by default, and once unlocked its percussion stem ticks on every step at the same 80 BPM grid. A drum preview of hits and rests on top of that is hard to hear, and the brief forbids touching the music controls. The brief has to pick a policy: no ducking, a temporary local duck, or refusing the preview while Music plays.
+3. **The "actual Web audio output" bar can't be met by the current tests.** The browser test only checks that the audio context is running and that a loudness value computed from the generated samples is above zero; nothing measures real output. A separate one-shot sound wouldn't feed that value, and native tests run with a silent audio driver. I suggest splitting acceptance into a sample-level check (hits exactly where the pattern has them) and a browser check that the player is actually playing.
+
+Three more must-fix items:
+- **Naming clash:** the existing "Listen" button clears every step to zero, so a new control built on "listen" would do the opposite thing under the same word.
+- **Text that becomes false:** two on-screen strings say the rhythm is visual only.
+- **Two clocks:** the lanterns follow the soundtrack's clock, and nothing says which clock drives them while a preview plays.
+
+The file also lists the exit paths that must stop the sound, and suggests cutting the mural-scene option, the unrelated Mural Stories clause, and the full test-gate list from this ideation round.
+
+Several connected services (GitHub, Slack, Linear, Notion, Asana, Atlassian, Datadog, PagerDuty, Box, Runway) need authorising before they can be used. Do that in your claude.ai connector settings, or with `/mcp` in an interactive session. This review didn't need any of them.

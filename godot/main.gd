@@ -10463,6 +10463,7 @@ func resume_voices() -> bool:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_WINDOW_FOCUS_OUT or what == NOTIFICATION_APPLICATION_FOCUS_OUT:
 		suspend_voices()
+		if rhythm_circle != null: rhythm_circle.stop_audition()
 	elif what == NOTIFICATION_APPLICATION_RESUMED or what == NOTIFICATION_WM_WINDOW_FOCUS_IN or what == NOTIFICATION_APPLICATION_FOCUS_IN:
 		resume_voices()
 
@@ -10646,14 +10647,22 @@ func trigger_progress_cue(cue_id: String, reason: String) -> void:
 			trigger_feel_good_burst(burst_title, burst_detail, burst_pos, burst_accent, cue_id in ["mural_complete", "block_opened", "hosting_complete", "civic_complete", "film_complete", "surprise_finale", "tour_complete"])
 	update_music_ui()
 
+func sketch_effective_gain() -> float:
+	return 0.0 if rhythm_circle != null and rhythm_circle.audition_active() else music_volume
+
 func apply_music_volume_db() -> void:
 	var db := -80.0 if music_volume <= 0.0001 else linear_to_db(music_volume)
+	if rhythm_circle != null and rhythm_circle.audition != null:
+		rhythm_circle.audition.volume_db = db
+	if rhythm_circle != null and rhythm_circle.audition_active():
+		if not music_playing or music_volume<=0.0 or music_mode!="sketch":
+			rhythm_circle.stop_audition(false)
 	if sketch_player != null:
-		sketch_player.volume_db = db
+		sketch_player.volume_db = -80.0 if rhythm_circle != null and rhythm_circle.audition_active() else db
 	if local_audio_player != null:
 		local_audio_player.volume_db = db
 	if music_playing and music_mode == "sketch":
-		last_sample_rms = last_pre_gain_rms * music_volume
+		last_sample_rms = last_pre_gain_rms * sketch_effective_gain()
 	else:
 		last_sample_rms = 0.0
 
@@ -10688,6 +10697,7 @@ func start_music_playback() -> bool:
 
 func stop_music_playback() -> void:
 	music_playing = false
+	if rhythm_circle != null: rhythm_circle.stop_audition()
 	if sketch_player != null and sketch_player.playing:
 		sketch_player.stop()
 	if local_audio_player != null and local_audio_player.playing:
@@ -10737,7 +10747,7 @@ func advance_music_clock(delta: float) -> int:
 	else:
 		frames_to_gen = maxi(1, int(round(delta * MUSIC_MIX_RATE)))
 	if frames_to_gen <= 0:
-		last_sample_rms = last_pre_gain_rms * music_volume
+		last_sample_rms = last_pre_gain_rms * sketch_effective_gain()
 		return 0
 	var bass_freqs: Array[float] = [110.0, 110.0, 130.81, 98.0, 123.47, 123.47, 146.83, 98.0]
 	var lead_freqs: Array[float] = [440.0, 523.25, 587.33, 659.25, 587.33, 523.25, 493.88, 392.0]
@@ -10772,7 +10782,7 @@ func advance_music_clock(delta: float) -> int:
 	sketch_phase = fmod(float(sketch_frames_pushed) * inv_rate, 60.0)
 	sketch_tick = int(sketch_frames_pushed / samples_per_step)
 	last_pre_gain_rms = sqrt(sum_sq / float(frames_to_gen))
-	last_sample_rms = last_pre_gain_rms * music_volume
+	last_sample_rms = last_pre_gain_rms * sketch_effective_gain()
 	return frames_to_gen
 
 func parse_wav_stream(raw_bytes: PackedByteArray) -> AudioStreamWAV:
@@ -11039,8 +11049,13 @@ func setup_web_a11y_bridge() -> void:
 			}
 		};
 		window.__tenderloinWebVoicesLifecyclePending = '';
+		window.__tenderloinRhythmStopPending = false;
+		document.addEventListener('visibilitychange', function() {
+			if (document.hidden) window.__tenderloinRhythmStopPending = true;
+		});
 		window.addEventListener('pagehide', function() {
 			window.__tenderloinWebVoicesLifecyclePending = 'suspend';
+			window.__tenderloinRhythmStopPending = true;
 			if (window.__tenderloinLastExportUrl) {
 				try { URL.revokeObjectURL(window.__tenderloinLastExportUrl); } catch (_e) {}
 				window.__tenderloinLastExportUrl = '';
@@ -11049,6 +11064,7 @@ func setup_web_a11y_bridge() -> void:
 		window.addEventListener('pageshow', function(e) {
 			if (e && e.persisted) {
 				window.__tenderloinWebVoicesLifecyclePending = 'resume';
+				window.__tenderloinRhythmStopPending = true;
 			}
 		});
 		window.__tenderloinWebSavePending = null;
@@ -11525,12 +11541,16 @@ func poll_web_audio() -> void:
 	if bool(perf_req):
 		var perf_json := JSON.stringify(measure_local_performance())
 		JavaScriptBridge.eval("window.__tenderloinLastPerfSnapshot = JSON.parse(%s);" % JSON.stringify(perf_json), true)
+	var bar_stop: Variant = JavaScriptBridge.eval("var bs = Boolean(window.__tenderloinRhythmStopPending); window.__tenderloinRhythmStopPending = false; bs;", true)
+	if bool(bar_stop) and rhythm_circle != null: rhythm_circle.stop_audition()
 	var voices_lc_var: Variant = JavaScriptBridge.eval("var vlc = window.__tenderloinWebVoicesLifecyclePending || ''; window.__tenderloinWebVoicesLifecyclePending = ''; String(vlc);", true)
 	var voices_lc := String(voices_lc_var) if voices_lc_var is String else ""
 	if voices_lc == "suspend":
 		suspend_voices()
+		if rhythm_circle != null: rhythm_circle.stop_audition()
 	elif voices_lc == "resume":
 		resume_voices()
+		if rhythm_circle != null: rhythm_circle.stop_audition()
 	var has_save_pending: Variant = JavaScriptBridge.eval("Boolean(window.__tenderloinWebSavePending);", true)
 	if bool(has_save_pending):
 		var save_err_var: Variant = JavaScriptBridge.eval("window.__tenderloinWebSavePending ? String(window.__tenderloinWebSavePending.err || '') : '';", true)

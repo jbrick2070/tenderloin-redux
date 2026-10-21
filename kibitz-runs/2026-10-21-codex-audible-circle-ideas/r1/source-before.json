@@ -1,0 +1,12 @@
+{
+  "godot/main.gd": "196be089126220d02fae2f148801cc0ba416bf067994dc2a745204e6a170cbda",
+  "godot/rhythm_circle.gd": "5e84e84a6badbeaa96481e96cbc4e26ce950488dc19d222cbf3b6ddd41b7890d",
+  "godot/mural_stories.gd": "f53f3cadb9a24ad0adc11c741ee6dc27c6b8252aaa16319b837cf7abe7fca0c8",
+  "godot/tests/study_test.gd": "1a901a5afa2d467e2ad8b68285b598284a1a1050dc5cd1ecf7afd22631fec9f5",
+  "tests/godot-browser.mjs": "fdc5ab06e1d36065807d3b5b273d648c913b5d9916b9f4c4b9cf283615283ebb",
+  "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160",
+  "docs/ROADMAP.md": "4804d5ca744b3be972cdf6824767cb3b0a48d15eeb6156b694fc96338a9e59bb",
+  "docs/ASSETS.md": "ea27a8bb337d1f8e8f215bbeef1fc94163671cbe0bd8690cbc84d077d3891311",
+  "session_handoff.md": "19c770af09cec8cb383e5e59fd2288b44307f2c942042f01d2f63cd2c36c09cf",
+  "docs/BUILD_STATUS.md": "82323f5711e544d65413140b36491b7c5071b31064af71598205fb3c4c19d9cf"
+}

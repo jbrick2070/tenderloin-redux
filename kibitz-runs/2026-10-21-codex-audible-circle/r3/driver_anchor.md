@@ -1,0 +1,5 @@
+# Driver anchor before independent QA
+VERDICT: coherent optional musical feature; full finalgates still required.
+CONFIRMED: actualmaskchangesPCM, silentrestwindows/finiteoriginalstream; Music owns audition quiet/gain, localrefuses; existinggainapply honorsduck/currentvolume; explicitfinishedstopreleasesgain; active/practice usespatternreadonly, editsstop beforeexistingcallback; sameworldmeshesuseapproxbarposition; no globalsavekeys/public/geometry changes. FourcolumnstwoRows preserve useful scene under old fit invariants.
+MUST-CHECK: exit paths incl applicationfocus/Webpendinglifecycle and naturallyfinishedplayingflag; rawaudio probe observesdestinationratherthantesttone; ensure MusicOff/local/volumequiet cannot leavehiddenbar or stuckduck; buttonfocus/announcement labels after non-buttonstops; no practice writes. Finish all5freshgates after fixes.
+SHOULD-CHECK: allocationboundedonecurrentPCMstream, no repeats/queue, reader truthful, oldStepCues semantics restored; actual savedphoto/practice and bothlayouts. Human musical feel unverified.

@@ -50,6 +50,8 @@ The broad vision remains in CONCEPT.md. This roadmap makes the larger game finit
 
 Godot's optional **Mural Stories** adds original illustrated cooking, food-sharing and artist-at-work scenes on two composable paper anchors, separate from the three opening contributions. Saved live artwork appears on the existing portable world board; earlier copied keepsakes remain unchanged. This is an arrangement/art addition within M3, with no extra mandatory score, real artist/business endorsement or city-geometry change. Native and actual-input evidence belongs in the latest BUILD_STATUS checkpoint; human aesthetic, culture and multi-session acceptance remain open.
 
+Godot Rhythm Circle now offers an explicitly optional **Play Bar** audition of the player's eight hit/rest choices using an original finite procedural drum sound. Music controls its gain/quiet boundary; local files and the fixed development sketch remain independent. Saved hosting results, silent listening and ephemeral practice retain their existing rules. This musical agency improvement does not establish a final score or human listening acceptance. Verification belongs in the current BUILD_STATUS checkpoint.
+
 ## M4 — occasional civic events and filming
 
 Version 0.10.0 delivers M3 dated organization context through the M5 default-off host/text boundary before M4. Three original summaries link to verified primary pages; no invented branded mission or endorsement. This deliberate ordering avoids an unconditional organization directory. Broader M3 human-play/cultural acceptance remains open. M4 peaceful civic and film projects are next.

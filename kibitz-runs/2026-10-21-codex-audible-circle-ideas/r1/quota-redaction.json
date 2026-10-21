@@ -1,0 +1,7 @@
+{
+  "raw_sha256": "89474d0e89fd7d1c218f5b08240573ba69bb3718a2b3a6ff740622d3d9aa61c4",
+  "redacted_sha256": "806db1c146493ff71b3f035ab74c74caa0d36e9f75a7a1037f92e0c0c6110774",
+  "raw_retained_ignored": "artifacts\\audible-circle-ideas-quota-raw.txt",
+  "provider_runtime_identity": "unverified",
+  "quota_percent": "unavailable"
+}

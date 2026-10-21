@@ -1,0 +1,14 @@
+{
+  "updated_via": "automation_update tool",
+  "verified_at": "2026-10-21T22:56:32.519208+00:00",
+  "id": "build-tenderloin-redux",
+  "status": "ACTIVE",
+  "rrule": "FREQ=MINUTELY;INTERVAL=30",
+  "target_thread_id": "01a159d6-60a3-78e1-92ae-4018509d2539",
+  "created_at": 1792342628584,
+  "preserved_policy_prefix_chars": 8089,
+  "prefix_sha256": "41b8fc04cc9cd123adff92ae758927589793d2bcf3285f6dc14af495d24beef3",
+  "prompt_sha256": "f1563e7416b848b1c00bc05ee7e907f856b2fb8c104e7a3b2b381767b9e2aa0b",
+  "prompt_chars": 12734,
+  "prompt_matches_payload": true
+}

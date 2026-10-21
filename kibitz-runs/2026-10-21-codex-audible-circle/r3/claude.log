@@ -1,0 +1,21 @@
+STDOUT:
+I've written the review to `kibitz-runs/2026-10-21-codex-audible-circle/r3/claude.md`. Verdict: **yes-with-fixes**. The tool check passed: I read the changed source, both test files and `docs/ASSETS.md`. I reviewed only; I didn't run any tests or the game.
+
+**Must-fix before the final gates:**
+1. **Bar can resume after leaving the page.** The `pageshow` handler (`main.gd:11056`) overwrites the pending "suspend" signal with "resume" before Godot gets a chance to read it. So when a page is restored from the browser's back/forward cache, the bar is never stopped. The rest of it plays on, and the sketch stays quiet until it ends. This assumes the page is cache-eligible, which I couldn't check. Smallest fix: also call `stop_audition()` in the "resume" branch at `main.gd:11540`.
+2. **Status goes stale after a stop from outside the circle.** When focus loss, pagehide or the volume check stops the bar, `stop_audition()` (`rhythm_circle.gd:379-384`) changes only the button text. The screen-reader name stays "Stop bar audition" and the reader keeps saying the bar is playing. Fix: set a "Bar stopped" message and call `refresh()` there.
+3. **Some browser checks can't fail.**
+   - The Space and pagehide stop checks (`godot-browser.mjs:168`, `:173`) pass anyway, because the bar ends by itself after 3 seconds.
+   - `outputObserved` is logged but never asserted. If the audio tap catches nothing, the whole real-output check is skipped without failing.
+
+**Should-fix:**
+- The unlock gate is never tested in the locked state.
+- When sound isn't unlocked, the refusal message wrongly says "Music is off or muted".
+- `music_sample_rms` ignores the duck, so it reports the sketch as audible during a bar.
+- The step length 0.375 is hard-coded in `rhythm_circle.gd:229`, and the snapshot reports a fixed `"seconds":3.0`.
+- All 66,150 samples are regenerated in GDScript on every press. Building the bar from one precomputed strike would give identical output much faster.
+- The circle's text tells users the Music button controls volume, but it only turns music on or off.
+
+**Cut:** the `start_bar` volume parameter, since `apply_music_volume_db()` immediately overwrites it with a different formula.
+
+Separately, several connectors (Box, Runway, and the engineering plugins such as GitHub, Slack and Linear) need authorizing before they can be used. Do that in your claude.ai connector settings, or via `/mcp` in an interactive session. This review didn't need them.

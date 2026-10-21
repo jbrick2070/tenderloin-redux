@@ -3248,6 +3248,7 @@ func run() -> void:
 	await verify_short_activity_panels(study)
 	await verify_short_activity_panels(study, true)
 	await verify_mural_workshop(study)
+	await verify_rhythm_bar(study)
 	await verify_rhythm_circle(study)
 	await verify_mural_stories(study,saved_m4_json)
 	study.clear_godot_save()
@@ -4241,3 +4242,136 @@ func verify_mural_stories(study: Node, full_profile: String) -> void:
 	study.close_mural_workshop()
 	study.apply_save_envelope(saved)
 	root.size = Vector2i(1100,760)
+
+func verify_rhythm_bar(study: Node) -> void:
+	var bar_script = preload("res://rhythm_bar.gd")
+	var peak := 0
+	# Independent original per-sample generator, before the template optimization.
+	var reference := PackedByteArray()
+	reference.resize(132300)
+	for i in range(66150):
+		var bit := int(float(i)/(22050*0.375))
+		var t := float(i)/22050 - bit*0.375
+		var phase := TAU*(125.0*t+2.4*(1.0-exp(-t*35.0)))
+		var attack := minf(t/0.005,1.0)
+		var tail := maxf(0.0,1.0-t/0.22)
+		var value := attack*tail*tail*(sin(phase)*0.36+sin(TAU*430.0*t)*exp(-t*60.0)*0.06)
+		reference.encode_s16(i*2,int(round(value*32767.0)))
+	for mask in range(256):
+		var wav: AudioStreamWAV = bar_script.make_bar(mask)
+		require(wav.data.size()==132300 and wav.mix_rate==22050 and wav.loop_mode==AudioStreamWAV.LOOP_DISABLED and is_equal_approx(wav.get_length(),3.0),"every mask is exactly one finite three-second mono bar")
+		var energy := [0,0,0,0,0,0,0,0]
+		var actual := wav.data
+		var expected := PackedByteArray()
+		expected.resize(132300)
+		for i in range(66150):
+			var value := absi(actual.decode_s16(i*2))
+			if mask & (1 << int(float(i)/(22050*0.375))): expected.encode_s16(i*2,reference.decode_s16(i*2))
+			peak = maxi(peak,value)
+			energy[int(float(i)/(22050*0.375))] += value
+		require(actual==expected,"template output is byte-identical to the original per-sample generator for all256 masks")
+		for bit in range(8):
+			require((energy[bit]>100000)==((mask & (1<<bit))!=0),"actual PCM energy matches each hit for all256 patterns")
+			if (mask & (1<<bit))==0: require(energy[bit]==0,"every actual rest window is digitally silent")
+	require(peak<16000 and peak>7000,"original synthesized strike has headroom and nonvacuous energy")
+	require(bar_script.make_bar(85).data==bar_script.make_bar(85).data,"original audition is deterministic")
+	var saved := JSON.stringify(study.build_save_envelope())
+	var volume: float = study.music_volume
+	var unlocked: bool = study.reward_audio_unlocked
+	var sounds: bool = study.reward_sounds_enabled
+	study.hide_story_card()
+	study.startup_story_pending = false
+	study.current_path.clear()
+	study.block_opened = true
+	study.hosting_order.assign(["beats","pause","stories","art"])
+	study.programme_published.assign(study.hosting_order)
+	study.hosting_results.clear()
+	study.hosting_draft = study.default_hosting_draft()
+	study.hosting_draft.pattern = 129
+	study.music_playing = true
+	study.music_mode = "sketch"
+	study.music_volume = 0.7
+	study.reward_audio_unlocked = true
+	study.reward_sounds_enabled = false
+	study.last_story_chapter = int(study.current_chapter().num)
+	var circle: Control = study.rhythm_circle
+	circle.open_circle()
+	var frozen := JSON.stringify(study.build_save_envelope())
+	var pose: Array = study.panel_camera_pose()
+	study.reward_audio_unlocked = false
+	var locked_starts: int = circle.audition.starts
+	circle.play_bar()
+	require(circle.audition.starts==locked_starts and circle.message.begins_with("Use a key"),"locked audio refuses playback with an accurate explanation")
+	study.reward_audio_unlocked = true
+	circle.play_bar()
+	require(circle.audition_active() and circle.audition.pattern==129 and study.sketch_player.volume_db==-80.0,"explicit Play Bar plays the actual mask and ducks sketch even when rewardSounds are off")
+	require(study.music_playing and study.music_volume==0.7 and frozen==JSON.stringify(study.build_save_envelope()) and pose==study.panel_camera_pose(),"audition never changes Music state, save or camera")
+	study.music_volume = 0.35
+	study.apply_music_volume_db()
+	require(circle.audition_active() and study.sketch_player.volume_db==-80.0 and is_equal_approx(circle.audition.volume_db,linear_to_db(0.35)),"live volume applies to bar while sketch stays ducked")
+	circle.play_bar()
+	require(not circle.audition_active() and is_equal_approx(study.sketch_player.volume_db,linear_to_db(0.35)),"Stop Bar restores current user gain")
+	circle.play_bar()
+	circle.toggle_step(1)
+	require(not circle.audition_active(),"editing stops frozen audition instead of silently auditioning another mask")
+	circle.play_bar()
+	study.stop_music_playback()
+	require(not circle.audition_active(),"MusicOff immediately stops optional audition")
+	var starts: int = circle.audition.starts
+	circle.play_bar()
+	require(circle.audition.starts==starts,"MusicOff cannot start audition")
+	study.music_playing = true
+	study.music_volume = 0.0
+	study.apply_music_volume_db()
+	circle.play_bar()
+	require(circle.audition.starts==starts,"muted Music cannot start audition")
+	study.music_volume = 0.7
+	study.music_mode = "local"
+	circle.play_bar()
+	require(circle.audition.starts==starts,"local files stay independent with no hidden bar playback")
+	study.music_mode = "sketch"
+	circle.play_bar()
+	study._notification(Node.NOTIFICATION_APPLICATION_FOCUS_OUT)
+	require(not circle.audition_active(),"focus loss stops audition without scheduling a resume")
+	require(circle.options[6].accessibility_name=="Play one bar of this rhythm" and not circle.message.contains("Playing"),"non-UI stop refreshes reader and actual accessibility name")
+	circle.play_bar()
+	study.music_mode = "local"
+	study.apply_music_volume_db()
+	require(not circle.audition_active(),"switching to local audio stops and releases the sketch duck")
+	study.music_mode = "sketch"
+	circle.play_bar()
+	study.music_volume = 0.0
+	study.apply_music_volume_db()
+	require(not circle.audition_active(),"live mute stops immediately")
+	study.music_volume = 0.7
+	circle.play_bar()
+	await create_timer(3.3).timeout
+	require(not circle.audition_active() and is_equal_approx(study.sketch_player.volume_db,linear_to_db(0.7)),"natural end releases duck, no loop or queue")
+	circle.listen()
+	starts = circle.audition.starts
+	circle.play_bar()
+	require(circle.pattern()==0 and circle.audition.starts==starts and circle.message.contains("All rests"),"valid Listening0 refuses fake playback with visible explanation")
+	circle.toggle_step(3)
+	circle.play_bar()
+	circle.complete()
+	require(not circle.audition_active() and study.get_hosted_segment_value("beats")==8,"Complete stops and copies only the original pattern result")
+	study.hide_story_card()
+	circle.open_circle()
+	var practice_save := JSON.stringify(study.build_save_envelope())
+	var photo := JSON.stringify(study.keepsake_photo)
+	circle.toggle_step(7)
+	circle.play_bar()
+	require(circle.practice and circle.audition.pattern==136 and practice_save==JSON.stringify(study.build_save_envelope()),"practice audition reads ephemeral mask without persisting it")
+	circle.complete()
+	require(not circle.audition_active() and circle.pattern()==8,"Reset Practice stops bar and restores copied result")
+	circle.play_bar()
+	circle.close_circle()
+	require(not circle.audition_active() and practice_save==JSON.stringify(study.build_save_envelope()) and photo==JSON.stringify(study.keepsake_photo),"Back stops audition and preserves exact copied save/photo")
+	study.apply_save_envelope(saved)
+	study.music_playing = false
+	study.music_mode = "sketch"
+	study.music_volume = volume
+	study.reward_audio_unlocked = unlocked
+	study.reward_sounds_enabled = sounds
+	study.apply_music_volume_db()
+	print("RHYTHM_BAR_CHECK masks=256 peak=",peak," finite/music/local/focus/practice/save passed")

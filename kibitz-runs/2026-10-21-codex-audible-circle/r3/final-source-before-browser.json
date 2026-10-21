@@ -1,0 +1,16 @@
+{
+  "created": "2026-10-21T22:13:51.514931+00:00",
+  "sha256": {
+    "godot/main.gd": "d8dc5200287da4ba1f7554a8586377f9e586882568a497cc2934235073e6f7fd",
+    "godot/rhythm_circle.gd": "9eaac6c5f5ad3b21a3237499fbbeb265d9e43e5ac2f264e0a6d65ce91f563fd1",
+    "godot/rhythm_bar.gd": "4a3bfb3383156ee76a3b39d7b13a1cf84854299d76765227748398ba7f6587d0",
+    "godot/mural_stories.gd": "f53f3cadb9a24ad0adc11c741ee6dc27c6b8252aaa16319b837cf7abe7fca0c8",
+    "godot/tests/study_test.gd": "3996a4d9896fff6de98f23ace3ccf0ab60fc3b1e99c77cc871b84e939f73e5f6",
+    "tests/godot-browser.mjs": "ddb2cfa2a67dafab57c4ed6d003e428e90d0253782fd38f818f282340e4ddfd3",
+    "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160",
+    "docs/ASSETS.md": "bee95ac6fa2238b26aa0793bf66a470bf2530a83707b2a0b87e88fa99f7fda05",
+    "docs/ROADMAP.md": "c1e229be884d60affe1744bb4aed0e91bfcf348f6ec07ad4e20a97ee8f9337d2",
+    "godot/rhythm_bar.gd.uid": "104fd19f28439a425e3ebc0056ae8642dc63c28ef4d7f49e9e9d621e611f79c5",
+    "artifacts/godot-web/index.pck": "bbcaaaa33f2e1201728b4f131ba93e523add029bce5752550d86fdd93259e2fe"
+  }
+}

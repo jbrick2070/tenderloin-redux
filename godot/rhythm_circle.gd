@@ -33,11 +33,23 @@ var chapter_completion_notice := ""
 var return_focus: Control
 var resized_while_open := false
 var restore_generation := 0
+var audition
 const HIT := Color("ffd076")
 const REST := Color("4a6873")
 
 func setup(owner_game: Node, layer: CanvasLayer) -> void:
 	game = owner_game
+	audition = preload("res://rhythm_bar.gd").new()
+	add_child(audition)
+	audition.setup()
+	audition.finished.connect(func():
+		audition.stop()
+		game.apply_music_volume_db()
+		if visible:
+			message = "Your bar is complete. The original sketch continues."
+			refresh()
+			game.announce_a11y_status(message)
+	)
 	name = "RhythmCircle"
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -67,7 +79,7 @@ func setup(owner_game: Node, layer: CanvasLayer) -> void:
 		b.toggle_mode = true
 		pads.append(b)
 	var actions := GridContainer.new()
-	actions.columns = 3
+	actions.columns = 4
 	actions.add_theme_constant_override("h_separation", 3)
 	actions.add_theme_constant_override("v_separation", 3)
 	box.add_child(actions)
@@ -77,6 +89,7 @@ func setup(owner_game: Node, layer: CanvasLayer) -> void:
 	options.append(button(actions, "Complete", complete))
 	options.append(button(actions, "Step cues\nOff", func(): step_cues = not step_cues; refresh()))
 	options.append(button(actions, "Back", close_circle))
+	options.append(button(actions, "Play\nBar", play_bar))
 	var ring: Array[Control] = [reader]
 	ring.append_array(pads)
 	ring.append_array(options)
@@ -213,6 +226,7 @@ func update_world() -> void:
 	var queued_frames: float = game.sketch_generator.buffer_length*game.MUSIC_MIX_RATE if game.sketch_playback!=null else 0.0
 	var played_frames := maxf(0.0,float(game.sketch_frames_pushed)-queued_frames)
 	var step: int = posmod(int(played_frames/(game.MUSIC_STEP_SEC*game.MUSIC_MIX_RATE)),8) if stepping else -1
+	if audition_active(): step = clampi(int(audition.get_playback_position()/audition.STEP),0,7)
 	if p==rendered_pattern and step==active_step and not worlds.is_empty() and worlds[0].visible==enabled:
 		return
 	rendered_pattern = p
@@ -261,11 +275,12 @@ func open_circle() -> bool:
 	refresh()
 	fit_layout()
 	pads[0].grab_focus()
-	game.announce_a11y_status("Rhythm Circle. "+message+" View Circle frames the visitors. This is a visual rhythm; music is the independent original sketch.")
+	game.announce_a11y_status("Rhythm Circle. "+message+" View Circle frames the visitors. Play Bar optionally auditions your hits and rests. Music must be On; set volume at Rook's speaker.")
 	return true
 
 func close_circle(announce: bool = true) -> void:
 	if not visible: return
+	stop_audition()
 	var was_practice := practice
 	visible = false
 	practice = false
@@ -304,6 +319,7 @@ func restore_follow_after_layout(generation: int, pose: Array) -> void:
 
 func toggle_step(index: int) -> void:
 	if not visible or index<0 or index>7: return
+	stop_audition()
 	if practice:
 		practice_pattern = (practice_pattern ^ (1<<index)) & 255
 	elif not game.host_toggle_beat(index):
@@ -314,6 +330,7 @@ func toggle_step(index: int) -> void:
 
 func listen() -> void:
 	if not visible: return
+	stop_audition()
 	if practice: practice_pattern = 0
 	else:
 		for i in range(8):
@@ -323,6 +340,7 @@ func listen() -> void:
 	game.announce_a11y_status(message)
 
 func complete() -> void:
+	stop_audition()
 	if practice:
 		var saved: Variant = game.get_hosted_segment_value("beats")
 		practice_pattern = int(saved) if saved != null else 0
@@ -341,7 +359,7 @@ func refresh() -> void:
 	if not visible: return
 	heading.text = "Dez's Rhythm Circle - "+("Practice" if practice else "Hosting")
 	objective.text = "%s | Sparks: %d"%[String(game.current_objective().get("text",game.current_objective().get("title","Explore the block"))),game.spark_count()]
-	reader.text = message+ (" Visual rhythm only. Independent local track: %s; step cues stay still."%game.local_music_name if game.music_mode=="local" else " Visual rhythm only; Music plays the separate original sketch.")+" Drag the street to inspect."
+	reader.text = message+ (" Local track: %s. Bar audition is unavailable with local files; step cues stay still."%game.local_music_name if game.music_mode=="local" else " Play Bar: one original drum bar, then the sketch returns. Music must be On; set volume at Rook's speaker. Reward Sounds is separate.")+" Drag the street to inspect."
 	for i in range(8):
 		var hit := (pattern() & (1<<i))!=0
 		pads[i].set_pressed_no_signal(hit)
@@ -350,8 +368,44 @@ func refresh() -> void:
 	options[1].text = "Music\n"+("On" if game.music_playing else "Off")
 	options[3].text = "Reset\nPractice" if practice else "Complete"
 	options[4].text = "Step cues\n"+("On" if step_cues else "Off")
+	options[6].text = "Stop\nBar" if audition_active() else "Play\nBar"
+	options[6].accessibility_name = "Stop bar audition" if audition_active() else "Play one bar of this rhythm"
 	update_world()
 	queue_layout()
+
+func audition_active() -> bool:
+	return audition != null and audition.playing
+
+func stop_audition(restore_gain: bool = true) -> void:
+	if not audition_active(): return
+	audition.stop()
+	if restore_gain: game.apply_music_volume_db()
+	update_world()
+	if visible:
+		message = "Bar stopped. Music follows your current On/Off and volume settings."
+		refresh()
+
+func play_bar() -> void:
+	if not visible: return
+	if audition_active():
+		stop_audition()
+		message = "Bar stopped. The original sketch continues."
+	elif not game.reward_audio_unlocked:
+		message = "Use a key, mouse or touch first to enable audio. Silent play is always welcome."
+	elif not game.music_playing or game.music_volume<=0.0:
+		message = "Music is off or muted. Turn Music On with audible volume to audition; silent play is always welcome."
+	elif game.music_mode!="sketch":
+		message = "Local music stays independent. Return to the original sketch before auditioning a bar."
+	elif pattern()==0:
+		message = "All rests: a listening round. Nothing to play, and it is an equally complete choice."
+	else:
+		game.apply_music_volume_db() # Set the current audition gain before play.
+		game.sketch_player.volume_db = -80.0
+		audition.start_bar(pattern())
+		game.apply_music_volume_db()
+		message = "Playing one drum bar. The sketch is quiet until it ends. Edit a pad to stop; Play Bar auditions your new choice."
+	refresh()
+	game.announce_a11y_status(message)
 
 func queue_layout() -> void:
 	if not visible or layout_pending: return
@@ -437,6 +491,8 @@ func scene_input(event: InputEvent) -> void:
 		game.update_occlusion(true)
 
 func tick(delta: float) -> void:
+	if audition_active() and (not visible or not game.music_playing or game.music_volume<=0.0 or game.music_mode!="sketch"):
+		stop_audition()
 	if visible and not available(): close_circle(false)
 	update_world()
 	if visible:
@@ -489,4 +545,4 @@ func snapshot() -> Dictionary:
 				var foot: Vector2 = game.camera.unproject_position(child.global_position)
 				var head: Vector2 = game.camera.unproject_position(child.global_position+Vector3.UP*(1.72 if child.name.begins_with("Visiting") else 1.05))
 				subjects.append({"name":child.name,"x":foot.x,"y":foot.y,"head_x":head.x,"head_y":head.y})
-	return {"subjects":subjects,"visible":visible,"entry":game.control_snapshot(entry),"practice":practice,"pattern":pattern(),"active_step":active_step,"step_cues":step_cues,"owns_view":owns_view,"scene":game.rect_snapshot(scene_rect),"tray":game.control_snapshot(tray),"top":game.control_snapshot(top),"pads":pad_boxes,"options":option_boxes,"lamps":world,"message":message,"layout_pending":layout_pending or entry_layout_pending,"world_visible":not worlds.is_empty() and worlds[0 if game.gathering_layout=="table" else 1].is_visible_in_tree()}
+	return {"audition_accessibility_name":options[6].accessibility_name,"sketch_gain":game.sketch_player.volume_db,"audition":audition.snapshot(),"subjects":subjects,"visible":visible,"entry":game.control_snapshot(entry),"practice":practice,"pattern":pattern(),"active_step":active_step,"step_cues":step_cues,"owns_view":owns_view,"scene":game.rect_snapshot(scene_rect),"tray":game.control_snapshot(tray),"top":game.control_snapshot(top),"pads":pad_boxes,"options":option_boxes,"lamps":world,"message":message,"layout_pending":layout_pending or entry_layout_pending,"world_visible":not worlds.is_empty() and worlds[0 if game.gathering_layout=="table" else 1].is_visible_in_tree()}

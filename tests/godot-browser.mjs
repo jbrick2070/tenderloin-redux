@@ -13,6 +13,7 @@ const [pckStat, ...sourceStats] = await Promise.all([
   stat('godot/main.gd'),
   stat('godot/mural_workshop.gd'),
   stat('godot/rhythm_circle.gd'),
+  stat('godot/rhythm_bar.gd'),
   stat('godot/mural_signature.gd'),
   stat('godot/mural_stories.gd'),
   stat('godot/main.tscn'),
@@ -42,6 +43,7 @@ let shortWalkingCaptionChecks = 0, shortWalkingGuideChecks = 0;
 let smallHubReaderChecks = 0;
 let rhythmFixtureSave;
 const rhythmCircleChecks = [];
+const rhythmAuditionChecks = [];
 const muralWorkshopChecks = [];
 let workshopAutoAdvanceChecks = 0;
 
@@ -118,6 +120,72 @@ async function verifyStreetSignature(page,tap,snap) {
   await page.screenshot({path:`artifacts/codex-mural-street-signature-${s.viewport_width}x${s.viewport_height}.png`});return {ink,paper,bins,corners};
 }
 
+// Observe the real WebAudio mixer destination; never create a test tone or action hook.
+function installRhythmAudioProbe() {
+  window.__rhythmOutputTaps=[];
+  const connect=AudioNode.prototype.connect;
+  AudioNode.prototype.connect=function(destination,...ports){
+    if(destination instanceof AudioDestinationNode){
+      const tap=this.context.createAnalyser();tap.fftSize=2048;
+      connect.call(this,tap,...ports);connect.call(tap,destination);
+      window.__rhythmOutputTaps.push(tap);return destination;
+    }
+    return connect.call(this,destination,...ports);
+  };
+}
+
+async function verifyRhythmAudition(page,touch,size,tap,snap,save,settle,active) {
+  const initial=(await snap()).rhythm_circle.pattern,wasMusic=(await snap()).music_playing;
+  const setMask=async mask=>{for(let bit=0;bit<8;bit++)if(((await snap()).rhythm_circle.pattern^mask)&(1<<bit))await tap((await snap()).rhythm_circle.pads[bit]);};
+  const start=async()=>{const n=(await snap()).rhythm_circle.audition.starts;await tap((await snap()).rhythm_circle.options[6]);await page.waitForFunction(n=>{const a=window.__tenderloinGodotA11ySnapshot.rhythm_circle.audition;return a.playing&&a.starts===n+1;},n);};
+  if(!wasMusic)await tap((await snap()).rhythm_circle.options[1]);
+  if((await snap()).music_mode==='local'){
+    await tap((await snap()).rhythm_circle.options[6]);assert.ok(!(await snap()).rhythm_circle.audition.playing);assert.match((await snap()).rhythm_circle.message,/Local music/);
+    if(!wasMusic)await tap((await snap()).rhythm_circle.options[1]);return;
+  }
+  await setMask(129);
+  const frozen=await save(),pose=(await snap()).camera_pose;
+  const capture=async()=>page.evaluate(async()=>{
+    const taps=window.__rhythmOutputTaps||[];if(!taps.length)return null;
+    const trace=[],start=performance.now();
+    while(performance.now()-start<3000){let energy=0;for(const tap of taps){const a=new Float32Array(tap.fftSize);tap.getFloatTimeDomainData(a);energy+=a.reduce((n,v)=>n+v*v,0)/a.length;}trace.push({ms:performance.now()-start,rms:Math.sqrt(energy)});await new Promise(r=>setTimeout(r,16));}
+    return trace;
+  });
+  await start();
+  const playing=await snap();assert.equal(playing.rhythm_circle.audition.pattern,129);assert.ok(playing.rhythm_circle.active_step>=0,'audition drives real world poses even with optional sketch cues off');
+  assert.equal(await save(),frozen,'audition itself never writes active draft or practice');assert.equal(playing.rhythm_circle.sketch_gain,-80);assert.equal(playing.music_sample_rms,0,'sketch RMS reports intentional audition duck');assert.ok(playing.rhythm_circle.audition.build_usec<20000,'actual Web mask assembly stays under20ms after pre-start preparation');assert.deepEqual(playing.camera_pose,pose);
+  await page.screenshot({path:`artifacts/codex-rhythm-bar-${size.width}x${size.height}-${active?'hosting':'practice'}-${touch?'touch':'mouse'}.png`});
+  const sparse=await capture();assert.ok(sparse?.length>50,'actual mixer tap is mandatory, never silently skipped');
+  await page.waitForFunction(()=>!window.__tenderloinGodotA11ySnapshot.rhythm_circle.audition.playing);await settle();
+  assert.equal((await snap()).music_playing,true);assert.equal(await save(),frozen);assert.ok(Math.abs((await snap()).rhythm_circle.sketch_gain-20*Math.log10((await snap()).music_volume))<.001,'real browser natural end restores current sketch gain');
+  let dense=null;
+  if(sparse){
+    await setMask(255);const denseSave=await save();await start();dense=await capture();await page.waitForFunction(()=>!window.__tenderloinGodotA11ySnapshot.rhythm_circle.audition.playing);assert.equal(await save(),denseSave);
+    const stats=trace=>{let last=-1000,bursts=0,run=0,longest=0;for(const t of trace){if(t.rms>.003){if(t.ms-last>160)bursts++;last=t.ms;run=0;}else{run+=16;longest=Math.max(longest,run);}}return {bursts,longest,peak:Math.max(...trace.map(t=>t.rms))};};
+    const a=stats(sparse),b=stats(dense);assert.ok(a.peak>.005&&b.peak>.005,'real mixer output has nonzero original drum PCM');assert.ok(a.longest>1300&&b.longest<650,'actual sparse rests are quiet while dense pattern has recurring strikes');assert.ok(b.bursts>=5&&b.bursts>a.bursts,'real output changes with the eight-pad pattern, not a fixed music RMS field');
+    await writeFile(`artifacts/rhythm-bar-output-${size.width}x${size.height}-${active?'hosting':'practice'}-${touch?'touch':'mouse'}.json`,JSON.stringify({sparse,dense,sparseStats:a,denseStats:b},null,2));
+  }
+  await setMask(129);await start();await page.keyboard.press('Space');await page.waitForFunction(()=>!window.__tenderloinGodotA11ySnapshot.rhythm_circle.audition.playing,null,{timeout:800});await settle();
+  await start();await tap((await snap()).rhythm_circle.pads[1]);assert.ok(!(await snap()).rhythm_circle.audition.playing,'real edit stops the frozen bar');
+  await start();await tap((await snap()).rhythm_circle.options[1]);assert.ok(!(await snap()).rhythm_circle.audition.playing,'actual MusicOff stops bar immediately');
+  const n=(await snap()).rhythm_circle.audition.starts;await tap((await snap()).rhythm_circle.options[6]);assert.equal((await snap()).rhythm_circle.audition.starts,n);assert.match((await snap()).rhythm_circle.message,/off or muted/);
+  await tap((await snap()).rhythm_circle.options[1]);assert.ok(!(await snap()).rhythm_circle.audition.playing,'MusicOn never resumes optional audition');
+  await start();await page.evaluate(()=>window.dispatchEvent(new Event('pagehide')));await page.waitForFunction(()=>!window.__tenderloinGodotA11ySnapshot.rhythm_circle.audition.playing,null,{timeout:800});await settle();
+  assert.equal((await snap()).rhythm_circle.audition_accessibility_name,'Play one bar of this rhythm');assert.match((await snap()).rhythm_circle.message,/Bar stopped/);
+  await start();await page.evaluate(()=>{window.dispatchEvent(new Event('pagehide'));window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}));});await page.waitForFunction(()=>!window.__tenderloinGodotA11ySnapshot.rhythm_circle.audition.playing,null,{timeout:800});await settle();
+  assert.match((await snap()).rhythm_circle.message,/Bar stopped/,'coalesced suspend/resume cannot lose stop intent');
+  await setMask(0);const zero=(await snap()).rhythm_circle.audition.starts;await tap((await snap()).rhythm_circle.options[6]);assert.equal((await snap()).rhythm_circle.audition.starts,zero);assert.match((await snap()).rhythm_circle.message,/All rests/);
+  // Actual Back and Escape interrupt well before a finite bar could finish by itself.
+  for(const escape of [false,true]){
+    await setMask(129);await start();
+    if(escape)await page.keyboard.press('Escape');else await tap((await snap()).rhythm_circle.options[5]);
+    await page.waitForFunction(()=>{const c=window.__tenderloinGodotA11ySnapshot.rhythm_circle;return !c.visible&&!c.audition.playing;},null,{timeout:800});
+    await page.keyboard.press('F3');await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.rhythm_circle.visible);await settle();assert.ok(!(await snap()).rhythm_circle.audition.playing,'reentry never resumes optional audition');await tap((await snap()).rhythm_circle.options[2]);
+  }
+  await setMask(initial);if(!wasMusic)await tap((await snap()).rhythm_circle.options[1]);
+  rhythmAuditionChecks.push({...size,touch,active,outputObserved:!!sparse,buildUsec:(await snap()).rhythm_circle.audition.build_usec,starts:(await snap()).rhythm_circle.audition.starts});
+}
+
 async function verifyRhythmCircle(page,touch,size,active=false,completeListening=false) {
   const snap=()=>page.evaluate(()=>window.__tenderloinGodotA11ySnapshot);
   const save=()=>page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1'));
@@ -147,6 +215,8 @@ async function verifyRhythmCircle(page,touch,size,active=false,completeListening
   for(const subject of w.subjects){assert.ok(within(w.scene,subject.x,subject.y)&&within(w.scene,subject.head_x,subject.head_y),`${subject.name} is actually projected in the unobscured world`);}
   for(const b of [...w.pads,...w.options])assert.ok(b.visible&&b.height>=44&&b.width>=44&&b.x>=0&&b.y>=0&&b.x+b.width<=s.viewport_width+1&&b.y+b.height<=s.viewport_height+1);
   const pixelAt=async(lamp)=>{const pixels=screenshotPixels(await page.screenshot()),c=await page.locator('#canvas').boundingBox(),ss=await snap();return pixels.pixel(c.x+lamp.x*c.width/ss.viewport_width,c.y+lamp.y*c.height/ss.viewport_height);};
+  await verifyRhythmAudition(page,touch,size,tap,snap,save,settle,active);
+  s=await snap();w=s.rhythm_circle;
   const initial=w.pattern,firstLamp={...w.lamps[0]},beforePixel=await pixelAt(firstLamp);
   await tap(w.pads[0]);s=await snap();w=s.rhythm_circle;
   assert.equal(w.pattern,initial^1);assert.equal(w.lamps[0].hit,!(initial&1));
@@ -173,7 +243,7 @@ async function verifyRhythmCircle(page,touch,size,active=false,completeListening
       put(0,'RIFF');view.setUint32(4,bytes.length-8,true);put(8,'WAVE');put(12,'fmt ');view.setUint32(16,16,true);view.setUint16(20,1,true);view.setUint16(22,1,true);view.setUint32(24,22050,true);view.setUint32(28,44100,true);view.setUint16(32,2,true);view.setUint16(34,16,true);put(36,'data');view.setUint32(40,count*2,true);for(let i=0;i<count;i++)view.setInt16(44+i*2,Math.round(Math.sin(i*2*Math.PI*330/22050)*9000),true);
       window.__tenderloinQueueLocalAudioBytes('rhythm-fallback-test.wav',bytes,'');
     });
-    await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.music_mode==='local'&&window.__tenderloinGodotA11ySnapshot.music_playing);await settle();assert.equal((await snap()).rhythm_circle.active_step,-1,'actual local WAV bridge keeps rhythm cues static');await tap((await snap()).rhythm_circle.options[1]);
+    await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.music_mode==='local'&&window.__tenderloinGodotA11ySnapshot.music_playing);await settle();assert.equal((await snap()).rhythm_circle.active_step,-1,'actual local WAV bridge keeps rhythm cues static');await tap((await snap()).rhythm_circle.options[6]);assert.ok(!(await snap()).rhythm_circle.audition.playing);assert.match((await snap()).rhythm_circle.message,/Local music/);await tap((await snap()).rhythm_circle.options[1]);
   }
   if(beforeMusic)await tap((await snap()).rhythm_circle.options[1]);
   await page.screenshot({path:`artifacts/codex-rhythm-circle-${size.width}x${size.height}-${touch?'touch':'mouse'}-${active?'active':'practice'}.png`});
@@ -207,9 +277,9 @@ async function verifyRhythmCircle(page,touch,size,active=false,completeListening
     await page.setViewportSize(size);await settle();assert.equal(await save(),beforeSave);
   }
   if(!active&&[1100,390,320].includes(size.width)){
-    await page.keyboard.press('F3');await settle();await tap((await snap()).rhythm_circle.pads[7]);assert.notEqual((await snap()).rhythm_circle.pattern,initial);
+    await page.keyboard.press('F3');await settle();await tap((await snap()).rhythm_circle.pads[7]);assert.notEqual((await snap()).rhythm_circle.pattern,initial);if((await snap()).music_playing&&(await snap()).music_mode==='sketch'){await tap((await snap()).rhythm_circle.options[6]);await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.rhythm_circle.audition.playing);}
     await page.reload();await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending&&!window.__tenderloinGodotA11ySnapshot.layout_refit_pending);
-    assert.ok(!(await snap()).rhythm_circle.visible);assert.equal((await snap()).rhythm_circle.pattern,initial,'reload discards ephemeral practice');assert.equal(await save(),beforeSave,'practice reload leaves exact copied result and photo');
+    assert.ok(!(await snap()).rhythm_circle.visible&&!(await snap()).rhythm_circle.audition.playing,'reload never resumes an optional bar');assert.equal((await snap()).rhythm_circle.pattern,initial,'reload discards ephemeral practice');assert.equal(await save(),beforeSave,'practice reload leaves exact copied result and photo');
   }
   rhythmCircleChecks.push({...size,touch,active,completeListening,layout:before.gathering_layout,photo:before.epilogue.photo.status,beforePixel,afterPixel,scene:w.scene});
 }
@@ -843,6 +913,7 @@ try {
       }
     }, BROWSER_SAVE_SENTINEL);
     context.on('request', r => { if (!r.url().startsWith(base) && !r.url().startsWith('data:') && !r.url().startsWith('blob:')) external.push(r.url()); });
+    await context.addInitScript(installRhythmAudioProbe);
     await context.addInitScript(() => {
       window.__tenderloinAudioContexts = [];
       for (const key of ['AudioContext', 'webkitAudioContext']) {
@@ -2328,6 +2399,7 @@ try {
     await writeFile('artifacts/rhythm-beats-last-private-fixture.json',JSON.stringify(fixture,null,2));
     const size={width:390,height:667},context=await browser.newContext({viewport:size,hasTouch:true}),page=await context.newPage();latestPage=page;
     await context.addInitScript(s=>{if(!localStorage.getItem('tenderloin-redux.godot.save.v1'))localStorage.setItem('tenderloin-redux.godot.save.v1',s);},JSON.stringify(fixture));
+    await context.addInitScript(installRhythmAudioProbe);
     context.on('request',r=>{if(!r.url().startsWith(base)&&!r.url().startsWith('data:')&&!r.url().startsWith('blob:'))external.push(r.url());});page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
     await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending&&!window.__tenderloinGodotA11ySnapshot.layout_refit_pending);await page.keyboard.press('Escape');
     await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.hosting_completed_count===3&&window.__tenderloinGodotA11ySnapshot.hosting_current==='beats'&&!window.__tenderloinGodotA11ySnapshot.startup_pending);
@@ -2347,9 +2419,11 @@ try {
   }
   assert.deepEqual(external, []);
   assert.deepEqual(errors, []);
-  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, rhythmCircleChecks, muralStoryChecks, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
+  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, rhythmCircleChecks, rhythmAuditionChecks, muralStoryChecks, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
   assert.ok(queuedActivityRewardChecks > 0, 'at least one actual crowded activity exercises queued reward timer and Close delivery');
   assert.ok(shortStartClicked && shortStartTouchClicked, 'real mouse and touch Start at640x360 were exercised');
+  assert.equal(rhythmAuditionChecks.length,11,'all eleven active/practice cases actually auditioned');
+  assert.ok(rhythmAuditionChecks.every(c=>c.outputObserved),'all eleven cases observe real mixer output');
   assert.equal(rhythmCircleChecks.length,11,'three actual progression active, seven genuine late-practice and one private beats-last rhythm case executed');
   assert.equal(muralStoryChecks.length,8,'seven genuine taken-photo and one fresh scene-composition case executed');
   assert.equal(muralStoryChecks.filter(c=>c.asymmetric).length,1,'a fresh single-sided street-board capture proves left/right UV orientation');
@@ -2367,7 +2441,7 @@ try {
   assert.equal(muralWorkshopChecks.length,8,'seven late and one fresh actual workshop mouse/finger cases executed');
   assert.equal(muralWorkshopChecks.filter(c=>c.photoStatus==='taken').length,7,'all seven late cases preserve a saved taken keepsake');
   assert.equal(workshopAutoAdvanceChecks,3,'a fresh mural exercises all three automatically offered contributions');
-  console.log(JSON.stringify({ runs, rhythmCircleChecks, muralWorkshopChecks, workshopAutoAdvanceChecks, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, narrowActivityChecks, passiveActivityChecks, narrowHubChecks, smallHubReaderChecks, shortWalkingChecks, shortWalkingCaptionChecks, shortWalkingGuideChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
+  console.log(JSON.stringify({ runs, rhythmCircleChecks, rhythmAuditionChecks, muralWorkshopChecks, workshopAutoAdvanceChecks, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, narrowActivityChecks, passiveActivityChecks, narrowHubChecks, smallHubReaderChecks, shortWalkingChecks, shortWalkingCaptionChecks, shortWalkingGuideChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
 } catch (error) {
   if (latestPage && !latestPage.isClosed()) {
     await latestPage.screenshot({ path: 'artifacts/godot-browser-failure.png' });

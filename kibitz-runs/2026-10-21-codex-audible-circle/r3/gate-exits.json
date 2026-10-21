@@ -1,0 +1,9 @@
+{
+  "native_export_command_group_exit": 0,
+  "check_node_command_group_exit": 0,
+  "full_browser_exit": 0,
+  "native_pass_marker": true,
+  "node_tests": 104,
+  "all_five_verified_logs": "artifacts/audible-circle-verified-*.log",
+  "sources_pack_frozen_through_browser": true
+}

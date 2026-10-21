@@ -1,0 +1,2 @@
+# Explicit partial scope
+Creator mandates exactly one pre-code ideas CLI r1 and a separate later implementation QA r3. This invocation is ONLY ideas r1; r2/r3/r4 not run in this campaign. Driver Codex; only Claude; requested claude-opus-5-5/high. No implementation edits have occurred. Source hashes before fanout retained; compare afterward. No model substitution, extra panel, paid media or blind quota/auth retry.
