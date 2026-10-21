@@ -1,0 +1,15 @@
+{
+  "id": "build-tenderloin-redux",
+  "name": "Build Tenderloin Redux",
+  "kind": "heartbeat",
+  "status": "ACTIVE",
+  "interval_minutes": 30,
+  "target_thread_id": "01a159d6-60a3-78e1-92ae-4018509d2539",
+  "end_time": null,
+  "previous_cutoff_superseded_by_creator": true,
+  "prompt_sha256": "636f4cfaa204d7549ac7f74e85628e5c430154caf9596aa884db519c71a2cb18",
+  "method": "existing automation updated through Codex app tool",
+  "other_schedulers": "unchanged; AGY stood down and Claude task paused per retained ownership policy",
+  "latest_prompt_sha256": "3d18faacc9bc87ddda957457dd63c47498d0d5a7e8d0f456f571de966b122aee",
+  "latest_next_action": "intermediate-width hub fitting, then remaining mural/music description readability"
+}

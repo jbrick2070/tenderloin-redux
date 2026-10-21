@@ -46,6 +46,59 @@ func run() -> void:
 	await process_frame
 	await process_frame
 	await process_frame
+	# Compare indexed queries to the original linear geometry across actual bounds and bucket edges.
+	require(not study.walk_building_bins.is_empty(), "conservative building lookup is ready before walking")
+	require(study.WALK_CLEARANCE_M + study.WALK_CELL_EXTRA_CLEARANCE_M <= study.WALK_BUILDING_INDEX_CLEARANCE_M, "A* clearance uses the indexed broad phase")
+	var courtyard_sample_count := 0
+	var spatial_samples: Array[Vector2] = [Vector2(1000000, -1000000)]
+	for rect in study.current_building_rects:
+		spatial_samples.append(rect.get_center())
+		spatial_samples.append(rect.position)
+		spatial_samples.append(rect.end)
+		spatial_samples.append(rect.position - Vector2(0.7, 0.7))
+		spatial_samples.append(rect.end + Vector2(0.7, 0.7))
+		var expanded_rect: Rect2 = rect.grow(study.WALK_BUILDING_INDEX_CLEARANCE_M)
+		var low_bin: Vector2i = study.walk_building_bin(expanded_rect.position)
+		var high_bin: Vector2i = study.walk_building_bin(expanded_rect.end)
+		for bx in range(low_bin.x, high_bin.x + 2):
+			var edge_x: float = bx * study.WALK_BUILDING_BIN_M
+			if edge_x >= expanded_rect.position.x and edge_x <= expanded_rect.end.x:
+				spatial_samples.append(Vector2(edge_x - 0.0001, rect.get_center().y))
+				spatial_samples.append(Vector2(edge_x + 0.0001, rect.get_center().y))
+		for by in range(low_bin.y, high_bin.y + 2):
+			var edge_y: float = by * study.WALK_BUILDING_BIN_M
+			if edge_y >= expanded_rect.position.y and edge_y <= expanded_rect.end.y:
+				spatial_samples.append(Vector2(rect.get_center().x, edge_y - 0.0001))
+				spatial_samples.append(Vector2(rect.get_center().x, edge_y + 0.0001))
+	for building in study.current_buildings:
+		for polygon in building.polygons:
+			for hole_i in range(1, polygon.rings.size()):
+				var ring_points := PackedVector2Array()
+				for vertex in polygon.rings[hole_i]:
+					ring_points.append(Vector2(vertex[0], vertex[1]))
+				var triangle_ids: PackedInt32Array = Geometry2D.triangulate_polygon(ring_points)
+				require(triangle_ids.size() >= 3, "actual courtyard ring supplies an interior sample")
+				if triangle_ids.size() >= 3:
+					var hole_point: Vector2 = (ring_points[triangle_ids[0]] + ring_points[triangle_ids[1]] + ring_points[triangle_ids[2]]) / 3.0
+					require(study.is_point_in_ring(hole_point, polygon.rings[hole_i]), "courtyard oracle point lies inside its actual inner ring")
+					spatial_samples.append(hole_point)
+					courtyard_sample_count += 1
+	require(courtyard_sample_count > 0, "geometry parity includes real courtyard interior samples")
+	for key in study.walk_building_bins.keys():
+		var boundary: Vector2 = Vector2(key) * study.WALK_BUILDING_BIN_M
+		spatial_samples.append(boundary)
+		spatial_samples.append(boundary - Vector2(0.0001, 0.0001))
+		spatial_samples.append(boundary + Vector2(0.0001, 0.0001))
+	for pt in spatial_samples:
+		require(study.building_containing_point(pt) == reference_building_containing_point(study, pt), "indexed containment preserves polygon/hole and ordered-building results")
+		for clearance in [0.1, 0.7, 1.0, 1.01]:
+			require(study.min_wall_distance(pt, clearance) == reference_min_wall_distance(study, pt, clearance), "indexed clearance preserves finite-cutoff results including fallback")
+	for pt in [Vector2.ZERO, study.blackhawk_xz(), Vector2(1000, -1000)]:
+		require(study.min_wall_distance(pt) == reference_min_wall_distance(study, pt), "unbounded wall distance retains its linear fallback")
+	study.cell_walkable_cache[Vector2i(1000000, 1000000)] = false
+	study.rebuild_walk_building_bins()
+	require(study.cell_walkable_cache.is_empty(), "rebuilding geometry lookup invalidates cell walkability cache")
+	print("SPATIAL_PARITY_CHECK samples=", spatial_samples.size(), " finite_cutoffs=4 unbounded_samples=3 courtyard_samples=", courtyard_sample_count)
 	require(study.startup_story_pending and study.is_story_card_visible(), "real startup presents Start before accepting")
 	require(not study.music_playing, "music waits for startup acceptance instead of autoplaying during load")
 	root.size = Vector2i(390, 667)
@@ -1200,6 +1253,11 @@ func run() -> void:
 	study.set_voices_enabled(false, false)
 	var perf: Dictionary = study.measure_local_performance()
 	print("PERF_CHECK ", JSON.stringify(perf))
+	var parity_walk_cache: Dictionary = study.cell_walkable_cache.duplicate()
+	study.cell_walkable_cache.clear()
+	var parity_route: Array = study.find_path(study.neighbor_xz(4), study.blackhawk_xz())
+	require(parity_route == [Vector2(11.1, 24.97), Vector2(-6.0, 10.0), Vector2(-424.5, 62.5)] and study.last_astar_expanded_cells == 2222, "priority lookup preserves baseline Black Hawk waypoints and A* tie order")
+	study.cell_walkable_cache = parity_walk_cache
 	require(int(perf.get("opening_buildings_count", 0)) == 58 and int(perf.get("wider_buildings_count", 0)) == 130 and int(perf.get("total_buildings_count", 0)) == 188 and int(perf.get("street_ways_count", 0)) == 20 and int(perf.get("wider_street_ways_count", 0)) == 41 and bool(perf.get("district_boundary_present", false)), "measure_local_performance verifies 188 buildings, 20 opening / 41 wider street ways, and cultural district mesh")
 	require(int(perf.get("pathfind_blackhawk_waypoints", 0)) >= 2 and bool(perf.get("pathfind_cold_cache", false)) and bool(perf.get("astar_used", false)) and int(perf.get("astar_expanded_cells", 0)) > 0 and int(perf.get("pathfind_blackhawk_usec", 999999)) < 250000, "measure_local_performance verifies cold-cache A* Taylor-to-Hyde pathfinding latency under 250ms")
 	require(int(perf.get("save_bytes", 0)) > 0 and int(perf.get("save_bytes", 99999)) <= 4096 and int(perf.get("save_roundtrip_usec", 999999)) < 50000, "measure_local_performance verifies full M1-M4 save payload <= 4096 bytes and roundtrip under 50ms")
@@ -1587,13 +1645,15 @@ func run() -> void:
 	require(study.selected_neighbor == 0 or study.arrived_neighbor == 0, "T talks to the nearby neighbor (Bea) instead of walking off to Celeste")
 	study.stop_walking()
 	var hello_line: String = study.talk_with_neighbor(0)
-	require(study.block_panel.visible and study.block_panel_mode == "talk" and study.talk_partner == 0 and study.conv_rows[0].visible and study.conv_rows[1].visible and not study.block_action_rows[0].visible and study.block_detail_label.text.contains("Bea:"), "talking opens conversation mode with dialogue choices instead of the full action wall")
+	require(study.block_panel.visible and study.block_panel_mode == "talk" and study.talk_partner == 0 and study.conv_rows[0].visible and study.conv_rows[1].visible and not study.block_actions_grid.visible and study.block_detail_label.text.contains("Bea:"), "talking opens conversation mode with dialogue choices instead of the full action wall")
 	require(study.conv_action_btns[0].text == "Go Meet Celeste" or study.conv_action_btns[0].text.begins_with("Go Meet "), "the first conversation action follows the next objective")
 	require(study.conv_action_btns[2].text == "All Block Actions" and study.conv_chat_btn.text == "Keep Chatting (T)" and study.conv_next_btn.text == "What's Next?" and study.conv_bye_btn.text == "Goodbye (Esc)" and not study.is_narrow_layout(), "conversation offers Keep Chatting, What's Next?, Goodbye, and All Block Actions")
 	var next_line: String = study.ask_whats_next()
 	require(next_line.begins_with("Bea: \"") and next_line.contains("Go say hello!") and study.is_speech_bubble_visible() and study.speech_bubble_anchor == "bea" and study.info.text.contains("gold marker"), "What's Next? has Bea explain the next step in her bubble")
 	require(study.keep_chatting() != "" and study.block_panel_mode == "talk", "Keep Chatting continues the conversation")
-	require(study.run_conversation_action(2) and study.block_panel.visible and study.block_panel_mode == "hub" and study.block_action_rows[0].visible and not study.conv_rows[0].visible, "All Block Actions switches to the full action list")
+	study.conv_action_btns[2].grab_focus()
+	require(study.run_conversation_action(2) and study.block_panel.visible and study.block_panel_mode == "hub" and study.block_actions_grid.visible and not study.conv_rows[0].visible, "All Block Actions switches to the full action list")
+	require(root.gui_get_focus_owner() in study.block_buttons, "conversation-to-actions transition retains a focused hub control")
 	study.show_conversation(0)
 	var esc_ev := InputEventKey.new()
 	esc_ev.pressed = true
@@ -2384,11 +2444,122 @@ func run() -> void:
 		var blk_header_end_y: float = study.header_panel.get_global_rect().end.y
 		var blk_controls_pos_y: float = study.controls.get_global_rect().position.y
 		require(blk_rect.position.x >= 0 and blk_rect.end.x <= size.x and blk_header_end_y <= blk_rect.position.y and blk_rect.end.y <= blk_controls_pos_y, "header, BlockPanel, and bottom controls do not overlap at %s" % str(size))
-		for blk_btn in study.block_buttons:
-			var bkr: Rect2 = blk_btn.get_global_rect()
-			require(bkr.size.x >= 44 and bkr.size.y >= 44, "44px minimum block panel buttons")
-			require(bkr.position.x >= 0 and bkr.end.x <= size.x and bkr.position.y >= 0 and bkr.end.y <= size.y, "block buttons within viewport")
-			require(blk_btn.focus_mode == Control.FOCUS_ALL and blk_btn.has_theme_stylebox_override("focus"), "block buttons have keyboard focus ring stylebox")
+		if size.x < 600:
+			var motifs_before_hub: Dictionary = study.mural_placements.duplicate(true)
+			study.mural_placements.clear()
+			study.show_block_panel(false)
+			study.show_block_panel(true)
+			await process_frame
+			await process_frame
+			require(String(study.current_objective().id) == "mural" and study.block_hub_page == 1 and study.block_mural_btn.is_visible_in_tree(), "opening the phone hub reveals the actual mural objective on page2")
+			study.show_conversation(0)
+			var hub_slot: int = study.conv_action_ids.find("hub")
+			require(hub_slot >= 0, "conversation retains its All Actions entry")
+			study.conv_action_btns[hub_slot].grab_focus()
+			study.run_conversation_action(hub_slot)
+			await process_frame
+			await process_frame
+			require(study.block_hub_page == 1 and study.block_mural_btn.is_visible_in_tree() and study.block_mural_btn.has_focus(), "conversation-to-hub opens and focuses the actual suggested later-page action")
+			study.mural_placements = motifs_before_hub
+			study.show_block_panel(false)
+			study.show_block_panel(true)
+			await process_frame
+			await process_frame
+			study.hide_story_card()
+		var suggested_hub_button: Button = study.hub_button_for_objective(String(study.current_objective().get("id", "")))
+		require(suggested_hub_button == null or suggested_hub_button.is_visible_in_tree(), "opening the hub reveals the suggested next action")
+		study.block_hub_page = 0
+		study.layout_block_action_pages()
+		var hub_save: String = JSON.stringify(study.build_save_envelope())
+		var hub_position: Vector3 = study.player.position
+		var hub_seen: Array[int] = []
+		for hub_page in range(study.block_action_page_count() if size.x < 600 else 1):
+			study.layout_block_action_pages()
+			await process_frame
+			await process_frame
+			blk_rect = study.block_panel.get_global_rect()
+			require(study.header_panel.get_global_rect().end.y <= blk_rect.position.y and blk_rect.end.y <= study.controls.get_global_rect().position.y, "each action page fits between header and walking controls")
+			var hub_actions: Array = study.block_action_snapshots()
+			require(hub_actions.size() == (4 if size.x < 600 else 12), "readable action page count at %s" % size)
+			for item in hub_actions:
+				hub_seen.append(int(item.id))
+				require(bool(item.text_fits), "full action title fits the actual font and button box: %s at %s" % [item.text, size])
+			for blk_btn in study.block_buttons:
+				if not blk_btn.is_visible_in_tree():
+					continue
+				var bkr: Rect2 = blk_btn.get_global_rect()
+				require(bkr.size.x >= 44 and bkr.size.y >= 44, "44px minimum block panel buttons")
+				require(blk_rect.encloses(bkr), "visible action and Close buttons fit inside the bounded panel")
+				require(blk_btn.focus_mode == Control.FOCUS_ALL and blk_btn.has_theme_stylebox_override("focus"), "block buttons have keyboard focus ring stylebox")
+			require(study.block_close_btn.is_visible_in_tree(), "Close stays available on every action page")
+			if size.x < 600 and hub_page < 2:
+				study.block_page_next.grab_focus()
+				var page_accept := InputEventAction.new()
+				page_accept.action = "ui_accept"
+				page_accept.pressed = true
+				Input.parse_input_event(page_accept)
+				await process_frame
+				page_accept.pressed = false
+				Input.parse_input_event(page_accept)
+				await process_frame
+				require(study.block_hub_page == hub_page + 1 and study.block_buttons[(hub_page + 1) * 4].has_focus(), "keyboard page change focuses the first newly visible action")
+				require(study.last_a11y_announcement.begins_with("Block actions page %d of 3" % (hub_page + 2)), "keyboard paging announces the new page")
+		var expected_actions: Array[int] = []
+		for action_id in range(12):
+			expected_actions.append(action_id)
+		require(hub_seen == expected_actions and study.player.position == hub_position and JSON.stringify(study.build_save_envelope()) == hub_save, "all12 actions reachable once without changing player or save")
+		study.change_block_action_page(1)
+		require(study.block_hub_page == (2 if size.x < 600 else 0), "last page clamps; desktop paging is a no-op")
+		study.block_hub_page = 0
+		study.layout_block_action_pages()
+		await process_frame
+		await process_frame
+		if size.x == 320:
+			var old_titles: Array[String] = []
+			var long_titles := ["Open Block Party!", "Visit Next Neighbor", "Gear Returned (3/3)", "Hosted All 4 Events", "Paint w/ Celeste (0/3)", "Soundcheck w/ Rook (OK)", "Black Hawk Site (OK)", "Tenant Circle (Done)", "Roll Camera (Clear)", "Local Stories: Err", "District Border: Off", "Web Save Loaded"]
+			for action_id in range(12):
+				old_titles.append(study.block_buttons[action_id].text)
+				study.block_buttons[action_id].text = long_titles[action_id]
+			for state_page in range(3):
+				study.block_hub_page = state_page
+				study.layout_block_action_pages()
+				await process_frame
+				await process_frame
+				var state_rect: Rect2 = study.block_panel.get_global_rect()
+				require(state_rect.end.y <= study.controls.get_global_rect().position.y, "long completed-state labels keep each page above walking controls")
+				for entry in study.block_action_snapshots():
+					require(bool(entry.text_fits), "long-state title is fully readable: %s" % entry.text)
+			for action_id in range(12):
+				study.block_buttons[action_id].text = old_titles[action_id]
+			study.block_hub_page = 0
+			study.layout_block_action_pages()
+		var detail_before: String = study.block_detail_label.text
+		var dialogue_before: String = study.last_panel_dialogue
+		study.last_panel_dialogue = "Full detail line\n".repeat(18) + "Last action explanation"
+		study.update_block_ui()
+		await process_frame
+		await process_frame
+		study.block_detail_label.scroll_to_line(study.block_detail_label.get_line_count() - 1)
+		await process_frame
+		var hub_scroll: VScrollBar = study.block_detail_label.get_v_scroll_bar()
+		require(study.block_detail_label.size.y <= 31 and hub_scroll.value > 0 and is_equal_approx(hub_scroll.value, hub_scroll.max_value - hub_scroll.page), "full hub descriptions remain reachable in a bounded scroll area")
+		var old_scroll: float = hub_scroll.value
+		study.update_block_ui()
+		study.update_block_ui()
+		await process_frame
+		require(is_equal_approx(hub_scroll.value, old_scroll), "unchanged real detail preserves its reading position")
+		study.last_panel_dialogue = dialogue_before
+		study.update_block_ui()
+		require(study.block_detail_label.text == detail_before, "detail fixture restores the actual prior description")
+		if size.x == 1100:
+			study.block_west_btn.grab_focus()
+			root.size = Vector2i(320, 667)
+			await process_frame
+			await process_frame
+			require(study.block_hub_page == 1 and study.block_west_btn.has_focus() and study.block_west_btn.is_visible_in_tree(), "desktop-to-phone resize keeps the focused later-page action visible")
+			root.size = size
+			await process_frame
+			await process_frame
 		study.block_open_btn.grab_focus()
 		require(study.block_open_btn.has_focus(), "block Open button focus available")
 		accept = InputEventAction.new()
@@ -2555,3 +2726,38 @@ func verify_scene_overlay_bounds(study: Node, context: String) -> void:
 		for previous in occupied:
 			require(not rect.intersects(previous), "caption clears other text: " + context)
 		occupied.append(rect)
+
+# Linear geometry oracle preserves the pre-index implementation for parity checks.
+func reference_building_containing_point(study, pt: Vector2) -> String:
+	for idx in range(study.current_buildings.size()):
+		if not study.current_building_rects[idx].has_point(pt):
+			continue
+		var b: Dictionary = study.current_buildings[idx]
+		for polygon in b.polygons:
+			if study.is_point_in_building_polygon(pt, polygon):
+				return b.id
+	return ""
+
+
+func reference_min_wall_distance(study, pt: Vector2, cutoff: float = INF) -> float:
+	var best := cutoff
+	for idx in range(study.current_buildings.size()):
+		if best < INF:
+			if not study.current_building_rects[idx].grow(best).has_point(pt):
+				continue
+		elif study.rect_distance_2d(study.current_building_rects[idx], pt) >= best:
+			continue
+		var b: Dictionary = study.current_buildings[idx]
+		for polygon in b.polygons:
+			for ring in polygon.rings:
+				var r_size: int = ring.size()
+				for i in range(r_size):
+					var p0: Array = ring[i]
+					var p1: Array = ring[(i + 1) % r_size]
+					var d: float = study.dist_to_segment_2d(pt, Vector2(p0[0], p0[1]), Vector2(p1[0], p1[1]))
+					if d < best:
+						best = d
+						if cutoff < INF:
+							return best
+	return best
+

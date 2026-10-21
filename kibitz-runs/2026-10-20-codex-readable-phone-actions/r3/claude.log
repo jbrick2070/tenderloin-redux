@@ -1,0 +1,18 @@
+STDOUT:
+I wrote the review to `kibitz-runs/2026-10-20-codex-readable-phone-actions/r3/claude.md`; it's the only file I created or changed. File reads worked, so the tool check passed.
+
+**Verdict: yes-with-fixes.** The paging, callback order, Close handling and hiding the hub in conversation mode all work as the plan describes. Three things should be fixed before building:
+
+1. **The suggested next step can be hidden on phones.** The hub always reopens on page 0. For 5 of the 9 objectives (mural, soundcheck, Black Hawk, civic, film), the gold suggested-step button is on page 2 or 3, so phone players don't see it when the hub opens. Before this change all 12 actions were visible, so this is a regression. The fix is to open on the page that contains the suggested button.
+2. **The native test checks the panel bounds against a stale rectangle.** It measures the panel once before paging (`study_test.gd:2383`) and reuses that measurement on every page. The check that the panel doesn't overlap the walking controls also runs only once. On phones the panel has about 2 px of spare height, so a page that overflows could still pass.
+3. **Title-fit checks only cover the button labels that exist at test time.** Longer state labels, such as "Soundcheck w/ Rook (OK)" or "District Border: Off", are never measured, and those are the ones likely to overflow.
+
+The review also has 8 should-fix items, mostly test gaps:
+- Keyboard focus can land on a hidden button, after which the arrow keys walk the player while the panel is open.
+- The 13-button array quietly treats the last button as Close.
+- The page announcement and "detail scroll kept when unchanged" behaviour are never tested.
+- The browser test hard-codes layout numbers instead of reading them from the game, and doesn't check that the mouse wheel leaves the camera zoom alone.
+
+I couldn't confirm the "Godot 4.7.2" claim from the repo, because `project.godot` only says "4.7".
+
+None of the GitHub, Linear, Slack, Asana, Atlassian, Datadog, Notion, PagerDuty, Box or Runway connectors can be used until they're authorized. The claude.ai connectors are authorized in your claude.ai connector settings; the others through `/mcp` or `claude mcp` in an interactive session. This review didn't need any of them.

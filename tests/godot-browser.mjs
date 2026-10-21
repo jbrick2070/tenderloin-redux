@@ -975,7 +975,85 @@ try {
     await page.waitForFunction(() => !window.__tenderloinGodotA11ySnapshot?.player_grounding.path_active);
     assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), resumeSave, 'route start and Stop preserve saved progress');
     assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.save.v1')), resumeLegacySave);
-    const explorationEvidence = { defaultMusicOnVerified: true, runningAudioContextVerified: true, touchMusicToggleVerified: true, readableRewardAndGuideVerified: true, inspectionResumeVerified: true, walkingStopControlVerified: true, compactHeaderHeight: startup.header_control.height, compactInfoToggleVerified: true, startupOrientationVerified: true, findMeAndMapVerified: true, rewardSoundsAndMuteVerified: true, persistentProgressVerified: true, surpriseDiscoveryVerified: true, surpriseKeepsakeReloadVerified: true, chapter6ConversationVerified: true, sessionLandmarkTourVerified: true, fullSaveBytes: Buffer.byteLength(saveBeforeTour, 'utf8') };
+    // Review the secondary action hub using actual paging, wheel and button input.
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('KeyG');
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.block_panel_control.visible && window.__tenderloinGodotA11ySnapshot?.block_hub_actions.length > 0);
+    const openedHub = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+    if (openedHub.viewport_width < 600) {
+      for (let priorPage = openedHub.block_hub_page; priorPage > 0; priorPage--) {
+        await clickHeaderControl('block_page_previous');
+        await page.waitForFunction(expected => window.__tenderloinGodotA11ySnapshot?.block_hub_page === expected, priorPage - 1);
+      }
+    }
+    const hubSave = await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1'));
+    const hubOrigin = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.player_grounding);
+    const hubSeen = [];
+    for (let hubPage = 0; hubPage < (openedHub.viewport_width < 600 ? openedHub.block_hub_pages : 1); hubPage++) {
+      await page.waitForFunction(expected => window.__tenderloinGodotA11ySnapshot?.block_hub_page === expected, hubPage);
+      const fresh = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.ui_frame);
+      await page.waitForFunction(frame => window.__tenderloinGodotA11ySnapshot?.ui_frame > frame, fresh);
+      const hub = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+      assert.equal(hub.block_hub_actions.length, size.width < 600 ? 4 : 12);
+      assert.ok(hub.block_close_control.visible, 'Close stays visible on every page');
+      for (const action of [...hub.block_hub_actions, hub.block_close_control]) {
+        assert.ok(action.width >= 44 && action.height >= 44, 'hub controls have 44px targets');
+        assert.ok(action.x >= hub.block_panel_control.x && action.y >= hub.block_panel_control.y && action.x + action.width <= hub.block_panel_control.x + hub.block_panel_control.width + 1 && action.y + action.height <= hub.block_panel_control.y + hub.block_panel_control.height + 1, 'hub controls stay inside the bounded panel');
+      }
+      for (const action of hub.block_hub_actions) {
+        assert.equal(action.text_fits, true, `complete title fits: ${action.text}`);
+        hubSeen.push(action.id);
+      }
+      assert.ok(hub.block_panel_control.y >= hub.header_control.y + hub.header_control.height && hub.block_panel_control.y + hub.block_panel_control.height <= hub.controls_control.y, 'hub preserves header and walking controls');
+      await page.screenshot({ path: `artifacts/godot-${size.width}-action-page-${hubPage + 1}.png` });
+      if (size.width < 600 && hubPage < openedHub.block_hub_pages - 1) await clickHeaderControl('block_page_next');
+    }
+    assert.deepEqual(hubSeen, Array.from({ length: 12 }, (_, i) => i), 'every hub action remains reachable in order');
+    assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), hubSave, 'paging does not change progress');
+    if (size.width < 600) {
+      await clickHeaderControl('block_page_next');
+      await page.waitForTimeout(100);
+      assert.equal((await page.evaluate(() => window.__tenderloinGodotA11ySnapshot)).block_hub_page, 2, 'Next clamps at the final page');
+      await clickHeaderControl('block_page_previous');
+      await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.block_hub_page === 1);
+      const longDetail = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+      assert.match(longDetail.block_detail_text, /Imported browser v1 save:/, 'the real imported-save fixture supplies a long description');
+      assert.ok(longDetail.block_detail_scroll_max > longDetail.block_detail_scroll_page, 'long real hub details remain scrollable');
+      const hubCanvas = await page.locator('#canvas').boundingBox();
+      await page.mouse.move(hubCanvas.x + (longDetail.block_detail_control.x + longDetail.block_detail_control.width / 2) * hubCanvas.width / longDetail.viewport_width, hubCanvas.y + (longDetail.block_detail_control.y + longDetail.block_detail_control.height / 2) * hubCanvas.height / longDetail.viewport_height);
+      await page.mouse.wheel(0, 600);
+      await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.block_detail_scroll_value > 0);
+      const scrolledHub = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+      assert.equal(scrolledHub.camera_view_size, longDetail.camera_view_size, 'reading details does not zoom the camera');
+      assert.equal(scrolledHub.player_grounding.x, hubOrigin.x);
+      assert.equal(scrolledHub.player_grounding.z, hubOrigin.z);
+      await page.screenshot({ path: `artifacts/godot-${size.width}-action-detail-scroll.png` });
+    }
+    await clickHeaderControl('block_close_control');
+    await page.waitForFunction(() => !window.__tenderloinGodotA11ySnapshot?.block_panel_control.visible);
+    assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), hubSave, 'paging, reading and closing leave progress unchanged');
+    // Activate a real action from the final phone page, then restore its prior setting.
+    await page.keyboard.press('KeyG');
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.block_panel_control.visible);
+    const reopenedHub = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+    if (reopenedHub.viewport_width < 600) {
+      for (let nextPage = reopenedHub.block_hub_page + 1; nextPage < reopenedHub.block_hub_pages; nextPage++) {
+        await clickHeaderControl('block_page_next');
+        await page.waitForFunction(expected => window.__tenderloinGodotA11ySnapshot?.block_hub_page === expected, nextPage);
+      }
+    }
+    const districtBeforeHub = await page.evaluate(() => JSON.parse(localStorage.getItem('tenderloin-redux.godot.save.v1')).district_boundary_visible);
+    for (const districtWanted of [!districtBeforeHub, districtBeforeHub]) {
+      const actionSnap = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+      const districtAction = actionSnap.block_hub_actions.find(a => a.id === 10);
+      assert.ok(districtAction?.visible, 'final-page district action remains visible');
+      const actionCanvas = await page.locator('#canvas').boundingBox();
+      await page.mouse.click(actionCanvas.x + (districtAction.x + districtAction.width / 2) * actionCanvas.width / actionSnap.viewport_width, actionCanvas.y + (districtAction.y + districtAction.height / 2) * actionCanvas.height / actionSnap.viewport_height);
+      await page.waitForFunction(value => JSON.parse(localStorage.getItem('tenderloin-redux.godot.save.v1')).district_boundary_visible === value, districtWanted);
+    }
+    await clickHeaderControl('block_close_control');
+    await page.waitForFunction(() => !window.__tenderloinGodotA11ySnapshot?.block_panel_control.visible);
+    const explorationEvidence = { readableHubActionsVerified: true, boundedHubDetailsVerified: true, defaultMusicOnVerified: true, runningAudioContextVerified: true, touchMusicToggleVerified: true, readableRewardAndGuideVerified: true, inspectionResumeVerified: true, walkingStopControlVerified: true, compactHeaderHeight: startup.header_control.height, compactInfoToggleVerified: true, startupOrientationVerified: true, findMeAndMapVerified: true, rewardSoundsAndMuteVerified: true, persistentProgressVerified: true, surpriseDiscoveryVerified: true, surpriseKeepsakeReloadVerified: true, chapter6ConversationVerified: true, sessionLandmarkTourVerified: true, fullSaveBytes: Buffer.byteLength(saveBeforeTour, 'utf8') };
     runs.push({ ...explorationEvidence, viewport: size, overviewBytes: before.length, selectedBytes: after.length, neighborBytes: neighbor.length, muralBytes: muralShot.length, musicBytes: musicShot.length, blockBytes: blockShot.length, blackhawkBytes: blackhawkShot.length, wideBytes: wideShot.length, keyboardActivationVerified: true, neighborWalkVerified: true, muralSaveReloadVerified: true, rookMusicAuditionVerified: true, blockCompletionVerified: true, widerTenderloinVerified: true, m1EpilogueVerified: true, m3HostingVerified: true, m4CivicFilmVerified: true, m5VoicesIsolatedVerified: true, m6KeepsakeSvgExportVerified: true, m6PerfBudgetVerified: true, perfSnapshot: perfSnap, browserSaveImportVerified: true, domA11yLiveVerified: true });
     await context.close();
   }

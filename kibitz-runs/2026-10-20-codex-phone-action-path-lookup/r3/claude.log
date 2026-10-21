@@ -1,0 +1,25 @@
+STDOUT:
+My verdict is **yes-with-fixes**; the full review is in `kibitz-runs/2026-10-20-codex-phone-action-path-lookup/r3/claude.md`. I could read the repo, so the tool check passed. I didn't edit any other file.
+
+**Must fix before build:**
+- **Run the pending gates.** The plan itself says the final five gates haven't run. This round was triggered by the 390px browser gate (298.5 and 333.6ms against the 250ms limit). The only new timing is native: 102–128ms versus 174–215ms for the reference. If the browser speeds up by the same ratio, that's roughly 180–200ms, but that projection is my estimate, not a measurement. Run all three browser sizes on the final tree.
+
+**Should fix:**
+- **A\* parity isn't pinned by any committed test.** The only evidence is the ignored log, which covers one route. The committed route tests only check that walks stay outside buildings and arrive, so a changed tie order would pass them.
+  - I couldn't run git, so I couldn't see the baseline `find_path`. Check whether it already used swap-and-pop removal (`git show e82b6a9:godot/main.gd`).
+  - Or commit that route's exact waypoints and 2222 expanded cells as a test.
+- **The speedup quietly depends on a hard-coded value.** A\* cells use 0.65 + 0.15 = 0.80m clearance, and the building bins only apply up to 1.0m. If either value grows, pathfinding silently falls back to the slow full scan. One test assertion would catch that.
+- **The parity samples don't deliberately test the edge cases.**
+  - No sample is placed just across a 32m bucket line from a building's bounding box.
+  - No sample sits on a single-axis bucket edge.
+  - The claim that holes are covered isn't backed by any sample inside a courtyard.
+- **Use exact equality in the distance comparisons.** The oracle and the new code run identical float operations, so `is_equal_approx` only hides possible differences.
+
+**Checked and correct:**
+- Bucket keys use `floori`, so negative coordinates work.
+- Each building is registered in every bucket its expanded box touches, including the far edge, so lookups can't miss it.
+- Building order and the early-return behaviour of `min_wall_distance` are unchanged.
+- Everything that asks whether a point is inside a building or near a wall runs after `build_current_buildings()` at startup.
+- The open-list swap-removal updates the moved cell's index correctly, including when the removed cell is the last one.
+
+Separately, several MCP servers (asana, atlassian, datadog, github, linear, notion, pagerduty, slack, Box, Runway) need authorization before they can be used. Connect them in your claude.ai connector settings or through `/mcp` in an interactive session. I didn't need any of them for this review.

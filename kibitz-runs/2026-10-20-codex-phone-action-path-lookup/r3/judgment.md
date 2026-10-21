@@ -1,0 +1,11 @@
+# Focused performance judgment
+One exact claude-opus-5-5/high r3 call here, rc0, yes-with-fixes. Source unchanged during review. Combined checkpoint has two scoped calls to the same independent partner: initial UI and this performance tail, with no larger panel. Post-review refinements receive driver grounding and all five gates.
+
+MUST HOLDS: native timings cannot replace the failed390px browser gate. Keep250ms unchanged; all final native/export/check/104Node/browser gates must pass at all3 sizes before commit. Preserve both298.5ms and333.6ms failed measurements.
+SHOULD1 CONFIRMED/FIXED: baseline e82b6a9 find_path already swaps open_set[best_idx] with back then pops. Candidate retains that order and strict< comparison; parallel priorities and moved-cell indices preserve tie order. Added committed exact3-waypoint/2222-expanded-cell regression to supplement physical safety checks and the ignored same-process baseline comparison.
+SHOULD2 FIXED: name WALK_CELL_EXTRA_CLEARANCE_M and assert total A* clearance is within the indexed1m bound. Larger cutoffs still use the original linear fallback.
+SHOULD3/4/5 FIXED: add single-axis bucket-edge ±epsilon points across each grown footprint, verified interior points from triangulated actual courtyard rings, and exact == comparisons against original linear containment/wall oracles. Keep finite1.01 and unbounded fallback checks. No geometry is changed by sampling.
+CONFIRMED: negative floor keys, inclusive bucket registration, ordered building indices, builder lifecycle before runtime queries, and genuine cold cell cache. Static bounds acceleration is not prewarming cell passability. min_wall_distance still performs original exact segment/ring tests and preserves finite-cutoff first-hit order.
+OPTIONAL: keep the cheap invalidation/far-point safety cases. No runtime debug invariant inside the hot loop; committed route parity and external behavior checks provide coverage without affecting measurements. Rare unbounded fallback allocation can be profiled separately if needed.
+
+The last additions strengthen tests and name an existing numeric constant; no route policy, geometry, threshold, save schema or provenance change. Final logs/verification bind the resulting source. No second review within this tail campaign; r1/r2/r4 omitted.

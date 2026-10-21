@@ -1,0 +1,27 @@
+{
+  "kind": "alternating native same-process comparison with instrumentation",
+  "baseline_commit": "e82b6a92290386fd492f9c92ee4fe4fbe680508a",
+  "candidate_main_sha256": "089fcb4da06987ac7aef6f5e7b8086132c045bb7a752685c92f86ca825262a8e",
+  "cold_cell_cache_each_call": true,
+  "reference_usec": [
+    174535,
+    178412,
+    181740,
+    214723
+  ],
+  "candidate_usec": [
+    127712,
+    114015,
+    102962,
+    102136
+  ],
+  "reference_median_usec": 180076.0,
+  "candidate_median_usec": 108488.5,
+  "exact_route": "[(11.1, 24.97), (-6.0, 10.0), (-424.5, 62.5)]",
+  "expanded_each": 2222,
+  "walk_checks_each": 3933,
+  "log_sha256": "e9e4cde6aa4c3584e0e3c209a633904f8cdb4545ad2d2b5c080e77d62cc475d1",
+  "harness_sha256": "0d644b79fdad27b92303b03ff59e0937a724ffa329de0d448b9c1bec1fdfd080",
+  "reference_study_sha256": "be6f0297b4bd3d30d6496c820685c6c168aed5225d38de87461778f041657fc6",
+  "limit": "One instrumented native route; browser gates and general human experience are separate."
+}

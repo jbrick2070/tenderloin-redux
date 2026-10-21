@@ -1,0 +1,1 @@
+Explicit creator-scoped r3 only; r1/r2/r4 omitted. Driver/judge Codex, one Claude reviewer. --driver codex --only claude --round r3; exact claude-opus-5-5/high. No larger panel, substitution, purchase or blind auth/quota retry. Source/anchor recorded before fanout. review_scope.md SHA256 fa73ae335ed984fe141abf443f7540bad0863ee312f8e4839201aef7c2c8dd7c

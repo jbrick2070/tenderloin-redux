@@ -1,0 +1,222 @@
+{
+  "verified_at_utc": "2026-10-21T04:09:09.265126+00:00",
+  "baseline": "e82b6a92290386fd492f9c92ee4fe4fbe680508a",
+  "automation": {
+    "id": "build-tenderloin-redux",
+    "status": "ACTIVE",
+    "interval_minutes": 30,
+    "end_time": null,
+    "old_cutoff_superseded": true
+  },
+  "source_sha256": {
+    "godot/main.gd": "c68b857918819d726bb009b79541e61b406dae2d6552acba357f7fbd1e5f9208",
+    "godot/tests/study_test.gd": "30d377586be4d1a3bada2c8b46d35d8621d86abdd577821612d9021d2a84bd61",
+    "tests/godot-browser.mjs": "97d903586ee89c8f0984abb8db499b405be7a9b3e17317c49bcf613e15a03a76"
+  },
+  "all_five_gates_after_final_source_change": true,
+  "gates": [
+    {
+      "command": "npm.cmd run godot:test",
+      "exit_code": 0,
+      "log": {
+        "path": "artifacts/phone-actions-native-reviewed.log",
+        "sha256": "8075a75f1c5c25e181103c73e85159943e314a0c80ff94dc371b555781226b21",
+        "bytes": 12195,
+        "modified_utc": "2026-10-21T03:55:54.783638+00:00"
+      }
+    },
+    {
+      "command": "npm.cmd run godot:export",
+      "exit_code": 0,
+      "log": {
+        "path": "artifacts/phone-actions-export-reviewed.log",
+        "sha256": "77bbe5abafd44045c22fb807d2a1c5f69bdee4f7a79bc459bc8a5c8ce7dff476",
+        "bytes": 2404,
+        "modified_utc": "2026-10-21T03:55:57.936556+00:00"
+      }
+    },
+    {
+      "command": "npm.cmd run check",
+      "exit_code": 0,
+      "log": {
+        "path": "artifacts/phone-actions-check-reviewed.log",
+        "sha256": "bbbf642933db0755ec1b063caec7667a16966ea1db64dadab1526709e88e5537",
+        "bytes": 1337,
+        "modified_utc": "2026-10-21T03:56:02.197219+00:00"
+      }
+    },
+    {
+      "command": "npm.cmd test",
+      "exit_code": 0,
+      "log": {
+        "path": "artifacts/phone-actions-node-reviewed.log",
+        "sha256": "a82aa7ce74b6479a5ebaef868aebafdd92ef4b60503a4ab3b9dc3e027cbf4d58",
+        "bytes": 10800,
+        "modified_utc": "2026-10-21T03:56:14.498056+00:00"
+      }
+    },
+    {
+      "command": "npm.cmd run godot:browser",
+      "exit_code": 0,
+      "log": {
+        "path": "artifacts/phone-actions-browser-reviewed.log",
+        "sha256": "c46fab21979304e7879d0ebfa1f229f53791dd25786fe45a020ae4f46695e91e",
+        "bytes": 36572,
+        "modified_utc": "2026-10-21T04:03:04.362859+00:00"
+      }
+    }
+  ],
+  "node_tests": 104,
+  "browser_report": {
+    "path": "artifacts/godot-browser.json",
+    "sha256": "e1190b7ebf4b921400138fcbd37705b673c5e7c1f31bfad3b801dc17231610ad",
+    "bytes": 39066,
+    "modified_utc": "2026-10-21T04:03:04.360811+00:00"
+  },
+  "errors": [],
+  "external": [],
+  "viewports": [
+    {
+      "viewport": {
+        "width": 1100,
+        "height": 760
+      },
+      "startup_header_height": 98,
+      "readable_hub_actions": true,
+      "bounded_details": true,
+      "pathfind_ms": 100.1,
+      "full_save_bytes": 1728,
+      "performance_save_bytes": 1535
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 667
+      },
+      "startup_header_height": 94,
+      "readable_hub_actions": true,
+      "bounded_details": true,
+      "pathfind_ms": 164.2,
+      "full_save_bytes": 1728,
+      "performance_save_bytes": 1535
+    },
+    {
+      "viewport": {
+        "width": 320,
+        "height": 667
+      },
+      "startup_header_height": 94,
+      "readable_hub_actions": true,
+      "bounded_details": true,
+      "pathfind_ms": 118.1,
+      "full_save_bytes": 1728,
+      "performance_save_bytes": 1535
+    }
+  ],
+  "native_geometry_parity": {
+    "samples": 2423,
+    "finite_cutoffs": [
+      0.1,
+      0.7,
+      1.0,
+      1.01
+    ],
+    "exact_equality": true,
+    "unbounded_samples": 3,
+    "actual_courtyard_interiors": 20,
+    "route_exact_waypoints": 3,
+    "route_expanded_cells": 2222
+  },
+  "export": {
+    "path": "artifacts/godot-web/index.pck",
+    "sha256": "e4f5e2f5c4b4fda4741adf13daa63a8f5a4cf849f852ffa397c6d8965b7aa68e",
+    "bytes": 1655604,
+    "modified_utc": "2026-10-21T03:55:57.926557+00:00"
+  },
+  "public_version": "0.12.0",
+  "public_fingerprint": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567",
+  "legacy_product_save_v1": "read-only",
+  "review": {
+    "partner_families": 1,
+    "calls": 2,
+    "rounds_each": [
+      "r3"
+    ],
+    "selected_model_each": "claude-opus-5-5",
+    "effort_each": "high",
+    "exit_codes": [
+      0,
+      0
+    ],
+    "verdicts": [
+      "yes-with-fixes",
+      "yes-with-fixes"
+    ],
+    "source_unchanged_during_each": true,
+    "post_review_fixes": "driver grounded; all five final gates; no third external call",
+    "quota_usage": "unknown",
+    "ui_review_folder": "kibitz-runs/2026-10-20-codex-readable-phone-actions/r3",
+    "performance_followup_folder": "kibitz-runs/2026-10-20-codex-phone-action-path-lookup/r3"
+  },
+  "screenshots_inspected": [
+    {
+      "path": "artifacts/godot-1100-action-page-1.png",
+      "sha256": "b89a5bc561f6c89aaa2ff53cf6d4bb346207660b2cafc314ff2ef8320ee9be9c",
+      "bytes": 237978,
+      "modified_utc": "2026-10-21T03:58:43.889055+00:00"
+    },
+    {
+      "path": "artifacts/godot-390-action-page-2.png",
+      "sha256": "a358b211f38bac4065d61e777faa5cb9ac4fa7049038ed782f2d79b084f6324a",
+      "bytes": 109301,
+      "modified_utc": "2026-10-21T04:00:45.135361+00:00"
+    },
+    {
+      "path": "artifacts/godot-390-action-detail-scroll.png",
+      "sha256": "785da48bb267391b0ddd2b74eb6e0136a0330528080f3bce821787b85f7b5929",
+      "bytes": 101195,
+      "modified_utc": "2026-10-21T04:00:47.736751+00:00"
+    },
+    {
+      "path": "artifacts/godot-320-action-page-1.png",
+      "sha256": "0f72845dec4851e5404f293465298ef9a8d967edcbbeb77cf31e7a1f9cb5ac63",
+      "bytes": 101865,
+      "modified_utc": "2026-10-21T04:02:58.206929+00:00"
+    },
+    {
+      "path": "artifacts/godot-320-action-page-2.png",
+      "sha256": "3ece11fb3e18c54751fba3b755e276621eb5533cb2fe2b6faa61d42724988fa0",
+      "bytes": 102561,
+      "modified_utc": "2026-10-21T04:02:59.237227+00:00"
+    },
+    {
+      "path": "artifacts/godot-320-action-page-3.png",
+      "sha256": "3b3cc184d3432e4e269caf866471cd0b8889244716a90e24f040433a678dea83",
+      "bytes": 95271,
+      "modified_utc": "2026-10-21T04:03:00.272719+00:00"
+    },
+    {
+      "path": "artifacts/godot-320-inspection-resume-walk.png",
+      "sha256": "7fc72f9c66e2cdf18c6a6e0259e6627ec909351658b9eb1abd04aca6810dd12f",
+      "bytes": 87431,
+      "modified_utc": "2026-10-21T04:02:57.184979+00:00"
+    }
+  ],
+  "live_preview": {
+    "path": "artifacts/codex-phone-actions-live-preview.png",
+    "sha256": "443ec5298aa1b6e6f83b7c9902a5ddf70eda807dec779680086b9c63420f93e8",
+    "bytes": 64275,
+    "modified_utc": "2026-10-21T04:07:02.554151+00:00"
+  },
+  "preserved_failure_evidence": [
+    "artifacts/phone-actions-browser-performance-failure.json",
+    "artifacts/phone-actions-browser-performance-repeat-failure.json",
+    "artifacts/phone-actions-browser-caption-failure.json"
+  ],
+  "limits": [
+    "Only1100x760/390x667/320x667 browser viewports verified; inspect intermediate widths next",
+    "Physical phones/full screen readers/human listening/pacing/comfort unverified",
+    "Remaining mural/music subtitle readability is separate",
+    "No deployment; full roadmap unfinished"
+  ]
+}

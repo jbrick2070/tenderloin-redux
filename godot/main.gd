@@ -446,6 +446,10 @@ var all_building_rects: Array[Rect2] = []
 # replaced, plus the additions from data/lidar_2023.json. all_buildings stays the 188 city records.
 var current_buildings: Array = []
 var current_building_rects: Array[Rect2] = []
+var walk_building_bins: Dictionary = {}
+const WALK_BUILDING_BIN_M := 32.0
+const WALK_BUILDING_INDEX_CLEARANCE_M := 1.0
+const WALK_CELL_EXTRA_CLEARANCE_M := 0.15
 var lidar_source: Dictionary = {}
 var lidar_roofs: Dictionary = {}
 var lidar_superseded: Dictionary = {}
@@ -608,7 +612,7 @@ var history_read := false
 var blackhawk_discovered := false
 var block_panel: PanelContainer
 var block_label: Label
-var block_detail_label: Label
+var block_detail_label: RichTextLabel
 var block_buttons: Array[Button] = []
 var block_next_btn: Button
 var block_mural_btn: Button
@@ -767,7 +771,14 @@ var block_panel_mode := "hub"
 var opening_conversation := false
 var talk_partner := -1
 var conv_rows: Array[HBoxContainer] = []
-var block_action_rows: Array[HBoxContainer] = []
+var block_actions_grid: GridContainer
+var block_page_nav: HBoxContainer
+var block_page_prev: Button
+var block_page_next: Button
+var block_close_btn: Button
+var block_hub_page := 0
+const BLOCK_ACTIONS_PER_PAGE := 4
+const BLOCK_ACTION_COUNT := 12
 var conv_buttons: Array[Button] = []
 var conv_chat_btn: Button
 var conv_next_btn: Button
@@ -1343,6 +1354,7 @@ func build_current_buildings() -> void:
 		addition_materials.append(a_mesh.material_override)
 		current_buildings.append(rec)
 		current_building_rects.append(built.rect)
+	rebuild_walk_building_bins()
 
 ## Raised roof parts measured by the 2023 LiDAR: flat-topped blocks from the 2010 median roof up to
 ## the measured height, with a window row per storey on tall walls. Returns the parts drawn.
@@ -6456,6 +6468,8 @@ func run_conversation_action_id(act_id: String) -> bool:
 			return cycle_neighborhood_surprise(next_undiscovered_surprise_for_neighbor(talk_partner))
 		"hub":
 			block_panel_mode = "hub"
+			var suggested := hub_button_for_objective(String(current_objective().get("id", "")))
+			block_hub_page = maxi(0, block_buttons.find(suggested)) / BLOCK_ACTIONS_PER_PAGE
 			show_block_panel(true)
 		_:
 			return false
@@ -6463,18 +6477,20 @@ func run_conversation_action_id(act_id: String) -> bool:
 
 func apply_block_panel_mode() -> void:
 	var talk := block_panel_mode == "talk" and talk_partner >= 0
+	var prior_focus := get_viewport().gui_get_focus_owner()
 	for r in conv_rows:
 		if r != null:
 			r.visible = talk
-	for r in block_action_rows:
-		if r != null:
-			r.visible = not talk
-	if block_detail_label != null:
-		block_detail_label.clip_text = not talk
-		block_detail_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if talk else TextServer.AUTOWRAP_OFF
-		block_detail_label.max_lines_visible = 2 if talk else -1
+	if block_actions_grid != null:
+		block_actions_grid.visible = not talk
+	if block_page_nav != null:
+		block_page_nav.visible = not talk
+	if not talk:
+		layout_block_action_pages()
 	if not talk:
 		apply_hub_guidance()
+		if block_panel.visible and (prior_focus == null or prior_focus in conv_buttons):
+			block_buttons[block_hub_page * BLOCK_ACTIONS_PER_PAGE].grab_focus()
 	if talk:
 		var narrow := is_narrow_layout()
 		var acts := conversation_actions()
@@ -6493,6 +6509,40 @@ func apply_block_panel_mode() -> void:
 			conv_next_btn.text = "Next Step" if narrow else "What's Next?"
 		if conv_bye_btn != null:
 			conv_bye_btn.text = "Goodbye" if narrow else "Goodbye (Esc)"
+
+func block_action_page_count() -> int:
+	return maxi(1, ceili(float(BLOCK_ACTION_COUNT) / BLOCK_ACTIONS_PER_PAGE))
+
+func layout_block_action_pages() -> void:
+	if block_actions_grid == null:
+		return
+	var narrow := is_narrow_layout()
+	var count := block_action_page_count()
+	block_hub_page = clampi(block_hub_page, 0, count - 1)
+	block_actions_grid.columns = 2 if narrow else 6
+	for i in range(mini(BLOCK_ACTION_COUNT, block_buttons.size())):
+		block_buttons[i].visible = not narrow or i / BLOCK_ACTIONS_PER_PAGE == block_hub_page
+	block_page_prev.visible = narrow
+	block_page_next.visible = narrow
+	block_page_prev.disabled = block_hub_page == 0
+	block_page_next.disabled = block_hub_page == count - 1
+	block_page_prev.text = "Previous"
+	block_page_next.text = "Next %d/%d" % [mini(block_hub_page + 2, count), count]
+	block_close_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL if narrow else Control.SIZE_SHRINK_END
+	block_close_btn.custom_minimum_size.x = 44.0 if narrow else 94.0
+	if narrow:
+		block_label.text = "Block Actions · %d/%d · Sparks: %d" % [block_hub_page + 1, count, spark_count()]
+
+func change_block_action_page(step: int) -> void:
+	if block_panel_mode != "hub" or block_panel == null or not block_panel.visible or not is_narrow_layout():
+		return
+	var next := clampi(block_hub_page + step, 0, block_action_page_count() - 1)
+	if next == block_hub_page:
+		return
+	block_hub_page = next
+	layout_block_action_pages()
+	block_buttons[block_hub_page * BLOCK_ACTIONS_PER_PAGE].grab_focus()
+	announce_a11y_status("Block actions page %d of %d. %s" % [block_hub_page + 1, block_action_page_count(), block_buttons[block_hub_page * BLOCK_ACTIONS_PER_PAGE].text])
 
 func conv_button(parent: Node, text: String, action: Callable) -> Button:
 	var control := Button.new()
@@ -6542,7 +6592,7 @@ func update_guide_arrow() -> void:
 	if dir.length_squared() < 1e-4:
 		guide_arrow.visible = false
 		return
-	var inset := area.grow(-26.0)
+	var inset := area.grow(-27.0)
 	var half := inset.size * 0.5
 	var t := minf(half.x / maxf(absf(dir.x), 1e-4), half.y / maxf(absf(dir.y), 1e-4))
 	guide_arrow.position = center + dir * t
@@ -6554,10 +6604,10 @@ func update_guide_arrow() -> void:
 	guide_arrow_label.text = "%s · %d m" % [arrow_title, int(round(dist))]
 	var lbl_size := guide_arrow_label.get_minimum_size()
 	guide_arrow_label.size = lbl_size
-	var lbl_pos := -dir.normalized() * 36.0 - lbl_size * 0.5
+	var lbl_pos := -dir.normalized() * 37.0 - lbl_size * 0.5
 	var lbl_global := guide_arrow.position + lbl_pos
-	lbl_global.x = clampf(lbl_global.x, area.position.x + 6.0, maxf(area.position.x + 6.0, area.end.x - lbl_size.x - 6.0))
-	lbl_global.y = clampf(lbl_global.y, area.position.y + 6.0, maxf(area.position.y + 6.0, area.end.y - lbl_size.y - 6.0))
+	lbl_global.x = clampf(lbl_global.x, area.position.x + 7.0, maxf(area.position.x + 7.0, area.end.x - lbl_size.x - 7.0))
+	lbl_global.y = clampf(lbl_global.y, area.position.y + 7.0, maxf(area.position.y + 7.0, area.end.y - lbl_size.y - 7.0))
 	# Keep the outlined objective name clear of the Talk prompt and transient UI.
 	var occupied: Array[Rect2] = []
 	if reward_banner != null and reward_banner.is_visible_in_tree():
@@ -6571,17 +6621,17 @@ func update_guide_arrow() -> void:
 	occupied.append(Rect2(guide_arrow.position - Vector2(20.0, 20.0), Vector2(40.0, 40.0)))
 	var candidates: Array[Vector2] = [lbl_global]
 	for reserved in occupied:
-		candidates.append(Vector2(lbl_global.x, reserved.position.y - lbl_size.y - 6.0))
-		candidates.append(Vector2(lbl_global.x, reserved.end.y + 6.0))
-		candidates.append(Vector2(reserved.position.x - lbl_size.x - 6.0, lbl_global.y))
-		candidates.append(Vector2(reserved.end.x + 6.0, lbl_global.y))
+		candidates.append(Vector2(lbl_global.x, reserved.position.y - lbl_size.y - 7.0))
+		candidates.append(Vector2(lbl_global.x, reserved.end.y + 7.0))
+		candidates.append(Vector2(reserved.position.x - lbl_size.x - 7.0, lbl_global.y))
+		candidates.append(Vector2(reserved.end.x + 7.0, lbl_global.y))
 	for i in range(candidates.size()):
-		candidates[i].x = clampf(candidates[i].x, area.position.x + 6.0, maxf(area.position.x + 6.0, area.end.x - lbl_size.x - 6.0))
-		candidates[i].y = clampf(candidates[i].y, area.position.y + 6.0, maxf(area.position.y + 6.0, area.end.y - lbl_size.y - 6.0))
+		candidates[i].x = clampf(candidates[i].x, area.position.x + 7.0, maxf(area.position.x + 7.0, area.end.x - lbl_size.x - 7.0))
+		candidates[i].y = clampf(candidates[i].y, area.position.y + 7.0, maxf(area.position.y + 7.0, area.end.y - lbl_size.y - 7.0))
 	candidates.sort_custom(func(a: Vector2, b: Vector2) -> bool: return (a + lbl_size * 0.5).distance_squared_to(guide_arrow.position) < (b + lbl_size * 0.5).distance_squared_to(guide_arrow.position))
 	guide_arrow_label.visible = false
 	for candidate in candidates:
-		var rect := Rect2(candidate, lbl_size).grow(6.0)
+		var rect := Rect2(candidate, lbl_size).grow(7.0)
 		if not area.encloses(rect):
 			continue
 		var clear := true
@@ -7168,8 +7218,26 @@ func history_stop_pos_3d(stop_id: String) -> Vector3:
 	var xz := history_stop_xz(stop_id)
 	return Vector3(xz.x, 0.0, xz.y)
 
+func walk_building_bin(pt: Vector2) -> Vector2i:
+	return Vector2i(floori(pt.x / WALK_BUILDING_BIN_M), floori(pt.y / WALK_BUILDING_BIN_M))
+
+func rebuild_walk_building_bins() -> void:
+	walk_building_bins.clear()
+	cell_walkable_cache.clear()
+	# Buckets are only a conservative filter; exact polygons and wall distances still decide.
+	for idx in range(current_building_rects.size()):
+		var bounds := current_building_rects[idx].grow(WALK_BUILDING_INDEX_CLEARANCE_M)
+		var first := walk_building_bin(bounds.position)
+		var last := walk_building_bin(bounds.end)
+		for bx in range(first.x, last.x + 1):
+			for by in range(first.y, last.y + 1):
+				var key := Vector2i(bx, by)
+				if not walk_building_bins.has(key):
+					walk_building_bins[key] = []
+				walk_building_bins[key].append(idx) # Preserve authoritative building order.
+
 func building_containing_point(pt: Vector2) -> String:
-	for idx in range(current_buildings.size()):
+	for idx in walk_building_bins.get(walk_building_bin(pt), []):
 		if not current_building_rects[idx].has_point(pt):
 			continue
 		var b: Dictionary = current_buildings[idx]
@@ -7191,7 +7259,8 @@ func rect_distance_2d(rect: Rect2, pt: Vector2) -> float:
 
 func min_wall_distance(pt: Vector2, cutoff: float = INF) -> float:
 	var best := cutoff
-	for idx in range(current_buildings.size()):
+	var candidates: Array = walk_building_bins.get(walk_building_bin(pt), []) if cutoff <= WALK_BUILDING_INDEX_CLEARANCE_M else range(current_buildings.size())
+	for idx in candidates:
 		if best < INF:
 			if not current_building_rects[idx].grow(best).has_point(pt):
 				continue
@@ -7367,7 +7436,7 @@ func find_path(start_xz: Vector2, goal_xz: Vector2) -> Array[Vector2]:
 		return Vector2(float(c.x) * step, float(c.y) * step)
 	var is_cell_passable := func(c: Vector2i) -> bool:
 		if not cell_walkable_cache.has(c):
-			cell_walkable_cache[c] = is_walkable_point(cell_to_world.call(c), WALK_CLEARANCE_M + 0.15)
+			cell_walkable_cache[c] = is_walkable_point(cell_to_world.call(c), WALK_CLEARANCE_M + WALK_CELL_EXTRA_CLEARANCE_M)
 		return cell_walkable_cache[c]
 	var s_cell: Vector2i = snap_pt.call(safe_start)
 	var g_cell: Vector2i = snap_pt.call(safe_goal)
@@ -7386,25 +7455,29 @@ func find_path(start_xz: Vector2, goal_xz: Vector2) -> Array[Vector2]:
 				g_cell = g_cell + d
 				break
 	var open_set: Array[Vector2i] = [s_cell]
-	var in_open: Dictionary = {s_cell: true}
+	# Keep priorities beside their cells; scanning no longer hashes every open cell.
+	var open_priority: Array[float] = [Vector2(s_cell - g_cell).length()]
+	var in_open: Dictionary = {s_cell: 0}
 	var closed_set: Dictionary = {}
 	var g_score: Dictionary = {s_cell: 0.0}
-	var f_score: Dictionary = {s_cell: Vector2(s_cell - g_cell).length()}
 	var parent: Dictionary = {s_cell: null}
 	var found := false
 	var reached_cell := s_cell
 	var expanded := 0
 	while not open_set.is_empty() and expanded < max_cells:
 		var best_idx := 0
-		var best_f := float(f_score.get(open_set[0], INF))
+		var best_f := open_priority[0]
 		for idx_o in range(1, open_set.size()):
-			var cand_f := float(f_score.get(open_set[idx_o], INF))
+			var cand_f := open_priority[idx_o]
 			if cand_f < best_f:
 				best_f = cand_f
 				best_idx = idx_o
 		var cur: Vector2i = open_set[best_idx]
 		open_set[best_idx] = open_set.back()
+		open_priority[best_idx] = open_priority.back()
+		in_open[open_set[best_idx]] = best_idx
 		open_set.pop_back()
+		open_priority.pop_back()
 		in_open.erase(cur)
 		closed_set[cur] = true
 		expanded += 1
@@ -7426,10 +7499,13 @@ func find_path(start_xz: Vector2, goal_xz: Vector2) -> Array[Vector2]:
 			if not g_score.has(nxt) or tentative_g < float(g_score[nxt]):
 				parent[nxt] = cur
 				g_score[nxt] = tentative_g
-				f_score[nxt] = tentative_g + Vector2(nxt - g_cell).length()
-				if not in_open.has(nxt):
+				var priority := tentative_g + Vector2(nxt - g_cell).length()
+				if in_open.has(nxt):
+					open_priority[int(in_open[nxt])] = priority
+				else:
+					in_open[nxt] = open_set.size()
 					open_set.append(nxt)
-					in_open[nxt] = true
+					open_priority.append(priority)
 	last_astar_expanded_cells = expanded
 	if not found:
 		return []
@@ -10736,6 +10812,21 @@ func measure_local_performance() -> Dictionary:
 		"within_budget": budget_ok
 	}
 
+func block_action_snapshots() -> Array[Dictionary]:
+	var actions: Array[Dictionary] = []
+	for i in range(mini(BLOCK_ACTION_COUNT, block_buttons.size())):
+		var btn := block_buttons[i]
+		if btn.is_visible_in_tree():
+			var entry := control_snapshot(btn)
+			entry["id"] = i
+			entry["text"] = btn.text
+			var style := btn.get_theme_stylebox("normal")
+			var text_box := btn.size - style.get_minimum_size()
+			var text_size := btn.get_theme_font("font").get_multiline_string_size(btn.text, HORIZONTAL_ALIGNMENT_CENTER, text_box.x, btn.get_theme_font_size("font_size"), -1, TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE)
+			entry["text_fits"] = text_size.y <= text_box.y + 1.0 and text_size.x <= text_box.x + 1.0
+			actions.append(entry)
+	return actions
+
 func control_snapshot(control: Control) -> Dictionary:
 	if control == null:
 		return {}
@@ -10817,6 +10908,19 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"header_details_expanded": header_details_expanded,
 		"progress_text": progress_label.text if progress_label != null else "",
 		"conversation_header": block_label.text if block_label != null else "",
+		"block_panel_control": control_snapshot(block_panel),
+		"controls_control": control_snapshot(controls),
+		"block_hub_page": block_hub_page,
+		"block_hub_pages": block_action_page_count(),
+		"block_page_previous": control_snapshot(block_page_prev),
+		"block_page_next": control_snapshot(block_page_next),
+		"block_close_control": control_snapshot(block_close_btn),
+		"block_detail_control": control_snapshot(block_detail_label),
+		"block_detail_text": block_detail_label.text if block_detail_label != null else "",
+		"block_detail_scroll_max": block_detail_label.get_v_scroll_bar().max_value if block_detail_label != null else 0.0,
+		"block_detail_scroll_value": block_detail_label.get_v_scroll_bar().value if block_detail_label != null else 0.0,
+		"block_detail_scroll_page": block_detail_label.get_v_scroll_bar().page if block_detail_label != null else 0.0,
+		"block_hub_actions": block_action_snapshots(),
 		"reward_sounds_enabled": reward_sounds_enabled,
 		"reward_audio_unlocked": reward_audio_unlocked,
 		"reward_sound_count": reward_sound_count,
@@ -13488,6 +13592,8 @@ func show_block_panel(visible_flag: bool) -> void:
 		block_panel_mode = "talk" if opening_conversation and talk_partner >= 0 else "hub"
 		if not was_vis:
 			last_panel_dialogue = ""
+			var suggested := hub_button_for_objective(String(current_objective().get("id", "")))
+			block_hub_page = maxi(0, block_buttons.find(suggested)) / BLOCK_ACTIONS_PER_PAGE
 		if mural_panel != null:
 			mural_panel.visible = false
 		if music_panel != null:
@@ -13649,7 +13755,10 @@ func update_block_ui() -> void:
 			base_detail = "The Turk Street block party is open! Choose a conversation or neighborhood activity below:"
 		else:
 			base_detail = "Walk up to any neighbor (1–5) to talk! Still needed to open the block party: %s" % get_block_missing_summary()
-		block_detail_label.text = base_detail if browser_import_message.is_empty() else ("%s · %s" % [base_detail, browser_import_message])
+		var detail := base_detail if browser_import_message.is_empty() else ("%s · %s" % [base_detail, browser_import_message])
+		if block_detail_label.text != detail:
+			block_detail_label.text = detail
+			block_detail_label.scroll_to_line(0)
 	if block_open_btn != null:
 		if block_opened:
 			block_open_btn.text = "Party Open! (View)"
@@ -13957,10 +14066,13 @@ func make_ui() -> void:
 	block_label.add_theme_font_size_override("font_size", 16)
 	block_label.add_theme_color_override("font_color", Color("ffe082"))
 	block_vbox.add_child(block_label)
-	block_detail_label = Label.new()
-	block_detail_label.clip_text = true
-	block_detail_label.add_theme_font_size_override("font_size", 14)
-	block_detail_label.add_theme_color_override("font_color", Color("f2ead8"))
+	block_detail_label = RichTextLabel.new()
+	block_detail_label.custom_minimum_size.y = 30
+	block_detail_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	block_detail_label.scroll_active = true
+	block_detail_label.focus_mode = Control.FOCUS_ALL
+	block_detail_label.add_theme_font_size_override("normal_font_size", 14)
+	block_detail_label.add_theme_color_override("default_color", Color("f2ead8"))
 	block_vbox.add_child(block_detail_label)
 	block_buttons.clear()
 	conv_buttons.clear()
@@ -13982,32 +14094,32 @@ func make_ui() -> void:
 		conv_action_btns.append(conv_button(c_row2, "...", func(): run_conversation_action(slot_i)))
 	conv_rows.append(c_row1)
 	conv_rows.append(c_row2)
-	var b_row1 := HBoxContainer.new()
-	b_row1.add_theme_constant_override("separation", 4)
-	block_vbox.add_child(b_row1)
-	block_open_btn = block_button(b_row1, "Open Block Party", func(): open_block_gathering())
-	block_next_btn = block_button(b_row1, "Meet Next (5 left)", func(): visit_next_unvisited_neighbor())
-	block_epilogue_btn = block_button(b_row1, "Take Group Photo", func(): advance_epilogue_step())
-	block_programme_btn = block_button(b_row1, "Plan Party Schedule", func(): advance_programme_and_hosting_step())
-	var b_row2 := HBoxContainer.new()
-	b_row2.add_theme_constant_override("separation", 4)
-	block_vbox.add_child(b_row2)
-	block_mural_btn = block_button(b_row2, "Paint w/ Celeste (0/3)", func(): open_mural_from_block_panel())
-	block_rook_btn = block_button(b_row2, "Soundcheck w/ Rook", func(): request_rook_soundcheck())
-	block_west_btn = block_button(b_row2, "Walk to Black Hawk", func(): walk_to_or_read_history_stop("blackhawk"))
-	block_civic_btn = block_button(b_row2, "Hold Tenant Circle", func(): advance_civic_step())
-	var b_row3 := HBoxContainer.new()
-	b_row3.add_theme_constant_override("separation", 4)
-	block_vbox.add_child(b_row3)
-	block_film_btn = block_button(b_row3, "Shoot Short Film", func(): advance_film_step())
-	block_voices_btn = block_button(b_row3, "Read Local Stories", func(): toggle_voices_enabled())
-	block_district_btn = block_button(b_row3, "District Border: On", func(): toggle_district_boundary())
-	block_import_btn = block_button(b_row3, "Import Web Save", func(): import_browser_save_from_web_storage())
-	block_button(b_row3, "Step Back", func(): show_block_panel(false))
-	block_action_rows.clear()
-	block_action_rows.append(b_row1)
-	block_action_rows.append(b_row2)
-	block_action_rows.append(b_row3)
+	block_actions_grid = GridContainer.new()
+	block_actions_grid.add_theme_constant_override("h_separation", 4)
+	block_actions_grid.add_theme_constant_override("v_separation", 4)
+	block_vbox.add_child(block_actions_grid)
+	block_open_btn = block_button(block_actions_grid, "Open Block Party", func(): open_block_gathering())
+	block_next_btn = block_button(block_actions_grid, "Meet Next (5 left)", func(): visit_next_unvisited_neighbor())
+	block_epilogue_btn = block_button(block_actions_grid, "Take Group Photo", func(): advance_epilogue_step())
+	block_programme_btn = block_button(block_actions_grid, "Plan Party Schedule", func(): advance_programme_and_hosting_step())
+	block_mural_btn = block_button(block_actions_grid, "Paint w/ Celeste (0/3)", func(): open_mural_from_block_panel())
+	block_rook_btn = block_button(block_actions_grid, "Soundcheck w/ Rook", func(): request_rook_soundcheck())
+	block_west_btn = block_button(block_actions_grid, "Walk to Black Hawk", func(): walk_to_or_read_history_stop("blackhawk"))
+	block_civic_btn = block_button(block_actions_grid, "Hold Tenant Circle", func(): advance_civic_step())
+	block_film_btn = block_button(block_actions_grid, "Shoot Short Film", func(): advance_film_step())
+	block_voices_btn = block_button(block_actions_grid, "Read Local Stories", func(): toggle_voices_enabled())
+	block_district_btn = block_button(block_actions_grid, "District Border: On", func(): toggle_district_boundary())
+	block_import_btn = block_button(block_actions_grid, "Import Web Save", func(): import_browser_save_from_web_storage())
+	block_page_nav = HBoxContainer.new()
+	block_page_nav.alignment = BoxContainer.ALIGNMENT_END
+	block_page_nav.add_theme_constant_override("separation", 4)
+	block_vbox.add_child(block_page_nav)
+	block_page_prev = button(block_page_nav, "Previous", func(): change_block_action_page(-1))
+	block_page_next = button(block_page_nav, "Next", func(): change_block_action_page(1))
+	for nav in [block_page_prev, block_page_next]:
+		nav.custom_minimum_size.y = 44
+		nav.add_theme_font_size_override("font_size", 13)
+	block_close_btn = block_button(block_page_nav, "Close", func(): show_block_panel(false))
 	update_block_ui()
 
 	controls = GridContainer.new()
@@ -14052,6 +14164,10 @@ func make_ui() -> void:
 		if not is_instance_valid(controls) or not is_inside_tree():
 			return
 		var narrow := vp.get_visible_rect().size.x < 600
+		if narrow and block_panel.visible and block_panel_mode == "hub":
+			var focused_index := block_buttons.find(get_viewport().gui_get_focus_owner())
+			if focused_index >= 0 and focused_index < BLOCK_ACTION_COUNT:
+				block_hub_page = focused_index / BLOCK_ACTIONS_PER_PAGE
 		title_stack.visible = not narrow
 		music_toggle_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL if narrow else Control.SIZE_SHRINK_CENTER
 		sounds_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL if narrow else Control.SIZE_SHRINK_CENTER
@@ -14075,7 +14191,7 @@ func make_ui() -> void:
 		if is_instance_valid(block_label):
 			block_label.add_theme_font_size_override("font_size", 13 if narrow else 16)
 		if is_instance_valid(block_detail_label):
-			block_detail_label.add_theme_font_size_override("font_size", 12 if narrow else 14)
+			block_detail_label.add_theme_font_size_override("normal_font_size", 12 if narrow else 14)
 		var main_btn_font := 14 if narrow else 19
 		for child in controls.get_children():
 			if child is Button:
@@ -14107,7 +14223,7 @@ func make_ui() -> void:
 				update_music_ui()
 		if is_instance_valid(block_panel):
 			block_panel.offset_bottom = -176 if narrow else -130
-			block_panel.offset_top = -368 if narrow else -324
+			block_panel.offset_top = -368 if narrow else -336
 			update_block_ui()
 		layout_reward_banner()
 		if in_overview or in_wide_overview:
@@ -14185,7 +14301,8 @@ func music_button(parent: Node, text: String, action: Callable) -> Button:
 func block_button(parent: Node, text: String, action: Callable) -> Button:
 	var control := Button.new()
 	control.text = text
-	control.clip_text = true
+	control.clip_text = false
+	control.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	control.custom_minimum_size = Vector2(44, 44)
 	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	control.focus_mode = Control.FOCUS_ALL

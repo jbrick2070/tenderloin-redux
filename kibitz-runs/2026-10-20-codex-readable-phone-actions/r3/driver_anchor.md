@@ -1,0 +1,6 @@
+# Driver anchor
+VERDICT: yes-with-verification pending.
+MUST: all12 callbacks remain reachable once per page traversal; native actual ui_accept focuses first newly visible action; Close always reachable; paging no player/progress changes; final-page browser action actually toggles its saved setting and restoration. Preserve compact overlay composition, details diagnostics, and no scroll-to-walk/zoom leakage. Run all five gates and inspect meaningful screenshots.
+Source: layout_block_action_pages()/change_block_action_page() replace the old3 cramped HBox rows with a GridContainer; original callbacks/order preserved. apply_block_panel_mode() hides hub/nav in conversations. show_block_panel() resets page on newly opened panel. update_block_ui() only changes RichText content/reset scroll if the text changes. block_action_snapshots() derives actual font/title fit and visible control rectangles. Native first passes after fixing obsolete row assertions and desktop minimum panel height. Browser final gates pending.
+SHOULD: check whether text-fit height/width and long-state variations are sufficient, whether page focus/resize keeps keyboard navigation useful, and whether full details remain available without enlarging the hub.
+Explicit partial campaign: r3 only, r1/r2/r4 omitted. Sole judge Codex, one independent Claude lane.
