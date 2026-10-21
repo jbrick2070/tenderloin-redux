@@ -1,0 +1,9 @@
+# Final - short-landscape conversations and activities
+
+One bounded implementation round is verified and independently reviewed. Panels dock beside the scene at widths>=600/heights<560, keeping full two-line dialogue/details, original44px actions, persistent progress and useful real subject/player space. Info growth, long objectives, portrait/breakpoint rotation and manual intent are covered. Actual physical-phone/screen-reader/human acceptance remains open.
+
+All five final gates pass: native GODOT_STUDY_PASS with no errors/warnings; export; check;104 Node; actual browser1100x760,390x667,320x667 errors=[]/external=[].18 new real activity cases including6 finger,8 existing short hub cases,7 short story readers,2 queued reward paths and full representative progression remain. Full saves1728 bytes/performance fixture1535, all<=4096. Public fingerprint unchanged. Metrics and verification.json bind exact final source/docs/receipts/export/logs/captures.
+
+Exactly one independent CLI call: Kibitz driver codex, only claude, r3; exact selected claude-opus-5-5/high; rc0, TOOL CHECK PASS, yes-with-fixes. Scope/anchor predate fanout, source unchanged during review; driver grounded all claims and final follow-ups, reran all five gates after fixes. No second review/model substitution. Separate provider runtime model/usage not exposed; no fabricated receipt. r1/r2/r4 omitted by explicit creator scope. See judgment.md and source-comparison.json for accepted/misread findings and test/UTF-8/body-fitting corrections.
+
+Next evidence: actual read-only repository probes320x568 and599x360 still crowd/cover the player; preserve short-activity-next-narrow.* and fix those as the next bounded round. No new implementation slice begun. Keep30-minute automation ACTIVE, sole writer/lock ownership, AGY stood down, Claude improvement task paused; no deployment/outreach/paid media. Full roadmap unfinished.

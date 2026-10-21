@@ -3234,6 +3234,7 @@ func run() -> void:
 	await process_frame
 	require(study.info.visible and study.info.text.contains(solo_hint), "What's Next shows a visible answer away from neighbors")
 	study.set_header_details(false)
+	await verify_short_activity_panels(study)
 	study.clear_godot_save()
 	study.clear_godot_settings()
 	var legacy_settings := FileAccess.open(study.settings_path, FileAccess.WRITE)
@@ -3254,6 +3255,149 @@ func run() -> void:
 
 
 
+
+func verify_short_activity_panels(study: Node) -> void:
+	var original_player: Vector3 = study.player.position
+	var original_timer: float = study.objective_refresh_timer
+	study.hide_story_card()
+	study.current_path.clear()
+	study.music_error = ""
+	study.set_header_details(false, false)
+	for short_size in [Vector2i(600, 360), Vector2i(640, 360), Vector2i(667, 375), Vector2i(844, 390), Vector2i(800, 480), Vector2i(1100, 480)]:
+		root.size = short_size
+		await process_frame
+		await process_frame
+		for neighbor_idx in range(study.neighbors.size()):
+			var arrival: Vector2 = study.neighbor_xz(neighbor_idx) - study.nearest_street_tangent(study.neighbor_xz(neighbor_idx)) * 0.95
+			study.player.position = Vector3(arrival.x, 0, arrival.y)
+			study.show_conversation(neighbor_idx)
+			await process_frame
+			await process_frame
+			await process_frame
+			var actual_person: Vector3 = study.neighbors[neighbor_idx].pos + Vector3.UP
+			require(study.play_area_rect().has_point(study.camera.unproject_position(actual_person)), "all five actual neighbors remain visible in short conversation layouts")
+			study.show_block_panel(false)
+		for kind in ["conversation", "mural", "music"]:
+			study.hide_speech_bubble()
+			study.show_block_panel(false)
+			study.show_mural_panel(false)
+			study.show_music_panel(false)
+			var arrival: Vector2 = study.neighbor_xz(0) - study.nearest_street_tangent(study.neighbor_xz(0)) * 0.95
+			if kind == "mural":
+				arrival = study.mural_stand_xz()
+			elif kind == "music":
+				arrival = study.speaker_stand_xz()
+			study.player.position = Vector3(arrival.x, 0, arrival.y)
+			var panel: Control
+			var detail: RichTextLabel
+			var buttons: Array[Button]
+			var subject: Vector3
+			if kind == "conversation":
+				study.show_conversation(0)
+				panel = study.block_panel
+				detail = study.block_detail_label
+				buttons = study.conv_buttons
+				var pos: Vector3 = study.neighbors[0].pos
+				subject = Vector3(pos.x, 2.2, pos.z)
+			else:
+				if kind == "mural":
+					study.focus_mural_camera()
+					study.show_mural_panel(true)
+					panel = study.mural_panel
+					detail = study.mural_detail_label
+					buttons = study.mural_buttons
+					var pos: Vector3 = study.neighbors[study.celeste_index].pos
+					subject = Vector3((pos.x + study.MURAL_POS.x) * 0.5, 1.4, (pos.z + study.MURAL_POS.z) * 0.5)
+				else:
+					study.focus_speaker_camera()
+					study.show_music_panel(true)
+					panel = study.music_panel
+					detail = study.music_stem_label
+					buttons = study.music_buttons
+					var pos: Vector3 = study.neighbors[study.rook_index].pos
+					subject = Vector3((pos.x + study.ROOK_SPEAKER_POS.x) * 0.5, 1.2, (pos.z + study.ROOK_SPEAKER_POS.z) * 0.5)
+			study.objective_refresh_timer = 1000.0
+			study.objective_label.text = "Chapter 6: Explore the neighborhood · Next: Spot Jeffrey's Lost 1961 Record (0/10 surprises, Shift+D) · Museum (Shift+M)"
+			var full_text := 'Full original dialogue and source details. '.repeat(20) + 'FINAL readable line.'
+			study.set_activity_detail(detail, full_text)
+			await process_frame
+			await process_frame
+			await process_frame
+			var dock: Rect2 = panel.get_global_rect()
+			var scene: Rect2 = study.play_area_rect()
+			print("SHORT_ACTIVITY_CHECK ", short_size, " ", kind, " panel=", dock, " scene=", scene, " player=", study.player_overlay_rect())
+			require(dock.position.y >= study.header_panel.get_global_rect().end.y and dock.end.x <= short_size.x and dock.end.y <= short_size.y - 12, "short activity dock clears header and stays on-screen")
+			require(scene.size.x >= 250 and scene.size.y >= 100 and not dock.intersects(scene), "short activities leave useful scene space beside the dock")
+			require(scene.has_point(study.camera.unproject_position(subject)), "real conversation/activity subject is visible beside the dock")
+			require(study.player_overlay_rect().has_area() and scene.grow(1.0).encloses(study.player_overlay_rect()), "short arrival keeps the full enlarged player and YOU clear of controls under a two-line objective")
+			for point in study.panel_subject_snapshots():
+				require(not point.behind and scene.has_point(Vector2(point.x, point.y)), "actual activity person and prop both remain in the short scene")
+			var snap: Dictionary = study.activity_detail_snapshot(detail, panel, buttons)
+			for b in snap.buttons:
+				if b.visible:
+					require(b.width >= 44 and b.height >= 44 and b.text_fits and dock.encloses(Rect2(b.x, b.y, b.width, b.height)), "short activity full control label fits: " + b.text)
+			var font: Font = detail.get_theme_font("normal_font")
+			require(detail.size.y >= font.get_height(detail.get_theme_font_size("normal_font_size")) * 2, "short activity reader retains two actual font lines")
+			var before_pose: Array = study.panel_camera_pose()
+			var before_player: Vector3 = study.player.position
+			var before_save: String = JSON.stringify(study.build_save_envelope())
+			var bar: VScrollBar = detail.get_v_scroll_bar()
+			require(bar.max_value > bar.page, "short full dialogue really overflows the reader")
+			detail.grab_focus()
+			var drag := InputEventScreenDrag.new()
+			drag.position = detail.size * 0.5
+			drag.relative = Vector2(0, -12)
+			detail.emit_signal("gui_input", drag)
+			require(is_equal_approx(bar.value, 12.0), "short detail finger delta is applied exactly once")
+			bar.value = bar.max_value
+			await process_frame
+			require(bar.value + bar.page >= bar.max_value - 1 and detail.text.ends_with("FINAL readable line."), "short reader reaches the entire original final line")
+			require(before_pose == study.panel_camera_pose() and before_player == study.player.position and before_save == JSON.stringify(study.build_save_envelope()), "short activity reading preserves camera, player and progress")
+			# Explicit Info may grow the header, but must leave controls reachable.
+			study.set_header_details(true, false)
+			await process_frame
+			await process_frame
+			await process_frame
+			require(panel.get_global_rect().end.y <= short_size.y - 12 and study.play_area_rect().size.y >= 75, "short activity dock refits below deliberately opened Info")
+			require(panel.get_global_rect().position.y >= study.header_panel.get_global_rect().end.y and study.play_area_rect().has_point(study.camera.unproject_position(subject)), "Info growth moves dock below header and reframes the actual subject")
+			var info_font: Font = study.info.get_theme_font("normal_font")
+			require(study.info.size.y >= info_font.get_height(study.info.get_theme_font_size("normal_font_size")), "short deliberate Info retains a complete font line and scrolling")
+			study.set_header_details(false, false)
+			await process_frame
+			await process_frame
+			await process_frame
+			require(panel.get_global_rect().position.y >= study.header_panel.get_global_rect().end.y and study.play_area_rect().has_point(study.camera.unproject_position(subject)), "Info shrink also preserves header and subject clearance")
+			for boundary in [Vector2i(599, 667), Vector2i(600, 559), Vector2i(600, 560)]:
+				root.size = boundary
+				await process_frame
+				await process_frame
+				await process_frame
+				require(is_equal_approx(panel.anchor_left, 1.0 if boundary == Vector2i(600, 559) else 0.0) and study.play_area_rect().has_point(study.camera.unproject_position(subject)), "open activity crosses width/height dock boundaries with its real subject")
+			root.size = Vector2i(360, 640)
+			await process_frame
+			await process_frame
+			await process_frame
+			require(panel.anchor_left == 0.0 and study.play_area_rect().has_point(study.camera.unproject_position(subject)), "open portrait rotation undocks the panel and retains its actual subject")
+			root.size = short_size
+			await process_frame
+			await process_frame
+			await process_frame
+			require(panel.anchor_left == 1.0 and study.play_area_rect().has_point(study.camera.unproject_position(subject)), "rotating back restores the short dock and actual subject")
+			study.pan_camera_by_screen_delta(Vector2(9, 4))
+			var manual: Array = study.panel_camera_pose()
+			study.refit_panel_after_layout()
+			await process_frame
+			await process_frame
+			await process_frame
+			require(manual == study.panel_camera_pose(), "short activity refit preserves manual inspection intent")
+			study.show_block_panel(false)
+			study.show_mural_panel(false)
+			study.show_music_panel(false)
+			require(study.controls.offset_right == -12 and study.map_control.text == "Tenderloin Map", "closing short activity restores normal walking controls")
+	study.last_panel_dialogue = ""
+	study.player.position = original_player
+	study.objective_refresh_timer = original_timer
+	study.overview()
 
 func verify_scene_overlay_bounds(study: Node, context: String) -> void:
 	var occupied: Array[Rect2] = []

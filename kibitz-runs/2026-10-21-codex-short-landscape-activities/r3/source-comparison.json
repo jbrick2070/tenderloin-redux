@@ -1,0 +1,33 @@
+{
+  "before": {
+    "godot/main.gd": "504bec3c96e997f8bd06c6bff5bb42525dee070906ea832dd0975757344e50fc",
+    "godot/tests/study_test.gd": "5cc4fb11adc54f7f51452d2b062d9bc31a3f4a2555f15eb83685a1ee69dbccb5",
+    "tests/godot-browser.mjs": "46a16d777851293cdf1bf635b97824646bb123ec595efb422ad8dec3ff6cb130",
+    "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160"
+  },
+  "after_review": {
+    "godot/main.gd": "504bec3c96e997f8bd06c6bff5bb42525dee070906ea832dd0975757344e50fc",
+    "godot/tests/study_test.gd": "5cc4fb11adc54f7f51452d2b062d9bc31a3f4a2555f15eb83685a1ee69dbccb5",
+    "tests/godot-browser.mjs": "46a16d777851293cdf1bf635b97824646bb123ec595efb422ad8dec3ff6cb130",
+    "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160"
+  },
+  "unchanged_during_review": true,
+  "after_driver_fixes": {
+    "godot/main.gd": "dd07201ed1b86f2d6f7f8a6f13438db70fec8796efad7e7c00acf6471a9de36e",
+    "godot/tests/study_test.gd": "42bf6a58d87d05f7e3d94e122545cbd9829b38d44bab5d23dfda7a8e825db557",
+    "tests/godot-browser.mjs": "932bfba05bd8e497148b8a0ab92c1e22e95aff785ef1d21808e3de2347aa9285",
+    "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160"
+  },
+  "after_utf8_test_fix": {
+    "godot/main.gd": "dd07201ed1b86f2d6f7f8a6f13438db70fec8796efad7e7c00acf6471a9de36e",
+    "godot/tests/study_test.gd": "42bf6a58d87d05f7e3d94e122545cbd9829b38d44bab5d23dfda7a8e825db557",
+    "tests/godot-browser.mjs": "db324a80a24ac5bac46cf263d0a001a94b2ba3f0b2247c5dbdcee6eef0142dd9",
+    "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160"
+  },
+  "final_source": {
+    "godot/main.gd": "9fafc084202178b111b7edbe79e686be5c70212dd82cc1b328eab16b4dd3b7ee",
+    "godot/tests/study_test.gd": "6ad0d95e38767ac759299c5ca52d4a71985aac63afe190e0ae35d236f434ee38",
+    "tests/godot-browser.mjs": "3ef682efc54cead06ee9bec753d2c4918aa493dbf778679453d8d9ac9d2a889b",
+    "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160"
+  }
+}

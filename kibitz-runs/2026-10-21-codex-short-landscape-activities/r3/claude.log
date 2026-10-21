@@ -1,0 +1,16 @@
+STDOUT:
+I wrote the review to `kibitz-runs\2026-10-21-2026-10-21-codex-short-landscape-activities\r3\claude.md`. The verdict is **yes-with-fixes**: the dock layout code holds together, but two of the claims aren't proven by the new tests yet. I read the source, both test files and the brief, and I couldn't run git, so wherever a point depends on how the code looked at commit 4ef3d4f it's marked "verify:". I didn't run any tests.
+
+**Must-fix before freezing the source:**
+1. **Header growth is under-tested.** After opening Info, the native test (`godot/tests/study_test.gd:3334-3339`) only checks that the panel's bottom stays on screen. It never checks that the panel moved below the taller header, or that the person or activity is still in view. The panel only catches up through a callback that runs two frames later (`main.gd:14616-14622` and `8707-8719`), and that's exactly what isn't asserted.
+2. **Rotation coverage is missing the real phone case.** The browser test's only "rotation" goes from 640x360 to 800x600, which is still landscape. Turning a phone to 360x640 switches to the narrow layout, and no test reaches that with a panel open. The native suite has no rotation case at all.
+
+**Should-fix (main ones):**
+- **Panel height has no cap.** The docked panel grows to fit its content (`main.gd:6639-6641`). At 600x360 a two-line objective plus long action labels could push Close/Goodbye off the bottom of the screen, which strands touch users.
+- **Mural and music panels are framed before they appear.** As a result the camera code relies on a hard-coded `vp.y - 112` (`main.gd:8692`), and the camera visibly jumps two frames later when Info is open. Re-centring right after the panel is shown would remove both.
+- **Info is too short while a panel is docked.** It shrinks to 24px, which is less than the two lines of text the brief requires.
+- **Wrong reader in the screen-reader message.** In a conversation it still says "Full dialogue in the activity instructions."
+- **The 600px threshold is set in four separate places.** If one changes on its own, the original overlap bug comes back.
+- **The tests check the camera's aim point, not the people.** That point is one the code itself centres on, so the check nearly proves itself. They should check Celeste, the mural, Rook and the speaker directly, and run the conversation case for all five neighbours.
+
+Physical-phone, screen-reader and human-comfort acceptance are listed as unverified. The test runs that passed earlier are not the five required checks on the final code.

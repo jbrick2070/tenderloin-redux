@@ -28,6 +28,126 @@ await mkdir('artifacts', { recursive: true });
 let queuedActivityRewardChecks = 0;
 const shortStoryReadChecks = [];
 const shortHubChecks = [];
+const shortActivityChecks = [];
+
+async function verifyShortActivities(page, context, touch, checks) {
+  const snapshot = () => page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+  const settle = async () => { const s = await snapshot(); await page.waitForFunction(f => window.__tenderloinGodotA11ySnapshot.ui_frame > f + 3, s.ui_frame); };
+  async function tap(control) {
+    const s = await snapshot(), canvas = await page.locator('#canvas').boundingBox();
+    assert.ok(control.visible && control.width >= 44 && control.height >= 44, 'short activity target is visible and44px');
+    const x = canvas.x + (control.x + control.width / 2) * canvas.width / s.viewport_width;
+    const y = canvas.y + (control.y + control.height / 2) * canvas.height / s.viewport_height;
+    if (touch) await page.touchscreen.tap(x, y); else await page.mouse.click(x, y);
+    await settle();
+  }
+  const sizes = touch ? [[640, 360], [844, 390]] : [[600, 360], [640, 360], [800, 480], [1100, 480]];
+  await page.keyboard.press('KeyF');
+  for (const [width, height] of sizes) {
+    await page.setViewportSize({ width, height });
+    await settle();
+    for (const [kind, key, shortcut, hintId, closeId] of [['conversation', 'conversation_detail', 'Digit1', 1, 2], ['mural', 'mural_detail', 'KeyE', 7, 8], ['music', 'music_detail', 'KeyR', 5, 6]]) {
+      await page.keyboard.press(shortcut);
+      await page.waitForFunction(k => { const s = window.__tenderloinGodotA11ySnapshot; return s[k]?.panel.visible && !s.player_grounding.path_active; }, key, { timeout: 30000 });
+      await settle();
+      let s = await snapshot();
+      await tap(s[key].buttons.find(b => b.id === hintId));
+      s = await snapshot();
+      assert.ok(s[key].text.length > 20, 'requested hint remains visible in the reader');
+      for (let chat = 0; chat < 5 && (s[key].scroll_max <= s[key].scroll_page || s[key].text.length <= 100); chat++) {
+        const before = await page.evaluate(() => JSON.parse(localStorage.getItem('tenderloin-redux.godot.save.v1')));
+        await tap(s[key].buttons.find(b => b.id === (kind === 'music' ? 2 : 0)));
+        const after = await page.evaluate(() => JSON.parse(localStorage.getItem('tenderloin-redux.godot.save.v1')));
+        const next = await snapshot();
+        if (kind === 'mural') assert.equal(after.celeste_talk_count, before.celeste_talk_count + 1, 'actual Chat advances once');
+        else if (kind === 'conversation') assert.equal(Number(next.conversation_header.match(/Turn (\d)/)[1]), Number(s.conversation_header.match(/Turn (\d)/)[1]) % 5 + 1, 'actual Chat advances one visible turn');
+        else assert.notEqual(next[key].text, s[key].text, 'actual Rook Chat changes the complete line');
+        s = await snapshot();
+      }
+      const d = s[key], a = s.play_area, p = d.panel, subject = s.panel_subject_screen;
+      assert.equal(s.side_panel_dock, true);
+      assert.equal(s.header_details_expanded, false, 'full dialogue is in the panel reader');
+      assert.ok(a.width >= 250 && a.height >= 100 && p.x >= a.x + a.width && p.y >= s.header_control.y + s.header_control.height && p.y + p.height <= height - 12, 'dock clears header and keeps useful scene space');
+      assert.ok(subject.x >= a.x && subject.x <= a.x + a.width && subject.y >= a.y && subject.y <= a.y + a.height, 'actual person or activity is framed in the remaining scene');
+      const body = s.overlays.player;
+      assert.ok(body.width > 0 && body.height > 0 && body.x >= a.x - 1 && body.y >= a.y - 1 && body.x + body.width <= a.x + a.width + 1 && body.y + body.height <= a.y + a.height + 1, 'full enlarged player and YOU clear short activity controls');
+      assert.equal(s.panel_subject_points.length, kind === 'conversation' ? 1 : 2);
+      for (const point of s.panel_subject_points) assert.ok(!point.behind && point.x >= a.x && point.x <= a.x + a.width && point.y >= a.y && point.y <= a.y + a.height, 'actual person and prop both remain visible');
+      for (const b of d.buttons.filter(b => b.visible)) assert.ok(b.width >= 44 && b.height >= 44 && b.text_fits && b.x >= p.x && b.y >= p.y && b.x + b.width <= p.x + p.width + 1 && b.y + b.height <= p.y + p.height + 1, `complete short action fits: ${b.text}`);
+      for (const b of s.walking_controls) assert.ok(b.width >= 44 && b.height >= 44 && b.text_fits && b.x + b.width <= p.x, 'walking controls stay beside the dock');
+      assert.ok(d.scroll_max > d.scroll_page && d.text.length > 100, 'real requested hint or Chat line exercises complete scrolling');
+      const save = await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1'));
+      const canvas = await page.locator('#canvas').boundingBox();
+      const x = canvas.x + (d.control.x + d.control.width / 2) * canvas.width / width;
+      const y = canvas.y + (d.control.y + d.control.height - 4) * canvas.height / height;
+      if (touch) {
+        const cdp = await context.newCDPSession(page), travel = (d.control.height - 8) * canvas.height / height;
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 0 }] });
+        for (let step = 1; step <= 4; step++) {
+          await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - travel * step / 4, id: 0 }] });
+          await page.waitForTimeout(20);
+        }
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+        await cdp.detach();
+        await page.waitForFunction(k => window.__tenderloinGodotA11ySnapshot[k].scroll_value > 0, key);
+      }
+      await page.mouse.move(x, y - d.control.height / 2);
+      for(let wheel=0;wheel<32;wheel++) {
+        await page.mouse.wheel(0,400);await settle();const now=(await snapshot())[key];
+        if(Math.abs(now.scroll_value+now.scroll_page-now.scroll_max)<1)break;
+      }
+      await page.waitForFunction(k=>{const d=window.__tenderloinGodotA11ySnapshot[k];return Math.abs(d.scroll_value+d.scroll_page-d.scroll_max)<1;},key,{timeout:10000});
+      await page.mouse.click(x,y-d.control.height/2);
+      const bottom=(await snapshot())[key].scroll_value;
+      await page.keyboard.press('PageUp');
+      await page.waitForFunction(({key,bottom})=>window.__tenderloinGodotA11ySnapshot[key].scroll_value<bottom,{key,bottom},{timeout:10000});
+      const up=(await snapshot())[key].scroll_value;
+      await page.keyboard.press('PageDown');
+      await page.waitForFunction(({key,up})=>window.__tenderloinGodotA11ySnapshot[key].scroll_value>up,{key,up},{timeout:10000});
+      await settle();
+      const read = await snapshot();
+      assert.equal(read[key].text, d.text);
+      assert.deepEqual(read.camera_pose, s.camera_pose, 'reading never pans or rotates');
+      assert.equal(read.camera_view_size, s.camera_view_size);
+      assert.equal(read.player_grounding.x, s.player_grounding.x);
+      assert.equal(read.player_grounding.z, s.player_grounding.z);
+      assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), save, 'reading does not alter progress');
+      await page.screenshot({ path: `artifacts/codex-short-activity-${kind}-${width}x${height}-${touch ? 'touch' : 'mouse'}.png` });
+      await writeFile(`artifacts/codex-short-activity-${kind}-${width}x${height}-${touch ? 'touch' : 'mouse'}.json`, JSON.stringify(read, null, 2));
+      checks.push({ kind, width, height, touch, scene: a, panel: p });
+      for (const expanded of [true, false]) {
+        await tap((await snapshot()).info_control);
+        const grown = await snapshot(), dock = grown[key].panel, area = grown.play_area;
+        assert.equal(grown.header_details_expanded, expanded);
+        assert.ok(dock.y >= grown.header_control.y + grown.header_control.height && dock.y + dock.height <= height - 12, 'Info growth and shrink keep the entire dock on-screen');
+        for (const point of grown.panel_subject_points) assert.ok(point.x >= area.x && point.x <= area.x + area.width && point.y >= area.y && point.y <= area.y + area.height, 'Info refit retains actual person and prop');
+      }
+      // Rotate with the activity open; automatic framing follows layout, manual pan does not.
+      if (width === 640) {
+        for (const rotated of [{ width: 360, height: 640 }, { width: 599, height: 667 }, { width: 600, height: 559 }, { width: 600, height: 560 }, { width: 800, height: 600 }, { width, height }]) {
+          await page.setViewportSize(rotated);
+          await settle();
+          const r = await snapshot(), point = r.panel_subject_screen, area = r.play_area;
+          assert.ok(point.x >= area.x && point.x <= area.x + area.width && point.y >= area.y && point.y <= area.y + area.height, 'rotation retains the actual activity subject');
+        }
+        const pan = await snapshot(), area = pan.play_area, cv = await page.locator('#canvas').boundingBox();
+        await page.mouse.move(cv.x + (area.x + area.width * 0.4) * cv.width / width, cv.y + (area.y + area.height * 0.8) * cv.height / height);
+        await page.mouse.down(); await page.mouse.move(cv.x + (area.x + area.width * 0.4 + 20) * cv.width / width, cv.y + (area.y + area.height * 0.8 + 10) * cv.height / height, { steps: 4 }); await page.mouse.up();
+        await settle();
+        const manual = await snapshot();
+        assert.notDeepEqual(manual.camera_pose, pan.camera_pose, 'real scene drag pans the camera');
+        await page.setViewportSize({ width: 667, height: 375 }); await settle();
+        assert.deepEqual((await snapshot()).camera_pose, manual.camera_pose, 'resize respects manual camera inspection');
+        await page.setViewportSize({ width, height }); await settle();
+      }
+      const close = (await snapshot())[key].buttons.find(b => b.id === closeId);
+      assert.match(close.text, /^(Close|Goodbye)$/);
+      await tap(close);
+      await page.waitForFunction(k => !window.__tenderloinGodotA11ySnapshot[k].panel.visible, key);
+      assert.equal((await snapshot()).controls_control.width, width - 24, 'Close restores full walking controls');
+    }
+  }
+}
 let shortStartClicked = false;
 let shortStartTouchClicked = false;
 const browser = await chromium.launch({ channel: 'chrome', headless: true, ignoreDefaultArgs: ['--autoplay-policy=no-user-gesture-required'], args: ['--autoplay-policy=user-gesture-required'] });
@@ -1507,6 +1627,7 @@ try {
       assert.equal(shortStill.player_grounding.z, shortStopped.player_grounding.z);
       assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), shortSave, 'Map/Find Me/Stop keep progress');
       await page.screenshot({ path: `artifacts/codex-short-hub-stopped-${touchHub ? 'touch' : 'mouse'}.png` });
+      await verifyShortActivities(page, context, touchHub, shortActivityChecks);
     }
     await context.close();
   }
@@ -1518,7 +1639,8 @@ try {
   assert.equal(shortStoryReadChecks.length, 7, 'all required short startup reading cases executed');
   assert.equal(shortStoryReadChecks.filter(r => r.touch).length, 2, 'both emulated short-phone reading cases use real touch input');
   assert.equal(shortHubChecks.length, 8, 'six mouse and two touch short hub cases exercised');
-  console.log(JSON.stringify({ runs, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
+  assert.equal(shortActivityChecks.length, 18, 'twelve mouse and six finger short activity reading cases exercised');
+  console.log(JSON.stringify({ runs, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
 } catch (error) {
   if (latestPage && !latestPage.isClosed()) {
     await latestPage.screenshot({ path: 'artifacts/godot-browser-failure.png' });
