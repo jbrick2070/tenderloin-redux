@@ -3234,6 +3234,7 @@ func run() -> void:
 	await process_frame
 	require(study.info.visible and study.info.text.contains(solo_hint), "What's Next shows a visible answer away from neighbors")
 	study.set_header_details(false)
+	await verify_narrow_hub(study)
 	await verify_short_activity_panels(study)
 	await verify_short_activity_panels(study, true)
 	study.clear_godot_save()
@@ -3256,6 +3257,113 @@ func run() -> void:
 
 
 
+
+func verify_narrow_hub(study: Node) -> void:
+	var original_player: Vector3 = study.player.position
+	var original_timer: float = study.objective_refresh_timer
+	study.hide_story_card()
+	study.current_path.clear()
+	study.hide_speech_bubble()
+	study.set_header_details(false, false)
+	for hub_size in [Vector2i(320, 568), Vector2i(390, 568), Vector2i(360, 600), Vector2i(520, 568), Vector2i(560, 360), Vector2i(599, 360), Vector2i(560, 568), Vector2i(599, 639)]:
+		root.size = hub_size
+		var arrival: Vector2 = study.neighbor_xz(0) - study.nearest_street_tangent(study.neighbor_xz(0)) * 0.95
+		study.player.position = Vector3(arrival.x, 0, arrival.y)
+		study.show_conversation(0)
+		for frame in range(4):
+			await process_frame
+		var save: String = JSON.stringify(study.build_save_envelope())
+		var zoom: float = study.view_size
+		require(study.run_conversation_action_id("hub"), "real conversation action opens narrow hub")
+		study.block_hub_page = 0
+		study.layout_block_action_pages()
+		study.objective_refresh_timer = 1000.0
+		study.objective_label.text = "Chapter 6: Explore the neighborhood · Next: Spot Jeffrey's Lost 1961 Record (0/10 surprises, Shift+D) · Museum (Shift+M)"
+		for frame in range(5):
+			await process_frame
+		require(study.following_player and study.uses_compact_activity_controls(), "automatically framed conversation hands off to a compact followed-player hub")
+		var seen: Array[int] = []
+		for page in range(3):
+			for frame in range(3):
+				await process_frame
+			var panel: Rect2 = study.block_panel.get_global_rect()
+			var area: Rect2 = study.play_area_rect()
+			print("NARROW_HUB_CHECK ", hub_size, " page=", page, " panel=", panel, " scene=", area, " body=", study.player_overlay_rect())
+			require(panel.position.y >= study.header_panel.get_global_rect().end.y + 7 and panel.end.y <= hub_size.y - 11 and not panel.intersects(study.controls.get_global_rect()), "narrow hub clears header and walking controls")
+			require(area.size.x >= 200 and area.size.y >= 100 and area.grow(1).encloses(study.player_overlay_rect()), "narrow hub leaves full enlarged player and YOU in useful scene space")
+			for action in study.block_action_snapshots():
+				seen.append(int(action.id))
+				require(action.text_fits and action.width >= 44 and action.height >= 44, "narrow hub complete original action is readable and44px")
+			for nav in [study.block_page_prev, study.block_page_next, study.block_close_btn]:
+				require(panel.encloses(nav.get_global_rect()) and nav.size.x >= 44 and nav.size.y >= 44, "narrow hub page and Close controls remain reachable")
+			for walking in study.walking_control_snapshots():
+				require(walking.text_fits and walking.width >= 44 and walking.height >= 44, "narrow hub walking labels fit44px targets")
+			if page < 2:
+				study.change_block_action_page(1)
+				require(study.block_buttons[(page + 1) * 4].has_focus(), "narrow hub paging focuses a newly visible action")
+		require(seen == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], "all twelve narrow hub actions remain reachable")
+		if hub_size == Vector2i(320, 568):
+			var changing: Button = study.block_buttons[study.block_hub_page * 4]
+			var caption: String = changing.text
+			var panel_height: float = study.block_panel.size.y
+			changing.text = "First line\nSecond line\nThird line"
+			for frame in range(6):
+				await process_frame
+			require(study.block_panel.size.y > panel_height and study.block_panel.get_global_rect().end.y + 7 <= study.controls.get_global_rect().position.y and study.block_panel.get_global_rect().position.y >= study.header_panel.get_global_rect().end.y + 7, "deferred hub content growth stays between header and walking controls")
+			print("NARROW_HUB_GROW panel=", study.block_panel.get_global_rect(), " scene=", study.play_area_rect(), " body=", study.player_overlay_rect(), " pending=", study.compact_panel_layout_pending)
+			require(study.play_area_rect().grow(1).encloses(study.player_overlay_rect()) and not study.compact_panel_layout_pending, "deferred hub growth retains full followed player without a pending loop")
+			changing.text = caption
+			for frame in range(6):
+				await process_frame
+			require(absf(study.block_panel.size.y - panel_height) < 1 and study.play_area_rect().grow(1).encloses(study.player_overlay_rect()) and not study.compact_panel_layout_pending, "deferred hub shrink restores size and followed player")
+		study.block_voices_btn.grab_focus()
+		for boundary in [Vector2i(559, 568), Vector2i(560, 559), Vector2i(560, 568), Vector2i(599, 639), Vector2i(599, 640), Vector2i(600, 360), hub_size]:
+			root.size = boundary
+			for frame in range(4):
+				await process_frame
+			require(study.block_hub_page == 2 and study.block_voices_btn.has_focus() and study.block_voices_btn.is_visible_in_tree(), "narrow open hub breakpoints preserve the focused later-page action")
+			require(study.block_panel.get_global_rect().position.y >= study.header_panel.get_global_rect().end.y and not study.block_panel.get_global_rect().intersects(study.controls.get_global_rect()), "narrow open hub breakpoints keep header and walking targets clear")
+			require(study.play_area_rect().grow(1).encloses(study.player_overlay_rect()), "open narrow hub breakpoint retains full player and YOU")
+		study.block_detail_label.scroll_to_line(1000)
+		await process_frame
+		var bar: VScrollBar = study.block_detail_label.get_v_scroll_bar()
+		require(bar.value + bar.page >= bar.max_value - 1, "complete narrow hub description reaches its final line")
+		study.set_header_details(true, false)
+		for frame in range(4):
+			await process_frame
+		require(study.info.size.y >= study.info.get_theme_font("normal_font").get_height(study.info.get_theme_font_size("normal_font_size")) and study.block_panel.get_global_rect().position.y >= study.header_panel.get_global_rect().end.y + 7 and study.block_panel.get_global_rect().end.y <= hub_size.y - 11, "narrow hub Info keeps a measured full font line and reachable Close")
+		study.set_header_details(false, false)
+		study.show_block_panel(false)
+		for frame in range(3):
+			await process_frame
+		require(study.controls.columns == 2 and study.controls.offset_top == -174 and study.controls.offset_right == -12 and study.map_control.text == "Tenderloin Map", "Close restores the full narrow walking grid")
+		require(JSON.stringify(study.build_save_envelope()) == save and study.view_size == zoom, "narrow hub paging reading and Info preserve progression and zoom")
+		study.show_conversation(0)
+		for frame in range(3):
+			await process_frame
+		study.pan_camera_by_screen_delta(Vector2(9, 4))
+		var manual: Array = study.panel_camera_pose()
+		study.run_conversation_action_id("hub")
+		for frame in range(5):
+			await process_frame
+		require(study.panel_camera_pose() == manual and not study.following_player, "manual conversation inspection survives All Actions")
+		study.show_block_panel(false)
+	root.size = Vector2i(640, 360)
+	study.show_conversation(0)
+	for frame in range(4):
+		await process_frame
+	var wider_conversation_pose: Array = study.panel_camera_pose()
+	study.run_conversation_action_id("hub")
+	for frame in range(4):
+		await process_frame
+	require(not study.following_player and study.panel_camera_pose() == wider_conversation_pose, "completed wider conversation-to-hub camera behavior remains unchanged")
+	study.show_block_panel(false)
+	study.player.position = original_player
+	study.objective_refresh_timer = original_timer
+	root.size = Vector2i(1100, 760)
+	study.frame_player_for_walking()
+	await process_frame
+	await process_frame
 
 func verify_short_activity_panels(study: Node, narrow_small := false) -> void:
 	var original_player: Vector3 = study.player.position

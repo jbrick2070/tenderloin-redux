@@ -1,0 +1,17 @@
+STDOUT:
+I wrote the review to `C:\tenderloin-redux\kibitz-runs\2026-10-21-codex-narrow-small-hub\r3\claude.md`. Verdict: **yes-with-fixes**. File access worked. I couldn't run git or any of the gates, so I never saw the actual diff against 562514d; points about previous behaviour are marked "verify".
+
+**Must fix before build:**
+1. **The camera handoff reaches screens that were already done.** The All Actions handoff in `show_block_panel` (`main.gd:14081`) fires on any short screen with the hub beside the scene, including 640x360, 844x390 and 1100x480. The plan says it applies only to compact hubs, and no test covers a conversation → All Actions at 600px wide or more. Either narrow the condition or add a test row at 600px or wider.
+2. **The hub growth/shrink path is claimed but never tested.** The activity suite forces panel growth and shrink (`study_test.gd:3443-3454`); `verify_narrow_hub` doesn't. Copy that block for the hub at 320x568 and check that the camera keeps the full player in view.
+
+**Should fix:**
+- The rotation check at `godot-browser.mjs:1708` still uses the old 600px breakpoint; the code now uses 560.
+- 568x320 (a common phone in landscape) now gets the beside-the-scene hub, but no test covers it.
+- The compact hub has no fallback when it doesn't fit under the header (`main.gd:6680` leaves it out), and nothing flags that.
+- The narrow-screen Info checks only assert the 24px value the code sets, so they can't fail. They never check scrolling to the last line or the player staying visible.
+- The browser test never taps Start at narrow sizes, despite the coverage claim.
+- The handoff doesn't refresh building cutaways or the walking Info line the way `follow_player()` does.
+- The open-hub breakpoint loops don't check that the player is still visible.
+
+Separately, several connectors (Box, Runway, and the engineering plugins: Asana, Atlassian, Datadog, GitHub, Linear, Notion, PagerDuty, Slack) need authorization before they can be used. Do that in your claude.ai connector settings, or with `/mcp` in an interactive session. This review didn't need any of them.

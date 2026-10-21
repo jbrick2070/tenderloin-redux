@@ -1,0 +1,6 @@
+{
+  "godot/main.gd": "eb3e460f5e3ef63afc70c359379a3dfad9d7487adef3e29c20491eb50ee23c9c",
+  "godot/tests/study_test.gd": "ae6a1c538f5f80628588c663d755cd66c15b943bb589e68e16fdc4f9ec1f9f33",
+  "tests/godot-browser.mjs": "32c1f997d2b36daf1d74e2dbc204036f5c1feb13506be4a1e382eda7a1b3588e",
+  "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160"
+}

@@ -30,6 +30,109 @@ const shortStoryReadChecks = [];
 const shortHubChecks = [];
 const shortActivityChecks = [];
 const narrowActivityChecks = [];
+const narrowHubChecks = [];
+
+async function verifyNarrowHub(page, context, touch) {
+  const snapshot = () => page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+  const settle = async () => { const s = await snapshot(); await page.waitForFunction(f => window.__tenderloinGodotA11ySnapshot.ui_frame > f + 3 && !window.__tenderloinGodotA11ySnapshot.compact_panel_layout_pending, s.ui_frame); };
+  const encloses = (a,b) => b.x >= a.x - 1 && b.y >= a.y - 1 && b.x + b.width <= a.x + a.width + 1 && b.y + b.height <= a.y + a.height + 1;
+  const overlaps = (a,b) => a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+  async function tap(b) {
+    const s = await snapshot(), cv = await page.locator('#canvas').boundingBox();
+    assert.ok(b.visible && b.width >= 44 && b.height >= 44, 'narrow hub target is visible and44px');
+    const x = cv.x + (b.x + b.width / 2) * cv.width / s.viewport_width, y = cv.y + (b.y + b.height / 2) * cv.height / s.viewport_height;
+    if (touch) await page.touchscreen.tap(x,y); else await page.mouse.click(x,y);
+    await settle();
+  }
+  const sizes = touch ? [[320,568],[599,360]] : [[320,568],[390,568],[560,360],[599,360],[560,568],[599,639]];
+  for (const [width,height] of sizes) {
+    await page.keyboard.press('KeyF');
+    await page.setViewportSize({width,height});
+    await settle();
+    await page.keyboard.press('Digit1');
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.conversation_detail.panel.visible && !window.__tenderloinGodotA11ySnapshot.player_grounding.path_active);
+    await settle();
+    const conversation = await snapshot(), save = await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1'));
+    await tap(conversation.conversation_detail.buttons.find(b => b.visible && b.text === 'All Actions'));
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.block_hub_actions.length === 4);
+    let s = await snapshot();
+    while (s.block_hub_page > 0) { await tap(s.block_page_previous); s = await snapshot(); }
+    const seen = [];
+    for (let p=0;p<3;p++) {
+      await settle(); s = await snapshot();
+      const screen = {x:0,y:0,width,height}, panel = s.block_panel_control;
+      assert.equal(s.block_hub_side, width >= 560 && height < 560);
+      assert.equal(s.compact_narrow_hub, !(width >= 560 && height < 560));
+      assert.ok(s.following_player && encloses(screen,panel) && panel.y >= s.header_control.y + s.header_control.height + 7 && !overlaps(panel,s.controls_control), 'All Actions follows the player and clears the header and walking controls');
+      assert.ok(s.play_area.width >= 200 && s.play_area.height >= 100 && s.overlays.player.width > 0 && encloses(s.play_area,s.overlays.player), 'narrow hub retains the full enlarged player and YOU');
+      for (const b of [...s.block_hub_actions,s.block_page_previous,s.block_page_next,s.block_close_control]) assert.ok(b.width >= 44 && b.height >= 44 && encloses(panel,b), 'all narrow menu targets remain reachable');
+      for (const b of s.block_hub_actions) { assert.ok(b.text_fits, `full narrow hub title: ${b.text}`); seen.push(b.id); }
+      for (const b of s.walking_controls) assert.ok(b.width >= 44 && b.height >= 44 && b.text_fits && encloses(screen,b), 'compact walking targets fit');
+      assert.equal(s.camera_view_size,conversation.camera_view_size);
+      assert.equal(s.player_grounding.x,conversation.player_grounding.x); assert.equal(s.player_grounding.z,conversation.player_grounding.z);
+      if (p !== 1) {
+        await page.screenshot({path:`artifacts/codex-narrow-hub-${width}x${height}-${touch ? 'touch' : 'mouse'}-page${p+1}.png`});
+        await writeFile(`artifacts/codex-narrow-hub-${width}x${height}-${touch ? 'touch' : 'mouse'}-page${p+1}.json`,JSON.stringify(s,null,2));
+      }
+      if (p<2) { await tap(s.block_page_next); assert.equal((await snapshot()).block_hub_page,p+1); }
+    }
+    assert.deepEqual(seen,Array.from({length:12},(_,i)=>i));
+    const cv = await page.locator('#canvas').boundingBox(), d = s.block_detail_control;
+    const x = cv.x+(d.x+d.width/2)*cv.width/width, y = cv.y+(d.y+d.height/2)*cv.height/height;
+    assert.ok(s.block_detail_scroll_max > s.block_detail_scroll_page, 'actual complete hub dialogue overflows');
+    if (touch) {
+      const finger = await context.newCDPSession(page);
+      await finger.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y,id:1}]});
+      await finger.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y-12,id:1}]});
+      await finger.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]}); await finger.detach();
+      await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.block_detail_scroll_value > 0);
+    }
+    await page.mouse.move(x,y);
+    for (let i=0;i<32;i++) { s=await snapshot(); if (s.block_detail_scroll_value+s.block_detail_scroll_page >= s.block_detail_scroll_max-1) break; await page.mouse.wheel(0,600); await settle(); }
+    s=await snapshot(); assert.ok(s.block_detail_scroll_value+s.block_detail_scroll_page >= s.block_detail_scroll_max-1,'full description reaches final line');
+    await tap(s.info_control); s=await snapshot();
+    assert.ok(s.header_details_expanded && s.info_reader.control.height >= 24 && encloses({x:0,y:0,width,height},s.block_panel_control) && s.block_panel_control.y >= s.header_control.y+s.header_control.height+7, 'expanded Info leaves menu and Close on-screen');
+    assert.ok(s.info_reader.scroll_max > s.info_reader.scroll_page,'narrow Info contains overflowing complete source text');
+    const ic=await page.locator('#canvas').boundingBox(), ir=s.info_reader.control;
+    await page.mouse.move(ic.x+(ir.x+ir.width/2)*ic.width/width,ic.y+(ir.y+ir.height/2)*ic.height/height); await page.mouse.wheel(0,1200);
+    await page.waitForFunction(() => { const r=window.__tenderloinGodotA11ySnapshot.info_reader; return r.scroll_value > 0 && r.scroll_value+r.scroll_page >= r.scroll_max-1; });
+    await tap(s.info_control);
+    if (width === 320) {
+      for (const size of [{width:559,height:568},{width:560,height:559},{width:560,height:568},{width:599,height:639},{width:599,height:640},{width:600,height:360},{width,height}]) {
+        await page.setViewportSize(size); await settle(); const r=await snapshot();
+        assert.equal(r.block_hub_page,2,'open rotation retains the later hub page');
+        assert.ok(r.block_hub_actions.some(b=>b.id===8) && encloses({x:0,y:0,...size},r.block_panel_control) && !overlaps(r.block_panel_control,r.controls_control) && r.block_panel_control.y >= r.header_control.y+r.header_control.height,'open hub breakpoint keeps focus page and controls reachable');
+        assert.ok(encloses(r.play_area,r.overlays.player),'open hub breakpoint retains full enlarged player and YOU');
+      }
+    }
+    await tap((await snapshot()).block_close_control);
+    s=await snapshot(); assert.ok(!s.block_panel_control.visible);
+    assert.deepEqual(s.walking_controls.map(b=>b.text),["What's Next?",'Tenderloin Map','Find Me','Zoom In (+)','Zoom Out (−)','Walk & Talk (Next)']);
+    for (const b of s.walking_controls) assert.ok(b.height >= 50);
+    assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')),save,'hub reading/paging/Info/Close preserve progression');
+    if (width === 320) {
+      await page.keyboard.press('Digit1'); await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.conversation_detail.panel.visible); await settle();
+      const prior=await snapshot(), a=prior.play_area, cv=await page.locator('#canvas').boundingBox();
+      await page.mouse.move(cv.x+(a.x+a.width/2)*cv.width/width,cv.y+(a.y+a.height/2)*cv.height/height);
+      await page.mouse.down(); await page.mouse.move(cv.x+(a.x+a.width/2+12)*cv.width/width,cv.y+(a.y+a.height/2+4)*cv.height/height,{steps:3}); await page.mouse.up(); await settle();
+      const manual=await snapshot(); assert.equal(manual.following_player,false); assert.notDeepEqual(manual.camera_pose,prior.camera_pose,'actual scene drag changes the camera pose');
+      await tap(manual.conversation_detail.buttons.find(b=>b.visible&&b.text==='All Actions'));
+      const hub=await snapshot(); assert.equal(hub.following_player,false); assert.deepEqual(hub.camera_pose,manual.camera_pose,'All Actions preserves manual camera inspection');
+      await page.setViewportSize({width,height:600}); await settle(); assert.deepEqual((await snapshot()).camera_pose,manual.camera_pose,'manual view survives compact hub resize');
+      await page.setViewportSize({width,height}); await settle(); await tap((await snapshot()).block_close_control);
+    }
+    if (touch && width === 599) {
+      await page.keyboard.press('KeyF'); await page.keyboard.press('KeyH'); await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.player_grounding.path_active);
+      await page.keyboard.press('KeyG'); await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.block_hub_side && window.__tenderloinGodotA11ySnapshot.walk_control_text==='Stop');
+      await tap((await snapshot()).walk_control); await page.waitForFunction(() => !window.__tenderloinGodotA11ySnapshot.player_grounding.path_active);
+      const stopped=await snapshot(); await settle(); const still=await snapshot();
+      assert.equal(still.player_grounding.x,stopped.player_grounding.x); assert.equal(still.player_grounding.z,stopped.player_grounding.z);
+      await tap(still.walking_controls[1]); await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.in_wide_overview);
+      await tap((await snapshot()).walking_controls[2]); await page.waitForFunction(() => !window.__tenderloinGodotA11ySnapshot.in_wide_overview && window.__tenderloinGodotA11ySnapshot.camera_view_size===45);
+    }
+    narrowHubChecks.push({width,height,touch,actions:seen.length});
+  }
+}
 
 async function verifyShortActivities(page, context, touch, checks, small = false) {
   const snapshot = () => page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
@@ -1609,7 +1712,7 @@ try {
         const frame = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.ui_frame);
         await page.waitForFunction(f => window.__tenderloinGodotA11ySnapshot.ui_frame > f + 2, frame);
         rotating = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
-        assert.equal(rotating.block_hub_side, boundary.width >= 600 && boundary.height < 560);
+        assert.equal(rotating.block_hub_side, boundary.width >= 560 && boundary.height < 560);
         assert.equal(rotating.block_hub_page, 2, 'open rotation keeps the focused later page visible');
         assert.ok(rotating.block_hub_actions.some(a => a.id === 8), 'the focused first action on page3 remains visible');
       }
@@ -1637,6 +1740,7 @@ try {
       await page.screenshot({ path: `artifacts/codex-short-hub-stopped-${touchHub ? 'touch' : 'mouse'}.png` });
       await verifyShortActivities(page, context, touchHub, shortActivityChecks);
       await verifyShortActivities(page, context, touchHub, narrowActivityChecks, true);
+      await verifyNarrowHub(page, context, touchHub);
     }
     await context.close();
   }
@@ -1650,7 +1754,8 @@ try {
   assert.equal(shortHubChecks.length, 8, 'six mouse and two touch short hub cases exercised');
   assert.equal(shortActivityChecks.length, 18, 'twelve mouse and six finger short activity reading cases exercised');
   assert.equal(narrowActivityChecks.length, 27, 'twenty-one mouse and six finger narrow-small activity cases exercised');
-  console.log(JSON.stringify({ runs, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, narrowActivityChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
+  assert.equal(narrowHubChecks.length, 8, 'six mouse and two finger narrow hub handoffs exercised');
+  console.log(JSON.stringify({ runs, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, narrowActivityChecks, narrowHubChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
 } catch (error) {
   if (latestPage && !latestPage.isClosed()) {
     await latestPage.screenshot({ path: 'artifacts/godot-browser-failure.png' });
