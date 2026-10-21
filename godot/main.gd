@@ -792,8 +792,9 @@ var block_page_next: Button
 var block_close_btn: Button
 var block_hub_page := 0
 const BLOCK_ACTIONS_PER_PAGE := 4
-const SIDE_HUB_MIN_WIDTH := 600.0 # Phone HUD breakpoint; activities dock at560px, hubs at520px.
-const SIDE_ACTIVITY_MIN_WIDTH := 560.0
+const SIDE_HUB_MIN_WIDTH := 600.0 # Phone HUD breakpoint; short landscape panels dock at520px.
+const SIDE_ACTIVITY_MIN_WIDTH := 520.0
+const WIDE_SIDE_PANEL_MIN_WIDTH := 560.0
 const SMALL_SIDE_HUB_MIN_WIDTH := 520.0
 const COMPACT_ACTIVITY_MAX_HEIGHT := 640.0
 const SIDE_HUB_MAX_HEIGHT := 560.0
@@ -6629,8 +6630,8 @@ func layout_walking_controls_and_hub() -> void:
 	var short_phone := uses_compact_narrow_panels()
 	var short_walking := uses_short_narrow_walking()
 	var vp := bubble_viewport_size()
-	# Only the small hub uses a narrower dock; activity readers keep their width.
-	var dock_min := 280.0 if uses_side_block_hub() and vp.x < SIDE_ACTIVITY_MIN_WIDTH else 312.0
+	# Small landscape readers share the narrow dock; wider layouts keep their width.
+	var dock_min := 280.0 if vp.x < WIDE_SIDE_PANEL_MIN_WIDTH else 312.0
 	var dock_width := clampf(vp.x * 0.52, dock_min, 440.0)
 	controls.offset_right = -(dock_width + 20.0) if side else -12.0
 	controls.columns = 3 if compact or short_walking else (2 if narrow else 3)
@@ -14070,7 +14071,10 @@ func show_mural_panel(visible_flag: bool) -> void:
 		if visible_flag:
 			update_mural_ui()
 	layout_walking_controls_and_hub()
-	if visible_flag and panel_frame_control == mural_panel:
+	if visible_flag and following_player and uses_compact_activity_controls():
+		focus_mural_camera()
+		refit_panel_after_layout()
+	elif visible_flag and panel_frame_control == mural_panel:
 		refit_panel_camera()
 
 func show_music_panel(visible_flag: bool) -> void:
@@ -14090,7 +14094,10 @@ func show_music_panel(visible_flag: bool) -> void:
 		if visible_flag:
 			update_music_ui()
 	layout_walking_controls_and_hub()
-	if visible_flag and panel_frame_control == music_panel:
+	if visible_flag and following_player and uses_compact_activity_controls():
+		focus_speaker_camera()
+		refit_panel_after_layout()
+	elif visible_flag and panel_frame_control == music_panel:
 		refit_panel_camera()
 
 func refresh_hub_camera() -> void:
@@ -14139,6 +14146,8 @@ func motif_button_text(motif_id: String, label_prefix: String) -> String:
 	var prefix := "> " if active_motif == motif_id else ""
 	if mural_placements.has(motif_id):
 		var c_dict: Dictionary = mural_placements[motif_id]
+		if uses_short_side_panels() and bubble_viewport_size().x < WIDE_SIDE_PANEL_MIN_WIDTH:
+			return "%s%s %d,%d" % [prefix.strip_edges(), label_prefix, int(c_dict.get("col", 0)), int(c_dict.get("row", 0))]
 		return "%s%s (%d,%d)" % [prefix, label_prefix, int(c_dict.get("col", 0)), int(c_dict.get("row", 0))]
 	return "%sAdd %s" % [prefix, label_prefix] if is_narrow_layout() or uses_short_side_panels() else "%s%s · Paint" % [prefix, label_prefix]
 

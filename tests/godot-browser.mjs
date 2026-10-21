@@ -30,6 +30,7 @@ const shortStoryReadChecks = [];
 const shortHubChecks = [];
 const shortActivityChecks = [];
 const narrowActivityChecks = [];
+const passiveActivityChecks = [];
 const narrowHubChecks = [];
 const shortWalkingChecks = [];
 let shortWalkingCaptionChecks = 0, shortWalkingGuideChecks = 0;
@@ -214,7 +215,7 @@ async function verifyShortActivities(page, context, touch, checks, small = false
     if (touch) await page.touchscreen.tap(x, y); else await page.mouse.click(x, y);
     await settle();
   }
-  const sizes = small ? (touch ? [[320, 568], [599, 360]] : [[320, 568], [390, 568], [560, 360], [599, 360], [560, 568], [599, 639], [360, 600]]) : (touch ? [[640, 360], [844, 390]] : [[600, 360], [640, 360], [800, 480], [1100, 480]]);
+  const sizes = small ? (touch ? [[520, 360], [559, 360], [320, 568], [599, 360]] : [[520, 360], [559, 360], [320, 568], [390, 568], [560, 360], [599, 360], [560, 568], [599, 639], [360, 600]]) : (touch ? [[640, 360], [844, 390]] : [[600, 360], [640, 360], [800, 480], [1100, 480]]);
   await page.keyboard.press('KeyF');
   for (const [width, height] of sizes) {
     await page.setViewportSize({ width, height });
@@ -237,8 +238,18 @@ async function verifyShortActivities(page, context, touch, checks, small = false
         else assert.notEqual(next[key].text, s[key].text, 'actual Rook Chat changes the complete line');
         s = await snapshot();
       }
+      if (kind === 'mural' && width >= 520 && width < 560 && height < 560) {
+        for (const [id,name] of [[2,'sun'],[3,'wave'],[4,'rise']]) {
+          await tap(s[key].buttons.find(b=>b.id===id)); s=await snapshot();
+          const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('tenderloin-redux.godot.save.v1')));
+          assert.ok(saved.mural_placements[name], 'actual motif button keeps its original placement callback');
+          const b=s[key].buttons.find(b=>b.id===id), cell=saved.mural_placements[name];
+          assert.equal(b.text,`>${name[0].toUpperCase()+name.slice(1)} ${cell.col},${cell.row}`);
+          assert.ok(b.text_fits, 'selected placed motif retains its complete name, marker and coordinates');
+        }
+      }
       const d = s[key], a = s.play_area, p = d.panel, subject = s.panel_subject_screen;
-      const side = !small || (width >= 560 && height < 560);
+      const side = !small || (width >= 520 && height < 560);
       assert.equal(s.side_panel_dock, side);
       if (small) assert.equal(s.compact_narrow_activity, !side);
       assert.equal(s.header_details_expanded, false, 'full dialogue is in the panel reader');
@@ -287,8 +298,8 @@ async function verifyShortActivities(page, context, touch, checks, small = false
       assert.equal(read.player_grounding.x, s.player_grounding.x);
       assert.equal(read.player_grounding.z, s.player_grounding.z);
       assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), save, 'reading does not alter progress');
-      await page.screenshot({ path: `artifacts/codex-${small ? "narrow" : "short"}-activity-${kind}-${width}x${height}-${touch ? 'touch' : 'mouse'}.png` });
-      await writeFile(`artifacts/codex-${small ? "narrow" : "short"}-activity-${kind}-${width}x${height}-${touch ? 'touch' : 'mouse'}.json`, JSON.stringify(read, null, 2));
+      await page.screenshot({ path: `artifacts/codex-${small && width >= 520 && width < 560 && height < 560 ? "small-landscape" : (small ? "narrow" : "short")}-activity-${kind}-${width}x${height}-${touch ? 'touch' : 'mouse'}.png` });
+      await writeFile(`artifacts/codex-${small && width >= 520 && width < 560 && height < 560 ? "small-landscape" : (small ? "narrow" : "short")}-activity-${kind}-${width}x${height}-${touch ? 'touch' : 'mouse'}.json`, JSON.stringify(read, null, 2));
       checks.push({ kind, width, height, touch, scene: a, panel: p });
       for (const expanded of [true, false]) {
         await tap((await snapshot()).info_control);
@@ -298,8 +309,8 @@ async function verifyShortActivities(page, context, touch, checks, small = false
         for (const point of grown.panel_subject_points) assert.ok(point.x >= area.x && point.x <= area.x + area.width && point.y >= area.y && point.y <= area.y + area.height, 'Info refit retains actual person and prop');
       }
       // Rotate with the activity open; automatic framing follows layout, manual pan does not.
-      if (width === 640 || (small && width === 320)) {
-        for (const rotated of [{ width: 360, height: 640 }, { width: 599, height: 667 }, { width: 600, height: 559 }, { width: 600, height: 560 }, { width: 800, height: 600 }, { width, height }]) {
+      if (width === 640 || (small && (width === 320 || width === 520))) {
+        for (const rotated of [...(width === 520 ? [{width:519,height:568},{width:520,height:559},{width:559,height:559},{width:560,height:559},{width:520,height:560}] : []), { width: 360, height: 640 }, { width: 599, height: 667 }, { width: 600, height: 559 }, { width: 600, height: 560 }, { width: 800, height: 600 }, { width, height }]) {
           await page.setViewportSize(rotated);
           await settle();
           const r = await snapshot(), point = r.panel_subject_screen, area = r.play_area;
@@ -308,14 +319,24 @@ async function verifyShortActivities(page, context, touch, checks, small = false
           assert.ok(panel.y >= r.header_control.y + r.header_control.height && (r.side_panel_dock ? controls.x + controls.width <= panel.x : controls.y >= panel.y + panel.height), 'open rotation clears the header and walking controls');
         }
         const pan = await snapshot(), area = pan.play_area, cv = await page.locator('#canvas').boundingBox();
-        await page.mouse.move(cv.x + (area.x + area.width * 0.4) * cv.width / width, cv.y + (area.y + area.height * 0.8) * cv.height / height);
-        await page.mouse.down(); await page.mouse.move(cv.x + (area.x + area.width * 0.4 + 20) * cv.width / width, cv.y + (area.y + area.height * 0.8 + 10) * cv.height / height, { steps: 4 }); await page.mouse.up();
+        const panX = cv.x + (area.x + area.width * 0.4) * cv.width / width, panY = cv.y + (area.y + area.height * 0.8) * cv.height / height;
+        if (touch && width === 520) {
+          const finger = await context.newCDPSession(page);
+          await finger.send('Input.dispatchTouchEvent', {type:'touchStart', touchPoints:[{x:panX,y:panY,id:1}]});
+          await finger.send('Input.dispatchTouchEvent', {type:'touchMove', touchPoints:[{x:panX+20*cv.width/width,y:panY+10*cv.height/height,id:1}]});
+          await finger.send('Input.dispatchTouchEvent', {type:'touchEnd', touchPoints:[]}); await finger.detach();
+        } else {
+          await page.mouse.move(panX,panY); await page.mouse.down();
+          await page.mouse.move(panX+20*cv.width/width,panY+10*cv.height/height,{steps:4}); await page.mouse.up();
+        }
         await settle();
         const manual = await snapshot();
+        assert.equal(manual.following_player, false);
         assert.notDeepEqual(manual.camera_pose, pan.camera_pose, 'real scene drag pans the camera');
         await page.setViewportSize({ width: 667, height: 375 }); await settle();
         assert.deepEqual((await snapshot()).camera_pose, manual.camera_pose, 'resize respects manual camera inspection');
         await page.setViewportSize({ width, height }); await settle();
+        assert.deepEqual((await snapshot()).camera_pose, manual.camera_pose, 'returning to the small dock respects manual camera inspection');
       }
       const close = (await snapshot())[key].buttons.find(b => b.id === closeId);
       assert.match(close.text, /^(Close|Goodbye)$/);
@@ -325,6 +346,36 @@ async function verifyShortActivities(page, context, touch, checks, small = false
       assert.equal(closed.controls_control.width, width - 24, 'Close restores full walking controls');
       assert.deepEqual(closed.walking_controls.map(b => b.text), ["What's Next?", 'Tenderloin Map', 'Find Me', 'Zoom In (+)', 'Zoom Out (−)', 'Walk & Talk (Next)'], 'real Close restores every full walking caption');
       for (const b of closed.walking_controls) assert.ok(b.height >= 50, 'Close restores original walking target height');
+    }
+  }
+}
+async function verifyPassiveActivities(page,context,touch) {
+  const snap=()=>page.evaluate(()=>window.__tenderloinGodotA11ySnapshot);
+  const settle=async()=>{const s=await snap();await page.waitForFunction(f=>window.__tenderloinGodotA11ySnapshot.ui_frame>f+3&&!window.__tenderloinGodotA11ySnapshot.compact_panel_layout_pending,s.ui_frame);};
+  const fits=(a,b)=>b.width>0&&b.x>=a.x-1&&b.y>=a.y-1&&b.x+b.width<=a.x+a.width+1&&b.y+b.height<=a.y+a.height+1;
+  async function tap(b){const s=await snap(),c=await page.locator('#canvas').boundingBox();assert.ok(b.visible&&b.width>=44&&b.height>=44);const x=c.x+(b.x+b.width/2)*c.width/s.viewport_width,y=c.y+(b.y+b.height/2)*c.height/s.viewport_height;if(touch)await page.touchscreen.tap(x,y);else await page.mouse.click(x,y);await settle();}
+  for(const width of [520,559]){
+    await page.setViewportSize({width,height:360});await settle();
+    for(const [kind,key,shortcut] of [['celeste','mural_detail','Digit2'],['rook','music_detail','Digit3'],['mural','mural_detail','KeyM']]){
+      // Leave the previous arrival first; these keys then walk without a queued Chat/soundcheck.
+      await page.keyboard.press('Digit1');await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.conversation_detail.panel.visible&&!window.__tenderloinGodotA11ySnapshot.player_grounding.path_active);
+      await page.keyboard.press(shortcut);await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.player_grounding.path_active);
+      await page.waitForFunction(k=>window.__tenderloinGodotA11ySnapshot[k].panel.visible&&!window.__tenderloinGodotA11ySnapshot.player_grounding.path_active,key,{timeout:30000});await settle();
+      const s=await snap(),a=s.play_area,p=s[key].panel;
+      assert.ok(s.side_panel_dock&&fits(a,s.overlays.player)&&s.panel_subject_points.length===2,'passive walking arrival frames the full player and both real subjects');
+      for(const point of s.panel_subject_points)assert.ok(!point.behind&&point.x>=a.x&&point.x<=a.x+a.width&&point.y>=a.y&&point.y<=a.y+a.height);
+      for(const b of s[key].buttons.filter(b=>b.visible))assert.ok(b.text_fits&&b.height>=44&&fits(p,b));
+      await page.screenshot({path:`artifacts/codex-small-passive-${kind}-${width}x360-${touch?'touch':'mouse'}.png`});
+      await writeFile(`artifacts/codex-small-passive-${kind}-${width}x360-${touch?'touch':'mouse'}.json`,JSON.stringify(s,null,2));
+      // Real Close keeps progress and restores the established close walking view.
+      const save=await page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1'));
+      await tap(s[key].buttons.find(b=>b.id===(key==='mural_detail'?8:6)));
+      assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1')),save);
+      const closed=await snap();
+      assert.ok(closed.following_player&&closed.camera_view_size===45&&fits(closed.play_area,closed.overlays.player),'Close restores full player and YOU in the walking view');
+      assert.equal(closed.player_grounding.x,s.player_grounding.x);assert.equal(closed.player_grounding.z,s.player_grounding.z);
+      assert.equal(closed.music_playing,s.music_playing);
+      passiveActivityChecks.push({width,height:360,touch,kind,scene:a});
     }
   }
 }
@@ -1809,6 +1860,7 @@ try {
       await page.screenshot({ path: `artifacts/codex-short-hub-stopped-${touchHub ? 'touch' : 'mouse'}.png` });
       await verifyShortActivities(page, context, touchHub, shortActivityChecks);
       await verifyShortActivities(page, context, touchHub, narrowActivityChecks, true);
+      await verifyPassiveActivities(page,context,touchHub);
       await verifyNarrowHub(page, context, touchHub);
       await verifyShortWalking(page, context, touchHub);
     }
@@ -1823,12 +1875,14 @@ try {
   assert.equal(shortStoryReadChecks.filter(r => r.touch).length, 4, 'all four emulated short-phone reading cases use real touch input');
   assert.equal(shortHubChecks.length, 8, 'six mouse and two touch short hub cases exercised');
   assert.equal(shortActivityChecks.length, 18, 'twelve mouse and six finger short activity reading cases exercised');
-  assert.equal(narrowActivityChecks.length, 27, 'twenty-one mouse and six finger narrow-small activity cases exercised');
+  assert.equal(narrowActivityChecks.length, 39, 'twenty-seven mouse and twelve finger narrow-small activity cases exercised');
+  assert.equal(narrowActivityChecks.filter(c=>c.width>=520&&c.width<560&&c.height<560).length,12,'all twelve new small landscape readers were exercised');
+  assert.equal(passiveActivityChecks.length,12,'all twelve real passive walking arrivals were exercised');
   assert.equal(narrowHubChecks.length, 12, 'eight mouse and four finger narrow hub handoffs exercised');
   assert.equal(smallHubReaderChecks,4,'all four new mouse/finger small dock cases read overflowing full dialogue');
   assert.equal(shortWalkingChecks.length,10,'six mouse and four finger short walking cases exercised');
   assert.ok(shortWalkingCaptionChecks>0&&shortWalkingGuideChecks>0,'real short walking caption and guide checks are nonvacuous');
-  console.log(JSON.stringify({ runs, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, narrowActivityChecks, narrowHubChecks, smallHubReaderChecks, shortWalkingChecks, shortWalkingCaptionChecks, shortWalkingGuideChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
+  console.log(JSON.stringify({ runs, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, narrowActivityChecks, passiveActivityChecks, narrowHubChecks, smallHubReaderChecks, shortWalkingChecks, shortWalkingCaptionChecks, shortWalkingGuideChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
 } catch (error) {
   if (latestPage && !latestPage.isClosed()) {
     await latestPage.screenshot({ path: 'artifacts/godot-browser-failure.png' });

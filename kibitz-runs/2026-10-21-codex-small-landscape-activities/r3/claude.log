@@ -1,0 +1,25 @@
+STDOUT:
+The 520–559 change is consistent from the constant through to the layout, but I'd call it yes-with-fixes rather than ready. The tests only prove the framing on one opening path, and none of the five gates has passed on final source yet. The full review is in `kibitz-runs/2026-10-21-codex-small-landscape-activities/r3/claude.md`.
+
+I could read all the files, but I had no git or shell access, so I couldn't diff against `4fc6f5e`. Where I describe baseline behaviour, I've marked it as an assumption.
+
+**Must-fix:**
+1. **Gates:** after the last `main.gd` edit, run native, then export, then check, then Node, then browser, in that order. The browser suite refuses a stale `.pck` (`tests/godot-browser.mjs:10-22`), so any fix means re-exporting first.
+2. **Walking arrival at Celeste or Rook leaves the player under the panel at 520x360.**
+   - **Path:** the arrival functions (`godot/main.gd:8582`, `8599`, `8651`, `8681`) open the docked panel but never frame the camera on it. The camera keeps centring the player at about x=260, and the panel now covers x 228–508.
+   - **How users hit it:** "Paint with Celeste" from a conversation walks there and arrives this way (`main.gd:8927`), as do the passive Rook arrivals.
+   - **Why tests miss it:** both suites only test the path that frames the camera first and then shows the panel.
+   - **Origin:** this probably already happens at 560 and wider; the diff extends it into the new band.
+   - **Fix:** add an arrival test at 520/559. If it fails, call `focus_mural_camera()` / `focus_speaker_camera()` after the show, the same way `open_mural_from_block_panel` (`main.gd:8924-8925`) does.
+3. **Placed mural motif labels like "> Wave (3,2)" probably get cut off in the 280px panel.** Each of the three buttons leaves roughly 69px of text space, and these buttons clip text silently (`main.gd:14816`). Neither suite places a motif before checking label fit, so the "complete labels" requirement is unproven here. Fix: place a motif in the 520 mural test; if it fails, shorten the label in short mode.
+
+**Should-fix (test gaps):**
+- The native threshold checks compute their expected value from the same constant being changed, so reverting it to 560 would still pass. Only the browser suite would catch it.
+- Button-fit and panel-bottom checks run for neighbor 0 only. The other four neighbors get different, unshortened action labels.
+- At 520–559 the deferred relayout no longer runs for activity panels (`main.gd:6705`), and the content-growth test only runs at 320x568.
+- Native never checks the walking-control labels beside the panel; only the browser does.
+- The browser's total of 39 cases would still pass if the 520/559 sizes were swapped for others.
+
+**Cut:** with both thresholds at 520, the block-hub clause in `panel_uses_side_dock` (`main.gd:6596`) can never change the result. Remove it only alongside another `main.gd` fix, so the gates aren't rerun for nothing.
+
+Several Claude connectors (asana, atlassian, datadog, github, linear, notion, pagerduty, slack, Box, Runway) need authorizing before they can be used. This review didn't need them.

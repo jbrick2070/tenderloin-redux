@@ -1,0 +1,13 @@
+{
+  "name": "Build Tenderloin Redux",
+  "kind": "heartbeat",
+  "rrule": "FREQ=MINUTELY;INTERVAL=30",
+  "status": "ACTIVE",
+  "target_thread_id": "01a159d6-60a3-78e1-92ae-4018509d2539",
+  "prompt_sha256": "4d91017dd8975e173f88dad28745a3f6efcf9f8695b086c670250f2a255df399",
+  "ambitious_enhancements": true,
+  "mandatory_precode_cli_ideas": true,
+  "separate_implementation_qa": true,
+  "new_round_cli_passes": 2,
+  "current_already_coded_round_qa_calls": 1
+}

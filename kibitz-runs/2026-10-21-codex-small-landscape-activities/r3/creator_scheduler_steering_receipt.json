@@ -1,0 +1,9 @@
+{
+  "name": "Build Tenderloin Redux",
+  "kind": "heartbeat",
+  "rrule": "FREQ=MINUTELY;INTERVAL=30",
+  "status": "ACTIVE",
+  "target_thread_id": "01a159d6-60a3-78e1-92ae-4018509d2539",
+  "prompt_sha256": "ba0ea418321796ace5f75265ddb160a3551eb3c345fe677e94615b195e078901",
+  "change": "Creator requested more ambitious feature enhancements and CLI ideas before coding; two scoped Claude passes on new rounds, current in-flight round exempt from retroactive ideation."
+}
