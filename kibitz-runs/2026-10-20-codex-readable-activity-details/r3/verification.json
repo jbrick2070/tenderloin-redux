@@ -1,0 +1,175 @@
+{
+  "verified_at_utc": "2026-10-21T05:16:12.674841+00:00",
+  "baseline": "5601606ba3327acd5da2c8219fbc9443c14a742e",
+  "gates": {
+    "native": "GODOT_STUDY_PASS",
+    "export": "pass",
+    "check": "pass",
+    "node": {
+      "pass": 104,
+      "fail": 0
+    },
+    "browser": {
+      "errors": [],
+      "external": [],
+      "runs": [
+        {
+          "viewport": {
+            "width": 1100,
+            "height": 760
+          },
+          "activity_details": true,
+          "emulated_touch": false,
+          "keyboard": true,
+          "cold_path_ms": 188.2,
+          "save_bytes": 1728
+        },
+        {
+          "viewport": {
+            "width": 390,
+            "height": 667
+          },
+          "activity_details": true,
+          "emulated_touch": true,
+          "keyboard": true,
+          "cold_path_ms": 123.4,
+          "save_bytes": 1728
+        },
+        {
+          "viewport": {
+            "width": 320,
+            "height": 667
+          },
+          "activity_details": true,
+          "emulated_touch": true,
+          "keyboard": true,
+          "cold_path_ms": 107.3,
+          "save_bytes": 1728
+        }
+      ],
+      "extra_activity_widths": [
+        600,
+        800,
+        1000
+      ],
+      "extra_height": 667
+    }
+  },
+  "review": {
+    "calls": 1,
+    "round": "r3",
+    "omitted": [
+      "r1",
+      "r2",
+      "r4"
+    ],
+    "requested_selected_model": "claude-opus-5-5",
+    "effort": "high",
+    "rc": 0,
+    "verdict": "yes-with-fixes",
+    "source_unchanged_during_review": true,
+    "quota_usage": "unknown",
+    "post_review_fixes": "driver grounded and five-gate verified, no second external call"
+  },
+  "public_fingerprint": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567",
+  "inspected_images": [
+    "artifacts/godot-1100-mural-600-detail.png",
+    "artifacts/godot-1100-music-600-detail.png",
+    "artifacts/godot-390-mural-detail.png",
+    "artifacts/godot-390-local-track-detail.png",
+    "artifacts/godot-320-mural-detail.png",
+    "artifacts/godot-320-music-detail.png",
+    "artifacts/godot-320-audio-error-detail.png",
+    "artifacts/codex-readable-activity-live-preview.png"
+  ],
+  "sha256": {
+    "godot/main.gd": {
+      "sha256": "e16ff810bd1b88f9f33259d4488bc834b4f63eddf9d1918533c7acfb27c58030",
+      "bytes": 660891
+    },
+    "godot/tests/study_test.gd": {
+      "sha256": "266ffae60f2bc67558720de559beefce46e8a5f18636fc7a02e13d781c684797",
+      "bytes": 249064
+    },
+    "tests/godot-browser.mjs": {
+      "sha256": "ae7a9801f0d316b0f091808d4aa2387ad704381b0454a97f37dbf36d08984eca",
+      "bytes": 98684
+    },
+    "session_handoff.md": {
+      "sha256": "b862ee4f627771a1bbdedb78b4f942baaf62ce41a27e206c80c5a3dc7fbce7ef",
+      "bytes": 80725
+    },
+    "docs/BUILD_STATUS.md": {
+      "sha256": "d01c17df42622464c3f1da59fcfb3d16c5b73c36eb9d2c25d54ad5afc81b1041",
+      "bytes": 201244
+    },
+    "artifacts/godot-browser.json": {
+      "sha256": "d6733e341b951fbd68462873be8e19bfa0961f1dd9d40547388c77f30d1f3874",
+      "bytes": 39644
+    },
+    "artifacts/godot-web/index.pck": {
+      "sha256": "46a7866a0c000bfcaec63e1d28978bab09c262c08c2e51bf69e2995b66df3740",
+      "bytes": 1657236
+    },
+    "artifacts/activity-native-final.log": {
+      "sha256": "8c7816ae7117bd77ff8ed61f98805a2e8a5742870e7f3e6cc1600a4dcfcae3c3",
+      "bytes": 12196
+    },
+    "artifacts/activity-export-final.log": {
+      "sha256": "77bbe5abafd44045c22fb807d2a1c5f69bdee4f7a79bc459bc8a5c8ce7dff476",
+      "bytes": 2404
+    },
+    "artifacts/activity-check-final.log": {
+      "sha256": "bbbf642933db0755ec1b063caec7667a16966ea1db64dadab1526709e88e5537",
+      "bytes": 1337
+    },
+    "artifacts/activity-node-final.log": {
+      "sha256": "fe52ec9635d77dd8e4753660b8229b84c120775643b3a55df9ce9e898d14a151",
+      "bytes": 10795
+    },
+    "artifacts/activity-browser-final.log": {
+      "sha256": "3190d364e90eaa4d6a93b7ef137db99c90f943a82daebb5b0045f2283c997289",
+      "bytes": 36982
+    },
+    "artifacts/godot-1100-mural-600-detail.png": {
+      "sha256": "c51165cbde9ce6ddd2a183e7f44b64cde6ea00d517d6b096f81791c9985c5816",
+      "bytes": 135362
+    },
+    "artifacts/godot-1100-music-600-detail.png": {
+      "sha256": "a65862e1ca017223a7bc1bd3fd8d96247a5173968b66b1928ec7af833e0e4e73",
+      "bytes": 124840
+    },
+    "artifacts/godot-390-mural-detail.png": {
+      "sha256": "a33147cbb6264883cd079f62d3d7d2ea4daf394b93213308e8d909a8411b0d4d",
+      "bytes": 81562
+    },
+    "artifacts/godot-390-local-track-detail.png": {
+      "sha256": "4c65d429a06f599a13b7fc5a133cc8bd935d25656c5b344468b5eb0f0e8e6793",
+      "bytes": 76643
+    },
+    "artifacts/godot-320-mural-detail.png": {
+      "sha256": "062af400df0d14f0b38b60e3e4b410e5ff34001fd8acc09ab542a96023fe147c",
+      "bytes": 73439
+    },
+    "artifacts/godot-320-music-detail.png": {
+      "sha256": "277110ba66c8af85df9d2b91e9d5440749aa4fb940a0cf20bf28390160277c35",
+      "bytes": 74480
+    },
+    "artifacts/godot-320-audio-error-detail.png": {
+      "sha256": "99afce78bf3c49f768415338bbc3376c657c2270dbe66d20b3314b587c6fb040",
+      "bytes": 73401
+    },
+    "artifacts/codex-readable-activity-live-preview.png": {
+      "sha256": "5076d1c25d4192e2ace247521e952614ae145484be9ed4125eda9b75f28f3026",
+      "bytes": 65312
+    }
+  },
+  "limits": [
+    "emulated touch only, no physical phones",
+    "no full screen reader certification",
+    "heights below667px unverified",
+    "speech/reward/character crowding remains",
+    "no human comfort/listening/pacing/field acceptance",
+    "no deployment"
+  ]
+}

@@ -1,0 +1,20 @@
+STDOUT:
+My verdict is **yes-with-fixes**. The runtime code looks sound, but the tests don't cover the two changes that matter most: the new camera framing and scrolling the description on a phone. I wrote the review to `kibitz-runs\2026-10-20-codex-readable-activity-details\r3\claude.md` and changed nothing else.
+
+I read the source files directly. I had no shell, so I couldn't run `git diff`. I compared the working tree against the brief rather than against the baseline commit.
+
+**Must fix:**
+1. **Camera framing is never checked.** In the real game, the camera is framed while the panel is still hidden, then the panel opens (`main.gd:8499`→`8505` and `8540`→`8546`). The native test does it the other way round (`study_test.gd:2677-2687`). It also never checks that the subject ends up on screen above the panel. I gave a fix that doesn't touch the save data.
+2. **Phones have no tested way to scroll the description.** The browser test scrolls only with the mouse wheel and PageUp/PageDown, and a phone has neither. I suspect touch-dragging the text doesn't scroll it in Godot, which would leave only the thin scrollbar. That is unconfirmed and marked "verify" in the review.
+
+**Should fix (main ones):**
+- **The browser error stage never confirms it shows the error.** It waits a fixed 220 ms (`godot-browser.mjs:366-368`). The real decode error is short enough to fit in two lines, so the scrolling checks are skipped at every width. Only the native test, with a made-up long error, proves you can reach the last line.
+- **Scrolling is silently skipped whenever the text fits** (`godot-browser.mjs:92`). Nothing proves the narrow mural views actually exercised scrolling.
+- **One big wheel event might not reach the bottom.** That depends on how Godot's web build converts wheel events, which I couldn't confirm.
+- **Desktop framing changed too.** The new framing now runs at every width (`main.gd:8451`, `8465`), not just on phones as the brief says, so earlier 1100 px screenshots will differ.
+- **The native test only partly restores game state** after the activity checks.
+
+**Cut:**
+- The browser's 800 px and 1000 px resize passes, since the native sweep already covers those widths.
+- Resetting the same tooltips on every UI refresh.
+- Computing button-fit data for hidden panels every half-second.

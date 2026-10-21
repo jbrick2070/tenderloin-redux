@@ -30,7 +30,7 @@ const errors = [], external = [], runs = [];
 let latestPage = null;
 try {
   for (const size of [{ width: 1100, height: 760 }, { width: 390, height: 667 }, { width: 320, height: 667 }]) {
-    const context = await browser.newContext({ viewport: size });
+    const context = await browser.newContext({ viewport: size, hasTouch: size.width < 600 });
     await context.addInitScript((sentinel) => {
       if (window.localStorage.getItem('tenderloin-redux.save.v1') === null) {
         window.localStorage.setItem('tenderloin-redux.save.v1', sentinel);
@@ -69,6 +69,71 @@ try {
       assert.ok(control.x >= 0 && control.y >= 0 && control.x + control.width <= snap.viewport_width + 1 && control.y + control.height <= snap.viewport_height + 1, `${key} fits viewport`);
       const canvas = await page.locator('#canvas').boundingBox();
       await page.mouse.click(canvas.x + (control.x + control.width / 2) * canvas.width / snap.viewport_width, canvas.y + (control.y + control.height / 2) * canvas.height / snap.viewport_height);
+    }
+    async function clickActivityButton(key, id) {
+      const frame = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.ui_frame);
+      await page.waitForFunction(f => window.__tenderloinGodotA11ySnapshot?.ui_frame > f, frame);
+      const s = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+      const b = s[key].buttons.find(a => a.id === id);
+      assert.ok(b?.visible && b.width >= 44 && b.height >= 44 && b.text_fits, 'activity button has a complete title and44px target');
+      const canvas = await page.locator('#canvas').boundingBox();
+      await page.mouse.click(canvas.x + (b.x + b.width / 2) * canvas.width / s.viewport_width, canvas.y + (b.y + b.height / 2) * canvas.height / s.viewport_height);
+    }
+    async function readActivityDetail(key, stage) {
+      const frame = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.ui_frame);
+      await page.waitForFunction(f => window.__tenderloinGodotA11ySnapshot?.ui_frame > f + 2, frame);
+      const readSave = await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1'));
+      const s = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+      const d = s[key];
+      assert.ok(d.control.visible && d.control.height >= d.min_height - 1 && d.control.height <= 50, 'description has a bounded two-line reading area at its actual font size');
+      assert.ok(d.panel.y >= s.header_control.y + s.header_control.height && d.panel.y + d.panel.height <= s.controls_control.y, 'activity stays between header and walking controls');
+      assert.ok(d.control.x >= d.panel.x && d.control.y >= d.panel.y && d.control.x + d.control.width <= d.panel.x + d.panel.width + 1 && d.control.y + d.control.height <= d.panel.y + d.panel.height + 1);
+      for (const b of d.buttons) assert.ok(b.visible && b.width >= 44 && b.height >= 44 && b.text_fits, `full activity title: ${b.text}`);
+      if (size.width < 600 && stage === 'mural') {
+        assert.ok(d.scroll_max > d.scroll_page, 'narrow mural instructions must exercise scrolling');
+        const canvas = await page.locator('#canvas').boundingBox();
+        const x = canvas.x + (d.control.x + d.control.width / 2) * canvas.width / s.viewport_width;
+        const y = canvas.y + (d.control.y + d.control.height - 4) * canvas.height / s.viewport_height;
+        const travel = (d.control.height - 8) * canvas.height / s.viewport_height;
+        const touch = await context.newCDPSession(page);
+        await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 0 }] });
+        for (let step = 1; step <= 4; step++) {
+          await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - travel * step / 4, id: 0 }] });
+          await page.waitForTimeout(20);
+        }
+        await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+        await page.waitForFunction(({key, start}) => window.__tenderloinGodotA11ySnapshot?.[key].scroll_value > start, {key, start: d.scroll_value});
+        await touch.detach();
+      }
+      if (d.scroll_max > d.scroll_page) {
+        const canvas = await page.locator('#canvas').boundingBox();
+        await page.mouse.move(canvas.x + (d.control.x + d.control.width / 2) * canvas.width / s.viewport_width, canvas.y + (d.control.y + d.control.height / 2) * canvas.height / s.viewport_height);
+        for (let wheelStep = 0; wheelStep < 32; wheelStep++) {
+          await page.mouse.wheel(0, 400);
+          const frame = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.ui_frame);
+          await page.waitForFunction(f => window.__tenderloinGodotA11ySnapshot?.ui_frame > f + 1, frame);
+          const scroll = await page.evaluate(k => window.__tenderloinGodotA11ySnapshot[k], key);
+          if (Math.abs(scroll.scroll_value - (scroll.scroll_max - scroll.scroll_page)) <= 1) break;
+        }
+        await page.waitForFunction(k => { const d = window.__tenderloinGodotA11ySnapshot?.[k]; return d && d.scroll_value > 0 && Math.abs(d.scroll_value - (d.scroll_max - d.scroll_page)) <= 1; }, key);
+        await page.mouse.click(canvas.x + (d.control.x + d.control.width / 2) * canvas.width / s.viewport_width, canvas.y + (d.control.y + d.control.height / 2) * canvas.height / s.viewport_height);
+        const bottom = await page.evaluate(k => window.__tenderloinGodotA11ySnapshot[k].scroll_value, key);
+        await page.keyboard.press('PageUp');
+        await page.waitForFunction(({key, bottom}) => window.__tenderloinGodotA11ySnapshot?.[key].scroll_value < bottom, {key, bottom});
+        const beforeDown = await page.evaluate(k => window.__tenderloinGodotA11ySnapshot[k].scroll_value, key);
+        await page.keyboard.press('PageDown');
+        await page.waitForFunction(({key, beforeDown}) => window.__tenderloinGodotA11ySnapshot?.[key].scroll_value > beforeDown, {key, beforeDown});
+        await page.waitForTimeout(160);
+        const after = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+        assert.equal(after[key].text, d.text);
+        assert.equal(after.camera_view_size, s.camera_view_size, 'reading does not zoom');
+        assert.deepEqual(after.camera_pose, s.camera_pose, 'reading gestures never pan or rotate the camera');
+        assert.equal(after.player_grounding.x, s.player_grounding.x);
+        assert.equal(after.player_grounding.z, s.player_grounding.z);
+        assert.ok(after[key].scroll_value > 0, 'unchanged refresh retains reading position');
+      }
+      assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), readSave, 'reading instructions leaves saved progress unchanged');
+      await page.screenshot({ path: `artifacts/godot-${size.width}-${stage}-detail.png` });
     }
     const startup = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
     assert.equal(startup.music_playing, false, 'music waits for Start Exploring');
@@ -244,18 +309,30 @@ try {
       return parsed.celeste_talk_count >= 1;
     }, null, { timeout: 35000 });
     await page.waitForTimeout(250);
-    const row2Y = size.height - (size.width < 600 ? 258 : 208);
-    const row1Y = size.height - (size.width < 600 ? 305 : 255);
-    await page.mouse.click(size.width * 0.20, row2Y);
+    await clickActivityButton('mural_detail', 2);
     await page.waitForTimeout(120);
-    await page.mouse.click(size.width * 0.50, row2Y);
+    await clickActivityButton('mural_detail', 3);
     await page.waitForTimeout(120);
-    await page.mouse.click(size.width * 0.80, row2Y);
+    await clickActivityButton('mural_detail', 4);
     await page.waitForTimeout(120);
-    await page.mouse.click(size.width * 0.72, row1Y);
+    await clickActivityButton('mural_detail', 1);
     await page.waitForTimeout(250);
     const muralShot = await page.screenshot({ path: `artifacts/godot-${size.width}-mural.png` });
     assert.notDeepEqual(neighbor, muralShot, `Portable mural panel and motif placement must visibly update canvas at ${size.width}`);
+    await readActivityDetail('mural_detail', 'mural');
+    if (size.width === 1100) {
+      for (const width of [600, 800, 1000]) {
+        await page.setViewportSize({ width, height: 667 });
+        await page.waitForFunction(w => window.__tenderloinGodotA11ySnapshot?.viewport_width === w, width);
+        await readActivityDetail('mural_detail', `mural-${width}`);
+      }
+      await page.setViewportSize(size);
+      await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.viewport_width === 1100);
+    }
+    const beforeMuralClose = await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1'));
+    await clickActivityButton('mural_detail', 8);
+    await page.waitForFunction(() => !window.__tenderloinGodotA11ySnapshot?.mural_detail.control.visible);
+    assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), beforeMuralClose);
     // Press KeyR to walk to Rook on Turk Street and run soundcheck on arrival
     await page.keyboard.press('KeyR');
     await page.waitForFunction(() => {
@@ -271,6 +348,16 @@ try {
     await page.waitForTimeout(250);
     const musicShot = await page.screenshot({ path: `artifacts/godot-${size.width}-music.png` });
     assert.notDeepEqual(muralShot, musicShot, `Rook soundcheck and MusicPanel playback must visibly update canvas at ${size.width}`);
+    await readActivityDetail('music_detail', 'music');
+    if (size.width === 1100) {
+      for (const width of [600, 800, 1000]) {
+        await page.setViewportSize({ width, height: 667 });
+        await page.waitForFunction(w => window.__tenderloinGodotA11ySnapshot?.viewport_width === w, width);
+        await readActivityDetail('music_detail', `music-${width}`);
+      }
+      await page.setViewportSize(size);
+      await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.viewport_width === 1100);
+    }
     // Verify hidden Web audio file picker input and test local WAV audition + corrupt WAV/MP3/OGG rejection via Uint8Array Web bridge
     const pickerOk = await page.evaluate(() => {
       const el = document.getElementById('tenderloin-godot-audio-input');
@@ -299,10 +386,13 @@ try {
     });
     assert.equal(pickerOk, true, 'Web local audio picker input and Uint8Array bridge must be initialized');
     await page.waitForTimeout(300);
+    assert.match((await page.evaluate(() => window.__tenderloinGodotA11ySnapshot)).music_detail.text, /suno-browser-test\.wav/, 'full local filename stays reachable in the description');
+    await readActivityDetail('music_detail', 'local-track');
     const auditionShot = await page.screenshot();
     assert.notDeepEqual(musicShot, auditionShot, `Local WAV audition must visibly update MusicPanel status at ${size.width}`);
     await page.evaluate(() => window.__tenderloinQueueLocalAudioBase64('corrupt.wav', window.btoa('not-a-valid-riff-wav'), ''));
-    await page.waitForTimeout(220);
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.music_detail.text === 'Could not decode audio file. Sketch remains available.');
+    await readActivityDetail('music_detail', 'audio-error');
     const errorShot = await page.screenshot();
     assert.notDeepEqual(auditionShot, errorShot, `Corrupt WAV must visibly display decode error message at ${size.width}`);
     await page.evaluate(() => {
@@ -323,6 +413,10 @@ try {
     await page.keyboard.press('KeyK');
     await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.music_playing === false);
     await page.waitForTimeout(150);
+    const beforeMusicClose = await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1'));
+    await clickActivityButton('music_detail', 6);
+    await page.waitForFunction(() => !window.__tenderloinGodotA11ySnapshot?.music_detail.control.visible);
+    assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), beforeMusicClose);
     // Visit remaining neighbor Dez (just east of Rook on Turk St) via Digit4 and open the block gathering via KeyO
     await page.keyboard.press('Digit4');
     await page.waitForFunction(() => {
@@ -1053,7 +1147,7 @@ try {
     }
     await clickHeaderControl('block_close_control');
     await page.waitForFunction(() => !window.__tenderloinGodotA11ySnapshot?.block_panel_control.visible);
-    const explorationEvidence = { readableHubActionsVerified: true, boundedHubDetailsVerified: true, defaultMusicOnVerified: true, runningAudioContextVerified: true, touchMusicToggleVerified: true, readableRewardAndGuideVerified: true, inspectionResumeVerified: true, walkingStopControlVerified: true, compactHeaderHeight: startup.header_control.height, compactInfoToggleVerified: true, startupOrientationVerified: true, findMeAndMapVerified: true, rewardSoundsAndMuteVerified: true, persistentProgressVerified: true, surpriseDiscoveryVerified: true, surpriseKeepsakeReloadVerified: true, chapter6ConversationVerified: true, sessionLandmarkTourVerified: true, fullSaveBytes: Buffer.byteLength(saveBeforeTour, 'utf8') };
+    const explorationEvidence = { activityDetailReadabilityVerified: true, activityTouchDragVerified: size.width < 600, activityKeyboardScrollVerified: true, readableHubActionsVerified: true, boundedHubDetailsVerified: true, defaultMusicOnVerified: true, runningAudioContextVerified: true, touchMusicToggleVerified: true, readableRewardAndGuideVerified: true, inspectionResumeVerified: true, walkingStopControlVerified: true, compactHeaderHeight: startup.header_control.height, compactInfoToggleVerified: true, startupOrientationVerified: true, findMeAndMapVerified: true, rewardSoundsAndMuteVerified: true, persistentProgressVerified: true, surpriseDiscoveryVerified: true, surpriseKeepsakeReloadVerified: true, chapter6ConversationVerified: true, sessionLandmarkTourVerified: true, fullSaveBytes: Buffer.byteLength(saveBeforeTour, 'utf8') };
     runs.push({ ...explorationEvidence, viewport: size, overviewBytes: before.length, selectedBytes: after.length, neighborBytes: neighbor.length, muralBytes: muralShot.length, musicBytes: musicShot.length, blockBytes: blockShot.length, blackhawkBytes: blackhawkShot.length, wideBytes: wideShot.length, keyboardActivationVerified: true, neighborWalkVerified: true, muralSaveReloadVerified: true, rookMusicAuditionVerified: true, blockCompletionVerified: true, widerTenderloinVerified: true, m1EpilogueVerified: true, m3HostingVerified: true, m4CivicFilmVerified: true, m5VoicesIsolatedVerified: true, m6KeepsakeSvgExportVerified: true, m6PerfBudgetVerified: true, perfSnapshot: perfSnap, browserSaveImportVerified: true, domA11yLiveVerified: true });
     if (size.width === 1100) {
       const sweepSave = await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1'));

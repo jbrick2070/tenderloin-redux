@@ -1,0 +1,8 @@
+{
+  "unchanged": true,
+  "hashes": {
+    "godot/main.gd": "eb5996962e7c6fdf980c5ef113d9c00c6d64b7c58b4cb322948c92240f821a25",
+    "godot/tests/study_test.gd": "2a69045b0a182b11ebd3453d39aee6c5782b066b10176934f8df860da205234e",
+    "tests/godot-browser.mjs": "583339efa254f160e40c066c338b078421e9ff3e35a7d607c0877fc64f8d452c"
+  }
+}

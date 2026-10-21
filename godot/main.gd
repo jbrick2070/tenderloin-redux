@@ -519,7 +519,7 @@ var mural_motif_nodes: Dictionary = {}
 var mural_banner_mesh: MeshInstance3D
 var mural_panel: PanelContainer
 var mural_label: Label
-var mural_detail_label: Label
+var mural_detail_label: RichTextLabel
 var mural_buttons: Array[Button] = []
 var mural_palette_btn: Button
 var mural_sun_btn: Button
@@ -544,7 +544,7 @@ var last_panel_dialogue := ""
 var visited_neighbors: Dictionary = {}
 var music_panel: PanelContainer
 var music_label: Label
-var music_stem_label: Label
+var music_stem_label: RichTextLabel
 var music_buttons: Array[Button] = []
 var music_play_btn: Button
 var music_vol_btn: Button
@@ -8448,9 +8448,7 @@ func focus_mural_camera() -> void:
 	target = Vector3((c_pos.x + MURAL_POS.x) * 0.5, 1.4, (c_pos.z + MURAL_POS.z) * 0.5)
 	view_size = 45.0
 	update_camera()
-	if get_viewport() != null and get_viewport().get_visible_rect().size.x < 600:
-		target -= camera.global_basis.y * 4.2
-		update_camera()
+	frame_activity_camera(mural_panel)
 	update_occlusion(true)
 
 func focus_speaker_camera() -> void:
@@ -8464,10 +8462,16 @@ func focus_speaker_camera() -> void:
 	target = Vector3((r_pos.x + ROOK_SPEAKER_POS.x) * 0.5, 1.2, (r_pos.z + ROOK_SPEAKER_POS.z) * 0.5)
 	view_size = 45.0
 	update_camera()
-	if get_viewport() != null and get_viewport().get_visible_rect().size.x < 600:
-		target -= camera.global_basis.y * 4.2
-		update_camera()
+	frame_activity_camera(music_panel)
 	update_occlusion(true)
+
+func frame_activity_camera(panel: Control) -> void:
+	if panel == null:
+		return
+	# These focus helpers also run immediately before the panel becomes visible.
+	var area := play_area_rect()
+	area.size.y = maxf(1.0, minf(area.end.y, panel.get_global_rect().position.y - 8.0) - area.position.y)
+	pan_camera_by_screen_delta(area.get_center() - camera.unproject_position(target))
 
 func focus_block_camera() -> void:
 	in_overview = false
@@ -10845,6 +10849,20 @@ func control_snapshot(control: Control) -> Dictionary:
 	var rect := control.get_global_rect()
 	return {"x": rect.position.x, "y": rect.position.y, "width": rect.size.x, "height": rect.size.y, "visible": control.is_visible_in_tree()}
 
+func activity_detail_snapshot(detail: RichTextLabel, panel: Control, buttons: Array[Button]) -> Dictionary:
+	if detail == null or panel == null:
+		return {}
+	var actions: Array[Dictionary] = []
+	for i in range(buttons.size() if panel.is_visible_in_tree() else 0):
+		var btn := buttons[i]
+		var entry := control_snapshot(btn)
+		entry["id"] = i
+		entry["text"] = btn.text
+		entry["text_fits"] = btn.get_theme_font("font").get_string_size(btn.text, HORIZONTAL_ALIGNMENT_LEFT, -1, btn.get_theme_font_size("font_size")).x + btn.get_theme_stylebox("normal").get_minimum_size().x <= btn.size.x + 1.0
+		actions.append(entry)
+	var bar := detail.get_v_scroll_bar()
+	return {"control": control_snapshot(detail), "panel": control_snapshot(panel), "text": detail.text, "min_height": detail.custom_minimum_size.y, "scroll_value": bar.value, "scroll_max": bar.max_value, "scroll_page": bar.page, "buttons": actions}
+
 func rect_snapshot(rect: Rect2) -> Dictionary:
 	return {"x": rect.position.x, "y": rect.position.y, "width": rect.size.x, "height": rect.size.y}
 
@@ -10934,12 +10952,15 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"block_detail_scroll_value": block_detail_label.get_v_scroll_bar().value if block_detail_label != null else 0.0,
 		"block_detail_scroll_page": block_detail_label.get_v_scroll_bar().page if block_detail_label != null else 0.0,
 		"block_hub_actions": block_action_snapshots(),
+		"mural_detail": activity_detail_snapshot(mural_detail_label, mural_panel, mural_buttons),
+		"music_detail": activity_detail_snapshot(music_stem_label, music_panel, music_buttons),
 		"reward_sounds_enabled": reward_sounds_enabled,
 		"reward_audio_unlocked": reward_audio_unlocked,
 		"reward_sound_count": reward_sound_count,
 		"reward_sound_last_cue": reward_sound_last_cue,
 		"reward_audio_playing": reward_audio_player != null and reward_audio_player.playing,
 		"camera_view_size": view_size,
+		"camera_pose": {"target_x": target.x, "target_y": target.y, "target_z": target.z, "yaw": camera_yaw, "pitch": camera_pitch_scale},
 		"following_player": following_player,
 		"in_overview": in_overview,
 		"in_wide_overview": in_wide_overview,
@@ -13644,7 +13665,7 @@ func motif_button_text(motif_id: String, label_prefix: String) -> String:
 	if mural_placements.has(motif_id):
 		var c_dict: Dictionary = mural_placements[motif_id]
 		return "%s%s (%d,%d)" % [prefix, label_prefix, int(c_dict.get("col", 0)), int(c_dict.get("row", 0))]
-	return "%s%s · Paint" % [prefix, label_prefix]
+	return "%sAdd %s" % [prefix, label_prefix] if is_narrow_layout() else "%s%s · Paint" % [prefix, label_prefix]
 
 func apply_character_panel_theme(panel: PanelContainer, n_id: String) -> void:
 	if panel == null or panel_bg_style == null:
@@ -13691,7 +13712,15 @@ func update_mural_ui() -> void:
 				c_spoken = "Celeste: %s · %s" % [c_mem, c_line.trim_prefix("Celeste: ")]
 			else:
 				c_spoken = "%s · %s" % [c_line, c_mem]
-		mural_detail_label.text = c_spoken if browser_import_message.is_empty() else ("%s · %s" % [c_spoken, browser_import_message])
+		var instructions := "Select a motif. Move shifts it right; Clear empties the board."
+		var detail := "%s %s" % [c_spoken, instructions]
+		set_activity_detail(mural_detail_label, detail if browser_import_message.is_empty() else ("%s · %s" % [detail, browser_import_message]))
+	if mural_buttons.size() == 9:
+		var short := is_narrow_layout()
+		mural_buttons[5].text = "Move" if short else "Shift Motif"
+		mural_buttons[6].text = "Clear" if short else "Clear Board"
+		mural_buttons[7].text = "Hint" if short else "What's Next?"
+		mural_buttons[8].text = "Close" if short else "Goodbye (Esc)"
 	if mural_palette_btn != null:
 		mural_palette_btn.text = "Palette: %s" % mural_palette.capitalize()
 	if mural_sun_btn != null:
@@ -13719,7 +13748,7 @@ func update_music_ui() -> void:
 		music_label.text = "Rook · Turn %d/5 · Sparks: %d" % [r_turn, spark_count()]
 	if music_stem_label != null:
 		if not music_error.is_empty():
-			music_stem_label.text = music_error
+			set_activity_detail(music_stem_label, music_error)
 		else:
 			var has_custom_r := last_panel_dialogue.begins_with("Rook: \"")
 			var r_line := last_panel_dialogue if has_custom_r else rook_dialogue_text()
@@ -13731,9 +13760,9 @@ func update_music_ui() -> void:
 				else:
 					r_spoken = "%s · %s" % [r_line, r_mem]
 			if music_mode == "local":
-				music_stem_label.text = "Local full track (procedural stems hidden) — %s" % r_spoken
+				set_activity_detail(music_stem_label, "Local full track: %s (procedural stems hidden) — %s Use Sketch returns to the original 80 BPM music." % [local_music_name, r_spoken])
 			else:
-				music_stem_label.text = "Groove Stems: %s — %s" % [active_stem_summary(), r_spoken]
+				set_activity_detail(music_stem_label, "Original 80 BPM sketch · Soundcheck: %s · Groove Stems: %s — %s" % [sc_state, active_stem_summary(), r_spoken])
 	if music_play_btn != null:
 		music_play_btn.text = "Pause Groove" if music_playing else "Play Groove"
 	if music_vol_btn != null:
@@ -13742,6 +13771,42 @@ func update_music_ui() -> void:
 		music_rook_btn.text = "Chat & Soundcheck (Done)" if rook_soundcheck_done else "Soundcheck w/ Rook"
 	if music_sketch_btn != null:
 		music_sketch_btn.text = "80 BPM Sketch (Active)" if music_mode == "sketch" else "Use 80 BPM Sketch"
+	if music_buttons.size() == 7:
+		var short := is_narrow_layout()
+		if short:
+			music_rook_btn.text = "Chat w/ Rook" if rook_soundcheck_done else "Check Sound"
+			music_sketch_btn.text = "Sketch On" if music_mode == "sketch" else "Use Sketch"
+		music_buttons[5].text = "Hint" if short else "What's Next?"
+		music_buttons[6].text = "Close" if short else "Goodbye (Esc)"
+
+func set_activity_detail(control: RichTextLabel, value: String) -> void:
+	# Periodic music/UI refreshes must not pull readers back to the first line.
+	if control.text != value:
+		control.text = value
+		control.scroll_to_line(0)
+
+func size_activity_detail(control: RichTextLabel) -> void:
+	var font_size := 12 if is_narrow_layout() else 14
+	control.add_theme_font_size_override("normal_font_size", font_size)
+	var font := control.get_theme_font("normal_font")
+	control.custom_minimum_size.y = ceilf(font.get_height(font_size) * 2.0 + control.get_theme_constant("line_separation") + control.get_theme_stylebox("normal").get_minimum_size().y)
+
+func make_activity_detail() -> RichTextLabel:
+	var control := RichTextLabel.new()
+	control.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	control.scroll_active = true
+	control.focus_mode = Control.FOCUS_ALL
+	if button_focus_style != null:
+		control.add_theme_stylebox_override("focus", button_focus_style)
+	control.add_theme_constant_override("line_separation", 2)
+	control.add_theme_color_override("default_color", Color("f2ead8"))
+	size_activity_detail(control)
+	control.gui_input.connect(func(event: InputEvent):
+		if event is InputEventScreenDrag:
+			control.get_v_scroll_bar().value -= event.relative.y
+			control.accept_event()
+	)
+	return control
 
 func update_block_ui() -> void:
 	if block_label == null:
@@ -13995,7 +14060,7 @@ func make_ui() -> void:
 	mural_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	mural_panel.offset_left = 12
 	mural_panel.offset_right = -12
-	mural_panel.offset_top = -324
+	mural_panel.offset_top = -354
 	mural_panel.offset_bottom = -130
 	mural_panel.visible = false
 	layer.add_child(mural_panel)
@@ -14007,10 +14072,7 @@ func make_ui() -> void:
 	mural_label.add_theme_font_size_override("font_size", 16)
 	mural_label.add_theme_color_override("font_color", Color("ffe082"))
 	mural_vbox.add_child(mural_label)
-	mural_detail_label = Label.new()
-	mural_detail_label.clip_text = true
-	mural_detail_label.add_theme_font_size_override("font_size", 14)
-	mural_detail_label.add_theme_color_override("font_color", Color("f2ead8"))
+	mural_detail_label = make_activity_detail()
 	mural_vbox.add_child(mural_detail_label)
 	mural_buttons.clear()
 	var row1 := HBoxContainer.new()
@@ -14039,7 +14101,7 @@ func make_ui() -> void:
 	music_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	music_panel.offset_left = 12
 	music_panel.offset_right = -12
-	music_panel.offset_top = -324
+	music_panel.offset_top = -354
 	music_panel.offset_bottom = -130
 	music_panel.visible = false
 	layer.add_child(music_panel)
@@ -14051,10 +14113,7 @@ func make_ui() -> void:
 	music_label.add_theme_font_size_override("font_size", 16)
 	music_label.add_theme_color_override("font_color", Color("ffe082"))
 	music_vbox.add_child(music_label)
-	music_stem_label = Label.new()
-	music_stem_label.clip_text = true
-	music_stem_label.add_theme_font_size_override("font_size", 14)
-	music_stem_label.add_theme_color_override("font_color", Color("f2ead8"))
+	music_stem_label = make_activity_detail()
 	music_vbox.add_child(music_stem_label)
 	music_buttons.clear()
 	var m_row1 := HBoxContainer.new()
@@ -14210,11 +14269,11 @@ func make_ui() -> void:
 		if is_instance_valid(mural_label):
 			mural_label.add_theme_font_size_override("font_size", 13 if narrow else 16)
 		if is_instance_valid(mural_detail_label):
-			mural_detail_label.add_theme_font_size_override("font_size", 12 if narrow else 14)
+			size_activity_detail(mural_detail_label)
 		if is_instance_valid(music_label):
 			music_label.add_theme_font_size_override("font_size", 13 if narrow else 16)
 		if is_instance_valid(music_stem_label):
-			music_stem_label.add_theme_font_size_override("font_size", 12 if narrow else 14)
+			size_activity_detail(music_stem_label)
 		if is_instance_valid(block_label):
 			block_label.add_theme_font_size_override("font_size", 13 if narrow else 16)
 		if is_instance_valid(block_detail_label):
@@ -14240,12 +14299,12 @@ func make_ui() -> void:
 		controls.offset_top = -174 if narrow else -124
 		if is_instance_valid(mural_panel):
 			mural_panel.offset_bottom = -176 if narrow else -130
-			mural_panel.offset_top = -368 if narrow else -324
+			mural_panel.offset_top = -396 if narrow else -354
 			if mural_panel.visible:
 				update_mural_ui()
 		if is_instance_valid(music_panel):
 			music_panel.offset_bottom = -176 if narrow else -130
-			music_panel.offset_top = -368 if narrow else -324
+			music_panel.offset_top = -396 if narrow else -354
 			if music_panel.visible:
 				update_music_ui()
 		if is_instance_valid(block_panel):

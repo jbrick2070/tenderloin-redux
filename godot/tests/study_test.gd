@@ -2660,6 +2660,126 @@ func run() -> void:
 		study.overview()
 		require(study.in_overview, "Map Overview remains available after Start")
 		study.stop_music_playback()
+	# Activity instructions, final lines and errors must remain reachable in a bounded panel.
+	var activity_original_dialogue: String = study.last_panel_dialogue
+	var activity_original_error: String = study.music_error
+	var activity_save: String = JSON.stringify(study.build_save_envelope())
+	var activity_position: Vector3 = study.player.position
+	for activity_width in [320, 390, 600, 800, 1000, 1100]:
+		root.size = Vector2i(activity_width, 667)
+		await process_frame
+		await process_frame
+		for activity_kind in ["mural", "music"]:
+			var detail: RichTextLabel
+			var activity_panel: Control
+			var activity_buttons: Array[Button]
+			var activity_focus: Vector3
+			var hidden_panel_rect: Rect2
+			if activity_kind == "mural":
+				study.show_mural_panel(false)
+				study.focus_mural_camera()
+				hidden_panel_rect = study.mural_panel.get_global_rect()
+				var celeste_pos: Vector3 = study.neighbors[study.celeste_index].pos
+				activity_focus = Vector3((celeste_pos.x + study.MURAL_POS.x) * 0.5, 1.4, (celeste_pos.z + study.MURAL_POS.z) * 0.5)
+				study.show_mural_panel(true)
+				study.last_panel_dialogue = 'Celeste: "' + 'Original portable mural instructions. '.repeat(16) + 'Final mural instruction."'
+				study.update_mural_ui()
+				detail = study.mural_detail_label
+				activity_panel = study.mural_panel
+				activity_buttons = study.mural_buttons
+			else:
+				study.music_error = 'Cannot decode this local track. '.repeat(16) + 'Final error explanation.'
+				study.show_music_panel(false)
+				study.focus_speaker_camera()
+				hidden_panel_rect = study.music_panel.get_global_rect()
+				var rook_pos: Vector3 = study.neighbors[study.rook_index].pos
+				activity_focus = Vector3((rook_pos.x + study.ROOK_SPEAKER_POS.x) * 0.5, 1.2, (rook_pos.z + study.ROOK_SPEAKER_POS.z) * 0.5)
+				study.show_music_panel(true)
+				detail = study.music_stem_label
+				activity_panel = study.music_panel
+				activity_buttons = study.music_buttons
+			await process_frame
+			await process_frame
+			var activity_rect: Rect2 = activity_panel.get_global_rect()
+			require(activity_rect == hidden_panel_rect and study.play_area_rect().has_point(study.camera.unproject_position(activity_focus)), "production hidden-focus-show order keeps the real activity subject above its stable panel")
+			require(activity_rect.position.y >= study.header_panel.get_global_rect().end.y and activity_rect.end.y <= study.controls.get_global_rect().position.y, "activity details preserve header and walking controls at %d" % activity_width)
+			require(study.play_area_rect().size.y >= 140, "activity descriptions leave a useful scene area")
+			var activity_font: Font = detail.get_theme_font("normal_font")
+			var two_line_height: float = activity_font.get_height(detail.get_theme_font_size("normal_font_size")) * 2.0 + detail.get_theme_constant("line_separation") + detail.get_theme_stylebox("normal").get_minimum_size().y
+			require(detail.size.y >= two_line_height and detail.size.y <= 50 and activity_rect.encloses(detail.get_global_rect()), "two real font lines fit without unbounded description growth")
+			var activity_snapshot: Dictionary = study.activity_detail_snapshot(detail, activity_panel, activity_buttons)
+			for activity_button in activity_snapshot.buttons:
+				require(bool(activity_button.text_fits) and activity_button.width >= 44 and activity_button.height >= 44, "full activity button title fits at %d: %s" % [activity_width, activity_button.text])
+			if activity_kind == "mural":
+				var placed_before: Dictionary = study.mural_placements.duplicate(true)
+				var motif_before: String = study.active_motif
+				study.mural_placements.clear()
+				for selected_motif in ["sun", "wave", "rise"]:
+					study.active_motif = selected_motif
+					study.update_mural_ui()
+					await process_frame
+					await process_frame
+					for empty_button in study.activity_detail_snapshot(detail, activity_panel, activity_buttons).buttons:
+						require(bool(empty_button.text_fits), "empty/selected motif title fits at %d: %s" % [activity_width, empty_button.text])
+				study.mural_placements = placed_before
+				study.active_motif = motif_before
+				study.update_mural_ui()
+				await process_frame
+			var detail_scroll: VScrollBar = detail.get_v_scroll_bar()
+			require(detail.scroll_active and detail.focus_mode == Control.FOCUS_ALL and detail.has_theme_stylebox_override("focus") and detail_scroll.max_value > detail_scroll.page, "long %s details are focusable and scrollable at %d" % [activity_kind, activity_width])
+			if activity_width == 320:
+				var gesture_target: Vector3 = study.target
+				var gesture_zoom: float = study.view_size
+				var finger_start: Vector2 = detail.get_global_rect().get_center() + Vector2(0.0, 10.0)
+				var touch_detail := InputEventScreenTouch.new()
+				touch_detail.index = 17
+				touch_detail.position = finger_start
+				touch_detail.pressed = true
+				Input.parse_input_event(touch_detail)
+				await process_frame
+				var drag_detail := InputEventScreenDrag.new()
+				drag_detail.index = 17
+				drag_detail.position = finger_start - Vector2(0.0, 20.0)
+				drag_detail.relative = Vector2(0.0, -20.0)
+				Input.parse_input_event(drag_detail)
+				await process_frame
+				touch_detail.pressed = false
+				touch_detail.position = drag_detail.position
+				Input.parse_input_event(touch_detail)
+				await process_frame
+				require(is_equal_approx(detail_scroll.value, 20.0), "real finger drag scrolls the activity body exactly once without routing/zooming")
+				require(study.target == gesture_target and study.view_size == gesture_zoom and study.player.position == activity_position, "finger reading never pans, zooms or moves the character")
+			detail.scroll_to_line(detail.get_line_count() - 1)
+			await process_frame
+			require(detail_scroll.value > 0 and is_equal_approx(detail_scroll.value, detail_scroll.max_value - detail_scroll.page), "the final %s line is reachable at %d" % [activity_kind, activity_width])
+			var reading_position: float = detail_scroll.value
+			if activity_kind == "mural":
+				study.update_mural_ui()
+				study.update_mural_ui()
+			else:
+				study.update_music_ui()
+				study.update_music_ui()
+			await process_frame
+			require(is_equal_approx(detail_scroll.value, reading_position), "unchanged periodic refresh preserves activity reading position")
+			study.set_activity_detail(detail, "New explanation")
+			await process_frame
+			require(is_zero_approx(detail_scroll.value), "a changed explanation starts from its first line")
+			activity_buttons[-1].grab_focus()
+			var close_activity := InputEventAction.new()
+			close_activity.action = "ui_accept"
+			close_activity.pressed = true
+			Input.parse_input_event(close_activity)
+			await process_frame
+			close_activity.pressed = false
+			Input.parse_input_event(close_activity)
+			await process_frame
+			require(not activity_panel.visible, "real ui_accept on Close exits the activity panel")
+	study.last_panel_dialogue = activity_original_dialogue
+	study.music_error = activity_original_error
+	study.update_mural_ui()
+	study.update_music_ui()
+	require(study.player.position == activity_position and JSON.stringify(study.build_save_envelope()) == activity_save, "reading and closing activity details change neither walking nor progress")
+	# This fixture intentionally closes panels; the next independent suite resets its view/layout with Find Me.
 	# Regression: at600px the old six-column hub grew43px over walking controls.
 	study.hide_story_card()
 	study.frame_player_for_walking()
