@@ -791,6 +791,11 @@ var block_page_prev: Button
 var block_page_next: Button
 var block_close_btn: Button
 var block_hub_page := 0
+var mural_workshop
+var mural_workshop_selected := "sun"
+var mural_workshop_message := ""
+var mural_workshop_return_focus: Control
+var mural_compose_btn: Button
 const BLOCK_ACTIONS_PER_PAGE := 4
 const SIDE_HUB_MIN_WIDTH := 600.0 # Phone HUD breakpoint; short landscape panels dock at520px.
 const SIDE_ACTIVITY_MIN_WIDTH := 520.0
@@ -5758,6 +5763,10 @@ func build_reward_banner(layer: CanvasLayer) -> void:
 	layer.add_child(reward_banner)
 
 func layout_reward_banner() -> void:
+	if is_mural_workshop_visible():
+		if reward_banner != null:
+			reward_banner.visible = false
+		return
 	if reward_banner == null:
 		return
 	if reward_banner_timer <= 0.0:
@@ -5819,7 +5828,7 @@ func trigger_feel_good_burst(title_str: String, detail_str: String, world_pos: V
 func update_celebration_burst(delta: float) -> void:
 	if reward_banner != null and reward_banner_timer > 0.0:
 		layout_reward_banner()
-		if reward_banner.visible or (header_details_expanded and not speech_opened_info):
+		if not is_mural_workshop_visible() and (reward_banner.visible or (header_details_expanded and not speech_opened_info)):
 			reward_banner_timer -= delta
 		if reward_banner_timer <= 0.45:
 			reward_banner.modulate = Color(1.0, 1.0, 1.0, clampf(reward_banner_timer / 0.45, 0.0, 1.0))
@@ -7354,7 +7363,9 @@ func set_header_details(expanded: bool, refit_map := true) -> void:
 func update_conversation_ui(delta: float) -> void:
 	ui_clock = wrapf(ui_clock + delta, 0.0, 3600.0)
 	var chapter := current_chapter()
-	if last_story_chapter >= 0 and int(chapter.num) != last_story_chapter:
+	# Deliver any pending chapter card after the focused workshop closes,
+	# without stealing the artist's reading/cell focus.
+	if last_story_chapter >= 0 and int(chapter.num) != last_story_chapter and not is_mural_workshop_visible():
 		last_story_chapter = int(chapter.num)
 		show_story_card(chapter)
 	if is_story_card_visible():
@@ -8688,7 +8699,7 @@ func celeste_dialogue_text() -> String:
 	var c_surp := neighbor_surprise_memory_line(CELESTE_ID)
 	if mural_completed:
 		var completed_options: Array[String] = [
-			"Celeste: \"Sun, Wave, and Rise are up on our portable board. We made something together without painting anyone's building.\"",
+			"Celeste: \"%s\"" % mural_composition_reply(),
 			"Celeste: \"Try cycling Garden, Sunset, or Ocean palettes anytime—even after the board is complete, the colors shift on the easel and in our keepsake.\"",
 			"Celeste: \"Once the block gathering opens, we can host the shared six-tile art panel and help Dez frame our three-shot short film, The Open Seat.\"",
 			"Celeste: \"I love how our freestanding board keeps the Turk Street sidewalk wide open while giving the block a shared canvas.\"",
@@ -11350,6 +11361,9 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"block_detail_scroll_value": block_detail_label.get_v_scroll_bar().value if block_detail_label != null else 0.0,
 		"block_detail_scroll_page": block_detail_label.get_v_scroll_bar().page if block_detail_label != null else 0.0,
 		"block_hub_actions": block_action_snapshots(),
+		"mural_workshop": mural_workshop.snapshot() if mural_workshop != null else {"visible": false},
+		"mural_compose_entry": activity_detail_snapshot(mural_detail_label, mural_panel, [mural_compose_btn]).buttons[0] if mural_compose_btn != null and mural_compose_btn.is_visible_in_tree() else {"visible": false},
+		"mural_compose_focused": mural_compose_btn != null and mural_compose_btn.has_focus(),
 		"mural_detail": activity_detail_snapshot(mural_detail_label, mural_panel, mural_buttons),
 		"music_detail": activity_detail_snapshot(music_stem_label, music_panel, music_buttons),
 		"reward_sounds_enabled": reward_sounds_enabled,
@@ -11505,6 +11519,134 @@ func poll_web_audio() -> void:
 		return
 	load_local_music_bytes(fname, raw)
 
+func is_mural_workshop_visible() -> bool:
+	return mural_workshop != null and mural_workshop.visible
+
+func is_near_mural_workshop() -> bool:
+	return player != null and (player_xz().distance_to(mural_stand_xz()) <= ARRIVAL_DISTANCE_M + 0.9 or player_xz().distance_to(neighbor_xz(celeste_index)) <= ARRIVAL_DISTANCE_M + 0.9)
+
+func mural_composition_reply() -> String:
+	if mural_placements.size() < 3:
+		return "Lulu brought Sun, Dez brought Wave, and I brought Rise. Choose a contribution, then an empty space. There is no wrong arrangement."
+	var sun: Dictionary = mural_placements.sun
+	var wave: Dictionary = mural_placements.wave
+	var rise: Dictionary = mural_placements.rise
+	var line := "Lulu's Sun and Dez's Wave share a horizon."
+	if int(sun.row) < int(wave.row):
+		line = "Lulu's Sun shines above Dez's Wave."
+	elif int(sun.row) > int(wave.row):
+		line = "Dez's Wave floats above Lulu's Sun."
+	if int(rise.col) < mini(int(sun.col),int(wave.col)):
+		line += " My Rise opens the scene on the left."
+	elif int(rise.col) > maxi(int(sun.col),int(wave.col)):
+		line += " My Rise carries it to the right."
+	else:
+		line += " My Rise links the shapes together."
+	return line + " Three neighbors' ideas, arranged your way."
+
+func open_mural_workshop() -> bool:
+	if startup_story_pending or is_story_card_visible():
+		announce_a11y_status("Continue the chapter card before composing the mural.")
+		return false
+	if not is_near_mural_workshop():
+		announce_a11y_status("Walk to Celeste or the portable mural board (M), then choose Compose Mural or F2.")
+		return false
+	if not current_path.is_empty():
+		announce_a11y_status("Finish arriving, or choose Stop Walking, before composing the mural.")
+		return false
+	if mural_panel == null or not mural_panel.visible:
+		announce_a11y_status("Open Celeste's mural panel first (E or M), then choose Compose Mural or F2.")
+		return false
+	mural_workshop_return_focus = get_viewport().gui_get_focus_owner()
+	mural_workshop_selected = active_motif if active_motif in MURAL_MOTIFS else "sun"
+	select_next_workshop_contribution()
+	mural_workshop_message = "Choose a contribution, then a square. Changes save immediately. Celeste: " + mural_composition_reply()
+	mural_workshop.visible = true
+	mural_workshop.scroll.scroll_vertical = 0
+	refresh_mural_workshop()
+	mural_workshop.cells[0].grab_focus()
+	mural_workshop.queue_layout()
+	pointer_active = false
+	orbit_dragging = false
+	layout_reward_banner()
+	announce_a11y_status("Mural Workshop. %d/3 contributions placed. Lulu's Sun, Dez's Wave, Celeste's Rise. Choose a contribution and a space; Escape returns to the street." % mural_placements.size())
+	return true
+
+func select_next_workshop_contribution() -> void:
+	for id in MURAL_MOTIFS:
+		if not mural_placements.has(id):
+			mural_workshop_selected = id
+			return
+
+func close_mural_workshop() -> void:
+	if not is_mural_workshop_visible():
+		return
+	mural_workshop.visible = false
+	mural_workshop.layout_pending = false
+	layout_mural_compose_entry()
+	if is_instance_valid(mural_workshop_return_focus) and mural_workshop_return_focus.is_visible_in_tree():
+		mural_workshop_return_focus.grab_focus()
+	elif mural_compose_btn.visible:
+		mural_compose_btn.grab_focus()
+	else:
+		mural_buttons[0].grab_focus()
+	layout_reward_banner()
+	announce_a11y_status("Back at Celeste's easel. Mural %d/3. %s" % [mural_placements.size(),mural_composition_reply()])
+
+func select_workshop_contribution(id: String) -> void:
+	if not is_mural_workshop_visible() or not id in MURAL_MOTIFS:
+		return
+	mural_workshop_selected = id
+	var credit: String = {"sun":"Lulu", "wave":"Dez", "rise":"Celeste"}[id]
+	mural_workshop_message = "Selected %s's %s. Choose an empty space. The other contributions stay where you put them." % [credit,id.capitalize()]
+	refresh_mural_workshop()
+	announce_a11y_status("Mural %d/3. %s" % [mural_placements.size(),mural_workshop_message])
+
+func place_workshop_contribution(col: int, row: int) -> bool:
+	if not is_mural_workshop_visible() or not is_valid_mural_cell(col,row):
+		return false
+	if cell_occupied_by_other(col,row,mural_workshop_selected):
+		mural_workshop_message = "That space already has another contribution. Choose an empty space; nothing has moved."
+		refresh_mural_workshop()
+		announce_a11y_status("Mural %d/3. %s" % [mural_placements.size(),mural_workshop_message])
+		return false
+	if mural_placements.has(mural_workshop_selected) and int(mural_placements[mural_workshop_selected].col) == col and int(mural_placements[mural_workshop_selected].row) == row:
+		mural_workshop_message = "%s is already here. Choose another space to move it." % mural_workshop_selected.capitalize()
+		refresh_mural_workshop()
+		announce_a11y_status("Mural %d/3. %s" % [mural_placements.size(),mural_workshop_message])
+		return false
+	if not place_mural_motif(mural_workshop_selected,col,row):
+		return false
+	mural_workshop_message = "Placed %s at column %d, row %d. Celeste: %s" % [mural_workshop_selected.capitalize(),col+1,row+1,mural_composition_reply()]
+	select_next_workshop_contribution()
+	refresh_mural_workshop()
+	announce_a11y_status("Mural %d/3. %s" % [mural_placements.size(),mural_workshop_message])
+	return true
+
+func refresh_mural_workshop() -> void:
+	if not is_mural_workshop_visible():
+		return
+	mural_workshop.present({"selected":mural_workshop_selected,"placements":mural_placements,"palette":mural_palette,"canvas_color":mural_palette_color(mural_palette,mural_completed),"sparks":spark_count(),"music":music_playing,"message":mural_workshop_message})
+
+func layout_mural_compose_entry() -> void:
+	if mural_compose_btn == null:
+		return
+	if is_mural_workshop_visible() or is_story_card_visible() or in_overview or in_wide_overview or mural_panel == null or not mural_panel.visible or not is_near_mural_workshop():
+		mural_compose_btn.visible = false
+		return
+	var area := play_area_rect()
+	var size := Vector2(64,44)
+	var subject := camera.unproject_position(MURAL_POS + Vector3.UP)
+	var positions: Array[Vector2] = [subject - size*0.5,area.position,Vector2(area.end.x-size.x,area.position.y),Vector2(area.position.x,area.end.y-size.y),area.end-size]
+	for pos in positions:
+		var rect := Rect2(pos,size)
+		if area.encloses(rect) and not rect.intersects(player_overlay_rect().grow(4)) and (reward_banner == null or not reward_banner.visible or not rect.intersects(reward_banner.get_global_rect())) and (not is_speech_bubble_visible() or not rect.intersects(speech_bubble_screen_rect())):
+			mural_compose_btn.position = pos
+			mural_compose_btn.size = size
+			mural_compose_btn.visible = true
+			return
+	mural_compose_btn.visible = false
+
 func can_interact_with_mural() -> bool:
 	return arrived_mural or arrived_neighbor == celeste_index or (mural_panel != null and mural_panel.visible)
 
@@ -11552,8 +11694,8 @@ func place_mural_motif(motif_id: String, col: int, row: int) -> bool:
 		trigger_progress_cue("mural_complete", "3/3 motifs")
 	else:
 		trigger_progress_cue("mural_motif", motif_id)
-	info.text = "Placed %s motif at (%d, %d) on Portable Mural Board with Celeste (%d/3 motifs)\nFreestanding sidewalk easel · %s palette · Saved to Godot storage\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [motif_id.capitalize(), col, row, mural_placements.size(), mural_palette.capitalize()]
-	announce_a11y_status("Placed %s motif at (%d, %d) on Portable Mural Board (%d/3 motifs)." % [motif_id.capitalize(), col, row, mural_placements.size()])
+	info.text = "Placed %s motif at column %d, row %d on Portable Mural Board with Celeste (%d/3 motifs)\nFreestanding sidewalk easel · %s palette · Saved to Godot storage\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [motif_id.capitalize(), col+1, row+1, mural_placements.size(), mural_palette.capitalize()]
+	announce_a11y_status("Placed %s motif at column %d, row %d on Portable Mural Board (%d/3 motifs)." % [motif_id.capitalize(), col+1, row+1, mural_placements.size()])
 	return true
 
 func activate_or_advance_motif(motif_id: String) -> bool:
@@ -11609,7 +11751,8 @@ func set_mural_palette(palette_id: String) -> bool:
 	return true
 
 func cycle_mural_palette() -> String:
-	show_mural_panel(true)
+	if not is_mural_workshop_visible():
+		show_mural_panel(true)
 	var idx := MURAL_PALETTES.find(mural_palette)
 	var next_id: String = MURAL_PALETTES[posmod(idx + 1, MURAL_PALETTES.size())]
 	set_mural_palette(next_id)
@@ -13310,9 +13453,12 @@ func _process(delta: float) -> void:
 	if reward_banner_timer > 0.0:
 		layout_reward_banner() # Speech may have opened or released Info this frame.
 	update_readable_scene_labels()
+	layout_mural_compose_entry()
 	flush_web_a11y_status()
 
 func _physics_process(delta: float) -> void:
+	if is_mural_workshop_visible():
+		return
 	var shift_held := Input.is_key_pressed(KEY_SHIFT) or Input.is_physical_key_pressed(KEY_SHIFT)
 	if shift_held and get_viewport().gui_get_focus_owner() == null:
 		var yaw_dir := 0.0
@@ -13368,6 +13514,8 @@ func _physics_process(delta: float) -> void:
 		advance_walk(delta * (2.2 if OS.has_feature("web") else 1.0))
 
 func is_screen_point_in_ui(screen_pos: Vector2) -> bool:
+	if is_mural_workshop_visible() or (mural_compose_btn != null and mural_compose_btn.is_visible_in_tree() and mural_compose_btn.get_global_rect().has_point(screen_pos)):
+		return true
 	if reward_banner != null and reward_banner.is_visible_in_tree() and reward_banner.get_global_rect().has_point(screen_pos):
 		return true
 	if is_speech_bubble_visible() and speech_bubble_screen_rect().has_point(screen_pos):
@@ -13451,6 +13599,8 @@ func handle_scene_tap(screen_pos: Vector2) -> bool:
 	var m_screen_d := m_screen.distance_to(screen_pos)
 	var m_world_d := mural_xz().distance_to(ground_xz)
 	if ((m_screen_d <= 38.0 and m_world_d <= 8.5) or m_world_d <= 3.6) and m_screen_d < best_screen_d:
+		if mural_panel != null and mural_panel.visible and is_near_mural_workshop():
+			return open_mural_workshop()
 		return walk_to_mural()
 	var s_screen := camera.unproject_position(ROOK_SPEAKER_POS + Vector3(0.0, 0.8, 0.0))
 	var s_screen_d := s_screen.distance_to(screen_pos)
@@ -13564,6 +13714,11 @@ func _input(event: InputEvent) -> void:
 		continue_story()
 
 func _unhandled_input(event: InputEvent) -> void:
+	if is_mural_workshop_visible():
+		if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+			close_mural_workshop()
+		get_viewport().set_input_as_handled()
+		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		var k: Key = event.keycode if event.keycode != KEY_NONE else event.physical_keycode
 		if is_story_card_visible() and not (k in [KEY_SHIFT, KEY_CTRL, KEY_ALT, KEY_META]):
@@ -13575,6 +13730,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			else:
 				hide_story_card()
 		match k:
+			KEY_F2:
+				open_mural_workshop()
 			KEY_1, KEY_KP_1:
 				if arrived_neighbor == 0:
 					talk_with_neighbor(0)
@@ -14147,8 +14304,8 @@ func motif_button_text(motif_id: String, label_prefix: String) -> String:
 	if mural_placements.has(motif_id):
 		var c_dict: Dictionary = mural_placements[motif_id]
 		if uses_short_side_panels() and bubble_viewport_size().x < WIDE_SIDE_PANEL_MIN_WIDTH:
-			return "%s%s %d,%d" % [prefix.strip_edges(), label_prefix, int(c_dict.get("col", 0)), int(c_dict.get("row", 0))]
-		return "%s%s (%d,%d)" % [prefix, label_prefix, int(c_dict.get("col", 0)), int(c_dict.get("row", 0))]
+			return "%s%s %d,%d" % [prefix.strip_edges(), label_prefix, int(c_dict.get("col", 0))+1, int(c_dict.get("row", 0))+1]
+		return "%s%s (%d,%d)" % [prefix, label_prefix, int(c_dict.get("col", 0))+1, int(c_dict.get("row", 0))+1]
 	return "%sAdd %s" % [prefix, label_prefix] if is_narrow_layout() or uses_short_side_panels() else "%s%s · Paint" % [prefix, label_prefix]
 
 func apply_character_panel_theme(panel: PanelContainer, n_id: String) -> void:
@@ -14177,6 +14334,7 @@ func apply_character_panel_theme(panel: PanelContainer, n_id: String) -> void:
 	panel.add_theme_stylebox_override("panel", character_panel_styles[n_id])
 
 func update_mural_ui() -> void:
+	refresh_mural_workshop()
 	if mural_label == null:
 		return
 	apply_character_panel_theme(mural_panel, "celeste")
@@ -14196,7 +14354,7 @@ func update_mural_ui() -> void:
 				c_spoken = "Celeste: %s · %s" % [c_mem, c_line.trim_prefix("Celeste: ")]
 			else:
 				c_spoken = "%s · %s" % [c_line, c_mem]
-		var instructions := "Select a motif. Move shifts it right; Clear empties the board."
+		var instructions := "Compose Mural (F2 or tap the easel) opens exact placement. Quick controls: Move shifts right; Clear empties the board."
 		var detail := "%s %s" % [c_spoken, instructions]
 		set_activity_detail(mural_detail_label, detail if browser_import_message.is_empty() else ("%s · %s" % [detail, browser_import_message]))
 	if mural_buttons.size() == 9:
@@ -14215,6 +14373,7 @@ func update_mural_ui() -> void:
 		mural_rise_btn.text = motif_button_text("rise", "Rise")
 
 func update_music_ui() -> void:
+	refresh_mural_workshop()
 	if music_toggle_btn != null:
 		music_toggle_btn.text = "Music: On" if music_playing else "Music: Off"
 		music_toggle_btn.set_pressed_no_signal(music_playing)
@@ -14730,10 +14889,39 @@ func make_ui() -> void:
 	layer.add_child(guide_arrow)
 	build_story_card(layer)
 	build_reward_banner(layer)
+	mural_compose_btn = Button.new()
+	mural_compose_btn.text = "Compose\nMural"
+	mural_compose_btn.custom_minimum_size = Vector2(64,44)
+	mural_compose_btn.focus_mode = Control.FOCUS_ALL
+	style_game_button(mural_compose_btn)
+	mural_compose_btn.add_theme_font_size_override("font_size",12)
+	for style_name in ["normal","hover","pressed","disabled"]:
+		var compact_style: StyleBox = mural_compose_btn.get_theme_stylebox(style_name).duplicate()
+		compact_style.content_margin_left = 4
+		compact_style.content_margin_right = 4
+		mural_compose_btn.add_theme_stylebox_override(style_name,compact_style)
+	mural_compose_btn.pressed.connect(open_mural_workshop)
+	mural_compose_btn.visible = false
+	layer.add_child(mural_compose_btn)
+	mural_workshop = preload("res://mural_workshop.gd").new()
+	layer.add_child(mural_workshop)
+	mural_workshop.setup(self)
+	mural_workshop.contribution_selected.connect(select_workshop_contribution)
+	mural_workshop.cell_selected.connect(place_workshop_contribution)
+	mural_workshop.palette_requested.connect(func():
+		cycle_mural_palette()
+	)
+	mural_workshop.music_requested.connect(func():
+		toggle_music_playback()
+		refresh_mural_workshop()
+	)
+	mural_workshop.close_requested.connect(close_mural_workshop)
 	var vp := get_viewport()
 	var resize_controls := func():
 		if not is_instance_valid(controls) or not is_inside_tree():
 			return
+		if mural_workshop != null:
+			mural_workshop.queue_layout()
 		var narrow := is_narrow_layout()
 		if uses_paged_block_actions() and block_panel.visible and block_panel_mode == "hub":
 			var focused_index := block_buttons.find(get_viewport().gui_get_focus_owner())

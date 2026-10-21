@@ -10,6 +10,7 @@ import { filmFrameSVG } from '../public/film.js';
 const [pckStat, ...sourceStats] = await Promise.all([
   stat('artifacts/godot-web/index.pck'),
   stat('godot/main.gd'),
+  stat('godot/mural_workshop.gd'),
   stat('godot/main.tscn'),
   stat('godot/project.godot'),
   stat('godot/export_presets.cfg'),
@@ -35,6 +36,163 @@ const narrowHubChecks = [];
 const shortWalkingChecks = [];
 let shortWalkingCaptionChecks = 0, shortWalkingGuideChecks = 0;
 let smallHubReaderChecks = 0;
+const muralWorkshopChecks = [];
+let workshopAutoAdvanceChecks = 0;
+
+async function verifyMuralWorkshop(page, context, touch, originalSize, requireTakenPhoto = true) {
+  const snap = () => page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+  const save = () => page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1'));
+  const settle = async () => {
+    const s = await snap();
+    await page.waitForFunction(f => window.__tenderloinGodotA11ySnapshot.ui_frame > f + 3 && !window.__tenderloinGodotA11ySnapshot.mural_workshop.layout_pending && !window.__tenderloinGodotA11ySnapshot.compact_panel_layout_pending && !window.__tenderloinGodotA11ySnapshot.layout_refit_pending, s.ui_frame);
+  };
+  const encloses = (a,b) => b.x >= a.x - 1 && b.y >= a.y - 1 && b.x+b.width <= a.x+a.width+1 && b.y+b.height <= a.y+a.height+1;
+  async function tap(b) {
+    const s = await snap(), c = await page.locator('#canvas').boundingBox();
+    assert.ok(b.visible && b.width >= 44 && b.height >= 44, 'workshop input uses a visible44px target');
+    const x = c.x+(b.x+b.width/2)*c.width/s.viewport_width, y = c.y+(b.y+b.height/2)*c.height/s.viewport_height;
+    if (touch) await page.touchscreen.tap(x,y); else await page.mouse.click(x,y);
+    await settle();
+  }
+  const sizes = originalSize.width === 390 ? [originalSize] : [originalSize,{width:520,height:360},{width:559,height:360}];
+  for (const size of sizes) {
+    await page.setViewportSize(size);
+    await page.keyboard.press('KeyF');
+    await page.keyboard.press('KeyE');
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.mural_detail.panel.visible && !window.__tenderloinGodotA11ySnapshot.player_grounding.path_active, null, {timeout:35000});
+    await settle();
+    let s = await snap();
+    if (s.story_detail.panel.visible) { await page.keyboard.press('Escape'); await settle(); s = await snap(); }
+    if(size.width===520){
+      const a=s.play_area,c=await page.locator('#canvas').boundingBox();
+      const x=c.x+(a.x+a.width/2)*c.width/size.width,y=c.y+(a.y+a.height*0.8)*c.height/size.height;
+      if(touch){const finger=await context.newCDPSession(page);await finger.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y,id:1}]});await finger.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+10,y:y+4,id:1}]});await finger.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await finger.detach();}
+      else{await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+10,y+4,{steps:3});await page.mouse.up();}
+      await settle();s=await snap();assert.ok(!s.following_player,'real scene drag owns the camera before composing');
+    }
+    if(size.width===520){await tap(s.info_control);s=await snap();assert.ok(s.header_details_expanded,'actual Info is expanded before the hidden-reward test');}
+    const before = JSON.parse(await save()), photo = before.epilogue.photo;
+    if (requireTakenPhoto) assert.equal(photo.status,'taken','later exact edits exercise an actually saved keepsake, not an empty fixture');
+    const frozenPhoto = JSON.stringify(photo), pose = s.camera_pose, grounding = s.player_grounding, music = s.music_playing;
+    if(size.width===520) await page.keyboard.press('F2');
+    else{assert.ok(s.mural_compose_entry.visible && s.mural_compose_entry.text_fits, 'real nearby artist offers the Compose Mural entry');await tap(s.mural_compose_entry);}
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.mural_workshop.visible);
+    await settle(); s = await snap();
+    const w = s.mural_workshop;
+    assert.ok(encloses({x:0,y:0,...size},w.panel) && !w.layout_pending && w.cells.length === 18 && w.tools.length === 3);
+    for (const b of [...w.cells,...w.tools,...w.options]) assert.ok(b.width >= 44 && b.height >= 44 && b.text_fits && encloses(w.panel,b), `full workshop target fits: ${b.text}`);
+    assert.deepEqual(w.tools.map(b=>b.text),['Lulu\nSun','Dez\nWave','Celeste\nRise']);
+    if(Object.keys(before.mural_placements).length===0){
+      for(const [tool,index] of [[0,0],[1,7],[2,17]]){
+        assert.ok((await snap()).mural_workshop.tools[tool].selected,'first unplaced contribution is offered automatically');
+        const b=(await snap()).mural_workshop.cells[index];await tap(b);
+        assert.deepEqual(JSON.parse(await save()).mural_placements[['sun','wave','rise'][tool]],{col:b.col,row:b.row});
+        workshopAutoAdvanceChecks++;
+      }
+    }
+    for (let tool=0;tool<3;tool++) {
+      const prior = await save();
+      await tap((await snap()).mural_workshop.tools[tool]);
+      assert.equal(await save(),prior,'choosing a contributor changes no artwork/progress');
+      s = await snap();
+      const id = ['sun','wave','rise'][tool];
+      const target = s.mural_workshop.cells.find(b=>!b.occupant);
+      assert.ok(target,'an exact empty space exists without replacing another contribution');
+      await tap(target);
+      const placed = JSON.parse(await save());
+      assert.deepEqual(placed.mural_placements[id],{col:target.col,row:target.row},'real cell input saves the exact selected coordinates');
+      assert.ok((await snap()).mural_workshop.reader.text.includes(`column ${target.col+1}, row ${target.row+1}`));
+      if(tool===2) assert.ok(/Celeste:/.test((await snap()).mural_workshop.reader.text) && /Lulu|Dez/.test((await snap()).mural_workshop.reader.text),'artist responds to the arrangement');
+      const same = await save();
+      await tap((await snap()).mural_workshop.cells[target.row*6+target.col]);
+      assert.equal(await save(),same,'same-cell tap cannot replay rewards/save');
+    }
+    s = await snap();
+    assert.equal(s.mural_workshop.cells.filter(b=>b.occupant).length,3,'three original contributions complete the mural');
+    assert.ok(!s.story_detail.panel.visible,'chapter advancement does not take focus away from the workshop');
+    // Occupied-cell rejection is real input and must retain both progress and art.
+    await tap(s.mural_workshop.tools[0]); s = await snap();
+    const occupied = s.mural_workshop.cells.find(b=>b.occupant==='wave'), saved = await save();
+    await tap(occupied);
+    assert.equal(await save(),saved);
+    assert.ok((await snap()).mural_workshop.reader.text.includes('nothing has moved'));
+    // Pointer focus followed by real arrow/Space input exercises grid navigation.
+    const sun = (await snap()).mural_workshop.cells.find(b=>b.occupant==='sun');
+    await tap(sun);
+    await page.keyboard.press('ArrowRight'); await settle();
+    const focused = (await snap()).mural_workshop.focused_cell;
+    assert.equal(focused,sun.row*6+Math.min(5,sun.col+1));
+    const dest = (await snap()).mural_workshop.cells[focused];
+    await page.keyboard.press('Space'); await settle();
+    if (!dest.occupant || dest.occupant==='sun') assert.deepEqual(JSON.parse(await save()).mural_placements.sun,{col:dest.col,row:dest.row});
+    else assert.equal(await save(),saved);
+    await page.keyboard.down('KeyW');
+    const held = await snap(); await page.waitForFunction(f=>window.__tenderloinGodotA11ySnapshot.ui_frame>f+5,held.ui_frame);
+    await page.keyboard.up('KeyW'); s = await snap();
+    assert.equal(s.player_grounding.x,grounding.x); assert.equal(s.player_grounding.z,grounding.z);
+    if(size.width===520) assert.deepEqual(s.camera_pose,pose,'composing preserves actual manual camera intent');
+    else for(const k of Object.keys(pose)) assert.ok(Math.abs(s.camera_pose[k]-pose[k])<0.001,'composing preserves followed camera within float refit precision');
+    // Move Sun once more so the full arrangement response, not a rejection, is read below.
+    await tap(s.mural_workshop.cells.find(b=>!b.occupant));
+    s = await snap();
+    const priorMusicSave = await save();
+    await tap(s.mural_workshop.options[1]); assert.equal((await snap()).music_playing,!music);
+    await tap((await snap()).mural_workshop.options[1]); assert.equal((await snap()).music_playing,music);
+    assert.equal(await save(),priorMusicSave,'workshop music is independent of game progress');
+    for(let i=0;i<(size.width===originalSize.width?27:3);i++){
+      await page.keyboard.press('Tab'); await settle();
+      assert.ok((await snap()).mural_workshop.focus_within,'Tab cannot focus hidden street controls');
+    }
+    await page.keyboard.press('Shift+Tab'); await settle();
+    assert.ok((await snap()).mural_workshop.focus_within,'reverse traversal stays in the workshop');
+    const palette = JSON.parse(await save()).mural_palette;
+    await tap((await snap()).mural_workshop.options[0]);
+    assert.notEqual(JSON.parse(await save()).mural_palette,palette);
+    s=await snap();
+    if(size.width===520) assert.deepEqual(s.camera_pose,pose,'palette preserves the manually owned camera');
+    else for(const k of Object.keys(pose)) assert.ok(Math.abs(s.camera_pose[k]-pose[k])<0.001,'palette does not reframe the followed scene behind the workshop');
+    assert.ok(s.overlays.reward.remaining>0&&!s.overlays.reward.visible,'valid input always leaves a queued unseen reward, including expanded Info');
+    assert.equal(JSON.stringify(JSON.parse(await save()).epilogue.photo),frozenPhoto,'later arrangement and palette edits preserve the copied photo');
+    // Read all of an overflowing arrangement response with genuine wheel/finger input.
+    s = await snap(); const reader=s.mural_workshop.reader, c=await page.locator('#canvas').boundingBox();
+    assert.ok(reader.scroll_max>reader.scroll_page,'workshop feedback really overflows its two-line reader');
+    const x=c.x+(reader.control.x+reader.control.width/2)*c.width/size.width, y=c.y+(reader.control.y+reader.control.height/2)*c.height/size.height;
+    if(touch){const finger=await context.newCDPSession(page);await finger.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y,id:1}]});await finger.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y-18,id:1}]});await finger.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await finger.detach();await settle();assert.ok((await snap()).mural_workshop.reader.scroll_value>0,'real finger reads workshop feedback');}
+    await page.mouse.move(x,y); await page.mouse.wheel(0,1200); await settle();
+    const read=(await snap()).mural_workshop.reader;
+    assert.ok(read.scroll_value>0 && read.scroll_value+read.scroll_page>=read.scroll_max-1,'complete response reaches its final line');
+    await page.screenshot({path:`artifacts/codex-mural-workshop-${size.width}x${size.height}-${touch?'touch':'mouse'}${requireTakenPhoto?'':'-fresh'}.png`});
+    await writeFile(`artifacts/codex-mural-workshop-${size.width}x${size.height}-${touch?'touch':'mouse'}${requireTakenPhoto?'':'-fresh'}.json`,JSON.stringify(await snap(),null,2));
+    const cue=(await snap()).overlays.reward;
+    assert.ok(cue.remaining>0,'the hidden-reward timer assertion is nonvacuous');
+    await page.waitForFunction(f=>window.__tenderloinGodotA11ySnapshot.ui_frame>f+4,(await snap()).ui_frame);assert.ok(!(await snap()).overlays.reward.visible);assert.equal((await snap()).overlays.reward.remaining,cue.remaining,'hidden progress reward retains its reading time with Info collapsed or expanded');
+    for(const boundary of [{width:320,height:568},{width:640,height:360},size]){await page.setViewportSize(boundary);await settle();assert.ok(encloses({x:0,y:0,...boundary},(await snap()).mural_workshop.panel));}
+    const finalArt=JSON.parse(await save()).mural_placements;
+    await tap((await snap()).mural_workshop.options[2]);
+    assert.ok(!(await snap()).mural_workshop.visible);
+    // Any earned chapter card may now appear; Escape dismisses it without music changes.
+    if((await snap()).story_detail.panel.visible){await page.keyboard.press('Escape');await settle();}
+    else if(size.width!==520){assert.ok((await snap()).mural_compose_focused,'Back retains the real entry focus across frames');await page.keyboard.press('Enter');await settle();assert.ok((await snap()).mural_workshop.visible,'Enter reopens the retained entry');await page.keyboard.press('Escape');await settle();}
+    assert.equal((await snap()).music_playing,music);
+    await page.keyboard.press('F2'); await settle();
+    assert.ok((await snap()).mural_workshop.visible,'real F2 reopens the nearby workshop');
+    assert.deepEqual(JSON.parse(await save()).mural_placements,finalArt);
+    await page.keyboard.press('Escape'); await settle();
+    assert.ok(!(await snap()).mural_workshop.visible && (await snap()).mural_detail.panel.visible,'Escape returns to the artist');
+    assert.equal((await snap()).player_grounding.x,grounding.x); assert.equal((await snap()).player_grounding.z,grounding.z);
+    assert.ok(Buffer.byteLength(await save(),'utf8')<=4096);
+    if((await snap()).header_details_expanded) await tap((await snap()).info_control);
+    muralWorkshopChecks.push({...size,touch,photoStatus:photo.status,placements:3});
+  }
+  await page.setViewportSize(originalSize);
+  const saved = JSON.parse(await save());
+  await page.reload(); await page.locator('#status').waitFor({state:'hidden',timeout:60000});
+  await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.startup_pending && !window.__tenderloinGodotA11ySnapshot.layout_refit_pending);
+  const restored=JSON.parse(await save());
+  assert.deepEqual(restored.mural_placements,saved.mural_placements,'exact edited art survives actual reload');
+  assert.equal(restored.mural_palette,saved.mural_palette);
+  assert.deepEqual(restored.epilogue.photo,saved.epilogue.photo);
+}
 
 async function verifyShortWalking(page,context,touch) {
   const snapshot=()=>page.evaluate(()=>window.__tenderloinGodotA11ySnapshot);
@@ -244,7 +402,7 @@ async function verifyShortActivities(page, context, touch, checks, small = false
           const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('tenderloin-redux.godot.save.v1')));
           assert.ok(saved.mural_placements[name], 'actual motif button keeps its original placement callback');
           const b=s[key].buttons.find(b=>b.id===id), cell=saved.mural_placements[name];
-          assert.equal(b.text,`>${name[0].toUpperCase()+name.slice(1)} ${cell.col},${cell.row}`);
+          assert.equal(b.text,`>${name[0].toUpperCase()+name.slice(1)} ${cell.col+1},${cell.row+1}`);
           assert.ok(b.text_fits, 'selected placed motif retains its complete name, marker and coordinates');
         }
       }
@@ -1864,7 +2022,20 @@ try {
       await verifyNarrowHub(page, context, touchHub);
       await verifyShortWalking(page, context, touchHub);
     }
+    await verifyMuralWorkshop(page, context, size.width < 600, size);
     await context.close();
+  }
+  // A separate fresh profile proves first-time auto-advance; the seven late
+  // cases above separately preserve actually taken keepsakes from progression.
+  {
+    const freshSize={width:390,height:667},context=await browser.newContext({viewport:freshSize,hasTouch:true}),page=await context.newPage();latestPage=page;
+    context.on('request',r=>{if(!r.url().startsWith(base)&&!r.url().startsWith('data:')&&!r.url().startsWith('blob:'))external.push(r.url());});
+    page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
+    await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:60000});
+    await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending&&!window.__tenderloinGodotA11ySnapshot.layout_refit_pending);
+    const s=await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot),b=s.start_control,c=await page.locator('#canvas').boundingBox();
+    await page.touchscreen.tap(c.x+(b.x+b.width/2)*c.width/s.viewport_width,c.y+(b.y+b.height/2)*c.height/s.viewport_height);
+    await verifyMuralWorkshop(page,context,true,freshSize,false);await context.close();
   }
   assert.deepEqual(external, []);
   assert.deepEqual(errors, []);
@@ -1882,7 +2053,10 @@ try {
   assert.equal(smallHubReaderChecks,4,'all four new mouse/finger small dock cases read overflowing full dialogue');
   assert.equal(shortWalkingChecks.length,10,'six mouse and four finger short walking cases exercised');
   assert.ok(shortWalkingCaptionChecks>0&&shortWalkingGuideChecks>0,'real short walking caption and guide checks are nonvacuous');
-  console.log(JSON.stringify({ runs, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, narrowActivityChecks, passiveActivityChecks, narrowHubChecks, smallHubReaderChecks, shortWalkingChecks, shortWalkingCaptionChecks, shortWalkingGuideChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
+  assert.equal(muralWorkshopChecks.length,8,'seven late and one fresh actual workshop mouse/finger cases executed');
+  assert.equal(muralWorkshopChecks.filter(c=>c.photoStatus==='taken').length,7,'all seven late cases preserve a saved taken keepsake');
+  assert.equal(workshopAutoAdvanceChecks,3,'a fresh mural exercises all three automatically offered contributions');
+  console.log(JSON.stringify({ runs, muralWorkshopChecks, workshopAutoAdvanceChecks, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, narrowActivityChecks, passiveActivityChecks, narrowHubChecks, smallHubReaderChecks, shortWalkingChecks, shortWalkingCaptionChecks, shortWalkingGuideChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
 } catch (error) {
   if (latestPage && !latestPage.isClosed()) {
     await latestPage.screenshot({ path: 'artifacts/godot-browser-failure.png' });

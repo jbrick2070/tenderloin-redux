@@ -1,0 +1,19 @@
+STDOUT:
+I've written the review to `C:\tenderloin-redux\kibitz-runs\2026-10-21-codex-next-playable-ideas\r1\claude.md`. File reads worked, so the tool check passed.
+
+**Verdict: yes-with-fixes.** The brief holds together, but two of its premises are wrong or have nothing in the Godot code behind them.
+
+**Main must-fixes:**
+- **Reduced-motion:** the brief requires new work to respect reduced-motion preferences, but Godot has no such setting. It only exists in `public/`, which is frozen. The fix is to require no new looping animation instead.
+- **Mural completion ignores arrangement:** completion only counts that three motifs are placed (`godot/main.gd:3238`). Where they sit only shows up in the keepsake photo and its SVG. A better cell picker on its own would just be another layout change. Every mural idea should name a visible result of the arrangement.
+- **Overlap with hosting art:** the hosting "art" step is already a six-tile composition with palettes (`godot/main.gd:9477`). The brief warns against duplicates but never names this one.
+- **Wrong gap for the mural:** the grid already snaps motifs to cells. What the concept doc has and the build lacks is other neighbors visibly contributing motifs; today all three come from Celeste's panel.
+- **Three motifs is hard-coded:** about six count checks and the keepsake SVG assume exactly three. Adding motifs is not a small change, so the set should stay fixed.
+
+**Should-fix highlights:**
+- Drop the expanded-Info layout case from the ranking. It only happens after the player deliberately opens Info, and it's already listed as unaccepted.
+- "Mostly shifts right" is actually "always". However, `move_active_motif` already accepts any direction, so up/down/left moves are a small change.
+
+The review also has a list of cuts and a CONFIRMED / MISREAD / UNVERIFIABLE table. I did not hash `public/` to check the fingerprint or count the Node tests.
+
+Several connectors (Asana, Atlassian, Datadog, GitHub, Linear, Notion, PagerDuty, Slack, Box, Runway) need sign-in before they can be used. Connect them in your claude.ai connector settings, or with `/mcp` in an interactive session. This review didn't need any of them.

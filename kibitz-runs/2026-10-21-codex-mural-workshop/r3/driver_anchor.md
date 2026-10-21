@@ -1,0 +1,8 @@
+# Driver anchor - Mural Workshop
+
+VERDICT: yes-with-fixes pending independent review and all5 final gates.
+MUST-FIX: no known outstanding production defect after guarded snapshot cast, real physical-proximity gate, explicit Tab/arrow focus ring and pending chapter deferral. Final implementation QA/native/browser must verify these; preflight success alone is not release proof.
+
+Grounded main.gd is_near_mural_workshop checks actual distance to easel/Celeste; open stops walking and does not own camera; place_workshop_contribution rejects occupancy/same cells before existing place_mural_motif; placement writes existing geometry/save/reward rules. mural_composition_reply branches actual row/column relations, same3motif completion. Read-only snapshot tests actual cell buttons; modal physics/unhandled world input are gated; layout_reward_banner pauses hidden reward. Widget preloads only original code; focus ring and scrollable readers remain GUI-driven. Native tests compare actual3Dpositions, copied photo+SVG and save byte bounds. Browser tests use only actual coordinate mouse/finger/keyboard inputs, saved state and readonlysnapshot, plus real reload. Full suite requires already-taken photo. No action hooks or browser legacy-save writes.
+
+R1 source-reading critique did not provide a ranked menu as requested. Driver chose this feature before edits after grounding its contributor-credit/arrangement-response suggestions against approved original fiction; rejected motion-settings/Info/scenery alternatives recorded in r1 selection.md. Do not relabel r3 as pre-coding or claim the model recommended/ranked the workshop.

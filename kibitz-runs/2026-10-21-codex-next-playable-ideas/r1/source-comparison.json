@@ -1,0 +1,20 @@
+{
+  "before": {
+    "godot/main.gd": "e331fdfca6266c3acb282edd1af2ae73376996a509de7a7b1dd3282af05f6253",
+    "godot/tests/study_test.gd": "8564058b46c167496712d646a7217797b240e121335e9aaa456cb73a8c2f62ca",
+    "tests/godot-browser.mjs": "741f8dd6d3982a136cb15649135ce5d26d41bb1d327588a90f11df6fb1de67f9",
+    "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160",
+    "docs/ROADMAP.md": "8f29808fbd71dc3839725e8b2717e864afc6a8023a82442a32ac11230d9cd245",
+    "docs/CONCEPT.md": "ff4d1726d3d45b2d37b6f083c035f5f60d8ed5477ae1d5fb2bab1af77aeceab5"
+  },
+  "after_ideas": {
+    "godot/main.gd": "e331fdfca6266c3acb282edd1af2ae73376996a509de7a7b1dd3282af05f6253",
+    "godot/tests/study_test.gd": "8564058b46c167496712d646a7217797b240e121335e9aaa456cb73a8c2f62ca",
+    "tests/godot-browser.mjs": "741f8dd6d3982a136cb15649135ce5d26d41bb1d327588a90f11df6fb1de67f9",
+    "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160",
+    "docs/ROADMAP.md": "8f29808fbd71dc3839725e8b2717e864afc6a8023a82442a32ac11230d9cd245",
+    "docs/CONCEPT.md": "ff4d1726d3d45b2d37b6f083c035f5f60d8ed5477ae1d5fb2bab1af77aeceab5"
+  },
+  "unchanged_before_selection": true,
+  "implementation_edits_before_ideas": false
+}

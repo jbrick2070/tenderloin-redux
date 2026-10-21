@@ -1,0 +1,509 @@
+{
+  "baseline": "448bf44a841fa9264e099d65841a2d30143a22f3",
+  "final_source": {
+    "godot/main.gd": "02c902096a0d58400873c56f5242c181b11ca4632c098b5471b7c5b4bee1afdf",
+    "godot/mural_workshop.gd": "57714a5a747a9e49bcd7e45428211f0e3f981ab592d9f4eeea3245bf4202e0cb",
+    "godot/mural_workshop.gd.uid": "81344249d37c4834b4906ea3a80de15dbb8b5ae9993b619ccddf4a90ddfd7b00",
+    "godot/tests/study_test.gd": "17e48bc3feac0106ad2171f97e06d5b449db90d948ba7eeb630e515614bf3d77",
+    "tests/godot-browser.mjs": "5e26e11ca2a1be6026d3f37e6bac99b446f4739c9410e5aedf06bc567fc266d7",
+    "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160",
+    "docs/ROADMAP.md": "2488b43d63b7c059760085887326aaba6c18fad7ec50f1034235573177355189"
+  },
+  "public": {
+    "version": "0.12.0",
+    "fingerprint": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567"
+  },
+  "all_five_gates_pass": true,
+  "gate_logs": {
+    "native": "artifacts/workshop-verified-native.log",
+    "export": "artifacts/workshop-verified-export.log",
+    "check": "artifacts/workshop-verified-check.log",
+    "node": "artifacts/workshop-verified-node.log",
+    "browser": "artifacts/workshop-verified-browser.log"
+  },
+  "browser_metrics": "artifacts/workshop-final-metrics.json",
+  "new_browser_cases": 8,
+  "independent_calls": 2,
+  "roles": [
+    "pre-coding ideas scopedr1",
+    "separate implementation QA scopedr3"
+  ],
+  "requested_model": "claude-opus-5-5",
+  "requested_effort": "high",
+  "limits": "Full roadmap unfinished; no deployment/physical-human acceptance.",
+  "files": {
+    "artifacts/codex-mural-workshop-1100x760-mouse-fresh.json": {
+      "sha256": "8fe7969af84b8ec1f5e46d2478531f59b87e773efe405122830bd17416f2815c",
+      "bytes": 20822
+    },
+    "artifacts/codex-mural-workshop-1100x760-mouse-fresh.png": {
+      "sha256": "4fef602b665008a8e53dc4fc43b63f689955dac7a4800f3c182c4d82e08302ee",
+      "bytes": 126128
+    },
+    "artifacts/codex-mural-workshop-1100x760-mouse.json": {
+      "sha256": "b6177b9383f8be258028f0629d9409310290613775e0b9f6e5db725c8a27bbaa",
+      "bytes": 21199
+    },
+    "artifacts/codex-mural-workshop-1100x760-mouse.png": {
+      "sha256": "69012891611fa8e226739e17ab41efb05bfd3ac024034ae12ad5607547cae3b7",
+      "bytes": 134568
+    },
+    "artifacts/codex-mural-workshop-320x667-touch-fresh.json": {
+      "sha256": "c179d65d49a5b140545197a2b74b0dc29404d1fa0fad0e4d843cd57039b5f3c3",
+      "bytes": 20485
+    },
+    "artifacts/codex-mural-workshop-320x667-touch-fresh.png": {
+      "sha256": "bab1082f25e9a67fb6d5a6ef8c8c405d0454011c659b160498cf9e2e474b718d",
+      "bytes": 58179
+    },
+    "artifacts/codex-mural-workshop-320x667-touch.json": {
+      "sha256": "2aaa6216758c841853757e52afb3ee25b70d588418113a010d72ad858f6ce646",
+      "bytes": 20890
+    },
+    "artifacts/codex-mural-workshop-320x667-touch.png": {
+      "sha256": "50deae08105b89fcb8b2d542396c42e6e1cdaef0f871ec628cc8581a493f5336",
+      "bytes": 60654
+    },
+    "artifacts/codex-mural-workshop-390x667-touch-fresh.json": {
+      "sha256": "e4be13dea2275d0975f4b658936d00261eb2362cbf3a85a4d6e3d287a293d0f0",
+      "bytes": 20438
+    },
+    "artifacts/codex-mural-workshop-390x667-touch-fresh.png": {
+      "sha256": "794dccf56895b38a801a22671650564c6bd3cb1201f2772a3603d40d8362af38",
+      "bytes": 64431
+    },
+    "artifacts/codex-mural-workshop-390x667-touch.json": {
+      "sha256": "f9fd15e96fc1c04a29fcff3e9e03f33df1ea745a4ca0b9619e38bf634bde3ee4",
+      "bytes": 20836
+    },
+    "artifacts/codex-mural-workshop-390x667-touch.png": {
+      "sha256": "f900a7fe0e1e69dc4e2f6d70d68a803434542a99064fc5af366cc4879168ec5c",
+      "bytes": 66204
+    },
+    "artifacts/codex-mural-workshop-520x360-mouse-fresh.json": {
+      "sha256": "d69323bf3412f11b64e77471bd3d4fbb2f4d980a6276cca2c5f7ab6c607c79d5",
+      "bytes": 20275
+    },
+    "artifacts/codex-mural-workshop-520x360-mouse-fresh.png": {
+      "sha256": "c34b0c47c23b846d1cce756080a6764920c26fc83b2cb7a54cc144a736b8cc29",
+      "bytes": 46625
+    },
+    "artifacts/codex-mural-workshop-520x360-mouse.json": {
+      "sha256": "100b965ce1aab11827caf0544ea9da877ccc2d813895220fcf3f0cc078e1dccb",
+      "bytes": 20534
+    },
+    "artifacts/codex-mural-workshop-520x360-mouse.png": {
+      "sha256": "5f236751e10b96e54dae4263fa723003afa74a2c1af004d9ed301ca59539e08a",
+      "bytes": 47502
+    },
+    "artifacts/codex-mural-workshop-520x360-touch-fresh.json": {
+      "sha256": "4ff0d7529214d58164e9c651abd46950fce236d648160b18108a08fbfa4bbdab",
+      "bytes": 20286
+    },
+    "artifacts/codex-mural-workshop-520x360-touch-fresh.png": {
+      "sha256": "b976a4d4c6eadaecfa23101e5675cf2761bd8b02eb8842c2ed475789d9d98e33",
+      "bytes": 46798
+    },
+    "artifacts/codex-mural-workshop-520x360-touch.json": {
+      "sha256": "c42dc2af8842fd0b15d156ee2c624423085d6e4d1670725b87b66de0792ed3ae",
+      "bytes": 20554
+    },
+    "artifacts/codex-mural-workshop-520x360-touch.png": {
+      "sha256": "37552087873ad8158be99732954ff88fb8461d47f81e5cb90772a97cd40841f1",
+      "bytes": 47963
+    },
+    "artifacts/codex-mural-workshop-559x360-mouse-fresh.json": {
+      "sha256": "0834794c5c6dfcecf9fd366651b49190eff094b5136e525d261d741562eade5b",
+      "bytes": 20485
+    },
+    "artifacts/codex-mural-workshop-559x360-mouse-fresh.png": {
+      "sha256": "fce1214190213da21462e2e97396376a0bc2d9003a2e299708db60c8b0fdd4e8",
+      "bytes": 50149
+    },
+    "artifacts/codex-mural-workshop-559x360-mouse.json": {
+      "sha256": "ebb6f4fc2ed6f2f42502890c1f1e7b5c75a3e0194f90316f6a723b26e1180d40",
+      "bytes": 20845
+    },
+    "artifacts/codex-mural-workshop-559x360-mouse.png": {
+      "sha256": "468a17a2f9adaa61582f62edaaf16183079e78f5b4d15e429ab4f527153e9c5d",
+      "bytes": 51404
+    },
+    "artifacts/codex-mural-workshop-559x360-touch-fresh.json": {
+      "sha256": "a6f1b8b5259ef3d75f4211f787a633efe5c9a2f0c462677244a01e18c7b10921",
+      "bytes": 20502
+    },
+    "artifacts/codex-mural-workshop-559x360-touch-fresh.png": {
+      "sha256": "6771930912df558dad536f187c7a10201976a7f90dcd606b53bdfe6457d76bb4",
+      "bytes": 50153
+    },
+    "artifacts/codex-mural-workshop-559x360-touch.json": {
+      "sha256": "b1d4385e8a1a9823570f132ce52232c5277b28ed972b111eab0f8e3065795352",
+      "bytes": 20830
+    },
+    "artifacts/codex-mural-workshop-559x360-touch.png": {
+      "sha256": "81673f7db93182323db01463aadc43190a8a262029f8f72af05857459dde0d06",
+      "bytes": 51409
+    },
+    "artifacts/godot-web/index.pck": {
+      "sha256": "318e861ddece1e0aca3356b5c2241866841dc54063cf2faa975c7446b01c6163",
+      "bytes": 1687920
+    },
+    "artifacts/workshop-browser-interrupted.log": {
+      "sha256": "d10188cb35d0c75758048ecd70cb6e2d5230c30da29dc358841a55b3d1f3d2fa",
+      "bytes": 77
+    },
+    "artifacts/workshop-browser-postreview1.log": {
+      "sha256": "061bbde77503947cbb5502bdb9c7c034f18b1dde035da0dc7e10d81be51a922d",
+      "bytes": 740
+    },
+    "artifacts/workshop-browser-preflight1.log": {
+      "sha256": "a4ee9098f7ac499833e2288d7aa88ebbe1c9f6df6a0f1172c93986615e8be884",
+      "bytes": 474
+    },
+    "artifacts/workshop-browser-preflight2.log": {
+      "sha256": "a4ee9098f7ac499833e2288d7aa88ebbe1c9f6df6a0f1172c93986615e8be884",
+      "bytes": 474
+    },
+    "artifacts/workshop-browser-preflight3.log": {
+      "sha256": "11a8dbc2100773ef211ca405d147e963c6231831d14b8f0d236b9b8de03cb977",
+      "bytes": 1024
+    },
+    "artifacts/workshop-browser-preflight4.log": {
+      "sha256": "4bfc47eeefb520b966d78fff458d2a216cf4aefaacee67b38eafebbf6d8e2ef1",
+      "bytes": 18098
+    },
+    "artifacts/workshop-browser-preflight5.log": {
+      "sha256": "061bbde77503947cbb5502bdb9c7c034f18b1dde035da0dc7e10d81be51a922d",
+      "bytes": 740
+    },
+    "artifacts/workshop-cli-r3.log": {
+      "sha256": "570855c6cf4ed3993a3afd07c973fa1d8966f79ed266a98cbb2562853df3bcab",
+      "bytes": 865
+    },
+    "artifacts/workshop-entry-focus-before.json": {
+      "sha256": "449d26072fc1984f90f6a1db471e06f54a59bbe7b975c61f664bc1df78f2de86",
+      "bytes": 547
+    },
+    "artifacts/workshop-entry-focus-before.log": {
+      "sha256": "59a40e5dbe9c2828e67de4c8991dc6838c3d51fe01acca74a98d9eaca758ff9a",
+      "bytes": 471
+    },
+    "artifacts/workshop-entry-focus-probe.mjs": {
+      "sha256": "731224436810c4475aaf3c37a4c716d3a1639778abc137a26a51d8f0a0aa8d5a",
+      "bytes": 1992
+    },
+    "artifacts/workshop-export-first.log": {
+      "sha256": "2d06f26f783d107bd1cd553202011f19439b02fc3fda2704c9cd6755366e8e48",
+      "bytes": 2575
+    },
+    "artifacts/workshop-export-postreview.log": {
+      "sha256": "670d63dda11f860a8e74e2fd5339bd12bc22df2246239cbb2ed63144e2b0de38",
+      "bytes": 2634
+    },
+    "artifacts/workshop-export-preflight.log": {
+      "sha256": "2d06f26f783d107bd1cd553202011f19439b02fc3fda2704c9cd6755366e8e48",
+      "bytes": 2575
+    },
+    "artifacts/workshop-export-preflight2.log": {
+      "sha256": "f929312e28983ef3af65d47c762dbc9bf718383cd0d0c070b0ab3d1a05af1b75",
+      "bytes": 2293
+    },
+    "artifacts/workshop-export-preflight3.log": {
+      "sha256": "f929312e28983ef3af65d47c762dbc9bf718383cd0d0c070b0ab3d1a05af1b75",
+      "bytes": 2293
+    },
+    "artifacts/workshop-export-preflight5.log": {
+      "sha256": "670d63dda11f860a8e74e2fd5339bd12bc22df2246239cbb2ed63144e2b0de38",
+      "bytes": 2634
+    },
+    "artifacts/workshop-final-metrics.json": {
+      "sha256": "e5ae0f13fa39a3ab8a89e74c2ac0d59f7cc3a38fb32f3f1a5296e01d9017106c",
+      "bytes": 35924
+    },
+    "artifacts/workshop-finalize.py": {
+      "sha256": "364397cf97de2a687105b7a31fac7086ac65ffe47731ded5d4555a545c07a5aa",
+      "bytes": 12516
+    },
+    "artifacts/workshop-native-behavior1.log": {
+      "sha256": "366ec47cd1fcea6edec5bfdbded3c795735e081eec059cd70ce9d053bac6239c",
+      "bytes": 35447
+    },
+    "artifacts/workshop-native-behavior2.log": {
+      "sha256": "66b52875f79904b9994019431e6b8b522aa199a9df29fc46a576fa55fe47dee7",
+      "bytes": 35440
+    },
+    "artifacts/workshop-native-behavior3.log": {
+      "sha256": "348ff61446983efaa8ffa104decc29a136856d31810313c214b4f84df754359d",
+      "bytes": 35810
+    },
+    "artifacts/workshop-native-first.log": {
+      "sha256": "7662c5ff234bd7b0b6ff5e642289e6f966f6139452b54572551c47bdb2d7e76e",
+      "bytes": 35091
+    },
+    "artifacts/workshop-native-postreview1.log": {
+      "sha256": "4526c796e164070a8f8a5ed987aa24aad654841de1ad55bd7664c1b28b3f9e9e",
+      "bytes": 35817
+    },
+    "artifacts/workshop-native-probe.gd": {
+      "sha256": "9aaf8d992138723b1dcc23637e88e479686dd15a1f2315690af07dcefcb0b0dd",
+      "bytes": 1063
+    },
+    "artifacts/workshop-native-probe.log": {
+      "sha256": "f441369fbac72585f756143f4f78396fc281eb779ddad46a221a28b68f599277",
+      "bytes": 4912
+    },
+    "artifacts/workshop-native-probe2.log": {
+      "sha256": "9876791c6cf558d7b29be1b9d477409433dd7351171b7562e1a5acffafd4e52d",
+      "bytes": 30020
+    },
+    "artifacts/workshop-native-review.log": {
+      "sha256": "6c34f7adf5dabb7b1737f88eb5d87393302a919378ae22e30b2fa174ae112a93",
+      "bytes": 35817
+    },
+    "artifacts/workshop-preexisting-browser-failure.json": {
+      "sha256": "37ed805cc99a87ba4a2f9846d4eeb5fc4f201c4e0ed068c531ca551df210e706",
+      "bytes": 12101
+    },
+    "artifacts/workshop-preexisting-browser-failure.png": {
+      "sha256": "9bff390ec329c7a73cada07c075e40c58e5bff602194815bf4f6f4d182566451",
+      "bytes": 88338
+    },
+    "artifacts/workshop-preflight-failure.json": {
+      "sha256": "bfebaa308bc86222b110ebd14ff2e10d4335022d2e859db3c63a89c85faf2977",
+      "bytes": 22926
+    },
+    "artifacts/workshop-preflight-failure.png": {
+      "sha256": "d31d36ee3731f24d0a5c674d5ddf4e5b03f61bd6ceb6c2b57572465f25a593f8",
+      "bytes": 120835
+    },
+    "artifacts/workshop-preflight.mjs": {
+      "sha256": "370bba91d8e13fae0b69dc86f8008801a91353168a999dd5cd76e02d32bdabcc",
+      "bytes": 15649
+    },
+    "artifacts/workshop-preflight2-failure.json": {
+      "sha256": "1c1dec69987b22bbe5c59d35736672718a4ec0a38263418627dfadac12e34b47",
+      "bytes": 22580
+    },
+    "artifacts/workshop-preflight2-failure.png": {
+      "sha256": "c3923b9d31863f13e0d2380cc7ff0182707f72a86d6ebf8be8ffc7679a6c17bb",
+      "bytes": 118379
+    },
+    "artifacts/workshop-preflight3-failure.json": {
+      "sha256": "bfebaa308bc86222b110ebd14ff2e10d4335022d2e859db3c63a89c85faf2977",
+      "bytes": 22926
+    },
+    "artifacts/workshop-preflight3-failure.png": {
+      "sha256": "d31d36ee3731f24d0a5c674d5ddf4e5b03f61bd6ceb6c2b57572465f25a593f8",
+      "bytes": 120835
+    },
+    "artifacts/workshop-preview-restart.stderr.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "artifacts/workshop-preview-restart.stdout.log": {
+      "sha256": "51b376f3c0659e5e015f973278710cb457b3a1e8f9d3dd4a432b3b1971e4a160",
+      "bytes": 35
+    },
+    "artifacts/workshop-runtime-interruption.json": {
+      "sha256": "449d2a02797a6d2e442cd715096e16fa386317710eed46a56370f023d4cfe798",
+      "bytes": 429
+    },
+    "artifacts/workshop-verified-browser.log": {
+      "sha256": "f5eb712a606c7f45b3bd7085a10aec3d2676c34ffc6e47e7c54a37e3df70270e",
+      "bytes": 52096
+    },
+    "artifacts/workshop-verified-check.log": {
+      "sha256": "bbbf642933db0755ec1b063caec7667a16966ea1db64dadab1526709e88e5537",
+      "bytes": 1337
+    },
+    "artifacts/workshop-verified-export.log": {
+      "sha256": "670d63dda11f860a8e74e2fd5339bd12bc22df2246239cbb2ed63144e2b0de38",
+      "bytes": 2634
+    },
+    "artifacts/workshop-verified-native.log": {
+      "sha256": "4526c796e164070a8f8a5ed987aa24aad654841de1ad55bd7664c1b28b3f9e9e",
+      "bytes": 35817
+    },
+    "artifacts/workshop-verified-node.log": {
+      "sha256": "63577bf7668f3e572ea85f8029fb3dba4796662dfe7afe17a5b51c8035ed63c0",
+      "bytes": 10793
+    },
+    "docs/BUILD_STATUS.md": {
+      "sha256": "2d76efc6154c41a6d907e83d6bf4ee61c798289019393527cea1412ad7c1f776",
+      "bytes": 263817
+    },
+    "docs/ROADMAP.md": {
+      "sha256": "2488b43d63b7c059760085887326aaba6c18fad7ec50f1034235573177355189",
+      "bytes": 16917
+    },
+    "godot/main.gd": {
+      "sha256": "02c902096a0d58400873c56f5242c181b11ca4632c098b5471b7c5b4bee1afdf",
+      "bytes": 696548
+    },
+    "godot/mural_workshop.gd": {
+      "sha256": "57714a5a747a9e49bcd7e45428211f0e3f981ab592d9f4eeea3245bf4202e0cb",
+      "bytes": 9812
+    },
+    "godot/mural_workshop.gd.uid": {
+      "sha256": "81344249d37c4834b4906ea3a80de15dbb8b5ae9993b619ccddf4a90ddfd7b00",
+      "bytes": 20
+    },
+    "godot/tests/study_test.gd": {
+      "sha256": "17e48bc3feac0106ad2171f97e06d5b449db90d948ba7eeb630e515614bf3d77",
+      "bytes": 314927
+    },
+    "kibitz-runs/2026-10-21-codex-mural-workshop/r3/automation_receipt.json": {
+      "sha256": "53e1ba0a408acbceb1bd669d18d013d3fee49c241827a15d36b0fdc8e89202df",
+      "bytes": 547
+    },
+    "kibitz-runs/2026-10-21-codex-mural-workshop/r3/claude.log": {
+      "sha256": "2709d9585ff2e0cea98125dbcc30302b239fbd046a59b04cf507a312b090e263",
+      "bytes": 2337
+    },
+    "kibitz-runs/2026-10-21-codex-mural-workshop/r3/claude.md": {
+      "sha256": "913eb81ada6d4657f4b3a4b886b658568520a7d17020577311bfe014a5fa7afb",
+      "bytes": 9483
+    },
+    "kibitz-runs/2026-10-21-codex-mural-workshop/r3/claude_budget_selected.txt": {
+      "sha256": "b80401b5bdee9b92d2114d1dcae19e4929eefb76987dd1911802478ede026cf0",
+      "bytes": 64
+    },
+    "kibitz-runs/2026-10-21-codex-mural-workshop/r3/claude_effort_selected.txt": {
+      "sha256": "6ef7c9b15ecdd69083724b84cfdc2100351963488b51b4ea2fcbddf493fbec94",
+      "bytes": 4
+    },
+    "kibitz-runs/2026-10-21-codex-mural-workshop/r3/claude_model_selected.txt": {
+      "sha256": "005912bee6ee4543cec4404b5a02b9bcb11a6f1dcc134b6693c7ccde5fdd2f69",
+      "bytes": 15
+    },
+    "kibitz-runs/2026-10-21-codex-mural-workshop/r3/claude_quota_status.txt": {
+      "sha256": "bc7d2c96838bdf2a53b6cbd698d0300af161317d6ef39adbede9c8008b0a9046",
+      "bytes": 463
+    },
+    "kibitz-runs/2026-10-21-codex-mural-workshop/r3/contrast-calculation.json": {
+      "sha256": "8fb053baf0d0237156b51ed5111695750d20278bf620cbfe787eed48f5e09739",
+      "bytes": 1370
+    },
+    "kibitz-runs/2026-10-21-codex-mural-workshop/r3/driver_anchor.md": {
+      "sha256": "78ece927c49f51f1e3d3dd9352359c6c94356f3a0a8f071d235527244dce39b8",
+      "bytes": 1633
+    },
+    "kibitz-runs/2026-10-21-codex-mural-workshop/r3/final.md": {
+      "sha256": "72f83cef5a7fb4b0d2e26c288a7e04a86dc0300ba614e602da725f51469683ea",
+      "bytes": 7077
+    },
+    "kibitz-runs/2026-10-21-codex-mural-workshop/r3/input.md": {
+      "sha256": "124f8b1ab1a23d4550d4f9b41f497f9defcdf797703d629233893ea7b58f24c9",
+      "bytes": 4675
+    },
+    "kibitz-runs/2026-10-21-codex-mural-workshop/r3/judgment.md": {
+      "sha256": "ed4076934db2f1902d2b00f32863ad8ad96082f9ca770f043b0830b0a28f3cf1",
+      "bytes": 4273
+    },
+    "kibitz-runs/2026-10-21-codex-mural-workshop/r3/model_receipt.json": {
+      "sha256": "c49c666f1ca4e6e62f34ad09ff5a5b304a8065d2ae1d371dca152f75b22e183f",
+      "bytes": 589
+    },
+    "kibitz-runs/2026-10-21-codex-mural-workshop/r3/profiles_used.txt": {
+      "sha256": "a9a11813438ba2fc0c6efd97f13b88bf41af82044d04182d865bdd38eaa32423",
+      "bytes": 8
+    },
+    "kibitz-runs/2026-10-21-codex-mural-workshop/r3/review_scope.md": {
+      "sha256": "124f8b1ab1a23d4550d4f9b41f497f9defcdf797703d629233893ea7b58f24c9",
+      "bytes": 4675
+    },
+    "kibitz-runs/2026-10-21-codex-mural-workshop/r3/scope_receipt.md": {
+      "sha256": "d8fcb8d4aed1fc1649bda9d5cdd85af2b9f030937c9c9bcf1b15a0838a655ce9",
+      "bytes": 548
+    },
+    "kibitz-runs/2026-10-21-codex-mural-workshop/r3/source-before.json": {
+      "sha256": "2e3f4fad9004974b4b75df3fee3e14e9bb49e8b6a38552bbd260f2ac08108b4c",
+      "bytes": 672
+    },
+    "kibitz-runs/2026-10-21-codex-mural-workshop/r3/source-comparison.json": {
+      "sha256": "c9fa264cd4417ad26055ca70f0ada485c4fa36d73bb8483b2364f485d32cc49f",
+      "bytes": 2256
+    },
+    "kibitz-runs/2026-10-21-codex-next-playable-ideas/r1/claude.log": {
+      "sha256": "48a19cff8295d2efee98e0410c00def81734c05349e188541b8f0d9f1df2f680",
+      "bytes": 2204
+    },
+    "kibitz-runs/2026-10-21-codex-next-playable-ideas/r1/claude.md": {
+      "sha256": "8dca986caddd26bada1dc5891003f39dfdef243a79c1c4a74c5933fb5c8d98d9",
+      "bytes": 9214
+    },
+    "kibitz-runs/2026-10-21-codex-next-playable-ideas/r1/claude_budget_selected.txt": {
+      "sha256": "b80401b5bdee9b92d2114d1dcae19e4929eefb76987dd1911802478ede026cf0",
+      "bytes": 64
+    },
+    "kibitz-runs/2026-10-21-codex-next-playable-ideas/r1/claude_effort_selected.txt": {
+      "sha256": "6ef7c9b15ecdd69083724b84cfdc2100351963488b51b4ea2fcbddf493fbec94",
+      "bytes": 4
+    },
+    "kibitz-runs/2026-10-21-codex-next-playable-ideas/r1/claude_model_selected.txt": {
+      "sha256": "005912bee6ee4543cec4404b5a02b9bcb11a6f1dcc134b6693c7ccde5fdd2f69",
+      "bytes": 15
+    },
+    "kibitz-runs/2026-10-21-codex-next-playable-ideas/r1/claude_quota_status.txt": {
+      "sha256": "bc7d2c96838bdf2a53b6cbd698d0300af161317d6ef39adbede9c8008b0a9046",
+      "bytes": 463
+    },
+    "kibitz-runs/2026-10-21-codex-next-playable-ideas/r1/driver_anchor.md": {
+      "sha256": "29ca4ca15073cd599a58088ea2ff07b8e554f1cadffc0d70efb8bcfb593ca719",
+      "bytes": 2882
+    },
+    "kibitz-runs/2026-10-21-codex-next-playable-ideas/r1/final.md": {
+      "sha256": "34826ece0eb4faabd59a83df0eaecb0821be1d72ee99d2c9303b6e6719dd6a78",
+      "bytes": 2992
+    },
+    "kibitz-runs/2026-10-21-codex-next-playable-ideas/r1/idea_scope.md": {
+      "sha256": "88840ce32580d4651cb58d64d1e1486b4a065513b0f641796c3193da500ba31e",
+      "bytes": 4150
+    },
+    "kibitz-runs/2026-10-21-codex-next-playable-ideas/r1/input.md": {
+      "sha256": "88840ce32580d4651cb58d64d1e1486b4a065513b0f641796c3193da500ba31e",
+      "bytes": 4150
+    },
+    "kibitz-runs/2026-10-21-codex-next-playable-ideas/r1/judgment.md": {
+      "sha256": "c8801ae2f73a18d4eafaa3592ebba7d0e74803f31eecb696b47a0d446fee74a7",
+      "bytes": 4254
+    },
+    "kibitz-runs/2026-10-21-codex-next-playable-ideas/r1/model_receipt.json": {
+      "sha256": "c3e7e3f8f1f9e86ce4aca402bd851a06e9cbf717d2d857a0b1cbaeec5fa1e73c",
+      "bytes": 457
+    },
+    "kibitz-runs/2026-10-21-codex-next-playable-ideas/r1/profiles_used.txt": {
+      "sha256": "a9a11813438ba2fc0c6efd97f13b88bf41af82044d04182d865bdd38eaa32423",
+      "bytes": 8
+    },
+    "kibitz-runs/2026-10-21-codex-next-playable-ideas/r1/scope_receipt.md": {
+      "sha256": "6509c988e1262474fb9b944f636f9c722521576d65f66154cea9c852fbca1687",
+      "bytes": 522
+    },
+    "kibitz-runs/2026-10-21-codex-next-playable-ideas/r1/selection.md": {
+      "sha256": "34826ece0eb4faabd59a83df0eaecb0821be1d72ee99d2c9303b6e6719dd6a78",
+      "bytes": 2992
+    },
+    "kibitz-runs/2026-10-21-codex-next-playable-ideas/r1/source-before.json": {
+      "sha256": "770ce80d9fe18e4e91068c204cb4420c1a8e7647ff12c75c32597b93f82fcc61",
+      "bytes": 563
+    },
+    "kibitz-runs/2026-10-21-codex-next-playable-ideas/r1/source-comparison.json": {
+      "sha256": "af178b288a21e597eceab56a218dba59e77f71746a2df18e313936a3c044257f",
+      "bytes": 1272
+    },
+    "session_handoff.md": {
+      "sha256": "24cb1c72ccaccc9ab9e78668ad398f320ceec7c35f185560a1f80e8a23b991cc",
+      "bytes": 143584
+    },
+    "tests/godot-browser.mjs": {
+      "sha256": "5e26e11ca2a1be6026d3f37e6bac99b446f4739c9410e5aedf06bc567fc266d7",
+      "bytes": 181769
+    },
+    "tests/godot-data.test.mjs": {
+      "sha256": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160",
+      "bytes": 23003
+    }
+  },
+  "created_utc": "2026-10-21T16:25:17.864970+00:00"
+}

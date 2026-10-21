@@ -1,0 +1,17 @@
+{
+  "driver": "codex",
+  "role": "independent implementation QA",
+  "round": "r3",
+  "requested_model": "claude-opus-5-5",
+  "harness_selected_model": "claude-opus-5-5",
+  "requested_effort": "high",
+  "selected_effort": "high",
+  "provider_reported_runtime_model": null,
+  "quota_usage": "unknown",
+  "actual_independent_calls": 1,
+  "exit_code": 0,
+  "tool_check": "PASS",
+  "verdict": "yes-with-fixes",
+  "review_sha256": "913eb81ada6d4657f4b3a4b886b658568520a7d17020577311bfe014a5fa7afb",
+  "quota_original_sha256": "89474d0e89fd7d1c218f5b08240573ba69bb3718a2b3a6ff740622d3d9aa61c4"
+}

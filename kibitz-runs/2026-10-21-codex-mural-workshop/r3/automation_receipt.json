@@ -1,0 +1,15 @@
+{
+  "automation_id": "build-tenderloin-redux",
+  "status": "ACTIVE",
+  "rrule": "FREQ=MINUTELY;INTERVAL=30",
+  "target_thread_id": "01a159d6-60a3-78e1-92ae-4018509d2539",
+  "name": "Build Tenderloin Redux",
+  "prefix_unchanged": true,
+  "required_precode_policy_retained": true,
+  "two_role_policy_retained": true,
+  "prompt_readback_exact": true,
+  "created_at_unchanged": true,
+  "updated_at": 1792599888658,
+  "latest_checkpoint": "Mural Workshop",
+  "official_documentation_checked": "https://learn.chatgpt.com/docs/automations?surface=app"
+}

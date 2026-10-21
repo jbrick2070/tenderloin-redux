@@ -1,0 +1,17 @@
+STDOUT:
+My verdict is **yes-with-fixes**: two defects need fixing before the final gates. The full review is in `kibitz-runs/2026-10-21-codex-mural-workshop/r3/claude.md`. I only read files; I didn't run the native or browser tests.
+
+**Must fix:**
+1. **Rewards expire unseen when Info is open.** While the workshop is open, the reward banner is hidden, but its timer still counts down if the header Info panel was open (`main.gd:5831`). A placement reward then expires without ever being shown. Both tests miss this: the native test closes Info first (`study_test.gd:3776`), and the browser check at `godot-browser.mjs:153` is skipped when the timer has already run out.
+2. **The Compose Mural button loses focus every frame.** Every frame, `main.gd:11619` hides the button and then shows it again. In Godot 4, hiding a control drops its keyboard focus (I haven't confirmed this on the project's exact Godot version). So the focus `close_mural_workshop` returns to the button is lost on the next frame, and Tab can't hold focus on it. The browser clicks finish within one frame, so the tests don't catch it.
+
+**Should fix:**
+- **Coordinate numbering disagrees.** The workshop shows 1-based columns and rows, but the old quick-panel buttons and the Info text show 0-based (`main.gd:14290-14291`, `11681-11682`). "Placed Sun at column 3, row 2" is followed by "Sun (2,1)". The save itself is correctly 0-based.
+- **F2 can skip arrival.** Pressing F2 in the last ~0.9 m of walking to the mural stops the walk before the arrival and the queued Celeste talk run.
+- **F2 has looser rules than the other entries.** It only needs the player to be nearby, so it silently closes an open Bea or Rook panel.
+- **Empty cells are hard to read.** By my calculation the labels are about 2.9–3.4:1 contrast at 12 px.
+- **The selected motif doesn't move on.** It stays on the motif just placed, so the next tap moves it instead of adding the next one. `public/game.js` moves to the next unplaced motif.
+- **One camera check runs too early.** The browser test checks the camera before the Palette tap, which can move the camera.
+- **The native tests fire `pressed` signals directly** instead of real input, so they don't prove that mouse, touch or keyboard input works.
+
+The review also lists smaller optional items and three safe cuts.

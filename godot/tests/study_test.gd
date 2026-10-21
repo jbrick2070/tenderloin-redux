@@ -3247,6 +3247,7 @@ func run() -> void:
 	await verify_short_narrow_walking(study)
 	await verify_short_activity_panels(study)
 	await verify_short_activity_panels(study, true)
+	await verify_mural_workshop(study)
 	study.clear_godot_save()
 	study.clear_godot_settings()
 	var legacy_settings := FileAccess.open(study.settings_path, FileAccess.WRITE)
@@ -3769,3 +3770,133 @@ func reference_min_wall_distance(study, pt: Vector2, cutoff: float = INF) -> flo
 						if cutoff < INF:
 							return best
 	return best
+
+func verify_mural_workshop(study: Node) -> void:
+	study.hide_story_card()
+	study.set_header_details(false,false)
+	study.current_path.clear()
+	study.player.position = study.BLACKHAWK_POS
+	var far_save := JSON.stringify(study.build_save_envelope())
+	require(not study.open_mural_workshop() and not study.is_mural_workshop_visible() and far_save == JSON.stringify(study.build_save_envelope()), "workshop rejects remote editing without changing save")
+	# An explicit native fixture verifies that later art cannot rewrite the copied keepsake.
+	var old_photo: Dictionary = study.keepsake_photo.duplicate(true)
+	study.keepsake_photo = {"status":"taken","participants":["bea","celeste","dez","thanh"],"mural":{"sun":{"col":0,"row":0},"wave":{"col":3,"row":1},"rise":{"col":5,"row":2}},"palette":"garden","layout":"table"}
+	var frozen_photo := JSON.stringify(study.keepsake_photo)
+	var frozen_svg: String = study.build_keepsake_svg(study.keepsake_photo)
+	var stand: Vector2 = study.mural_stand_xz()
+	study.player.position = Vector3(stand.x,0,stand.y)
+	study.walk_to_mural()
+	# A final-approach fixture must retain the original pending arrival/talk.
+	study.current_path.append(stand + Vector2(0.5,0))
+	study.walking_to_mural = true
+	study.pending_celeste_talk = true
+	var pending_talks: int = study.celeste_talk_count
+	require(not study.open_mural_workshop() and not study.current_path.is_empty() and study.walking_to_mural and study.pending_celeste_talk and study.celeste_talk_count == pending_talks, "early workshop input cannot cancel arrival or first-talk progress")
+	study.current_path.clear()
+	study.walking_to_mural = false
+	study.pending_celeste_talk = false
+	study.show_block_panel(true)
+	require(not study.open_mural_workshop() and study.block_panel.visible, "F2 cannot silently replace another resident's panel")
+	study.show_mural_panel(true)
+	for size in [Vector2i(1100,760),Vector2i(390,667),Vector2i(320,667),Vector2i(520,360),Vector2i(559,360),Vector2i(640,360),Vector2i(320,568),Vector2i(360,640)]:
+		root.size = size
+		for frame in range(5): await process_frame
+		study.focus_mural_camera()
+		study.pan_camera_by_screen_delta(Vector2(10,4))
+		for frame in range(4): await process_frame
+		require(study.mural_compose_btn.visible, "nearby workshop entry fits in the native scene")
+		study.mural_compose_btn.grab_focus()
+		for frame in range(3): await process_frame
+		require(study.mural_compose_btn.has_focus(), "entry retains keyboard focus across layout frames")
+		var pose: Array = study.panel_camera_pose()
+		var player_pos: Vector3 = study.player.position
+		var before: String = JSON.stringify(study.build_save_envelope())
+		require(study.open_mural_workshop(), "nearby artist can open workshop")
+		for frame in range(6): await process_frame
+		var w = study.mural_workshop
+		var snap: Dictionary = w.snapshot()
+		var screen := Rect2(Vector2.ZERO,Vector2(size))
+		var panel_rect := Rect2(snap.panel.x,snap.panel.y,snap.panel.width,snap.panel.height)
+		print("MURAL_WORKSHOP_CHECK ",size," panel=",panel_rect," pending=",w.layout_pending)
+		require(not w.layout_pending and screen.encloses(panel_rect), "workshop settles entirely on-screen")
+		require(snap.cells.size() == 18 and snap.tools.size() == 3, "workshop offers18exact cells and3contributions")
+		for b in snap.cells + snap.tools + snap.options:
+			require(b.width >= 44 and b.height >= 44 and b.text_fits and panel_rect.encloses(Rect2(b.x,b.y,b.width,b.height)), "workshop full label and44px target fits: " + b.text)
+		require(w.done_button.get_global_rect().end.y <= size.y - 11, "workshop Back remains reachable")
+		w.tool_buttons[0].emit_signal("pressed")
+		require(study.mural_workshop_selected == "sun" and before == JSON.stringify(study.build_save_envelope()), "selecting contribution changes no saved art or progress")
+		var target_cell := Vector2i(-1,-1)
+		for i in range(18):
+			var col: int = i % 6
+			var row: int = i / 6
+			if not study.cell_occupied_by_other(col,row,"sun") and (not study.mural_placements.has("sun") or int(study.mural_placements.sun.col) != col or int(study.mural_placements.sun.row) != row):
+				target_cell = Vector2i(col,row)
+				break
+		w.cells[target_cell.y*6+target_cell.x].emit_signal("pressed")
+		for frame in range(3): await process_frame
+		require(int(study.mural_placements.sun.col) == target_cell.x and int(study.mural_placements.sun.row) == target_cell.y, "actual cell callback places the selected mark exactly")
+		var sun_node: Node3D = study.mural_motif_nodes.sun
+		require(sun_node.position.is_equal_approx(Vector3(-1.28+target_cell.x*0.51,1.98-target_cell.y*0.43,0.11)), "workshop exact placement appears on3Deasel")
+		var placed: String = JSON.stringify(study.build_save_envelope())
+		require(not study.place_workshop_contribution(target_cell.x,target_cell.y) and placed == JSON.stringify(study.build_save_envelope()), "same-cell input cannot replay save/progress")
+		require(not study.place_workshop_contribution(-1,0) and placed == JSON.stringify(study.build_save_envelope()), "invalid workshop cell changes no save")
+		# A second contribution deliberately tries the occupied Sun cell.
+		w.tool_buttons[1].emit_signal("pressed")
+		require(not study.place_workshop_contribution(target_cell.x,target_cell.y) and study.mural_workshop_message.contains("nothing has moved") and placed == JSON.stringify(study.build_save_envelope()), "occupied-cell rejection is visible and non-destructive")
+		var key := InputEventKey.new()
+		key.keycode = KEY_W
+		key.physical_keycode = KEY_W
+		key.pressed = true
+		Input.parse_input_event(key)
+		for frame in range(3): await physics_frame
+		require(Input.is_key_pressed(KEY_W) and study.player.position == player_pos and study.panel_camera_pose() == pose, "real held walking key is blocked by workshop")
+		key.pressed = false
+		Input.parse_input_event(key)
+		var was_music: bool = study.music_playing
+		w.music_button.emit_signal("pressed")
+		require(study.music_playing != was_music, "workshop has an actual independent music toggle")
+		w.music_button.emit_signal("pressed")
+		require(study.music_playing == was_music and placed == JSON.stringify(study.build_save_envelope()), "music preference restores without progression writes")
+		var palette_before: String = study.mural_palette
+		w.palette_button.emit_signal("pressed")
+		require(study.mural_palette != palette_before, "workshop palette callback changes the actual board")
+		require(frozen_photo == JSON.stringify(study.keepsake_photo) and frozen_svg == study.build_keepsake_svg(study.keepsake_photo), "free later art edits preserve immutable keepsake andSVG")
+		for expanded in [false,true]:
+			study.set_header_details(expanded,false)
+			study.trigger_feel_good_burst("Workshop milestone","Native queue fixture",study.MURAL_POS,Color.WHITE,true)
+			var cue_time: float = study.reward_banner_timer
+			study.update_celebration_burst(0.5)
+			require(cue_time > 0 and not study.reward_banner.visible and study.reward_banner_timer == cue_time, "workshop retains hidden reward time with Info collapsed or expanded")
+		study.set_header_details(false,false)
+		for boundary in [Vector2i(520,360),Vector2i(320,667),size]:
+			root.size = boundary
+			for frame in range(6): await process_frame
+			require(Rect2(Vector2.ZERO,Vector2(boundary)).encloses(w.panel.get_global_rect()) and not w.layout_pending, "open workshop rotation settles with reachable Back")
+		w.done_button.emit_signal("pressed")
+		for frame in range(4): await process_frame
+		require(not study.is_mural_workshop_visible() and study.mural_panel.visible and study.panel_camera_pose() == pose and study.player.position == player_pos and study.music_playing == was_music, "Back preserves the artist view, location and pause intent")
+		if study.mural_compose_btn.visible: require(study.mural_compose_btn.has_focus(), "Back retains entry focus after settled frames")
+		require(JSON.stringify(study.build_save_envelope()).to_utf8_buffer().size() <= 4096, "workshop retains bounded existing save schema")
+	# Replies respond to arrangement, never a correct-art puzzle.
+	for arrangement in [{"sun":{"col":0,"row":0},"wave":{"col":3,"row":1},"rise":{"col":5,"row":2}}, {"sun":{"col":1,"row":1},"wave":{"col":4,"row":1},"rise":{"col":0,"row":0}}, {"sun":{"col":2,"row":2},"wave":{"col":1,"row":0},"rise":{"col":3,"row":1}}]:
+		study.mural_placements = arrangement.duplicate(true)
+		study.update_mural_3d()
+		var reply: String = study.mural_composition_reply()
+		require(reply.contains("Lulu") and reply.contains("Dez") and reply.contains("Rise") and study.mural_completed, "all expressive arrangements retain3motif completion and authored credits")
+		if int(arrangement.sun.row) == int(arrangement.wave.row): require(reply.contains("share a horizon"), "artist notices same-row arrangement")
+		elif int(arrangement.sun.row) < int(arrangement.wave.row): require(reply.contains("Sun shines above"), "artist notices Sun above Wave")
+		else: require(reply.contains("Wave floats above"), "artist notices Wave above Sun")
+	study.keepsake_photo = old_photo
+	# Explicit pending-chapter fixture: a card must not steal a cell's focus.
+	var saved_chapter: int = study.last_story_chapter
+	study.last_story_chapter = int(study.current_chapter().num) - 1
+	require(study.open_mural_workshop(), "pending chapter fixture opens nearby workshop")
+	study.mural_workshop.cells[7].grab_focus()
+	for frame in range(4): await process_frame
+	require(not study.is_story_card_visible() and study.mural_workshop.cells[7].has_focus(), "pending chapter waits without stealing workshop focus")
+	study.close_mural_workshop()
+	for frame in range(4): await process_frame
+	require(study.is_story_card_visible(), "pending chapter is delivered after Back")
+	study.hide_story_card()
+	study.last_story_chapter = saved_chapter
+	study.overview()
