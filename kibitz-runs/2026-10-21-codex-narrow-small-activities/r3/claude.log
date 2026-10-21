@@ -1,0 +1,19 @@
+STDOUT:
+My verdict is **yes-with-fixes**. I wrote the review to `kibitz-runs/2026-10-21-codex-narrow-small-activities/r3/claude.md` and changed nothing else. It covers the uncommitted working tree, not commit `e5cd816`.
+
+**Must fix before build:**
+1. **A screen-size gap still gets the old broken layout.** Screens 560–599px wide and 560–639px tall (for example 560x568 or 599x600) match neither the new side dock nor the new bottom layout. They fall back to the layout that left a 1px scene at 320x568. This band sits right next to the tested 520x568, and no test covers it.
+   - Smallest fix: in `uses_compact_narrow_activities`, replace the width check with `vp.x < SIDE_HUB_MIN_WIDTH and not uses_short_side_panels()`.
+   - Then add 560x568 and 599x639 to the native sizes, and update the two test expectations that assume width alone decides the layout.
+2. **The Close checks are too weak.** They only check the controls' width or right offset and the Map label. A broken Walk / Next / Zoom caption, column count, control height or panel grow direction after Close would still pass. The native test also skips the real Close path (`end_conversation`).
+3. **No native check that the new bottom panel sits above the walking controls.** At 360x600 and 520x568, which only the native test runs, the panel could overlap the controls and still pass.
+
+**Should fix (7 items).** The main ones:
+- The new bottom panel's height is measured once, before the engine finishes laying out its contents. If that measurement is too tall, the panel never shrinks back. Mural and music never re-run layout when their content changes.
+- Nothing stops the new bottom panel from climbing over the header. The side dock has a fallback for this; the bottom panel doesn't.
+- When a conversation panel changes height mid-conversation, the camera isn't reframed, so the person can end up behind the panel.
+- At 560–599px wide on short screens, the conversation's "All Actions" button opens the still-unfixed hub, which sits above the top of the screen.
+
+The review also has optional items and two suggested test cuts. I couldn't check the claim that the native preflight passes with no script errors without its log.
+
+Several MCP servers (Box, Runway, and the engineering plugins: Asana, Atlassian, Datadog, GitHub, Linear, Notion, PagerDuty, Slack) need authorization before their tools work. claude.ai connectors are authorized in your claude.ai connector settings; the others via `/mcp` in an interactive session. This review didn't need any of them.

@@ -773,6 +773,9 @@ var panel_frame_subject := Vector3.ZERO
 var panel_frame_control: Control
 var panel_frame_pose: Array = []
 var panel_refit_generation := 0
+var compact_panel_layout_pending := false
+var compact_panel_layout_busy := false
+var compact_panel_layout_signature: Array = []
 var story_title_label: Label
 var story_body_label: RichTextLabel
 var story_continue_btn: Button
@@ -790,6 +793,8 @@ var block_close_btn: Button
 var block_hub_page := 0
 const BLOCK_ACTIONS_PER_PAGE := 4
 const SIDE_HUB_MIN_WIDTH := 600.0
+const SIDE_ACTIVITY_MIN_WIDTH := 560.0
+const COMPACT_ACTIVITY_MAX_HEIGHT := 640.0
 const SIDE_HUB_MAX_HEIGHT := 560.0
 const HUB_FULL_WIDTH := 1050.0
 const BLOCK_ACTION_COUNT := 12
@@ -4665,7 +4670,7 @@ func is_speech_bubble_visible() -> bool:
 
 func speech_activity_detail() -> RichTextLabel:
 	var details: Array = [mural_detail_label, music_stem_label]
-	if uses_short_side_panels() and block_panel != null and block_panel.visible and block_panel_mode == "talk":
+	if uses_compact_activity_controls() and block_panel != null and block_panel.visible and block_panel_mode == "talk":
 		details.append(block_detail_label)
 	for detail in details:
 		if detail != null and detail.is_visible_in_tree() and not speech_bubble_text.is_empty() and detail.text.contains(speech_bubble_text):
@@ -6256,7 +6261,7 @@ func frame_conversation(index: int) -> void:
 		return
 	release_speech_info()
 	var n_pos: Vector3 = neighbors[index].pos
-	var focus := Vector3(n_pos.x, 1.0 if uses_short_side_panels() else 2.2, n_pos.z)
+	var focus := Vector3(n_pos.x, 1.0 if uses_compact_activity_controls() else 2.2, n_pos.z)
 	in_overview = false
 	following_player = false
 	if view_size > 90.0:
@@ -6264,10 +6269,10 @@ func frame_conversation(index: int) -> void:
 	target = focus
 	update_camera()
 	var area := play_area_rect()
-	var want := area.get_center() if uses_short_side_panels() else Vector2(area.get_center().x, area.position.y + area.size.y * 0.66)
+	var want := area.get_center() if uses_compact_activity_controls() else Vector2(area.get_center().x, area.position.y + area.size.y * 0.66)
 	pan_camera_by_screen_delta(want - camera.unproject_position(focus))
 	remember_panel_framing(block_panel, focus)
-	if uses_short_side_panels():
+	if uses_compact_activity_controls():
 		refit_panel_camera()
 	update_occlusion(true)
 
@@ -6577,47 +6582,62 @@ func uses_paged_block_actions() -> bool:
 
 ## Short, wide windows need the scene beside the menu rather than above it.
 func uses_side_block_hub() -> bool:
-	return uses_short_side_panels() and block_panel != null and block_panel.visible and block_panel_mode == "hub"
+	return bubble_viewport_size().x >= SIDE_HUB_MIN_WIDTH and uses_short_side_panels() and block_panel != null and block_panel.visible and block_panel_mode == "hub"
 
 func uses_short_side_panels() -> bool:
 	var vp := bubble_viewport_size()
-	return vp.x >= SIDE_HUB_MIN_WIDTH and vp.y < SIDE_HUB_MAX_HEIGHT
+	return vp.x >= SIDE_ACTIVITY_MIN_WIDTH and vp.y < SIDE_HUB_MAX_HEIGHT
+
+func panel_uses_side_dock(panel: Control) -> bool:
+	return uses_short_side_panels() and (panel != block_panel or block_panel_mode != "hub" or bubble_viewport_size().x >= SIDE_HUB_MIN_WIDTH)
+
+func uses_compact_narrow_activities() -> bool:
+	var vp := bubble_viewport_size()
+	return vp.x < SIDE_HUB_MIN_WIDTH and not uses_short_side_panels() and vp.y < COMPACT_ACTIVITY_MAX_HEIGHT and ((block_panel != null and block_panel.visible and block_panel_mode == "talk") or (mural_panel != null and mural_panel.visible) or (music_panel != null and music_panel.visible))
+
+func uses_compact_activity_controls() -> bool:
+	return has_side_panel_dock() or uses_compact_narrow_activities()
 
 func has_side_panel_dock() -> bool:
-	return uses_short_side_panels() and any_side_panel_visible()
+	for panel in [block_panel, mural_panel, music_panel]:
+		if panel != null and panel.visible and panel_uses_side_dock(panel):
+			return true
+	return false
 
 func layout_walking_controls_and_hub() -> void:
 	if controls == null or block_panel == null:
 		return
 	var narrow := is_narrow_layout()
 	var side := has_side_panel_dock()
+	var compact := uses_compact_activity_controls()
+	var short_phone := uses_compact_narrow_activities()
 	var vp := bubble_viewport_size()
 	var dock_width := clampf(vp.x * 0.52, 312.0, 440.0)
 	controls.offset_right = -(dock_width + 20.0) if side else -12.0
-	controls.columns = 2 if narrow else 3
-	controls.offset_top = -104.0 if side else (-174.0 if narrow else -124.0)
+	controls.columns = 3 if compact else (2 if narrow else 3)
+	controls.offset_top = -104.0 if compact else (-174.0 if narrow else -124.0)
 	for child in controls.get_children():
 		if child is Button:
-			child.custom_minimum_size.y = 44.0 if side else 50.0
-			child.add_theme_font_size_override("font_size", 12 if side else (14 if narrow else 19))
-	map_control.text = "TL Map" if side else "Tenderloin Map"
+			child.custom_minimum_size.y = 44.0 if compact else 50.0
+			child.add_theme_font_size_override("font_size", 12 if compact else (14 if narrow else 19))
+	map_control.text = "TL Map" if compact else "Tenderloin Map"
 	map_control.tooltip_text = "Tenderloin Map"
-	next_hint_control.text = "Next Step" if side else "What's Next?"
+	next_hint_control.text = ("Next" if vp.x < SIDE_HUB_MIN_WIDTH and side else "Next Step") if compact else "What's Next?"
 	next_hint_control.tooltip_text = "What's Next?"
-	zoom_in_control.text = "Zoom +" if side else "Zoom In (+)"
+	zoom_in_control.text = "Zoom +" if compact else "Zoom In (+)"
 	zoom_in_control.tooltip_text = "Zoom In (+)"
-	zoom_out_control.text = "Zoom -" if side else "Zoom Out (−)"
+	zoom_out_control.text = "Zoom -" if compact else "Zoom Out (−)"
 	zoom_out_control.tooltip_text = "Zoom Out (−)"
 	update_walk_control()
 	block_label.add_theme_font_size_override("font_size", 13 if side or narrow else 16)
 	block_detail_label.add_theme_font_size_override("normal_font_size", 12 if side or narrow else 14)
 	block_detail_label.custom_minimum_size.y = 20.0 if side else 30.0
-	if side and block_panel_mode == "talk":
+	if compact and block_panel_mode == "talk":
 		size_activity_detail(block_detail_label)
 	for b in conv_buttons:
 		b.add_theme_font_size_override("font_size", 13 if side or narrow else 15)
-		b.clip_text = not side
-		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if side else TextServer.AUTOWRAP_OFF
+		b.clip_text = not compact
+		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if compact else TextServer.AUTOWRAP_OFF
 	for label in [mural_label, music_label]:
 		if label != null:
 			label.add_theme_font_size_override("font_size", 13 if side or narrow else 16)
@@ -6629,7 +6649,7 @@ func layout_walking_controls_and_hub() -> void:
 	# Info remains scrollable when deliberately opened beside a short-screen dock.
 	if info != null:
 		info.custom_minimum_size.y = 24.0 if side else 90.0
-		if side and not uses_side_block_hub():
+		if compact and not uses_side_block_hub():
 			# One complete Info line; full dialogue has its own two-line panel reader.
 			info.custom_minimum_size.y = ceilf(info.get_theme_font("normal_font").get_height(info.get_theme_font_size("normal_font_size")))
 		header_panel.offset_bottom = header_panel.offset_top + header_panel.get_combined_minimum_size().y
@@ -6637,20 +6657,51 @@ func layout_walking_controls_and_hub() -> void:
 		if panel == null:
 			continue
 		# Hidden activity panels use the same geometry for focus-before-show calls.
-		var dock: bool = uses_short_side_panels() and (panel != block_panel or panel.visible)
+		var dock: bool = panel_uses_side_dock(panel) and (panel != block_panel or panel.visible)
 		if panel != block_panel:
-			panel.get_child(0).add_theme_constant_override("separation", 1 if dock else 2)
+			panel.get_child(0).add_theme_constant_override("separation", 1 if dock or short_phone else 2)
 			if dock and panel.get_combined_minimum_size().y > vp.y - 12.0 - (header_panel.get_global_rect().end.y + 8.0):
 				# Keep every 44px action and two reader lines when Info is also open.
 				panel.get_child(0).add_theme_constant_override("separation", 0)
 		panel.anchor_left = 1.0 if dock else 0.0
 		panel.offset_left = -(dock_width + 12.0) if dock else 12.0
 		panel.offset_right = -12.0
+		panel.grow_vertical = Control.GROW_DIRECTION_BEGIN if short_phone else Control.GROW_DIRECTION_END
+		if short_phone:
+			panel.size = Vector2(vp.x - 24.0, 0.0)
+			panel.offset_bottom = controls.offset_top - 8.0
+			if panel != block_panel and vp.y + panel.offset_bottom - panel.get_combined_minimum_size().y < header_panel.get_global_rect().end.y + 8.0:
+				panel.get_child(0).add_theme_constant_override("separation", 0)
+			panel.offset_top = panel.offset_bottom - panel.get_combined_minimum_size().y
+			continue
 		panel.offset_top = header_panel.get_global_rect().end.y + 8.0 - vp.y if dock else ((-368.0 if narrow else -336.0) if panel == block_panel else (-396.0 if narrow else -354.0))
 		if dock:
 			panel.size = Vector2(dock_width, 0.0)
 		else:
 			panel.offset_bottom = -176.0 if narrow else -130.0
+
+func queue_compact_panel_layout() -> void:
+	if compact_panel_layout_busy or not uses_compact_narrow_activities():
+		return
+	var signature: Array = [bubble_viewport_size(), header_panel.size]
+	for panel in [block_panel, mural_panel, music_panel]:
+		signature.append([panel.get_combined_minimum_size(), panel.size, panel.visible])
+	if signature == compact_panel_layout_signature:
+		return
+	compact_panel_layout_signature = signature
+	if compact_panel_layout_pending:
+		return
+	compact_panel_layout_pending = true
+	finish_compact_panel_layout.call_deferred()
+
+func finish_compact_panel_layout() -> void:
+	compact_panel_layout_pending = false
+	if not uses_compact_narrow_activities():
+		return
+	compact_panel_layout_busy = true
+	layout_walking_controls_and_hub()
+	compact_panel_layout_busy = false
+	refit_panel_after_layout()
 
 func layout_block_action_pages() -> void:
 	if block_actions_grid == null:
@@ -6769,7 +6820,7 @@ func play_area_rect() -> Rect2:
 	var right := vp.x - 8.0
 	for p in [block_panel, mural_panel, music_panel]:
 		if p != null and p.visible:
-			if uses_short_side_panels():
+			if panel_uses_side_dock(p):
 				right = minf(right, p.get_global_rect().position.x - 8.0)
 			else:
 				bottom = minf(bottom, (p as Control).get_global_rect().position.y - 8.0)
@@ -6813,7 +6864,7 @@ func update_guide_arrow() -> void:
 	lbl_global.y = clampf(lbl_global.y, area.position.y + 7.0, maxf(area.position.y + 7.0, area.end.y - lbl_size.y - 7.0))
 	# Keep the outlined objective name clear of the Talk prompt and transient UI.
 	var occupied: Array[Rect2] = []
-	if has_side_panel_dock():
+	if uses_compact_activity_controls():
 		occupied.append(player_overlay_rect().grow(4.0))
 	if reward_banner != null and reward_banner.is_visible_in_tree():
 		occupied.append(reward_banner.get_global_rect())
@@ -8721,10 +8772,12 @@ func refit_panel_camera() -> void:
 		return
 	var area := play_area_rect()
 	var want := area.get_center()
-	if panel_frame_control == block_panel and not uses_short_side_panels():
+	if panel_frame_control == block_panel and talk_partner >= 0:
+		panel_frame_subject.y = 1.0 if uses_compact_activity_controls() else 2.2
+	if panel_frame_control == block_panel and not uses_compact_activity_controls():
 		want.y = area.position.y + area.size.y * 0.66
 	pan_camera_by_screen_delta(want - camera.unproject_position(panel_frame_subject))
-	if uses_short_side_panels() and player.position.distance_to(panel_frame_subject) < 12.0:
+	if uses_compact_activity_controls() and player.position.distance_to(panel_frame_subject) < 12.0:
 		var body := player_overlay_rect()
 		var safe := area.grow(-4.0)
 		if body.has_area():
@@ -11250,6 +11303,8 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"block_hub_paged": uses_paged_block_actions(),
 		"block_hub_side": uses_side_block_hub(),
 		"side_panel_dock": has_side_panel_dock(),
+		"compact_narrow_activity": uses_compact_narrow_activities(),
+		"compact_panel_layout_pending": compact_panel_layout_pending,
 		"conversation_detail": activity_detail_snapshot(block_detail_label, block_panel, conv_buttons),
 		"panel_subject_screen": rect_snapshot(Rect2(camera.unproject_position(panel_frame_subject), Vector2.ZERO)) if panel_frame_control != null and panel_frame_control.visible else {},
 		"panel_subject_points": panel_subject_snapshots(),
@@ -12973,8 +13028,8 @@ func update_walk_control() -> void:
 		return
 	var walking := not current_path.is_empty()
 	walk_control.text = "Stop Walking" if walking else "Walk & Talk (Next)"
-	if has_side_panel_dock():
-		walk_control.text = "Stop Walk" if walking else "Walk / Talk"
+	if uses_compact_activity_controls():
+		walk_control.text = ("Stop" if walking else "Walk") if bubble_viewport_size().x < SIDE_HUB_MIN_WIDTH and has_side_panel_dock() else ("Stop Walk" if walking else "Walk / Talk")
 	walk_control.tooltip_text = "Stop here without changing progress. Escape also stops." if walking else "Walk to the next neighbor and talk on arrival."
 
 func activate_walk_control() -> void:
@@ -13144,7 +13199,7 @@ func update_readable_scene_labels() -> void:
 	var wrap_width := minf(320.0, bubble_viewport_size().x - 32.0)
 	visible_scene_captions.clear()
 	var occupied: Array[Rect2] = []
-	if has_side_panel_dock():
+	if uses_compact_activity_controls():
 		occupied.append(player_overlay_rect().grow(4.0))
 	if reward_banner != null and reward_banner.is_visible_in_tree():
 		occupied.append(reward_banner.get_global_rect().grow(6.0))
@@ -14649,8 +14704,11 @@ func make_ui() -> void:
 		if in_overview or in_wide_overview:
 			refit_after_layout()
 	vp.size_changed.connect(resize_controls)
+	for panel in [block_panel, mural_panel, music_panel]:
+		panel.minimum_size_changed.connect(queue_compact_panel_layout)
+		panel.resized.connect(queue_compact_panel_layout)
 	header_panel.resized.connect(func():
-		if has_side_panel_dock():
+		if uses_compact_activity_controls():
 			layout_walking_controls_and_hub.call_deferred()
 			if following_player:
 				update_camera.call_deferred()

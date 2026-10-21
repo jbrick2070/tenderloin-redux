@@ -1,0 +1,541 @@
+{
+  "baseline": "e5cd816f7e3de648d158353b742d0d60dbe9ab05",
+  "final_source": {
+    "godot/main.gd": "cd05d02d5e453bc2097499e7e1a7e290b847a8db7a070389e5bf5259330963d6",
+    "godot/tests/study_test.gd": "882c6e61916a307009637f708935b474967c4030cec1c45557481b416e44451f",
+    "tests/godot-browser.mjs": "6d88851d56c648427b76a30d4b753a2b5c8d2c272581f503f347a11839c66362",
+    "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160"
+  },
+  "public": {
+    "version": "0.12.0",
+    "fingerprint": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567"
+  },
+  "all_five_gates_pass": true,
+  "gate_logs": {
+    "native": "artifacts/narrow-activity-verified-native.log",
+    "export": "artifacts/narrow-activity-verified-export.log",
+    "check": "artifacts/narrow-activity-verified-check.log",
+    "node": "artifacts/narrow-activity-verified-node.log",
+    "browser": "artifacts/narrow-activity-verified-browser.log"
+  },
+  "browser": {
+    "runs": [
+      {
+        "viewport": {
+          "width": 1100,
+          "height": 760
+        },
+        "fullSaveBytes": 1728,
+        "compactHeaderHeight": 98,
+        "performance": {
+          "astar_expanded_cells": 2222,
+          "astar_used": true,
+          "district_boundary_present": true,
+          "object_node_count": 2167,
+          "opening_buildings_count": 58,
+          "pathfind_blackhawk_usec": 87600,
+          "pathfind_blackhawk_waypoints": 3,
+          "pathfind_budget_max_usec": 250000,
+          "pathfind_cold_cache": true,
+          "save_budget_max_bytes": 4096,
+          "save_budget_max_usec": 50000,
+          "save_bytes": 1535,
+          "save_roundtrip_usec": 300,
+          "street_ways_count": 20,
+          "total_buildings_count": 188,
+          "voices_teardown_budget_max_usec": 50000,
+          "voices_teardown_measured": true,
+          "voices_teardown_usec": 1,
+          "wider_buildings_count": 130,
+          "wider_street_ways_count": 41,
+          "within_budget": true
+        }
+      },
+      {
+        "viewport": {
+          "width": 390,
+          "height": 667
+        },
+        "fullSaveBytes": 1728,
+        "compactHeaderHeight": 94,
+        "performance": {
+          "astar_expanded_cells": 2222,
+          "astar_used": true,
+          "district_boundary_present": true,
+          "object_node_count": 2167,
+          "opening_buildings_count": 58,
+          "pathfind_blackhawk_usec": 91300,
+          "pathfind_blackhawk_waypoints": 3,
+          "pathfind_budget_max_usec": 250000,
+          "pathfind_cold_cache": true,
+          "save_budget_max_bytes": 4096,
+          "save_budget_max_usec": 50000,
+          "save_bytes": 1535,
+          "save_roundtrip_usec": 200,
+          "street_ways_count": 20,
+          "total_buildings_count": 188,
+          "voices_teardown_budget_max_usec": 50000,
+          "voices_teardown_measured": true,
+          "voices_teardown_usec": 1,
+          "wider_buildings_count": 130,
+          "wider_street_ways_count": 41,
+          "within_budget": true
+        }
+      },
+      {
+        "viewport": {
+          "width": 320,
+          "height": 667
+        },
+        "fullSaveBytes": 1728,
+        "compactHeaderHeight": 94,
+        "performance": {
+          "astar_expanded_cells": 2222,
+          "astar_used": true,
+          "district_boundary_present": true,
+          "object_node_count": 2167,
+          "opening_buildings_count": 58,
+          "pathfind_blackhawk_usec": 95500,
+          "pathfind_blackhawk_waypoints": 3,
+          "pathfind_budget_max_usec": 250000,
+          "pathfind_cold_cache": true,
+          "save_budget_max_bytes": 4096,
+          "save_budget_max_usec": 50000,
+          "save_bytes": 1535,
+          "save_roundtrip_usec": 200,
+          "street_ways_count": 20,
+          "total_buildings_count": 188,
+          "voices_teardown_budget_max_usec": 50000,
+          "voices_teardown_measured": true,
+          "voices_teardown_usec": 1,
+          "wider_buildings_count": 130,
+          "wider_street_ways_count": 41,
+          "within_budget": true
+        }
+      }
+    ],
+    "shortActivityCases": 18,
+    "narrowActivityCases": 27,
+    "narrowFingerCases": 6,
+    "shortHubCases": 8,
+    "shortStoryCases": 7,
+    "queuedRewardCases": 2,
+    "packBytes": 1670452,
+    "errors": [],
+    "external": []
+  },
+  "independent_calls": 1,
+  "requested_model": "claude-opus-5-5",
+  "requested_effort": "high",
+  "limits": "Bounded narrow-small activities. Narrow-short action hub remains next. Expanded Info and untested smaller sizes do not promise full player bounds. Physical phones, full screen readers and human comfort/pacing/listening remain unverified. Full roadmap unfinished; no deployment.",
+  "files": {
+    "artifacts/codex-narrow-activity-conversation-320x568-mouse.json": {
+      "sha256": "67944afb5396a3aab1bcc7d4a9bbbcf8ae80c91d141bb733e219f90642b8d52b",
+      "bytes": 13230
+    },
+    "artifacts/codex-narrow-activity-conversation-320x568-mouse.png": {
+      "sha256": "d9f9cdfc8918e5ef7bb74148705e000d4ca4f09ce839324a545aff57e116bec9",
+      "bytes": 78073
+    },
+    "artifacts/codex-narrow-activity-conversation-320x568-touch.json": {
+      "sha256": "069bb5cccb1849b41babccf5ef80ae586752e58c347964bbd513f033b2f9f94a",
+      "bytes": 13287
+    },
+    "artifacts/codex-narrow-activity-conversation-320x568-touch.png": {
+      "sha256": "cdcecfd2b8691c896b2d228fbe9d20ce18e421a94770b51eeee084e2982180c3",
+      "bytes": 78388
+    },
+    "artifacts/codex-narrow-activity-conversation-360x600-mouse.json": {
+      "sha256": "692bb75e32ac700bc6f8663c50dfbb022b8c94a755a41345409a4b29003d750a",
+      "bytes": 13292
+    },
+    "artifacts/codex-narrow-activity-conversation-360x600-mouse.png": {
+      "sha256": "39fce5926f22870d1f909bd188ae036069522bd6510d6c538f611ea5266a6d1f",
+      "bytes": 84453
+    },
+    "artifacts/codex-narrow-activity-conversation-390x568-mouse.json": {
+      "sha256": "2e40839ca8858f11c224d500880005d4f40a018caf2028b008d5892ad093b2d3",
+      "bytes": 13295
+    },
+    "artifacts/codex-narrow-activity-conversation-390x568-mouse.png": {
+      "sha256": "86e77753f2922a4a8c95c7e3647eb9cb1876adea9575049aa2603325fa6df03d",
+      "bytes": 90480
+    },
+    "artifacts/codex-narrow-activity-conversation-560x360-mouse.json": {
+      "sha256": "87951e766d43f1ab2a5c984a04e0bcb52168848e2a62e2193ee42d3134f2cfa3",
+      "bytes": 13279
+    },
+    "artifacts/codex-narrow-activity-conversation-560x360-mouse.png": {
+      "sha256": "d448a72788f5e5072b26accc03f4c8aadbbd1aa12f9d5f57a846f611c7ea3b13",
+      "bytes": 102576
+    },
+    "artifacts/codex-narrow-activity-conversation-560x568-mouse.json": {
+      "sha256": "b969fbb6107d1ee75da1ff58f0064190b077190954f36dce3e64c92a59a65ad8",
+      "bytes": 13283
+    },
+    "artifacts/codex-narrow-activity-conversation-560x568-mouse.png": {
+      "sha256": "7cb47ae163893cc9ff2ab71478a7e03242fcafcae6c86dcadd17edcd5b4c1f23",
+      "bytes": 105093
+    },
+    "artifacts/codex-narrow-activity-conversation-599x360-mouse.json": {
+      "sha256": "2ccdd4409d1ba9bda17f897254ea77d91b4bfe2adf1c8bafdae6c208e54ae986",
+      "bytes": 13290
+    },
+    "artifacts/codex-narrow-activity-conversation-599x360-mouse.png": {
+      "sha256": "3ff23ee9f14e5064ce6d762f23591f416757cb6740c63ae92e6e967cd83d932d",
+      "bytes": 107386
+    },
+    "artifacts/codex-narrow-activity-conversation-599x360-touch.json": {
+      "sha256": "30fe7b18e2fd666ac7c5073b574d16a0d6607dba878d8e0dad1552f252a389c5",
+      "bytes": 13286
+    },
+    "artifacts/codex-narrow-activity-conversation-599x360-touch.png": {
+      "sha256": "cc2f110c0e9c3ee81de6d86d2503244ae3eec22ce9099c31943766929b4d9d3f",
+      "bytes": 107047
+    },
+    "artifacts/codex-narrow-activity-conversation-599x639-mouse.json": {
+      "sha256": "483b727f6723638d81c1683c878d802c7e775221d08f059281b3fa10e8e0fdc8",
+      "bytes": 13269
+    },
+    "artifacts/codex-narrow-activity-conversation-599x639-mouse.png": {
+      "sha256": "066fedff69293f2d0b5eeff5a6c4e7924b9d3233a5016839764799be407482da",
+      "bytes": 120353
+    },
+    "artifacts/codex-narrow-activity-final-preview.json": {
+      "sha256": "ffb816d625b65dbe0ad25422b045fdeea8f1bdbb4c6bad4164867f49c4e23d70",
+      "bytes": 12583
+    },
+    "artifacts/codex-narrow-activity-final-preview.png": {
+      "sha256": "ff8572519e06de2978735086afbb5fc14d80408ac0ecf4dfbbf17a4411aacfd2",
+      "bytes": 69892
+    },
+    "artifacts/codex-narrow-activity-mural-320x568-mouse.json": {
+      "sha256": "e6ebae49bdbc8228374e1ba43cec943299896e8a296d495742dc2ea3fb9fd92d",
+      "bytes": 13448
+    },
+    "artifacts/codex-narrow-activity-mural-320x568-mouse.png": {
+      "sha256": "bb9e7709a1cc4e4a7e17f8c696b9e3f27353b38bd5a52d92231a9db174b9cb7a",
+      "bytes": 73078
+    },
+    "artifacts/codex-narrow-activity-mural-320x568-touch.json": {
+      "sha256": "a5c80e0dfbc0f467a53564798c2c324c6dec5140cb8167c5a4b631d92051c92e",
+      "bytes": 13497
+    },
+    "artifacts/codex-narrow-activity-mural-320x568-touch.png": {
+      "sha256": "944df93cc6ba5ca44688c2c06983073bef6fae777981234efca9d417c145855f",
+      "bytes": 72579
+    },
+    "artifacts/codex-narrow-activity-mural-360x600-mouse.json": {
+      "sha256": "d41b8a1482eea1ed44e04d577ac7f84fb11345ed7dcf1a57dc4ed0d206de4952",
+      "bytes": 13480
+    },
+    "artifacts/codex-narrow-activity-mural-360x600-mouse.png": {
+      "sha256": "b61fb4d3ba9f1b241818cd59af1528df959c506846278b840d6ed41850a74caa",
+      "bytes": 78446
+    },
+    "artifacts/codex-narrow-activity-mural-390x568-mouse.json": {
+      "sha256": "cbfe1b3219eac73c95690ff312a9a22c61007b8bace03e2d325e8e317b80552c",
+      "bytes": 13478
+    },
+    "artifacts/codex-narrow-activity-mural-390x568-mouse.png": {
+      "sha256": "b08b587f1dd0c931742284fff27dfd09f2ed2edbd9aaf8b563e9888985308062",
+      "bytes": 79872
+    },
+    "artifacts/codex-narrow-activity-mural-560x360-mouse.json": {
+      "sha256": "6f7053af0b60e9d1dfd0b49c00541a6d5cba08eb2e07900c5afbab89afd661ee",
+      "bytes": 13444
+    },
+    "artifacts/codex-narrow-activity-mural-560x360-mouse.png": {
+      "sha256": "5f3a95ea4a3e8f1e398d34adae7ac8834c2d9d0260c0ab70c31923fe83ceb300",
+      "bytes": 94195
+    },
+    "artifacts/codex-narrow-activity-mural-560x568-mouse.json": {
+      "sha256": "5c2cd4450d866663e31d15e5a71c9763468628fc0603bbeead048ba139d45aa2",
+      "bytes": 13501
+    },
+    "artifacts/codex-narrow-activity-mural-560x568-mouse.png": {
+      "sha256": "f8b4f8e80325608ebfd869e58cc229c8958af0f0091c3665e87527aad5b46a38",
+      "bytes": 105864
+    },
+    "artifacts/codex-narrow-activity-mural-599x360-mouse.json": {
+      "sha256": "453bdbadbaef14df48c42af9b216dc791b9de19bc184c6b6c5941b87cc9289d7",
+      "bytes": 13469
+    },
+    "artifacts/codex-narrow-activity-mural-599x360-mouse.png": {
+      "sha256": "8ae97bef2d78f07afcb9b5038c8ee287cedd72b68b036c6055b5f55abd64688e",
+      "bytes": 99459
+    },
+    "artifacts/codex-narrow-activity-mural-599x360-touch.json": {
+      "sha256": "318b53e048ff7d42b36b04e63d2ee59ffb56ef4b1ff97de3b0de98a3a6e2bd48",
+      "bytes": 13461
+    },
+    "artifacts/codex-narrow-activity-mural-599x360-touch.png": {
+      "sha256": "69880f476181a70c6564f6f1c0dd6bab504e70e4fd8356c59f461966eb4bdda1",
+      "bytes": 99717
+    },
+    "artifacts/codex-narrow-activity-mural-599x639-mouse.json": {
+      "sha256": "aee922f126b3007db91605e7f0a6c47dd78e316024a54dd6b5f6753b17b3e7ad",
+      "bytes": 13439
+    },
+    "artifacts/codex-narrow-activity-mural-599x639-mouse.png": {
+      "sha256": "6285303af5dbfa665b7e8237812379820a2a2a5bda80f46928c82692967e8338",
+      "bytes": 113861
+    },
+    "artifacts/codex-narrow-activity-music-320x568-mouse.json": {
+      "sha256": "dde1e0d131d6918a17cd56eee8e17c6de1df8f4861856db843af346051abca62",
+      "bytes": 13014
+    },
+    "artifacts/codex-narrow-activity-music-320x568-mouse.png": {
+      "sha256": "b224c3dc675869360b118f61ddaa26d4d0a5dc09c5cdfc28645b7f148e29d8a5",
+      "bytes": 64513
+    },
+    "artifacts/codex-narrow-activity-music-320x568-touch.json": {
+      "sha256": "f3c239d0c1eb4e82f2cae3189f751c21b121c96236ba240c721f768ea8474183",
+      "bytes": 13021
+    },
+    "artifacts/codex-narrow-activity-music-320x568-touch.png": {
+      "sha256": "0e9f1bf39e6133397da48206f0ce00f3f78307f53f6116876f3d8eab5cacae84",
+      "bytes": 64596
+    },
+    "artifacts/codex-narrow-activity-music-360x600-mouse.json": {
+      "sha256": "9a2ae23ada472095686246be4aee3a495c46defe698194e343f8bce6a9b8ce2a",
+      "bytes": 13005
+    },
+    "artifacts/codex-narrow-activity-music-360x600-mouse.png": {
+      "sha256": "996e8123195f09f1820dac69f8b4d0765ae09f1853b1022b3e0d022b161b9975",
+      "bytes": 70250
+    },
+    "artifacts/codex-narrow-activity-music-390x568-mouse.json": {
+      "sha256": "f6de8abe663fe2b45acca1c5edb1e5fa93222cbf5e1f44bb2a389a0418493467",
+      "bytes": 13022
+    },
+    "artifacts/codex-narrow-activity-music-390x568-mouse.png": {
+      "sha256": "c9708f4642a17c0600fefb81c2a3c02eed72dce1c3d284994c688280d53f2815",
+      "bytes": 71304
+    },
+    "artifacts/codex-narrow-activity-music-560x360-mouse.json": {
+      "sha256": "6c9a1500154ccbca97d32414fbed974c5155c277a7474d36ba79076dd0313ca8",
+      "bytes": 12987
+    },
+    "artifacts/codex-narrow-activity-music-560x360-mouse.png": {
+      "sha256": "852b542dfffd429fe6689791e72e581af300275cab1eabf2d608b882b6e208dc",
+      "bytes": 77102
+    },
+    "artifacts/codex-narrow-activity-music-560x568-mouse.json": {
+      "sha256": "bcb3cb5cbee2004083c2f5a0f5e6eaae249b0d7e96b4c5379d9b179ac412ea38",
+      "bytes": 13229
+    },
+    "artifacts/codex-narrow-activity-music-560x568-mouse.png": {
+      "sha256": "16735ad935387e491d35920b021a030a0c871280fa6bc7d96e9bf673d8aea296",
+      "bytes": 84208
+    },
+    "artifacts/codex-narrow-activity-music-599x360-mouse.json": {
+      "sha256": "fbea6767e540b1e39ce2803a20c1bee417a90391622fc6963370e8e7090fe2b6",
+      "bytes": 12990
+    },
+    "artifacts/codex-narrow-activity-music-599x360-mouse.png": {
+      "sha256": "863d8afc8bbab8d199a1ff2e2559cc7db28308638dae74d7da7fa1fe7f54a215",
+      "bytes": 81668
+    },
+    "artifacts/codex-narrow-activity-music-599x360-touch.json": {
+      "sha256": "fdacc738843738cc6b11ab2e0c251d3ebf7d3bdcef14f596ad904cbca51460c0",
+      "bytes": 12993
+    },
+    "artifacts/codex-narrow-activity-music-599x360-touch.png": {
+      "sha256": "32b4f979aa4ce1d91f0dd4aa26ffb31fbef3f4fc7617f1ec78b3190feeb99380",
+      "bytes": 81629
+    },
+    "artifacts/codex-narrow-activity-music-599x639-mouse.json": {
+      "sha256": "7bdfe76bfdaf0a99b32ba09f8766d1fdf8a5ee1da4711b8c0c1da8cc4292fb3c",
+      "bytes": 13234
+    },
+    "artifacts/codex-narrow-activity-music-599x639-mouse.png": {
+      "sha256": "704c3559e12c23b0ff7a28564384535cbda15638baf28c27f321717bed0bf068",
+      "bytes": 98496
+    },
+    "artifacts/godot-web/index.pck": {
+      "sha256": "131620b43da1088ade500052b9e8b11dcf84896146f5fc9fdb8703841134205a",
+      "bytes": 1670452
+    },
+    "artifacts/narrow-activity-browser-precision-abort.log": {
+      "sha256": "d10188cb35d0c75758048ecd70cb6e2d5230c30da29dc358841a55b3d1f3d2fa",
+      "bytes": 77
+    },
+    "artifacts/narrow-activity-final-metrics.json": {
+      "sha256": "39370e7f00f40bcf264b4b05d3a0158d7e8c66d8422e982dbc1db72b3357c5a3",
+      "bytes": 3264
+    },
+    "artifacts/narrow-activity-focus-precision-failure.log": {
+      "sha256": "19d725c87bcbd60304f326bd45308aab2ca48669015bdbffe013da30290f5bfa",
+      "bytes": 29849
+    },
+    "artifacts/narrow-activity-focus-precision.gd": {
+      "sha256": "fc7869b62cb37444f7a91f4e14d066de24f0a61e2966ca3c85ab5b62c31d0ec2",
+      "bytes": 224
+    },
+    "artifacts/narrow-activity-focus-precision.log": {
+      "sha256": "c43879f83781638d7329af845e845995209ce6398f7a37fd76aa9a0d6add3c67",
+      "bytes": 155
+    },
+    "artifacts/narrow-activity-gap-probe.gd": {
+      "sha256": "197385d82762151ae17a408fc7b261fd45a6df128b1e9a352c48d6ae72017d89",
+      "bytes": 490
+    },
+    "artifacts/narrow-activity-gap-probe.log": {
+      "sha256": "02c87d9a45f9c429c211efcd3c58bbf08075b9a833e5e95840e2471f1ea9c3d3",
+      "bytes": 187
+    },
+    "artifacts/narrow-activity-native-preflight.log": {
+      "sha256": "dcaea1c292856a21a4ae9b2526c6b776b01972230c36cf9d7eac504759dcb93c",
+      "bytes": 17620
+    },
+    "artifacts/narrow-activity-native-preflight2.log": {
+      "sha256": "9d92dc7b9418fd4cfa29f36abd57a38b6374a89af8bcf3c26bbe817c513c99da",
+      "bytes": 14982
+    },
+    "artifacts/narrow-activity-native-preflight3.log": {
+      "sha256": "555e791410c576fbf926783a3863af6f0a6e89bc2df3a0b2cd10e115a8e245d0",
+      "bytes": 20886
+    },
+    "artifacts/narrow-activity-next-hub-320x568.json": {
+      "sha256": "773cd27ff19160b88bc51ddd2d509480319cccfda73d279ff24912961506c15f",
+      "bytes": 12865
+    },
+    "artifacts/narrow-activity-next-hub-320x568.png": {
+      "sha256": "d0e1d0de0d3205c21a70792907c59573ee5891b8ed737cd7ae1637ceaf852885",
+      "bytes": 75684
+    },
+    "artifacts/narrow-activity-next-hub-599x360.json": {
+      "sha256": "946ea82ee4e589f68f7c31f08d351dc26f3b2210a61cbb5c713c0ccdc3ee63b6",
+      "bytes": 12835
+    },
+    "artifacts/narrow-activity-next-hub-599x360.png": {
+      "sha256": "ef307d1f93572fd46fc25d00ba9a87ed615f889049dc25bda1a7979d1743f441",
+      "bytes": 86536
+    },
+    "artifacts/narrow-activity-next-hub-probe.log": {
+      "sha256": "1cbb6b9c1bb9f8857845212698a5f4bacb4559ea4ced9376638c2fae9dce3ea1",
+      "bytes": 928
+    },
+    "artifacts/narrow-activity-next-hub-probe.mjs": {
+      "sha256": "fe23867311ba0935c02602a2e09c977812e8b3e9fdb5867ff9bbe1c326a1962f",
+      "bytes": 3609
+    },
+    "artifacts/narrow-activity-next-hub.json": {
+      "sha256": "170da435a48b65dbb7864e97fa546cf08833a13f2a012757be3137f283f6b1cf",
+      "bytes": 1624
+    },
+    "artifacts/narrow-activity-verified-browser.log": {
+      "sha256": "dfba17990f36c183a13605b51aaa9600e1b35bb0381a476d8c2b27026a3f5df7",
+      "bytes": 46262
+    },
+    "artifacts/narrow-activity-verified-check.log": {
+      "sha256": "bbbf642933db0755ec1b063caec7667a16966ea1db64dadab1526709e88e5537",
+      "bytes": 1337
+    },
+    "artifacts/narrow-activity-verified-export.log": {
+      "sha256": "bb6fab37171e55788bc415710a9755fcb60eeacf76614378403ba2db28ece436",
+      "bytes": 2122
+    },
+    "artifacts/narrow-activity-verified-native.log": {
+      "sha256": "72fdbba080496d5d9803f6005a971da25bf2e833939de3c31495480ef6572b75",
+      "bytes": 21989
+    },
+    "artifacts/narrow-activity-verified-node.log": {
+      "sha256": "f8f2dee20f3effdbde6eb732d51627768bf08da2c486f8fe34246ccc510b3fee",
+      "bytes": 10791
+    },
+    "docs/BUILD_STATUS.md": {
+      "sha256": "4b116331a10555997f6334ec4dadaeb5ffad24fc9027c94e8b00fd77ecc67ce5",
+      "bytes": 230144
+    },
+    "godot/main.gd": {
+      "sha256": "cd05d02d5e453bc2097499e7e1a7e290b847a8db7a070389e5bf5259330963d6",
+      "bytes": 683281
+    },
+    "godot/tests/study_test.gd": {
+      "sha256": "882c6e61916a307009637f708935b474967c4030cec1c45557481b416e44451f",
+      "bytes": 283855
+    },
+    "kibitz-runs/2026-10-21-codex-narrow-small-activities/r3/automation_receipt.json": {
+      "sha256": "3f07b1d3f89fe0f37081e829e01bbe6ec96f0147c53c6c64c62d232d3f94fce0",
+      "bytes": 446
+    },
+    "kibitz-runs/2026-10-21-codex-narrow-small-activities/r3/claude.log": {
+      "sha256": "2bb91228ab0ec9504ee84b112a671f6da3359597485336db325760671d390394",
+      "bytes": 2557
+    },
+    "kibitz-runs/2026-10-21-codex-narrow-small-activities/r3/claude.md": {
+      "sha256": "211acfa7740dd5780ba809a5fcd3a6775146c7b2fc506275308cbf2c6414daa3",
+      "bytes": 10148
+    },
+    "kibitz-runs/2026-10-21-codex-narrow-small-activities/r3/claude_budget_selected.txt": {
+      "sha256": "b80401b5bdee9b92d2114d1dcae19e4929eefb76987dd1911802478ede026cf0",
+      "bytes": 64
+    },
+    "kibitz-runs/2026-10-21-codex-narrow-small-activities/r3/claude_effort_selected.txt": {
+      "sha256": "6ef7c9b15ecdd69083724b84cfdc2100351963488b51b4ea2fcbddf493fbec94",
+      "bytes": 4
+    },
+    "kibitz-runs/2026-10-21-codex-narrow-small-activities/r3/claude_model_selected.txt": {
+      "sha256": "005912bee6ee4543cec4404b5a02b9bcb11a6f1dcc134b6693c7ccde5fdd2f69",
+      "bytes": 15
+    },
+    "kibitz-runs/2026-10-21-codex-narrow-small-activities/r3/claude_quota_status.txt": {
+      "sha256": "890673e9ef03c5afb5eddf73c5a1491c4706d57a2ebb3978931ff498468f4209",
+      "bytes": 496
+    },
+    "kibitz-runs/2026-10-21-codex-narrow-small-activities/r3/driver_anchor.md": {
+      "sha256": "02f6ce74f735f4716db1b86fa37bb8c721a01fbdd515d3ffc455abedaa050d5d",
+      "bytes": 1566
+    },
+    "kibitz-runs/2026-10-21-codex-narrow-small-activities/r3/final.md": {
+      "sha256": "6983f63a305c1895af14971287c5f9afa157c773357cf057c9391889e2a65ff7",
+      "bytes": 6151
+    },
+    "kibitz-runs/2026-10-21-codex-narrow-small-activities/r3/input.md": {
+      "sha256": "c7acffe668ff02cc2b4218fee18aca51b386f6908c57756f394bf7e0a24404d8",
+      "bytes": 4040
+    },
+    "kibitz-runs/2026-10-21-codex-narrow-small-activities/r3/judgment.md": {
+      "sha256": "17103ec526e71445edb99496fa863e19661666cab457004fc31a60cb7cab45c9",
+      "bytes": 4940
+    },
+    "kibitz-runs/2026-10-21-codex-narrow-small-activities/r3/model_receipt.json": {
+      "sha256": "ee3283520918558b20733b933ee0529124ffc4de898b17065f0a9364766fda75",
+      "bytes": 649
+    },
+    "kibitz-runs/2026-10-21-codex-narrow-small-activities/r3/profiles_used.txt": {
+      "sha256": "a9a11813438ba2fc0c6efd97f13b88bf41af82044d04182d865bdd38eaa32423",
+      "bytes": 8
+    },
+    "kibitz-runs/2026-10-21-codex-narrow-small-activities/r3/review_scope.md": {
+      "sha256": "c7acffe668ff02cc2b4218fee18aca51b386f6908c57756f394bf7e0a24404d8",
+      "bytes": 4040
+    },
+    "kibitz-runs/2026-10-21-codex-narrow-small-activities/r3/scope_receipt.md": {
+      "sha256": "35b028d63612e8d1d37eb1c8e60cbba0906cbb18473a96b927a71376e3579d6b",
+      "bytes": 479
+    },
+    "kibitz-runs/2026-10-21-codex-narrow-small-activities/r3/source-before.json": {
+      "sha256": "be93e85b79dd02382ed50a7d69baba1e3d9fc3bf85f966fe956901517a11e7e0",
+      "bytes": 391
+    },
+    "kibitz-runs/2026-10-21-codex-narrow-small-activities/r3/source-comparison.json": {
+      "sha256": "5d8dfb7db9ff4f0d4eb2dc1a4e683e19b7e25e5f10ddb415129487221b829705",
+      "bytes": 1295
+    },
+    "session_handoff.md": {
+      "sha256": "daa8761bbd48f1b9c29014d98f777ccdde14ea6d1a3679ea1f2583798f4d622c",
+      "bytes": 109911
+    },
+    "tests/godot-browser.mjs": {
+      "sha256": "6d88851d56c648427b76a30d4b753a2b5c8d2c272581f503f347a11839c66362",
+      "bytes": 139173
+    },
+    "tests/godot-data.test.mjs": {
+      "sha256": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160",
+      "bytes": 23003
+    }
+  }
+}

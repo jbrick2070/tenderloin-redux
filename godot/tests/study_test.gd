@@ -3235,6 +3235,7 @@ func run() -> void:
 	require(study.info.visible and study.info.text.contains(solo_hint), "What's Next shows a visible answer away from neighbors")
 	study.set_header_details(false)
 	await verify_short_activity_panels(study)
+	await verify_short_activity_panels(study, true)
 	study.clear_godot_save()
 	study.clear_godot_settings()
 	var legacy_settings := FileAccess.open(study.settings_path, FileAccess.WRITE)
@@ -3256,14 +3257,15 @@ func run() -> void:
 
 
 
-func verify_short_activity_panels(study: Node) -> void:
+func verify_short_activity_panels(study: Node, narrow_small := false) -> void:
 	var original_player: Vector3 = study.player.position
 	var original_timer: float = study.objective_refresh_timer
 	study.hide_story_card()
 	study.current_path.clear()
 	study.music_error = ""
 	study.set_header_details(false, false)
-	for short_size in [Vector2i(600, 360), Vector2i(640, 360), Vector2i(667, 375), Vector2i(844, 390), Vector2i(800, 480), Vector2i(1100, 480)]:
+	var sizes: Array = [Vector2i(320, 568), Vector2i(390, 568), Vector2i(360, 600), Vector2i(520, 568), Vector2i(560, 360), Vector2i(599, 360), Vector2i(560, 568), Vector2i(599, 639)] if narrow_small else [Vector2i(600, 360), Vector2i(640, 360), Vector2i(667, 375), Vector2i(844, 390), Vector2i(800, 480), Vector2i(1100, 480)]
+	for short_size in sizes:
 		root.size = short_size
 		await process_frame
 		await process_frame
@@ -3327,7 +3329,9 @@ func verify_short_activity_panels(study: Node) -> void:
 			var scene: Rect2 = study.play_area_rect()
 			print("SHORT_ACTIVITY_CHECK ", short_size, " ", kind, " panel=", dock, " scene=", scene, " player=", study.player_overlay_rect())
 			require(dock.position.y >= study.header_panel.get_global_rect().end.y and dock.end.x <= short_size.x and dock.end.y <= short_size.y - 12, "short activity dock clears header and stays on-screen")
-			require(scene.size.x >= 250 and scene.size.y >= 100 and not dock.intersects(scene), "short activities leave useful scene space beside the dock")
+			require(scene.size.x >= (200 if narrow_small else 250) and scene.size.y >= 100 and not dock.intersects(scene), "short activities leave useful scene space clear of the panel")
+			if study.uses_compact_narrow_activities():
+				require(study.controls.get_global_rect().position.y >= dock.end.y + 7, "compact activity stays above walking controls")
 			require(scene.has_point(study.camera.unproject_position(subject)), "real conversation/activity subject is visible beside the dock")
 			require(study.player_overlay_rect().has_area() and scene.grow(1.0).encloses(study.player_overlay_rect()), "short arrival keeps the full enlarged player and YOU clear of controls under a two-line objective")
 			for point in study.panel_subject_snapshots():
@@ -3353,6 +3357,18 @@ func verify_short_activity_panels(study: Node) -> void:
 			await process_frame
 			require(bar.value + bar.page >= bar.max_value - 1 and detail.text.ends_with("FINAL readable line."), "short reader reaches the entire original final line")
 			require(before_pose == study.panel_camera_pose() and before_player == study.player.position and before_save == JSON.stringify(study.build_save_envelope()), "short activity reading preserves camera, player and progress")
+			if narrow_small and short_size == Vector2i(320, 568):
+				var changing_button: Button = buttons[0]
+				var original_caption: String = changing_button.text
+				var original_height: float = panel.size.y
+				changing_button.text = "First line\nSecond line\nThird line\nFourth line"
+				for frame in range(6):
+					await process_frame
+				require(panel.size.y > original_height and study.controls.get_global_rect().position.y >= panel.get_global_rect().end.y + 7, "deferred content growth stays above walking controls")
+				changing_button.text = original_caption
+				for frame in range(6):
+					await process_frame
+				require(absf(panel.size.y - original_height) < 1 and study.play_area_rect().has_point(study.camera.unproject_position(subject)) and not study.compact_panel_layout_pending, "deferred content shrink restores useful space and subject without a pending loop")
 			# Explicit Info may grow the header, but must leave controls reachable.
 			study.set_header_details(true, false)
 			await process_frame
@@ -3373,6 +3389,9 @@ func verify_short_activity_panels(study: Node) -> void:
 				await process_frame
 				await process_frame
 				require(is_equal_approx(panel.anchor_left, 1.0 if boundary == Vector2i(600, 559) else 0.0) and study.play_area_rect().has_point(study.camera.unproject_position(subject)), "open activity crosses width/height dock boundaries with its real subject")
+				require(panel.get_global_rect().position.y >= study.header_panel.get_global_rect().end.y and (study.controls.get_global_rect().end.x <= panel.get_global_rect().position.x if study.has_side_panel_dock() else study.controls.get_global_rect().position.y >= panel.get_global_rect().end.y), "open boundary keeps panel clear of header and walking controls")
+				if kind == "conversation":
+					require(is_equal_approx(study.panel_frame_subject.y, 1.0 if study.uses_compact_activity_controls() else 2.2), "rotation uses the same conversation body focus as a fresh open")
 			root.size = Vector2i(360, 640)
 			await process_frame
 			await process_frame
@@ -3382,7 +3401,7 @@ func verify_short_activity_panels(study: Node) -> void:
 			await process_frame
 			await process_frame
 			await process_frame
-			require(panel.anchor_left == 1.0 and study.play_area_rect().has_point(study.camera.unproject_position(subject)), "rotating back restores the short dock and actual subject")
+			require(panel.anchor_left == (1.0 if short_size.x >= study.SIDE_ACTIVITY_MIN_WIDTH and short_size.y < study.SIDE_HUB_MAX_HEIGHT else 0.0) and study.play_area_rect().has_point(study.camera.unproject_position(subject)), "rotating back restores the short layout and actual subject")
 			study.pan_camera_by_screen_delta(Vector2(9, 4))
 			var manual: Array = study.panel_camera_pose()
 			study.refit_panel_after_layout()
@@ -3390,10 +3409,18 @@ func verify_short_activity_panels(study: Node) -> void:
 			await process_frame
 			await process_frame
 			require(manual == study.panel_camera_pose(), "short activity refit preserves manual inspection intent")
-			study.show_block_panel(false)
-			study.show_mural_panel(false)
-			study.show_music_panel(false)
+			study.end_conversation()
+			await process_frame
+			await process_frame
+			await process_frame
 			require(study.controls.offset_right == -12 and study.map_control.text == "Tenderloin Map", "closing short activity restores normal walking controls")
+			require(study.controls.columns == (2 if short_size.x < 600 else 3) and study.controls.offset_top == (-174 if short_size.x < 600 else -124), "real Close restores walking grid and vertical offsets")
+			var normal_labels: Array = ["What's Next?", "Tenderloin Map", "Find Me", "Zoom In (+)", "Zoom Out (−)", "Walk & Talk (Next)"]
+			for i in range(study.controls.get_child_count()):
+				var control: Button = study.controls.get_child(i)
+				require(control.text == normal_labels[i] and control.custom_minimum_size.y == 50, "real Close restores every walking caption and target size")
+			for restored_panel in [study.block_panel, study.mural_panel, study.music_panel]:
+				require(restored_panel.grow_vertical == Control.GROW_DIRECTION_END, "real Close restores panel grow direction")
 	study.last_panel_dialogue = ""
 	study.player.position = original_player
 	study.objective_refresh_timer = original_timer
