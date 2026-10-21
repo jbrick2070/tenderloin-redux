@@ -1,0 +1,16 @@
+STDOUT:
+I wrote the review to `kibitz-runs/2026-10-21-codex-painted-mural-ideas/r1/claude.md`. The verdict is **yes-with-fixes**: option A (a painted canvas drawn under the existing 18 tap targets) works with the current code. I edited no source and ran no tests or gates. The pixel-height and colour-contrast figures in the review are hand-calculated from constants in the code and marked "verify".
+
+**What must be settled before building:**
+1. **No single motif style to match.** The 3D easel, the keepsake image and the current editor each draw Sun, Wave and Rise differently. The keepsake version can't change, because a test requires it to match the frozen `public/keepsake.js` byte for byte. The original browser game also treats Celeste's Rise as hand lettering. So the review proposes the keepsake's style as the standard; otherwise the redesign adds a fourth style.
+2. **Removing the numbers removes the only position cue on web.** The web accessibility bridge only sends a status line and a summary, and moving focus between squares announces nothing. The "3,2" text on each square is currently the only way a keyboard user knows where they are. The fix is to announce the position when a square gets focus and show it as a small caption.
+3. **Some existing size checks would pass without proving anything.** They only measure button text, so a square with no text or a drawn icon always "fits".
+4. **Any random brush texture must be fixed per state.** The editor redraws 3–4 times per placement, so random texture would shimmer like an animation and make screenshot checks unreliable.
+5. **No extra height at 520×360 / 559×360.** By my estimate about 4 px of slack is left, and both test suites require every square to sit fully inside the panel.
+6. **Colour contrast fails.** Some palette colours are nearly invisible on either the paper or the dark background (as low as about 1.1:1), and no automated contrast check exists. Each motif needs a dark outline, plus a test.
+
+**Recommended slice:** draw paper, pencil slot marks and the keepsake-style motifs directly on the existing grid, and make the 18 squares transparent with no text. The tray keeps its exact button labels ("Lulu / Sun" etc.), which a browser test checks, with a small drawn motif beside each.
+
+**Cut:** using the real 3D easel as the background (option C), changing the keepsake image, remodelling the 3D motifs, and building both A and the collage option (B).
+
+The review also describes checkable acceptance tests (sampling screenshot pixels to confirm motifs are drawn and borders are gone). Those tests can show the "data sheet" elements are gone, but only the creator's review of the screenshots can judge whether it now looks like artwork.

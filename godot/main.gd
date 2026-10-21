@@ -11560,7 +11560,7 @@ func open_mural_workshop() -> bool:
 	mural_workshop_return_focus = get_viewport().gui_get_focus_owner()
 	mural_workshop_selected = active_motif if active_motif in MURAL_MOTIFS else "sun"
 	select_next_workshop_contribution()
-	mural_workshop_message = "Choose a contribution, then a square. Changes save immediately. Celeste: " + mural_composition_reply()
+	mural_workshop_message = "Pick a neighbor's mark, then touch a dotted spot on the canvas. Your art saves as you go. Celeste: " + mural_composition_reply()
 	mural_workshop.visible = true
 	mural_workshop.scroll.scroll_vertical = 0
 	refresh_mural_workshop()
@@ -11569,7 +11569,7 @@ func open_mural_workshop() -> bool:
 	pointer_active = false
 	orbit_dragging = false
 	layout_reward_banner()
-	announce_a11y_status("Mural Workshop. %d/3 contributions placed. Lulu's Sun, Dez's Wave, Celeste's Rise. Choose a contribution and a space; Escape returns to the street." % mural_placements.size())
+	announce_a11y_status("Mural Workshop. %d/3 contributions placed. Lulu's Sun, Dez's Wave, Celeste's Rise. Choose a contribution and a space; Escape returns to Celeste's easel." % mural_placements.size())
 	return true
 
 func select_next_workshop_contribution() -> void:
@@ -11598,7 +11598,7 @@ func select_workshop_contribution(id: String) -> void:
 		return
 	mural_workshop_selected = id
 	var credit: String = {"sun":"Lulu", "wave":"Dez", "rise":"Celeste"}[id]
-	mural_workshop_message = "Selected %s's %s. Choose an empty space. The other contributions stay where you put them." % [credit,id.capitalize()]
+	mural_workshop_message = "%s's %s is on your brush. Touch an open spot to paint; choose a mark again to move it." % [credit,id.capitalize()]
 	refresh_mural_workshop()
 	announce_a11y_status("Mural %d/3. %s" % [mural_placements.size(),mural_workshop_message])
 

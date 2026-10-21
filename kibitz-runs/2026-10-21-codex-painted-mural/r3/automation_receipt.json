@@ -1,0 +1,17 @@
+{
+  "id": "build-tenderloin-redux",
+  "created_at": 1792342628584,
+  "name": "Build Tenderloin Redux",
+  "status": "ACTIVE",
+  "rrule": "FREQ=MINUTELY;INTERVAL=30",
+  "targetThreadId": "01a159d6-60a3-78e1-92ae-4018509d2539",
+  "prefix_sha256": "41b8fc04cc9cd123adff92ae758927589793d2bcf3285f6dc14af495d24beef3",
+  "prompt_sha256": "af6dff2bd46d26563db3df5e22a085d545095f928608e3181a7a5ca7b4548eac",
+  "note": "Apply through automation_update only after all5gates; preserve active30min/no cutoff, policy prefix, ownership and quiet-notification intent.",
+  "applied_via": "mcp__codex_app__automation_update",
+  "verified_from_saved_toml": true,
+  "all5_pass_before_update": true,
+  "newest_checkpoint": "Painted Mural Workshop",
+  "next_feature": "Resume grounded concert rhythm-circle pre-code plan; no concert implementation claimed",
+  "verified_utc": "2026-10-21T17:29:55.287224+00:00"
+}

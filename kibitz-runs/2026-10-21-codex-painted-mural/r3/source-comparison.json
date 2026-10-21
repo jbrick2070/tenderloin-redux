@@ -1,0 +1,29 @@
+{
+  "before_review": {
+    "godot/main.gd": "95bbd55fc83fd7807dfa3cd7e976a1a38588c0c974b739e3a956475118ba133a",
+    "godot/mural_workshop.gd": "5990d9dfa5d0cfa215269a1cd20cb04ae75257df403c6a447393f18f6cb966ac",
+    "godot/tests/study_test.gd": "cb5d7d3cd11d574ff50271c7205dee97b292adce3934bc9a56ea499ece3d348a",
+    "tests/godot-browser.mjs": "8c0ef215c098def9a57fc2397ab292d76422c4cab3cdb4a054a3dc7d50710d3e",
+    "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160",
+    "docs/ROADMAP.md": "2488b43d63b7c059760085887326aaba6c18fad7ec50f1034235573177355189"
+  },
+  "after_review": {
+    "godot/main.gd": "95bbd55fc83fd7807dfa3cd7e976a1a38588c0c974b739e3a956475118ba133a",
+    "godot/mural_workshop.gd": "5990d9dfa5d0cfa215269a1cd20cb04ae75257df403c6a447393f18f6cb966ac",
+    "godot/tests/study_test.gd": "cb5d7d3cd11d574ff50271c7205dee97b292adce3934bc9a56ea499ece3d348a",
+    "tests/godot-browser.mjs": "8c0ef215c098def9a57fc2397ab292d76422c4cab3cdb4a054a3dc7d50710d3e",
+    "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160",
+    "docs/ROADMAP.md": "2488b43d63b7c059760085887326aaba6c18fad7ec50f1034235573177355189"
+  },
+  "unchanged_during_review": true,
+  "final_source_pending": false,
+  "final_source": {
+    "godot/main.gd": "8371efe518691d907ad747912e3b4177e0ab3547ba20bf4942c20d6c14f9aef1",
+    "godot/mural_workshop.gd": "2bb5ac0b771398a7da58123696ca7d68ee107fbc8e9d4ff895acf50fbdcb0e1a",
+    "godot/tests/study_test.gd": "e1ab8834caf76189794b98b269bc13f5089b24f59b77f4a067ac70dfa48a61ba",
+    "tests/godot-browser.mjs": "d8a4e3b22b517d064f62aa210c9c7b8e876372372c592982d18249b0978d221e",
+    "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160",
+    "docs/ROADMAP.md": "2488b43d63b7c059760085887326aaba6c18fad7ec50f1034235573177355189"
+  },
+  "driver_fix_freeze_utc": "2026-10-21T16:54:45.026815+00:00"
+}

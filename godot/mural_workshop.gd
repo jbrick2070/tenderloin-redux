@@ -23,6 +23,12 @@ var tool_buttons: Array[Button] = []
 var cells: Array[Button] = []
 var layout_pending := false
 var layout_busy := false
+var art_model: Dictionary = {}
+var hovered_cell := -1
+var position_caption := ""
+const PAPER := Color("f4e3ba")
+const INK := Color("294f44")
+const MOTIF_IDS := ["sun", "wave", "rise"]
 
 func setup(owner_game: Node) -> void:
 	game = owner_game
@@ -38,6 +44,10 @@ func setup(owner_game: Node) -> void:
 	panel = PanelContainer.new()
 	var frame: StyleBoxFlat = game.panel_bg_style.duplicate()
 	frame.set_content_margin_all(8)
+	frame.bg_color = Color("182c31")
+	frame.border_color = Color("b58e5d")
+	frame.set_border_width_all(1)
+	frame.set_corner_radius_all(12)
 	panel.add_theme_stylebox_override("panel", frame)
 	add_child(panel)
 	var outer := VBoxContainer.new()
@@ -79,17 +89,39 @@ func setup(owner_game: Node) -> void:
 		var credit: String = {"sun":"Lulu", "wave":"Dez", "rise":"Celeste"}[id]
 		var b := button(tools, "%s\n%s" % [credit, id.capitalize()], func(): contribution_selected.emit(id))
 		b.toggle_mode = true
+		for state in ["normal", "hover", "pressed", "hover_pressed"]:
+			var swatch: StyleBoxFlat = b.get_theme_stylebox(state).duplicate()
+			swatch.content_margin_left = 32
+			swatch.content_margin_right = 4
+			swatch.border_color = Color("b58e5d")
+			swatch.set_border_width_all(1)
+			swatch.set_corner_radius_all(6)
+			swatch.bg_color = Color("3e504c") if state in ["pressed", "hover_pressed"] else Color("20373b")
+			b.add_theme_stylebox_override(state, swatch)
+		b.draw.connect(func(): draw_motif(b, id, Rect2(Vector2(5, b.size.y * 0.5 - 12), Vector2(24,24)), motif_color(id), 1.0, Color("f4e3ba")))
+		b.resized.connect(b.queue_redraw)
 		b.tooltip_text = "%s's %s. Choose this contribution, then a space." % [credit, id.capitalize()]
 		tool_buttons.append(b)
 	canvas_grid = GridContainer.new()
 	canvas_grid.columns = 6
-	canvas_grid.add_theme_constant_override("h_separation", 2)
-	canvas_grid.add_theme_constant_override("v_separation", 2)
+	canvas_grid.add_theme_constant_override("h_separation", 0)
+	canvas_grid.add_theme_constant_override("v_separation", 0)
 	canvas_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_child(canvas_grid)
+	canvas_grid.draw.connect(draw_canvas)
+	canvas_grid.resized.connect(canvas_grid.queue_redraw)
 	for row in range(3):
 		for col in range(6):
-			var b := button(canvas_grid, "+\n%d,%d" % [col + 1, row + 1], func(): cell_selected.emit(col, row))
+			var b := button(canvas_grid, "", func(): cell_selected.emit(col, row))
+			b.size_flags_vertical = Control.SIZE_EXPAND_FILL
+			for state in ["normal", "hover", "pressed", "hover_pressed", "focus"]:
+				b.add_theme_stylebox_override(state, StyleBoxEmpty.new())
+			b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+			var index := row * 6 + col
+			b.mouse_entered.connect(func(): hovered_cell = index; canvas_grid.queue_redraw())
+			b.mouse_exited.connect(func(): hovered_cell = -1; canvas_grid.queue_redraw())
+			b.focus_entered.connect(func(): focus_canvas_cell(index))
+			b.focus_exited.connect(canvas_grid.queue_redraw)
 			cells.append(b)
 	for row in range(3):
 		for col in range(6):
@@ -104,7 +136,7 @@ func setup(owner_game: Node) -> void:
 	content.add_child(options)
 	palette_button = button(options, "Palette: Garden", func(): palette_requested.emit())
 	music_button = button(options, "Music: Off", func(): music_requested.emit())
-	done_button = button(outer, "Back to street", func(): close_requested.emit())
+	done_button = button(outer, "Back to Celeste", func(): close_requested.emit())
 	# This is a focused editing surface, so keyboard traversal stays inside it.
 	var focus_ring: Array[Control] = [feedback]
 	for b in tool_buttons: focus_ring.append(b)
@@ -141,38 +173,27 @@ func button(parent: Node, caption: String, action: Callable) -> Button:
 
 func present(model: Dictionary) -> void:
 	title.text = "Mural Workshop - %d/3 | Sparks: %d" % [model.placements.size(), model.sparks]
-	game.set_activity_detail(feedback, model.message)
 	palette_button.text = "Palette: %s" % String(model.palette).capitalize()
 	music_button.text = "Music: On" if model.music else "Music: Off"
 	for i in range(3):
 		tool_buttons[i].set_pressed_no_signal(["sun", "wave", "rise"][i] == model.selected)
-	var ink := Color("1b3036")
-	var canvas: Color = model.canvas_color
+	art_model = model.duplicate(true)
 	for i in range(cells.size()):
 		var col := i % 6
 		var row := i / 6
 		var occupant := ""
-		for id in ["sun", "wave", "rise"]:
+		for id in MOTIF_IDS:
 			if model.placements.has(id) and int(model.placements[id].col) == col and int(model.placements[id].row) == row:
 				occupant = id
 		var b := cells[i]
-		b.text = "%s\n%d,%d" % [occupant.capitalize() if not occupant.is_empty() else "+", col + 1, row + 1]
-		b.tooltip_text = "Column %d, row %d: %s" % [col + 1, row + 1, occupant if not occupant.is_empty() else "empty"]
+		b.text = ""
+		b.tooltip_text = "Column %d, row %d: %s" % [col + 1, row + 1, occupant.capitalize() if not occupant.is_empty() else "open canvas"]
+		b.accessibility_name = b.tooltip_text
+		b.accessibility_description = "Place or move the selected neighbor's mark here. Arrow keys explore the canvas."
 		b.set_meta("occupant", occupant)
-		var color: Color = {"sun": Color("f8cc58"), "wave": Color("91bac2"), "rise": Color("dba0a8")}.get(occupant, canvas.lightened(0.6))
-		var normal := StyleBoxFlat.new()
-		normal.bg_color = color
-		normal.border_color = Color("435a58")
-		normal.set_border_width_all(1)
-		normal.set_corner_radius_all(3)
-		normal.set_content_margin_all(2)
-		b.add_theme_stylebox_override("normal", normal)
-		for state in ["hover", "pressed", "hover_pressed"]:
-			var active: StyleBoxFlat = normal.duplicate()
-			active.bg_color = color.darkened(0.03) if state == "pressed" else color.lightened(0.05)
-			b.add_theme_stylebox_override(state, active)
-		for state in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color"]:
-			b.add_theme_color_override(state, ink)
+	refresh_position_caption()
+	for b in tool_buttons: b.queue_redraw()
+	canvas_grid.queue_redraw()
 	queue_layout()
 
 func queue_layout() -> void:
@@ -190,6 +211,8 @@ func finish_layout() -> void:
 	var short_wide := vp.x >= 520 and vp.y < 560
 	body.columns = 2 if short_wide else 1
 	tools.columns = 1 if short_wide else 3
+	tools.size_flags_horizontal = Control.SIZE_FILL if short_wide else Control.SIZE_EXPAND_FILL
+	canvas_grid.custom_minimum_size.y = 136 if short_wide else clampf((minf(680, vp.x - 24) - 16) * 0.506, 160, 336)
 	var width := minf(680, vp.x - 24)
 	panel.size.x = width
 	var fixed_height: float = title.get_combined_minimum_size().y + attribution.get_combined_minimum_size().y + done_button.get_combined_minimum_size().y + 28
@@ -197,6 +220,7 @@ func finish_layout() -> void:
 	panel.size = Vector2(width, 0)
 	panel.position = (vp - panel.size) * 0.5
 	layout_busy = false
+	canvas_grid.queue_redraw()
 
 func snapshot() -> Dictionary:
 	var result := {"visible": is_visible_in_tree(), "layout_pending": layout_pending}
@@ -221,6 +245,138 @@ func snapshot() -> Dictionary:
 		entry["col"] = i % 6
 		entry["row"] = i / 6
 		entry["occupant"] = b.get_meta("occupant", "")
+		entry["accessible_name"] = b.accessibility_name
 		entries.append(entry)
 	result["cells"] = entries
+	result["art"] = art_snapshot()
+	result["position_caption"] = position_caption
 	return result
+
+# All brush offsets are fixed functions of the point index: redraws never shimmer.
+# These original 2D marks follow the project's keepsake, not real public artworks.
+func paper_color() -> Color:
+	return PAPER.lerp(art_model.get("canvas_color", Color("316050")), 0.12)
+
+func motif_color(id: String) -> Color:
+	var palette: Array = game.KEEPSAKE_PALETTE_HEX.get(art_model.get("palette", "garden"), game.KEEPSAKE_PALETTE_HEX.garden)
+	return Color(palette[MOTIF_IDS.find(id)])
+
+func focus_canvas_cell(index: int) -> void:
+	if not visible or art_model.is_empty(): return
+	hovered_cell = -1
+	refresh_position_caption()
+	game.announce_a11y_status(position_caption + ". " + String(art_model.selected).capitalize() + " selected. Space paints; Escape returns to Celeste's easel.")
+	canvas_grid.queue_redraw()
+
+func motif_rect(index: int) -> Rect2:
+	var cell := cells[index].get_rect()
+	var mark_size := Vector2(cell.size.x - 10, cell.size.y - 14)
+	return Rect2(cell.get_center() - mark_size * 0.5, mark_size)
+
+func focused_canvas_cell() -> int:
+	var focused := get_viewport().gui_get_focus_owner()
+	return cells.find(focused as Button) if focused is Button else -1
+
+func active_canvas_cell() -> int:
+	# Keyboard owns its guide even when a mouse is hovering elsewhere.
+	var focused := focused_canvas_cell()
+	return focused if focused >= 0 else hovered_cell
+
+func preview_canvas_cell() -> int:
+	return hovered_cell if hovered_cell >= 0 else focused_canvas_cell()
+
+func refresh_position_caption() -> void:
+	var focused := focused_canvas_cell()
+	position_caption = cells[focused].accessibility_name if focused >= 0 else ""
+	var prefix := position_caption + ". " if not position_caption.is_empty() else ""
+	game.set_activity_detail(feedback, prefix + String(art_model.message))
+
+func brush_line(surface: CanvasItem, points: PackedVector2Array, color: Color, width: float, alpha: float, key: Color = INK) -> void:
+	# Ink keyline makes light pigments readable on paper, even in Ocean.
+	surface.draw_polyline(points, Color(key, alpha), width + 2.4, true)
+	surface.draw_polyline(points, Color(color, alpha), width, true)
+	for point in [points[0], points[points.size()-1]]:
+		surface.draw_circle(point, (width + 2.4) * 0.5, Color(key, alpha), true, -1, true)
+		surface.draw_circle(point, width * 0.5, Color(color, alpha), true, -1, true)
+
+func draw_motif(surface: CanvasItem, id: String, rect: Rect2, color: Color, alpha: float = 1.0, key: Color = INK) -> void:
+	# Reserve the reported layout box for complete strokes plus rounded keylines.
+	rect = rect.grow(-3)
+	var center := rect.get_center()
+	var unit := minf(rect.size.x, rect.size.y)
+	var stroke := maxf(1.8, unit * 0.065)
+	if id == "sun":
+		for i in range(8):
+			var angle := i * TAU / 8.0 - 0.12
+			var ray := Vector2(cos(angle), sin(angle))
+			brush_line(surface, PackedVector2Array([center + ray * unit * 0.19, center + ray * unit * (0.43 + (i % 2) * 0.035)]), color, stroke, alpha, key)
+		surface.draw_circle(center, unit * 0.12 + 1.2, Color(key, alpha), true, -1, true)
+		surface.draw_circle(center, unit * 0.12, Color(color, alpha), true, -1, true)
+	elif id == "wave":
+		for ribbon in range(2):
+			var points := PackedVector2Array()
+			for i in range(25):
+				var t := i / 24.0
+				points.append(Vector2(rect.position.x + rect.size.x * (0.06 + t * 0.88), center.y + (ribbon - 0.5) * unit * 0.33 + sin(t * TAU - 0.5) * unit * 0.15))
+			brush_line(surface, points, color, stroke, alpha, key)
+	else:
+		# Hand-lettered RISE; ascending baselines echo the original 3D steps.
+		var paths := [
+			[Vector2(0,1),Vector2(0,0),Vector2(.45,0),Vector2(.6,.2),Vector2(.42,.43),Vector2(0,.43),Vector2(.65,1)],
+			[Vector2(.18,0),Vector2(.18,1)],
+			[Vector2(.6,.07),Vector2(.1,0),Vector2(0,.38),Vector2(.53,.52),Vector2(.57,.88),Vector2(.1,1),Vector2(0,.9)],
+			[Vector2(.62,0),Vector2(0,0),Vector2(0,1),Vector2(.62,1)],
+			[Vector2(0,.48),Vector2(.5,.48)]]
+		for n in range(paths.size()):
+			var letter := mini(n,3)
+			var points := PackedVector2Array()
+			for point in paths[n]:
+				points.append(Vector2(rect.position.x + rect.size.x * (0.05 + letter * 0.24 + point.x * 0.28), center.y - unit * 0.28 - letter * unit * .045 + point.y * unit * .65))
+			brush_line(surface, points, color, maxf(1.5, stroke * .85), alpha, key)
+
+func draw_canvas() -> void:
+	if cells.size() != 18 or art_model.is_empty(): return
+	var bounds := Rect2(Vector2.ZERO, canvas_grid.size)
+	var paper := paper_color()
+	canvas_grid.draw_rect(bounds, paper)
+	# Wide dry-brush washes and quiet paper flecks, not a tile background.
+	for i in range(9):
+		var y := bounds.size.y * (0.10 + i * 0.101)
+		var points := PackedVector2Array([Vector2(3,y), Vector2(bounds.size.x * .35,y+sin(i*1.7)*2), Vector2(bounds.size.x-3,y+cos(i)*2)])
+		canvas_grid.draw_polyline(points, Color(PAPER, .20), 3.0 + (i % 3), true)
+	for i in range(80):
+		var point := Vector2(4 + fmod(i * 43.17, maxf(1,bounds.size.x-8)), 4 + fmod(i * 29.31, maxf(1,bounds.size.y-8)))
+		canvas_grid.draw_circle(point, .45, Color(INK,.09), true, -1, true)
+	var active := preview_canvas_cell()
+	for i in range(cells.size()):
+		var id: String = cells[i].get_meta("occupant", "")
+		if not id.is_empty():
+			draw_motif(canvas_grid, id, motif_rect(i), motif_color(id))
+		else:
+			canvas_grid.draw_circle(cells[i].get_rect().get_center(), 1.3, Color(INK,.36), true, -1, true)
+			if i == active: draw_motif(canvas_grid, art_model.selected, motif_rect(i), motif_color(art_model.selected), .28)
+	var focused := focused_canvas_cell()
+	if focused >= 0: draw_canvas_guide(focused, 2)
+	if hovered_cell >= 0 and hovered_cell != focused: draw_canvas_guide(hovered_cell, 1)
+	canvas_grid.draw_rect(bounds.grow(-1), Color("b58e5d"), false, 2)
+
+func draw_canvas_guide(index: int, width: int) -> void:
+	var guide := cells[index].get_rect().grow(-3)
+	var focus := StyleBoxFlat.new()
+	focus.bg_color = Color.TRANSPARENT
+	focus.border_color = INK
+	focus.set_border_width_all(width)
+	focus.set_corner_radius_all(7)
+	canvas_grid.draw_style_box(focus, guide)
+
+func art_snapshot() -> Dictionary:
+	var marks: Array[Dictionary] = []
+	for i in range(cells.size()):
+		var id: String = cells[i].get_meta("occupant", "")
+		if not id.is_empty():
+			var rect := motif_rect(i)
+			rect.position += canvas_grid.global_position
+			var mark: Dictionary = game.rect_snapshot(rect)
+			mark.merge({"id":id,"col":i%6,"row":i/6,"color":motif_color(id).to_html(false)})
+			marks.append(mark)
+	return {"canvas": game.control_snapshot(canvas_grid), "motifs":marks, "slot_marks":18-marks.size(), "active_cell":preview_canvas_cell(), "guide_cell":active_canvas_cell(), "hover_cell":hovered_cell, "focus_cell":focused_canvas_cell(), "paper":paper_color().to_html(false), "ink":INK.to_html(false), "language":"original starburst, flowing Wave, hand-lettered RISE"}

@@ -3823,6 +3823,31 @@ func verify_mural_workshop(study: Node) -> void:
 		for b in snap.cells + snap.tools + snap.options:
 			require(b.width >= 44 and b.height >= 44 and b.text_fits and panel_rect.encloses(Rect2(b.x,b.y,b.width,b.height)), "workshop full label and44px target fits: " + b.text)
 		require(w.done_button.get_global_rect().end.y <= size.y - 11, "workshop Back remains reachable")
+		# Empty button text is intentional; separately prove the continuous art surface.
+		for i in range(18):
+			require(w.cells[i].text.is_empty() and w.cells[i].get_theme_stylebox("normal") is StyleBoxEmpty and w.cells[i].accessibility_name.contains("Column"), "painted canvas has named hit targets, no text tiles or opaque card styles")
+		for mark in snap.art.motifs:
+			var mark_rect := Rect2(mark.x,mark.y,mark.width,mark.height)
+			var target: Dictionary = snap.cells[int(mark.row)*6+int(mark.col)]
+			require(Rect2(target.x,target.y,target.width,target.height).encloses(mark_rect) and mark.width >= 20 and mark.height >= 25, "painted contribution reserves a useful layout box inside its exact target; actual stroke presence is checked in browser pixels")
+		require(snap.art.motifs.size() == study.mural_placements.size() and snap.art.slot_marks == 18-study.mural_placements.size(), "layout metadata reflects the saved contribution count; drawn marks are independently checked in actual browser pixels")
+		var saved_model: Dictionary = w.art_model.duplicate(true)
+		for palette in study.MURAL_PALETTES:
+			for complete in [false,true]:
+				w.art_model["canvas_color"] = study.mural_palette_color(palette,complete)
+				var paper_linear: Color = w.paper_color().srgb_to_linear()
+				var ink_linear: Color = w.INK.srgb_to_linear()
+				require((paper_linear.get_luminance()+0.05)/(ink_linear.get_luminance()+0.05) >= 3, "ink keyline/focus stays distinguishable on every complete and incomplete palette wash")
+		w.present(saved_model)
+		var first_art: String = JSON.stringify(w.art_snapshot())
+		w.present(saved_model)
+		require(JSON.stringify(w.art_snapshot()) == first_art and JSON.stringify(study.build_save_envelope()) == before, "repeated presentation is deterministic and never writes artwork")
+		require(snap.art.motifs.size() == 3 and snap.art.motifs.map(func(mark): return mark.id).has("wave") and snap.art.motifs.map(func(mark): return mark.id).has("rise"), "inherited completed native fixture covers all three motif layout boxes, not only Sun")
+		w.cells[7].grab_focus()
+		w.hovered_cell = 8
+		require(w.active_canvas_cell() == 7 and w.preview_canvas_cell() == 8, "hover has its own preview while keyboard guide retains the actual Space target")
+		require(study.last_a11y_announcement.contains("Column 2, row 2") and w.feedback.text.contains("Column 2, row 2"), "arrow-target focus has both a visible position caption and live announcement")
+		print("PAINTED_MURAL_CHECK ",size," art=",snap.art.motifs.size()," paper=",snap.art.paper)
 		w.tool_buttons[0].emit_signal("pressed")
 		require(study.mural_workshop_selected == "sun" and before == JSON.stringify(study.build_save_envelope()), "selecting contribution changes no saved art or progress")
 		var target_cell := Vector2i(-1,-1)
@@ -3837,6 +3862,9 @@ func verify_mural_workshop(study: Node) -> void:
 		require(int(study.mural_placements.sun.col) == target_cell.x and int(study.mural_placements.sun.row) == target_cell.y, "actual cell callback places the selected mark exactly")
 		var sun_node: Node3D = study.mural_motif_nodes.sun
 		require(sun_node.position.is_equal_approx(Vector3(-1.28+target_cell.x*0.51,1.98-target_cell.y*0.43,0.11)), "workshop exact placement appears on3Deasel")
+		w.cells[target_cell.y*6+target_cell.x].grab_focus()
+		w.present(w.art_model)
+		require(w.position_caption.contains("Sun") and w.feedback.text.begins_with(w.position_caption), "refresh retains a visible, current occupied position caption without another focus event")
 		var placed: String = JSON.stringify(study.build_save_envelope())
 		require(not study.place_workshop_contribution(target_cell.x,target_cell.y) and placed == JSON.stringify(study.build_save_envelope()), "same-cell input cannot replay save/progress")
 		require(not study.place_workshop_contribution(-1,0) and placed == JSON.stringify(study.build_save_envelope()), "invalid workshop cell changes no save")

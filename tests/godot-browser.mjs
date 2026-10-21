@@ -1,4 +1,5 @@
 import { mkdir, stat, writeFile } from 'node:fs/promises';
+import { inflateSync } from 'node:zlib';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 import { initialState, applyAction, serializeSave } from '../public/core.js';
@@ -38,6 +39,42 @@ let shortWalkingCaptionChecks = 0, shortWalkingGuideChecks = 0;
 let smallHubReaderChecks = 0;
 const muralWorkshopChecks = [];
 let workshopAutoAdvanceChecks = 0;
+
+// Decode browser screenshots locally, so art checks inspect rendered pixels, not a test hook.
+function screenshotPixels(png) {
+  let at=8,width,height,channels;const chunks=[];
+  while(at<png.length){const n=png.readUInt32BE(at),type=png.toString('ascii',at+4,at+8),data=png.subarray(at+8,at+8+n);if(type==='IHDR'){width=data.readUInt32BE(0);height=data.readUInt32BE(4);assert.equal(data[8],8);assert.ok([2,6].includes(data[9]));channels=data[9]===6?4:3;}if(type==='IDAT')chunks.push(data);at+=n+12;}
+  const raw=inflateSync(Buffer.concat(chunks)),stride=width*channels,out=Buffer.alloc(height*stride);let pos=0;
+  const paeth=(a,b,c)=>{const p=a+b-c,x=Math.abs(p-a),y=Math.abs(p-b),z=Math.abs(p-c);return x<=y&&x<=z?a:y<=z?b:c;};
+  for(let y=0;y<height;y++){const filter=raw[pos++];assert.ok(filter<=4);for(let x=0;x<stride;x++){const a=x>=channels?out[y*stride+x-channels]:0,b=y?out[(y-1)*stride+x]:0,c=y&&x>=channels?out[(y-1)*stride+x-channels]:0;out[y*stride+x]=(raw[pos++]+[0,a,b,Math.floor((a+b)/2),paeth(a,b,c)][filter])&255;}}
+  return {width,height,pixel:(x,y)=>[...out.subarray((Math.floor(y)*width+Math.floor(x))*channels,(Math.floor(y)*width+Math.floor(x))*channels+3)]};
+}
+
+async function verifyPaintedMuralPixels(page,s) {
+  const w=s.mural_workshop,art=w.art,pixels=screenshotPixels(await page.screenshot()),canvas=await page.locator('#canvas').boundingBox();
+  const point=(x,y)=>pixels.pixel(canvas.x+x*canvas.width/s.viewport_width,canvas.y+y*canvas.height/s.viewport_height);
+  const paper=art.paper.match(/../g).map(x=>parseInt(x,16));
+  assert.ok(w.cells.every(b=>b.text===''&&b.accessible_name.includes(`Column ${b.col+1}, row ${b.row+1}`)),'canvas has meaningful named targets without numbered tile captions');
+  assert.equal(art.motifs.length,3);assert.equal(art.slot_marks,15);
+  const samples=[];
+  for(const mark of art.motifs){
+    let ink=0,pale=0,total=0;
+    for(let y=mark.y+2;y<mark.y+mark.height-2;y+=1)for(let x=mark.x+2;x<mark.x+mark.width-2;x+=1){const rgb=point(x,y);total++;if(rgb.reduce((a,b)=>a+b,0)<paper.reduce((a,b)=>a+b,0)-120)ink++;if(rgb.every((v,i)=>Math.abs(v-paper[i])<30))pale++;}
+    assert.ok(ink>=12&&pale>total*.15,`${mark.id} renders visible individual strokes on paper (${ink}/${total}), not a filled tile`);samples.push({id:mark.id,ink,paper:pale,total});
+  }
+  let dots=0;
+  for(const cell of w.cells.filter(b=>!b.occupant)){
+    let darkest=Infinity;
+    for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++)darkest=Math.min(darkest,point(cell.x+cell.width/2+dx,cell.y+cell.height/2+dy).reduce((a,b)=>a+b,0));
+    assert.ok(darkest<paper.reduce((a,b)=>a+b,0)-35,'an actual pencil registration dot is visible at every open spot');dots++;
+  }
+  assert.equal(dots,15);
+  const pair=w.cells.find((b,i)=>b.col<5&&!b.occupant&&!w.cells[i+1].occupant&&![art.active_cell,art.guide_cell].includes(i)&&![art.active_cell,art.guide_cell].includes(i+1));
+  assert.ok(pair,'real adjacent empty spots exist for the non-grid visual check');
+  const seam=point(pair.x+pair.width,pair.y+pair.height*.2);
+  assert.ok(seam.every((v,i)=>Math.abs(v-paper[i])<25),'adjacent empty spots share continuous paper, with no dark cell border');
+  return {motifs:samples,visibleDots:dots,seam,paper};
+}
 
 async function verifyMuralWorkshop(page, context, touch, originalSize, requireTakenPhoto = true) {
   const snap = () => page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
@@ -119,11 +156,21 @@ async function verifyMuralWorkshop(page, context, touch, originalSize, requireTa
     // Pointer focus followed by real arrow/Space input exercises grid navigation.
     const sun = (await snap()).mural_workshop.cells.find(b=>b.occupant==='sun');
     await tap(sun);
-    await page.keyboard.press('ArrowRight'); await settle();
+    await page.keyboard.press(sun.col===5?'ArrowLeft':'ArrowRight'); await settle();
     const focused = (await snap()).mural_workshop.focused_cell;
-    assert.equal(focused,sun.row*6+Math.min(5,sun.col+1));
+    assert.equal(focused,sun.row*6+(sun.col===5?4:sun.col+1));
+    assert.ok((await snap()).announcement.includes(`Column ${focused%6+1}, row ${Math.floor(focused/6)+1}`),'real arrow input announces the precise spot even without visual coordinate tiles');
     const dest = (await snap()).mural_workshop.cells[focused];
+    // A real mouse hover must never move or hide a keyboard Space target.
+    const hover=(await snap()).mural_workshop.cells.find(b=>!b.occupant&&b.row*6+b.col!==focused),hoverBefore=await save(),cb=await page.locator('#canvas').boundingBox();
+    await page.mouse.move(cb.x+(hover.x+hover.width/2)*cb.width/size.width,cb.y+(hover.y+hover.height/2)*cb.height/size.height);await settle();
+    const mixed=await snap();assert.equal(mixed.mural_workshop.art.guide_cell,focused);assert.equal(mixed.mural_workshop.art.hover_cell,hover.row*6+hover.col);assert.equal(await save(),hoverBefore,'hover previews never write art');
+    const focusPixels=screenshotPixels(await page.screenshot());let focusInk=Infinity;
+    for(let dx=2;dx<=5;dx++)focusInk=Math.min(focusInk,focusPixels.pixel(cb.x+(dest.x+dx)*cb.width/size.width,cb.y+(dest.y+dest.height/2)*cb.height/size.height).reduce((a,b)=>a+b,0));
+    assert.ok(focusInk<280,'the keyboard ink guide remains visibly dark while another spot is hovered');
     await page.keyboard.press('Space'); await settle();
+    assert.equal((await snap()).mural_workshop.cells[hover.row*6+hover.col].occupant,'','Space cannot paint the mouse hover instead of the focused spot');
+    assert.ok((await snap()).mural_workshop.reader.text.startsWith((await snap()).mural_workshop.cells[focused].accessible_name),'paint/rejection refresh retains the actual focused position and occupant');
     if (!dest.occupant || dest.occupant==='sun') assert.deepEqual(JSON.parse(await save()).mural_placements.sun,{col:dest.col,row:dest.row});
     else assert.equal(await save(),saved);
     await page.keyboard.down('KeyW');
@@ -145,9 +192,14 @@ async function verifyMuralWorkshop(page, context, touch, originalSize, requireTa
     }
     await page.keyboard.press('Shift+Tab'); await settle();
     assert.ok((await snap()).mural_workshop.focus_within,'reverse traversal stays in the workshop');
-    const palette = JSON.parse(await save()).mural_palette;
+    const palette = JSON.parse(await save()).mural_palette, oldPaper=(await snap()).mural_workshop.art.paper;
+    const beforeWash=await snap(),washCanvas=beforeWash.mural_workshop.art.canvas,washBox=await page.locator('#canvas').boundingBox();
+    const washPixel=png=>screenshotPixels(png).pixel(washBox.x+(washCanvas.x+6)*washBox.width/size.width,washBox.y+(washCanvas.y+6)*washBox.height/size.height);
+    const actualWashBefore=washPixel(await page.screenshot());
     await tap((await snap()).mural_workshop.options[0]);
     assert.notEqual(JSON.parse(await save()).mural_palette,palette);
+    assert.notEqual((await snap()).mural_workshop.art.paper,oldPaper,'palette changes the canvas wash model');
+    assert.notDeepEqual(washPixel(await page.screenshot()),actualWashBefore,'real palette input visibly repaints the same paper pixel');
     s=await snap();
     if(size.width===520) assert.deepEqual(s.camera_pose,pose,'palette preserves the manually owned camera');
     else for(const k of Object.keys(pose)) assert.ok(Math.abs(s.camera_pose[k]-pose[k])<0.001,'palette does not reframe the followed scene behind the workshop');
@@ -163,6 +215,7 @@ async function verifyMuralWorkshop(page, context, touch, originalSize, requireTa
     assert.ok(read.scroll_value>0 && read.scroll_value+read.scroll_page>=read.scroll_max-1,'complete response reaches its final line');
     await page.screenshot({path:`artifacts/codex-mural-workshop-${size.width}x${size.height}-${touch?'touch':'mouse'}${requireTakenPhoto?'':'-fresh'}.png`});
     await writeFile(`artifacts/codex-mural-workshop-${size.width}x${size.height}-${touch?'touch':'mouse'}${requireTakenPhoto?'':'-fresh'}.json`,JSON.stringify(await snap(),null,2));
+    const paintedPixels=await verifyPaintedMuralPixels(page,await snap());
     const cue=(await snap()).overlays.reward;
     assert.ok(cue.remaining>0,'the hidden-reward timer assertion is nonvacuous');
     await page.waitForFunction(f=>window.__tenderloinGodotA11ySnapshot.ui_frame>f+4,(await snap()).ui_frame);assert.ok(!(await snap()).overlays.reward.visible);assert.equal((await snap()).overlays.reward.remaining,cue.remaining,'hidden progress reward retains its reading time with Info collapsed or expanded');
@@ -182,7 +235,7 @@ async function verifyMuralWorkshop(page, context, touch, originalSize, requireTa
     assert.equal((await snap()).player_grounding.x,grounding.x); assert.equal((await snap()).player_grounding.z,grounding.z);
     assert.ok(Buffer.byteLength(await save(),'utf8')<=4096);
     if((await snap()).header_details_expanded) await tap((await snap()).info_control);
-    muralWorkshopChecks.push({...size,touch,photoStatus:photo.status,placements:3});
+    muralWorkshopChecks.push({...size,touch,photoStatus:photo.status,placements:3,paintedPixels});
   }
   await page.setViewportSize(originalSize);
   const saved = JSON.parse(await save());

@@ -1,0 +1,19 @@
+STDOUT:
+I've written the review to `kibitz-runs/2026-10-21-codex-painted-mural/r3/claude.md`. I only read files; I didn't run shell, git or any gates, and didn't change anything else. The tool check passed.
+
+**Verdict: yes-with-fixes.** The parts connect correctly: the signals, the modal blocking of walking and camera, the frozen reward timer, the delayed chapter card, and placement through the existing `place_mural_motif`. The problems are in the art layer and in how strongly the tests are described.
+
+**Must-fix:**
+1. **Two test checks can't fail.** `slot_marks` is computed as 18 minus the number of placed marks (`mural_workshop.gd:365`), so the "registration marks" checks at `study_test.gd:3833` and `godot-browser.mjs:58` are guaranteed to pass. Likewise, `motif_rect` is derived from the cell's own rectangle, so "mark fits inside its cell" (`study_test.gd:3832`) is always true. Neither looks at a drawn dot. Fix: drop those claims, or add a real pixel probe of the empty-cell dots.
+2. **Keyboard focus can disappear.** The cells' own focus outline is removed, so the drawn ink guide is the only focus marker, and it follows the mouse in preference to keyboard focus (`active_canvas_cell`). If you arrow to one cell and then move the mouse over another, the guide and preview show where the mouse is, while Space paints the keyboard-focused cell.
+
+**Should-fix:**
+- **The painting is squeezed in landscape on short screens.** The tool buttons and the canvas both expand, so they split the width roughly in half and the canvas stays near its minimum. A stale pre-change capture shows 237px-wide tool buttons next to 44px cells. A one-line fix in `finish_layout` would give the canvas the space.
+- **The "Column c, row r" text disappears after Space.** Every refresh replaces it while focus stays on the cell, and the stored position caption still says "open canvas" after the cell is filled.
+- **Wrong wording.** The "Back to street" button and the "Escape returns to the street" announcement don't match what happens: closing returns you to Celeste's panel.
+- **Native tests only check Sun's bounds.** Wave and Rise are never placed there.
+- **The browser arrow-key check would fail if Sun is in the last column**, because ArrowRight can't move from there.
+
+**Cut:** the paper wash and speckle texture is effectively invisible (a change of about 5 RGB levels), and two snapshot fields are never read by any test.
+
+None of the existing `artifacts/codex-mural-workshop-*.json` files come from the painted build; they still show the old numbered tiles. So the landscape-squeeze finding needs a fresh capture to confirm.

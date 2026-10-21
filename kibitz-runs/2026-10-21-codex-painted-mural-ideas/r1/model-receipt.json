@@ -1,0 +1,11 @@
+{
+  "requested_model": "claude-opus-5-5",
+  "selected_model": "claude-opus-5-5",
+  "requested_effort": "high",
+  "selected_effort": "high",
+  "calls": 1,
+  "rc": 0,
+  "runtime_identity": "provider runtime identity not independently exposed",
+  "usage_percent": "unknown; auth status is not allowance proof",
+  "quota_raw_sha256": "89474d0e89fd7d1c218f5b08240573ba69bb3718a2b3a6ff740622d3d9aa61c4"
+}

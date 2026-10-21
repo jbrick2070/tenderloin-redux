@@ -1,0 +1,8 @@
+{
+  "godot/main.gd": "95bbd55fc83fd7807dfa3cd7e976a1a38588c0c974b739e3a956475118ba133a",
+  "godot/mural_workshop.gd": "5990d9dfa5d0cfa215269a1cd20cb04ae75257df403c6a447393f18f6cb966ac",
+  "godot/tests/study_test.gd": "cb5d7d3cd11d574ff50271c7205dee97b292adce3934bc9a56ea499ece3d348a",
+  "tests/godot-browser.mjs": "8c0ef215c098def9a57fc2397ab292d76422c4cab3cdb4a054a3dc7d50710d3e",
+  "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160",
+  "docs/ROADMAP.md": "2488b43d63b7c059760085887326aaba6c18fad7ec50f1034235573177355189"
+}

@@ -1,0 +1,17 @@
+STDOUT:
+I wrote the review to `kibitz-runs/2026-10-21-codex-concert-ideas/r1/claude.md`. My tool check passed: I read `input.md`, `godot/main.gd`, `session_handoff.md` and `public/hosting.js`, and nothing else was touched.
+
+**Verdict: yes-with-fixes.** The brief points the right way, but it misses four facts in the code that decide the design:
+- **The layout choice locks at opening.** `choose_gathering_layout` refuses once the block is open (`main.gd:7285`). Hosting only exists after opening, so "setting up" and "performing" fall on opposite sides of that lock.
+- **Open Floor is already a stage.** It already has a riser, mic stand and amp (`main.gd:7224-7227`). If no layout is chosen, the game quietly picks "table" (`main.gd:8956-8959`), so a floor-only concert would never show on that path.
+- **Rook's speaker is far from the gathering.** The two positions are about 80 m apart (`main.gd:27`, `7150`), and the audio isn't placed in 3D space (`main.gd:3166`). I got the distance from the constants and didn't run anything; it needs checking at runtime.
+- **The existing musicians aren't tied to the music.** They animate from the player's walking clock, so they bob faster when you walk, even with music paused (`main.gd:3486`, `3502`). Also, choosing a beat pattern changes nothing in the 3D world, and the music doesn't use the pattern either.
+
+Three other must-fixes:
+- **Motion rule.** A concert adds looping animation, which the last checkpoint says it avoided because Godot has no reduced-motion setting.
+- **Rook as performer.** Rook is written as the off-camera sound person; Dez is the beatmaker. Rook's soundcheck is also a required step before opening, so turning it into a rehearsal makes every player's path longer.
+- **"Believable" needs a testable meaning.** It should also come with a rule that nothing new is saved.
+
+The input asked for alternatives while your instructions asked for a review, so I kept the review format and put the alternatives in the OPTIONAL section. That avoids repeating last round's complaint that the r1 returned a critique instead of the requested menu.
+
+**Recommendation:** stage the hosted Rhythm Workshop (the "beats" step) on whichever layout was chosen. Dez performs on the riser, or neighbors drum on the Long Table. Eight step lights show the pattern and move with the music only while it plays. Optionally, the pattern also controls the brush part so the rhythm is audible. This adds nothing to the save file.

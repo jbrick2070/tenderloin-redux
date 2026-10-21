@@ -1,0 +1,489 @@
+{
+  "baseline": "7437f4f211e384eccf6a2b50d67cdaa7da52da7f",
+  "final_source": {
+    "godot/main.gd": "8371efe518691d907ad747912e3b4177e0ab3547ba20bf4942c20d6c14f9aef1",
+    "godot/mural_workshop.gd": "2bb5ac0b771398a7da58123696ca7d68ee107fbc8e9d4ff895acf50fbdcb0e1a",
+    "godot/tests/study_test.gd": "e1ab8834caf76189794b98b269bc13f5089b24f59b77f4a067ac70dfa48a61ba",
+    "tests/godot-browser.mjs": "d8a4e3b22b517d064f62aa210c9c7b8e876372372c592982d18249b0978d221e",
+    "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160",
+    "docs/ROADMAP.md": "2488b43d63b7c059760085887326aaba6c18fad7ec50f1034235573177355189"
+  },
+  "public": {
+    "version": "0.12.0",
+    "fingerprint": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567"
+  },
+  "all_five_gates_pass": true,
+  "gate_logs": {
+    "native": "artifacts/painted-mural-verified-native.log",
+    "export": "artifacts/painted-mural-verified-export.log",
+    "check": "artifacts/painted-mural-verified-check.log",
+    "node": "artifacts/painted-mural-verified-node.log",
+    "browser": "artifacts/painted-mural-verified-browser.log"
+  },
+  "browser_metrics": "artifacts/painted-mural-final-metrics.json",
+  "mural_round_calls": 2,
+  "additional_concert_calls": 1,
+  "concert_scope": "Read-only pre-coding ideas, no concert implementation",
+  "requested_model": "claude-opus-5-5",
+  "requested_effort": "high",
+  "limits": "Full roadmap unfinished; no deployment or physical/human acceptance.",
+  "files": {
+    "artifacts/codex-mural-workshop-1100x760-mouse-fresh.json": {
+      "sha256": "0aa7f526226ad8b2eecf94ac65d9fce6bea1588a42c018043d74fd8b9e0aa444",
+      "bytes": 22771
+    },
+    "artifacts/codex-mural-workshop-1100x760-mouse-fresh.png": {
+      "sha256": "576629d96bdacefcf74946b69f946ee7e82578c01bac401e43603748c76e0bc3",
+      "bytes": 116068
+    },
+    "artifacts/codex-mural-workshop-1100x760-mouse.json": {
+      "sha256": "55a4b71d27daf3010b82688b0f2a9399425f27a459e7cb49a88dd95e544302ea",
+      "bytes": 23149
+    },
+    "artifacts/codex-mural-workshop-1100x760-mouse.png": {
+      "sha256": "3a4eb2651777cf80ce6fb94c1c8d23d7ec7545adf39855fc813f3e9d17cd34bc",
+      "bytes": 123026
+    },
+    "artifacts/codex-mural-workshop-320x667-touch-fresh.json": {
+      "sha256": "979536bb067a1e59e4119376289ec5d291af491f173b9c5edd78ac696bb3fe82",
+      "bytes": 22465
+    },
+    "artifacts/codex-mural-workshop-320x667-touch-fresh.png": {
+      "sha256": "0a7ba3a9f2cc1799ae71ef3b8b3ca23c24810a5733ed54fd848b2cd5c161a1db",
+      "bytes": 52296
+    },
+    "artifacts/codex-mural-workshop-320x667-touch.json": {
+      "sha256": "8c6d7ff23a6156158f08dd9b5539fd55af3726489e68d50fe1c208c78b0bc631",
+      "bytes": 22872
+    },
+    "artifacts/codex-mural-workshop-320x667-touch.png": {
+      "sha256": "aee0a1923e1d9857cf7bba87b2df676b2de56737d7319b23ceb960b0aab99a0e",
+      "bytes": 53809
+    },
+    "artifacts/codex-mural-workshop-390x667-touch-fresh.json": {
+      "sha256": "916fb890d10aa139b9bf6398de908995dd4af1cf520f20ea9f156589e8170e6c",
+      "bytes": 22482
+    },
+    "artifacts/codex-mural-workshop-390x667-touch-fresh.png": {
+      "sha256": "22b76fb15c1dea3099a8ae77652f45fb274d3174e6f503127690d155897da407",
+      "bytes": 57756
+    },
+    "artifacts/codex-mural-workshop-390x667-touch.json": {
+      "sha256": "981f3b24432bec61e2d5f9f6686b92f254debf593fe6d881477c06d6283aa7df",
+      "bytes": 22882
+    },
+    "artifacts/codex-mural-workshop-390x667-touch.png": {
+      "sha256": "8d5fea43d7f28936f8e4b0af79a891a7e6d04fb984cfb42c2785a8443b6111cd",
+      "bytes": 59888
+    },
+    "artifacts/codex-mural-workshop-520x360-mouse-fresh.json": {
+      "sha256": "62a110afc80feeee2b1b14491a56098078872d2b3a79bf8117ce57ad12ee1783",
+      "bytes": 22261
+    },
+    "artifacts/codex-mural-workshop-520x360-mouse-fresh.png": {
+      "sha256": "9c59e70c3e080db7bccf5a73d3df0b6f5223ecdf1291e79929d6affdb237f714",
+      "bytes": 38973
+    },
+    "artifacts/codex-mural-workshop-520x360-mouse.json": {
+      "sha256": "862b8e37357b1a3cb9cea8cddd85fd8bedc0a885206c7ff71f99e8588eb9f5f6",
+      "bytes": 22511
+    },
+    "artifacts/codex-mural-workshop-520x360-mouse.png": {
+      "sha256": "8202ac9b4f4880f81d1e65a791b7eee236fbc12ec3ac034cc9b803200a6920c2",
+      "bytes": 39704
+    },
+    "artifacts/codex-mural-workshop-520x360-touch-fresh.json": {
+      "sha256": "9ce21effc840bb4ac986ea58157a4f9b1c9f5af635f0b3bb18cc7dc8c6bc862a",
+      "bytes": 22264
+    },
+    "artifacts/codex-mural-workshop-520x360-touch-fresh.png": {
+      "sha256": "d3eb6e7eb4ae07ca312ba2ec1e4f5ff3dc327a6a89a74eb1995bb431eea10413",
+      "bytes": 39303
+    },
+    "artifacts/codex-mural-workshop-520x360-touch.json": {
+      "sha256": "759e4f6b0b8c03aad18cf507d7e8af97c8eb6f4863500d0dbb95afcb2cdd61bc",
+      "bytes": 22543
+    },
+    "artifacts/codex-mural-workshop-520x360-touch.png": {
+      "sha256": "2e88a52517a9ecf33d20166b73fe92e35ebb2f75f768de1b397369ea20ea1fa3",
+      "bytes": 40337
+    },
+    "artifacts/codex-mural-workshop-559x360-mouse-fresh.json": {
+      "sha256": "2790e98195932e672ee0a150499e13f71388211c18146c12ce78aa464b932751",
+      "bytes": 22463
+    },
+    "artifacts/codex-mural-workshop-559x360-mouse-fresh.png": {
+      "sha256": "2a5bd2f7eef00be658bee0b2eff8612c7d7f46bc11edb84571e0c19730fa298f",
+      "bytes": 42404
+    },
+    "artifacts/codex-mural-workshop-559x360-mouse.json": {
+      "sha256": "1e8e42979fb2b0bb8c1de663f796429a134e7489f812a2459ef697c68121b934",
+      "bytes": 22823
+    },
+    "artifacts/codex-mural-workshop-559x360-mouse.png": {
+      "sha256": "6af798cbb82f978869c7027929ec7ae2108307fbfeff7c6008d4d442ad090e3d",
+      "bytes": 43237
+    },
+    "artifacts/codex-mural-workshop-559x360-touch-fresh.json": {
+      "sha256": "43181095bc0c6d80fb66eb6cd33953b54e36d14e63c1c8f0800026faae1677c4",
+      "bytes": 22479
+    },
+    "artifacts/codex-mural-workshop-559x360-touch-fresh.png": {
+      "sha256": "2a5bd2f7eef00be658bee0b2eff8612c7d7f46bc11edb84571e0c19730fa298f",
+      "bytes": 42404
+    },
+    "artifacts/codex-mural-workshop-559x360-touch.json": {
+      "sha256": "e97d454380cc9a9c7375c2e15eed3c244c5ac40876c605b5ba3148d57d505b20",
+      "bytes": 22822
+    },
+    "artifacts/codex-mural-workshop-559x360-touch.png": {
+      "sha256": "6af798cbb82f978869c7027929ec7ae2108307fbfeff7c6008d4d442ad090e3d",
+      "bytes": 43237
+    },
+    "artifacts/concert-ideas-cli.log": {
+      "sha256": "296559ecdba1a79ce87c6512d58ea58d5db7b09fb75d6c5005a2118c8c7aa19e",
+      "bytes": 863
+    },
+    "artifacts/concert-source-briefing.md": {
+      "sha256": "cbd3d7f635d161861512d90a3b63cc527eca292b0b9a21769052c556a77abd45",
+      "bytes": 2793
+    },
+    "artifacts/godot-web/index.pck": {
+      "sha256": "391d31ce5c7acc694227c06cb39ee79b8868d923208da73d9ef941dbee33ad4d",
+      "bytes": 1694608
+    },
+    "artifacts/painted-mural-after-390.png": {
+      "sha256": "8d5fea43d7f28936f8e4b0af79a891a7e6d04fb984cfb42c2785a8443b6111cd",
+      "bytes": 59888
+    },
+    "artifacts/painted-mural-after-520.png": {
+      "sha256": "2e88a52517a9ecf33d20166b73fe92e35ebb2f75f768de1b397369ea20ea1fa3",
+      "bytes": 40337
+    },
+    "artifacts/painted-mural-automation-before.json": {
+      "sha256": "a3239ca916711abcc71c6d4cbe920e298a380248aaf51b76242afa77a6ac7713",
+      "bytes": 555
+    },
+    "artifacts/painted-mural-automation-payload.json": {
+      "sha256": "cd171ff6515cf73776cad53c969408dc34f5428f3a73010003e8f90391577010",
+      "bytes": 15432
+    },
+    "artifacts/painted-mural-before-390.png": {
+      "sha256": "f900a7fe0e1e69dc4e2f6d70d68a803434542a99064fc5af366cc4879168ec5c",
+      "bytes": 66204
+    },
+    "artifacts/painted-mural-before-520.png": {
+      "sha256": "37552087873ad8158be99732954ff88fb8461d47f81e5cb90772a97cd40841f1",
+      "bytes": 47963
+    },
+    "artifacts/painted-mural-browser-before-qa-fixes-interrupted.log": {
+      "sha256": "d10188cb35d0c75758048ecd70cb6e2d5230c30da29dc358841a55b3d1f3d2fa",
+      "bytes": 77
+    },
+    "artifacts/painted-mural-browser-interruption.json": {
+      "sha256": "e8b5a5490f290488566d379906eba84b58ea6dbcaf1400261d8a54956badd294",
+      "bytes": 386
+    },
+    "artifacts/painted-mural-export-first.log": {
+      "sha256": "670d63dda11f860a8e74e2fd5339bd12bc22df2246239cbb2ed63144e2b0de38",
+      "bytes": 2634
+    },
+    "artifacts/painted-mural-final-metrics.json": {
+      "sha256": "db55956410ec5b58e5f8796967acaa15396ebd73630c2f6d898597312529a1ea",
+      "bytes": 40840
+    },
+    "artifacts/painted-mural-finalize.py": {
+      "sha256": "b077213176d69b130c37135fb008ffa22e4f42fdc6b4c845a80b7c8626d9ca3d",
+      "bytes": 11738
+    },
+    "artifacts/painted-mural-ideas-cli.log": {
+      "sha256": "6fa390d4da31b1f077665313eef60efa3665db38836b6bc95c31b6729a672b5b",
+      "bytes": 875
+    },
+    "artifacts/painted-mural-native-art.log": {
+      "sha256": "6af20814b3f47d53492f3265cf60ad96b6127b8196f5361963fee6d993d428fc",
+      "bytes": 36225
+    },
+    "artifacts/painted-mural-native-first.log": {
+      "sha256": "f9a430b2f3933ba89715eec08e8688c0c6a8782610f89dd73cd7192c87d7dc23",
+      "bytes": 35816
+    },
+    "artifacts/painted-mural-preflight-after-qa.log": {
+      "sha256": "1e26f0fa812117f3f7390200cf521731292e39607ee17569b9ea95bef861412e",
+      "bytes": 2398
+    },
+    "artifacts/painted-mural-preflight.log": {
+      "sha256": "e2e837c8e9ba1530ccfdb7c9d767d1563a96829e6c121872b839c1624897e1b5",
+      "bytes": 2261
+    },
+    "artifacts/painted-mural-preflight.mjs": {
+      "sha256": "11c215bfc29fe9ae7dcd8a5687cebde6c05039fabd7d4100343dcd7ebd211427",
+      "bytes": 21255
+    },
+    "artifacts/painted-mural-qa-cli.log": {
+      "sha256": "24e8c5d0aa12206d69e452f0fdc3e71a798af6bcc4343051cc1f2e835d78418c",
+      "bytes": 863
+    },
+    "artifacts/painted-mural-verified-browser.log": {
+      "sha256": "71180801b42f64f2a91e850772abfa40a125fb243a892c25299e7aa556e68231",
+      "bytes": 53988
+    },
+    "artifacts/painted-mural-verified-check.log": {
+      "sha256": "bbbf642933db0755ec1b063caec7667a16966ea1db64dadab1526709e88e5537",
+      "bytes": 1337
+    },
+    "artifacts/painted-mural-verified-export.log": {
+      "sha256": "670d63dda11f860a8e74e2fd5339bd12bc22df2246239cbb2ed63144e2b0de38",
+      "bytes": 2634
+    },
+    "artifacts/painted-mural-verified-native.log": {
+      "sha256": "fd3cdb4838305b4b3714faa8ce7b1d418f58f41a14bad2bac129d706c4ce50c3",
+      "bytes": 36225
+    },
+    "artifacts/painted-mural-verified-node.log": {
+      "sha256": "26c1f1c577e15bda3cbfdd6091e9f132631a87708b6805883592203db354c343",
+      "bytes": 10797
+    },
+    "docs/BUILD_STATUS.md": {
+      "sha256": "4ff69d7a2e04935fa793d458962a9a314f602507dd825ac100003426e8b13dda",
+      "bytes": 269744
+    },
+    "docs/ROADMAP.md": {
+      "sha256": "2488b43d63b7c059760085887326aaba6c18fad7ec50f1034235573177355189",
+      "bytes": 16917
+    },
+    "godot/main.gd": {
+      "sha256": "8371efe518691d907ad747912e3b4177e0ab3547ba20bf4942c20d6c14f9aef1",
+      "bytes": 696576
+    },
+    "godot/mural_workshop.gd": {
+      "sha256": "2bb5ac0b771398a7da58123696ca7d68ee107fbc8e9d4ff895acf50fbdcb0e1a",
+      "bytes": 17838
+    },
+    "godot/tests/study_test.gd": {
+      "sha256": "e1ab8834caf76189794b98b269bc13f5089b24f59b77f4a067ac70dfa48a61ba",
+      "bytes": 317738
+    },
+    "kibitz-runs/2026-10-21-codex-concert-ideas/r1/claude.log": {
+      "sha256": "1376afc799b0c943650dc08d22313ad3d539f9e76dd8f61336ebf84883f110e7",
+      "bytes": 2489
+    },
+    "kibitz-runs/2026-10-21-codex-concert-ideas/r1/claude.md": {
+      "sha256": "8fd590ab0e77f302643bdc74064c9ae6385ae871e4146b3d0dc7b7f7c6e0bb09",
+      "bytes": 13298
+    },
+    "kibitz-runs/2026-10-21-codex-concert-ideas/r1/claude_budget_selected.txt": {
+      "sha256": "b80401b5bdee9b92d2114d1dcae19e4929eefb76987dd1911802478ede026cf0",
+      "bytes": 64
+    },
+    "kibitz-runs/2026-10-21-codex-concert-ideas/r1/claude_effort_selected.txt": {
+      "sha256": "6ef7c9b15ecdd69083724b84cfdc2100351963488b51b4ea2fcbddf493fbec94",
+      "bytes": 4
+    },
+    "kibitz-runs/2026-10-21-codex-concert-ideas/r1/claude_model_selected.txt": {
+      "sha256": "005912bee6ee4543cec4404b5a02b9bcb11a6f1dcc134b6693c7ccde5fdd2f69",
+      "bytes": 15
+    },
+    "kibitz-runs/2026-10-21-codex-concert-ideas/r1/claude_quota_status.txt": {
+      "sha256": "901886d0064837010757eb7f30774407e91675bba0673584b924116d7a8da9a2",
+      "bytes": 463
+    },
+    "kibitz-runs/2026-10-21-codex-concert-ideas/r1/driver_anchor.md": {
+      "sha256": "84b53f5762ac116dac0a9b941533c1805ee2a0aaaefeb933c22f0fa103165616",
+      "bytes": 1110
+    },
+    "kibitz-runs/2026-10-21-codex-concert-ideas/r1/final.md": {
+      "sha256": "9408d4b8043c917fc341d14d71bf91454dada8aa000d5c21dbf943931cb5f831",
+      "bytes": 8890
+    },
+    "kibitz-runs/2026-10-21-codex-concert-ideas/r1/idea_scope.md": {
+      "sha256": "9798aae9a2b9e8d66358715da7c82d23449a33cfc061fd966e9532c1ce01c97c",
+      "bytes": 5766
+    },
+    "kibitz-runs/2026-10-21-codex-concert-ideas/r1/implementation_plan.md": {
+      "sha256": "914c157b3d24c4c5fe9a43d21bef24463471cdaad536c926886693ad38c30d93",
+      "bytes": 4598
+    },
+    "kibitz-runs/2026-10-21-codex-concert-ideas/r1/input.md": {
+      "sha256": "9798aae9a2b9e8d66358715da7c82d23449a33cfc061fd966e9532c1ce01c97c",
+      "bytes": 5766
+    },
+    "kibitz-runs/2026-10-21-codex-concert-ideas/r1/judgment.md": {
+      "sha256": "743fabd4935705dbe61bdc8686fa05b29f753f939b2290531ab4af8ada164e61",
+      "bytes": 4291
+    },
+    "kibitz-runs/2026-10-21-codex-concert-ideas/r1/model-receipt.json": {
+      "sha256": "f548ac83e6cb6071652370385e299b7c618b69d2bc6e540a47a655dd50f69168",
+      "bytes": 363
+    },
+    "kibitz-runs/2026-10-21-codex-concert-ideas/r1/profiles_used.txt": {
+      "sha256": "a9a11813438ba2fc0c6efd97f13b88bf41af82044d04182d865bdd38eaa32423",
+      "bytes": 8
+    },
+    "kibitz-runs/2026-10-21-codex-concert-ideas/r1/scope_receipt.md": {
+      "sha256": "548b1be29fc26ca33255ef6248b7f7b0bf0c271c83d47c10566dfd9c82cd4005",
+      "bytes": 688
+    },
+    "kibitz-runs/2026-10-21-codex-concert-ideas/r1/selection.md": {
+      "sha256": "914c157b3d24c4c5fe9a43d21bef24463471cdaad536c926886693ad38c30d93",
+      "bytes": 4598
+    },
+    "kibitz-runs/2026-10-21-codex-concert-ideas/r1/source-before.json": {
+      "sha256": "da841659ddb8aed3f042068567d45c36858bd28df9ac28de8fca562cfc3dd175",
+      "bytes": 654
+    },
+    "kibitz-runs/2026-10-21-codex-concert-ideas/r1/source-comparison.json": {
+      "sha256": "304cfc4cec930fbc39f591982644ed62b47e51be549cf40357e60e199d27dda8",
+      "bytes": 1515
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural-ideas/r1/claude.log": {
+      "sha256": "51941365e654ecc47a4448d1eeb354d195c4e261998ca4ddd0cf1c0ad76e12f7",
+      "bytes": 2748
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural-ideas/r1/claude.md": {
+      "sha256": "8d84ddab5763dc0fd2a02f56d115b5ccc4502e1b8e3f548cdd0fb47c78e295ce",
+      "bytes": 17771
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural-ideas/r1/claude_budget_selected.txt": {
+      "sha256": "b80401b5bdee9b92d2114d1dcae19e4929eefb76987dd1911802478ede026cf0",
+      "bytes": 64
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural-ideas/r1/claude_effort_selected.txt": {
+      "sha256": "6ef7c9b15ecdd69083724b84cfdc2100351963488b51b4ea2fcbddf493fbec94",
+      "bytes": 4
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural-ideas/r1/claude_model_selected.txt": {
+      "sha256": "005912bee6ee4543cec4404b5a02b9bcb11a6f1dcc134b6693c7ccde5fdd2f69",
+      "bytes": 15
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural-ideas/r1/claude_quota_status.txt": {
+      "sha256": "901886d0064837010757eb7f30774407e91675bba0673584b924116d7a8da9a2",
+      "bytes": 463
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural-ideas/r1/driver_anchor.md": {
+      "sha256": "c8f01f7e2ff15f6ea6f0c6949aaeced674ae23812d267ab702351137d92008e7",
+      "bytes": 904
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural-ideas/r1/final.md": {
+      "sha256": "dcc09b47ea0c41fa5b7be4d92be10727fdf93b326f98afb8e783c5fba26d3cd3",
+      "bytes": 2683
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural-ideas/r1/idea_scope.md": {
+      "sha256": "07aaa4a4bf60add9a145ab4079bacdf7fd5cfffee13da22dc8e77d72d06e32cd",
+      "bytes": 3801
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural-ideas/r1/input.md": {
+      "sha256": "07aaa4a4bf60add9a145ab4079bacdf7fd5cfffee13da22dc8e77d72d06e32cd",
+      "bytes": 3801
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural-ideas/r1/judgment.md": {
+      "sha256": "ca6465cb37850c6c32dd5e33821b5bb38af6bbabfc8cd3aa6bf9e90126aa747d",
+      "bytes": 1672
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural-ideas/r1/model-receipt.json": {
+      "sha256": "3fa2d98f9626fd3034141153251f1fd3ca7f3b908d58773b6ffe7b57be3f9b9e",
+      "bytes": 399
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural-ideas/r1/profiles_used.txt": {
+      "sha256": "a9a11813438ba2fc0c6efd97f13b88bf41af82044d04182d865bdd38eaa32423",
+      "bytes": 8
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural-ideas/r1/scope_receipt.md": {
+      "sha256": "4474d0e3eea94ef4c9f298a07e3415997a95f62ea848d4b1669aeae64b7fb207",
+      "bytes": 525
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural-ideas/r1/selection.md": {
+      "sha256": "fde0824deb15d07f840209d1b4d5cefbee328003058b4f43b45d075bf8fa7104",
+      "bytes": 1010
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural-ideas/r1/source-before.json": {
+      "sha256": "052f8c13a259f9159dae9e9dab109cbf06b0c5d8cb53ad109f477ab9b99bbae0",
+      "bytes": 571
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural-ideas/r1/source-comparison.json": {
+      "sha256": "77af5e2bd211033ed7de00d0130fbc8fd2a63d56a83ad77b33fa5afb1aad50df",
+      "bytes": 1308
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural/r3/automation_receipt.json": {
+      "sha256": "7cfadad38d1e7066a4937ffa0d555257601be86fab3ea0ac010a9f0dd7283092",
+      "bytes": 891
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural/r3/claude.log": {
+      "sha256": "5490d99d071c1533b6c8d06597e024dadecc00d910721be52324373ffa1a62bd",
+      "bytes": 2650
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural/r3/claude.md": {
+      "sha256": "b88586317cde43ffd4a442ceba7c11398aecd65b3f866b90c1d61be0bc7f061f",
+      "bytes": 9963
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural/r3/claude_budget_selected.txt": {
+      "sha256": "b80401b5bdee9b92d2114d1dcae19e4929eefb76987dd1911802478ede026cf0",
+      "bytes": 64
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural/r3/claude_effort_selected.txt": {
+      "sha256": "6ef7c9b15ecdd69083724b84cfdc2100351963488b51b4ea2fcbddf493fbec94",
+      "bytes": 4
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural/r3/claude_model_selected.txt": {
+      "sha256": "005912bee6ee4543cec4404b5a02b9bcb11a6f1dcc134b6693c7ccde5fdd2f69",
+      "bytes": 15
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural/r3/claude_quota_status.txt": {
+      "sha256": "901886d0064837010757eb7f30774407e91675bba0673584b924116d7a8da9a2",
+      "bytes": 463
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural/r3/driver_anchor.md": {
+      "sha256": "7c40e84d0c74b730ab06a598e48a0464bf3dd13d0e376ee7ef180c31170a97aa",
+      "bytes": 898
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural/r3/final.md": {
+      "sha256": "678ced9344a6e142ec0fec8ce4b82f2935525dec49d648a5a027955683ba597d",
+      "bytes": 5969
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural/r3/input.md": {
+      "sha256": "7ba83f80e8b56589d7e53abbb1835d3fa00ac397450852da0ed5fdd60de1708d",
+      "bytes": 3789
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural/r3/judgment.md": {
+      "sha256": "700fe66954532e37a8befd17d67214073fb3bbcfafb8850e845dff40c7af64ab",
+      "bytes": 1915
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural/r3/model-receipt.json": {
+      "sha256": "f548ac83e6cb6071652370385e299b7c618b69d2bc6e540a47a655dd50f69168",
+      "bytes": 363
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural/r3/profiles_used.txt": {
+      "sha256": "a9a11813438ba2fc0c6efd97f13b88bf41af82044d04182d865bdd38eaa32423",
+      "bytes": 8
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural/r3/review_scope.md": {
+      "sha256": "7ba83f80e8b56589d7e53abbb1835d3fa00ac397450852da0ed5fdd60de1708d",
+      "bytes": 3789
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural/r3/scope_receipt.md": {
+      "sha256": "d2b06f9080fe03f96947468e43ee057ec11c43b6695891aa2af5ba559a5f500b",
+      "bytes": 485
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural/r3/source-before.json": {
+      "sha256": "40f98b81723281af405000b0d70fe8e643954dcb8d7d9c6590602dc886fb4565",
+      "bytes": 571
+    },
+    "kibitz-runs/2026-10-21-codex-painted-mural/r3/source-comparison.json": {
+      "sha256": "956e18ecb18e200628486aa9ae2a0482b88006aef36f8ca528792e5770160933",
+      "bytes": 1947
+    },
+    "session_handoff.md": {
+      "sha256": "82af93a5fe75a89e6b1708b2a88144eebe6a27507ee584ccf593060eed93b6a4",
+      "bytes": 149511
+    },
+    "tests/godot-browser.mjs": {
+      "sha256": "d8a4e3b22b517d064f62aa210c9c7b8e876372372c592982d18249b0978d221e",
+      "bytes": 187368
+    },
+    "tests/godot-data.test.mjs": {
+      "sha256": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160",
+      "bytes": 23003
+    }
+  },
+  "created_utc": "2026-10-21T17:29:56.002331+00:00"
+}
