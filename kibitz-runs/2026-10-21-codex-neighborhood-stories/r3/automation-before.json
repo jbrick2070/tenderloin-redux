@@ -1,0 +1,9 @@
+{
+  "id": "build-tenderloin-redux",
+  "status": "ACTIVE",
+  "rrule": "FREQ=MINUTELY;INTERVAL=30",
+  "target_thread_id": "01a159d6-60a3-78e1-92ae-4018509d2539",
+  "created_at": 1792342628584,
+  "prefix_sha256": "41b8fc04cc9cd123adff92ae758927589793d2bcf3285f6dc14af495d24beef3",
+  "prefix_characters": 8089
+}

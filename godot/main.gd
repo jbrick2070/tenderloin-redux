@@ -536,6 +536,7 @@ var celeste_talk_count := 0
 var active_motif := "sun"
 var mural_palette := "garden"
 var mural_placements: Dictionary = {}
+var mural_scenes: Dictionary = {}
 var mural_completed := false
 var save_load_status := "fresh"
 
@@ -3244,6 +3245,13 @@ func update_mural_3d() -> void:
 	mural_completed = mural_placements.size() == MURAL_MOTIFS.size()
 	if mural_canvas_mesh != null:
 		mural_canvas_mesh.material_override = mural_material(mural_palette_color(mural_palette, mural_completed))
+		if not mural_scenes.is_empty():
+			var scene_material := mural_material(Color.WHITE)
+			scene_material.albedo_texture = preload("res://mural_stories.gd").texture(mural_scenes,KEEPSAKE_PALETTE_HEX.get(mural_palette,KEEPSAKE_PALETTE_HEX.garden))
+			scene_material.uv1_scale = Vector3(3,2,1)
+			scene_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			scene_material.emission_enabled = false
+			if scene_material.albedo_texture != null: mural_canvas_mesh.material_override = scene_material
 	for motif_id in MURAL_MOTIFS:
 		if not mural_motif_nodes.has(motif_id):
 			continue
@@ -11307,6 +11315,13 @@ func mural_signature_snapshot() -> Dictionary:
 		points.append({"x":p.x,"y":p.y})
 	return {"visible":mural_banner_mesh.is_visible_in_tree(),"corners":points}
 
+func mural_scenes_snapshot() -> Dictionary:
+	var points: Array[Dictionary] = []
+	for local in [Vector3(-1.64,0.83,0.041),Vector3(1.64,0.83,0.041),Vector3(-1.64,-0.83,0.041),Vector3(1.64,-0.83,0.041)]:
+		var p := camera.unproject_position(mural_canvas_mesh.to_global(local))
+		points.append({"x":p.x,"y":p.y})
+	return {"visible":mural_canvas_mesh.is_visible_in_tree(),"corners":points,"scenes":mural_scenes.duplicate()}
+
 func get_a11y_status_snapshot() -> Dictionary:
 	var active_panel := "none"
 	if block_panel != null and block_panel.visible:
@@ -11389,6 +11404,7 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"mural_workshop": mural_workshop.snapshot() if mural_workshop != null else {"visible": false},
 		"mural_compose_entry": activity_detail_snapshot(mural_detail_label, mural_panel, [mural_compose_btn]).buttons[0] if mural_compose_btn != null and mural_compose_btn.is_visible_in_tree() else {"visible": false},
 		"mural_signature_world": mural_signature_snapshot(),
+		"mural_scenes_world": mural_scenes_snapshot(),
 		"mural_compose_focused": mural_compose_btn != null and mural_compose_btn.has_focus(),
 		"mural_detail": activity_detail_snapshot(mural_detail_label, mural_panel, mural_buttons),
 		"music_detail": activity_detail_snapshot(music_stem_label, music_panel, music_buttons),
@@ -11571,7 +11587,49 @@ func mural_composition_reply() -> String:
 		line += " My Rise carries it to the right."
 	else:
 		line += " My Rise links the shapes together."
-	return line + " Three neighbors' ideas, arranged your way."
+	return line + " Three neighbors' ideas, arranged your way." + (" "+mural_scene_reply() if not mural_scenes.is_empty() else "")
+
+func mural_scene_reply() -> String:
+	if mural_scenes.is_empty(): return "A shared meal or a painter at work can tell another story here."
+	var names: Array[String] = []
+	for slot in ["left","right"]:
+		if mural_scenes.has(slot): names.append("%s on the %s" % [preload("res://mural_stories.gd").NAMES[mural_scenes[slot]],slot])
+	return ", ".join(names)+". You made room for everyday creativity."
+
+func edit_mural_scene(id: String, slot: String) -> bool:
+	if not is_mural_workshop_visible() or not mural_workshop.stories.visible or not slot in ["left","right"]: return false
+	if not id.is_empty() and not id in preload("res://mural_stories.gd").IDS: return false
+	if id.is_empty() and not mural_scenes.has(slot): return false
+	if mural_scenes.get(slot,"") == id:
+		mural_workshop.stories.message = "%s is already on the %s." % [preload("res://mural_stories.gd").NAMES[id],slot]
+		mural_workshop.stories.present()
+		announce_a11y_status(mural_workshop.stories.message)
+		return false
+	var previous := mural_scenes.duplicate()
+	var current := build_save_envelope()
+	current["save_seq"] = save_seq + 1
+	var current_bytes := JSON.stringify(current).to_utf8_buffer().size()
+	for old_slot in mural_scenes.keys():
+		if mural_scenes[old_slot] == id: mural_scenes.erase(old_slot)
+	if id.is_empty(): mural_scenes.erase(slot)
+	else: mural_scenes[slot] = id
+	# Reject this optional edit rather than erase earned progress or imported data.
+	var candidate := build_save_envelope()
+	candidate["save_seq"] = save_seq + 1
+	var candidate_bytes := JSON.stringify(candidate).to_utf8_buffer().size()
+	if candidate_bytes > SAVE_BUDGET_MAX_BYTES and candidate_bytes > current_bytes:
+		mural_scenes = previous
+		mural_workshop.stories.message = "Your existing save is full; this scene was not changed."
+		mural_workshop.stories.present()
+		announce_a11y_status(mural_workshop.stories.message)
+		return false
+	var saved := save_godot_state()
+	update_mural_3d()
+	var receipt := "Saved. " if saved else ("Changed for this visit; the save is full. " if candidate_bytes > SAVE_BUDGET_MAX_BYTES else "Changed for this visit; storage is unavailable. ")
+	mural_workshop.stories.message = receipt+("Lifted the %s scene." % slot if id.is_empty() else "%s painted on the %s." % [preload("res://mural_stories.gd").NAMES[id],slot])
+	mural_workshop.stories.present()
+	announce_a11y_status(mural_workshop.stories.message+" Celeste: "+mural_scene_reply())
+	return true
 
 func open_mural_workshop() -> bool:
 	if is_rhythm_circle_visible():
@@ -11593,6 +11651,7 @@ func open_mural_workshop() -> bool:
 	select_next_workshop_contribution()
 	mural_workshop_message = "Pick a neighbor's mark, then touch a dotted spot on the canvas. Your art saves as you go. Celeste: " + mural_composition_reply()
 	mural_workshop.visible = true
+	mural_workshop.reset_mode()
 	mural_workshop.scroll.scroll_vertical = 0
 	refresh_mural_workshop()
 	mural_workshop.cells[0].grab_focus()
@@ -11613,6 +11672,7 @@ func close_mural_workshop() -> void:
 	if not is_mural_workshop_visible():
 		return
 	mural_workshop.visible = false
+	mural_workshop.reset_mode()
 	mural_workshop.layout_pending = false
 	layout_mural_compose_entry()
 	if is_instance_valid(mural_workshop_return_focus) and mural_workshop_return_focus.is_visible_in_tree():
@@ -11843,7 +11903,7 @@ func build_save_envelope() -> Dictionary:
 		if s_id in NEIGHBORHOOD_SURPRISE_IDS:
 			s_list.append(s_id)
 	s_list.sort()
-	return {
+	var envelope := {
 		"schema": "tenderloin-redux.godot.save",
 		"version": GODOT_SAVE_VERSION,
 		"save_seq": save_seq,
@@ -11886,10 +11946,17 @@ func build_save_envelope() -> Dictionary:
 		},
 		"optional": optional_save_data.duplicate(true)
 	}
+	if not mural_scenes.is_empty(): envelope["mural_scenes"] = mural_scenes.duplicate()
+	return envelope
 
 func save_godot_state() -> bool:
+	var next := build_save_envelope()
+	next["save_seq"] = save_seq + 1
+	var raw_json := JSON.stringify(next)
+	# Imported optional metadata can already exceed this budget. Keep it in memory,
+	# but never replace the last valid stored profile with an oversized envelope.
+	if raw_json.to_utf8_buffer().size() > SAVE_BUDGET_MAX_BYTES: return false
 	save_seq += 1
-	var raw_json := JSON.stringify(build_save_envelope())
 	var wrote := false
 	if OS.has_feature("web"):
 		var js_literal := JSON.stringify(raw_json)
@@ -11918,6 +11985,7 @@ func reset_mural_state_to_defaults(status_label: String) -> void:
 	mural_palette = "garden"
 	active_motif = "sun"
 	mural_placements.clear()
+	mural_scenes.clear()
 	mural_completed = false
 	rook_soundcheck_done = false
 	visited_neighbors.clear()
@@ -12512,6 +12580,7 @@ func apply_save_envelope(raw_json: String) -> bool:
 	var act_id := String(env.get("active_motif", "sun"))
 	active_motif = act_id if act_id in MURAL_MOTIFS else "sun"
 	mural_placements = clean_placements
+	mural_scenes = preload("res://mural_stories.gd").clean(env.get("mural_scenes",{}))
 	rook_soundcheck_done = sc_done
 	visited_neighbors = clean_visited
 	last_panel_dialogue = ""
@@ -13769,8 +13838,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	if is_mural_workshop_visible():
-		if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
-			close_mural_workshop()
+		if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+			if mural_workshop.stories.visible: mural_workshop.close_stories()
+			else: close_mural_workshop()
 		get_viewport().set_input_as_handled()
 		return
 	if event is InputEventKey and event.pressed and not event.echo:

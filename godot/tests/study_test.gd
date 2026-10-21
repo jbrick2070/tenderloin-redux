@@ -3249,6 +3249,7 @@ func run() -> void:
 	await verify_short_activity_panels(study, true)
 	await verify_mural_workshop(study)
 	await verify_rhythm_circle(study)
+	await verify_mural_stories(study,saved_m4_json)
 	study.clear_godot_save()
 	study.clear_godot_settings()
 	var legacy_settings := FileAccess.open(study.settings_path, FileAccess.WRITE)
@@ -4115,4 +4116,128 @@ func verify_rhythm_circle(study: Node) -> void:
 	study.apply_save_envelope(saved)
 	study.music_playing = false
 	study.music_mode = "sketch"
+	root.size = Vector2i(1100,760)
+
+func verify_mural_stories(study: Node, full_profile: String) -> void:
+	var saved: String = JSON.stringify(study.build_save_envelope())
+	require(study.apply_save_envelope(full_profile) and study.is_hosting_done() and study.civic_phase=="done" and study.film_phase=="done" and study.keepsake_photo.status=="taken","scene compatibility starts from the actual native completed M1-M4 callback profile")
+	var old: Dictionary = study.build_save_envelope().duplicate(true)
+	old.erase("mural_scenes")
+	require(study.apply_save_envelope(JSON.stringify(old)),"existing saves without optional stories remain valid")
+	require(study.mural_scenes.is_empty() and not study.build_save_envelope().has("mural_scenes"),"unused story field does not rewrite old schema or add bytes")
+	for malformed in [null,[],"cooking",{"left":"unknown","right":9},{"left":"cooking","right":"cooking","third":"painting"}]:
+		var env := old.duplicate(true)
+		env["mural_scenes"] = malformed
+		require(study.apply_save_envelope(JSON.stringify(env)),"malformed optional stories never reset valid core progress")
+		require(study.keepsake_photo == old.epilogue.photo and study.hosting_results == old.hosting.results,"optional validation preserves actual copied photo and later progress")
+		require(study.mural_scenes.size() <= 1,"unknown and duplicate stories filter independently")
+	require(preload("res://mural_stories.gd").clean({"left":"sharing","right":"painting"}) == {"left":"sharing","right":"painting"},"two distinct known scenes survive validation")
+	study.apply_save_envelope(JSON.stringify(old))
+	study.hide_story_card()
+	study.startup_story_pending = false
+	study.current_path.clear()
+	var stand: Vector2 = study.mural_stand_xz()
+	study.player.position = Vector3(stand.x,0,stand.y)
+	study.show_mural_panel(true)
+	study.last_story_chapter = int(study.current_chapter().num)
+	var photo: String = JSON.stringify(study.keepsake_photo)
+	var svg: String = study.build_keepsake_svg(study.keepsake_photo)
+	var placements: Dictionary = study.mural_placements.duplicate(true)
+	var sparks: int = study.spark_count()
+	var geometry: Vector3 = study.mural_canvas_mesh.mesh.size
+	require(not study.edit_mural_scene("cooking","left"),"closed scene editor cannot edit saved art")
+	for size in [Vector2i(1100,760),Vector2i(390,667),Vector2i(320,667),Vector2i(520,360),Vector2i(559,360),Vector2i(640,360),Vector2i(320,568),Vector2i(800,480)]:
+		root.size = size
+		require(study.open_mural_workshop(),"nearby mural offers the existing Workshop")
+		for f in range(6): await process_frame
+		study.mural_workshop.stories_entry.emit_signal("pressed")
+		var art: Control = study.mural_workshop.stories
+		for f in range(8): await process_frame
+		require(art.visible and not study.mural_workshop.panel.visible and study.is_mural_workshop_visible(),"new reader is a submode of the original modal guard")
+		var view := Rect2(Vector2.ZERO,Vector2(size))
+		require(view.grow(1).encloses(art.panel.get_global_rect()) and not art.layout_pending,"new paper panel settles on screen")
+		for b in art.choices+art.targets+art.lifts+[art.palette_button,art.music_button,art.back_button]:
+			require(b.size.x >= 44 and b.size.y >= 44,"all story targets retain44px")
+			require(art.panel.get_global_rect().grow(1).encloses(b.get_global_rect()),"complete scene controls are reachable inside the panel")
+		for b in art.choices:
+			var row: Control = b.get_child(0)
+			require(b.get_global_rect().grow(1).encloses(row.get_global_rect()),"illustrated full-name swatch stays inside its button")
+		art.reader.custom_minimum_size.y = 72
+		for f in range(8): await process_frame
+		require(not art.layout_pending and view.grow(1).encloses(art.panel.get_global_rect()),"deferred reader growth refits without dropping rewrap or looping")
+		art.reader.custom_minimum_size.y = 36
+		for f in range(8): await process_frame
+		require(not art.layout_pending and view.grow(1).encloses(art.panel.get_global_rect()),"reader shrink settles back on screen")
+		art.select_scene("cooking")
+		art.targets[0].emit_signal("pressed")
+		require(study.mural_scenes.get("left")=="cooking","actual target callback paints chosen left scene")
+		art.select_scene("painting")
+		art.targets[1].emit_signal("pressed")
+		require(study.mural_scenes=={"left":"cooking","right":"painting"},"two complete people-at-work scenes compose independently")
+		var stable: String = JSON.stringify(study.build_save_envelope())
+		require(not study.edit_mural_scene("painting","right") and stable==JSON.stringify(study.build_save_envelope()),"same-slot action cannot write or replay progress")
+		require(not study.edit_mural_scene("bad","left") and not study.edit_mural_scene("cooking","middle"),"invalid enum/slot cannot alter scene state")
+		art.select_scene("cooking")
+		art.targets[1].emit_signal("pressed")
+		require(study.mural_scenes=={"right":"cooking"},"moving one scene replaces the optional occupant without duplication")
+		art.select_scene("sharing")
+		art.targets[0].emit_signal("pressed")
+		art.lifts[1].emit_signal("pressed")
+		require(study.mural_scenes=={"left":"sharing"},"sharing food and lifting are real optional callbacks")
+		study.edit_mural_scene("painting","right")
+		require(study.spark_count()==sparks and study.mural_placements==placements,"optional stories never grant farmable Sparks or touch the three required marks")
+		require(photo==JSON.stringify(study.keepsake_photo) and svg==study.build_keepsake_svg(study.keepsake_photo),"live art never rewrites an earlier copied keepsake or its SVG")
+		var mat: StandardMaterial3D = study.mural_canvas_mesh.material_override
+		require(mat.albedo_texture != null and mat.uv1_scale == Vector3(3,2,1) and not mat.emission_enabled,"existing world canvas renders the same static art with correct Box UVs")
+		require(study.mural_canvas_mesh.mesh.size==geometry,"new world consequence does not change geometry/collision")
+		var pose: Array = study.panel_camera_pose()
+		var pos: Vector3 = study.player.position
+		var held := InputEventKey.new()
+		held.keycode = KEY_W
+		held.physical_keycode = KEY_W
+		held.pressed = true
+		Input.parse_input_event(held)
+		for f in range(4): await physics_frame
+		held.pressed = false
+		Input.parse_input_event(held)
+		require(study.player.position==pos and study.panel_camera_pose()==pose,"focused stories block world walking and preserve camera ownership")
+		art.back_button.emit_signal("pressed")
+		for f in range(5): await process_frame
+		require(not art.visible and study.mural_workshop.panel.visible and study.mural_workshop.stories_entry.has_focus(),"Back restores original Workshop and its visible entry focus")
+		study.mural_workshop.open_stories()
+		var escape := InputEventKey.new()
+		escape.keycode = KEY_ESCAPE
+		escape.pressed = true
+		study._unhandled_input(escape)
+		escape.echo = true
+		study._unhandled_input(escape)
+		require(not art.visible and study.is_mural_workshop_visible(),"pressed Escape plus OS echo returns exactly one level")
+		study.close_mural_workshop()
+		print("MURAL_STORIES_CHECK ",size," bytes=",JSON.stringify(study.build_save_envelope()).to_utf8_buffer().size())
+	var roundtrip: Dictionary = study.build_save_envelope().duplicate(true)
+	require(study.apply_save_envelope(JSON.stringify(roundtrip)) and study.mural_scenes=={"left":"sharing","right":"painting"},"scene arrangement survives normal save reload")
+	# Defined bounded import metadata, not a claim about every8192-character optional bag.
+	roundtrip.optional["story_test_bookmark"] = "x".repeat(512)
+	roundtrip.discovered_surprises = study.NEIGHBORHOOD_SURPRISE_IDS.duplicate()
+	require(study.apply_save_envelope(JSON.stringify(roundtrip)) and JSON.stringify(study.build_save_envelope()).to_utf8_buffer().size()<=4096,"defined complete profile plus both scenes, all surprises and512byte imported metadata fits4096")
+	var before_import: Dictionary = study.mural_scenes.duplicate()
+	require(study.import_browser_save_json('{"version":1,"core":{"greeted":true}}') and study.mural_scenes==before_import,"successful browser adapter import does not erase or fabricate local story scenes")
+	study.hide_story_card()
+	study.current_path.clear()
+	study.show_mural_panel(true)
+	study.open_mural_workshop()
+	study.mural_workshop.open_stories()
+	study.optional_save_data["oversized_import"] = "x".repeat(4000)
+	var stored := FileAccess.get_file_as_string(study.save_path)
+	var seq: int = study.save_seq
+	require(study.edit_mural_scene("","left") and study.mural_scenes=={"right":"painting"},"oversized imported profile permits lifting for this visit")
+	require(study.edit_mural_scene("cooking","right") and study.edit_mural_scene("cooking","left"),"non-growing replacement and right-to-left move remain usable while full")
+	require(study.edit_mural_scene("sharing","left"),"same-size replacement is usable while full")
+	var full := JSON.stringify(study.build_save_envelope())
+	require(not study.edit_mural_scene("painting","right") and full==JSON.stringify(study.build_save_envelope()),"a growing over-budget edit is refused without truncating imported metadata")
+	require(not study.save_godot_state() and seq==study.save_seq and stored==FileAccess.get_file_as_string(study.save_path),"neither scene reductions nor any ordinary save writes an oversized envelope or consumes a sequence")
+	require(study.mural_workshop.stories.message.contains("full"),"full-save changes are honestly marked as visit-only")
+	study.optional_save_data.erase("oversized_import")
+	study.close_mural_workshop()
+	study.apply_save_envelope(saved)
 	root.size = Vector2i(1100,760)

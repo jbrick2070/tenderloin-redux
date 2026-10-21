@@ -1,0 +1,19 @@
+{
+  "created": "2026-10-21T21:01:30.443431+00:00",
+  "hashes": {
+    "godot/main.gd": "196be089126220d02fae2f148801cc0ba416bf067994dc2a745204e6a170cbda",
+    "godot/mural_workshop.gd": "12e059bd2724fec59adb741d48dcc9f0aaba85a132ff79111d7bfd71b79fb158",
+    "godot/mural_stories.gd": "f53f3cadb9a24ad0adc11c741ee6dc27c6b8252aaa16319b837cf7abe7fca0c8",
+    "godot/mural_stories.gd.uid": "c64c01b1996e1d8d1e74418cd6d8fcbf6945bd01d4671c089367b6725a774fc7",
+    "godot/mural_signature.gd": "a8b25e10edef62c77fb4ccb6e98c08972c579e61659ac80386a04a03bc851da2",
+    "godot/rhythm_circle.gd": "5e84e84a6badbeaa96481e96cbc4e26ce950488dc19d222cbf3b6ddd41b7890d",
+    "godot/tests/study_test.gd": "1a901a5afa2d467e2ad8b68285b598284a1a1050dc5cd1ecf7afd22631fec9f5",
+    "tests/godot-browser.mjs": "fdc5ab06e1d36065807d3b5b273d648c913b5d9916b9f4c4b9cf283615283ebb",
+    "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160",
+    "README.md": "ed5342112196eb2ebdeaf2213d32a9bbd7cf000dba300456d25f7f26f9dbe2c0",
+    "docs/ASSETS.md": "73b9c0c80e10763abcb5dbdfe63f6daee4f01039eb333da167c28a73f6f223d1",
+    "docs/ROADMAP.md": "4804d5ca744b3be972cdf6824767cb3b0a48d15eeb6156b694fc96338a9e59bb",
+    "artifacts/godot-web/index.pck": "c081481059d5e3e09fa6df4ea874c064d3ea8b40256f2e9140d9326882991bca"
+  },
+  "pack_bytes": 1735524
+}

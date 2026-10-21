@@ -1,0 +1,13 @@
+{
+  "godot/main.gd": "ce26448d1c9ed7c143197d993db44d7e6a84fad0bdea171f9c2d089a0a9ba08e",
+  "godot/mural_workshop.gd": "da019fe2e71c1fc4a9dff1a196b89dc083e687f07b4497f9b6352c8a937e4fae",
+  "godot/mural_stories.gd": "21ef7791cb844942dccefd9737a05a31563639277d450c27c74a7b829b47baff",
+  "godot/mural_stories.gd.uid": "c64c01b1996e1d8d1e74418cd6d8fcbf6945bd01d4671c089367b6725a774fc7",
+  "godot/mural_signature.gd": "a8b25e10edef62c77fb4ccb6e98c08972c579e61659ac80386a04a03bc851da2",
+  "godot/rhythm_circle.gd": "5e84e84a6badbeaa96481e96cbc4e26ce950488dc19d222cbf3b6ddd41b7890d",
+  "godot/tests/study_test.gd": "bbc19188daeafcbabcb9b50cfcfd14d438c7bc45f54f703749785232eab1974e",
+  "tests/godot-browser.mjs": "143589c2f3cf3d3e3b10bdf40110ff435b94d8db86fc1f1e0603af3a0308959d",
+  "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160",
+  "README.md": "ed5342112196eb2ebdeaf2213d32a9bbd7cf000dba300456d25f7f26f9dbe2c0",
+  "docs/ASSETS.md": "0b9467f949e7c9dcb1b9a657951ba016894ef1575184b2b8afa3818f8751f4d3"
+}

@@ -14,6 +14,7 @@ const [pckStat, ...sourceStats] = await Promise.all([
   stat('godot/mural_workshop.gd'),
   stat('godot/rhythm_circle.gd'),
   stat('godot/mural_signature.gd'),
+  stat('godot/mural_stories.gd'),
   stat('godot/main.tscn'),
   stat('godot/project.godot'),
   stat('godot/export_presets.cfg'),
@@ -211,6 +212,105 @@ async function verifyRhythmCircle(page,touch,size,active=false,completeListening
     assert.ok(!(await snap()).rhythm_circle.visible);assert.equal((await snap()).rhythm_circle.pattern,initial,'reload discards ephemeral practice');assert.equal(await save(),beforeSave,'practice reload leaves exact copied result and photo');
   }
   rhythmCircleChecks.push({...size,touch,active,completeListening,layout:before.gathering_layout,photo:before.epilogue.photo.status,beforePixel,afterPixel,scene:w.scene});
+}
+
+const muralStoryChecks = [];
+async function verifyStoryStreet(page,context,touch,tap,snap,settle,asymmetric=false){
+  // Real navigation, zoom and drag expose the portable board; metadata only locates it.
+  await page.keyboard.press('KeyM');await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.mural_detail.panel.visible&&!window.__tenderloinGodotA11ySnapshot.player_grounding.path_active,null,{timeout:35000});await settle();
+  if(asymmetric){
+    await page.keyboard.press('F2');await settle();await tap((await snap()).mural_workshop.stories_entry);await tap((await snap()).mural_workshop.stories.buttons[6]);
+    assert.deepEqual(JSON.parse(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1'))).mural_scenes,{left:'sharing'});
+    await tap((await snap()).mural_workshop.stories.buttons[9]);await page.keyboard.press('Escape');await settle();
+  }
+  await tap((await snap()).mural_detail.buttons.at(-1));await tap((await snap()).walking_controls[1]);await tap((await snap()).walking_controls[2]);
+  await page.keyboard.press('KeyM');await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.mural_detail.panel.visible&&!window.__tenderloinGodotA11ySnapshot.player_grounding.path_active,null,{timeout:35000});await settle();await tap((await snap()).mural_detail.buttons.at(-1));
+  // Step aside with real walking input so the enlarged avatar cannot cover the art.
+  {const p=(await snap()).player_grounding;await page.keyboard.down('KeyA');try{await page.waitForFunction(p=>{const s=window.__tenderloinGodotA11ySnapshot.player_grounding;return Math.hypot(s.x-p.x,s.z-p.z)>3;},p,{timeout:10000});}finally{await page.keyboard.up('KeyA');}await settle();}
+  for(let i=0;i<5;i++)await tap((await snap()).walking_controls.find(b=>b.text.includes('Zoom')&&b.text.includes('+')));
+  let s=await snap(),q=s.mural_scenes_world.corners,r=s.play_area,c=await page.locator('#canvas').boundingBox(),cx=q.reduce((a,p)=>a+p.x,0)/4,cy=q.reduce((a,p)=>a+p.y,0)/4;
+  const x=c.x+(r.x+r.width*.5)*c.width/s.viewport_width,y=c.y+(r.y+r.height*.25)*c.height/s.viewport_height,dx=(r.x+r.width*.55-cx)*c.width/s.viewport_width,dy=(r.y+r.height*.5-cy)*c.height/s.viewport_height;
+  if(touch){const d=await context.newCDPSession(page);await d.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y,id:1}]});for(let i=1;i<=8;i++)await d.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+dx*i/8,y:y+dy*i/8,id:1}]});await d.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await d.detach();}
+  else{await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+dx,y+dy,{steps:8});await page.mouse.up();}
+  await settle();s=await snap();q=s.mural_scenes_world.corners;
+  for(const p of q)assert.ok(p.x>=s.play_area.x-1&&p.y>=s.play_area.y-1&&p.x<=s.play_area.x+s.play_area.width+1&&p.y<=s.play_area.y+s.play_area.height+1,'actual full scene layer is uncovered in play area');
+  const img=screenshotPixels(await page.screenshot()),bins=[{ink:0,paper:0,skin:0},{ink:0,paper:0,skin:0}];
+  for(let u=.03;u<.97;u+=.007)for(let v=.03;v<.97;v+=.009){const x=(q[0].x*(1-u)+q[1].x*u)*(1-v)+(q[2].x*(1-u)+q[3].x*u)*v,y=(q[0].y*(1-u)+q[1].y*u)*(1-v)+(q[2].y*(1-u)+q[3].y*u)*v,rgb=img.pixel(c.x+x*c.width/s.viewport_width,c.y+y*c.height/s.viewport_height),b=bins[u<.5?0:1];if(rgb.reduce((a,v)=>a+v,0)<480)b.ink++;if(rgb[0]>215&&rgb[1]>190&&rgb[2]>150)b.paper++;if(v>.1&&v<.8&&[[200,141,108],[145,111,86]].some(p=>p.every((v,i)=>Math.abs(v-rgb[i])<19)))b.skin++;}
+  // Existing overhead street wires cross the blank half too; skin and mostly-paper
+  // distinguish the person from those unchanged dark lines without hiding geometry.
+  if(asymmetric)assert.ok(bins[0].ink>=20&&bins[0].skin>=3&&bins[1].skin<=3&&bins[1].paper>bins[0].paper&&bins[1].paper>2*bins[1].ink,`one actual left scene and blank right prove world UV handedness: ${JSON.stringify(bins)}`);
+  else assert.ok(bins.every(b=>b.ink>=20&&b.paper>=100&&b.skin>=3),`both world halves visibly render original people skin/ink on paper, not metadata or old glyphs alone: ${JSON.stringify(bins)}`);
+  await page.screenshot({path:`artifacts/codex-mural-stories-world-${s.viewport_width}x${s.viewport_height}-${touch?'finger':'mouse'}${asymmetric?'-left-only':''}.png`});
+  if(asymmetric){
+    await page.keyboard.press('KeyM');await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.mural_detail.panel.visible&&!window.__tenderloinGodotA11ySnapshot.player_grounding.path_active,null,{timeout:35000});await settle();
+    await page.keyboard.press('F2');await settle();await tap((await snap()).mural_workshop.stories_entry);await tap((await snap()).mural_workshop.stories.buttons[2]);await tap((await snap()).mural_workshop.stories.buttons[4]);await tap((await snap()).mural_workshop.stories.buttons[9]);await page.keyboard.press('Escape');await settle();await tap((await snap()).mural_detail.buttons.at(-1));
+  }
+  return {bins,corners:q,asymmetric};
+}
+async function verifyMuralStories(page, context, touch, originalSize, requireTakenPhoto = true) {
+  const snap=()=>page.evaluate(()=>window.__tenderloinGodotA11ySnapshot),save=()=>page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1'));
+  const settle=async()=>{const f=(await snap()).ui_frame;await page.waitForFunction(f=>{const s=window.__tenderloinGodotA11ySnapshot;return s.ui_frame>f+4&&!s.mural_workshop.layout_pending&&!s.layout_refit_pending&&!s.compact_panel_layout_pending;},f);};
+  const encloses=(a,b)=>b.x>=a.x-1&&b.y>=a.y-1&&b.x+b.width<=a.x+a.width+1&&b.y+b.height<=a.y+a.height+1;
+  async function tap(b){const s=await snap(),c=await page.locator('#canvas').boundingBox();assert.ok(b.visible&&b.width>=44&&b.height>=44,'story interaction has an actual visible44px target');const x=c.x+(b.x+b.width/2)*c.width/s.viewport_width,y=c.y+(b.y+b.height/2)*c.height/s.viewport_height;if(touch)await page.touchscreen.tap(x,y);else await page.mouse.click(x,y);await settle();}
+  async function storyButton(i){await tap((await snap()).mural_workshop.stories.buttons[i]);}
+  async function paperSample(){const s=await snap(),r=s.mural_workshop.stories.paper,c=await page.locator('#canvas').boundingBox(),p=screenshotPixels(await page.screenshot()),samples=[];for(let y=.08;y<.92;y+=.025)for(let x=.025;x<.975;x+=.025)samples.push(p.pixel(c.x+(r.x+r.width*x)*c.width/s.viewport_width,c.y+(r.y+r.height*y)*c.height/s.viewport_height));return samples;}
+  const differences=(a,b)=>a.filter((p,i)=>p.some((v,k)=>Math.abs(v-b[i][k])>30)).length;
+  const sizes=originalSize.width===390?[originalSize]:[originalSize,{width:520,height:360},{width:559,height:360}];
+  for(const size of sizes){
+    await page.setViewportSize(size);await page.keyboard.press('KeyF');await page.keyboard.press('KeyM');
+    await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.mural_detail.panel.visible&&!window.__tenderloinGodotA11ySnapshot.player_grounding.path_active,null,{timeout:35000});await settle();
+    let s=await snap();if(s.story_detail.panel.visible){await page.keyboard.press('Escape');await settle();s=await snap();}
+    const legacy=await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1'));
+    const original=JSON.parse(await save());if(requireTakenPhoto)assert.equal(original.epilogue.photo.status,'taken','story edits preserve a genuinely taken keepsake');
+    const photo=JSON.stringify(original.epilogue.photo),oldMarks=JSON.stringify(original.mural_placements),pose=s.camera_pose,position=s.player_grounding,music=s.music_playing;
+    await page.keyboard.press('F2');await settle();s=await snap();assert.ok(s.mural_workshop.visible);
+    await tap(s.mural_workshop.stories_entry);s=await snap();let art=s.mural_workshop.stories;
+    assert.ok(art.visible&&art.focus_within&&!s.mural_workshop.panel.visible);
+    assert.ok(encloses({x:0,y:0,...size},art.panel),'whole new panel fits actual viewport');
+    for(const b of art.buttons)assert.ok(b.visible&&b.width>=44&&b.height>=44&&b.text_fits&&encloses(art.panel,b),`complete story target fits: ${b.text}`);
+    assert.deepEqual(art.buttons.slice(0,3).map(b=>b.text),['Cooking Together','Sharing a Bowl','Making Street Art']);
+    // Clear prior optional stories using actual lift controls; original marks stay untouched.
+    for(const i of [5,6])if(!(await snap()).mural_workshop.stories.buttons[i].disabled)await storyButton(i);
+    const blank=await paperSample(),pixelChanges=[];
+    for(let i=0;i<3;i++){
+      const prior=await save();await storyButton(i);assert.equal(await save(),prior,'choosing an illustration is not a save or reward');
+      await storyButton(3);assert.deepEqual(JSON.parse(await save()).mural_scenes,{left:['cooking','sharing','painting'][i]});
+      const rendered=await paperSample(),changed=differences(blank,rendered);assert.ok(changed>=40,`${['cook','sharing','artist'][i]} person-and-prop scene makes visible paper pixels`);pixelChanges.push(changed);
+      const same=await save();await storyButton(3);assert.equal(await save(),same,'repeated placement is a non-write');
+      await page.screenshot({path:`artifacts/codex-mural-story-${i}-${size.width}x${size.height}-${touch?'finger':'mouse'}.png`});
+    }
+    await storyButton(0);await storyButton(3);await storyButton(2);await storyButton(4);
+    assert.deepEqual(JSON.parse(await save()).mural_scenes,{left:'cooking',right:'painting'});
+    // The focused right half is really activated by keyboard, moving the selected scene.
+    await storyButton(0);await storyButton(3);await page.keyboard.press('ArrowRight');await page.keyboard.press('Space');await settle();
+    assert.deepEqual(JSON.parse(await save()).mural_scenes,{right:'cooking'},'real arrow/Space moves rather than duplicates the scene');
+    await storyButton(1);await storyButton(3);await storyButton(2);await storyButton(4);
+    assert.deepEqual(JSON.parse(await save()).mural_scenes,{left:'sharing',right:'painting'});
+    const beforePalette=await paperSample();await storyButton(7);assert.ok(differences(beforePalette,await paperSample())>=30,'actual palette recolors scene illustration');
+    const beforeMusic=JSON.parse(await save()).save_seq;await storyButton(8);assert.notEqual((await snap()).music_playing,music);await storyButton(8);assert.equal((await snap()).music_playing,music);assert.equal(JSON.parse(await save()).save_seq,beforeMusic,'independent Music does not rewrite art');
+    await page.keyboard.down('KeyW');await settle();await page.keyboard.up('KeyW');s=await snap();assert.equal(s.player_grounding.x,position.x);assert.equal(s.player_grounding.z,position.z);assert.deepEqual(s.camera_pose,pose,'new editor does not take over camera');
+    // Real reader navigation and finger drag reach the complete keepsake explanation.
+    const r=s.mural_workshop.stories.reader,rr=r.reader||r;
+    // activity_detail_snapshot exposes the reader rectangle as text_rect.
+    const rect=r.control;const c=await page.locator('#canvas').boundingBox();
+    const x=c.x+(rect.x+rect.width*.5)*c.width/s.viewport_width,y=c.y+(rect.y+rect.height*.5)*c.height/s.viewport_height;
+    if(touch){const d=await context.newCDPSession(page);await d.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y:y+8,id:1}]});await d.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y-18,id:1}]});await d.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await d.detach();}
+    else{await page.mouse.move(x,y);await page.mouse.wheel(0,900);}
+    await settle();assert.match((await snap()).mural_workshop.stories.reader.text,/earlier keepsake stays as it was/);
+    assert.ok((await snap()).mural_workshop.stories.reader.scroll_value>0,'actual finger/wheel input advances the overflowing complete story reader');
+    for(let i=0;i<14;i++){await page.keyboard.press('Tab');assert.ok((await snap()).mural_workshop.stories.focus_within,'Tab remains inside the new editor');}
+    await page.setViewportSize(size.width<600?{width:800,height:480}:{width:320,height:568});await settle();assert.ok((await snap()).mural_workshop.stories.visible,'open rotation retains scene mode');await page.setViewportSize(size);await settle();
+    await storyButton(9);s=await snap();assert.ok(!s.mural_workshop.stories.visible&&s.mural_workshop.panel.visible,'actual Back returns to original18-spot Workshop');assert.equal(s.mural_workshop.cells.length,18);
+    await tap(s.mural_workshop.stories_entry);await page.keyboard.press('Escape');await settle();assert.ok(!(await snap()).mural_workshop.stories.visible,'Escape returns one level');await page.keyboard.press('Escape');await settle();assert.ok(!(await snap()).mural_workshop.visible,'second deliberate Escape closes the Workshop');
+    const final=JSON.parse(await save());assert.equal(JSON.stringify(final.epilogue.photo),photo);assert.equal(JSON.stringify(final.mural_placements),oldMarks);assert.ok(Buffer.byteLength(JSON.stringify(final))<=4096);
+    await page.reload();await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending&&!window.__tenderloinGodotA11ySnapshot.layout_refit_pending);await page.keyboard.press('Escape');await settle();
+    assert.deepEqual(JSON.parse(await save()).mural_scenes,{left:'sharing',right:'painting'},'normal reload restores both saved scene anchors');assert.equal(JSON.stringify(JSON.parse(await save()).epilogue.photo),photo);
+    const asymmetric=(!requireTakenPhoto&&Object.keys(original.mural_placements).length===0)?await verifyStoryStreet(page,context,touch,tap,snap,settle,true):null;
+    const world=await verifyStoryStreet(page,context,touch,tap,snap,settle);
+    assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1')),legacy,'scene editing never writes the legacy browser profile');
+    muralStoryChecks.push({size,touch,requireTakenPhoto,pixelChanges,asymmetric,world,saveBytes:Buffer.byteLength(await save())});
+  }
+  await page.setViewportSize(originalSize);
 }
 
 async function verifyMuralWorkshop(page, context, touch, originalSize, requireTakenPhoto = true) {
@@ -2215,6 +2315,7 @@ try {
     for(const rs of size.width===390?[size]:[size,{width:520,height:360},{width:559,height:360}])await verifyRhythmCircle(page,size.width<600,rs);
     await page.setViewportSize(size);
     await verifyMuralWorkshop(page, context, size.width < 600, size);
+    await verifyMuralStories(page, context, size.width < 600, size);
     if(!rhythmFixtureSave)rhythmFixtureSave=await page.evaluate(()=>localStorage.getItem("tenderloin-redux.godot.save.v1"));
     await context.close();
   }
@@ -2242,14 +2343,16 @@ try {
     await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending&&!window.__tenderloinGodotA11ySnapshot.layout_refit_pending);
     const s=await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot),b=s.start_control,c=await page.locator('#canvas').boundingBox();
     await page.touchscreen.tap(c.x+(b.x+b.width/2)*c.width/s.viewport_width,c.y+(b.y+b.height/2)*c.height/s.viewport_height);
-    await verifyMuralWorkshop(page,context,true,freshSize,false);await context.close();
+    await verifyMuralStories(page,context,true,freshSize,false);await verifyMuralWorkshop(page,context,true,freshSize,false);await context.close();
   }
   assert.deepEqual(external, []);
   assert.deepEqual(errors, []);
-  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, rhythmCircleChecks, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
+  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, rhythmCircleChecks, muralStoryChecks, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
   assert.ok(queuedActivityRewardChecks > 0, 'at least one actual crowded activity exercises queued reward timer and Close delivery');
   assert.ok(shortStartClicked && shortStartTouchClicked, 'real mouse and touch Start at640x360 were exercised');
   assert.equal(rhythmCircleChecks.length,11,'three actual progression active, seven genuine late-practice and one private beats-last rhythm case executed');
+  assert.equal(muralStoryChecks.length,8,'seven genuine taken-photo and one fresh scene-composition case executed');
+  assert.equal(muralStoryChecks.filter(c=>c.asymmetric).length,1,'a fresh single-sided street-board capture proves left/right UV orientation');
   assert.equal(shortStoryReadChecks.length, 11, 'all required short startup reading cases executed');
   assert.equal(shortStoryReadChecks.filter(r => r.touch).length, 4, 'all four emulated short-phone reading cases use real touch input');
   assert.equal(shortHubChecks.length, 8, 'six mouse and two touch short hub cases exercised');

@@ -1,0 +1,14 @@
+STDOUT:
+I wrote the review to `kibitz-runs/2026-10-21-codex-neighborhood-stories/r3/claude.md`. I reviewed by reading the code only; I didn't run either test suite. The verdict is **yes-with-fixes**: the scenes plug into the existing Workshop, save/load and 3D board correctly, but three things need fixing first.
+
+1. **Scenes can get stuck on the board** (`godot/main.gd:11608-11616`). Once the save passes 4096 bytes because of other data, the size check refuses every scene change, including Lift, which only makes the save smaller. That size is reachable through import, which accepts an optional bag of up to 8192 characters. The check also doesn't prevent anything, because the next ordinary save (placing a mark, or the Palette button in the same editor) writes the oversized file anyway. The native test at `godot/tests/study_test.gd:4216-4218` currently asserts this stuck behaviour. Fix: refuse an edit only if it's over the limit and also makes the save bigger.
+2. **Holding Escape closes both levels** (`godot/main.gd:13826`). The Escape check doesn't ignore key-repeat events, so a held key closes Paint Scenes and then the whole Workshop. That breaks the "Escape goes back one level" requirement. The browser test only taps Escape, so it can't catch this.
+3. **The street-board pixel test can't detect a mirrored image** (`tests/godot-browser.mjs:232-234`). It checks a board with people on both halves, so it passes even if the texture shows up flipped. The game tells players which side each scene is on, so the test should place one scene on one side only and check that side. I haven't confirmed which way the board's front face is actually oriented.
+
+The review also has six should-fixes:
+- The budget is typed as `4096` instead of the existing `SAVE_BUDGET_MAX_BYTES` constant.
+- The Paint Scenes layout can miss a resize triggered by text re-wrapping.
+- Tapping a half that already has that scene gives no message or screen-reader announcement.
+- The three button thumbnails are re-rendered on every refresh.
+- A failed image render isn't checked for, which would leave a blank board.
+- The board loses its brighter "mural complete" tint once any scene is added.

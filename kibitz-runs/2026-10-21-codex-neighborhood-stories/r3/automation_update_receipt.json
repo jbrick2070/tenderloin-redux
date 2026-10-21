@@ -1,0 +1,13 @@
+{
+  "verified_utc": "2026-10-21T21:40:51.525441+00:00",
+  "id": "build-tenderloin-redux",
+  "status": "ACTIVE",
+  "rrule": "FREQ=MINUTELY;INTERVAL=30",
+  "target_thread_id": "01a159d6-60a3-78e1-92ae-4018509d2539",
+  "created_at_preserved": true,
+  "policy_prefix_sha256": "41b8fc04cc9cd123adff92ae758927589793d2bcf3285f6dc14af495d24beef3",
+  "policy_prefix_preserved": true,
+  "prompt_sha256": "f3ce919ba4bffa954a484a71b6e77ab8aea072551734497ae115ce213d174520",
+  "method": "automation_update tool; exact TOML readback; no direct TOML edit",
+  "guidance": "https://learn.chatgpt.com/docs/automations?surface=app"
+}

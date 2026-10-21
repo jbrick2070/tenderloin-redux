@@ -21,6 +21,8 @@ var feedback: RichTextLabel
 var palette_button: Button
 var music_button: Button
 var done_button: Button
+var stories_entry: Button
+var stories
 var tool_buttons: Array[Button] = []
 var cells: Array[Button] = []
 var layout_pending := false
@@ -146,12 +148,18 @@ func setup(owner_game: Node) -> void:
 	content.add_child(options)
 	palette_button = button(options, "Palette: Garden", func(): palette_requested.emit())
 	music_button = button(options, "Music: Off", func(): music_requested.emit())
-	done_button = button(outer, "Back to Celeste", func(): close_requested.emit())
+	var footer := HBoxContainer.new()
+	outer.add_child(footer)
+	stories_entry = button(footer, "Paint Scenes", open_stories)
+	done_button = button(footer, "Back to Celeste", func(): close_requested.emit())
+	stories = preload("res://mural_stories.gd").new()
+	add_child(stories)
+	stories.setup(game,self)
 	# This is a focused editing surface, so keyboard traversal stays inside it.
 	var focus_ring: Array[Control] = [feedback]
 	for b in tool_buttons: focus_ring.append(b)
 	for b in cells: focus_ring.append(b)
-	focus_ring.append_array([palette_button, music_button, done_button])
+	focus_ring.append_array([palette_button, music_button, stories_entry, done_button])
 	for i in range(focus_ring.size()):
 		var node := focus_ring[i]
 		node.focus_next = node.get_path_to(focus_ring[(i + 1) % focus_ring.size()])
@@ -163,6 +171,29 @@ func setup(owner_game: Node) -> void:
 	for node in [panel, content, title, attribution]:
 		node.minimum_size_changed.connect(queue_layout)
 	visible = false
+
+func open_stories() -> void:
+	panel.visible = false
+	stories.visible = true
+	stories.message = "Choose an illustrated scene, then the left or right half. Optional art saves as you go; lifting a scene keeps the original three marks."
+	stories.scroll.scroll_vertical = 0
+	stories.present()
+	stories.choices[0].grab_focus()
+	game.announce_a11y_status("Mural Stories. Cooking Together, Sharing a Bowl, Making Street Art. Choose a scene, then a half of the paper. Escape returns to Mural Workshop.")
+
+func close_stories() -> void:
+	reset_mode()
+	present(art_model)
+	stories_entry.grab_focus()
+	game.announce_a11y_status("Back to Mural Workshop. "+game.mural_scene_reply())
+
+func reset_mode() -> void:
+	stories.visible = false
+	stories.layout_generation += 1
+	stories.layout_pending = false
+	stories.layout_dirty = false
+	panel.visible = true
+	queue_layout()
 
 func button(parent: Node, caption: String, action: Callable) -> Button:
 	var b := Button.new()
@@ -204,6 +235,7 @@ func present(model: Dictionary) -> void:
 	refresh_position_caption()
 	for b in tool_buttons: b.queue_redraw()
 	canvas_grid.queue_redraw()
+	if stories.visible: stories.present()
 	queue_layout()
 
 func queue_layout() -> void:
@@ -215,6 +247,9 @@ func queue_layout() -> void:
 func finish_layout() -> void:
 	layout_pending = false
 	if not visible:
+		return
+	if stories.visible:
+		stories.queue_layout()
 		return
 	layout_busy = true
 	var vp := game.bubble_viewport_size() as Vector2
@@ -236,10 +271,15 @@ func finish_layout() -> void:
 	canvas_grid.queue_redraw()
 
 func snapshot() -> Dictionary:
-	var result := {"visible": is_visible_in_tree(), "layout_pending": layout_pending}
+	var result := {"visible": is_visible_in_tree(), "layout_pending": layout_pending or stories.layout_pending}
 	if not is_visible_in_tree():
 		return result
 	result["panel"] = game.control_snapshot(panel)
+	result["stories_entry"] = game.control_snapshot(stories_entry)
+	result["stories"] = stories.snapshot()
+	if stories.visible:
+		result["focus_within"] = result["stories"].focus_within
+		return result
 	var no_buttons: Array[Button] = []
 	result["reader"] = game.activity_detail_snapshot(feedback, panel, no_buttons)
 	result["tools"] = game.activity_detail_snapshot(feedback, panel, tool_buttons).buttons
