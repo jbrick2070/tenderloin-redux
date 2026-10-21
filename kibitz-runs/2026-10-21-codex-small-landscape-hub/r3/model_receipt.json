@@ -1,0 +1,16 @@
+{
+  "driver": "codex",
+  "round": "r3",
+  "requested_model": "claude-opus-5-5",
+  "harness_selected_model": "claude-opus-5-5",
+  "requested_effort": "high",
+  "selected_effort": "high",
+  "provider_reported_runtime_model": null,
+  "provider_runtime_limit": "Separate provider runtime identity not exposed; exact selected CLI model/effort retained",
+  "quota_usage": "unknown",
+  "budget_receipt": "budget=medium\nmodel=claude-opus-5-5\neffort=high\nnote=(none)",
+  "exit_code": 0,
+  "actual_independent_calls": 1,
+  "verdict": "yes-with-fixes",
+  "review_sha256": "d3b79cbefe1b3137cea7db8de7e1185620067f2ecf042df70fcc785fbe751922"
+}

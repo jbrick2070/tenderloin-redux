@@ -113,7 +113,7 @@ func run() -> void:
 	var short_story_target: Vector3 = study.target
 	var short_story_unlocked: bool = study.reward_audio_unlocked
 	var changed_scrolled_chapters := 0
-	for story_size in [Vector2i(640, 360), Vector2i(667, 375), Vector2i(844, 390), Vector2i(800, 480), Vector2i(320, 568), Vector2i(320, 667), Vector2i(1100, 760), Vector2i(560, 360), Vector2i(599, 360)]:
+	for story_size in [Vector2i(640, 360), Vector2i(667, 375), Vector2i(844, 390), Vector2i(800, 480), Vector2i(320, 568), Vector2i(320, 667), Vector2i(1100, 760), Vector2i(560, 360), Vector2i(599, 360), Vector2i(520, 360), Vector2i(559, 360)]:
 		root.size = story_size
 		await process_frame
 		await process_frame
@@ -1279,6 +1279,14 @@ func run() -> void:
 	require(study.import_browser_save_json(browser_m4_edge) and study.civic_phase == "done" and study.film_phase == "shooting" and study.film_captured == ["paint", "seat"] and study.film_next_shot() == "welcome", "import_browser_save_json imports M4 civic done and partial M4 film shooting progress")
 	require(not study.voices_enabled and String(study.optional_save_data.get("voices_bookmark", "")) == "tndc", "importing browser save with optional data does not enable M5 Neighborhood Voices")
 	require(study.film_capture_shot("welcome") and study.film_phase == "done", "capturing final shot after browser save import completes The Open Seat")
+	# Reusable private-browser layout fixture comes from verified native progress.
+	var layout_fixture_path := ProjectSettings.globalize_path("res://").path_join("../artifacts/small-hub-chapter6-fixture.json").simplify_path()
+	DirAccess.make_dir_recursive_absolute(layout_fixture_path.get_base_dir())
+	var layout_fixture := FileAccess.open(layout_fixture_path, FileAccess.WRITE)
+	require(layout_fixture != null, "completed native progress can supply the isolated short-layout browser fixture")
+	if layout_fixture != null:
+		layout_fixture.store_string(JSON.stringify(study.build_save_envelope()))
+		layout_fixture.close()
 
 	# M5 Default-Off Experimental Neighborhood Voices lifecycle, generation-scoped cleanup, error/retry, and settings isolation
 	var seq_before_voices: int = study.save_seq
@@ -1754,7 +1762,8 @@ func run() -> void:
 	require(study.objective_label.text == "Chapter 1: Get the Block Ready · Next: %s" % String(fresh_obj.text), "the header shows the chapter and the next step")
 	study.update_guide_marker()
 	var marker_target: Vector3 = fresh_obj.target
-	require(study.guide_marker.visible and Vector2(study.guide_marker.position.x, study.guide_marker.position.z).distance_to(Vector2(marker_target.x, marker_target.z)) < 0.01 and study.guide_marker.position.y > 5.0, "the gold guide marker floats above the next neighbor")
+	print("GUIDE_FIXTURE ", {"visible": study.guide_marker.visible, "position": study.guide_marker.position, "anchor": study.guide_marker_target, "scale": study.guide_marker.scale, "objective": fresh_obj, "player": study.player.position, "partner": study.talk_partner, "panel": study.block_panel.visible})
+	require(study.guide_marker.visible and Vector2(study.guide_marker.position.x, study.guide_marker.position.z).distance_to(Vector2(marker_target.x, marker_target.z)) < 0.01 and is_equal_approx(study.guide_marker_target.y, study.GUIDE_MARKER_LIFT_HIGH) and absf(study.guide_marker.position.y - study.guide_marker_target.y) <= 0.14 * study.guide_marker.scale.y + 0.001, "the gold guide marker uses the high neighbor anchor with its bounded screen-scaled bob")
 	var bea_xz: Vector2 = study.neighbor_xz(0)
 	study.player.position = Vector3(bea_xz.x + 3.0, 0.0, bea_xz.y)
 	study.update_guide_marker()
@@ -3169,7 +3178,7 @@ func run() -> void:
 		await process_frame
 		await process_frame
 		await process_frame
-		var should_side: bool = boundary_size.x >= 600 and boundary_size.y < 560
+		var should_side: bool = boundary_size.x >= study.SMALL_SIDE_HUB_MIN_WIDTH and boundary_size.y < study.SIDE_HUB_MAX_HEIGHT
 		require(study.uses_side_block_hub() == should_side and study.block_voices_btn.is_visible_in_tree() and study.block_voices_btn.has_focus() and study.block_hub_page == 2, "open-dock breakpoint crossing retains the focused later action")
 		require(study.block_panel.anchor_left == (1.0 if should_side else 0.0) and (study.controls.offset_right < -12.0 if should_side else study.controls.offset_right == -12.0), "open-dock breakpoint crossing restores anchors and walking width")
 	# Browser touch sends both emulated mouse and raw touch to a press-mode button.
@@ -3266,7 +3275,13 @@ func verify_narrow_hub(study: Node) -> void:
 	study.current_path.clear()
 	study.hide_speech_bubble()
 	study.set_header_details(false, false)
-	for hub_size in [Vector2i(320, 568), Vector2i(390, 568), Vector2i(360, 600), Vector2i(520, 568), Vector2i(560, 360), Vector2i(599, 360), Vector2i(560, 568), Vector2i(599, 639)]:
+	root.size = Vector2i(1100, 760)
+	study.show_block_panel(true)
+	var original_titles: Array[String] = []
+	for i in range(study.BLOCK_ACTION_COUNT):
+		original_titles.append(study.block_buttons[i].text)
+	study.show_block_panel(false)
+	for hub_size in [Vector2i(320, 568), Vector2i(390, 568), Vector2i(360, 600), Vector2i(520, 568), Vector2i(520, 360), Vector2i(559, 360), Vector2i(520, 559), Vector2i(559, 559), Vector2i(560, 360), Vector2i(599, 360), Vector2i(560, 568), Vector2i(599, 639)]:
 		root.size = hub_size
 		var arrival: Vector2 = study.neighbor_xz(0) - study.nearest_street_tangent(study.neighbor_xz(0)) * 0.95
 		study.player.position = Vector3(arrival.x, 0, arrival.y)
@@ -3294,6 +3309,7 @@ func verify_narrow_hub(study: Node) -> void:
 			require(area.size.x >= 200 and area.size.y >= 100 and area.grow(1).encloses(study.player_overlay_rect()), "narrow hub leaves full enlarged player and YOU in useful scene space")
 			for action in study.block_action_snapshots():
 				seen.append(int(action.id))
+				require(action.text == original_titles[int(action.id)], "small hub retains the original full desktop title")
 				require(action.text_fits and action.width >= 44 and action.height >= 44, "narrow hub complete original action is readable and44px")
 			for nav in [study.block_page_prev, study.block_page_next, study.block_close_btn]:
 				require(panel.encloses(nav.get_global_rect()) and nav.size.x >= 44 and nav.size.y >= 44, "narrow hub page and Close controls remain reachable")
@@ -3303,14 +3319,14 @@ func verify_narrow_hub(study: Node) -> void:
 				study.change_block_action_page(1)
 				require(study.block_buttons[(page + 1) * 4].has_focus(), "narrow hub paging focuses a newly visible action")
 		require(seen == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], "all twelve narrow hub actions remain reachable")
-		if hub_size == Vector2i(320, 568):
+		if hub_size == Vector2i(320, 568) or hub_size == Vector2i(520, 360):
 			var changing: Button = study.block_buttons[study.block_hub_page * 4]
 			var caption: String = changing.text
 			var panel_height: float = study.block_panel.size.y
 			changing.text = "First line\nSecond line\nThird line"
 			for frame in range(6):
 				await process_frame
-			require(study.block_panel.size.y > panel_height and study.block_panel.get_global_rect().end.y + 7 <= study.controls.get_global_rect().position.y and study.block_panel.get_global_rect().position.y >= study.header_panel.get_global_rect().end.y + 7, "deferred hub content growth stays between header and walking controls")
+			require(study.block_panel.size.y > panel_height and (study.uses_side_block_hub() or study.block_panel.get_global_rect().end.y + 7 <= study.controls.get_global_rect().position.y) and study.block_panel.get_global_rect().position.y >= study.header_panel.get_global_rect().end.y + 7 and study.block_panel.get_global_rect().end.y <= hub_size.y - 11 and study.block_panel.get_global_rect().encloses(study.block_close_btn.get_global_rect()), "deferred hub content growth stays between header and walking controls")
 			print("NARROW_HUB_GROW panel=", study.block_panel.get_global_rect(), " scene=", study.play_area_rect(), " body=", study.player_overlay_rect(), " pending=", study.compact_panel_layout_pending)
 			require(study.play_area_rect().grow(1).encloses(study.player_overlay_rect()) and not study.compact_panel_layout_pending, "deferred hub growth retains full followed player without a pending loop")
 			changing.text = caption
@@ -3318,12 +3334,12 @@ func verify_narrow_hub(study: Node) -> void:
 				await process_frame
 			require(absf(study.block_panel.size.y - panel_height) < 1 and study.play_area_rect().grow(1).encloses(study.player_overlay_rect()) and not study.compact_panel_layout_pending, "deferred hub shrink restores size and followed player")
 		study.block_voices_btn.grab_focus()
-		for boundary in [Vector2i(559, 568), Vector2i(560, 559), Vector2i(560, 568), Vector2i(599, 639), Vector2i(599, 640), Vector2i(600, 360), hub_size]:
+		for boundary in [Vector2i(520, 360), Vector2i(559, 360), Vector2i(560, 360), Vector2i(520, 559), Vector2i(520, 560), Vector2i(559, 568), Vector2i(560, 559), Vector2i(560, 568), Vector2i(599, 639), Vector2i(599, 640), Vector2i(600, 360), hub_size]:
 			root.size = boundary
 			for frame in range(4):
 				await process_frame
 			require(study.block_hub_page == 2 and study.block_voices_btn.has_focus() and study.block_voices_btn.is_visible_in_tree(), "narrow open hub breakpoints preserve the focused later-page action")
-			require(study.block_panel.get_global_rect().position.y >= study.header_panel.get_global_rect().end.y and not study.block_panel.get_global_rect().intersects(study.controls.get_global_rect()), "narrow open hub breakpoints keep header and walking targets clear")
+			require(study.uses_side_block_hub() == (boundary.x >= study.SMALL_SIDE_HUB_MIN_WIDTH and boundary.y < study.SIDE_HUB_MAX_HEIGHT) and study.block_panel.get_global_rect().end.y <= boundary.y - 11 and study.block_panel.get_global_rect().encloses(study.block_close_btn.get_global_rect()) and study.block_panel.get_global_rect().position.y >= study.header_panel.get_global_rect().end.y and not study.block_panel.get_global_rect().intersects(study.controls.get_global_rect()), "narrow open hub breakpoints keep header and walking targets clear")
 			require(study.play_area_rect().grow(1).encloses(study.player_overlay_rect()), "open narrow hub breakpoint retains full player and YOU")
 		study.block_detail_label.scroll_to_line(1000)
 		await process_frame
@@ -3337,7 +3353,7 @@ func verify_narrow_hub(study: Node) -> void:
 		study.show_block_panel(false)
 		for frame in range(3):
 			await process_frame
-		var short_walk: bool = hub_size.x >= 560 and hub_size.y < 560
+		var short_walk: bool = hub_size.x >= study.SMALL_SIDE_HUB_MIN_WIDTH and hub_size.y < study.SIDE_HUB_MAX_HEIGHT
 		require(study.controls.columns == (3 if short_walk else 2) and study.controls.offset_top == (-116 if short_walk else -174) and study.controls.offset_right == -12 and study.map_control.text == "Tenderloin Map", "Close restores the full narrow walking grid with two rows in short landscape")
 		require(JSON.stringify(study.build_save_envelope()) == save and study.view_size == zoom, "narrow hub paging reading and Info preserve progression and zoom")
 		study.show_conversation(0)
@@ -3376,7 +3392,7 @@ func verify_short_narrow_walking(study: Node) -> void:
 	study.set_header_details(false, false)
 	var caption_checks := 0
 	var guide_checks := 0
-	for size in [Vector2i(560, 360), Vector2i(568, 375), Vector2i(599, 360), Vector2i(599, 480), Vector2i(560, 559), Vector2i(599, 559)]:
+	for size in [Vector2i(520, 360), Vector2i(559, 360), Vector2i(520, 559), Vector2i(559, 559), Vector2i(560, 360), Vector2i(568, 375), Vector2i(599, 360), Vector2i(599, 480), Vector2i(560, 559), Vector2i(599, 559)]:
 		root.size = size
 		if size == Vector2i(599, 480):
 			var stop: Vector2 = study.nearest_street_point(study.comptons_xz())
@@ -3418,21 +3434,25 @@ func verify_short_narrow_walking(study: Node) -> void:
 				await process_frame
 			require(study.uses_short_narrow_walking() and study.controls.columns == 3 and study.play_area_rect().grow(1).encloses(study.player_overlay_rect()), "real Close restores useful short walking space")
 		study.wide_overview()
+		for frame in range(4):
+			await process_frame
+		require(not study.player_nameplate.is_visible_in_tree(), "Map fixture actually hides the YOU billboard before Find Me")
 		study.frame_player_for_walking()
 		for frame in range(4):
 			await process_frame
 		require(not study.in_wide_overview and study.view_size == 45 and study.play_area_rect().grow(1).encloses(study.player_overlay_rect()), "Map then Find Me restores the short walking view")
 		study.pan_camera_by_screen_delta(Vector2(10, 4))
 		var manual: Array = study.panel_camera_pose()
-		root.size = Vector2i(599, 375)
-		for frame in range(4):
-			await process_frame
-		require(study.panel_camera_pose() == manual and not study.following_player, "short walking resize preserves manual pan")
+		for pan_size in [Vector2i(519, 360), Vector2i(599, 375)]:
+			root.size = pan_size
+			for frame in range(4):
+				await process_frame
+			require(study.panel_camera_pose() == manual and not study.following_player, "short walking resize preserves manual pan across the520 seam")
 		require(study.player.position == case_player and JSON.stringify(study.build_save_envelope()) == save, "short walking framing and Close preserve position/progress")
 		study.player.position = before_player
 	print("SHORT_WALK_OVERLAYS captions=", caption_checks, " guides=", guide_checks)
 	require(caption_checks > 0 and guide_checks > 0, "short walking clearance exercises real captions and an outlined guide")
-	for boundary in [Vector2i(560, 560), Vector2i(599, 560), Vector2i(599, 640), Vector2i(320, 667), Vector2i(600, 360)]:
+	for boundary in [Vector2i(519, 360), Vector2i(520, 560), Vector2i(560, 560), Vector2i(599, 560), Vector2i(599, 640), Vector2i(320, 667), Vector2i(600, 360)]:
 		root.size = boundary
 		study.frame_player_for_walking()
 		for frame in range(4):
@@ -3455,6 +3475,12 @@ func verify_short_narrow_walking(study: Node) -> void:
 	for frame in range(4):
 		await process_frame
 	require(not study.in_wide_overview and study.following_player and study.view_size == 45 and study.play_area_rect().grow(1).encloses(study.player_overlay_rect()), "real ui_accept on short Find Me frames the enlarged player")
+	study.frame_player_for_walking()
+	study.pan_camera_by_screen_delta(Vector2(10, 4)) # Before the queued Find Me refit settles.
+	var immediate_manual: Array = study.panel_camera_pose()
+	for frame in range(4):
+		await process_frame
+	require(not study.following_player and study.panel_camera_pose() == immediate_manual, "a manual pan immediately after Find Me owns the pending settled refit")
 	study.objective_refresh_timer = before_timer
 	root.size = Vector2i(1100, 760)
 	study.frame_player_for_walking()

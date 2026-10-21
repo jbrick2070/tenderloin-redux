@@ -1,0 +1,15 @@
+STDOUT:
+I wrote the review to `C:\tenderloin-redux\kibitz-runs\2026-10-21-codex-small-landscape-hub\r3\claude.md`; I didn't touch the implementation, tests or docs.
+
+**Verdict: yes-with-fixes.** I found no wiring defect in `godot/main.gd` for the new 520–559 band. The problems are in verification:
+
+- **No gate has passed yet.** Both preflights were still running when I read the plan, so the full five gates still need to run in order. Any fix that touches `main.gd` means re-exporting before the browser run.
+- **One native check can't fail.** At `godot/tests/study_test.gd:3327`, the "header and walking controls clear" check always passes for the side dock, because the dock and the controls never overlap horizontally. That loop also has no bottom-edge or Close check after resizing into 520x360, 559x360 or 520x559. The review gives the exact assertion to add there.
+
+The review also lists seven should-fix items. The main ones:
+- In the browser test at width 520, resizing back into the new band checks only the camera position, not the panel, page or Close button.
+- No test resizes directly from 559x360 to 560x360 with the hub open, which is exactly where the dock width jumps from 290.7 to 312px.
+- If a button caption changes while the hub is open, nothing re-lays out the 288px side dock or keeps it on screen, and that growth is only tested at 320x568.
+- Some size thresholds in the tests are hard-coded or out of date.
+
+Separately, the Asana, Atlassian, Datadog, GitHub, Linear, Notion, PagerDuty, Slack, Box and Runway connectors need authorizing (in claude.ai connector settings, or via `/mcp` in an interactive session). This review didn't need any of them.

@@ -792,8 +792,9 @@ var block_page_next: Button
 var block_close_btn: Button
 var block_hub_page := 0
 const BLOCK_ACTIONS_PER_PAGE := 4
-const SIDE_HUB_MIN_WIDTH := 600.0 # Phone HUD breakpoint; side panels can fit at560px.
+const SIDE_HUB_MIN_WIDTH := 600.0 # Phone HUD breakpoint; activities dock at560px, hubs at520px.
 const SIDE_ACTIVITY_MIN_WIDTH := 560.0
+const SMALL_SIDE_HUB_MIN_WIDTH := 520.0
 const COMPACT_ACTIVITY_MAX_HEIGHT := 640.0
 const SIDE_HUB_MAX_HEIGHT := 560.0
 const HUB_FULL_WIDTH := 1050.0
@@ -6582,14 +6583,16 @@ func uses_paged_block_actions() -> bool:
 
 ## Short, wide windows need the scene beside the menu rather than above it.
 func uses_side_block_hub() -> bool:
-	return uses_short_side_panels() and block_panel != null and block_panel.visible and block_panel_mode == "hub"
+	var vp := bubble_viewport_size()
+	var fits_side := vp.x >= SMALL_SIDE_HUB_MIN_WIDTH and vp.y < SIDE_HUB_MAX_HEIGHT
+	return fits_side and block_panel != null and block_panel.visible and block_panel_mode == "hub"
 
 func uses_short_side_panels() -> bool:
 	var vp := bubble_viewport_size()
 	return vp.x >= SIDE_ACTIVITY_MIN_WIDTH and vp.y < SIDE_HUB_MAX_HEIGHT
 
 func panel_uses_side_dock(panel: Control) -> bool:
-	return panel != null and uses_short_side_panels()
+	return panel != null and (uses_short_side_panels() or (panel == block_panel and uses_side_block_hub()))
 
 func uses_compact_narrow_activities() -> bool:
 	var vp := bubble_viewport_size()
@@ -6597,7 +6600,7 @@ func uses_compact_narrow_activities() -> bool:
 
 func uses_compact_narrow_hub() -> bool:
 	var vp := bubble_viewport_size()
-	return vp.x < SIDE_HUB_MIN_WIDTH and not uses_short_side_panels() and vp.y < COMPACT_ACTIVITY_MAX_HEIGHT and block_panel != null and block_panel.visible and block_panel_mode == "hub"
+	return vp.x < SIDE_HUB_MIN_WIDTH and not uses_side_block_hub() and vp.y < COMPACT_ACTIVITY_MAX_HEIGHT and block_panel != null and block_panel.visible and block_panel_mode == "hub"
 
 func uses_compact_narrow_panels() -> bool:
 	return uses_compact_narrow_activities() or uses_compact_narrow_hub()
@@ -6609,7 +6612,7 @@ func uses_short_narrow_walking() -> bool:
 	# Keep the normal control grid stable in Map and chapter cards too.
 	# Camera fitting still requires following_player; this flag describes layout.
 	var vp := bubble_viewport_size()
-	return vp.x >= SIDE_ACTIVITY_MIN_WIDTH and vp.x < SIDE_HUB_MIN_WIDTH and vp.y < SIDE_HUB_MAX_HEIGHT and not any_side_panel_visible()
+	return vp.x >= SMALL_SIDE_HUB_MIN_WIDTH and vp.x < SIDE_HUB_MIN_WIDTH and vp.y < SIDE_HUB_MAX_HEIGHT and not any_side_panel_visible()
 
 func has_side_panel_dock() -> bool:
 	for panel in [block_panel, mural_panel, music_panel]:
@@ -6626,7 +6629,9 @@ func layout_walking_controls_and_hub() -> void:
 	var short_phone := uses_compact_narrow_panels()
 	var short_walking := uses_short_narrow_walking()
 	var vp := bubble_viewport_size()
-	var dock_width := clampf(vp.x * 0.52, 312.0, 440.0)
+	# Only the small hub uses a narrower dock; activity readers keep their width.
+	var dock_min := 280.0 if uses_side_block_hub() and vp.x < SIDE_ACTIVITY_MIN_WIDTH else 312.0
+	var dock_width := clampf(vp.x * 0.52, dock_min, 440.0)
 	controls.offset_right = -(dock_width + 20.0) if side else -12.0
 	controls.columns = 3 if compact or short_walking else (2 if narrow else 3)
 	# Two50px rows,4px separation and12px bottom margin in short phone walking.
@@ -7118,6 +7123,9 @@ func frame_player_for_walking() -> void:
 	target = Vector3(player.position.x, 1.0, player.position.z)
 	update_camera()
 	update_occlusion(true)
+	# Map hides/rescales YOU; refit after its billboard is visible and rebuilt.
+	if uses_short_narrow_walking():
+		refit_panel_after_layout()
 	update_guide_marker()
 	get_viewport().gui_release_focus()
 	info.text = "You're here. %s.\nFollow the gold marker or tap What's Next?" % location_phrase(player_xz())

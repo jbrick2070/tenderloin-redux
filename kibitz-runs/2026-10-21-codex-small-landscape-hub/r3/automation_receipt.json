@@ -1,0 +1,11 @@
+{
+  "automation_id": "build-tenderloin-redux",
+  "kind": "heartbeat",
+  "status": "ACTIVE",
+  "cadence_minutes": 30,
+  "target_thread_id": "01a159d6-60a3-78e1-92ae-4018509d2539",
+  "prompt_sha256": "b214b57776aae3e06569a3ebe4f907691ee8c3831c07cd757e0586fd47781be7",
+  "updated_at": 1792589164112,
+  "next_scope": "520..559 short landscape conversation/mural/music readers and real subject/player space; completed hub/walking not repeated",
+  "no_end_time": true
+}
