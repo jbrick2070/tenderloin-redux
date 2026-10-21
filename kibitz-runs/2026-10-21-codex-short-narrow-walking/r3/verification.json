@@ -1,0 +1,484 @@
+{
+  "baseline": "e834535c5d655516619f4c7f05247d9bcda8f200",
+  "final_source": {
+    "godot/main.gd": "a1610bd7ec2b3337cd9c30fb39b069728282baf92cf29b4f158de5201b351970",
+    "godot/tests/study_test.gd": "3b3d553932f65b2a5f92d47815db909ba10c93e91ceb641678c4946f8b80c2d0",
+    "tests/godot-browser.mjs": "7d10cb2b467a3d9b188f82b05431e55a1931a5643b1702223925ac76bc7fd533",
+    "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160"
+  },
+  "public": {
+    "version": "0.12.0",
+    "fingerprint": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567"
+  },
+  "all_five_gates_pass": true,
+  "gate_logs": {
+    "native": "artifacts/short-walking-verified-native.log",
+    "export": "artifacts/short-walking-verified-export.log",
+    "check": "artifacts/short-walking-verified-check.log",
+    "node": "artifacts/short-walking-verified-node.log",
+    "browser": "artifacts/short-walking-verified-browser.log"
+  },
+  "browser": {
+    "runs": [
+      {
+        "viewport": {
+          "width": 1100,
+          "height": 760
+        },
+        "fullSaveBytes": 1728,
+        "headerHeight": 98,
+        "performance": {
+          "astar_expanded_cells": 2222,
+          "astar_used": true,
+          "district_boundary_present": true,
+          "object_node_count": 2167,
+          "opening_buildings_count": 58,
+          "pathfind_blackhawk_usec": 71200,
+          "pathfind_blackhawk_waypoints": 3,
+          "pathfind_budget_max_usec": 250000,
+          "pathfind_cold_cache": true,
+          "save_budget_max_bytes": 4096,
+          "save_budget_max_usec": 50000,
+          "save_bytes": 1535,
+          "save_roundtrip_usec": 200,
+          "street_ways_count": 20,
+          "total_buildings_count": 188,
+          "voices_teardown_budget_max_usec": 50000,
+          "voices_teardown_measured": true,
+          "voices_teardown_usec": 1,
+          "wider_buildings_count": 130,
+          "wider_street_ways_count": 41,
+          "within_budget": true
+        }
+      },
+      {
+        "viewport": {
+          "width": 390,
+          "height": 667
+        },
+        "fullSaveBytes": 1728,
+        "headerHeight": 94,
+        "performance": {
+          "astar_expanded_cells": 2222,
+          "astar_used": true,
+          "district_boundary_present": true,
+          "object_node_count": 2167,
+          "opening_buildings_count": 58,
+          "pathfind_blackhawk_usec": 73200,
+          "pathfind_blackhawk_waypoints": 3,
+          "pathfind_budget_max_usec": 250000,
+          "pathfind_cold_cache": true,
+          "save_budget_max_bytes": 4096,
+          "save_budget_max_usec": 50000,
+          "save_bytes": 1535,
+          "save_roundtrip_usec": 300,
+          "street_ways_count": 20,
+          "total_buildings_count": 188,
+          "voices_teardown_budget_max_usec": 50000,
+          "voices_teardown_measured": true,
+          "voices_teardown_usec": 1,
+          "wider_buildings_count": 130,
+          "wider_street_ways_count": 41,
+          "within_budget": true
+        }
+      },
+      {
+        "viewport": {
+          "width": 320,
+          "height": 667
+        },
+        "fullSaveBytes": 1728,
+        "headerHeight": 94,
+        "performance": {
+          "astar_expanded_cells": 2222,
+          "astar_used": true,
+          "district_boundary_present": true,
+          "object_node_count": 2167,
+          "opening_buildings_count": 58,
+          "pathfind_blackhawk_usec": 78800,
+          "pathfind_blackhawk_waypoints": 3,
+          "pathfind_budget_max_usec": 250000,
+          "pathfind_cold_cache": true,
+          "save_budget_max_bytes": 4096,
+          "save_budget_max_usec": 50000,
+          "save_bytes": 1535,
+          "save_roundtrip_usec": 200,
+          "street_ways_count": 20,
+          "total_buildings_count": 188,
+          "voices_teardown_budget_max_usec": 50000,
+          "voices_teardown_measured": true,
+          "voices_teardown_usec": 1,
+          "wider_buildings_count": 130,
+          "wider_street_ways_count": 41,
+          "within_budget": true
+        }
+      }
+    ],
+    "shortWalkingCases": [
+      {
+        "width": 560,
+        "height": 360,
+        "touch": false
+      },
+      {
+        "width": 568,
+        "height": 375,
+        "touch": false
+      },
+      {
+        "width": 599,
+        "height": 360,
+        "touch": false
+      },
+      {
+        "width": 599,
+        "height": 480,
+        "touch": false
+      },
+      {
+        "width": 560,
+        "height": 360,
+        "touch": true
+      },
+      {
+        "width": 599,
+        "height": 360,
+        "touch": true
+      }
+    ],
+    "captionChecks": 2,
+    "guideChecks": 6,
+    "shortStoryCases": 9,
+    "shortStoryFingerCases": 3,
+    "narrowHubCases": 8,
+    "narrowActivityCases": 27,
+    "shortActivityCases": 18,
+    "shortHubCases": 8,
+    "queuedRewardCases": 2,
+    "packBytes": 1672180,
+    "errors": [],
+    "external": []
+  },
+  "independent_calls": 1,
+  "requested_model": "claude-opus-5-5",
+  "requested_effort": "high",
+  "limits": "Bounded560..599 short walking, Info collapsed. Below560 hub remains next; expandedInfo/full physical device and human experience unverified. Full roadmap unfinished. No deployment.",
+  "files": {
+    "artifacts/codex-short-walking-560x360-mouse.json": {
+      "sha256": "e42615bda5f4f9fee00db748ae7062ea467df82d00c5330a14722169665a2179",
+      "bytes": 10972
+    },
+    "artifacts/codex-short-walking-560x360-mouse.png": {
+      "sha256": "87866ab98db33fd2c8a4e3d78cded35b2315d203968dbd4a685289f539036f49",
+      "bytes": 92019
+    },
+    "artifacts/codex-short-walking-560x360-touch.json": {
+      "sha256": "05f40a4174630afb079d66c8d603f147b4844e3d123b011d0f31443fc0855393",
+      "bytes": 10703
+    },
+    "artifacts/codex-short-walking-560x360-touch.png": {
+      "sha256": "4cc428ae666dcf886f2ab3b5a2a61f61d45e312557076882631d3043e5f62385",
+      "bytes": 90486
+    },
+    "artifacts/codex-short-walking-568x375-mouse.json": {
+      "sha256": "a146f617955065a8d5226e06b9a3c4eb1860efdd458b9278b7271004b0e30b6a",
+      "bytes": 10768
+    },
+    "artifacts/codex-short-walking-568x375-mouse.png": {
+      "sha256": "410097f33a44a802d91db390a6ee123a65fcaaad29b9947a5207b6cb1815d706",
+      "bytes": 82783
+    },
+    "artifacts/codex-short-walking-599x360-mouse.json": {
+      "sha256": "7bc61a60ef7c3db9069638dfbd65f2374bdbd4ac2931df7b5d4cd49c18cbb030",
+      "bytes": 10732
+    },
+    "artifacts/codex-short-walking-599x360-mouse.png": {
+      "sha256": "a908e23c8359551a06066475f51c190b1e1ea4fdd77775d23f32263c3be0f9ec",
+      "bytes": 73155
+    },
+    "artifacts/codex-short-walking-599x360-touch.json": {
+      "sha256": "e1cec176f3d27dd66ebb4d9f8db5ff2f33dd96ce2811fd88a67eff0adca10e73",
+      "bytes": 10717
+    },
+    "artifacts/codex-short-walking-599x360-touch.png": {
+      "sha256": "20d88ead88521a6f8f499c253e1d3b6c5098af4023afacba563f2fc8690ef0d4",
+      "bytes": 82576
+    },
+    "artifacts/codex-short-walking-599x480-mouse.json": {
+      "sha256": "e8a17f4626f29e04281748d16ae1b365ad6132cd16875c7f298924395a7d0168",
+      "bytes": 10713
+    },
+    "artifacts/codex-short-walking-599x480-mouse.png": {
+      "sha256": "910ff19d153f46c43d8b1208cc973b84efd01e801b10bbb7ecd27bae00fabf80",
+      "bytes": 90003
+    },
+    "artifacts/codex-short-walking-caption-599x480-mouse.json": {
+      "sha256": "20fea4acd5b256dd78f3d8dd73aba4ac683621836b0d670ee9fd7fc2b455151b",
+      "bytes": 11179
+    },
+    "artifacts/codex-short-walking-caption-599x480-mouse.png": {
+      "sha256": "08ea72a00646716602fe3efe06dbe7ab683f5bea3ea8d626e30a027407b9ed32",
+      "bytes": 115769
+    },
+    "artifacts/codex-short-walking-final-landscape.json": {
+      "sha256": "fd6124b0e8f7553828cf167e723c9daec6178a5ade2f65793780d8886a9a1e3e",
+      "bytes": 12778
+    },
+    "artifacts/codex-short-walking-final-landscape.png": {
+      "sha256": "98de53d5b8a4f786fceeabc27f37a04f0a720601bb0d00fa5cb1d83f6508705b",
+      "bytes": 99484
+    },
+    "artifacts/codex-short-walking-final-preview.json": {
+      "sha256": "2926093a5f4c3107cdb467c4196fb3e6942f05f33b97ec2db49df6f6b503b7eb",
+      "bytes": 12808
+    },
+    "artifacts/codex-short-walking-final-preview.png": {
+      "sha256": "7b801f6511991725804acb1409fb6f77bafe6e0f5866b5d369aeea2ca34d9381",
+      "bytes": 72922
+    },
+    "artifacts/godot-web/index.pck": {
+      "sha256": "907df35893f19da5edbe30d5c2ec14fbfc74ec57f478049b5ac2e7b6da65d1fa",
+      "bytes": 1672180
+    },
+    "artifacts/short-walking-final-metrics.json": {
+      "sha256": "5a79d20728b2975011b54e687dfb2fed577a59f14e0b326612014c62b54716ec",
+      "bytes": 3683
+    },
+    "artifacts/short-walking-final-walking-599x360.json": {
+      "sha256": "bdd1515f37c611241c0242cf00659576a3c26ff03397104c18d003611ec61915",
+      "bytes": 10437
+    },
+    "artifacts/short-walking-final-walking-599x360.png": {
+      "sha256": "7feb8ff0a7c2e998558d9107c59582798390cd98155b1733a2a1692c779792a4",
+      "bytes": 88939
+    },
+    "artifacts/short-walking-input-preflight.log": {
+      "sha256": "21648e4b659d277b55a53824282fa426bfe0613cc8dd6f480920da937d738b3d",
+      "bytes": 521
+    },
+    "artifacts/short-walking-input-preflight.mjs": {
+      "sha256": "b7ce68cff82b423ebd94f37f252a31d9b03a073d6f556b74c6bae7c6e7885517",
+      "bytes": 9561
+    },
+    "artifacts/short-walking-input-preflight2.log": {
+      "sha256": "2526fc80c2f4b2487491480bb64154ea677e08f70ef6ad2c8d6e3c7d1cfe9309",
+      "bytes": 561
+    },
+    "artifacts/short-walking-input-preflight3.log": {
+      "sha256": "c9ae0e3006cc9200e35260ee7dcb3de51836961265d771c264d797499250ac62",
+      "bytes": 296
+    },
+    "artifacts/short-walking-input-preflight4.log": {
+      "sha256": "d6d4f3f5c8c5e8ed4f75e102bf28ca89d649afa20faa2501643cccea78b1953e",
+      "bytes": 463
+    },
+    "artifacts/short-walking-input-preflight5.log": {
+      "sha256": "9900c0e2fbc115efd5ac73f8c70f0f3a24126ccd6e08ebe1f2c85d42d28b8b48",
+      "bytes": 354
+    },
+    "artifacts/short-walking-map-bounds-lap0.png": {
+      "sha256": "c3b67c41eaf8a20cd39b1a4488cd961c30ceb669a9d85c98d6f4af932197a206",
+      "bytes": 86645
+    },
+    "artifacts/short-walking-map-bounds-lap1.png": {
+      "sha256": "7d34288e75728cd779f49be130fdab515fd06011b4a121cfe6dda3e12e1586f3",
+      "bytes": 86390
+    },
+    "artifacts/short-walking-map-bounds-lap2.png": {
+      "sha256": "a72576c14a142834b94b8473e6078311c6360cbd7b2271fe25358be421944201",
+      "bytes": 86498
+    },
+    "artifacts/short-walking-map-bounds-probe.json": {
+      "sha256": "e67d430684fda29f56590179ec9fefaf5f39c22130adee012255605ca5d35f7f",
+      "bytes": 16062
+    },
+    "artifacts/short-walking-map-bounds-probe.log": {
+      "sha256": "aa2e634e76829b2eef3c64b59caa61357e25e4ffb578353b1f10488e0c0d35db",
+      "bytes": 10051
+    },
+    "artifacts/short-walking-map-bounds-probe.mjs": {
+      "sha256": "ee611e24b566c2f0f38a89dc6b0e7f90e6d085c2fa700b382b55b2561407bbb4",
+      "bytes": 1651
+    },
+    "artifacts/short-walking-native-preflight.log": {
+      "sha256": "32d0e36e56adc406d07c40fb03e683543fe26ae0c943cf7137572706f4895f3c",
+      "bytes": 722
+    },
+    "artifacts/short-walking-native-preflight2.log": {
+      "sha256": "ac0ba2baa43af870ee00abb0cc775dc0e2c3f5d1e71d6591d8f1255b712cbbcb",
+      "bytes": 27326
+    },
+    "artifacts/short-walking-native-preflight3.log": {
+      "sha256": "95f57c6e09307a650632e7b48e407691b45c47d81f6d02aa96296bddc2910966",
+      "bytes": 27347
+    },
+    "artifacts/short-walking-native-preflight4.log": {
+      "sha256": "bc811e5b61885161a20bfc73001443c24f15d006487fb48dc7491800c23b9c90",
+      "bytes": 27355
+    },
+    "artifacts/short-walking-next-small-520x360.json": {
+      "sha256": "80754313060a014b2391465b631843c1c745e7cc833eba287d16a7dc517fd461",
+      "bytes": 12756
+    },
+    "artifacts/short-walking-next-small-520x360.png": {
+      "sha256": "4de45988b01c005e4598ee81ef6c0f2ac7120fdeaa347e5958065e575b7996fc",
+      "bytes": 62842
+    },
+    "artifacts/short-walking-next-small-559x360.json": {
+      "sha256": "a8abf441bc8ff73e11b7cf385539672b7c198e0ef3090790ae2187f31aae40bc",
+      "bytes": 12762
+    },
+    "artifacts/short-walking-next-small-559x360.png": {
+      "sha256": "e2c97c3fa3bd0e4e32d49af1004e3d06aae9eef0da51cbf715f6a823456bd497",
+      "bytes": 64969
+    },
+    "artifacts/short-walking-next-small-probe.log": {
+      "sha256": "2c8bf6a7b7791753d246982ad37417a336170d78b460e064a854d575d000a627",
+      "bytes": 2121
+    },
+    "artifacts/short-walking-next-small-probe.mjs": {
+      "sha256": "d171c44aa14f37281fe467e15b905b62506d415892a66ac5b8bfad6251ac4ab7",
+      "bytes": 4000
+    },
+    "artifacts/short-walking-next-small.json": {
+      "sha256": "1ad656db174746a0a4208eefe42e64c392256768a739267f1dfaa52e494ceefc",
+      "bytes": 3808
+    },
+    "artifacts/short-walking-preflight-failure.json": {
+      "sha256": "23f4d5c6d93c07ffe04c19690bddb49dcf8cef981ad43e6411c02a7640428f50",
+      "bytes": 11316
+    },
+    "artifacts/short-walking-preflight-failure.png": {
+      "sha256": "1e50ee7a8468a40719808ded8c543b1f3178fcd8fe5938946bf96c6836ac0156",
+      "bytes": 86581
+    },
+    "artifacts/short-walking-preflight-failure1.json": {
+      "sha256": "d687a3c696bc3479b5f67638f76e892339b203743c6ec6bf70473ddaf2b512b6",
+      "bytes": 11622
+    },
+    "artifacts/short-walking-preflight-failure1.png": {
+      "sha256": "5caf102923e6bf3e4117cfea0d6573029fe4ac688225df58079383eecaa0bb62",
+      "bytes": 92640
+    },
+    "artifacts/short-walking-preflight-failure2.json": {
+      "sha256": "23f4d5c6d93c07ffe04c19690bddb49dcf8cef981ad43e6411c02a7640428f50",
+      "bytes": 11316
+    },
+    "artifacts/short-walking-preflight-failure2.png": {
+      "sha256": "1e50ee7a8468a40719808ded8c543b1f3178fcd8fe5938946bf96c6836ac0156",
+      "bytes": 86581
+    },
+    "artifacts/short-walking-verified-browser.log": {
+      "sha256": "e394d491ebf920f5b626b3685376705fcbdce4d91e0b099bf00c93efdfaabb26",
+      "bytes": 47193
+    },
+    "artifacts/short-walking-verified-check.log": {
+      "sha256": "bbbf642933db0755ec1b063caec7667a16966ea1db64dadab1526709e88e5537",
+      "bytes": 1337
+    },
+    "artifacts/short-walking-verified-export.log": {
+      "sha256": "bb6fab37171e55788bc415710a9755fcb60eeacf76614378403ba2db28ece436",
+      "bytes": 2122
+    },
+    "artifacts/short-walking-verified-native.log": {
+      "sha256": "81bb18053379acf1c77e8ce31dd0956525507f94cdf9b755df1c6b45ce5cbbe3",
+      "bytes": 27381
+    },
+    "artifacts/short-walking-verified-node.log": {
+      "sha256": "544beafd7ace500f58783e44d20354b586b055e417923202c3cb98bc39b69597",
+      "bytes": 10796
+    },
+    "docs/BUILD_STATUS.md": {
+      "sha256": "2a48e8b3259744a01c114687b7b5dc8cdff4b62a836b25dfe3dc36f39dcd2998",
+      "bytes": 242398
+    },
+    "godot/main.gd": {
+      "sha256": "a1610bd7ec2b3337cd9c30fb39b069728282baf92cf29b4f158de5201b351970",
+      "bytes": 686123
+    },
+    "godot/tests/study_test.gd": {
+      "sha256": "3b3d553932f65b2a5f92d47815db909ba10c93e91ceb641678c4946f8b80c2d0",
+      "bytes": 297297
+    },
+    "kibitz-runs/2026-10-21-codex-short-narrow-walking/r3/automation_receipt.json": {
+      "sha256": "383460f4fe70fc7481fc9506c3a1998bd187bff140e8250dd2e5695904998469",
+      "bytes": 409
+    },
+    "kibitz-runs/2026-10-21-codex-short-narrow-walking/r3/claude.log": {
+      "sha256": "ec746af9bafda5dd19143aaf1b449919b7d65609f933100b3cd824cb4492d21b",
+      "bytes": 2188
+    },
+    "kibitz-runs/2026-10-21-codex-short-narrow-walking/r3/claude.md": {
+      "sha256": "35cbeeb83f3b11331712f897cb6ce7b94ab1cf9cc9c293234c662c0a02d695b1",
+      "bytes": 8801
+    },
+    "kibitz-runs/2026-10-21-codex-short-narrow-walking/r3/claude_budget_selected.txt": {
+      "sha256": "b80401b5bdee9b92d2114d1dcae19e4929eefb76987dd1911802478ede026cf0",
+      "bytes": 64
+    },
+    "kibitz-runs/2026-10-21-codex-short-narrow-walking/r3/claude_effort_selected.txt": {
+      "sha256": "6ef7c9b15ecdd69083724b84cfdc2100351963488b51b4ea2fcbddf493fbec94",
+      "bytes": 4
+    },
+    "kibitz-runs/2026-10-21-codex-short-narrow-walking/r3/claude_model_selected.txt": {
+      "sha256": "005912bee6ee4543cec4404b5a02b9bcb11a6f1dcc134b6693c7ccde5fdd2f69",
+      "bytes": 15
+    },
+    "kibitz-runs/2026-10-21-codex-short-narrow-walking/r3/claude_quota_status.txt": {
+      "sha256": "a7401b8d8f2d1845aaf6e227598bd6c0e251ff4bc3e5b4cdc766a7a95a057297",
+      "bytes": 484
+    },
+    "kibitz-runs/2026-10-21-codex-short-narrow-walking/r3/driver_anchor.md": {
+      "sha256": "609a61ac13b33f3b216038e32bf8165f07491c5e49b8039821a364945ed32bd9",
+      "bytes": 2121
+    },
+    "kibitz-runs/2026-10-21-codex-short-narrow-walking/r3/final.md": {
+      "sha256": "7ea08cfc0633c49bd6b45ce7fdb0d716ff86c6c139cbd6e6bf7411c1b90d69da",
+      "bytes": 5426
+    },
+    "kibitz-runs/2026-10-21-codex-short-narrow-walking/r3/input.md": {
+      "sha256": "8ed6130bbe30a5bf68c9a9dc6182dbc15ea8907a6ae1916c8dbee94f3fc92757",
+      "bytes": 3974
+    },
+    "kibitz-runs/2026-10-21-codex-short-narrow-walking/r3/judgment.md": {
+      "sha256": "9cdc8a4489c9f2b84b91eb3ec0956ead6e3e65d5526eb93be19480ad46fe54cb",
+      "bytes": 3228
+    },
+    "kibitz-runs/2026-10-21-codex-short-narrow-walking/r3/model_receipt.json": {
+      "sha256": "7a3824a492175f99aa0d4e6ea72122bc3d3179e2cdcf9b1d8f6d0c37364310e3",
+      "bytes": 649
+    },
+    "kibitz-runs/2026-10-21-codex-short-narrow-walking/r3/profiles_used.txt": {
+      "sha256": "a9a11813438ba2fc0c6efd97f13b88bf41af82044d04182d865bdd38eaa32423",
+      "bytes": 8
+    },
+    "kibitz-runs/2026-10-21-codex-short-narrow-walking/r3/review_scope.md": {
+      "sha256": "8ed6130bbe30a5bf68c9a9dc6182dbc15ea8907a6ae1916c8dbee94f3fc92757",
+      "bytes": 3974
+    },
+    "kibitz-runs/2026-10-21-codex-short-narrow-walking/r3/scope_receipt.md": {
+      "sha256": "990e6e818a743b94e9595562f4b05447f21b187cc01960307249eb5435f84e5a",
+      "bytes": 457
+    },
+    "kibitz-runs/2026-10-21-codex-short-narrow-walking/r3/source-before.json": {
+      "sha256": "8dfa7f14fcbb15a2c287217e2ca701a2453230607924b7fb15be37d168012846",
+      "bytes": 391
+    },
+    "kibitz-runs/2026-10-21-codex-short-narrow-walking/r3/source-comparison.json": {
+      "sha256": "0eb9e67574b09f733213cf22b2e051e5373adaa91f41ebcf6268fd1243afaf87",
+      "bytes": 1295
+    },
+    "session_handoff.md": {
+      "sha256": "2f6bc0f614e38089778039f4cb815e1dbec3b8dbf78c9c038ac076a555d174fb",
+      "bytes": 122165
+    },
+    "tests/godot-browser.mjs": {
+      "sha256": "7d10cb2b467a3d9b188f82b05431e55a1931a5643b1702223925ac76bc7fd533",
+      "bytes": 157315
+    },
+    "tests/godot-data.test.mjs": {
+      "sha256": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160",
+      "bytes": 23003
+    }
+  }
+}

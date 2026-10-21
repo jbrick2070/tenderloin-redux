@@ -113,7 +113,7 @@ func run() -> void:
 	var short_story_target: Vector3 = study.target
 	var short_story_unlocked: bool = study.reward_audio_unlocked
 	var changed_scrolled_chapters := 0
-	for story_size in [Vector2i(640, 360), Vector2i(667, 375), Vector2i(844, 390), Vector2i(800, 480), Vector2i(320, 568), Vector2i(320, 667), Vector2i(1100, 760)]:
+	for story_size in [Vector2i(640, 360), Vector2i(667, 375), Vector2i(844, 390), Vector2i(800, 480), Vector2i(320, 568), Vector2i(320, 667), Vector2i(1100, 760), Vector2i(560, 360), Vector2i(599, 360)]:
 		root.size = story_size
 		await process_frame
 		await process_frame
@@ -3235,6 +3235,7 @@ func run() -> void:
 	require(study.info.visible and study.info.text.contains(solo_hint), "What's Next shows a visible answer away from neighbors")
 	study.set_header_details(false)
 	await verify_narrow_hub(study)
+	await verify_short_narrow_walking(study)
 	await verify_short_activity_panels(study)
 	await verify_short_activity_panels(study, true)
 	study.clear_godot_save()
@@ -3336,7 +3337,8 @@ func verify_narrow_hub(study: Node) -> void:
 		study.show_block_panel(false)
 		for frame in range(3):
 			await process_frame
-		require(study.controls.columns == 2 and study.controls.offset_top == -174 and study.controls.offset_right == -12 and study.map_control.text == "Tenderloin Map", "Close restores the full narrow walking grid")
+		var short_walk: bool = hub_size.x >= 560 and hub_size.y < 560
+		require(study.controls.columns == (3 if short_walk else 2) and study.controls.offset_top == (-116 if short_walk else -174) and study.controls.offset_right == -12 and study.map_control.text == "Tenderloin Map", "Close restores the full narrow walking grid with two rows in short landscape")
 		require(JSON.stringify(study.build_save_envelope()) == save and study.view_size == zoom, "narrow hub paging reading and Info preserve progression and zoom")
 		study.show_conversation(0)
 		for frame in range(3):
@@ -3360,6 +3362,100 @@ func verify_narrow_hub(study: Node) -> void:
 	study.show_block_panel(false)
 	study.player.position = original_player
 	study.objective_refresh_timer = original_timer
+	root.size = Vector2i(1100, 760)
+	study.frame_player_for_walking()
+	await process_frame
+	await process_frame
+
+func verify_short_narrow_walking(study: Node) -> void:
+	var before_player: Vector3 = study.player.position
+	var before_timer: float = study.objective_refresh_timer
+	study.hide_story_card()
+	study.hide_speech_bubble()
+	study.current_path.clear()
+	study.set_header_details(false, false)
+	var caption_checks := 0
+	var guide_checks := 0
+	for size in [Vector2i(560, 360), Vector2i(568, 375), Vector2i(599, 360), Vector2i(599, 480), Vector2i(560, 559), Vector2i(599, 559)]:
+		root.size = size
+		if size == Vector2i(599, 480):
+			var stop: Vector2 = study.nearest_street_point(study.comptons_xz())
+			study.player.position = Vector3(stop.x, 0, stop.y)
+		var case_player: Vector3 = study.player.position
+		study.frame_player_for_walking()
+		study.objective_refresh_timer = 1000.0
+		study.objective_label.text = "Chapter 6: Explore the neighborhood · Next: Spot Jeffrey's Lost 1961 Record (0/10 surprises, Shift+D) · Museum (Shift+M)"
+		for frame in range(5):
+			await process_frame
+		var save: String = JSON.stringify(study.build_save_envelope())
+		var area: Rect2 = study.play_area_rect()
+		print("SHORT_WALK_CHECK ", size, " scene=", area, " body=", study.player_overlay_rect(), " controls=", study.controls.get_global_rect())
+		require(study.uses_short_narrow_walking() and study.controls.columns == 3 and study.controls.offset_top == -116, "short narrow walking uses two rows")
+		require(area.size.y >= 100 and area.grow(1).encloses(study.player_overlay_rect()), "short walking retains full enlarged player and YOU under a long objective")
+		for caption in study.visible_scene_captions:
+			caption_checks += 1
+			require(not caption.rect.intersects(study.player_overlay_rect()), "short walking world captions leave the real player clear")
+		if study.guide_arrow_label.is_visible_in_tree():
+			guide_checks += 1
+			require(not study.guide_arrow_label.get_global_rect().grow(7).intersects(study.player_overlay_rect()), "short walking outlined objective leaves the player clear")
+		var captions: Array = ["What's Next?", "Tenderloin Map", "Find Me", "Zoom In (+)", "Zoom Out (−)", "Walk & Talk (Next)"]
+		for i in range(study.walking_control_snapshots().size()):
+			var b: Dictionary = study.walking_control_snapshots()[i]
+			require(b.text == captions[i] and b.text_fits and b.width >= 44 and b.height >= 50 and b.y + b.height <= size.y, "short walking preserves complete original labels and50px targets")
+		for kind in ["hub", "mural", "music"]:
+			if kind == "hub":
+				study.show_block_panel(true)
+			elif kind == "mural":
+				study.show_mural_panel(true)
+			else:
+				study.show_music_panel(true)
+			require(study.controls.offset_top == -104 and study.controls.columns == 3, "open panel retains its actual compact control geometry")
+			if kind == "hub":
+				study.block_close_btn.pressed.emit()
+			else:
+				study.end_conversation()
+			for frame in range(4):
+				await process_frame
+			require(study.uses_short_narrow_walking() and study.controls.columns == 3 and study.play_area_rect().grow(1).encloses(study.player_overlay_rect()), "real Close restores useful short walking space")
+		study.wide_overview()
+		study.frame_player_for_walking()
+		for frame in range(4):
+			await process_frame
+		require(not study.in_wide_overview and study.view_size == 45 and study.play_area_rect().grow(1).encloses(study.player_overlay_rect()), "Map then Find Me restores the short walking view")
+		study.pan_camera_by_screen_delta(Vector2(10, 4))
+		var manual: Array = study.panel_camera_pose()
+		root.size = Vector2i(599, 375)
+		for frame in range(4):
+			await process_frame
+		require(study.panel_camera_pose() == manual and not study.following_player, "short walking resize preserves manual pan")
+		require(study.player.position == case_player and JSON.stringify(study.build_save_envelope()) == save, "short walking framing and Close preserve position/progress")
+		study.player.position = before_player
+	print("SHORT_WALK_OVERLAYS captions=", caption_checks, " guides=", guide_checks)
+	require(caption_checks > 0 and guide_checks > 0, "short walking clearance exercises real captions and an outlined guide")
+	for boundary in [Vector2i(560, 560), Vector2i(599, 560), Vector2i(599, 640), Vector2i(320, 667), Vector2i(600, 360)]:
+		root.size = boundary
+		study.frame_player_for_walking()
+		for frame in range(4):
+			await process_frame
+		require(not study.uses_short_narrow_walking() and study.controls.columns == (2 if boundary.x < 600 else 3), "existing taller phone and wider layouts restore their original walking grid")
+	root.size = Vector2i(599, 360)
+	study.frame_player_for_walking()
+	for frame in range(4):
+		await process_frame
+	study.wide_overview()
+	require(study.in_wide_overview and not study.following_player and study.view_size != 45, "short keyboard Find Me starts in a different real Map view")
+	require(study.controls.get_child(2).text == "Find Me", "short keyboard fixture targets the actual Find Me button")
+	study.controls.get_child(2).grab_focus()
+	for pressed in [true, false]:
+		var accept := InputEventAction.new()
+		accept.action = "ui_accept"
+		accept.pressed = pressed
+		Input.parse_input_event(accept)
+		await process_frame
+	for frame in range(4):
+		await process_frame
+	require(not study.in_wide_overview and study.following_player and study.view_size == 45 and study.play_area_rect().grow(1).encloses(study.player_overlay_rect()), "real ui_accept on short Find Me frames the enlarged player")
+	study.objective_refresh_timer = before_timer
 	root.size = Vector2i(1100, 760)
 	study.frame_player_for_walking()
 	await process_frame
@@ -3522,7 +3618,8 @@ func verify_short_activity_panels(study: Node, narrow_small := false) -> void:
 			await process_frame
 			await process_frame
 			require(study.controls.offset_right == -12 and study.map_control.text == "Tenderloin Map", "closing short activity restores normal walking controls")
-			require(study.controls.columns == (2 if short_size.x < 600 else 3) and study.controls.offset_top == (-174 if short_size.x < 600 else -124), "real Close restores walking grid and vertical offsets")
+			var tall_phone: bool = short_size.x < 600 and (short_size.x < 560 or short_size.y >= 560)
+			require(study.controls.columns == (2 if tall_phone else 3) and study.controls.offset_top == (-174 if tall_phone else (-116 if short_size.x < 600 else -124)), "real Close restores walking grid and vertical offsets")
 			var normal_labels: Array = ["What's Next?", "Tenderloin Map", "Find Me", "Zoom In (+)", "Zoom Out (−)", "Walk & Talk (Next)"]
 			for i in range(study.controls.get_child_count()):
 				var control: Button = study.controls.get_child(i)

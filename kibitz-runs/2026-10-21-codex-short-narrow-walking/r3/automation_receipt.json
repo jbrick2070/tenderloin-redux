@@ -1,0 +1,11 @@
+{
+  "automation_id": "build-tenderloin-redux",
+  "kind": "heartbeat",
+  "status": "ACTIVE",
+  "cadence_minutes": 30,
+  "target_thread_id": "01a159d6-60a3-78e1-92ae-4018509d2539",
+  "prompt_sha256": "6d806212d13dfb2ab1352c4dc7e0ac3d0391dfeb949b549c6ad196d74ad2ceab",
+  "updated_at": 1792584259272,
+  "next_scope": "520..559 short landscape hub; completed560..599 walking not repeated",
+  "no_end_time": true
+}

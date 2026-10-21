@@ -1,0 +1,22 @@
+STDOUT:
+I've written the review to `kibitz-runs/2026-10-21-codex-short-narrow-walking/r3/claude.md`. I didn't change any other file. I couldn't diff against e834535 because only read and search tools were available, so every finding is checked against the current working tree.
+
+**Verdict: yes-with-fixes.** The `main.gd` wiring holds up: the delayed camera refreshes run in the right order, the two-frame refit drops stale requests, and a manual pan keeps the camera where the player left it across resizes. The problems are in the tests and in the doc's claims, and the doc's own final checks (native run 4, browser re-run after export) haven't run yet.
+
+Must-fix items:
+1. **Final checks:** all 5 must run after the last edit, with the export before the browser run. `tests/godot-browser.mjs:20-22` rejects a stale `index.pck`, so any further `main.gd` edit needs a new export.
+2. **Native keyboard Find Me test proves nothing** (`study_test.gd:3427-3438`): the state it asserts is already true before the key event is sent.
+3. **The real hub Close is never checked on its own.**
+   - The native test closes the hub with `end_conversation()`, but the Close button calls `show_block_panel(false)` (`main.gd:14673`).
+   - The browser test taps Close, then taps Find Me before checking anything.
+   - So nothing tests whether Close alone reframes the player, which is the reported bug.
+4. **The browser Stop test can pass without testing Stop** (`godot-browser.mjs:52-57`): if the route ends before the tap, the tap starts a new walk instead. The existing short-hub Stop test already has the needed guards (distance over 200m and the "Walking stopped." announcement, lines 1762-1764); copy them here.
+
+The review also has should-fix items:
+- The caption and guide-label checks only run when those elements happen to be visible.
+- The new short-walking layout also applies in the Map overview and chapter card, which the doc doesn't say.
+- The doc overstates what the header resize handler limits.
+- The expanded-Info exclusion needs to stay explicit.
+- The finger cases still drag the scene with the mouse.
+
+It ends with one always-true assertion to cut or replace.

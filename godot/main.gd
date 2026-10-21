@@ -6605,6 +6605,12 @@ func uses_compact_narrow_panels() -> bool:
 func uses_compact_activity_controls() -> bool:
 	return has_side_panel_dock() or uses_compact_narrow_panels()
 
+func uses_short_narrow_walking() -> bool:
+	# Keep the normal control grid stable in Map and chapter cards too.
+	# Camera fitting still requires following_player; this flag describes layout.
+	var vp := bubble_viewport_size()
+	return vp.x >= SIDE_ACTIVITY_MIN_WIDTH and vp.x < SIDE_HUB_MIN_WIDTH and vp.y < SIDE_HUB_MAX_HEIGHT and not any_side_panel_visible()
+
 func has_side_panel_dock() -> bool:
 	for panel in [block_panel, mural_panel, music_panel]:
 		if panel != null and panel.visible and panel_uses_side_dock(panel):
@@ -6618,11 +6624,13 @@ func layout_walking_controls_and_hub() -> void:
 	var side := has_side_panel_dock()
 	var compact := uses_compact_activity_controls()
 	var short_phone := uses_compact_narrow_panels()
+	var short_walking := uses_short_narrow_walking()
 	var vp := bubble_viewport_size()
 	var dock_width := clampf(vp.x * 0.52, 312.0, 440.0)
 	controls.offset_right = -(dock_width + 20.0) if side else -12.0
-	controls.columns = 3 if compact else (2 if narrow else 3)
-	controls.offset_top = -104.0 if compact else (-174.0 if narrow else -124.0)
+	controls.columns = 3 if compact or short_walking else (2 if narrow else 3)
+	# Two50px rows,4px separation and12px bottom margin in short phone walking.
+	controls.offset_top = -104.0 if compact else (-116.0 if short_walking else (-174.0 if narrow else -124.0))
 	for child in controls.get_children():
 		if child is Button:
 			child.custom_minimum_size.y = 44.0 if compact else 50.0
@@ -6873,7 +6881,7 @@ func update_guide_arrow() -> void:
 	lbl_global.y = clampf(lbl_global.y, area.position.y + 7.0, maxf(area.position.y + 7.0, area.end.y - lbl_size.y - 7.0))
 	# Keep the outlined objective name clear of the Talk prompt and transient UI.
 	var occupied: Array[Rect2] = []
-	if uses_compact_activity_controls():
+	if uses_compact_activity_controls() or uses_short_narrow_walking():
 		occupied.append(player_overlay_rect().grow(4.0))
 	if reward_banner != null and reward_banner.is_visible_in_tree():
 		occupied.append(reward_banner.get_global_rect())
@@ -8773,7 +8781,10 @@ func refit_panel_after_layout() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if generation == panel_refit_generation:
-		refit_panel_camera()
+		if following_player and uses_short_narrow_walking():
+			refresh_hub_camera()
+		else:
+			refit_panel_camera()
 
 func refit_panel_camera() -> void:
 	# A changed pose means the player inspected, panned, rotated, zoomed or walked.
@@ -11314,6 +11325,7 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"side_panel_dock": has_side_panel_dock(),
 		"compact_narrow_activity": uses_compact_narrow_activities(),
 		"compact_narrow_hub": uses_compact_narrow_hub(),
+		"short_narrow_walking": uses_short_narrow_walking(),
 		"compact_panel_layout_pending": compact_panel_layout_pending,
 		"conversation_detail": activity_detail_snapshot(block_detail_label, block_panel, conv_buttons),
 		"panel_subject_screen": rect_snapshot(Rect2(camera.unproject_position(panel_frame_subject), Vector2.ZERO)) if panel_frame_control != null and panel_frame_control.visible else {},
@@ -13209,7 +13221,7 @@ func update_readable_scene_labels() -> void:
 	var wrap_width := minf(320.0, bubble_viewport_size().x - 32.0)
 	visible_scene_captions.clear()
 	var occupied: Array[Rect2] = []
-	if uses_compact_activity_controls():
+	if uses_compact_activity_controls() or uses_short_narrow_walking():
 		occupied.append(player_overlay_rect().grow(4.0))
 	if reward_banner != null and reward_banner.is_visible_in_tree():
 		occupied.append(reward_banner.get_global_rect().grow(6.0))
@@ -13765,9 +13777,9 @@ func update_camera() -> void:
 	camera.position = target + get_camera_offset_vec() * offset_scale
 	camera.look_at(target)
 	camera.force_update_transform()
-	# The menu should leave the followed character in the remaining scene area.
+	# Hubs and short phone walking keep the followed character in the scene area.
 	# Keep inspection/panned views, heading and zoom under the player's control.
-	if following_player and block_panel != null and block_panel.visible and block_panel_mode == "hub":
+	if following_player and ((block_panel != null and block_panel.visible and block_panel_mode == "hub") or uses_short_narrow_walking()):
 		var focus := player.position + Vector3.UP
 		var ppm := (camera.unproject_position(target + camera.global_basis.y) - camera.unproject_position(target)).length()
 		if ppm > 1e-5:
@@ -13776,7 +13788,7 @@ func update_camera() -> void:
 			camera.position = target + get_camera_offset_vec() * offset_scale
 			camera.look_at(target)
 			camera.force_update_transform()
-			if uses_compact_narrow_hub() or (uses_side_block_hub() and is_narrow_layout()):
+			if uses_compact_narrow_hub() or (uses_side_block_hub() and is_narrow_layout()) or uses_short_narrow_walking():
 				# Focus at one meter is not the center of the enlarged body/YOU bounds.
 				# Fit those bounds after content growth without changing heading or zoom.
 				var body := player_overlay_rect()
@@ -14730,8 +14742,8 @@ func make_ui() -> void:
 				update_music_ui()
 		if is_instance_valid(block_panel):
 			update_block_ui()
-			if following_player and block_panel.visible and block_panel_mode == "hub":
-				update_camera.call_deferred()
+			if following_player and ((block_panel.visible and block_panel_mode == "hub") or uses_short_narrow_walking()):
+				refresh_hub_camera.call_deferred()
 		layout_walking_controls_and_hub()
 		refit_panel_after_layout()
 		layout_reward_banner()
@@ -14742,10 +14754,10 @@ func make_ui() -> void:
 		panel.minimum_size_changed.connect(queue_compact_panel_layout)
 		panel.resized.connect(queue_compact_panel_layout)
 	header_panel.resized.connect(func():
-		if uses_compact_activity_controls():
+		if uses_compact_activity_controls() or uses_short_narrow_walking():
 			layout_walking_controls_and_hub.call_deferred()
 			if following_player:
-				update_camera.call_deferred()
+				refresh_hub_camera.call_deferred()
 			refit_panel_after_layout()
 	)
 	tree_exiting.connect(func():
