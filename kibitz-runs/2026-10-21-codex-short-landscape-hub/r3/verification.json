@@ -1,0 +1,306 @@
+{
+  "baseline": "23f77ecebd1871d9ebb682a35d2e4fca52110659",
+  "invariants": {
+    "legacy_product_save_readonly": true,
+    "native_fallback_glyph_gate": "PASS",
+    "save_max_bytes": 4096,
+    "public_fingerprint": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567",
+    "historical_untracked_review_preserved": true
+  },
+  "hashes": {
+    "artifacts/codex-short-hub-667x375-mouse.png": "2a4d7ce5a96ec7bebcd635ff4e9efd07efae3f8bb84cee7e09940edafc94e63b",
+    "artifacts/short-hub-final-metrics.json": "e077876db55b4f2d9fe2d03275d90c9d616842fb4b45b36155dbf60bc5d87bbb",
+    "artifacts/codex-short-hub-844x390-mouse.png": "f7e8aece44370915df6c480a9a917ce7b727cf3e5b329418965413cfd0715025",
+    "kibitz-runs/2026-10-21-codex-short-landscape-hub/r3/claude_quota_status.txt": "88f235beec0b0fd1178cae7910a7429239358d6326e41799fa301c032388f030",
+    "kibitz-runs/2026-10-21-codex-short-landscape-hub/r3/claude.log": "de91ab35e8ce9af6380c87f1bfb3e68c374eeec989a041b208b9a8454b509319",
+    "artifacts/short-story-next-hub-640x360.png": "cf0c1e2188622512c6bb1ee8046ad8ce1b3fe96a86496af83d1dcd1a0fc3bfdd",
+    "artifacts/codex-short-hub-844x390-touch.png": "626212ad2258a68be949510178ac7b4146ce9c8d37db523a66279ca84f5eeb05",
+    "artifacts/short-hub-caption-before-1100x480.png": "bd99ab9b5afa1f91851c57becd85ecc0b171a43dd8339990f2c7f1c0a504c5ab",
+    "artifacts/short-hub-verified-light-pool-failure.json": "6bed37e638517fb835a6e1e208675ba80cd3a0c8d0a4096678ba21d77361562b",
+    "kibitz-runs/2026-10-21-codex-short-landscape-hub/r3/scope_receipt.md": "b3bc6b67e4d3e57fcd247054ae6b05ce37e83a371e4c4e6a123ff3e91d74f19f",
+    "kibitz-runs/2026-10-21-codex-short-landscape-hub/r3/claude_budget_selected.txt": "b80401b5bdee9b92d2114d1dcae19e4929eefb76987dd1911802478ede026cf0",
+    "kibitz-runs/2026-10-21-codex-short-landscape-hub/r3/profiles_used.txt": "a9a11813438ba2fc0c6efd97f13b88bf41af82044d04182d865bdd38eaa32423",
+    "kibitz-runs/2026-10-21-codex-short-landscape-hub/r3/claude_model_selected.txt": "005912bee6ee4543cec4404b5a02b9bcb11a6f1dcc134b6693c7ccde5fdd2f69",
+    "kibitz-runs/2026-10-21-codex-short-landscape-hub/r3/model_receipt.json": "af4b0973f0e6b9c7fae501de793b2722a72ed21e028222406a90ca2e42d9ce80",
+    "artifacts/short-hub-story-frame-failure.png": "539bcb14c7b5607a5c29f0cf5e36657b5f3e63d9e09a6a145e384d1e41e10bb9",
+    "artifacts/short-hub-native-touch-settled.log": "634239483ded34d84733af9ac254be9aefcf9d7b549044d370e2fb362c837445",
+    "artifacts/short-hub-browser-light-timing-failure.log": "c4784f02c6928c0828f989d6b3d317917b9853738c902b8d7fd97f830de9d6d7",
+    "artifacts/short-hub-stop-arrival-race.png": "b6b354d2a3a0c139f77c75e342855e2bbb635a6f08ed78337dd81c780bfe878a",
+    "artifacts/codex-short-hub-667x375-mouse.json": "f6c163021ab2f4b9bb1ed6229e24fb5601a909ddbefa7be09b2943786fc47e97",
+    "artifacts/short-hub-verified-node.log": "efde07f07cc2e3883c7a965a159d69216f9ab61783610dd9308a2eee2da901ed",
+    "artifacts/short-hub-next-panels.json": "2e1364779469271fb71244ddedb168380c0ca19e1176f3ea6d4dcb094669de5b",
+    "artifacts/codex-short-hub-640x360-touch.png": "386dc6dd38dae567b8aefdae6c48b014f91c3a0a95e76cb614ad9a916f0d4bd1",
+    "artifacts/short-hub-browser-settled-failure.png": "87fd77d50f65116bfbc56148cdfc5fc1bfe3c9228414a4e658cbe6ac49a24057",
+    "artifacts/short-hub-touch-stop-debug.json": "316347100f784a02cc8dd574ff7ad901aa919d5c9194af9625a7a582eb398b77",
+    "kibitz-runs/2026-10-21-codex-short-landscape-hub/r3/input.md": "28c612196855de01f2516812b874abe8bb26793ccb76b7714d3324de8201d2a1",
+    "artifacts/codex-short-hub-1100x480-mouse.png": "82590537bd0f505b47f55957bab0164f3a605b71d7d0fcb0823466d631e7e3b8",
+    "artifacts/short-hub-next-conversation-640x360.png": "88558834f24cac962cdb784fcbd1148b5f403cb2c1889734bd8835891c21dbe0",
+    "artifacts/short-hub-browser-initial-failure.png": "dd0355a41b0188f04c6fc1bca2c16ff81bd45e3cdf259b9b4e72ffaf625e43dc",
+    "artifacts/short-hub-next-conversation-640x360.json": "0286186fe872ad63209a621878a9d62960319781208a485f7cb6deaa1c55b941",
+    "artifacts/short-hub-touch-stop-debug.png": "a1a2d7e3b9b4c6fc9c43f710b16afb8cc288105c8fd223c67e79b74f506fd7df",
+    "artifacts/short-hub-verified-native.log": "51b1c86903bf5d2e3a19fc68365a1434138a082dc18b1f3d90dc77b1a28e1d84",
+    "kibitz-runs/2026-10-21-codex-short-landscape-hub/r3/claude_effort_selected.txt": "6ef7c9b15ecdd69083724b84cfdc2100351963488b51b4ea2fcbddf493fbec94",
+    "kibitz-runs/2026-10-21-codex-short-landscape-hub/r3/claude.md": "6ac10b522fd299526c3543e24ddb7471487d997e5f014868e1a9489306819d2e",
+    "artifacts/short-hub-story-frame-failure.json": "c34578afc688b8842d66ee0a527827b9c3a491dd073c1bc8706643aba4c75424",
+    "artifacts/short-hub-next-music-640x360.json": "3f91bca8f8b380eacd37b24d3d691220699b4331e851b4cfd7cdc66c3e5a424a",
+    "kibitz-runs/2026-10-21-codex-short-landscape-hub/r3/driver_anchor.md": "602e5c6a1576b53abb3dae1b3fcdc6cfca385733a38147efbac1ce402c9c3979",
+    "artifacts/codex-short-hub-800x480-mouse.json": "2d35be1ecd2d6d5f285336ec91e35c65426bae78c8a0313538cd48a734f6fd23",
+    "artifacts/short-hub-light-preflight.log": "875b50de288ed8187336d3d1da923faa7583c242702e468e3745ff350cd5185d",
+    "artifacts/short-hub-stop-preflight-fixed.log": "ea3eb2ede5edef7c6f1663b317ec2a5d8e46ec0845daeac6aa2e3eb68df233cf",
+    "godot/main.gd": "c073d422b0583c7e8d3ca7b4f83c6e4426f3d5574d1ee5e1fa4986a7a5879479",
+    "artifacts/short-hub-next-panels.log": "69f706f6ab9f80b4b63a14f2611ad37d8b62926f7f5171203c0deb027388054a",
+    "artifacts/short-hub-native-touch-test.log": "c404f42462d9baef7571147823c43fb7adc381a44d819aab6db4fb7e27594561",
+    "artifacts/short-hub-next-music-640x360.png": "14af8a3853d6443bea7adc76498c70b3ebd7dcfde60d12b2952f0a2f145747f7",
+    "artifacts/codex-short-hub-stopped-mouse.png": "6f83da5560814bf298b5f262f34eb9a2cf873d471aa4aeb4d2b9890c8cbf8bfb",
+    "artifacts/codex-short-hub-1100x480-mouse.json": "c429562438063d6a65062943fff08603247f425b63a62139ea9fd0aa59325045",
+    "artifacts/short-hub-verified-check.log": "bbbf642933db0755ec1b063caec7667a16966ea1db64dadab1526709e88e5537",
+    "artifacts/codex-short-hub-844x390-mouse.json": "4ea792d792ba6597b371615c30c91b7c9f88ec54cecdaf38e91303f5b2a5ddaf",
+    "kibitz-runs/2026-10-21-codex-short-landscape-hub/r3/final.md": "6001e2a241b4b9603e15da8bc0a81da2a9322be01cb8de128e1952d1d1b60b2d",
+    "artifacts/short-hub-browser-initial-failure.json": "cee979e3532f149c3632150d82eb6844cd322c0312e06f5a0de701d4eaabbe72",
+    "artifacts/short-hub-next-mural-640x360.json": "e26a243896e06a4c6ad44078950d41c256d1d68cf0762e9b19ace46a52ac25c9",
+    "artifacts/codex-short-hub-final-preview.json": "f4a84df4475065d08b608eb20fb27fe02aaafbd53fa2cc7326e9d5b0dc6bd71f",
+    "artifacts/short-hub-browser-settled-failure.json": "c1ca7e244ba5df6ab7d80eded88a144eb9289073366e855968c225bdfbc15002",
+    "artifacts/short-hub-verified-browser.log": "1120b4f3befd5ff9a97029660d71cc00a257fe67185dd1ee9d3a91db73761d64",
+    "artifacts/codex-short-hub-844x390-touch.json": "4eeb42e24aafa63466eb292f108096e3eea23ccd5b6448e3a3ceab871d5278fe",
+    "artifacts/short-hub-touch-event-debug.log": "cbb28f9a8f7c2c47001fc1b97e402863e928d69382250f5e9f449a34e1ffe1b1",
+    "artifacts/short-story-next-hub-640x360.json": "73902ceb5840bb6d50394c4d9f5bb5816944ba22cf43310cd1b827a36ed56227",
+    "artifacts/codex-short-hub-800x480-mouse.png": "0d756134f26a5f3717c347ca2187c3c1eb55b65a0e3329abc4f64cec9bc75251",
+    "artifacts/codex-short-hub-stopped-touch.png": "dd04c2d86884f8f53aecf6ae19522044a092e879258bdf8a55557607a94fe90d",
+    "kibitz-runs/2026-10-21-codex-short-landscape-hub/r3/source-comparison.json": "2a8b142cbe78138caf2487f4e7894e308fdd111b70f8632f6338ff8254a62f55",
+    "kibitz-runs/2026-10-21-codex-short-landscape-hub/r3/source-before.json": "073a5a91dab25b166c491f188562fc6c6082362a27020d10d7a6e84b267b3f94",
+    "tests/godot-browser.mjs": "7ec6e28fc8a417b401f492797db34043426628c20657b19cbb4151f1a53e2559",
+    "session_handoff.md": "f6fd6796edc5d9b7318166cd29660589f3951713d90dabed2e6cead785a9ee2d",
+    "artifacts/codex-short-hub-640x360-touch.json": "63b27b95025596cf9cc1cc44281d76cd611f9e23430ebdbc85da4713c4738238",
+    "artifacts/short-hub-verified-export.log": "bb6fab37171e55788bc415710a9755fcb60eeacf76614378403ba2db28ece436",
+    "artifacts/short-hub-verified-light-pool-failure.png": "356475e115bbe4fbfa13cbe35d94c918f1faffa744a35f05f7ffb453bb91dd00",
+    "artifacts/codex-short-hub-600x360-mouse.png": "96ca4b32e1135d9305d0272d648d41367db4f2a047a29529c51ce83399d68f49",
+    "artifacts/godot-web/index.pck": "06106381fd7fae784074a25e4a342fcc26d1688e599101d78d099259ee8a6f2f",
+    "artifacts/short-hub-caption-before-640x360.png": "d5cde826ac7a66ee0bb33ad50221bb032f5e7517732f87b3b60a0b91cabacd86",
+    "artifacts/codex-short-hub-600x360-mouse.json": "ab22f82a02c3379bde152e8813ce61a2da333fc53080d8b43bf784b11b2d44a7",
+    "artifacts/short-hub-next-mural-640x360.png": "e7b49691bb36bb8a1365a1ef1767a3e4519f9ba35e5eef095515fca8850eb883",
+    "artifacts/codex-short-hub-final-preview.png": "1e0e9aaeceb12f89a88360cdf880565f9034d0e396341f15be4af645bd626ceb",
+    "artifacts/codex-short-hub-640x360-mouse.png": "1929efffe821c2dec8d3a3cca11ad1a5ce0d8f7584ed319d3545f029820f6069",
+    "artifacts/codex-short-hub-640x360-mouse.json": "bda2c4c78f5aa7a409db6477c05ce1fee1f3597240c453ce3528ad96913abcc1",
+    "docs/BUILD_STATUS.md": "23c591939b05705c732aa91aa90adce88da180169e6f975b2eb48f60671b1fc2",
+    "godot/tests/study_test.gd": "b7f8467baca659c68a68312b367814f65ff8e9d28021b6147ad82bcae0fa67c0",
+    "kibitz-runs/2026-10-21-codex-short-landscape-hub/r3/review_scope.md": "28c612196855de01f2516812b874abe8bb26793ccb76b7714d3324de8201d2a1",
+    "kibitz-runs/2026-10-21-codex-short-landscape-hub/r3/judgment.md": "ad03d8cd07aef4379ce3d57f71962833f47b6aef1d8839352fecea6290856fd0",
+    "artifacts/short-hub-layout-640x360.json": "44f55cc2289e9c83f759dd5c82cdef07043b56a9cfd6390ce622b26537f4403f",
+    "artifacts/short-hub-stop-arrival-race.json": "5e1b0cafca99927a654054fc490aa1ddf7129786628f1e4054f5d763d5a3ec53"
+  },
+  "checkpoint": "short-landscape hub and reliable touch Stop",
+  "limits": [
+    "Conversation/mural/music short-landscape1px scene remains separate next task",
+    "Expanded Info and other smaller sizes/short portrait remain limited/unverified",
+    "Physical phones/full screenreaders/human listening/pacing/field acceptance unverified",
+    "Full roadmap unfinished; no deployment/outreach/paid media"
+  ],
+  "review": {
+    "exit_code": 0,
+    "quota_usage": "unknown",
+    "effort": "high",
+    "driver": "codex",
+    "calls": 1,
+    "source_unchanged_during_read": true,
+    "final_driver_fixes_five_gates": true,
+    "model": "claude-opus-5-5",
+    "verdict": "yes-with-fixes",
+    "separate_provider_runtime_model": "unexposed",
+    "round": "r3"
+  },
+  "gates": {
+    "node": "PASS 104/104",
+    "check": "PASS",
+    "browser": "PASS required1100x760/390x667/320x667; errors=[] external=[]",
+    "logs_prefix": "artifacts/short-hub-verified-",
+    "export": "PASS",
+    "native": "PASS GODOT_STUDY_PASS; no errors/warnings"
+  },
+  "metrics": {
+    "pack_bytes": 1666388,
+    "queuedRewardChecks": 2,
+    "external": [],
+    "storyCases": 7,
+    "errors": [],
+    "shortHubChecks": [
+      {
+        "width": 600,
+        "height": 360,
+        "touch": false,
+        "actions": 12
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "touch": false,
+        "actions": 12
+      },
+      {
+        "width": 667,
+        "height": 375,
+        "touch": false,
+        "actions": 12
+      },
+      {
+        "width": 844,
+        "height": 390,
+        "touch": false,
+        "actions": 12
+      },
+      {
+        "width": 800,
+        "height": 480,
+        "touch": false,
+        "actions": 12
+      },
+      {
+        "width": 1100,
+        "height": 480,
+        "touch": false,
+        "actions": 12
+      },
+      {
+        "width": 640,
+        "height": 360,
+        "touch": true,
+        "actions": 12
+      },
+      {
+        "width": 844,
+        "height": 390,
+        "touch": true,
+        "actions": 12
+      }
+    ],
+    "runs": [
+      {
+        "perf_save_bytes": 1535,
+        "fullSaveBytes": 1728,
+        "cold_route_ms": 74.2,
+        "header": 98,
+        "viewport": {
+          "width": 1100,
+          "height": 760
+        }
+      },
+      {
+        "perf_save_bytes": 1535,
+        "fullSaveBytes": 1728,
+        "cold_route_ms": 89.1,
+        "header": 94,
+        "viewport": {
+          "width": 390,
+          "height": 667
+        }
+      },
+      {
+        "perf_save_bytes": 1535,
+        "fullSaveBytes": 1728,
+        "cold_route_ms": 85.4,
+        "header": 94,
+        "viewport": {
+          "width": 320,
+          "height": 667
+        }
+      }
+    ]
+  },
+  "next_scope": {
+    "evidence": [
+      {
+        "stage": "conversation",
+        "header": {
+          "height": 189,
+          "visible": true,
+          "width": 616,
+          "x": 12,
+          "y": 12
+        },
+        "panel": {
+          "height": 206,
+          "visible": true,
+          "width": 616,
+          "x": 12,
+          "y": 24
+        },
+        "controls": {
+          "height": 112,
+          "visible": true,
+          "width": 616,
+          "x": 12,
+          "y": 236
+        },
+        "play_area": {
+          "height": 1,
+          "width": 624,
+          "x": 8,
+          "y": 209
+        }
+      },
+      {
+        "stage": "mural",
+        "header": {
+          "height": 98,
+          "visible": true,
+          "width": 616,
+          "x": 12,
+          "y": 12
+        },
+        "panel": {
+          "height": 224,
+          "visible": true,
+          "width": 616,
+          "x": 12,
+          "y": 6
+        },
+        "controls": {
+          "height": 112,
+          "visible": true,
+          "width": 616,
+          "x": 12,
+          "y": 236
+        },
+        "play_area": {
+          "height": 1,
+          "width": 624,
+          "x": 8,
+          "y": 118
+        }
+      },
+      {
+        "stage": "music",
+        "header": {
+          "height": 98,
+          "visible": true,
+          "width": 616,
+          "x": 12,
+          "y": 12
+        },
+        "panel": {
+          "height": 224,
+          "visible": true,
+          "width": 616,
+          "x": 12,
+          "y": 6
+        },
+        "controls": {
+          "height": 112,
+          "visible": true,
+          "width": 616,
+          "x": 12,
+          "y": 236
+        },
+        "play_area": {
+          "height": 1,
+          "width": 624,
+          "x": 8,
+          "y": 118
+        }
+      }
+    ],
+    "errors": [],
+    "limit": "Read-only next-slice browser inspection; no claim these short landscape panels are fixed."
+  },
+  "automation": "ACTIVE heartbeat every30min, no end time; AGY stood down; Claude improvement task paused",
+  "verified_utc": "2026-10-21T08:20:37.1982762Z"
+}

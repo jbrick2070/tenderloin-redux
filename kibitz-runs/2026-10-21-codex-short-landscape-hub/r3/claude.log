@@ -1,0 +1,25 @@
+STDOUT:
+I wrote the review to `C:\tenderloin-redux\kibitz-runs\2026-10-21-codex-short-landscape-hub\r3\claude.md`. Verdict: **yes-with-fixes**. I read the three files directly but couldn't run git, so I couldn't separate baseline code from the diff line by line. Where I call something baseline, it's marked as an assumption.
+
+- **Must-fix (one):** the side dock's top edge is set once from the header's height at that moment. The header can grow afterwards and the dock isn't moved:
+  - inside `update_block_ui()`, the objective text is rewritten (`godot/main.gd:14147`) after the dock is placed (`godot/main.gd:14146`);
+  - the objective also refreshes every 0.5 s (`godot/main.gd:7232-7235`) with no re-layout.
+
+  If the objective wraps to a second line, the header grows under the dock, which is the 640x360 overlap this change was meant to fix. No test changes the objective while the dock is open, so neither suite catches it. Smallest fix: update the objective text before placing the dock, and re-place the dock after the 0.5 s refresh when the side dock is showing.
+- **Should-fix:**
+  - At widths of 1050 and up with height under 560, the action buttons' font size depends on whether the hub was open at the last resize. So the "full title fits" checks can pass or fail depending on order.
+  - The side-mode bottom-edge setting (`-12`) is probably overwritten straight away by the size reset on the next line.
+  - The dock has a fixed minimum height and nothing shrinks it, so it may run off-screen with Info open and a two-line objective at 600x360.
+  - The walking-control labels are looked up by child position (0/1/3/4), which breaks if the button order changes.
+  - The 600, 560 and 1050 breakpoints are hard-coded in several places.
+  - Several test gaps:
+    - nothing resizes across the side-dock breakpoints while the dock is open;
+    - in the touch run, the "read" step scrolls with the mouse wheel, not touch;
+    - the Info checks never confirm the dock clears the expanded header;
+    - the suggested starting page isn't verified;
+    - the short "Stop Walk" label is never shown.
+- **Cut:** the panel and walking-control offset, column and font writes in `resize_controls` are always overwritten by the layout call that follows them.
+
+I did not recompute the `public/` fingerprint; the driver needs to do that. The full browser gate was still running, so nothing in the review assumes it passed.
+
+Several MCP servers need sign-in before their tools work: Box, Runway, and the engineering plugins (Asana, Atlassian, Datadog, GitHub, Linear, Notion, PagerDuty, Slack). For claude.ai connectors, authorize them in the claude.ai connector settings. For the others, use `claude mcp` or `/mcp` in an interactive session.

@@ -27,6 +27,7 @@ const base = 'http://127.0.0.1:' + (process.env.GODOT_PORT || 4174) + '/';
 await mkdir('artifacts', { recursive: true });
 let queuedActivityRewardChecks = 0;
 const shortStoryReadChecks = [];
+const shortHubChecks = [];
 let shortStartClicked = false;
 let shortStartTouchClicked = false;
 const browser = await chromium.launch({ channel: 'chrome', headless: true, ignoreDefaultArgs: ['--autoplay-policy=no-user-gesture-required'], args: ['--autoplay-policy=user-gesture-required'] });
@@ -205,9 +206,9 @@ try {
           await page.mouse.click(x, y);
           await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.story_reading_focus);
           await page.keyboard.press('End');
-          await page.waitForFunction(() => {const d = window.__tenderloinGodotA11ySnapshot.story_detail; return Math.abs(d.scroll_value - d.scroll_max + d.scroll_page) < 2;});
+          await page.waitForFunction(() => {const d = window.__tenderloinGodotA11ySnapshot.story_detail; return Math.abs(d.scroll_value - d.scroll_max + d.scroll_page) < 0.01;});
           const end = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
-          await page.waitForTimeout(700);
+          await page.waitForFunction(f => window.__tenderloinGodotA11ySnapshot.ui_frame > f + 2, end.ui_frame);
           const retained = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
           assert.ok(retained.ui_frame > end.ui_frame && Math.abs(retained.story_detail.scroll_value - end.story_detail.scroll_value) < 1, 'new layout frames preserve the reading position');
           await page.keyboard.press('Home');
@@ -399,10 +400,32 @@ try {
       return s?.ui_frame > previous.frame && p?.path_active && s.walk_control_text === 'Stop Walking' && Math.hypot(p.x - previous.x, p.z - previous.z) > 0.1;
     }, { frame: steadyWalk.ui_frame, x: steadyWalk.player_grounding.x, z: steadyWalk.player_grounding.z });
     await page.keyboard.press('Shift+KeyL');
+    // Wait for a stable arrival, then use real walking input into an actual
+    // light pool. A fast route can cross its center between published snapshots.
+    await page.waitForFunction(() => {
+      const s = window.__tenderloinGodotA11ySnapshot, raw = localStorage.getItem('tenderloin-redux.godot.save.v1');
+      return s?.evening_mode && !s.player_grounding.path_active && raw && JSON.parse(raw).visited_neighbors.includes('thanh');
+    }, null, { timeout: 35000 });
+    await page.keyboard.press('KeyF');
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.active_panel === 'none');
+    for (let pulse = 0; pulse < 16; pulse++) {
+      const s = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot), p = s.player_grounding;
+      if (p.nearest_light_pool_distance < 1.1) break;
+      const dx = p.nearest_light_pool_x - p.x, dz = p.nearest_light_pool_z - p.z;
+      assert.ok(Number.isFinite(dx) && Number.isFinite(dz), 'light-pool destination comes from actual scene data');
+      // Convert the desired world direction back through the current yaw.
+      const yaw = s.camera_pose.yaw, ix = dx * Math.cos(yaw) - dz * Math.sin(yaw), iz = dx * Math.sin(yaw) + dz * Math.cos(yaw);
+      const key = Math.abs(ix) > Math.abs(iz) ? (ix > 0 ? 'KeyD' : 'KeyA') : (iz > 0 ? 'KeyS' : 'KeyW');
+      await page.keyboard.down(key);
+      await page.waitForTimeout(100);
+      await page.keyboard.up(key);
+      const releasedFrame = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.ui_frame);
+      await page.waitForFunction(f => window.__tenderloinGodotA11ySnapshot.ui_frame > f + 2, releasedFrame);
+    }
     await page.waitForFunction(() => {
       const s = window.__tenderloinGodotA11ySnapshot;
-      return s?.evening_mode && s.player_grounding.nearest_light_pool_distance < 1.3;
-    }, null, { timeout: 15000 });
+      return s.evening_mode && !s.player_grounding.path_active && s.player_grounding.stride < 0.1 && s.player_grounding.nearest_light_pool_distance < 1.3;
+    });
     assertGrounded(await page.evaluate(() => window.__tenderloinGodotA11ySnapshot), 'evening light pool');
     await page.screenshot({ path: `artifacts/godot-${size.width}-character-light-pool.png` });
     await page.keyboard.press('Shift+KeyL');
@@ -1346,6 +1369,145 @@ try {
       await clickHeaderControl('block_close_control');
       runs[runs.length - 1].intermediateHubWidthsVerified = [599, 600, 700, 800, 900, 1000, 1049, 1050, 1100];
     }
+    if (size.width === 1100 || size.width === 320) {
+      const touchHub = size.width === 320;
+      const hubSizes = touchHub ? [{ width: 640, height: 360 }, { width: 844, height: 390 }] : [{ width: 600, height: 360 }, { width: 640, height: 360 }, { width: 667, height: 375 }, { width: 844, height: 390 }, { width: 800, height: 480 }, { width: 1100, height: 480 }];
+      await page.keyboard.press('KeyF');
+      const shortSave = await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1'));
+      const shortInitial = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+      const encloses = (outer, inner) => inner.x >= outer.x - 1 && inner.y >= outer.y - 1 && inner.x + inner.width <= outer.x + outer.width + 1 && inner.y + inner.height <= outer.y + outer.height + 1;
+      const overlaps = (a, b) => a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+      async function shortTap(control) {
+        const snap = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+        const canvas = await page.locator('#canvas').boundingBox();
+        const x = canvas.x + (control.x + control.width / 2) * canvas.width / snap.viewport_width;
+        const y = canvas.y + (control.y + control.height / 2) * canvas.height / snap.viewport_height;
+        if (touchHub) await page.touchscreen.tap(x, y); else await page.mouse.click(x, y);
+      }
+      for (const shortSize of hubSizes) {
+        await page.setViewportSize(shortSize);
+        await page.waitForFunction(sz => window.__tenderloinGodotA11ySnapshot?.viewport_width === sz.width && window.__tenderloinGodotA11ySnapshot?.viewport_height === sz.height && !window.__tenderloinGodotA11ySnapshot.layout_refit_pending, shortSize);
+        await page.keyboard.press('KeyG');
+        await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.block_panel_control.visible && window.__tenderloinGodotA11ySnapshot?.block_hub_side);
+        let snap = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+        while (snap.block_hub_page > 0) {
+          await shortTap(snap.block_page_previous);
+          await page.waitForFunction(p => window.__tenderloinGodotA11ySnapshot?.block_hub_page === p, snap.block_hub_page - 1);
+          snap = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+        }
+        const seen = [];
+        for (let actionPage = 0; actionPage < 3; actionPage++) {
+          const frame = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.ui_frame);
+          await page.waitForFunction(f => window.__tenderloinGodotA11ySnapshot?.ui_frame > f + 2, frame);
+          snap = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+          const screen = { x: 0, y: 0, ...shortSize };
+          assert.ok(snap.block_hub_side && snap.block_hub_paged && snap.block_hub_pages === 3);
+          assert.ok(encloses(screen, snap.block_panel_control) && snap.block_panel_control.y >= snap.header_control.y + snap.header_control.height + 7, 'short hub fits below header and inside viewport');
+          assert.ok(!overlaps(snap.block_panel_control, snap.controls_control), 'side hub leaves walking controls separate');
+          assert.ok(snap.play_area.width >= 240 && snap.play_area.height >= 100 && snap.overlays.player.height > 20 && encloses(snap.play_area, snap.overlays.player), 'full enlarged character and YOU retain useful scene space');
+          for (const caption of snap.overlays.captions) assert.ok(!overlaps(caption, snap.overlays.player), 'side-hub world captions leave player clear');
+          if (snap.overlays.guide_label.visible) assert.ok(!overlaps({ x: snap.overlays.guide_label.x - 7, y: snap.overlays.guide_label.y - 7, width: snap.overlays.guide_label.width + 14, height: snap.overlays.guide_label.height + 14 }, snap.overlays.player), 'side-hub outlined objective leaves player clear');
+          for (const action of [...snap.block_hub_actions, snap.block_page_previous, snap.block_page_next, snap.block_close_control]) {
+            assert.ok(encloses(snap.block_panel_control, action) && action.width >= 44 && action.height >= 44, 'short hub targets enclosed and tappable');
+          }
+          for (const action of snap.block_hub_actions) { assert.ok(action.text_fits, `short full title ${action.text}`); seen.push(action.id); }
+          for (const action of snap.walking_controls) assert.ok(action.text_fits && encloses(screen, action) && action.width >= 44 && action.height >= 44, `short walking target ${action.text}`);
+          assert.equal(snap.camera_view_size, shortInitial.camera_view_size);
+          assert.equal(snap.player_grounding.x, shortInitial.player_grounding.x);
+          assert.equal(snap.player_grounding.z, shortInitial.player_grounding.z);
+          if (actionPage === 0) {
+            await page.screenshot({ path: `artifacts/codex-short-hub-${shortSize.width}x${shortSize.height}-${touchHub ? 'touch' : 'mouse'}.png` });
+            await writeFile(`artifacts/codex-short-hub-${shortSize.width}x${shortSize.height}-${touchHub ? 'touch' : 'mouse'}.json`, JSON.stringify(snap, null, 2));
+          }
+          if (actionPage < 2) { await shortTap(snap.block_page_next); await page.waitForFunction(p => window.__tenderloinGodotA11ySnapshot?.block_hub_page === p, actionPage + 1); }
+        }
+        assert.deepEqual(seen, Array.from({ length: 12 }, (_, i) => i));
+        // Read the actual full hub detail, then deliberately open/close Info.
+        await shortTap(snap.block_page_previous);
+        await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.block_hub_page === 1);
+        const detail = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+        assert.ok(detail.block_detail_scroll_max > detail.block_detail_scroll_page, 'real short hub description overflows');
+        const canvas = await page.locator('#canvas').boundingBox();
+        const detailX = canvas.x + (detail.block_detail_control.x + detail.block_detail_control.width / 2) * canvas.width / shortSize.width;
+        const detailY = canvas.y + (detail.block_detail_control.y + detail.block_detail_control.height / 2) * canvas.height / shortSize.height;
+        if (touchHub) {
+          const finger = await context.newCDPSession(page);
+          await finger.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: detailX, y: detailY, id: 1 }] });
+          await finger.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: detailX, y: detailY - 12, id: 1 }] });
+          await finger.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+          await finger.detach();
+        } else {
+          await page.mouse.move(detailX, detailY);
+          await page.mouse.wheel(0, 600);
+        }
+        await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.block_detail_scroll_value > 0);
+        await shortTap(detail.info_control);
+        await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.header_details_expanded);
+        const infoFrame = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.ui_frame);
+        await page.waitForFunction(f => window.__tenderloinGodotA11ySnapshot?.ui_frame > f + 2, infoFrame);
+        const withInfo = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+        assert.ok(encloses({ x: 0, y: 0, ...shortSize }, withInfo.block_panel_control), 'Info leaves hub Close reachable');
+        assert.ok(withInfo.block_panel_control.y >= withInfo.header_control.y + withInfo.header_control.height + 7 && withInfo.info_reader.control.height >= 24, 'Info reader and dock clear each other');
+        assert.ok(withInfo.info_reader.scroll_max > withInfo.info_reader.scroll_page, 'Info really has scrollable source text');
+        const infoCanvas = await page.locator('#canvas').boundingBox();
+        await page.mouse.move(infoCanvas.x + (withInfo.info_reader.control.x + withInfo.info_reader.control.width / 2) * infoCanvas.width / shortSize.width, infoCanvas.y + (withInfo.info_reader.control.y + withInfo.info_reader.control.height / 2) * infoCanvas.height / shortSize.height);
+        await page.mouse.wheel(0, 1200);
+        await page.waitForFunction(() => { const d = window.__tenderloinGodotA11ySnapshot.info_reader; return d.scroll_value > 0 && Math.abs(d.scroll_value - d.scroll_max + d.scroll_page) < 1; });
+        await shortTap(withInfo.info_control);
+        await page.waitForFunction(() => !window.__tenderloinGodotA11ySnapshot.header_details_expanded);
+        const collapseFrame = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.ui_frame);
+        await page.waitForFunction(f => window.__tenderloinGodotA11ySnapshot?.ui_frame > f + 2, collapseFrame);
+        await shortTap((await page.evaluate(() => window.__tenderloinGodotA11ySnapshot)).block_close_control);
+        await page.waitForFunction(() => !window.__tenderloinGodotA11ySnapshot.block_panel_control.visible && !window.__tenderloinGodotA11ySnapshot.block_hub_side);
+        const closed = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+        assert.equal(closed.walking_controls[1].text, 'Tenderloin Map', 'Close restores normal full-width labels');
+        assert.equal(closed.controls_control.width, shortSize.width - 24);
+        assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), shortSave, 'short hub reading/paging/Info/Close leave progress untouched');
+        shortHubChecks.push({ ...shortSize, touch: touchHub, actions: seen.length });
+      }
+      // Rotate an already-open dock with focus on a later page.
+      await page.setViewportSize({ width: 844, height: 390 });
+      await page.keyboard.press('KeyG');
+      await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.block_hub_side);
+      let rotating = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+      while (rotating.block_hub_page < 2) {
+        await shortTap(rotating.block_page_next);
+        await page.waitForFunction(p => window.__tenderloinGodotA11ySnapshot.block_hub_page === p, rotating.block_hub_page + 1);
+        rotating = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+      }
+      for (const boundary of [{ width: 844, height: 600 }, { width: 800, height: 559 }, { width: 800, height: 560 }, { width: 599, height: 667 }, { width: 640, height: 360 }]) {
+        await page.setViewportSize(boundary);
+        await page.waitForFunction(sz => window.__tenderloinGodotA11ySnapshot.viewport_width === sz.width && window.__tenderloinGodotA11ySnapshot.viewport_height === sz.height, boundary);
+        const frame = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.ui_frame);
+        await page.waitForFunction(f => window.__tenderloinGodotA11ySnapshot.ui_frame > f + 2, frame);
+        rotating = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+        assert.equal(rotating.block_hub_side, boundary.width >= 600 && boundary.height < 560);
+        assert.equal(rotating.block_hub_page, 2, 'open rotation keeps the focused later page visible');
+        assert.ok(rotating.block_hub_actions.some(a => a.id === 8), 'the focused first action on page3 remains visible');
+      }
+      await shortTap(rotating.walking_controls[1]);
+      await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.in_wide_overview && !window.__tenderloinGodotA11ySnapshot.block_panel_control.visible);
+      const mapFrame = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.ui_frame);
+      await page.waitForFunction(f => window.__tenderloinGodotA11ySnapshot.ui_frame > f + 2, mapFrame);
+      await shortTap((await page.evaluate(() => window.__tenderloinGodotA11ySnapshot)).walking_controls[2]);
+      await page.waitForFunction(() => !window.__tenderloinGodotA11ySnapshot.in_wide_overview && window.__tenderloinGodotA11ySnapshot.camera_view_size === 45);
+      // Start a real route, open the hub while moving, and stop with its compact target.
+      await page.keyboard.press('KeyH');
+      await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.player_grounding.path_active);
+      await page.keyboard.press('KeyG');
+      await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.block_hub_side && window.__tenderloinGodotA11ySnapshot.walk_control_text === 'Stop Walk');
+      const shortMoving = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+      assert.ok(Math.hypot(shortMoving.player_grounding.x + 424.5, shortMoving.player_grounding.z - 62.5) > 200, 'Stop fixture keeps the Black Hawk destination over200m away before the gesture');
+      await shortTap(shortMoving.walk_control);
+      await page.waitForFunction(() => !window.__tenderloinGodotA11ySnapshot.player_grounding.path_active && window.__tenderloinGodotA11ySnapshot.announcement.startsWith('Walking stopped.'));
+      const shortStopped = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+      await page.waitForFunction(f => window.__tenderloinGodotA11ySnapshot.ui_frame > f + 3, shortStopped.ui_frame);
+      const shortStill = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+      assert.equal(shortStill.player_grounding.x, shortStopped.player_grounding.x);
+      assert.equal(shortStill.player_grounding.z, shortStopped.player_grounding.z);
+      assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), shortSave, 'Map/Find Me/Stop keep progress');
+      await page.screenshot({ path: `artifacts/codex-short-hub-stopped-${touchHub ? 'touch' : 'mouse'}.png` });
+    }
     await context.close();
   }
   assert.deepEqual(external, []);
@@ -1355,7 +1517,8 @@ try {
   assert.ok(shortStartClicked && shortStartTouchClicked, 'real mouse and touch Start at640x360 were exercised');
   assert.equal(shortStoryReadChecks.length, 7, 'all required short startup reading cases executed');
   assert.equal(shortStoryReadChecks.filter(r => r.touch).length, 2, 'both emulated short-phone reading cases use real touch input');
-  console.log(JSON.stringify({ runs, queuedActivityRewardChecks, shortStoryReadChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
+  assert.equal(shortHubChecks.length, 8, 'six mouse and two touch short hub cases exercised');
+  console.log(JSON.stringify({ runs, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
 } catch (error) {
   if (latestPage && !latestPage.isClosed()) {
     await latestPage.screenshot({ path: 'artifacts/godot-browser-failure.png' });

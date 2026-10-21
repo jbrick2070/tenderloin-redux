@@ -469,6 +469,11 @@ var wall_material: StandardMaterial3D
 var chosen_material: StandardMaterial3D
 var cutaway_material: StandardMaterial3D
 var controls: GridContainer
+var next_hint_control: Button
+var map_control: Button
+var zoom_in_control: Button
+var zoom_out_control: Button
+var walk_control_press_handled := false
 var walk_control: Button
 var header_panel: PanelContainer
 var overview_size := 400.0
@@ -780,6 +785,9 @@ var block_page_next: Button
 var block_close_btn: Button
 var block_hub_page := 0
 const BLOCK_ACTIONS_PER_PAGE := 4
+const SIDE_HUB_MIN_WIDTH := 600.0
+const SIDE_HUB_MAX_HEIGHT := 560.0
+const HUB_FULL_WIDTH := 1050.0
 const BLOCK_ACTION_COUNT := 12
 var conv_buttons: Array[Button] = []
 var conv_chat_btn: Button
@@ -6532,6 +6540,7 @@ func apply_block_panel_mode() -> void:
 				block_buttons[block_hub_page * BLOCK_ACTIONS_PER_PAGE].grab_focus()
 	if talk:
 		var narrow := is_narrow_layout()
+		layout_walking_controls_and_hub()
 		var acts := conversation_actions()
 		for s in range(conv_action_btns.size()):
 			var has := s < acts.size()
@@ -6554,7 +6563,52 @@ func block_action_page_count() -> int:
 
 func uses_paged_block_actions() -> bool:
 	# Six long action columns need desktop space; keep the panel bounded on tablets.
-	return bubble_viewport_size().x < 1050.0
+	return bubble_viewport_size().x < HUB_FULL_WIDTH or uses_side_block_hub()
+
+## Short, wide windows need the scene beside the menu rather than above it.
+func uses_side_block_hub() -> bool:
+	var vp := bubble_viewport_size()
+	return vp.x >= SIDE_HUB_MIN_WIDTH and vp.y < SIDE_HUB_MAX_HEIGHT and block_panel != null and block_panel.visible and block_panel_mode == "hub"
+
+func layout_walking_controls_and_hub() -> void:
+	if controls == null or block_panel == null:
+		return
+	var narrow := is_narrow_layout()
+	var side := uses_side_block_hub()
+	var vp := bubble_viewport_size()
+	var dock_width := clampf(vp.x * 0.52, 312.0, 440.0)
+	controls.offset_right = -(dock_width + 20.0) if side else -12.0
+	controls.columns = 2 if narrow else 3
+	controls.offset_top = -104.0 if side else (-174.0 if narrow else -124.0)
+	for child in controls.get_children():
+		if child is Button:
+			child.custom_minimum_size.y = 44.0 if side else 50.0
+			child.add_theme_font_size_override("font_size", 12 if side else (14 if narrow else 19))
+	map_control.text = "TL Map" if side else "Tenderloin Map"
+	map_control.tooltip_text = "Tenderloin Map"
+	next_hint_control.text = "Next Step" if side else "What's Next?"
+	next_hint_control.tooltip_text = "What's Next?"
+	zoom_in_control.text = "Zoom +" if side else "Zoom In (+)"
+	zoom_in_control.tooltip_text = "Zoom In (+)"
+	zoom_out_control.text = "Zoom -" if side else "Zoom Out (−)"
+	zoom_out_control.tooltip_text = "Zoom Out (−)"
+	update_walk_control()
+	block_label.add_theme_font_size_override("font_size", 13 if side or narrow else 16)
+	block_detail_label.add_theme_font_size_override("normal_font_size", 12 if side or narrow else 14)
+	block_detail_label.custom_minimum_size.y = 20.0 if side else 30.0
+	# Info remains a scrollable reader when deliberately opened in the short hub.
+	if info != null:
+		info.custom_minimum_size.y = 24.0 if side else 90.0
+		header_panel.offset_bottom = header_panel.offset_top + header_panel.get_combined_minimum_size().y
+	block_panel.anchor_left = 1.0 if side else 0.0
+	block_panel.offset_left = -(dock_width + 12.0) if side else 12.0
+	block_panel.offset_right = -12.0
+	block_panel.offset_top = header_panel.get_global_rect().end.y + 8.0 - vp.y if side else (-368.0 if narrow else -336.0)
+	if side:
+		# Content-height dock; resetting size discards the previous wide minimum.
+		block_panel.size = Vector2(dock_width, 0.0)
+	else:
+		block_panel.offset_bottom = -176.0 if narrow else -130.0
 
 func layout_block_action_pages() -> void:
 	if block_actions_grid == null:
@@ -6564,6 +6618,7 @@ func layout_block_action_pages() -> void:
 	block_hub_page = clampi(block_hub_page, 0, count - 1)
 	block_actions_grid.columns = 2 if narrow else 6
 	for i in range(mini(BLOCK_ACTION_COUNT, block_buttons.size())):
+		block_buttons[i].add_theme_font_size_override("font_size", 13 if narrow else 15)
 		block_buttons[i].visible = not narrow or i / BLOCK_ACTIONS_PER_PAGE == block_hub_page
 	if not narrow and (block_page_prev.has_focus() or block_page_next.has_focus()):
 		block_buttons[block_hub_page * BLOCK_ACTIONS_PER_PAGE].grab_focus()
@@ -6577,6 +6632,7 @@ func layout_block_action_pages() -> void:
 	block_close_btn.custom_minimum_size.x = 44.0 if narrow else 94.0
 	if narrow:
 		block_label.text = "Block Actions · %d/%d · Sparks: %d" % [block_hub_page + 1, count, spark_count()]
+	layout_walking_controls_and_hub()
 
 func change_block_action_page(step: int) -> void:
 	if block_panel_mode != "hub" or block_panel == null or not block_panel.visible or not uses_paged_block_actions():
@@ -6668,10 +6724,14 @@ func play_area_rect() -> Rect2:
 	var bottom := vp.y - 8.0
 	if controls != null:
 		bottom = controls.get_global_rect().position.y - 8.0
+	var right := vp.x - 8.0
 	for p in [block_panel, mural_panel, music_panel]:
 		if p != null and p.visible:
-			bottom = minf(bottom, (p as Control).get_global_rect().position.y - 8.0)
-	return Rect2(8.0, top, maxf(vp.x - 16.0, 1.0), maxf(bottom - top, 1.0))
+			if p == block_panel and uses_side_block_hub():
+				right = minf(right, block_panel.get_global_rect().position.x - 8.0)
+			else:
+				bottom = minf(bottom, (p as Control).get_global_rect().position.y - 8.0)
+	return Rect2(8.0, top, maxf(right - 8.0, 1.0), maxf(bottom - top, 1.0))
 
 ## Edge-of-screen arrow with name and distance when the next target is off-screen.
 func update_guide_arrow() -> void:
@@ -6711,6 +6771,8 @@ func update_guide_arrow() -> void:
 	lbl_global.y = clampf(lbl_global.y, area.position.y + 7.0, maxf(area.position.y + 7.0, area.end.y - lbl_size.y - 7.0))
 	# Keep the outlined objective name clear of the Talk prompt and transient UI.
 	var occupied: Array[Rect2] = []
+	if uses_side_block_hub():
+		occupied.append(player_overlay_rect().grow(4.0))
 	if reward_banner != null and reward_banner.is_visible_in_tree():
 		occupied.append(reward_banner.get_global_rect())
 	if talk_prompt_node != null and talk_prompt_node.is_visible_in_tree():
@@ -7163,7 +7225,8 @@ func set_header_details(expanded: bool, refit_map := true) -> void:
 		toggle.set_pressed_no_signal(expanded)
 	# Visibility updates minimum height immediately; retain width and apply that
 	# height before camera framing or overlay fitting reads the playable area.
-	header_panel.size.y = header_panel.get_combined_minimum_size().y
+	header_panel.offset_bottom = header_panel.offset_top + header_panel.get_combined_minimum_size().y
+	layout_walking_controls_and_hub()
 	if refit_map and (in_overview or in_wide_overview):
 		refit_after_layout()
 	elif following_player and block_panel != null and block_panel.visible and block_panel_mode == "hub":
@@ -10973,6 +11036,18 @@ func control_snapshot(control: Control) -> Dictionary:
 		result["disabled"] = (control as BaseButton).disabled
 	return result
 
+func walking_control_snapshots() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	if controls == null:
+		return result
+	for child in controls.get_children():
+		var btn := child as Button
+		var entry := control_snapshot(btn)
+		entry["text"] = btn.text
+		entry["text_fits"] = btn.get_theme_font("font").get_string_size(btn.text, HORIZONTAL_ALIGNMENT_LEFT, -1, btn.get_theme_font_size("font_size")).x + btn.get_theme_stylebox("normal").get_minimum_size().x <= btn.size.x + 1.0
+		result.append(entry)
+	return result
+
 func activity_detail_snapshot(detail: RichTextLabel, panel: Control, buttons: Array[Button]) -> Dictionary:
 	if detail == null or panel == null:
 		return {}
@@ -11044,8 +11119,12 @@ func get_a11y_status_snapshot() -> Dictionary:
 	var vp := bubble_viewport_size()
 	var contact := player_visual.get_node_or_null("ContactShadow") as MeshInstance3D
 	var nearest_pool_distance := INF
+	var nearest_pool_center := Vector2.ZERO
 	for pool in light_pool_centers:
-		nearest_pool_distance = minf(nearest_pool_distance, player_xz().distance_to(pool))
+		var distance := player_xz().distance_to(pool)
+		if distance < nearest_pool_distance:
+			nearest_pool_distance = distance
+			nearest_pool_center = pool
 	var marker_screen := Vector2.ZERO
 	var marker_visible := false
 	if guide_marker != null and camera != null:
@@ -11075,6 +11154,9 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"block_hub_page": block_hub_page if uses_paged_block_actions() else 0,
 		"block_hub_pages": block_action_page_count() if uses_paged_block_actions() else 1,
 		"block_hub_paged": uses_paged_block_actions(),
+		"block_hub_side": uses_side_block_hub(),
+		"walking_controls": walking_control_snapshots(),
+		"info_reader": activity_detail_snapshot(info, header_panel, []),
 		"block_page_previous": control_snapshot(block_page_prev),
 		"block_page_next": control_snapshot(block_page_next),
 		"block_close_control": control_snapshot(block_close_btn),
@@ -11098,7 +11180,7 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"in_wide_overview": in_wide_overview,
 		"cutaway_additions": occluded_additions.size(),
 		"player_screen": {"x": camera.unproject_position(player.position + Vector3.UP).x, "y": camera.unproject_position(player.position + Vector3.UP).y},
-		"player_grounding": {"x": player.position.x, "z": player.position.z, "shadow_x": contact.global_position.x if contact != null else null, "shadow_z": contact.global_position.z if contact != null else null, "shadow_y": contact.global_position.y if contact != null else null, "stride": player_stride_blend, "path_active": not current_path.is_empty(), "nearest_light_pool_distance": nearest_pool_distance},
+		"player_grounding": {"x": player.position.x, "z": player.position.z, "shadow_x": contact.global_position.x if contact != null else null, "shadow_z": contact.global_position.z if contact != null else null, "shadow_y": contact.global_position.y if contact != null else null, "stride": player_stride_blend, "path_active": not current_path.is_empty(), "nearest_light_pool_distance": nearest_pool_distance, "nearest_light_pool_x": nearest_pool_center.x, "nearest_light_pool_z": nearest_pool_center.y},
 		"evening_mode": evening_mode,
 		"play_area": {"x": play_area_rect().position.x, "y": play_area_rect().position.y, "width": play_area_rect().size.x, "height": play_area_rect().size.y},
 		"overlays": scene_overlay_snapshot(),
@@ -12793,6 +12875,8 @@ func update_walk_control() -> void:
 		return
 	var walking := not current_path.is_empty()
 	walk_control.text = "Stop Walking" if walking else "Walk & Talk (Next)"
+	if uses_side_block_hub():
+		walk_control.text = "Stop Walk" if walking else "Walk / Talk"
 	walk_control.tooltip_text = "Stop here without changing progress. Escape also stops." if walking else "Walk to the next neighbor and talk on arrival."
 
 func activate_walk_control() -> void:
@@ -12800,6 +12884,14 @@ func activate_walk_control() -> void:
 		stop_walking()
 	else:
 		choose_next_neighbor(1)
+
+func press_walk_control() -> void:
+	# A touch press also emits an emulated mouse press. Keep its original intent
+	# until release so Stop cannot become Walk/Talk during that same gesture.
+	if walk_control_press_handled:
+		return
+	walk_control_press_handled = true
+	activate_walk_control()
 
 func follow_player() -> void:
 	in_overview = false
@@ -12954,6 +13046,8 @@ func update_readable_scene_labels() -> void:
 	var wrap_width := minf(320.0, bubble_viewport_size().x - 32.0)
 	visible_scene_captions.clear()
 	var occupied: Array[Rect2] = []
+	if uses_side_block_hub():
+		occupied.append(player_overlay_rect().grow(4.0))
 	if reward_banner != null and reward_banner.is_visible_in_tree():
 		occupied.append(reward_banner.get_global_rect().grow(6.0))
 	if is_speech_bubble_visible():
@@ -13776,6 +13870,7 @@ func show_mural_panel(visible_flag: bool) -> void:
 		mural_panel.visible = visible_flag
 		if visible_flag:
 			update_mural_ui()
+	layout_walking_controls_and_hub()
 
 func show_music_panel(visible_flag: bool) -> void:
 	var was_vis := music_panel != null and music_panel.visible
@@ -13791,6 +13886,7 @@ func show_music_panel(visible_flag: bool) -> void:
 		music_panel.visible = visible_flag
 		if visible_flag:
 			update_music_ui()
+	layout_walking_controls_and_hub()
 
 func show_block_panel(visible_flag: bool) -> void:
 	var was_vis := block_panel != null and block_panel.visible
@@ -13811,6 +13907,7 @@ func show_block_panel(visible_flag: bool) -> void:
 		if following_player:
 			target = player.position + Vector3.UP
 			update_camera.call_deferred()
+	layout_walking_controls_and_hub()
 
 func toggle_block_panel() -> void:
 	block_panel_mode = "hub"
@@ -14077,8 +14174,8 @@ func update_block_ui() -> void:
 		block_district_btn.text = "District Border: On" if district_boundary_visible else "District Border: Off"
 	if block_import_btn != null:
 		block_import_btn.text = "Web Save Loaded" if browser_import_status == "imported" else "Import Web Save"
-	apply_block_panel_mode()
 	update_objective_ui()
+	apply_block_panel_mode()
 
 func make_ui() -> void:
 	button_focus_style = StyleBoxFlat.new()
@@ -14313,7 +14410,7 @@ func make_ui() -> void:
 	block_label.add_theme_font_size_override("font_size", 16)
 	block_label.add_theme_color_override("font_color", Color("ffe082"))
 	block_vbox.add_child(block_label)
-	block_detail_label = RichTextLabel.new()
+	block_detail_label = make_activity_detail()
 	block_detail_label.custom_minimum_size.y = 30
 	block_detail_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	block_detail_label.scroll_active = true
@@ -14379,14 +14476,15 @@ func make_ui() -> void:
 	controls.offset_top = -124
 	controls.offset_bottom = -12
 	layer.add_child(controls)
-	button(controls, "What's Next?", func(): ask_whats_next())
-	button(controls, "Tenderloin Map", wide_overview)
+	next_hint_control = button(controls, "What's Next?", func(): ask_whats_next())
+	map_control = button(controls, "Tenderloin Map", wide_overview)
 	button(controls, "Find Me", frame_player_for_walking)
-	button(controls, "Zoom In (+)", func(): zoom(0.8))
-	button(controls, "Zoom Out (−)", func(): zoom(1.25))
-	walk_control = button(controls, "", activate_walk_control)
+	zoom_in_control = button(controls, "Zoom In (+)", func(): zoom(0.8))
+	zoom_out_control = button(controls, "Zoom Out (−)", func(): zoom(1.25))
+	walk_control = button(controls, "", press_walk_control)
 	# Act on press so arrival between press and release cannot start another route.
 	walk_control.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
+	walk_control.button_up.connect(func(): walk_control_press_handled = false)
 	update_walk_control()
 	guide_arrow = Control.new()
 	guide_arrow.name = "GuideArrow"
@@ -14439,10 +14537,6 @@ func make_ui() -> void:
 			block_label.add_theme_font_size_override("font_size", 13 if narrow else 16)
 		if is_instance_valid(block_detail_label):
 			block_detail_label.add_theme_font_size_override("normal_font_size", 12 if narrow else 14)
-		var main_btn_font := 14 if narrow else 19
-		for child in controls.get_children():
-			if child is Button:
-				child.add_theme_font_size_override("font_size", main_btn_font)
 		var sub_btn_font := 13 if narrow else 15
 		for b in mural_buttons:
 			if is_instance_valid(b):
@@ -14450,14 +14544,9 @@ func make_ui() -> void:
 		for b in music_buttons:
 			if is_instance_valid(b):
 				b.add_theme_font_size_override("font_size", sub_btn_font)
-		for b in block_buttons:
-			if is_instance_valid(b):
-				b.add_theme_font_size_override("font_size", 13 if uses_paged_block_actions() else sub_btn_font)
 		for b in conv_buttons:
 			if is_instance_valid(b):
 				b.add_theme_font_size_override("font_size", sub_btn_font)
-		controls.columns = 2 if narrow else 3
-		controls.offset_top = -174 if narrow else -124
 		if is_instance_valid(mural_panel):
 			mural_panel.offset_bottom = -176 if narrow else -130
 			mural_panel.offset_top = -396 if narrow else -354
@@ -14469,8 +14558,6 @@ func make_ui() -> void:
 			if music_panel.visible:
 				update_music_ui()
 		if is_instance_valid(block_panel):
-			block_panel.offset_bottom = -176 if narrow else -130
-			block_panel.offset_top = -368 if narrow else -336
 			update_block_ui()
 			if following_player and block_panel.visible and block_panel_mode == "hub":
 				update_camera.call_deferred()
@@ -14478,6 +14565,12 @@ func make_ui() -> void:
 		if in_overview or in_wide_overview:
 			refit_after_layout()
 	vp.size_changed.connect(resize_controls)
+	header_panel.resized.connect(func():
+		if uses_side_block_hub():
+			layout_walking_controls_and_hub.call_deferred()
+			if following_player:
+				update_camera.call_deferred()
+	)
 	tree_exiting.connect(func():
 		stop_music_playback()
 		voices_release_resources()

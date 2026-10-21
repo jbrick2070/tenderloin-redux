@@ -3099,6 +3099,127 @@ func run() -> void:
 	study.frame_player_for_walking()
 	await process_frame
 	require(study.play_area_rect().has_point(study.camera.unproject_position(study.player.position + Vector3.UP)) and study.view_size == 45.0, "Find Me exits the menu to the close walking view")
+	# Short landscape: all12 actions stay beside a useful, followed character view.
+	var short_hub_save: String = JSON.stringify(study.build_save_envelope())
+	var short_hub_position: Vector3 = study.player.position
+	for short_hub_size in [Vector2i(600, 360), Vector2i(640, 360), Vector2i(667, 375), Vector2i(844, 390), Vector2i(800, 480), Vector2i(1100, 480)]:
+		root.size = short_hub_size
+		study.show_block_panel(true)
+		var short_suggested: Button = study.hub_button_for_objective(String(study.current_objective().get("id", "")))
+		require(short_suggested == null or short_suggested.is_visible_in_tree(), "short hub opens on the actual suggested page")
+		study.block_hub_page = 0
+		study.update_block_ui()
+		await process_frame
+		await process_frame
+		await process_frame
+		require(study.uses_side_block_hub() and study.uses_paged_block_actions(), "short hub uses a paged side dock even at desktop widths")
+		var short_seen: Array[int] = []
+		for short_page in range(3):
+			await process_frame
+			await process_frame
+			var dock: Rect2 = study.block_panel.get_global_rect()
+			var scene: Rect2 = study.play_area_rect()
+			print("SHORT_HUB_CHECK ", short_hub_size, " panel=", dock, " scene=", scene)
+			require(dock.position.y >= study.header_panel.get_global_rect().end.y + 7 and dock.end.y <= short_hub_size.y - 11, "short dock stays below header and within screen")
+			require(not dock.intersects(study.controls.get_global_rect()) and scene.size.x >= 240 and scene.size.y >= 100, "short hub retains useful scene and separate walking controls")
+			require(study.player_overlay_rect().has_area() and scene.encloses(study.player_overlay_rect()), "actual enlarged player and YOU fit in the short hub scene")
+			for short_caption in study.visible_scene_captions:
+				require(not short_caption.rect.intersects(study.player_overlay_rect()), "short hub world captions leave the real character clear")
+			if study.guide_arrow_label.is_visible_in_tree():
+				require(not study.guide_arrow_label.get_global_rect().grow(7.0).intersects(study.player_overlay_rect()), "short hub outlined objective leaves YOU and the body clear")
+			for action in study.block_action_snapshots():
+				short_seen.append(int(action.id))
+				require(bool(action.text_fits), "short hub full action title fits")
+			for short_button in [study.block_close_btn, study.block_page_prev, study.block_page_next]:
+				require(dock.encloses(short_button.get_global_rect()) and short_button.size.x >= 44 and short_button.size.y >= 44, "short hub page/Close remain reachable44px targets")
+			for walking_button in study.walking_control_snapshots():
+				require(bool(walking_button.text_fits) and walking_button.width >= 44 and walking_button.height >= 44, "short walking target fits at %s: %s" % [short_hub_size, walking_button.text])
+			if short_page < 2:
+				study.change_block_action_page(1)
+				require(study.block_buttons[(short_page + 1) * 4].has_focus(), "short paging keeps visible action focus")
+		require(short_seen == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], "every short hub action is reachable once")
+		var prior_objective: String = study.objective_label.text
+		var prior_refresh: float = study.objective_refresh_timer
+		study.objective_refresh_timer = 1000.0
+		study.objective_label.text = "A longer objective while the hub stays open: keep the character visible and all twelve neighborhood actions reachable. ".repeat(3)
+		await process_frame
+		await process_frame
+		await process_frame
+		await process_frame
+		require(study.objective_label.get_line_count() >= 2 and study.block_panel.get_global_rect().position.y >= study.header_panel.get_global_rect().end.y + 7, "a growing objective moves the open dock below the actual header")
+		study.set_header_details(true, false)
+		await process_frame
+		await process_frame
+		require(study.block_panel.get_global_rect().position.y >= study.header_panel.get_global_rect().end.y + 7 and study.block_panel.get_global_rect().end.y <= short_hub_size.y - 11 and study.info.is_visible_in_tree() and study.info.size.y >= 24, "long objective plus Info keeps dock and reader reachable")
+		study.set_header_details(false, false)
+		study.objective_label.text = prior_objective
+		study.objective_refresh_timer = prior_refresh
+		study.show_block_panel(false)
+		await process_frame
+		await process_frame
+		require(not study.uses_side_block_hub() and study.controls.offset_right == -12.0 and study.controls.get_child(1).text == "Tenderloin Map", "Close restores full walking controls")
+		require(JSON.stringify(study.build_save_envelope()) == short_hub_save and study.player.position == short_hub_position and study.view_size == 45.0, "short paging/resize/Info/Close preserve player zoom and progress")
+	root.size = Vector2i(844, 390)
+	study.show_block_panel(true)
+	study.block_hub_page = 2
+	study.layout_block_action_pages()
+	study.block_voices_btn.grab_focus()
+	for boundary_size in [Vector2i(844, 600), Vector2i(800, 559), Vector2i(800, 560), Vector2i(599, 667), Vector2i(600, 360), Vector2i(1100, 480)]:
+		root.size = boundary_size
+		await process_frame
+		await process_frame
+		await process_frame
+		var should_side: bool = boundary_size.x >= 600 and boundary_size.y < 560
+		require(study.uses_side_block_hub() == should_side and study.block_voices_btn.is_visible_in_tree() and study.block_voices_btn.has_focus() and study.block_hub_page == 2, "open-dock breakpoint crossing retains the focused later action")
+		require(study.block_panel.anchor_left == (1.0 if should_side else 0.0) and (study.controls.offset_right < -12.0 if should_side else study.controls.offset_right == -12.0), "open-dock breakpoint crossing restores anchors and walking width")
+	# Browser touch sends both emulated mouse and raw touch to a press-mode button.
+	# Both must keep Stop intent until release; a later gesture must work again.
+	root.size = Vector2i(640, 360)
+	for stop_gesture in range(2):
+		require(study.walk_to_history_stop("blackhawk"), "touch Stop fixture starts a real long route")
+		study.show_block_panel(true)
+		await process_frame
+		await process_frame
+		await process_frame
+		var touch_stop_save: String = JSON.stringify(study.build_save_envelope())
+		var stop_point: Vector2 = study.walk_control.get_global_rect().get_center()
+		var stop_mouse := InputEventMouseButton.new()
+		stop_mouse.device = -1
+		stop_mouse.button_index = MOUSE_BUTTON_LEFT
+		stop_mouse.pressed = true
+		stop_mouse.position = stop_point
+		stop_mouse.global_position = stop_point
+		Input.parse_input_event(stop_mouse)
+		var stop_touch := InputEventScreenTouch.new()
+		stop_touch.index = 0
+		stop_touch.pressed = true
+		stop_touch.position = stop_point
+		Input.parse_input_event(stop_touch)
+		await process_frame
+		require(study.current_path.is_empty() and study.last_a11y_announcement.begins_with("Walking stopped."), "paired raw touch and mouse stop once instead of restarting")
+		var stop_mouse_release := stop_mouse.duplicate() as InputEventMouseButton
+		stop_mouse_release.pressed = false
+		Input.parse_input_event(stop_mouse_release)
+		var stop_touch_release := stop_touch.duplicate() as InputEventScreenTouch
+		stop_touch_release.pressed = false
+		Input.parse_input_event(stop_touch_release)
+		await process_frame
+		require(not study.walk_control_press_handled and study.current_path.is_empty() and JSON.stringify(study.build_save_envelope()) == touch_stop_save, "release rearms Stop without walking or changing progress")
+	study.player.position = short_hub_position
+	study.following_player = false
+	study.target += Vector3(3, 0, 2)
+	study.update_camera()
+	var side_manual_target: Vector3 = study.target
+	study.show_block_panel(false)
+	study.show_block_panel(true)
+	await process_frame
+	await process_frame
+	require(study.target == side_manual_target and not study.following_player, "side dock preserves manual inspection camera intent")
+	study.show_block_panel(false)
+	study.frame_player_for_walking()
+	root.size = Vector2i(1100, 760)
+	await process_frame
+	await process_frame
 	study.show_conversation(0)
 	study.last_panel_dialogue = "Bea: \"A previous conversation.\""
 	study.wide_overview()

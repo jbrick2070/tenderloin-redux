@@ -1,0 +1,27 @@
+{
+  "after_review": {
+    "godot/main.gd": "a324983121f3cb64f5a8bf883a901c0b8befb718b6130a9a3437121733597a3e",
+    "godot/tests/study_test.gd": "9b2467254300acda1db407409c268d84b32819c62643a6c10c4b20c9f8ea941f",
+    "tests/godot-browser.mjs": "89d5feecb46367b0295a36732f5f02cca1a993097f7905ee6b9c0e662e1bbc2a"
+  },
+  "before": {
+    "godot/main.gd": "a324983121f3cb64f5a8bf883a901c0b8befb718b6130a9a3437121733597a3e",
+    "tests/godot-browser.mjs": "89d5feecb46367b0295a36732f5f02cca1a993097f7905ee6b9c0e662e1bbc2a",
+    "godot/tests/study_test.gd": "9b2467254300acda1db407409c268d84b32819c62643a6c10c4b20c9f8ea941f"
+  },
+  "after_driver_fixes": {
+    "godot/tests/study_test.gd": "f419a5e1483923da49daf323375771aa2f16b45cdcaa4828c94528b4aec797a6",
+    "tests/godot-browser.mjs": "84f214ef6938a476117c2cfe1afe4343b95a279269e4220e0c257faa77bb41a0",
+    "godot/main.gd": "93ffd53d3f82d460caf643beb280230ec42cda5499b255734e8efec672b2d02b"
+  },
+  "after_visual_fix": {
+    "godot/main.gd": "bc828130161451f7173c64b4d2efcd70ad7f51c29027501ceb201f755811387c",
+    "tests/godot-browser.mjs": "4eb01acd96d6912a0f143f20aac33822e1126a6d281ac9663990a5932b7ed29a",
+    "godot/tests/study_test.gd": "d197b483ac0e8df5d76177097964184dc17c80189b9024305e78fe3e683cbc71"
+  },
+  "final_source": {
+    "tests/godot-browser.mjs": "7ec6e28fc8a417b401f492797db34043426628c20657b19cbb4151f1a53e2559",
+    "godot/tests/study_test.gd": "b7f8467baca659c68a68312b367814f65ff8e9d28021b6147ad82bcae0fa67c0",
+    "godot/main.gd": "c073d422b0583c7e8d3ca7b4f83c6e4426f3d5574d1ee5e1fa4986a7a5879479"
+  }
+}
