@@ -106,7 +106,128 @@ func run() -> void:
 	await process_frame
 	await process_frame
 	await process_frame
-	require(study.startup_story_pending and study.is_story_card_visible(), "resizing startup preserves the Start contract")
+	require(study.startup_story_pending and study.is_story_card_visible() and study.music_toggle_btn.disabled, "resizing startup preserves the Start contract and music lock")
+	# Short-screen chapters keep their real Start/Continue target reachable.
+	var short_story_save: String = JSON.stringify(study.build_save_envelope())
+	var short_story_pos: Vector3 = study.player.position
+	var short_story_target: Vector3 = study.target
+	var short_story_unlocked: bool = study.reward_audio_unlocked
+	var changed_scrolled_chapters := 0
+	for story_size in [Vector2i(640, 360), Vector2i(667, 375), Vector2i(844, 390), Vector2i(800, 480), Vector2i(320, 568), Vector2i(320, 667), Vector2i(1100, 760)]:
+		root.size = story_size
+		await process_frame
+		await process_frame
+		for chapter in study.STORY_CHAPTERS:
+			study.show_story_card(chapter, true)
+			await process_frame
+			await process_frame
+			var viewport_rect := Rect2(Vector2.ZERO, Vector2(story_size))
+			var card_rect: Rect2 = study.story_card.get_global_rect()
+			var start_rect: Rect2 = study.story_continue_btn.get_global_rect()
+			require(viewport_rect.encloses(card_rect) and card_rect.encloses(start_rect) and start_rect.size.y >= 44 and start_rect.size.x >= 44, "every chapter has a complete on-screen44px Start at %s" % story_size)
+			require(card_rect.position.y >= study.header_panel.get_global_rect().end.y and study.story_body_label.text == String(chapter.intro) and study.story_body_label.get_theme_font_size("normal_font_size") == 16, "chapter reading preserves the full original text, font and compact header")
+			var reading_scroll: VScrollBar = study.story_body_label.get_v_scroll_bar()
+			if reading_scroll.max_value > reading_scroll.page + 1:
+				study.story_body_label.scroll_to_line(study.story_body_label.get_line_count() - 1)
+				await process_frame
+				require(is_equal_approx(reading_scroll.value, reading_scroll.max_value - reading_scroll.page), "final chapter line remains reachable in its bounded body")
+				var last_read: float = reading_scroll.value
+				study.layout_story_card()
+				study.layout_story_card()
+				await process_frame
+				require(is_equal_approx(reading_scroll.value, last_read), "unchanged chapter layout preserves reading position")
+				var next_chapter: Dictionary = study.STORY_CHAPTERS[(study.STORY_CHAPTERS.find(chapter) + 1) % study.STORY_CHAPTERS.size()]
+				study.show_story_card(next_chapter, true)
+				await process_frame
+				await process_frame
+				require(study.story_body_label.text == String(next_chapter.intro) and is_zero_approx(reading_scroll.value), "a different chapter opens at its first line after the previous one was scrolled")
+				if reading_scroll.max_value > reading_scroll.page + 1:
+					changed_scrolled_chapters += 1
+			study.show_story_card(chapter, true)
+			await process_frame
+			require(is_zero_approx(reading_scroll.value), "a newly opened chapter starts at its first line")
+	require(changed_scrolled_chapters > 0, "changed-text scroll reset is tested with both chapter bodies overflowing")
+	# Real reading keys and a finger drag on a forced-scrolling production intro.
+	root.size = Vector2i(640, 360)
+	study.show_story_card(study.STORY_CHAPTERS[0], true)
+	await process_frame
+	await process_frame
+	await process_frame
+	await process_frame
+	await process_frame
+	var story_scroll: VScrollBar = study.story_body_label.get_v_scroll_bar()
+	require(story_scroll.max_value > story_scroll.page + 12, "short landscape fixture actually needs scrolling")
+	short_story_target = study.target # Overview resize fitting is intentional; gestures must preserve the settled pose.
+	study.story_body_label.grab_focus()
+	await process_frame
+	require(study.story_body_label.has_focus(), "reading fixture settles pending resize/Start focus before key input")
+	study.story_continue_btn.grab_focus() # PageDown should start reading without a prerequisite text click.
+	var page_down := InputEventKey.new()
+	page_down.keycode = KEY_PAGEDOWN
+	page_down.pressed = true
+	Input.parse_input_event(page_down)
+	await process_frame
+	page_down.pressed = false
+	Input.parse_input_event(page_down)
+	await process_frame
+	require(study.story_reader_has_focus() and story_scroll.value > 0, "PageDown begins reading from Start focus")
+	story_scroll.value = 0.0
+	var reading_arrow := InputEventKey.new()
+	reading_arrow.keycode = KEY_DOWN
+	reading_arrow.pressed = true
+	Input.parse_input_event(reading_arrow)
+	await process_frame
+	reading_arrow.pressed = false
+	Input.parse_input_event(reading_arrow)
+	await process_frame
+	require(study.startup_story_pending and study.is_story_card_visible() and not study.music_playing and story_scroll.value > 0, "reader-focused Down independently scrolls without accepting startup or playing music")
+	story_scroll.value = 0.0
+	var body_center: Vector2 = study.story_body_label.get_global_rect().get_center()
+	var read_touch := InputEventScreenTouch.new()
+	read_touch.index = 0
+	read_touch.position = body_center
+	read_touch.pressed = true
+	Input.parse_input_event(read_touch)
+	await process_frame
+	var read_drag := InputEventScreenDrag.new()
+	read_drag.index = 0
+	read_drag.position = body_center - Vector2(0, 12)
+	read_drag.relative = Vector2(0, -12)
+	Input.parse_input_event(read_drag)
+	await process_frame
+	read_touch.pressed = false
+	read_touch.position = read_drag.position
+	Input.parse_input_event(read_touch)
+	await process_frame
+	require(is_equal_approx(story_scroll.value, 12.0) and study.startup_story_pending and not study.music_playing, "real finger drag reads once without accepting startup")
+	require(study.player.position == short_story_pos and study.target == short_story_target and JSON.stringify(study.build_save_envelope()) == short_story_save, "chapter reading changes neither camera, walking nor saved progress")
+	var chapter_notice: String = study.last_a11y_announcement
+	for burst_size in [Vector2i(844, 390), Vector2i(640, 360), Vector2i(667, 375)]:
+		root.size = burst_size
+	await process_frame
+	await process_frame
+	await process_frame
+	await process_frame
+	await process_frame
+	require(not study.layout_refit_pending and study.story_body_label.has_focus() and study.startup_story_pending and not study.music_playing and study.music_toggle_btn.disabled, "coalesced chapter resize preserves reading focus, pending consent and the music lock")
+	require(study.last_a11y_announcement == chapter_notice, "chapter resize preserves the full chapter announcement")
+	require(study.reward_audio_unlocked and not study.reward_audio_player.playing, "reading is real effect-unlock input but never plays a reward or music")
+	var reader_accept := InputEventKey.new()
+	reader_accept.keycode = KEY_SPACE
+	reader_accept.pressed = true
+	Input.parse_input_event(reader_accept)
+	await process_frame
+	reader_accept.pressed = false
+	Input.parse_input_event(reader_accept)
+	await process_frame
+	require(not study.startup_story_pending and study.music_playing, "Space remains explicit startup acceptance even from the reader")
+	study.stop_music_playback()
+	study.show_story_card(study.current_chapter(), true)
+	study.reward_audio_unlocked = short_story_unlocked
+	study.story_continue_btn.grab_focus()
+	root.size = Vector2i(390, 667)
+	await process_frame
+	await process_frame
 	var initial_start_save: String = JSON.stringify(study.build_save_envelope())
 	var initial_start_position: Vector3 = study.player.position
 	var initial_start_key := InputEventKey.new()
@@ -121,23 +242,28 @@ func run() -> void:
 	study.continue_story()
 	study.frame_player_for_walking()
 	require(not study.music_playing and study.music_play_btn.text == "Play Groove", "later chapter Continue and Find Me preserve the player pause")
-	study.show_story_card(study.current_chapter())
-	study.startup_story_pending = true
+	study.show_story_card(study.current_chapter(), true)
 	var startup_escape := InputEventKey.new()
 	startup_escape.keycode = KEY_ESCAPE
 	startup_escape.pressed = true
 	study._unhandled_input(startup_escape)
 	require(not study.music_playing and not study.startup_story_pending, "Escape dismisses startup silently without pretending to be an audio activation")
-	study.show_story_card(study.current_chapter())
-	study.startup_story_pending = true
+	study.show_story_card(study.current_chapter(), true)
 	var startup_walk := InputEventKey.new()
 	startup_walk.keycode = KEY_W
 	startup_walk.pressed = true
 	study._input(startup_walk)
 	require(study.music_playing and not study.startup_story_pending, "W accepts startup and starts default music")
 	study.stop_music_playback()
-	study.show_story_card(study.current_chapter())
-	study.startup_story_pending = true
+	study.show_story_card(study.current_chapter(), true)
+	study.story_continue_btn.grab_focus()
+	var startup_arrow := InputEventKey.new()
+	startup_arrow.keycode = KEY_DOWN
+	startup_arrow.pressed = true
+	study._input(startup_arrow)
+	require(study.music_playing and not study.startup_story_pending, "Down from Start focus retains quick walking acceptance")
+	study.stop_music_playback()
+	study.show_story_card(study.current_chapter(), true)
 	study.update_music_ui()
 	var tap_start_pos: Vector3 = study.player.position
 	var tap_start_save: String = JSON.stringify(study.build_save_envelope())
@@ -2654,8 +2780,7 @@ func run() -> void:
 		study.overview()
 		await process_frame
 		await process_frame
-		study.show_story_card(study.current_chapter())
-		study.startup_story_pending = true
+		study.show_story_card(study.current_chapter(), true)
 		var start_position: Vector3 = study.player.position
 		var start_save: String = JSON.stringify(study.build_save_envelope())
 		study.story_continue_btn.emit_signal("pressed")

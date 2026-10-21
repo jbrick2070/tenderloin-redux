@@ -1,0 +1,147 @@
+{
+  "baseline": "fd9ed981a42ca291eedcdb070363c2583e5d1f11",
+  "gates": {
+    "native": "GODOT_STUDY_PASS",
+    "export": "PASS",
+    "check": "PASS",
+    "node_tests": 104,
+    "browser": "PASS"
+  },
+  "errors": [],
+  "external": [],
+  "short_reading_cases": [
+    {
+      "context_width": 1100,
+      "width": 640,
+      "height": 360,
+      "scrolling": true,
+      "touch": false
+    },
+    {
+      "context_width": 1100,
+      "width": 667,
+      "height": 375,
+      "scrolling": true,
+      "touch": false
+    },
+    {
+      "context_width": 1100,
+      "width": 844,
+      "height": 390,
+      "scrolling": true,
+      "touch": false
+    },
+    {
+      "context_width": 1100,
+      "width": 800,
+      "height": 480,
+      "scrolling": true,
+      "touch": false
+    },
+    {
+      "context_width": 1100,
+      "width": 320,
+      "height": 568,
+      "scrolling": true,
+      "touch": false
+    },
+    {
+      "context_width": 320,
+      "width": 640,
+      "height": 360,
+      "scrolling": true,
+      "touch": true
+    },
+    {
+      "context_width": 320,
+      "width": 320,
+      "height": 568,
+      "scrolling": true,
+      "touch": true
+    }
+  ],
+  "actual_mouse_start": true,
+  "actual_touch_start": true,
+  "queued_reward_regressions": 2,
+  "runs": [
+    {
+      "viewport": {
+        "width": 1100,
+        "height": 760
+      },
+      "full_save_bytes": 1728,
+      "perf_save_bytes": 1535,
+      "cold_route_usec": 115300
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 667
+      },
+      "full_save_bytes": 1728,
+      "perf_save_bytes": 1535,
+      "cold_route_usec": 119400
+    },
+    {
+      "viewport": {
+        "width": 320,
+        "height": 667
+      },
+      "full_save_bytes": 1728,
+      "perf_save_bytes": 1535,
+      "cold_route_usec": 136000
+    }
+  ],
+  "independent_review_calls": 1,
+  "selected_model": "claude-opus-5-5",
+  "selected_effort": "high",
+  "quota_usage": "unknown",
+  "public_fingerprint": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567",
+  "selected_final_screenshots_inspected": 7,
+  "live_preview": "actual410x872 card scroll and Start; Music On; marked deliverable",
+  "automation": "ACTIVE every30minutes; next demonstrated short-landscape hub overlap",
+  "limits": "chapter cards only; hub/activity landscape, smaller heights, physical phones/full screen readers/human pacing unverified",
+  "hashes": {
+    "godot/main.gd": "bae5ae8a9dd672035e73a60e89950e72e45739b8eb52041c05f95c247d59ffdb",
+    "godot/tests/study_test.gd": "5471a29d504810c8147e9e135d6c6295a3186a75e966436ce56746eac0b7daa3",
+    "tests/godot-browser.mjs": "6430f80bfde6ece2c84502ca71273450b5b88caace823887ef4251d9be2d57f8",
+    "docs/BUILD_STATUS.md": "1d25804d1b3e031731c5c8ca0c887a005085e229beb6e9e05bc08d00adbdb228",
+    "session_handoff.md": "4d01c933c0508bcbec3b5d468cfc5f2497e4c064612722b6870038ed5a31d459",
+    "artifacts/godot-web/index.pck": "4a04ae7ee023a30d49debb39322fcacb83d524e9593459e3a66c6ae9fc7865f4",
+    "kibitz-runs\\2026-10-20-codex-short-chapter-reading\\r3\\driver_anchor.md": "b37d85b534e014a26c68fa1349d5f99635a072e9c3ee6c9ff36c875223ccd1b4",
+    "kibitz-runs\\2026-10-20-codex-short-chapter-reading\\r3\\scope_receipt.md": "62287df35501146572f1001ccadeb0f186544360346a86959860bf1b6046660f",
+    "kibitz-runs\\2026-10-20-codex-short-chapter-reading\\r3\\review_scope.md": "700b2431ee3a934da35b97152b74cc6509757c234a04cd9ab42d8925b7dc58ca",
+    "kibitz-runs\\2026-10-20-codex-short-chapter-reading\\r3\\input.md": "700b2431ee3a934da35b97152b74cc6509757c234a04cd9ab42d8925b7dc58ca",
+    "kibitz-runs\\2026-10-20-codex-short-chapter-reading\\r3\\claude.md": "7b734bb00a3ea7e110f6bd098d9eb93ccc32d00f3c1bd23a19ae2d7351dd2dde",
+    "kibitz-runs\\2026-10-20-codex-short-chapter-reading\\r3\\claude.log": "4a507d6aa7cc6077c5d479ca57d9078a48bb6fa694ae5c515289a38f5b9f54c5",
+    "kibitz-runs\\2026-10-20-codex-short-chapter-reading\\r3\\model_receipt.json": "a3836297f318c6e012d55f9ff687d268782dd797ec9ff2a51309f4320751107a",
+    "kibitz-runs\\2026-10-20-codex-short-chapter-reading\\r3\\source-before.json": "5a784fd89c397a01e532c325865b99db537bb40ec69a585603331271487652d4",
+    "kibitz-runs\\2026-10-20-codex-short-chapter-reading\\r3\\source-comparison.json": "cc6219f00b5f5afa3300c79c5eac2f1d12ffa83eca83e74a1074b42889639121",
+    "kibitz-runs\\2026-10-20-codex-short-chapter-reading\\r3\\judgment.md": "d532e0361d4ab9bc6436ecd8dbc93ccf9d23eff7dd2284e0a463edc62f1f4efc",
+    "kibitz-runs\\2026-10-20-codex-short-chapter-reading\\r3\\final.md": "499294e49308e739455dd9c1a5d74cecf2b6473c5d74722f011b24c180d44f96",
+    "artifacts/short-story-native-final.log": "33c543bbb92baf524cdfd5792c5ff444b0a5254a61cc091295a49f9ba8a1648c",
+    "artifacts/short-story-export-final.log": "bb6fab37171e55788bc415710a9755fcb60eeacf76614378403ba2db28ece436",
+    "artifacts/short-story-check-final.log": "bbbf642933db0755ec1b063caec7667a16966ea1db64dadab1526709e88e5537",
+    "artifacts/short-story-node-final.log": "51242f782adc5549331ec279ccb87c9b9e58af21d5d741e479971b11d34dc448",
+    "artifacts/short-story-browser-final.log": "ec18295b64e27e6a9c04d9ffc39ce22bf0263f1df16daf19a4d5871930fc5b61",
+    "artifacts\\codex-short-story-320x568.png": "d82948fd4ff117c3cf10ddf21890dd04ad2fead68f494f2c4e24d583d5b1cb43",
+    "artifacts\\codex-short-story-640x360-started.png": "18ce5fa58f226e24cbe13c582f72731eeb0cfadb62aa3485f0dfde1f3881fe61",
+    "artifacts\\codex-short-story-640x360.png": "e00f429fae8ce347d8c9f31d61fcede80ab123c229a7c2de6c66d9ffaf417906",
+    "artifacts\\codex-short-story-667x375.png": "a662ba0b532329a7c00eef693ca1f7681b95bd78cf69e81b727bd9726b2bc425",
+    "artifacts\\codex-short-story-800x480.png": "d446b7c9306ab42af4d31aee3804a9640af12db3fe6b964a44b60364fe15eabe",
+    "artifacts\\codex-short-story-844x390.png": "ba1cbed11a858adeb65d052bbaafe77f55f6dc54b3e71d82586a98ffdb23d7b3",
+    "artifacts\\codex-short-story-live-card.png": "bc44cafd14e3d3b6313466351790675524f92b03aebfc586e4b1990bc6461bda",
+    "artifacts\\codex-short-story-live-playing.png": "7d5e2119d2006939663af20acaea722cfa52f694d7a76c9b7b555e2fc01a2d0e",
+    "artifacts\\codex-short-story-mouse-started.png": "ebe203502c48b0edcdf173a5088156eb2a80ac9b94ca92d5fd11c418392960fe",
+    "artifacts/short-story-before.json": "f8e7a766d50009bf94c9e07ce8e7fffdda9e111f09f443a5d617edfdb70f0579",
+    "artifacts/short-story-before-640x360.png": "5c8f9d1eaf4d58ed397a846820d00389ff1041b889bbdf05d392c9e1510dff7b",
+    "artifacts/short-story-native-focus-diagnostic.log": "b8eb11366993282e2aea080acef0f250c61da412081735d0dd15d8c833ad8018",
+    "artifacts/short-story-browser-focus-failure.json": "eeda7f81d0d1b7805f53c5b66f8625a2e7b6377dcd71b980764d1e5bc91eb145",
+    "artifacts/short-story-browser-focus-failure.png": "a9c26fe9ea3aff4cbd62bdd066d51fb25ad8fe8100c36c891d924d46f78ba4ac",
+    "artifacts/short-story-browser-before-focus-fix.log": "461cf91fb7fb0e569bdff9c15d23cec046ac0540f499e42b30321836b51268d4",
+    "artifacts/short-story-browser-preflight.log": "446723f8243b42e1a99487d20cb8be64f72a3d3ea16455222511334b063ed27f",
+    "artifacts/short-story-touch-smoke.log": "62b6d11d1d822b55f7be44409e3cba7c8ab326a2ac34ee1b1a1eef95cfb6d650",
+    "artifacts/short-story-next-hub-640x360.json": "73902ceb5840bb6d50394c4d9f5bb5816944ba22cf43310cd1b827a36ed56227",
+    "artifacts/short-story-next-hub-640x360.png": "cf0c1e2188622512c6bb1ee8046ad8ce1b3fe96a86496af83d1dcd1a0fc3bfdd"
+  }
+}

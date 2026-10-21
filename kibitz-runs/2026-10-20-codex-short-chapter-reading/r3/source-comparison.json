@@ -1,0 +1,20 @@
+{
+  "before": {
+    "godot/main.gd": "0041cb731517bfe7a0e381a3f52e4392c84f0571161e7b8fe066c8a5a6e96e1c",
+    "godot/tests/study_test.gd": "27e455cfe10f427f4d1e6d089f729145a083aab93844db48899fd91f3770f43a",
+    "tests/godot-browser.mjs": "c09cb548bed3e141006187e7c2330f4bd0b03637a072b6146050662a0089359c"
+  },
+  "after_review": {
+    "godot/main.gd": "0041cb731517bfe7a0e381a3f52e4392c84f0571161e7b8fe066c8a5a6e96e1c",
+    "godot/tests/study_test.gd": "27e455cfe10f427f4d1e6d089f729145a083aab93844db48899fd91f3770f43a",
+    "tests/godot-browser.mjs": "c09cb548bed3e141006187e7c2330f4bd0b03637a072b6146050662a0089359c"
+  },
+  "unchanged_during_review": true,
+  "after_driver_fixes": {
+    "godot/main.gd": "bae5ae8a9dd672035e73a60e89950e72e45739b8eb52041c05f95c247d59ffdb",
+    "godot/tests/study_test.gd": "5471a29d504810c8147e9e135d6c6295a3186a75e966436ce56746eac0b7daa3",
+    "tests/godot-browser.mjs": "6430f80bfde6ece2c84502ca71273450b5b88caace823887ef4251d9be2d57f8"
+  },
+  "final_independent_calls": 1,
+  "final_fixes_reviewed_by": "driver and fresh five gates; not a second external review"
+}

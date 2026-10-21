@@ -26,6 +26,9 @@ const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(
 const base = 'http://127.0.0.1:' + (process.env.GODOT_PORT || 4174) + '/';
 await mkdir('artifacts', { recursive: true });
 let queuedActivityRewardChecks = 0;
+const shortStoryReadChecks = [];
+let shortStartClicked = false;
+let shortStartTouchClicked = false;
 const browser = await chromium.launch({ channel: 'chrome', headless: true, ignoreDefaultArgs: ['--autoplay-policy=no-user-gesture-required'], args: ['--autoplay-policy=user-gesture-required'] });
 const errors = [], external = [], runs = [];
 let latestPage = null;
@@ -159,6 +162,114 @@ try {
     await page.mouse.wheel(0, -100);
     await page.waitForTimeout(600);
     assert.equal((await page.evaluate(() => window.__tenderloinGodotA11ySnapshot)).reward_audio_unlocked, false, 'wheel is not a sound-unlock gesture');
+    // Read the real startup card at short sizes before accepting it.
+    if (size.width === 1100 || size.width === 320) {
+      const readingSizes = size.width === 1100 ? [[640, 360], [667, 375], [844, 390], [800, 480], [320, 568]] : [[640, 360], [320, 568]];
+      const storySave = await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1'));
+      for (const [width, height] of readingSizes) {
+        await page.setViewportSize({ width, height });
+        await page.waitForFunction(v => { const s = window.__tenderloinGodotA11ySnapshot; return s?.viewport_width === v.width && s.viewport_height === v.height && s.story_detail.control.visible && s.layout_refit_pending === false; }, { width, height });
+        const before = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+        const d = before.story_detail, start = before.start_control;
+
+        assert.equal(before.music_toggle_control.disabled, true, 'pre-Start music remains locked after settled resize');
+        assert.match(before.announcement, /^Chapter 1:/, 'resize preserves the chapter announcement');
+        assert.ok(d.panel.x >= 0 && d.panel.y >= before.header_control.y + before.header_control.height && d.panel.x + d.panel.width <= width && d.panel.y + d.panel.height <= height, 'complete chapter card fits below header and inside short viewport');
+        assert.ok(start.width >= 44 && start.height >= 44 && start.y >= d.panel.y && start.y + start.height <= height && start.x + start.width <= width, 'short-screen Start has a complete on-screen44px target');
+        assert.ok(d.text.includes('your neighbors have already started planning') && d.text.includes('the streets and the history are real'), 'the complete original introduction is retained');
+        const canvas = await page.locator('#canvas').boundingBox();
+        const x = canvas.x + (d.control.x + d.control.width / 2) * canvas.width / width;
+        const y = canvas.y + (d.control.y + d.control.height / 2) * canvas.height / height;
+
+        if (!shortStoryReadChecks.some(r => r.context_width === size.width)) {
+          assert.ok(before.story_start_focus, 'the first PageDown case begins at the real Start target');
+          await page.keyboard.press('PageDown');
+          await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.story_reading_focus && window.__tenderloinGodotA11ySnapshot.story_detail.scroll_value > 0);
+          await page.keyboard.press('Home');
+          await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.story_detail.scroll_value === 0);
+        }
+        const music = before.music_toggle_control;
+        const mx = canvas.x + (music.x + music.width / 2) * canvas.width / width;
+        const my = canvas.y + (music.y + music.height / 2) * canvas.height / height;
+        if (size.width === 320) await page.touchscreen.tap(mx, my);
+        else await page.mouse.click(mx, my);
+        await page.waitForFunction(f => window.__tenderloinGodotA11ySnapshot.ui_frame > f + 3, before.ui_frame);
+        const locked = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+        assert.ok(locked.startup_pending && locked.music_toggle_control.disabled && !locked.music_playing && !locked.music_audio_playing, 'a real tap/click cannot bypass Start through the locked Music button');
+        const scrolling = d.scroll_max > d.scroll_page + 1;
+        if (width === 640 && height === 360) assert.ok(scrolling, 'the landscape reading test really exercises overflow');
+        if (scrolling) {
+          await page.mouse.move(x, y);
+          await page.mouse.wheel(0, 400);
+          await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.story_detail.scroll_value > 0);
+          await page.mouse.click(x, y);
+          await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.story_reading_focus);
+          await page.keyboard.press('End');
+          await page.waitForFunction(() => {const d = window.__tenderloinGodotA11ySnapshot.story_detail; return Math.abs(d.scroll_value - d.scroll_max + d.scroll_page) < 2;});
+          const end = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+          await page.waitForTimeout(700);
+          const retained = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+          assert.ok(retained.ui_frame > end.ui_frame && Math.abs(retained.story_detail.scroll_value - end.story_detail.scroll_value) < 1, 'new layout frames preserve the reading position');
+          await page.keyboard.press('Home');
+          await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.story_detail.scroll_value === 0);
+          await page.keyboard.press('PageDown');
+          await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.story_reading_focus && window.__tenderloinGodotA11ySnapshot.story_detail.scroll_value > 0);
+          await page.keyboard.press('Home');
+          await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.story_detail.scroll_value === 0);
+          await page.keyboard.press('ArrowDown');
+          await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.story_detail.scroll_value > 0);
+          if (size.width === 320) {
+            await page.keyboard.press('Home');
+            await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.story_detail.scroll_value === 0);
+            const finger = await context.newCDPSession(page);
+            await finger.send('Input.dispatchTouchEvent', {type:'touchStart',touchPoints:[{x,y}]});
+            await finger.send('Input.dispatchTouchEvent', {type:'touchMove',touchPoints:[{x,y:y-12}]});
+            await finger.send('Input.dispatchTouchEvent', {type:'touchMove',touchPoints:[{x,y:y-24}]});
+            await finger.send('Input.dispatchTouchEvent', {type:'touchEnd',touchPoints:[]});
+            await finger.detach();
+            await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.story_detail.scroll_value > 0);
+          }
+        }
+        const after = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+        assert.ok(after.startup_pending && after.story_detail.control.visible && after.music_toggle_control.disabled && !after.music_playing && !after.music_audio_playing, 'navigation reading never accepts startup or starts music');
+        assert.ok(after.reward_audio_unlocked && !after.reward_audio_playing && after.reward_sound_count === 0, 'reading is real effect-unlock input without playing a reward');
+        assert.deepEqual(after.camera_pose, before.camera_pose, 'chapter reading preserves camera pose');
+        assert.equal(after.camera_view_size, before.camera_view_size, 'chapter reading preserves zoom');
+        assert.equal(after.player_grounding.x, before.player_grounding.x);
+        assert.equal(after.player_grounding.z, before.player_grounding.z);
+        assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), storySave, 'chapter reading leaves saved progress unchanged');
+        shortStoryReadChecks.push({ context_width:size.width, width, height, scrolling, touch:size.width === 320 && scrolling });
+        await page.screenshot({path:`artifacts/godot-story-${size.width}-${width}x${height}.png`});
+      }
+      if (size.width === 1100 || size.width === 320) {
+        await page.setViewportSize({width:640,height:360});
+        await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.viewport_width === 640 && window.__tenderloinGodotA11ySnapshot.viewport_height === 360 && window.__tenderloinGodotA11ySnapshot.layout_refit_pending === false);
+        const consentBefore = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+        if (size.width === 320) {
+          const canvas = await page.locator('#canvas').boundingBox(), b = consentBefore.start_control;
+          await page.touchscreen.tap(canvas.x + (b.x + b.width / 2) * canvas.width / 640, canvas.y + (b.y + b.height / 2) * canvas.height / 360);
+          shortStartTouchClicked = true;
+        } else await clickHeaderControl('start_control');
+        await page.waitForFunction(() => !window.__tenderloinGodotA11ySnapshot.startup_pending && window.__tenderloinGodotA11ySnapshot.music_playing);
+        const accepted = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+        assert.ok(!accepted.story_detail.panel.visible && !accepted.in_overview && accepted.camera_view_size <= 58, 'actual short-screen Start accepts and frames walking');
+        assert.equal(accepted.player_grounding.x, consentBefore.player_grounding.x);
+        assert.equal(accepted.player_grounding.z, consentBefore.player_grounding.z);
+        assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), storySave);
+        await page.screenshot({path:`artifacts/godot-story-${size.width}-640x360-started.png`});
+        shortStartClicked = true;
+        await clickHeaderControl('music_toggle_control');
+        await page.reload();
+        await page.locator('#status').waitFor({state:'hidden',timeout:60000});
+        await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.startup_pending);
+      }
+      await page.setViewportSize(size);
+      await page.waitForFunction(v => {const s=window.__tenderloinGodotA11ySnapshot;return s.viewport_width===v.width && s.viewport_height===v.height && s.layout_refit_pending === false;}, size);
+      if (size.width === 320) {
+        if (!(await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.story_start_focus))) await page.keyboard.press('Tab');
+        await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.story_start_focus);
+      }
+    }
     if (size.width === 320) await page.keyboard.press('Enter');
     else await clickHeaderControl('start_control');
     await page.waitForFunction(() => !window.__tenderloinGodotA11ySnapshot?.in_overview && window.__tenderloinGodotA11ySnapshot?.camera_view_size <= 58);
@@ -1241,7 +1352,10 @@ try {
   assert.deepEqual(errors, []);
   await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
   assert.ok(queuedActivityRewardChecks > 0, 'at least one actual crowded activity exercises queued reward timer and Close delivery');
-  console.log(JSON.stringify({ runs, queuedActivityRewardChecks, errors, external }));
+  assert.ok(shortStartClicked && shortStartTouchClicked, 'real mouse and touch Start at640x360 were exercised');
+  assert.equal(shortStoryReadChecks.length, 7, 'all required short startup reading cases executed');
+  assert.equal(shortStoryReadChecks.filter(r => r.touch).length, 2, 'both emulated short-phone reading cases use real touch input');
+  console.log(JSON.stringify({ runs, queuedActivityRewardChecks, shortStoryReadChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
 } catch (error) {
   if (latestPage && !latestPage.isClosed()) {
     await latestPage.screenshot({ path: 'artifacts/godot-browser-failure.png' });

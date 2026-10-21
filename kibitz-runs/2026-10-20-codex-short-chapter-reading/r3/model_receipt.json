@@ -1,0 +1,16 @@
+{
+  "requested_model": "claude-opus-5-5",
+  "harness_selected_model": "claude-opus-5-5",
+  "requested_effort": "high",
+  "selected_effort": "high",
+  "provider_reported_runtime_model": null,
+  "provider_runtime_limit": "not separately exposed; exact selection and rc0 retained",
+  "quota_usage": "unknown",
+  "actual_independent_calls": 1,
+  "exit_code": 0,
+  "verdict": "yes-with-fixes",
+  "budget_receipt": "budget=medium\nmodel=claude-opus-5-5\neffort=high\nnote=(none)",
+  "driver": "codex",
+  "round": "r3",
+  "review_sha256": "7b734bb00a3ea7e110f6bd098d9eb93ccc32d00f3c1bd23a19ae2d7351dd2dde"
+}

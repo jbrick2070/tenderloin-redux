@@ -762,8 +762,10 @@ var layout_floor_node: Node3D
 var gathering_lights_node: Node3D
 var gathering_layout_center := Vector2.ZERO
 var story_card: PanelContainer
+var layout_refit_generation := 0
+var layout_refit_pending := false
 var story_title_label: Label
-var story_body_label: Label
+var story_body_label: RichTextLabel
 var story_continue_btn: Button
 var startup_story_pending := false
 var last_story_chapter := -1
@@ -1988,10 +1990,7 @@ func _ready() -> void:
 	# Opening story card for the current chapter, shown after the startup overview settles.
 	var start_chapter := current_chapter()
 	last_story_chapter = int(start_chapter.num)
-	show_story_card(start_chapter)
-	startup_story_pending = true
-	story_continue_btn.text = "Start Exploring"
-	update_music_ui()
+	show_story_card(start_chapter, true)
 	# Headless parser/import tests don't pretend to render a screenshot.
 	if "--capture" in OS.get_cmdline_user_args():
 		await get_tree().process_frame
@@ -6838,11 +6837,10 @@ func build_story_card(layer: CanvasLayer) -> void:
 	story_title_label.add_theme_font_size_override("font_size", 22)
 	story_title_label.add_theme_color_override("font_color", Color("ffe48f"))
 	col.add_child(story_title_label)
-	story_body_label = Label.new()
+	story_body_label = make_activity_detail()
 	story_body_label.name = "StoryBody"
-	story_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	story_body_label.add_theme_font_size_override("font_size", 16)
-	story_body_label.add_theme_color_override("font_color", Color("fff8e8"))
+	story_body_label.add_theme_font_size_override("normal_font_size", 16)
+	story_body_label.add_theme_color_override("default_color", Color("fff8e8"))
 	col.add_child(story_body_label)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_END
@@ -6866,18 +6864,49 @@ func layout_story_card() -> void:
 	var top := 12.0
 	if header_panel != null:
 		top = header_panel.get_global_rect().end.y + 10.0
+	var style := story_card.get_theme_stylebox("panel")
+	var text_width := maxf(1.0, w - style.get_minimum_size().x)
+	var flags := TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE
+	var title_font := story_title_label.get_theme_font("font")
+	var title_size := story_title_label.get_theme_font_size("font_size")
+	var title_measure := title_font.get_multiline_string_size(story_title_label.text, HORIZONTAL_ALIGNMENT_LEFT, text_width, title_size, -1, flags)
+	var title_lines := maxi(1, ceili(title_measure.y / title_font.get_height(title_size)))
+	var title_height := ceilf(title_measure.y + (title_lines - 1) * story_title_label.get_theme_constant("line_spacing"))
+	story_title_label.custom_minimum_size.y = title_height
+	var body_font := story_body_label.get_theme_font("normal_font")
+	var body_size := story_body_label.get_theme_font_size("normal_font_size")
+	var body_padding := story_body_label.get_theme_stylebox("normal").get_minimum_size()
+	# Reserve scrollbar width even before it appears so wrapping cannot push Start offscreen.
+	var body_width := maxf(1.0, text_width - story_body_label.get_v_scroll_bar().get_combined_minimum_size().x - body_padding.x)
+	var body_measure := body_font.get_multiline_string_size(story_body_label.text, HORIZONTAL_ALIGNMENT_LEFT, body_width, body_size, -1, flags)
+	var body_lines := maxi(1, ceili(body_measure.y / body_font.get_height(body_size)))
+	var body_height := ceilf(body_measure.y + (body_lines - 1) * story_body_label.get_theme_constant("line_separation") + body_padding.y)
+	var chrome := style.get_minimum_size().y + title_height + story_continue_btn.get_combined_minimum_size().y + 12.0
+	var available := maxf(1.0, vp.y - 12.0 - top)
+	var above_controls := controls.get_global_rect().position.y - 8.0 - top if controls != null else available
+	# Prefer to leave walking controls visible. On a short screen this modal card
+	# may cover them so the reader still gets two lines and an on-screen Start.
+	if above_controls >= chrome + body_font.get_height(body_size) * 2.0 + body_padding.y:
+		available = minf(available, above_controls)
+	story_body_label.custom_minimum_size.y = maxf(body_font.get_height(body_size) + body_padding.y, minf(body_height, available - chrome))
 	story_card.custom_minimum_size = Vector2(w, 0.0)
 	story_card.size = Vector2(w, 0.0)
 	story_card.position = Vector2((vp.x - w) * 0.5, top)
 
-func show_story_card(chapter: Dictionary) -> void:
+func story_reader_has_focus() -> bool:
+	var owner := get_viewport().gui_get_focus_owner()
+	return story_body_label != null and owner != null and (owner == story_body_label or story_body_label.is_ancestor_of(owner))
+
+func show_story_card(chapter: Dictionary, startup := false) -> void:
 	if story_card == null:
 		return
 	story_title_label.text = "Chapter %d · %s" % [int(chapter.num), String(chapter.title)]
 	story_body_label.text = String(chapter.intro)
-	story_continue_btn.text = "Continue"
-	startup_story_pending = false
+	story_body_label.scroll_to_line(0)
+	story_continue_btn.text = "Start Exploring" if startup else "Continue"
+	startup_story_pending = startup
 	story_card.visible = true
+	update_music_ui()
 	layout_story_card()
 	story_continue_btn.call_deferred("grab_focus")
 	announce_a11y_status("Chapter %d: %s. %s" % [int(chapter.num), String(chapter.title), String(chapter.intro)])
@@ -10939,7 +10968,10 @@ func control_snapshot(control: Control) -> Dictionary:
 	if control == null:
 		return {}
 	var rect := control.get_global_rect()
-	return {"x": rect.position.x, "y": rect.position.y, "width": rect.size.x, "height": rect.size.y, "visible": control.is_visible_in_tree()}
+	var result := {"x": rect.position.x, "y": rect.position.y, "width": rect.size.x, "height": rect.size.y, "visible": control.is_visible_in_tree()}
+	if control is BaseButton:
+		result["disabled"] = (control as BaseButton).disabled
+	return result
 
 func activity_detail_snapshot(detail: RichTextLabel, panel: Control, buttons: Array[Button]) -> Dictionary:
 	if detail == null or panel == null:
@@ -11026,6 +11058,11 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"music_toggle_control": control_snapshot(music_toggle_btn),
 		"music_toggle_text": music_toggle_btn.text if music_toggle_btn != null else "",
 		"start_control": control_snapshot(story_continue_btn),
+		"story_detail": activity_detail_snapshot(story_body_label, story_card, [story_continue_btn]),
+		"story_reading_focus": story_reader_has_focus(),
+		"story_start_focus": story_continue_btn != null and story_continue_btn.has_focus(),
+		"startup_pending": startup_story_pending,
+		"layout_refit_pending": layout_refit_pending,
 		"info_control": control_snapshot(header_panel.find_child("HeaderInfoToggle", true, false) as Control),
 		"header_control": control_snapshot(header_panel),
 		"walk_control": control_snapshot(walk_control),
@@ -13227,7 +13264,25 @@ func _input(event: InputEvent) -> void:
 	var mouse_activation: bool = event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_MIDDLE]
 	if key_activation or mouse_activation or (event is InputEventScreenTouch and not event.pressed):
 		reward_audio_unlocked = true
-	if event is InputEventKey and event.pressed and startup_story_pending and event.keycode in [KEY_W, KEY_A, KEY_S, KEY_D, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT]:
+	if event is InputEventKey and event.pressed and is_story_card_visible():
+		var reading_key: Key = event.keycode if event.keycode != KEY_NONE else event.physical_keycode
+		var page_key := reading_key in [KEY_PAGEUP, KEY_PAGEDOWN, KEY_HOME, KEY_END]
+		var page_target := story_reader_has_focus() or story_continue_btn.has_focus() or get_viewport().gui_get_focus_owner() == null
+		if (page_key and page_target) or (story_reader_has_focus() and reading_key in [KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT]):
+			if page_key and not story_reader_has_focus():
+				story_body_label.grab_focus()
+			var reading_scroll := story_body_label.get_v_scroll_bar()
+			var line := story_body_label.get_theme_font("normal_font").get_height(story_body_label.get_theme_font_size("normal_font_size"))
+			match reading_key:
+				KEY_UP: reading_scroll.value -= line
+				KEY_DOWN: reading_scroll.value += line
+				KEY_PAGEUP: reading_scroll.value -= reading_scroll.page * 0.9
+				KEY_PAGEDOWN: reading_scroll.value += reading_scroll.page * 0.9
+				KEY_HOME: reading_scroll.value = 0.0
+				KEY_END: reading_scroll.value = reading_scroll.max_value
+			get_viewport().set_input_as_handled()
+			return
+	if event is InputEventKey and event.pressed and startup_story_pending and event.keycode in [KEY_W, KEY_A, KEY_S, KEY_D, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT] and not (story_reader_has_focus() and event.keycode in [KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT]):
 		continue_story()
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -13526,7 +13581,7 @@ func lidar_summary_line(b_id: String, city_h: float) -> String:
 		return "2023 LiDAR agrees (median %.1f m)" % lidar_med
 	return "2023 LiDAR: %d raised roof part%s, up to %.1f m" % [raised.size(), "" if raised.size() == 1 else "s", float(raised[raised.size() - 1].h)]
 
-func overview() -> void:
+func overview(announce_view := true) -> void:
 	in_overview = true
 	hide_speech_bubble()
 	hide_story_card()
@@ -13580,9 +13635,10 @@ func overview() -> void:
 	var offset := bounds.get_center() - available.get_center()
 	target += camera.global_basis.x * offset.x / pixels_per_metre - camera.global_basis.y * offset.y / pixels_per_metre
 	update_camera()
-	announce_a11y_status("Overview: %d city footprints." % data.buildings.size())
+	if announce_view:
+		announce_a11y_status("Overview: %d city footprints." % data.buildings.size())
 
-func wide_overview() -> void:
+func wide_overview(announce_view := true) -> void:
 	in_overview = false
 	in_wide_overview = true
 	hide_speech_bubble()
@@ -13635,7 +13691,8 @@ func wide_overview() -> void:
 	var offset := bounds.get_center() - available.get_center()
 	target += camera.global_basis.x * offset.x / pixels_per_metre - camera.global_basis.y * offset.y / pixels_per_metre
 	update_camera()
-	announce_a11y_status("Wider Tenderloin overview: %d city footprints across 7 streets; Transgender Cultural District boundary %s." % [all_buildings.size(), "shown" if district_boundary_visible else "hidden"])
+	if announce_view:
+		announce_a11y_status("Wider Tenderloin overview: %d city footprints across 7 streets; Transgender Cultural District boundary %s." % [all_buildings.size(), "shown" if district_boundary_visible else "hidden"])
 
 func projected_bounds() -> Rect2:
 	var bounds := Rect2()
@@ -13682,19 +13739,28 @@ func wide_overview_text() -> String:
 	return "%d Tenderloin footprints (%d opening + %d wider) · 7 OSM streets\nRight-drag: Rotate 3D · District (%s, C) · Compton's (J) · Black Hawk (H)\nCity 2010 survey & 5xmc-5bjj (2017) / PDDL · Streets © OpenStreetMap / ODbL" % [all_buildings.size(), data.buildings.size(), wider_meshes.size(), dist_state]
 
 func refit_after_layout() -> void:
+	layout_refit_generation += 1
+	var generation := layout_refit_generation
+	layout_refit_pending = true
 	await get_tree().process_frame
 	await get_tree().process_frame
+	if generation != layout_refit_generation:
+		return
 	var card_up := is_story_card_visible()
 	var pending := startup_story_pending
+	var reading_card := card_up and story_reader_has_focus()
 	if in_overview:
-		overview()
+		overview(not card_up)
 	elif in_wide_overview:
-		wide_overview()
+		wide_overview(not card_up)
 	if card_up:
 		story_card.visible = true
 		startup_story_pending = pending
+		update_music_ui()
 		layout_story_card()
-		story_continue_btn.call_deferred("grab_focus")
+		(story_body_label if reading_card else story_continue_btn).grab_focus()
+	layout_refit_pending = false
+	sync_web_a11y_status()
 
 func show_mural_panel(visible_flag: bool) -> void:
 	var was_vis := mural_panel != null and mural_panel.visible

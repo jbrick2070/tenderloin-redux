@@ -1,0 +1,18 @@
+STDOUT:
+I wrote the review to `kibitz-runs/2026-10-20-codex-short-chapter-reading/r3/claude.md`. My verdict is **yes-with-fixes**: the card layout and the routing of reading keys are wired correctly, but three things need fixing first, and the browser gate hasn't run yet.
+
+My file tools worked, so the review is based on the actual code in `main.gd`, `study_test.gd` and `godot-browser.mjs`. I had no git or shell access, so I couldn't see the diff against fd9ed98. Where a problem might predate this change, the review says "verify pre-existing".
+
+**Must fix:**
+1. **Music button unlocks before Start after a resize.** Resizing the window during the opening card (a phone rotation, for example) runs `refit_after_layout`. That calls `overview()`, which calls `hide_story_card()`, which re-enables the Music button. The card is then put back, but nothing turns the lock back on (`main.gd:13745-13749`), so a player can start music before pressing Start. No current test can catch it. The fix is one line: call `update_music_ui()` after `main.gd:13748`. Then add a test assertion and expose the button's disabled state in the browser snapshot.
+2. **The browser test can fail intermittently on the camera check.** It records the "before" camera position as soon as the new window size shows up (`godot-browser.mjs:170-171`). The resize refit moves the camera two frames later, and the snapshot also refreshes on a 0.5 s timer, so "before" can be taken too early. The native test already waits for things to settle (`study_test.gd:155`); the browser test needs the same wait.
+3. **The "PageDown/Down from Start" checks don't test what they claim.** PageDown moves focus into the text, so Down is never pressed from the Start button. The only assertion, scroll > 0, is already true after PageDown alone. This applies to both the native test (`study_test.gd:159-169`) and the browser test (`godot-browser.mjs:195-197`). Separately, nothing tests what Down from Start actually does during startup: it accepts the card and starts music (`main.gd:13279`).
+
+**Should fix (7 items).** The main ones:
+- No test changes chapters while the text is scrolled, so the scroll reset is unproven.
+- Space while reading accepts the card and starts music.
+- Any other key during startup dismisses the card without the normal Start behaviour, then runs that key's game action.
+- The startup card state is set in two places in the game and copied by hand into about eight tests.
+- Every resize during the opening card replaces the screen-reader's chapter announcement with "Overview".
+
+The review also lists two things to cut: an unreachable keyboard check at `main.gd:13285-13286`, and a scrollbar-focus test that forces a state the game never reaches.
