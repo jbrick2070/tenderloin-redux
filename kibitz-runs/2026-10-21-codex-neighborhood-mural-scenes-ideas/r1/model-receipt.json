@@ -1,0 +1,15 @@
+{
+  "requested_model": "claude-opus-5-5",
+  "resolved_harness_selected_model": "claude-opus-5-5",
+  "requested_effort": "high",
+  "resolved_harness_selected_effort": "high",
+  "provider_runtime_identity": "not independently exposed",
+  "quota_usage_percent": null,
+  "auth_receipt": "claude_quota_status.txt (account identifiers redacted)",
+  "raw_quota_private": "artifacts/mural-scene-ideas-quota-raw.txt",
+  "raw_quota_sha256": "8837273a61838ba8faef568a69dfead62d1566b2be47f9636a4097bdcbf7023c",
+  "calls": 1,
+  "toolcheck": "PASS",
+  "harness_return_code": 0,
+  "scope": "READ ONLY pre-code r1, next neighborhood mural scenes; not implementation QA"
+}

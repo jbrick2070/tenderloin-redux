@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-10-21T17:36:23.224182+00:00",
+  "head": "1c5fa7ae08e39e6488208e09aaeb0fa8b8ba42b6",
+  "all_seven_precode_hashes_match": true,
+  "source": {
+    "godot/main.gd": "8371efe518691d907ad747912e3b4177e0ab3547ba20bf4942c20d6c14f9aef1",
+    "godot/mural_workshop.gd": "2bb5ac0b771398a7da58123696ca7d68ee107fbc8e9d4ff895acf50fbdcb0e1a",
+    "godot/tests/study_test.gd": "e1ab8834caf76189794b98b269bc13f5089b24f59b77f4a067ac70dfa48a61ba",
+    "tests/godot-browser.mjs": "d8a4e3b22b517d064f62aa210c9c7b8e876372372c592982d18249b0978d221e",
+    "docs/ROADMAP.md": "2488b43d63b7c059760085887326aaba6c18fad7ec50f1034235573177355189",
+    "docs/CONCEPT.md": "ff4d1726d3d45b2d37b6f083c035f5f60d8ed5477ae1d5fb2bab1af77aeceab5",
+    "public/gathering.js": "55c87533e849ab4b847ce6df52d6bc035f361025648dc0541ccfafcbda1d1978"
+  },
+  "decision": "Resume same selected Dez Rhythm Circle after committed painted mural. The completed exact sole Claude r1 is the mandatory pre-code pass, no duplicate call. Implement world staging and eight real pads plus ephemeral completed-save practice, independent r3 and five gates required."
+}

@@ -1,0 +1,20 @@
+STDOUT:
+I wrote the review to `kibitz-runs/2026-10-21-2026-10-21-codex-neighborhood-mural-scenes-ideas/r1/claude.md`. I only read files and wrote nothing else; the file tools worked.
+
+**Verdict: yes-with-fixes.** The brief describes the current three-mark mural honestly, but it leaves out four constraints already in the code. Any one of them would break a straightforward cooking/graffiti scene feature:
+
+1. **Keepsake picture is locked.** Tests require the Godot keepsake SVG to match the frozen `public/keepsake.js` byte for byte (`tests/godot-browser.mjs:1344` and `:1419-1429`), and `public/` can't be edited. So scenes can never go into the keepsake photo or its SVG.
+2. **Completion counts the motif list.** `MURAL_MOTIFS` is the "3/3" count in about 20 places, including block-open readiness and the photo gate. Scenes need their own separate list, or old 3/3 saves stop opening the block.
+3. **Unknown mural keys wipe the save.** The validators reset the whole save to defaults when they see an unrecognized mural key (`main.gd:12003`, `:12464-12467`, `:12094`). Scene data needs to be a new top-level save field that drops bad entries instead of resetting, the way `discovered_surprises` already does (`main.gd:12539-12545`).
+4. **The `optional` save field is a trap.** It has no checks and allows 8192 bytes, double the 4096-byte total save limit, so scene data must not go there.
+
+It also flags these points:
+- **"No silent v1 writes" is ambiguous.** It contradicts both the strict version check and the repo's habit of adding fields inside v1. The review recommends rewording it to "no undocumented v1 writes."
+- **Scenes are too small at phone size.** On a short wide screen a single cell's mark is roughly 25 px tall (my estimate from the layout constants), which is too small to read as a person cooking. That points to a separate backdrop layer rather than scenes in the 6x3 grid.
+- **Pixel tests can't prove recognizability.** Automated checks can show the art is present and in bounds; whether it reads as "someone cooking" needs a human look at screenshots.
+
+**Recommended next feature:** a backdrop band behind the grid with left/centre/right slots. Each slot holds one of 2–3 original scenes credited to an existing resident, for example Thanh pouring tea over a steaming pot. The same image shows on a 3D plaque by the board, and none of the three-mark rules change.
+
+**Suggested cuts:** the "small music scene", any plan to copy scenes into the photo, and free scaling or layering of scenes.
+
+Several connectors (GitHub, Slack, Linear, Notion, Asana, Atlassian, Datadog, PagerDuty, Box, Runway) need authorization before they can be used. Authorize claude.ai connectors in your claude.ai connector settings, and the others with `claude mcp` or `/mcp` in an interactive session. This review didn't need any of them.

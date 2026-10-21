@@ -1,0 +1,6 @@
+{
+  "recorded_utc": "2026-10-21T19:08:07.096129+00:00",
+  "pre_fanout_source_directory": "kibitz-runs/2026-10-21-codex-neighborhood-mural-scenes-ideas/r1",
+  "actual_harness_dated_directory": "kibitz-runs/2026-10-21-2026-10-21-codex-neighborhood-mural-scenes-ideas/r1",
+  "note": "Harness prepended its own date to supplied topic. Anchor/scope/source hashes were written in original directory BEFORE fanout, now copied byte-identically beside actual report. No repeat call or retroactive pre-code claim."
+}

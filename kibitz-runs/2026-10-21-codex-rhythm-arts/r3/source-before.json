@@ -1,0 +1,13 @@
+{
+  "godot/main.gd": "0d3fe25d7c36fcbffd302d9f52657709a34a47100fa815c33144f140f628e85e",
+  "godot/rhythm_circle.gd": "c353487103e0b773109a4c985db540a5e7ac9d74d37ac6d0551788a46fbdfbc1",
+  "godot/mural_workshop.gd": "c3ad3c82a7c511162626462ce76b637758ec69cbc365cbba044b2877dde28fb5",
+  "godot/mural_signature.gd": "a8b25e10edef62c77fb4ccb6e98c08972c579e61659ac80386a04a03bc851da2",
+  "godot/tests/study_test.gd": "31af1507ee94299aff377d9961b6b9a6b459e45a904d86eb99b5442157c614f2",
+  "tests/godot-browser.mjs": "8cfbaf545892f1281394f44b63d6bdf7a6fab4f3114a401f12951bd717d7cb89",
+  "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160",
+  "docs/ROADMAP.md": "2488b43d63b7c059760085887326aaba6c18fad7ec50f1034235573177355189",
+  "public/hosting.js": "2155f76740dfe1cc91aa258462cc135aac0cc5da7a15bc981f5031ad8ddebf19",
+  "public/gathering.js": "55c87533e849ab4b847ce6df52d6bc035f361025648dc0541ccfafcbda1d1978",
+  "public/keepsake.js": "fb72bf4b444a720e2fb8c1d880b0567e99ea7b017572e4fee3c4747dbfb604b2"
+}

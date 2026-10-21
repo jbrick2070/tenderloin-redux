@@ -1,0 +1,16 @@
+{
+  "recorded_utc": "2026-10-21T20:23:58.688144+00:00",
+  "automation_id": "build-tenderloin-redux",
+  "update_applied_through_tool": true,
+  "status": "ACTIVE",
+  "rrule": "FREQ=MINUTELY;INTERVAL=30",
+  "targetThreadId": "01a159d6-60a3-78e1-92ae-4018509d2539",
+  "created_at": 1792342628584,
+  "policy_prefix_unchanged": true,
+  "policy_prefix_sha256": "41b8fc04cc9cd123adff92ae758927589793d2bcf3285f6dc14af495d24beef3",
+  "prompt_matches_prepared_payload": true,
+  "prompt_sha256": "a8fde37661ca321cfc678198f13e82a1548603ce63782dd838194343a6548405",
+  "latest_checkpoint_verified": true,
+  "prepared_next_feature": "Original saved cooking/sharing and artist/graffiti-at-work mural scene composition; pre-code r1 already completed, implementation not started",
+  "deployment_guard": "Verified commits carry [skip ci]; all5localgates mandatory, existing workflow unchanged"
+}

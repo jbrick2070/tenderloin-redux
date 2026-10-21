@@ -3248,6 +3248,7 @@ func run() -> void:
 	await verify_short_activity_panels(study)
 	await verify_short_activity_panels(study, true)
 	await verify_mural_workshop(study)
+	await verify_rhythm_circle(study)
 	study.clear_godot_save()
 	study.clear_godot_settings()
 	var legacy_settings := FileAccess.open(study.settings_path, FileAccess.WRITE)
@@ -3831,6 +3832,13 @@ func verify_mural_workshop(study: Node) -> void:
 			var target: Dictionary = snap.cells[int(mark.row)*6+int(mark.col)]
 			require(Rect2(target.x,target.y,target.width,target.height).encloses(mark_rect) and mark.width >= 20 and mark.height >= 25, "painted contribution reserves a useful layout box inside its exact target; actual stroke presence is checked in browser pixels")
 		require(snap.art.motifs.size() == study.mural_placements.size() and snap.art.slot_marks == 18-study.mural_placements.size(), "layout metadata reflects the saved contribution count; drawn marks are independently checked in actual browser pixels")
+		require(w.signature.focus_mode==Control.FOCUS_NONE and snap.signature.icons.size()==4,"original instrument/tea/heart border stays outside keyboard ring")
+		for icon in snap.signature.icons:
+			var rect := Rect2(icon.x,icon.y,icon.width,icon.height)
+			for c in w.cells: require(not rect.intersects(c.get_global_rect()),"artistic border does not obscure precise painted targets")
+		require(study.mural_banner_mesh.material_override.albedo_texture!=null and study.mural_banner_mesh.visible and study.mural_banner_mesh.material_override.uv1_scale==Vector3(3,2,1) and not study.mural_banner_mesh.material_override.emission_enabled,"completed street easel maps all4 original ink icons through every BoxMesh face atlas without white wash")
+		for icon in snap.signature.icons:
+			require(w.scroll.get_global_rect().grow(1).encloses(Rect2(icon.x,icon.y,icon.width,icon.height)),"new border is actually inside the unclipped reading viewport")
 		var saved_model: Dictionary = w.art_model.duplicate(true)
 		for palette in study.MURAL_PALETTES:
 			for complete in [false,true]:
@@ -3928,3 +3936,183 @@ func verify_mural_workshop(study: Node) -> void:
 	study.hide_story_card()
 	study.last_story_chapter = saved_chapter
 	study.overview()
+
+func verify_rhythm_circle(study: Node) -> void:
+	var saved := JSON.stringify(study.build_save_envelope())
+	var positions: Array[Vector3] = []
+	for n in study.neighbor_nodes: positions.append(n.position)
+	study.hide_story_card()
+	study.startup_story_pending = false
+	study.current_path.clear()
+	study.block_opened = true
+	study.programme_published.assign(["beats","pause","stories","art"])
+	study.hosting_order.assign(["beats","pause","stories","art"])
+	study.hosting_results.clear()
+	study.hosting_draft = study.default_hosting_draft()
+	study.last_story_chapter = int(study.current_chapter().num)
+	study.opening_conversation = false
+	study.talk_partner = -1
+	study.in_overview = false
+	study.in_wide_overview = false
+	var circle: Control = study.rhythm_circle
+	for layout in ["table","floor"]:
+		study.gathering_layout = layout
+		study.update_layout_3d()
+		for size in [Vector2i(1100,760),Vector2i(390,667),Vector2i(320,667),Vector2i(520,360),Vector2i(559,360),Vector2i(320,568)]:
+			root.size = size
+			study.show_block_panel(true)
+			for f in range(5): await process_frame
+			study.hide_story_card()
+			if size.x==1100:
+				study.player.position = study.BLACKHAWK_POS
+				study.selected = 0
+				study.meshes[0].material_override = study.chosen_material
+			circle.layout_entry()
+			var pose: Array = study.panel_camera_pose()
+			require(circle.entry.visible and Rect2(Vector2.ZERO,Vector2(size)).encloses(circle.entry.get_global_rect()),"visible hub entry fits actual native viewport")
+			circle.entry.grab_focus()
+			circle.entry.emit_signal("pressed")
+			require(circle.visible,"active beats have an actual visible Rhythm Circle")
+			for f in range(5): await process_frame
+			require(study.panel_camera_pose()==pose,"opening keeps camera until deliberate View Circle")
+			circle.view_circle()
+			if size.x==1100:
+				require(study.selected==-1 and circle.cutaway_points().size()==10,"explicit Circle view clears inspection selection and supplies remote stage cutaway subjects")
+				var relevant := 0
+				for group in [[study.data.buildings,study.building_rects,study.occluded_buildings],[study.data.wider_buildings,study.wider_building_rects,study.occluded_wider_buildings],[study.lidar_additions,study.addition_rects,study.occluded_additions]]:
+					for idx in range(group[0].size()):
+						for fp in circle.cutaway_points():
+							if study.building_record_occludes_point(group[0][idx],group[1][idx],fp):
+								relevant += 1
+								require(group[2].has(idx),"actual foreground buildings cut away for the remote stage, not only the distant player")
+								break
+				require(relevant>0,"remote-stage native cutaway check uses real foreground geometry")
+			for f in range(3): await process_frame
+			var view: Dictionary = circle.snapshot()
+			require(view.world_visible and view.subjects.size()==4 and view.lamps.size()==8,"both layouts stage one fictional visiting performer, two listeners, drum and eight lanterns")
+			require(circle.scene_rect.size.y>=120 and circle.scene_rect.size.x>=240,"rhythm controls leave useful world space")
+			for b in circle.pads+circle.options:
+				require(b.is_visible_in_tree() and b.size.x>=44 and b.size.y>=44 and Rect2(Vector2.ZERO,Vector2(size)).grow(1).encloses(b.get_global_rect()),"all rhythm inputs remain visible44px targets")
+			for subject in view.subjects:
+				require(circle.scene_rect.has_point(Vector2(subject.x,subject.y)) and circle.scene_rect.has_point(Vector2(subject.head_x,subject.head_y)),"real subject foot and head fit the world view")
+			var original: int = circle.pattern()
+			for bit in range(8):
+				circle.pads[bit].emit_signal("pressed")
+				require(circle.pattern()==(original ^ (1<<bit)),"each actual pad calls the exact existing draft bit")
+				for li in range(2):
+					var col: Color = circle.lamps[li][bit].material_override.albedo_color
+					require(col==(circle.HIT if circle.pattern() & (1<<bit) else circle.REST),"pad changes actual3D material on both layouts")
+				circle.pads[bit].emit_signal("pressed")
+			circle.options[0].emit_signal("pressed")
+			require(circle.pattern()==0,"listening zero is a complete valid draft")
+			circle.step_cues = true
+			study.music_playing = false
+			circle.update_world()
+			require(circle.active_step==-1,"paused and listening have static poses")
+			circle.toggle_step(2)
+			study.music_playing = true
+			study.music_volume = 0.7
+			study.music_mode = "sketch"
+			study.sketch_frames_pushed = int(study.MUSIC_STEP_SEC*study.MUSIC_MIX_RATE*2.1+(study.sketch_generator.buffer_length*study.MUSIC_MIX_RATE if study.sketch_playback!=null else 0))
+			circle.update_world()
+			require(circle.active_step==2 and circle.lamps[0][2].scale.x==1.25,"opted-in cues derive from sketch tick")
+			for mode in ["local","sketch"]:
+				study.music_mode = mode
+				study.music_volume = 0.0 if mode=="sketch" else 0.7
+				circle.update_world()
+				require(circle.active_step==-1 and circle.lamps[0][2].scale==Vector3.ONE,"localfiles and mute use honest static fallback")
+			study.music_playing = false
+			circle.close_circle()
+			require(study.panel_camera_pose()==pose,"Back from deliberate View Circle restores original pose")
+			if size.x==1100: require(study.selected==0 and study.meshes[0].material_override==study.chosen_material,"Back restores the original building-inspection selection")
+			study.hosting_draft.pattern = original
+			print("RHYTHM_CIRCLE_CHECK ",layout," ",size," scene=",circle.scene_rect)
+	# Complete0 via original callback, then practice cannot rewrite result/photo/save.
+	study.hide_story_card()
+	circle.open_circle()
+	circle.listen()
+	circle.complete()
+	require(study.get_hosted_segment_value("beats")==0 and study.current_hosting_activity()=="pause","Complete copies listening0 and advances original hosting")
+	study.hide_story_card()
+	var frozen := JSON.stringify(study.build_save_envelope())
+	var photo := JSON.stringify(study.keepsake_photo)
+	circle.open_circle()
+	require(circle.practice,"completed beats enter labelled ephemeral practice")
+	circle.toggle_step(7)
+	require(circle.pattern()==128 and frozen==JSON.stringify(study.build_save_envelope()),"practice changes the world without calling inactive save setters")
+	circle.view_circle()
+	var point: Vector2 = circle.scene_rect.get_center()
+	var down := InputEventScreenTouch.new()
+	down.pressed = true
+	down.position = point
+	circle.scene_input(down)
+	var jitter := InputEventScreenDrag.new()
+	jitter.position = point+Vector2(2,0)
+	jitter.relative = Vector2(2,0)
+	var still: Array = study.panel_camera_pose()
+	circle.scene_input(jitter)
+	require(circle.owns_view and study.panel_camera_pose()==still,"native touch2px jitter does not silently drop Back restoration")
+	var move := InputEventScreenDrag.new()
+	move.position = point+Vector2(20,8)
+	move.relative = Vector2(18,8)
+	circle.scene_input(move)
+	require(not circle.owns_view and study.panel_camera_pose()!=still,"actual native touch handler grants ownership only to deliberate scene drag")
+	var manual: Array = study.panel_camera_pose()
+	circle.close_circle()
+	require(study.panel_camera_pose()==manual and circle.pattern()==0 and photo==JSON.stringify(study.keepsake_photo),"Back preserves manual ownership and restores copied saved rhythm/photo")
+	# Open rotation must restore the followed body above the real hub.
+	study.frame_player_for_walking()
+	study.show_block_panel(true)
+	for f in range(5): await process_frame
+	study.block_close_btn.grab_focus()
+	circle.open_circle()
+	circle.view_circle()
+	root.size = Vector2i(520,360)
+	for f in range(8): await process_frame
+	circle.close_circle()
+	for f in range(8): await process_frame
+	require(study.block_close_btn.has_focus() and study.play_area_rect().grow(1).encloses(study.player_overlay_rect()),"rotation Back restores focus and full followed player above restored dock")
+	# A followed view may refit its target after round-trip rotation; manual views remain exact.
+	root.size = Vector2i(559,360)
+	for f in range(8): await process_frame
+	var returned_zoom: float = study.view_size
+	var returned_yaw: float = study.camera_yaw
+	circle.open_circle()
+	circle.view_circle()
+	root.size = Vector2i(390,667)
+	for f in range(8): await process_frame
+	root.size = Vector2i(559,360)
+	for f in range(8): await process_frame
+	circle.close_circle()
+	for f in range(8): await process_frame
+	require(study.following_player and study.view_size==returned_zoom and study.camera_yaw==returned_yaw and study.play_area_rect().grow(1).encloses(study.player_overlay_rect()),"559 round-trip rotation Back keeps zoom/heading and fits the followed body rather than freezing an obsolete layout target")
+	study.following_player = false
+	var manual_return: Array = study.panel_camera_pose()
+	circle.open_circle()
+	circle.view_circle()
+	root.size = Vector2i(390,667)
+	for f in range(8): await process_frame
+	root.size = Vector2i(559,360)
+	for f in range(8): await process_frame
+	circle.close_circle()
+	for f in range(8): await process_frame
+	require(not study.following_player and study.panel_camera_pose()==manual_return,"round-trip rotation Back restores the complete manually owned pose exactly")
+	# Last segment preserves the original completion announcement, including listening0.
+	study.hosting_order.assign(["stories","pause","art","beats"])
+	study.hosting_results.assign([{"id":"stories","value":"memory"},{"id":"pause","value":"arc"},{"id":"art","value":{"palette":"warm","tiles":[0,1,2,2,1,0]}}])
+	study.hide_story_card()
+	study.last_story_chapter = int(study.current_chapter().num)
+	circle.open_circle()
+	circle.listen()
+	circle.complete()
+	require(study.is_hosting_done() and study.get_hosted_segment_value("beats")==0 and study.last_a11y_announcement.contains("Second Afternoon Complete"),"beats-last Complete0 retains main's earned final announcement")
+	study.hide_story_card()
+	circle.open_circle()
+	study.reset_mural_state_to_defaults("fresh")
+	require(not circle.visible and not study.is_mural_workshop_visible(),"state reset closes focused views before replacing models")
+	for i in range(positions.size()): require(positions[i]==study.neighbor_nodes[i].position,"named neighbor navigation anchors never move or duplicate")
+	require(JSON.stringify(study.build_save_envelope()).to_utf8_buffer().size()<=4096,"rhythm adds no save keys or budget growth")
+	study.apply_save_envelope(saved)
+	study.music_playing = false
+	study.music_mode = "sketch"
+	root.size = Vector2i(1100,760)

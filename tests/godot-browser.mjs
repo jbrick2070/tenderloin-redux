@@ -12,6 +12,8 @@ const [pckStat, ...sourceStats] = await Promise.all([
   stat('artifacts/godot-web/index.pck'),
   stat('godot/main.gd'),
   stat('godot/mural_workshop.gd'),
+  stat('godot/rhythm_circle.gd'),
+  stat('godot/mural_signature.gd'),
   stat('godot/main.tscn'),
   stat('godot/project.godot'),
   stat('godot/export_presets.cfg'),
@@ -37,6 +39,8 @@ const narrowHubChecks = [];
 const shortWalkingChecks = [];
 let shortWalkingCaptionChecks = 0, shortWalkingGuideChecks = 0;
 let smallHubReaderChecks = 0;
+let rhythmFixtureSave;
+const rhythmCircleChecks = [];
 const muralWorkshopChecks = [];
 let workshopAutoAdvanceChecks = 0;
 
@@ -74,6 +78,139 @@ async function verifyPaintedMuralPixels(page,s) {
   const seam=point(pair.x+pair.width,pair.y+pair.height*.2);
   assert.ok(seam.every((v,i)=>Math.abs(v-paper[i])<25),'adjacent empty spots share continuous paper, with no dark cell border');
   return {motifs:samples,visibleDots:dots,seam,paper};
+}
+
+async function verifyMuralSignaturePixels(page,s) {
+  const pixels=screenshotPixels(await page.screenshot()),c=await page.locator('#canvas').boundingBox(),icons=[];
+  for(const icon of s.mural_workshop.signature.icons){let ink=0,paper=0;for(let y=icon.y+1;y<icon.y+icon.height-1;y++)for(let x=icon.x+1;x<icon.x+icon.width-1;x++){
+    const rgb=pixels.pixel(c.x+x*c.width/s.viewport_width,c.y+y*c.height/s.viewport_height);if(rgb.reduce((n,v)=>n+v,0)<480)ink++;if(rgb[0]>215&&rgb[1]>190&&rgb[2]>150)paper++;
+  }assert.ok(ink>=8&&paper>=20,`${icon.id} original instrument/block-life ink actually renders separately on paper`);icons.push({id:icon.id,ink,paper});}
+  assert.deepEqual(icons.map(i=>i.id),['brass','drum','tea','heart']);return icons;
+}
+
+async function verifyStreetSignature(page,tap,snap) {
+  let s=await snap();
+  await tap(s.mural_detail.buttons.at(-1));
+  // Map deliberately dismisses transients using the original game action, not a test timer hook.
+  await tap((await snap()).walking_controls[1]);
+  await tap((await snap()).walking_controls[2]);
+  await page.keyboard.press('KeyM');
+  await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.mural_detail.panel.visible&&!window.__tenderloinGodotA11ySnapshot.player_grounding.path_active);
+  s=await snap();
+  await tap(s.mural_detail.buttons.at(-1));
+  s=await snap();
+  assert.equal(s.overlays.reward.remaining,0,'actual Map dismisses the transient before inspecting world ink');
+  for(let i=0;i<2;i++){const plus=s.walking_controls.find(b=>b.text.includes('Zoom')&&b.text.includes('+'));await tap(plus);s=await snap();}
+  {
+    const q=s.mural_signature_world.corners,center={x:q.reduce((a,p)=>a+p.x,0)/4,y:q.reduce((a,p)=>a+p.y,0)/4},r=s.play_area,dx=r.x+r.width*.55-center.x,dy=r.y+r.height*.5-center.y,c=await page.locator('#canvas').boundingBox();
+    const x=c.x+(r.x+r.width*.5)*c.width/s.viewport_width,y=c.y+(r.y+r.height*.25)*c.height/s.viewport_height;
+    await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+dx*c.width/s.viewport_width,y+dy*c.height/s.viewport_height,{steps:10});await page.mouse.up();
+    const frame=s.ui_frame;await page.waitForFunction(f=>window.__tenderloinGodotA11ySnapshot.ui_frame>f+4,frame);s=await snap();
+  }
+  const corners=s.mural_signature_world.corners;for(const q of corners)assert.ok(q.x>=s.play_area.x&&q.y>=s.play_area.y&&q.x<=s.play_area.x+s.play_area.width&&q.y<=s.play_area.y+s.play_area.height,'actual world ink is uncovered inside play area');
+  const pixels=screenshotPixels(await page.screenshot()),c=await page.locator('#canvas').boundingBox();
+  assert.ok(s.mural_signature_world.visible);
+  const p=(u,v)=>({x:(corners[0].x*(1-u)+corners[1].x*u)*(1-v)+(corners[2].x*(1-u)+corners[3].x*u)*v,y:(corners[0].y*(1-u)+corners[1].y*u)*(1-v)+(corners[2].y*(1-u)+corners[3].y*u)*v});
+  let ink=0,paper=0;const bins=[0,0,0,0];for(let u=.02;u<.98;u+=.005)for(let v=.15;v<.85;v+=.1){const q=p(u,v);assert.ok(q.x>=0&&q.y>=0&&q.x<s.viewport_width&&q.y<s.viewport_height,'street banner remains on-screen');const rgb=pixels.pixel(c.x+q.x*c.width/s.viewport_width,c.y+q.y*c.height/s.viewport_height);if(rgb.reduce((n,v)=>n+v,0)<480){ink++;bins[Math.min(3,Math.floor(u*4))]++;}if(rgb[0]>215&&rgb[1]>190&&rgb[2]>150)paper++;}
+  assert.ok(bins.every(n=>n>=3),'each of all4 real-world icon quarters has actual ink after BoxMesh UV correction');
+  assert.ok(ink>=12&&paper>=30,'the actual existing3D completion banner renders original ink on paper after real zoom inputs');
+  await page.screenshot({path:`artifacts/codex-mural-street-signature-${s.viewport_width}x${s.viewport_height}.png`});return {ink,paper,bins,corners};
+}
+
+async function verifyRhythmCircle(page,touch,size,active=false,completeListening=false) {
+  const snap=()=>page.evaluate(()=>window.__tenderloinGodotA11ySnapshot);
+  const save=()=>page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1'));
+  const settle=async()=>{const f=(await snap()).ui_frame;await page.waitForFunction(f=>window.__tenderloinGodotA11ySnapshot.ui_frame>f+3&&!window.__tenderloinGodotA11ySnapshot.rhythm_circle.layout_pending&&!window.__tenderloinGodotA11ySnapshot.layout_refit_pending,f);};
+  async function tap(b){
+    const s=await snap(),c=await page.locator('#canvas').boundingBox(),w=s.rhythm_circle;
+    assert.ok(b.visible&&b.width>=44&&b.height>=44,'actual rhythm44px target');
+    const same=x=>Math.abs(x.x-b.x)<.1&&Math.abs(x.y-b.y)<.1,pi=w.visible?w.pads.findIndex(same):-1,oi=w.visible?w.options.findIndex(same):-1;
+    const expected=pi>=0?['pattern',w.pattern^(1<<pi)]:!w.visible?['visible',true]:oi===0?['pattern',0]:oi===1?['music',!s.music_playing]:oi===2?['owns_view',true]:oi===3&&!w.practice?['visible',false]:oi===4?['step_cues',!w.step_cues]:oi===5?['visible',false]:null;
+    const x=c.x+(b.x+b.width/2)*c.width/s.viewport_width,y=c.y+(b.y+b.height/2)*c.height/s.viewport_height;if(touch)await page.touchscreen.tap(x,y);else await page.mouse.click(x,y);
+    if(expected)await page.waitForFunction(([key,value])=>{const s=window.__tenderloinGodotA11ySnapshot;return (key==='music'?s.music_playing:s.rhythm_circle[key])===value;},expected);
+    await settle();
+  }
+  const within=(r,x,y)=>x>=r.x&&y>=r.y&&x<=r.x+r.width&&y<=r.y+r.height;
+  await page.setViewportSize(size);await settle();
+  if((await snap()).story_detail.panel.visible){await page.keyboard.press('Escape');await settle();}
+  if(!(await snap()).block_hub_actions.some(b=>b.visible)){if((await snap()).block_panel_control.visible){await page.keyboard.press('KeyG');await settle();}await page.keyboard.press('KeyG');await settle();}
+  const beforeSave=await save(),before=JSON.parse(beforeSave),pose=(await snap()).camera_pose,zoom=(await snap()).camera_view_size,followed=(await snap()).following_player,ground=(await snap()).player_grounding;
+  await tap((await snap()).rhythm_circle.entry);
+  let s=await snap(),w=s.rhythm_circle;
+  assert.ok(w.visible&&w.practice===!active,'visible entry reaches active editing or labelled late practice');assert.deepEqual(s.camera_pose,pose,'entry leaves manual view until explicit View Circle');
+  assert.equal(s.camera_view_size,zoom);
+  assert.ok(s.block_panel_control.x>=0&&s.block_panel_control.x+s.block_panel_control.width<=s.viewport_width+1,'new hub entry does not widen the panel off-screen');
+  await tap(w.options[2]);s=await snap();w=s.rhythm_circle;
+  assert.ok(w.owns_view&&w.world_visible&&w.subjects.length===4&&w.lamps.length===8);
+  assert.ok(w.scene.height>=120&&w.scene.width>=240,'world remains useful around the instrument controls');
+  for(const subject of w.subjects){assert.ok(within(w.scene,subject.x,subject.y)&&within(w.scene,subject.head_x,subject.head_y),`${subject.name} is actually projected in the unobscured world`);}
+  for(const b of [...w.pads,...w.options])assert.ok(b.visible&&b.height>=44&&b.width>=44&&b.x>=0&&b.y>=0&&b.x+b.width<=s.viewport_width+1&&b.y+b.height<=s.viewport_height+1);
+  const pixelAt=async(lamp)=>{const pixels=screenshotPixels(await page.screenshot()),c=await page.locator('#canvas').boundingBox(),ss=await snap();return pixels.pixel(c.x+lamp.x*c.width/ss.viewport_width,c.y+lamp.y*c.height/ss.viewport_height);};
+  const initial=w.pattern,firstLamp={...w.lamps[0]},beforePixel=await pixelAt(firstLamp);
+  await tap(w.pads[0]);s=await snap();w=s.rhythm_circle;
+  assert.equal(w.pattern,initial^1);assert.equal(w.lamps[0].hit,!(initial&1));
+  const afterPixel=await pixelAt(w.lamps[0]);
+  assert.ok(afterPixel.reduce((n,v,i)=>n+Math.abs(v-beforePixel[i]),0)>45,'specific actual3D lantern pixels change after real pad input');
+  await tap(w.pads[0]);
+  for(let i=1;i<8;i++){const original=(await snap()).rhythm_circle.pattern;await tap((await snap()).rhythm_circle.pads[i]);assert.equal((await snap()).rhythm_circle.pattern,original^(1<<i));await tap((await snap()).rhythm_circle.pads[i]);}
+  // A real Down-arrow focus move and Space activate the pad below in the4-column grid.
+  await tap((await snap()).rhythm_circle.pads[0]);const keyboardPattern=(await snap()).rhythm_circle.pattern;await page.keyboard.press('ArrowDown');await page.keyboard.press('Space');await page.waitForFunction(p=>window.__tenderloinGodotA11ySnapshot.rhythm_circle.pattern===(p^(1<<4)),keyboardPattern);await settle();
+  await tap((await snap()).rhythm_circle.pads[4]);await tap((await snap()).rhythm_circle.pads[0]);
+  await page.keyboard.down('KeyW');await page.waitForTimeout(120);await page.keyboard.up('KeyW');assert.equal((await snap()).player_grounding.x,ground.x);assert.equal((await snap()).player_grounding.z,ground.z);
+  await tap((await snap()).rhythm_circle.options[0]);assert.equal((await snap()).rhythm_circle.pattern,0);
+  // Listening0 remains equally valid; restore the original for the main parity progression.
+  if(!completeListening)for(let i=0;i<8;i++)if(initial&(1<<i))await tap((await snap()).rhythm_circle.pads[i]);
+  const beforeMusic=(await snap()).music_playing;
+  if(!beforeMusic)await tap((await snap()).rhythm_circle.options[1]);
+  await tap((await snap()).rhythm_circle.options[4]);
+  if((await snap()).rhythm_circle.pattern)await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.rhythm_circle.active_step>=0);
+  await tap((await snap()).rhythm_circle.options[1]);assert.equal((await snap()).rhythm_circle.active_step,-1,'MusicOff gives static quiet poses');
+  const staticLamp=(await snap()).rhythm_circle.lamps;await page.waitForTimeout(180);assert.deepEqual((await snap()).rhythm_circle.lamps,staticLamp,'quiet lantern geometry is static');
+  if(!active&&size.width===390){
+    await page.evaluate(()=>{
+      const count=2205,bytes=new Uint8Array(44+count*2),view=new DataView(bytes.buffer),put=(p,t)=>[...t].forEach((c,i)=>bytes[p+i]=c.charCodeAt(0));
+      put(0,'RIFF');view.setUint32(4,bytes.length-8,true);put(8,'WAVE');put(12,'fmt ');view.setUint32(16,16,true);view.setUint16(20,1,true);view.setUint16(22,1,true);view.setUint32(24,22050,true);view.setUint32(28,44100,true);view.setUint16(32,2,true);view.setUint16(34,16,true);put(36,'data');view.setUint32(40,count*2,true);for(let i=0;i<count;i++)view.setInt16(44+i*2,Math.round(Math.sin(i*2*Math.PI*330/22050)*9000),true);
+      window.__tenderloinQueueLocalAudioBytes('rhythm-fallback-test.wav',bytes,'');
+    });
+    await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.music_mode==='local'&&window.__tenderloinGodotA11ySnapshot.music_playing);await settle();assert.equal((await snap()).rhythm_circle.active_step,-1,'actual local WAV bridge keeps rhythm cues static');await tap((await snap()).rhythm_circle.options[1]);
+  }
+  if(beforeMusic)await tap((await snap()).rhythm_circle.options[1]);
+  await page.screenshot({path:`artifacts/codex-rhythm-circle-${size.width}x${size.height}-${touch?'touch':'mouse'}-${active?'active':'practice'}.png`});
+  await writeFile(`artifacts/codex-rhythm-circle-${size.width}x${size.height}-${touch?'touch':'mouse'}-${active?'active':'practice'}.json`,JSON.stringify(await snap(),null,2));
+  if(active){
+    const count=before.hosting.results.length;await tap((await snap()).rhythm_circle.options[3]);assert.ok(!(await snap()).rhythm_circle.visible);const after=JSON.parse(await save());assert.equal(after.hosting.results.length,count+1);assert.equal(after.hosting.results.at(-1).value,completeListening?0:initial);if(count===3)assert.match((await snap()).announcement,/Second Afternoon Complete/,'beats-last keeps its earned completion announcement');
+  }else{
+    if(touch){const rr=(await snap()).rhythm_circle.scene,c=await page.locator('#canvas').boundingBox(),ss=await snap(),x=c.x+(rr.x+rr.width*.5)*c.width/ss.viewport_width,y=c.y+(rr.y+rr.height*.7)*c.height/ss.viewport_height,cdp=await page.context().newCDPSession(page),pose=(await snap()).camera_pose;
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+2,y}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await cdp.detach();await settle();assert.ok((await snap()).rhythm_circle.owns_view);assert.deepEqual((await snap()).camera_pose,pose,'actual2px finger jitter retains camera/Back ownership');
+    }
+    const rotated=size.width>=520?{width:390,height:667}:{width:520,height:360};
+    await page.setViewportSize(rotated);await settle();let rotatedView=(await snap()).rhythm_circle;assert.ok(rotatedView.visible&&rotatedView.pads.every(b=>b.visible&&b.width>=44&&b.height>=44));
+    await page.setViewportSize(size);await settle();
+    assert.equal(await save(),beforeSave,'all practice/music/reading/rotation controls leave exact saved bytes untouched');
+    await tap((await snap()).rhythm_circle.options[3]);assert.equal((await snap()).rhythm_circle.pattern,initial,'Reset restores saved result, not a persisted new result');
+    await page.keyboard.press('Escape');await settle();const returned=await snap();assert.ok(!returned.rhythm_circle.visible);assert.equal(returned.camera_view_size,zoom);
+    if(followed){
+      assert.equal(returned.following_player,true);assert.equal(returned.camera_pose.yaw,pose.yaw);assert.equal(returned.camera_pose.pitch,pose.pitch);
+      const b=returned.overlays.player,r=returned.play_area;assert.ok(b.x>=r.x-1&&b.y>=r.y-1&&b.x+b.width<=r.x+r.width+1&&b.y+b.height<=r.y+r.height+1,'after round-trip rotation Back refits the full followed body in the restored hub without changing zoom or heading');
+    }else assert.deepEqual(returned.camera_pose,pose,'Back restores the exact prior manually owned camera after round-trip rotation');
+    assert.equal(await save(),beforeSave);assert.deepEqual(JSON.parse(await save()).epilogue.photo,before.epilogue.photo);
+    await page.keyboard.press('F3');await settle();assert.ok((await snap()).rhythm_circle.visible,'late players can return through keyboard as well');await tap((await snap()).rhythm_circle.options[2]);
+    const rr=(await snap()).rhythm_circle.scene,c=await page.locator('#canvas').boundingBox(),ss=await snap(),x=c.x+(rr.x+rr.width*.5)*c.width/ss.viewport_width,y=c.y+(rr.y+rr.height*.75)*c.height/ss.viewport_height;
+    if(touch){const session=await page.context().newCDPSession(page);await session.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});await session.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+20,y:y+8}]});await session.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await session.detach();}else{await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+20,y+8,{steps:5});await page.mouse.up();}
+    await settle();const manual=(await snap()).camera_pose;assert.equal((await snap()).rhythm_circle.owns_view,false,'real scene inspection owns camera');await tap((await snap()).rhythm_circle.options[5]);assert.deepEqual((await snap()).camera_pose,manual,'Back respects manual scene pan');assert.equal(await save(),beforeSave);
+    await page.keyboard.press('KeyF');await settle();await page.keyboard.press('KeyG');await settle();assert.ok((await snap()).block_panel_control.visible);await page.keyboard.press('F3');await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.rhythm_circle.visible);await settle();await tap((await snap()).rhythm_circle.options[2]);
+    await page.setViewportSize(rotated);await settle();await tap((await snap()).rhythm_circle.options[5]);await settle();
+    const restored=await snap(),body=restored.overlays.player,r=restored.play_area;assert.ok(restored.block_panel_control.visible,'rotation restores the actually open hub');
+    assert.ok(body.x>=r.x-1&&body.y>=r.y-1&&body.x+body.width<=r.x+r.width+1&&body.y+body.height<=r.y+r.height+1,'actual open rotation Back fits the full followed player above the restored hub');
+    assert.ok(restored.block_panel_control.x>=0&&restored.block_panel_control.x+restored.block_panel_control.width<=restored.viewport_width+1);
+    await page.setViewportSize(size);await settle();assert.equal(await save(),beforeSave);
+  }
+  if(!active&&[1100,390,320].includes(size.width)){
+    await page.keyboard.press('F3');await settle();await tap((await snap()).rhythm_circle.pads[7]);assert.notEqual((await snap()).rhythm_circle.pattern,initial);
+    await page.reload();await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending&&!window.__tenderloinGodotA11ySnapshot.layout_refit_pending);
+    assert.ok(!(await snap()).rhythm_circle.visible);assert.equal((await snap()).rhythm_circle.pattern,initial,'reload discards ephemeral practice');assert.equal(await save(),beforeSave,'practice reload leaves exact copied result and photo');
+  }
+  rhythmCircleChecks.push({...size,touch,active,completeListening,layout:before.gathering_layout,photo:before.epilogue.photo.status,beforePixel,afterPixel,scene:w.scene});
 }
 
 async function verifyMuralWorkshop(page, context, touch, originalSize, requireTakenPhoto = true) {
@@ -216,6 +353,7 @@ async function verifyMuralWorkshop(page, context, touch, originalSize, requireTa
     await page.screenshot({path:`artifacts/codex-mural-workshop-${size.width}x${size.height}-${touch?'touch':'mouse'}${requireTakenPhoto?'':'-fresh'}.png`});
     await writeFile(`artifacts/codex-mural-workshop-${size.width}x${size.height}-${touch?'touch':'mouse'}${requireTakenPhoto?'':'-fresh'}.json`,JSON.stringify(await snap(),null,2));
     const paintedPixels=await verifyPaintedMuralPixels(page,await snap());
+    paintedPixels.signature=await verifyMuralSignaturePixels(page,await snap());
     const cue=(await snap()).overlays.reward;
     assert.ok(cue.remaining>0,'the hidden-reward timer assertion is nonvacuous');
     await page.waitForFunction(f=>window.__tenderloinGodotA11ySnapshot.ui_frame>f+4,(await snap()).ui_frame);assert.ok(!(await snap()).overlays.reward.visible);assert.equal((await snap()).overlays.reward.remaining,cue.remaining,'hidden progress reward retains its reading time with Info collapsed or expanded');
@@ -235,6 +373,7 @@ async function verifyMuralWorkshop(page, context, touch, originalSize, requireTa
     assert.equal((await snap()).player_grounding.x,grounding.x); assert.equal((await snap()).player_grounding.z,grounding.z);
     assert.ok(Buffer.byteLength(await save(),'utf8')<=4096);
     if((await snap()).header_details_expanded) await tap((await snap()).info_control);
+    paintedPixels.streetSignature=await verifyStreetSignature(page,tap,snap);
     muralWorkshopChecks.push({...size,touch,photoStatus:photo.status,placements:3,paintedPixels});
   }
   await page.setViewportSize(originalSize);
@@ -1209,11 +1348,9 @@ try {
     assert.equal(exportedKeepsake.exported?.svg, postcardSVG(savedPhotoForParity), 'Exported Godot keepsake SVG must be 100% byte-for-byte identical to public/keepsake.js postcardSVG()');
     assert.equal(exportedKeepsake.exported?.bytes, Buffer.byteLength(exportedKeepsake.exported.svg, 'utf8'), 'Exported keepsake SVG byte count must match UTF-8 byte length');
     assert.equal(exportedKeepsake.snapshotExported, true, 'A11y snapshot must report keepsake_exported === true after Shift+KeyY');
-    // Press KeyZ (6x) to publish the 4-segment afternoon programme, start hosting, and complete all 4 hosted segments
-    for (let zStep = 0; zStep < 6; zStep++) {
-      await page.keyboard.press('KeyZ');
-      await page.waitForTimeout(80);
-    }
+    for(let zStep=0;zStep<3;zStep++){await page.keyboard.press('KeyZ');await page.waitForTimeout(80);}
+    await verifyRhythmCircle(page,size.width<600,size,true);
+    for(let zStep=0;zStep<2;zStep++){await page.keyboard.press('KeyZ');await page.waitForTimeout(80);}
     await page.waitForFunction(() => {
       const raw = window.localStorage.getItem('tenderloin-redux.godot.save.v1');
       if (!raw) return false;
@@ -2075,8 +2212,25 @@ try {
       await verifyNarrowHub(page, context, touchHub);
       await verifyShortWalking(page, context, touchHub);
     }
+    for(const rs of size.width===390?[size]:[size,{width:520,height:360},{width:559,height:360}])await verifyRhythmCircle(page,size.width<600,rs);
+    await page.setViewportSize(size);
     await verifyMuralWorkshop(page, context, size.width < 600, size);
+    if(!rhythmFixtureSave)rhythmFixtureSave=await page.evaluate(()=>localStorage.getItem("tenderloin-redux.godot.save.v1"));
     await context.close();
+  }
+  // A private fixture derived from actual progression covers legal beats-last/zero completion.
+  {
+    const fixture=JSON.parse(rhythmFixtureSave),order=['stories','pause','art','beats'];
+    assert.equal(fixture.epilogue.photo.status,'taken');fixture.hosting.order=order;fixture.programme.order=order;fixture.programme.published=order;fixture.hosting.results=order.slice(0,3).map(id=>fixture.hosting.results.find(r=>r.id===id));fixture.hosting.draft.pattern=85;
+    // Civic/film completion requires finished hosting: this PRIVATE earlier-state copy must rewind those later arcs too.
+    fixture.civic={...fixture.civic,phase:'idle',result:null};fixture.film={...fixture.film,phase:'idle',result:null,captured:[]};
+    await writeFile('artifacts/rhythm-beats-last-private-fixture.json',JSON.stringify(fixture,null,2));
+    const size={width:390,height:667},context=await browser.newContext({viewport:size,hasTouch:true}),page=await context.newPage();latestPage=page;
+    await context.addInitScript(s=>{if(!localStorage.getItem('tenderloin-redux.godot.save.v1'))localStorage.setItem('tenderloin-redux.godot.save.v1',s);},JSON.stringify(fixture));
+    context.on('request',r=>{if(!r.url().startsWith(base)&&!r.url().startsWith('data:')&&!r.url().startsWith('blob:'))external.push(r.url());});page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
+    await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending&&!window.__tenderloinGodotA11ySnapshot.layout_refit_pending);await page.keyboard.press('Escape');
+    await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.hosting_completed_count===3&&window.__tenderloinGodotA11ySnapshot.hosting_current==='beats'&&!window.__tenderloinGodotA11ySnapshot.startup_pending);
+    await verifyRhythmCircle(page,true,size,true,true);await context.close();
   }
   // A separate fresh profile proves first-time auto-advance; the seven late
   // cases above separately preserve actually taken keepsakes from progression.
@@ -2092,9 +2246,10 @@ try {
   }
   assert.deepEqual(external, []);
   assert.deepEqual(errors, []);
-  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
+  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, rhythmCircleChecks, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
   assert.ok(queuedActivityRewardChecks > 0, 'at least one actual crowded activity exercises queued reward timer and Close delivery');
   assert.ok(shortStartClicked && shortStartTouchClicked, 'real mouse and touch Start at640x360 were exercised');
+  assert.equal(rhythmCircleChecks.length,11,'three actual progression active, seven genuine late-practice and one private beats-last rhythm case executed');
   assert.equal(shortStoryReadChecks.length, 11, 'all required short startup reading cases executed');
   assert.equal(shortStoryReadChecks.filter(r => r.touch).length, 4, 'all four emulated short-phone reading cases use real touch input');
   assert.equal(shortHubChecks.length, 8, 'six mouse and two touch short hub cases exercised');
@@ -2109,7 +2264,7 @@ try {
   assert.equal(muralWorkshopChecks.length,8,'seven late and one fresh actual workshop mouse/finger cases executed');
   assert.equal(muralWorkshopChecks.filter(c=>c.photoStatus==='taken').length,7,'all seven late cases preserve a saved taken keepsake');
   assert.equal(workshopAutoAdvanceChecks,3,'a fresh mural exercises all three automatically offered contributions');
-  console.log(JSON.stringify({ runs, muralWorkshopChecks, workshopAutoAdvanceChecks, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, narrowActivityChecks, passiveActivityChecks, narrowHubChecks, smallHubReaderChecks, shortWalkingChecks, shortWalkingCaptionChecks, shortWalkingGuideChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
+  console.log(JSON.stringify({ runs, rhythmCircleChecks, muralWorkshopChecks, workshopAutoAdvanceChecks, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, narrowActivityChecks, passiveActivityChecks, narrowHubChecks, smallHubReaderChecks, shortWalkingChecks, shortWalkingCaptionChecks, shortWalkingGuideChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
 } catch (error) {
   if (latestPage && !latestPage.isClosed()) {
     await latestPage.screenshot({ path: 'artifacts/godot-browser-failure.png' });

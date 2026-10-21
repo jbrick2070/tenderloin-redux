@@ -791,6 +791,7 @@ var block_page_prev: Button
 var block_page_next: Button
 var block_close_btn: Button
 var block_hub_page := 0
+var rhythm_circle
 var mural_workshop
 var mural_workshop_selected := "sun"
 var mural_workshop_message := ""
@@ -2709,7 +2710,7 @@ func build_mural_board() -> void:
 	celeste_dino_tail_node.rotation_degrees = Vector3(58.0, -35.0, 0.0)
 	mural_node.add_child(celeste_dino_figurine_node)
 	surprise_keepsake_nodes["cutesy_dino"] = celeste_dino_figurine_node
-	mural_node.add_child(make_label_3d("MuralBoardLabel", "Portable Mural (M)", Vector3(0.0, 3.25, 0.0), Color("ffe394"), 0.012, 22))
+	mural_node.add_child(make_label_3d("MuralBoardLabel", "Portable Mural (M)", Vector3(0.0, 4.1, 0.0), Color("ffe394"), 0.012, 22))
 	add_child(mural_node)
 	update_mural_3d()
 
@@ -3257,6 +3258,13 @@ func update_mural_3d() -> void:
 			m_node.visible = false
 	if mural_banner_mesh != null:
 		mural_banner_mesh.visible = mural_completed
+		var border_material := mural_material(Color.WHITE)
+		border_material.albedo_texture = preload("res://mural_signature.gd").make_texture(KEEPSAKE_PALETTE_HEX.get(mural_palette,KEEPSAKE_PALETTE_HEX.garden))
+		# BoxMesh uses a3x2 face atlas; repeat the complete original strip on each face.
+		border_material.uv1_scale = Vector3(3,2,1)
+		border_material.emission_enabled = false
+		border_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mural_banner_mesh.material_override = border_material
 	update_block_3d()
 	recompute_music_stems()
 	update_block_ui()
@@ -5763,7 +5771,7 @@ func build_reward_banner(layer: CanvasLayer) -> void:
 	layer.add_child(reward_banner)
 
 func layout_reward_banner() -> void:
-	if is_mural_workshop_visible():
+	if is_mural_workshop_visible() or is_rhythm_circle_visible():
 		if reward_banner != null:
 			reward_banner.visible = false
 		return
@@ -5828,7 +5836,7 @@ func trigger_feel_good_burst(title_str: String, detail_str: String, world_pos: V
 func update_celebration_burst(delta: float) -> void:
 	if reward_banner != null and reward_banner_timer > 0.0:
 		layout_reward_banner()
-		if not is_mural_workshop_visible() and (reward_banner.visible or (header_details_expanded and not speech_opened_info)):
+		if not is_mural_workshop_visible() and not is_rhythm_circle_visible() and (reward_banner.visible or (header_details_expanded and not speech_opened_info)):
 			reward_banner_timer -= delta
 		if reward_banner_timer <= 0.45:
 			reward_banner.modulate = Color(1.0, 1.0, 1.0, clampf(reward_banner_timer / 0.45, 0.0, 1.0))
@@ -7096,7 +7104,11 @@ func show_story_card(chapter: Dictionary, startup := false) -> void:
 	update_music_ui()
 	layout_story_card()
 	story_continue_btn.call_deferred("grab_focus")
-	announce_a11y_status("Chapter %d: %s. %s" % [int(chapter.num), String(chapter.title), String(chapter.intro)])
+	var chapter_announcement := "Chapter %d: %s. %s" % [int(chapter.num), String(chapter.title), String(chapter.intro)]
+	if rhythm_circle != null and not rhythm_circle.chapter_completion_notice.is_empty():
+		chapter_announcement = rhythm_circle.chapter_completion_notice+chapter_announcement
+		rhythm_circle.chapter_completion_notice = ""
+	announce_a11y_status(chapter_announcement)
 
 func hide_story_card() -> void:
 	startup_story_pending = false
@@ -7362,10 +7374,12 @@ func set_header_details(expanded: bool, refit_map := true) -> void:
 
 func update_conversation_ui(delta: float) -> void:
 	ui_clock = wrapf(ui_clock + delta, 0.0, 3600.0)
+	if is_rhythm_circle_visible():
+		return
 	var chapter := current_chapter()
 	# Deliver any pending chapter card after the focused workshop closes,
 	# without stealing the artist's reading/cell focus.
-	if last_story_chapter >= 0 and int(chapter.num) != last_story_chapter and not is_mural_workshop_visible():
+	if last_story_chapter >= 0 and int(chapter.num) != last_story_chapter and not is_mural_workshop_visible() and not is_rhythm_circle_visible():
 		last_story_chapter = int(chapter.num)
 		show_story_card(chapter)
 	if is_story_card_visible():
@@ -9481,6 +9495,8 @@ func host_toggle_beat(step: int) -> bool:
 	var pat := clampi(int(hosting_draft.get("pattern", 85)), 0, 255)
 	var next_pat := (pat ^ (1 << step)) & 255
 	hosting_draft["pattern"] = next_pat
+	if rhythm_circle != null:
+		rhythm_circle.update_world()
 	save_godot_state()
 	update_block_ui()
 	return true
@@ -10969,6 +10985,7 @@ func setup_web_a11y_bridge() -> void:
 		if (window.__tenderloinWebA11yReady) return;
 		window.__tenderloinWebA11yReady = true;
 		window.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+		window.addEventListener('keydown', function(e) { if ((e.code === 'F2' || e.code === 'F3') && document.activeElement === document.getElementById('canvas')) e.preventDefault(); });
 		var srStyle = 'position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;';
 		var live = document.getElementById('godot-a11y-status');
 		if (!live) {
@@ -11283,6 +11300,13 @@ func scene_overlay_snapshot() -> Dictionary:
 	reward["remaining"] = reward_banner_timer
 	return {"player": rect_snapshot(player_overlay_rect()), "speech": speech, "reward": reward, "reward_title": reward_title, "guide_label": control_snapshot(guide_arrow_label), "talk": talk, "captions": captions, "counter": counter}
 
+func mural_signature_snapshot() -> Dictionary:
+	var points: Array[Dictionary] = []
+	for local in [Vector3(-1.74,0.12,0.091),Vector3(1.74,0.12,0.091),Vector3(-1.74,-0.12,0.091),Vector3(1.74,-0.12,0.091)]:
+		var p := camera.unproject_position(mural_banner_mesh.to_global(local))
+		points.append({"x":p.x,"y":p.y})
+	return {"visible":mural_banner_mesh.is_visible_in_tree(),"corners":points}
+
 func get_a11y_status_snapshot() -> Dictionary:
 	var active_panel := "none"
 	if block_panel != null and block_panel.visible:
@@ -11361,8 +11385,10 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"block_detail_scroll_value": block_detail_label.get_v_scroll_bar().value if block_detail_label != null else 0.0,
 		"block_detail_scroll_page": block_detail_label.get_v_scroll_bar().page if block_detail_label != null else 0.0,
 		"block_hub_actions": block_action_snapshots(),
+		"rhythm_circle": rhythm_circle.snapshot() if rhythm_circle != null else {"visible":false},
 		"mural_workshop": mural_workshop.snapshot() if mural_workshop != null else {"visible": false},
 		"mural_compose_entry": activity_detail_snapshot(mural_detail_label, mural_panel, [mural_compose_btn]).buttons[0] if mural_compose_btn != null and mural_compose_btn.is_visible_in_tree() else {"visible": false},
+		"mural_signature_world": mural_signature_snapshot(),
 		"mural_compose_focused": mural_compose_btn != null and mural_compose_btn.has_focus(),
 		"mural_detail": activity_detail_snapshot(mural_detail_label, mural_panel, mural_buttons),
 		"music_detail": activity_detail_snapshot(music_stem_label, music_panel, music_buttons),
@@ -11519,6 +11545,9 @@ func poll_web_audio() -> void:
 		return
 	load_local_music_bytes(fname, raw)
 
+func is_rhythm_circle_visible() -> bool:
+	return rhythm_circle != null and rhythm_circle.visible
+
 func is_mural_workshop_visible() -> bool:
 	return mural_workshop != null and mural_workshop.visible
 
@@ -11545,6 +11574,8 @@ func mural_composition_reply() -> String:
 	return line + " Three neighbors' ideas, arranged your way."
 
 func open_mural_workshop() -> bool:
+	if is_rhythm_circle_visible():
+		return false
 	if startup_story_pending or is_story_card_visible():
 		announce_a11y_status("Continue the chapter card before composing the mural.")
 		return false
@@ -11873,6 +11904,11 @@ func save_godot_state() -> bool:
 	return wrote
 
 func reset_mural_state_to_defaults(status_label: String) -> void:
+	if rhythm_circle != null: rhythm_circle.chapter_completion_notice = ""
+	if rhythm_circle != null and rhythm_circle.visible:
+		rhythm_circle.close_circle(false)
+	if is_mural_workshop_visible():
+		close_mural_workshop()
 	if reward_audio_player != null:
 		reward_audio_player.stop()
 	celeste_talk_count = 0
@@ -12343,6 +12379,11 @@ func validate_godot_optional(raw_opt: Variant) -> Dictionary:
 	return {"ok": true, "optional": (raw_opt as Dictionary).duplicate(true)}
 
 func apply_save_envelope(raw_json: String) -> bool:
+	if rhythm_circle != null: rhythm_circle.chapter_completion_notice = ""
+	if rhythm_circle != null and rhythm_circle.visible:
+		rhythm_circle.close_circle(false)
+	if is_mural_workshop_visible():
+		close_mural_workshop()
 	if reward_audio_player != null:
 		reward_audio_player.stop()
 	var trimmed := raw_json.strip_edges()
@@ -12888,6 +12929,10 @@ func import_browser_save_json(raw_json: String) -> bool:
 		info.text = "%s\nBrowser save ('%s') is read-only and never overwritten by Godot\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [browser_import_message, BROWSER_WEB_STORAGE_KEY]
 		announce_a11y_status(browser_import_message)
 		return false
+	if rhythm_circle != null and rhythm_circle.visible:
+		rhythm_circle.close_circle(false)
+	if is_mural_workshop_visible():
+		close_mural_workshop()
 	var imported_mural: Dictionary = res.get("mural", {})
 	if imported_mural.size() >= mural_placements.size():
 		if not imported_mural.is_empty():
@@ -13313,6 +13358,8 @@ func update_occlusion(force: bool = true) -> void:
 	last_occlusion_pos = p_xz
 	last_occlusion_neighbor = occ_tag
 	var focus_points: Array[Vector2] = [p_xz]
+	if rhythm_circle != null:
+		focus_points.append_array(rhythm_circle.cutaway_points())
 	if not following_player:
 		var framed_xz := Vector2(target.x, target.z)
 		if eatery_guide_idx >= 0 and eatery_guide_idx < eatery_counter_points.size() and framed_xz.distance_to(eatery_counter_points[eatery_guide_idx]) < 16.0:
@@ -13454,10 +13501,12 @@ func _process(delta: float) -> void:
 		layout_reward_banner() # Speech may have opened or released Info this frame.
 	update_readable_scene_labels()
 	layout_mural_compose_entry()
+	if rhythm_circle != null:
+		rhythm_circle.tick(delta)
 	flush_web_a11y_status()
 
 func _physics_process(delta: float) -> void:
-	if is_mural_workshop_visible():
+	if is_mural_workshop_visible() or is_rhythm_circle_visible():
 		return
 	var shift_held := Input.is_key_pressed(KEY_SHIFT) or Input.is_physical_key_pressed(KEY_SHIFT)
 	if shift_held and get_viewport().gui_get_focus_owner() == null:
@@ -13514,7 +13563,7 @@ func _physics_process(delta: float) -> void:
 		advance_walk(delta * (2.2 if OS.has_feature("web") else 1.0))
 
 func is_screen_point_in_ui(screen_pos: Vector2) -> bool:
-	if is_mural_workshop_visible() or (mural_compose_btn != null and mural_compose_btn.is_visible_in_tree() and mural_compose_btn.get_global_rect().has_point(screen_pos)):
+	if is_rhythm_circle_visible() or is_mural_workshop_visible() or (mural_compose_btn != null and mural_compose_btn.is_visible_in_tree() and mural_compose_btn.get_global_rect().has_point(screen_pos)):
 		return true
 	if reward_banner != null and reward_banner.is_visible_in_tree() and reward_banner.get_global_rect().has_point(screen_pos):
 		return true
@@ -13714,6 +13763,11 @@ func _input(event: InputEvent) -> void:
 		continue_story()
 
 func _unhandled_input(event: InputEvent) -> void:
+	if is_rhythm_circle_visible():
+		if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+			rhythm_circle.close_circle()
+		get_viewport().set_input_as_handled()
+		return
 	if is_mural_workshop_visible():
 		if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 			close_mural_workshop()
@@ -13730,6 +13784,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			else:
 				hide_story_card()
 		match k:
+			KEY_F3:
+				rhythm_circle.open_circle()
 			KEY_F2:
 				open_mural_workshop()
 			KEY_1, KEY_KP_1:
@@ -14916,6 +14972,10 @@ func make_ui() -> void:
 		refresh_mural_workshop()
 	)
 	mural_workshop.close_requested.connect(close_mural_workshop)
+	rhythm_circle = preload("res://rhythm_circle.gd").new()
+	layer.add_child(rhythm_circle)
+	rhythm_circle.setup(self,layer)
+	rhythm_circle.build_world()
 	var vp := get_viewport()
 	var resize_controls := func():
 		if not is_instance_valid(controls) or not is_inside_tree():

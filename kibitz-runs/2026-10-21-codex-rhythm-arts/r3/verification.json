@@ -1,0 +1,607 @@
+{
+  "created_utc": "2026-10-21T20:23:58.924166+00:00",
+  "baseline": "1c5fa7ae08e39e6488208e09aaeb0fa8b8ba42b6",
+  "all_five_gates_pass": true,
+  "review_source_unchanged": true,
+  "final_source_frozen": true,
+  "pack": {
+    "sha256": "c0b257cf39494123ac95cb521034d26534926cd8f1207e04c38b28f154a83d23",
+    "bytes": 1719192
+  },
+  "public": {
+    "version": "0.12.0",
+    "fingerprint": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567"
+  },
+  "summary": {
+    "created_utc": "2026-10-21T20:23:58.912965+00:00",
+    "source": {
+      "godot/main.gd": "00108f15b5d442695b2124e06dc29e68b368bb6fd06e2a79fe4080af5b30116e",
+      "godot/mural_workshop.gd": "c3ad3c82a7c511162626462ce76b637758ec69cbc365cbba044b2877dde28fb5",
+      "godot/rhythm_circle.gd": "5e84e84a6badbeaa96481e96cbc4e26ce950488dc19d222cbf3b6ddd41b7890d",
+      "godot/mural_signature.gd": "a8b25e10edef62c77fb4ccb6e98c08972c579e61659ac80386a04a03bc851da2",
+      "godot/tests/study_test.gd": "82188211b0ce4cff15a2bc22ace0a2323efd10e73e05bc616df4894fa2eaa29d",
+      "tests/godot-browser.mjs": "82fdc2150ca0f242e272275e991258521236939895c56412f588069975b3b283",
+      "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160",
+      "README.md": "bae4ae367d4471ce25c932afa2b78faa285a3da33ef706e2cf2e394eefd54d02",
+      "docs/ASSETS.md": "2974f36090395f2c28c53ae0ea9a1244d9c73dea19ded3119e00de284f8efcaf",
+      "docs/ROADMAP.md": "2488b43d63b7c059760085887326aaba6c18fad7ec50f1034235573177355189"
+    },
+    "public": {
+      "version": "0.12.0",
+      "fingerprint": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567"
+    },
+    "pack": {
+      "sha256": "c0b257cf39494123ac95cb521034d26534926cd8f1207e04c38b28f154a83d23",
+      "bytes": 1719192
+    },
+    "viewports": [
+      {
+        "width": 1100,
+        "height": 760
+      },
+      {
+        "width": 390,
+        "height": 667
+      },
+      {
+        "width": 320,
+        "height": 667
+      }
+    ],
+    "save_bytes": [
+      1728,
+      1728,
+      1728
+    ],
+    "perf_save_bytes": [
+      1535,
+      1535,
+      1535
+    ],
+    "pathfind_ms": [
+      86.1,
+      78.7,
+      79.3
+    ],
+    "rhythm_cases": 11,
+    "normal_active_cases": 3,
+    "private_beats_last_cases": 1,
+    "taken_photo_practice_cases": 7,
+    "workshop_cases": 8,
+    "taken_photo_workshop_cases": 7,
+    "workshop_icon_regions": 32,
+    "street_uv_quarters": 32,
+    "old_pixel_thresholds_unchanged": true,
+    "errors": [],
+    "external": [],
+    "counts": {
+      "narrowActivityChecks": 39,
+      "shortActivityChecks": 18,
+      "passiveActivityChecks": 12,
+      "narrowHubChecks": 12,
+      "shortWalkingChecks": 10,
+      "shortStoryReadChecks": 11,
+      "shortHubChecks": 8
+    },
+    "queued_reward_paths": 2
+  },
+  "limits": "No physical/AT/human listening/aesthetic/pacing/field acceptance. No deployment. Full roadmap unfinished.",
+  "files": {
+    "README.md": {
+      "sha256": "bae4ae367d4471ce25c932afa2b78faa285a3da33ef706e2cf2e394eefd54d02",
+      "bytes": 14730
+    },
+    "artifacts/codex-mural-street-signature-1100x760.png": {
+      "sha256": "b3c3496af01a4f4c2445014ccb4899e15d8d1539da981573d571b34d9769ade5",
+      "bytes": 183156
+    },
+    "artifacts/codex-mural-street-signature-320x667.png": {
+      "sha256": "6c113eddfd080f4da3ee893a102806c4d7c3918a3082773cf48d4be3634a6224",
+      "bytes": 76887
+    },
+    "artifacts/codex-mural-street-signature-390x667.png": {
+      "sha256": "00ae61087926673d460e54bc5fb9cb8bf26edeb454b0a1d4a044afbea3d47ca3",
+      "bytes": 78542
+    },
+    "artifacts/codex-mural-street-signature-520x360.png": {
+      "sha256": "3e594c955ae34a8be6166b4aa381944b7ae2276da2b17979258d736fabec8999",
+      "bytes": 76253
+    },
+    "artifacts/codex-mural-street-signature-559x360.png": {
+      "sha256": "4f2fe6b31b93e1cc400c973ce1ed86a86f35b11990b8bdfe83f5f3df6b5437a6",
+      "bytes": 80931
+    },
+    "artifacts/codex-mural-workshop-1100x760-mouse-fresh.png": {
+      "sha256": "16cc981e7a04d254d1569ada58b16f742e0e6fe9e3b6cc8a4ae0d494503415a6",
+      "bytes": 122104
+    },
+    "artifacts/codex-mural-workshop-320x667-touch-fresh.png": {
+      "sha256": "c142d9e59861e7e006cec93f78eb6ed266ba8d29690603ea131e3ce0a797f561",
+      "bytes": 55719
+    },
+    "artifacts/codex-mural-workshop-390x667-touch-fresh.png": {
+      "sha256": "f27a12458b754b69bc8219cf3b1b47d2ac99ca725e084ee2e1a5ccb66485455d",
+      "bytes": 61997
+    },
+    "artifacts/codex-mural-workshop-520x360-mouse-fresh.png": {
+      "sha256": "543872698e49acfe579a767763c35318d62f145120a1b4d7b8c5cd8ca3b02514",
+      "bytes": 41805
+    },
+    "artifacts/codex-mural-workshop-520x360-touch-fresh.png": {
+      "sha256": "5f453bd5a71c88c9eead4e5c15a540c5ba024aa2349bef268303c5a9bbea6b4b",
+      "bytes": 42159
+    },
+    "artifacts/codex-mural-workshop-559x360-mouse-fresh.png": {
+      "sha256": "b0e39c6c3b4e8a618ba1d7cfba8f8b9eb1ea6d243fd342b6b9914f16141de03f",
+      "bytes": 45330
+    },
+    "artifacts/codex-mural-workshop-559x360-touch-fresh.png": {
+      "sha256": "b0e39c6c3b4e8a618ba1d7cfba8f8b9eb1ea6d243fd342b6b9914f16141de03f",
+      "bytes": 45330
+    },
+    "artifacts/codex-rhythm-circle-1100x760-mouse-active.png": {
+      "sha256": "914ba35496e8164c394cd25706683a36d718136e380744b647e4e45900d94a7f",
+      "bytes": 126794
+    },
+    "artifacts/codex-rhythm-circle-1100x760-mouse-practice.png": {
+      "sha256": "8b391c49eaf82dd27e928f9f1db0c09bf0edbce3891bab5d6a65b647e41ed7c0",
+      "bytes": 128815
+    },
+    "artifacts/codex-rhythm-circle-320x667-touch-active.png": {
+      "sha256": "ac3e5fc86f720e250e45e234d9e2a4db4f442b7e055eed7313908f01c23c9f5c",
+      "bytes": 58358
+    },
+    "artifacts/codex-rhythm-circle-320x667-touch-practice.png": {
+      "sha256": "567d98885f4a198f258e30ea3bcb10cec52083f06928dd5900eda689bfce084c",
+      "bytes": 58449
+    },
+    "artifacts/codex-rhythm-circle-390x667-touch-active.png": {
+      "sha256": "3e0636d133dd31f3474b1a67c0d7026be26843dcd179d666c34f6b3cb0b71a8e",
+      "bytes": 62979
+    },
+    "artifacts/codex-rhythm-circle-390x667-touch-practice.png": {
+      "sha256": "12bf9c2b902ce23e52f8ea92017249004a0f2756e92295c3f057af5dd4ef5c1e",
+      "bytes": 63516
+    },
+    "artifacts/codex-rhythm-circle-520x360-mouse-practice.png": {
+      "sha256": "1abf294f5c48a771f0afd9cb1674e1a6ec06df2de5f43ed08160e986d7b8aeca",
+      "bytes": 55729
+    },
+    "artifacts/codex-rhythm-circle-520x360-touch-active.png": {
+      "sha256": "84569e0d1d973d06d42674705508589454444c0d37266fdbf9e84d036630c1ee",
+      "bytes": 57470
+    },
+    "artifacts/codex-rhythm-circle-520x360-touch-practice.png": {
+      "sha256": "a160a6e88eb658379f2eb190dcfb34a8efc28cace2de510095cf10a65527d54c",
+      "bytes": 55720
+    },
+    "artifacts/codex-rhythm-circle-559x360-mouse-practice.png": {
+      "sha256": "5ac37367437b43e58a56d43b5a946bd40aef10a2a22264c2806ff529c907f255",
+      "bytes": 57654
+    },
+    "artifacts/codex-rhythm-circle-559x360-touch-active.png": {
+      "sha256": "b291b9c72c84b626158456fe073dec4333d7879477698ff098ea8c032e3b8c80",
+      "bytes": 57753
+    },
+    "artifacts/codex-rhythm-circle-559x360-touch-practice.png": {
+      "sha256": "a2d9a1d02db6a921dfc7198fd058fd6bfd605be165a7f5393e90fdd73a3fdb1b",
+      "bytes": 57661
+    },
+    "artifacts/musical-mural-final-uv.log": {
+      "sha256": "f00ce8f997d9b48badc3f80e6595e9eb10ffbf79c57d5cb3a9b35ac8d97d6d1f",
+      "bytes": 5301
+    },
+    "artifacts/rhythm-arts-before-last-entry-browser.log": {
+      "sha256": "248909c58f255a0209c482ce6e7d7ca084035626af205e01150cc9454c768b89",
+      "bytes": 602
+    },
+    "artifacts/rhythm-arts-before-last-entry.json": {
+      "sha256": "082f4671e50919f605d6adfd78e02051e9ce1de887b2b47dc28a5885ada79cd4",
+      "bytes": 19717
+    },
+    "artifacts/rhythm-arts-before-last-entry.pck": {
+      "sha256": "c0b257cf39494123ac95cb521034d26534926cd8f1207e04c38b28f154a83d23",
+      "bytes": 1719192
+    },
+    "artifacts/rhythm-arts-before-last-entry.png": {
+      "sha256": "c1b52b1ecda281203a5358d8e78e93b5fdd632586fcf5b28bed277df9bb242af",
+      "bytes": 97526
+    },
+    "artifacts/rhythm-arts-before-remote-cutaway-browser.log": {
+      "sha256": "4e2352ee3f79e8da505b1601424917b79af3960c4bef7b7400cfc9dc26368610",
+      "bytes": 560
+    },
+    "artifacts/rhythm-arts-before-remote-cutaway.json": {
+      "sha256": "07c7c25ed582478669fe8a5f6d8d23d1c0e08f337f4f226ae94b645b92f4014b",
+      "bytes": 17913
+    },
+    "artifacts/rhythm-arts-before-remote-cutaway.pck": {
+      "sha256": "3d1f1788a7fc9e56e514ebb355734d89bf2d47df96f8afcd2c2beb14e294ccc1",
+      "bytes": 1718376
+    },
+    "artifacts/rhythm-arts-before-remote-cutaway.png": {
+      "sha256": "49cdb7f64030ddb09b0986307573901c6013a022b7b9403216354f076da6c4ed",
+      "bytes": 48593
+    },
+    "artifacts/rhythm-arts-before-return-pose-browser.log": {
+      "sha256": "8e247f26d71d7f25eebab6e432436af66f37c1adcccf6eb481e196195890c7e3",
+      "bytes": 569
+    },
+    "artifacts/rhythm-arts-before-return-pose.json": {
+      "sha256": "04df16da7bb53f094284ef0afbd6b966468c6a6b00043cb7089cd4b70e61e6bc",
+      "bytes": 20383
+    },
+    "artifacts/rhythm-arts-before-return-pose.pck": {
+      "sha256": "c0b257cf39494123ac95cb521034d26534926cd8f1207e04c38b28f154a83d23",
+      "bytes": 1719192
+    },
+    "artifacts/rhythm-arts-before-return-pose.png": {
+      "sha256": "3298edfe068e4b5ae67599dca4104b69f6f8f3f15d48036a6166a3528b70a895",
+      "bytes": 106511
+    },
+    "artifacts/rhythm-arts-final-metrics.json": {
+      "sha256": "4a840bbd387ed88c62c16a36bc46755b3d62f4a1ebc6ea21f44e429388be0ac7",
+      "bytes": 2187
+    },
+    "artifacts/rhythm-arts-verified-browser-exit.txt": {
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "bytes": 1
+    },
+    "artifacts/rhythm-arts-verified-browser.log": {
+      "sha256": "c82f828da797b024dee99aa16d55600b12708f20fe8cb5af3fd5e1701c0613d6",
+      "bytes": 59717
+    },
+    "artifacts/rhythm-arts-verified-check-exit.txt": {
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "bytes": 1
+    },
+    "artifacts/rhythm-arts-verified-check.log": {
+      "sha256": "bbbf642933db0755ec1b063caec7667a16966ea1db64dadab1526709e88e5537",
+      "bytes": 1337
+    },
+    "artifacts/rhythm-arts-verified-export-exit.txt": {
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "bytes": 1
+    },
+    "artifacts/rhythm-arts-verified-export.log": {
+      "sha256": "3703a7914ba1b6a0cb5c321c2d915cbd43a17fa3dd58f8c87dca4026f9c35d2b",
+      "bytes": 2635
+    },
+    "artifacts/rhythm-arts-verified-native-exit.txt": {
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "bytes": 1
+    },
+    "artifacts/rhythm-arts-verified-native.log": {
+      "sha256": "e670cd36f8f2cbf6bfa2ee3251736b261816638ce1d696652a54ef6ed0da1a4c",
+      "bytes": 37189
+    },
+    "artifacts/rhythm-arts-verified-node-exit.txt": {
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "bytes": 1
+    },
+    "artifacts/rhythm-arts-verified-node.log": {
+      "sha256": "101e211aacc14f39095b0212821e128f74b54bdeb5f0ebfb17814d79616f5ddf",
+      "bytes": 10801
+    },
+    "artifacts/rhythm-beats-last-preflight.log": {
+      "sha256": "71c9287bae0f3778cc9459c9670d60d8e6a2c5a32de33027b17b02ab3b5eb10b",
+      "bytes": 89
+    },
+    "artifacts/rhythm-beats-last-private-fixture.json": {
+      "sha256": "26a55ba9f5e2da06002afd38c3168dd4aaf78957e66c2bb473198b238e6b67e9",
+      "bytes": 2444
+    },
+    "artifacts/rhythm-circle-final-slices-keyboard.log": {
+      "sha256": "68cb0cc356383162ee15896d93a45e74b70c510fd4cbc3db02b15db83d4d3834",
+      "bytes": 1914
+    },
+    "artifacts/rhythm-circle-native-remote2.log": {
+      "sha256": "0e52db770f170857524378c262dfb7d338459ec7f13d8c28f24916f7b99f31c7",
+      "bytes": 1059
+    },
+    "artifacts/rhythm-circle-remote-preflight.log": {
+      "sha256": "407805770d666e3326674f0afda64f70c73c18149dcb5687387c9f56a5b65b10",
+      "bytes": 1054
+    },
+    "artifacts/rhythm-return-pose-before.log": {
+      "sha256": "2ae1f166988d8413d30a1afbab530031c5b6ec4991bd9ffae7e6c1f6940d4019",
+      "bytes": 942
+    },
+    "artifacts/rhythm-return-pose-fixed.log": {
+      "sha256": "86061913d158e9e18b367f775f925691968901541a6af5ac48d1807321a50c6e",
+      "bytes": 784
+    },
+    "docs/ASSETS.md": {
+      "sha256": "2974f36090395f2c28c53ae0ea9a1244d9c73dea19ded3119e00de284f8efcaf",
+      "bytes": 18808
+    },
+    "docs/BUILD_STATUS.md": {
+      "sha256": "a3d2557952f283157065493a581c3885972e666844a6af870ad675c24618ab07",
+      "bytes": 279518
+    },
+    "docs/ROADMAP.md": {
+      "sha256": "2488b43d63b7c059760085887326aaba6c18fad7ec50f1034235573177355189",
+      "bytes": 16917
+    },
+    "godot/main.gd": {
+      "sha256": "00108f15b5d442695b2124e06dc29e68b368bb6fd06e2a79fe4080af5b30116e",
+      "bytes": 699600
+    },
+    "godot/mural_signature.gd": {
+      "sha256": "a8b25e10edef62c77fb4ccb6e98c08972c579e61659ac80386a04a03bc851da2",
+      "bytes": 2741
+    },
+    "godot/mural_signature.gd.uid": {
+      "sha256": "d716bb9dcb0d03e7013bbb1caae705bfd8f87d9825ce851bf08a39933c8214c3",
+      "bytes": 19
+    },
+    "godot/mural_workshop.gd": {
+      "sha256": "c3ad3c82a7c511162626462ce76b637758ec69cbc365cbba044b2877dde28fb5",
+      "bytes": 18506
+    },
+    "godot/rhythm_circle.gd": {
+      "sha256": "5e84e84a6badbeaa96481e96cbc4e26ce950488dc19d222cbf3b6ddd41b7890d",
+      "bytes": 21346
+    },
+    "godot/rhythm_circle.gd.uid": {
+      "sha256": "5c28ed6232ad7ec3c5d9af5c19e9983fac95883a9c53aea932c5fb9045fcd0d9",
+      "bytes": 20
+    },
+    "godot/tests/study_test.gd": {
+      "sha256": "82188211b0ce4cff15a2bc22ace0a2323efd10e73e05bc616df4894fa2eaa29d",
+      "bytes": 329065
+    },
+    "kibitz-runs/2026-10-21-codex-concert-ideas/r1/continuation-receipt.json": {
+      "sha256": "0e79033c8a1f02a27aadb5fe9ab4ca8c410610f25a4957bbdbad11ad489b4822",
+      "bytes": 1130
+    },
+    "kibitz-runs/2026-10-21-codex-musical-mural-ideas/r1/claude.log": {
+      "sha256": "3459a3deedf7803217116b63ea66959d221e2942b9f592ad9c6dbc4ad0b29559",
+      "bytes": 2064
+    },
+    "kibitz-runs/2026-10-21-codex-musical-mural-ideas/r1/claude.md": {
+      "sha256": "ecbff6111f3d7ff004ade039e5ef3fcab1278f260c260ab480b2b1b7597ad88f",
+      "bytes": 10855
+    },
+    "kibitz-runs/2026-10-21-codex-musical-mural-ideas/r1/claude_budget_selected.txt": {
+      "sha256": "b80401b5bdee9b92d2114d1dcae19e4929eefb76987dd1911802478ede026cf0",
+      "bytes": 64
+    },
+    "kibitz-runs/2026-10-21-codex-musical-mural-ideas/r1/claude_effort_selected.txt": {
+      "sha256": "6ef7c9b15ecdd69083724b84cfdc2100351963488b51b4ea2fcbddf493fbec94",
+      "bytes": 4
+    },
+    "kibitz-runs/2026-10-21-codex-musical-mural-ideas/r1/claude_model_selected.txt": {
+      "sha256": "005912bee6ee4543cec4404b5a02b9bcb11a6f1dcc134b6693c7ccde5fdd2f69",
+      "bytes": 15
+    },
+    "kibitz-runs/2026-10-21-codex-musical-mural-ideas/r1/claude_quota_status.txt": {
+      "sha256": "bc7d2c96838bdf2a53b6cbd698d0300af161317d6ef39adbede9c8008b0a9046",
+      "bytes": 463
+    },
+    "kibitz-runs/2026-10-21-codex-musical-mural-ideas/r1/driver_anchor.md": {
+      "sha256": "2712844fc1236be100d027c1edd25c6a7242225060e84629f0dc6527acbdf433",
+      "bytes": 755
+    },
+    "kibitz-runs/2026-10-21-codex-musical-mural-ideas/r1/final.md": {
+      "sha256": "38def2fbde2d260598f373187e87361b15195314d31e6010c7c684e86162fe73",
+      "bytes": 190
+    },
+    "kibitz-runs/2026-10-21-codex-musical-mural-ideas/r1/idea_scope.md": {
+      "sha256": "9ba2eebc3b4c67ac375486de89a20fcf2309393d1d348ed544fa1814e77ef5f2",
+      "bytes": 1839
+    },
+    "kibitz-runs/2026-10-21-codex-musical-mural-ideas/r1/input.md": {
+      "sha256": "9ba2eebc3b4c67ac375486de89a20fcf2309393d1d348ed544fa1814e77ef5f2",
+      "bytes": 1839
+    },
+    "kibitz-runs/2026-10-21-codex-musical-mural-ideas/r1/judgment.md": {
+      "sha256": "c97fe5addb074ec2f1ba5d3c58eb0e38c9ce0fd7882f9d8facdd96d22733e726",
+      "bytes": 2746
+    },
+    "kibitz-runs/2026-10-21-codex-musical-mural-ideas/r1/model-receipt.json": {
+      "sha256": "f3cc40398895328f5f8b6cef998eaeb7c3573a0bb4d1440ee1048cdf177e3d15",
+      "bytes": 644
+    },
+    "kibitz-runs/2026-10-21-codex-musical-mural-ideas/r1/profiles_used.txt": {
+      "sha256": "a9a11813438ba2fc0c6efd97f13b88bf41af82044d04182d865bdd38eaa32423",
+      "bytes": 8
+    },
+    "kibitz-runs/2026-10-21-codex-musical-mural-ideas/r1/scope_receipt.md": {
+      "sha256": "39a6a1aae78556d08f4bd8b64a59620b8baae1b8199f9375adabd427d4ee47f1",
+      "bytes": 455
+    },
+    "kibitz-runs/2026-10-21-codex-musical-mural-ideas/r1/selection.md": {
+      "sha256": "85b35bd8cdf824eef919d1d115ef196676c3f53f048fb3bba525834beaa5b94e",
+      "bytes": 2779
+    },
+    "kibitz-runs/2026-10-21-codex-musical-mural-ideas/r1/source-before.json": {
+      "sha256": "99ee31a392505c6aa8640ba01ce82eaa9e83bc8d49eb2a1057d6d2a944c39ece",
+      "bytes": 659
+    },
+    "kibitz-runs/2026-10-21-codex-musical-mural-ideas/r1/source-comparison.json": {
+      "sha256": "14bfd1fa31a0f46396d2d813980088c39ce4321d2e2fb510dffbd9feb6008144",
+      "bytes": 1399
+    },
+    "kibitz-runs/2026-10-21-codex-neighborhood-mural-scenes-ideas/r1/claude.log": {
+      "sha256": "b585ce085ce4b633872d4ebd981cdd4416dfbc1c9b7f57387f8ed2dd1f9bb8b2",
+      "bytes": 2862
+    },
+    "kibitz-runs/2026-10-21-codex-neighborhood-mural-scenes-ideas/r1/claude.md": {
+      "sha256": "7af033aa39f78cab80498534f1a890701434e9655af86b57ee584ee49e5b362e",
+      "bytes": 13439
+    },
+    "kibitz-runs/2026-10-21-codex-neighborhood-mural-scenes-ideas/r1/claude_budget_selected.txt": {
+      "sha256": "b80401b5bdee9b92d2114d1dcae19e4929eefb76987dd1911802478ede026cf0",
+      "bytes": 64
+    },
+    "kibitz-runs/2026-10-21-codex-neighborhood-mural-scenes-ideas/r1/claude_effort_selected.txt": {
+      "sha256": "6ef7c9b15ecdd69083724b84cfdc2100351963488b51b4ea2fcbddf493fbec94",
+      "bytes": 4
+    },
+    "kibitz-runs/2026-10-21-codex-neighborhood-mural-scenes-ideas/r1/claude_model_selected.txt": {
+      "sha256": "005912bee6ee4543cec4404b5a02b9bcb11a6f1dcc134b6693c7ccde5fdd2f69",
+      "bytes": 15
+    },
+    "kibitz-runs/2026-10-21-codex-neighborhood-mural-scenes-ideas/r1/claude_quota_status.txt": {
+      "sha256": "bc7d2c96838bdf2a53b6cbd698d0300af161317d6ef39adbede9c8008b0a9046",
+      "bytes": 463
+    },
+    "kibitz-runs/2026-10-21-codex-neighborhood-mural-scenes-ideas/r1/continuation_basis.json": {
+      "sha256": "ebba93fab831e931c4b3f0ec4737cac68194c2121b5cfd3a54da3f23c37fad26",
+      "bytes": 1677
+    },
+    "kibitz-runs/2026-10-21-codex-neighborhood-mural-scenes-ideas/r1/driver_anchor.md": {
+      "sha256": "c4899f5e19e820ad6151bdd9c57eb9795d26ddbb1c05d6ab494d21bc8302567f",
+      "bytes": 2146
+    },
+    "kibitz-runs/2026-10-21-codex-neighborhood-mural-scenes-ideas/r1/final.md": {
+      "sha256": "336dfda856ed6361718399bc50c738bfee1c5470dfa71ce6df3ba004ae011f03",
+      "bytes": 1659
+    },
+    "kibitz-runs/2026-10-21-codex-neighborhood-mural-scenes-ideas/r1/idea_scope.md": {
+      "sha256": "a4a52ff1ae18d79c09eaa5983a3e8a983ed9dd7fb93d574dd8c9ad7b34f500dd",
+      "bytes": 4517
+    },
+    "kibitz-runs/2026-10-21-codex-neighborhood-mural-scenes-ideas/r1/implementation_plan.md": {
+      "sha256": "87d6ba69d9527a4198f943e5bb8f82d5dc9c84148791d374c5d5b84f60585dfe",
+      "bytes": 3082
+    },
+    "kibitz-runs/2026-10-21-codex-neighborhood-mural-scenes-ideas/r1/input.md": {
+      "sha256": "a4a52ff1ae18d79c09eaa5983a3e8a983ed9dd7fb93d574dd8c9ad7b34f500dd",
+      "bytes": 4517
+    },
+    "kibitz-runs/2026-10-21-codex-neighborhood-mural-scenes-ideas/r1/judgment.md": {
+      "sha256": "e286c805a78f8b56510f78c04a546b3e79ecc91131f76fa486a9721f843ba9ea",
+      "bytes": 7828
+    },
+    "kibitz-runs/2026-10-21-codex-neighborhood-mural-scenes-ideas/r1/model-receipt.json": {
+      "sha256": "a7bc5cc8ed1ee5be3bf3edfef1a77a148cb7166934e368280501031d2170e31e",
+      "bytes": 656
+    },
+    "kibitz-runs/2026-10-21-codex-neighborhood-mural-scenes-ideas/r1/path_receipt.json": {
+      "sha256": "83d2dcee6a39b871116bece667ccd6e666c9b580d521da9c934767c295a6a6c5",
+      "bytes": 507
+    },
+    "kibitz-runs/2026-10-21-codex-neighborhood-mural-scenes-ideas/r1/prior_art.md": {
+      "sha256": "7f855ff302403d11863a95d1acb71e652284f80e2db76db82da3308448f0e223",
+      "bytes": 1957
+    },
+    "kibitz-runs/2026-10-21-codex-neighborhood-mural-scenes-ideas/r1/profiles_used.txt": {
+      "sha256": "a9a11813438ba2fc0c6efd97f13b88bf41af82044d04182d865bdd38eaa32423",
+      "bytes": 8
+    },
+    "kibitz-runs/2026-10-21-codex-neighborhood-mural-scenes-ideas/r1/scope_receipt.md": {
+      "sha256": "1f4aedbf314f713478da028a758580cde89b0622f6a14ea3b81f58901d597ac9",
+      "bytes": 593
+    },
+    "kibitz-runs/2026-10-21-codex-neighborhood-mural-scenes-ideas/r1/selection.md": {
+      "sha256": "422702ec429c924555a7a45cade03864ae9e43e7b058b417fb942bdc8312293d",
+      "bytes": 3060
+    },
+    "kibitz-runs/2026-10-21-codex-neighborhood-mural-scenes-ideas/r1/selection_receipt.json": {
+      "sha256": "d82fb83bed64358575b2fdac7c004528ef4fcc648008e5657dab90bbad805c74",
+      "bytes": 761
+    },
+    "kibitz-runs/2026-10-21-codex-neighborhood-mural-scenes-ideas/r1/source-before.json": {
+      "sha256": "4d854ce32cdcc183192018d2c5de9bfe1c1e014578014280335ce374f5171c9e",
+      "bytes": 1085
+    },
+    "kibitz-runs/2026-10-21-codex-neighborhood-mural-scenes-ideas/r1/source-comparison.json": {
+      "sha256": "581040b946e57250d93b7cc220110474079a276b82d5d8689143630f4dce943c",
+      "bytes": 2032
+    },
+    "kibitz-runs/2026-10-21-codex-rhythm-arts/r3/checkpoint_pending.md": {
+      "sha256": "fa7832a99f5a3e67ee54cf2b3f7faf2435b17733ca4d301274ea9aae4b663053",
+      "bytes": 2730
+    },
+    "kibitz-runs/2026-10-21-codex-rhythm-arts/r3/claude.log": {
+      "sha256": "a7e22faec974cefba99e7bb29e1bb8b445161fe1a294a391e5b568c61b086f21",
+      "bytes": 2845
+    },
+    "kibitz-runs/2026-10-21-codex-rhythm-arts/r3/claude.md": {
+      "sha256": "40ebbde6a12753a3eaa06c214984304fdc281fcdf7fcf9b7f3c69c85db993b3b",
+      "bytes": 10732
+    },
+    "kibitz-runs/2026-10-21-codex-rhythm-arts/r3/claude_budget_selected.txt": {
+      "sha256": "b80401b5bdee9b92d2114d1dcae19e4929eefb76987dd1911802478ede026cf0",
+      "bytes": 64
+    },
+    "kibitz-runs/2026-10-21-codex-rhythm-arts/r3/claude_effort_selected.txt": {
+      "sha256": "6ef7c9b15ecdd69083724b84cfdc2100351963488b51b4ea2fcbddf493fbec94",
+      "bytes": 4
+    },
+    "kibitz-runs/2026-10-21-codex-rhythm-arts/r3/claude_model_selected.txt": {
+      "sha256": "005912bee6ee4543cec4404b5a02b9bcb11a6f1dcc134b6693c7ccde5fdd2f69",
+      "bytes": 15
+    },
+    "kibitz-runs/2026-10-21-codex-rhythm-arts/r3/claude_quota_status.txt": {
+      "sha256": "bc7d2c96838bdf2a53b6cbd698d0300af161317d6ef39adbede9c8008b0a9046",
+      "bytes": 463
+    },
+    "kibitz-runs/2026-10-21-codex-rhythm-arts/r3/deployment_guard.md": {
+      "sha256": "38c6587835d9f5f94812b003f17d17452b61181215fbbd4b21f1b49d2bf97bb6",
+      "bytes": 1056
+    },
+    "kibitz-runs/2026-10-21-codex-rhythm-arts/r3/driver_anchor.md": {
+      "sha256": "18aa02ad9b132fd507c79255c2d3d0d2df6280c2847962ee9258a93754345688",
+      "bytes": 1283
+    },
+    "kibitz-runs/2026-10-21-codex-rhythm-arts/r3/final.md": {
+      "sha256": "85b0aabbec3bb48627b02787cdd309155a3bd733edeee0676985b878b784f90e",
+      "bytes": 2654
+    },
+    "kibitz-runs/2026-10-21-codex-rhythm-arts/r3/input.md": {
+      "sha256": "aaca6ecc8d16f41fdfc86672201f5e56d03082bec977d951f9e46a6262142db4",
+      "bytes": 3628
+    },
+    "kibitz-runs/2026-10-21-codex-rhythm-arts/r3/judgment.md": {
+      "sha256": "4e04598974202ae1275b5febba6fa76b8b7e404659a13172e7311601b6b0c5f6",
+      "bytes": 10094
+    },
+    "kibitz-runs/2026-10-21-codex-rhythm-arts/r3/model-receipt.json": {
+      "sha256": "44e80bff75e8c082ca6d087ecff5a19c8840ff59f9feff7459db9598a6c1e848",
+      "bytes": 636
+    },
+    "kibitz-runs/2026-10-21-codex-rhythm-arts/r3/profiles_used.txt": {
+      "sha256": "a9a11813438ba2fc0c6efd97f13b88bf41af82044d04182d865bdd38eaa32423",
+      "bytes": 8
+    },
+    "kibitz-runs/2026-10-21-codex-rhythm-arts/r3/review_scope.md": {
+      "sha256": "aaca6ecc8d16f41fdfc86672201f5e56d03082bec977d951f9e46a6262142db4",
+      "bytes": 3628
+    },
+    "kibitz-runs/2026-10-21-codex-rhythm-arts/r3/role_calls.json": {
+      "sha256": "9b6009bf264436d651759c569383574ee438f114f7a2a771227e73b86c56ea3b",
+      "bytes": 1400
+    },
+    "kibitz-runs/2026-10-21-codex-rhythm-arts/r3/scheduler_update_receipt.json": {
+      "sha256": "31b55e39c82f6110bf3bc64bf812cd2579fa9737bc20f1f4890c265756b1e17a",
+      "bytes": 876
+    },
+    "kibitz-runs/2026-10-21-codex-rhythm-arts/r3/scope_receipt.md": {
+      "sha256": "8e7e7fdc4b132b4b539c319dd54a993a6f1011243a63a0077912f415edaf05ca",
+      "bytes": 568
+    },
+    "kibitz-runs/2026-10-21-codex-rhythm-arts/r3/source-before.json": {
+      "sha256": "17f812f2a07e051a2650d3c1d54a007b4e243aae0726b2492160d5a0359e85fa",
+      "bytes": 1041
+    },
+    "kibitz-runs/2026-10-21-codex-rhythm-arts/r3/source-comparison.json": {
+      "sha256": "c0e3561f909153bc1668e5ea5ba5eb1631c0855d80ebbac43f6c24cf128bf0ff",
+      "bytes": 3189
+    },
+    "session_handoff.md": {
+      "sha256": "0d9a03228f276315267c95fa6e6eaf47c7fc232f9f382ff8aad867778f188d1e",
+      "bytes": 159286
+    },
+    "tests/godot-browser.mjs": {
+      "sha256": "82fdc2150ca0f242e272275e991258521236939895c56412f588069975b3b283",
+      "bytes": 207079
+    },
+    "tests/godot-data.test.mjs": {
+      "sha256": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160",
+      "bytes": 23003
+    }
+  }
+}

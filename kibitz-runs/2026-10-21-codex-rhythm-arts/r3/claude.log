@@ -1,0 +1,21 @@
+STDOUT:
+I wrote the review to `kibitz-runs/2026-10-21-codex-rhythm-arts/r3/claude.md`. My verdict is yes-with-fixes: three fixes before the build, eight should-fixes. I read every file it cites and changed no source.
+
+What checks out: build order (the stage nodes exist before the Rhythm Circle is built), practice never writes the save, pad presses go through the existing beat setter, and the modal blocks walking and other input.
+
+**Must-fix:**
+1. **Street banner shows only part of the border.** The 3D banner is a `BoxMesh`, whose faces each show only one-third of the texture's width and half its height. The street side shows the brass icon and part of the drum, cut to the top half; tea and heart never appear. The browser check counts ink across the whole banner, so one partial icon passes it. Fix: add `uv1_scale = Vector3(3,2,1)` at `main.gd:3261`, and make the check look for ink in each quarter.
+2. **Wrong completion message when Rhythm is the last segment.** That order is valid. `rhythm_circle.gd:296` then announces "Rhythm Circle complete.  is next." (blank name). It also replaces the game's "Second Afternoon Complete!" message. The tests only cover Rhythm first.
+3. **A touch tap can break "Back restores the view".** Mouse drags must move 3px before the camera counts as dragged; touch has no threshold (`rhythm_circle.gd:376-378`). Small finger movement during a tap on the stage loses the restore. The native test sets this flag by hand instead of going through real input.
+
+**Should-fix, most important first:**
+- A save import or reset arriving while the circle is open doesn't close it. "Reset Practice" could then crash on a missing result (`rhythm_circle.gd:290`).
+- Step cue lights run up to about two-thirds of a beat ahead of the music. The beat counter counts audio queued, not audio heard (0.25s buffer vs 0.375s steps).
+- Closing after opening with F3 outside the hub leaves no button focused, so the next arrow keys walk the player.
+- Rotating the phone while the circle is open can leave the camera framed wrong once the panels come back.
+
+The rest are smaller: banner glow washing out the ink, the workshop strip possibly clipped by scrolling on short screens, the hub button's width at 320px, and test gaps.
+
+Points I couldn't confirm from code are marked "verify" in the file: whether the web export can render SVG at runtime, and whether F3 opens the browser's find bar. The step-cue lag figure and the banner-glow ink impact also rest on assumptions about audio latency and scene lighting.
+
+Separately: several plugin servers (Asana, Atlassian, Datadog, GitHub, Linear, Notion, PagerDuty, Slack, Box, Runway) need sign-in before they can be used. Set that up in your claude.ai connector settings, or with `/mcp` in an interactive session. None of them were needed for this review.

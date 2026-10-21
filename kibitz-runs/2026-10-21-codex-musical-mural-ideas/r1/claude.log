@@ -1,0 +1,21 @@
+STDOUT:
+I wrote the review to `kibitz-runs/2026-10-21-codex-musical-mural-ideas/r1/claude.md`. Every claim in it cites a real repo file and line. I changed no other files.
+
+**Verdict: yes-with-fixes.** The three biggest problems:
+
+1. **There is no free paper on the canvas for new art.**
+   - The 18 cells fill the canvas edge to edge.
+   - In short-wide layout there are only 4px to spare: 136px of height for three 44px rows (`godot/mural_workshop.gd:215`).
+   - Any frieze or signature strip has to be a separate control next to the canvas, not drawn on it.
+2. **Native tests can't check pixels.** The native suite only checks layout data (`godot/tests/study_test.gd:3834`).
+   - "Native visual acceptance" has to mean geometry checks only.
+   - The real pixel checks happen in `tests/godot-browser.mjs:55-79`, and their thresholds should be frozen in r3, not loosened.
+3. **The creator may not get what they expect.** The brief keeps the 3D street easel and the keepsake SVG unchanged, so the new instruments would only appear inside the workshop screen. The creator should be told that plainly.
+
+Other points in the review:
+- **Credit the new marks to existing neighbors** so they fit the workshop's "three neighbors' ideas" story: Dez's hand drum, Thanh's tea cup, Rook's speaker.
+- **Cut the trumpet.** The game already links trumpet-era jazz at the Black Hawk to Miles Davis (`main.gd:262`), so a trumpet implies him.
+- **Cut the Turk/Taylor corner as a named place.** The game labels it the Transgender Cultural District (`main.gd:302`), so a fictional mural mark there reads as speaking for a real district.
+- **Freeze the concert work before r3.** `rhythm_circle.gd` is still untracked and `main.gd` has uncommitted changes, so one combined r3 would make regressions hard to pin on either feature.
+
+**Recommended slice:** one strip of ink-and-wash drawings outside the canvas. It needs no save-format change. Its marks could appear based on progress the save already records, such as `mural_completed` or the Rhythm Circle results.

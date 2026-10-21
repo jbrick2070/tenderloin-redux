@@ -14,6 +14,8 @@ var scroll: ScrollContainer
 var content: VBoxContainer
 var body: GridContainer
 var tools: GridContainer
+var canvas_sheet: GridContainer
+var signature
 var canvas_grid: GridContainer
 var feedback: RichTextLabel
 var palette_button: Button
@@ -102,12 +104,20 @@ func setup(owner_game: Node) -> void:
 		b.resized.connect(b.queue_redraw)
 		b.tooltip_text = "%s's %s. Choose this contribution, then a space." % [credit, id.capitalize()]
 		tool_buttons.append(b)
+	canvas_sheet = GridContainer.new()
+	canvas_sheet.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	canvas_sheet.add_theme_constant_override("h_separation",0)
+	canvas_sheet.add_theme_constant_override("v_separation",0)
+	body.add_child(canvas_sheet)
 	canvas_grid = GridContainer.new()
 	canvas_grid.columns = 6
 	canvas_grid.add_theme_constant_override("h_separation", 0)
 	canvas_grid.add_theme_constant_override("v_separation", 0)
 	canvas_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	body.add_child(canvas_grid)
+	canvas_sheet.add_child(canvas_grid)
+	signature = preload("res://mural_signature.gd").new()
+	canvas_sheet.add_child(signature)
+	signature.setup_signature()
 	canvas_grid.draw.connect(draw_canvas)
 	canvas_grid.resized.connect(canvas_grid.queue_redraw)
 	for row in range(3):
@@ -212,6 +222,9 @@ func finish_layout() -> void:
 	body.columns = 2 if short_wide else 1
 	tools.columns = 1 if short_wide else 3
 	tools.size_flags_horizontal = Control.SIZE_FILL if short_wide else Control.SIZE_EXPAND_FILL
+	canvas_sheet.columns = 2 if short_wide else 1
+	var pal: Array = game.KEEPSAKE_PALETTE_HEX.get(art_model.get("palette","garden"),game.KEEPSAKE_PALETTE_HEX.garden)
+	signature.present(pal,short_wide)
 	canvas_grid.custom_minimum_size.y = 136 if short_wide else clampf((minf(680, vp.x - 24) - 16) * 0.506, 160, 336)
 	var width := minf(680, vp.x - 24)
 	panel.size.x = width
@@ -248,6 +261,7 @@ func snapshot() -> Dictionary:
 		entry["accessible_name"] = b.accessibility_name
 		entries.append(entry)
 	result["cells"] = entries
+	result["signature"] = signature.ink_snapshot()
 	result["art"] = art_snapshot()
 	result["position_caption"] = position_caption
 	return result
