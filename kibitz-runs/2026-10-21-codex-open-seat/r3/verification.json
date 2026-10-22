@@ -1,0 +1,461 @@
+{
+  "created_utc": "2026-10-22T02:47:51.310361+00:00",
+  "baseline": "aee1b43176abd1b253f77b2b639eb02a40bc1437",
+  "five_gates": "PASS",
+  "pack_bytes": 1755924,
+  "node_tests": 104,
+  "save_bytes": [
+    1729,
+    1729,
+    1729
+  ],
+  "screening_actual_progression": [
+    {
+      "width": 1100,
+      "height": 760,
+      "touch": false,
+      "framing": "close",
+      "plan": "quiet",
+      "order": [
+        "seat",
+        "paint",
+        "welcome"
+      ],
+      "world": true,
+      "images": [
+        {
+          "shot": "seat",
+          "ink": 70,
+          "paper": 1687,
+          "warm": 0
+        },
+        {
+          "shot": "paint",
+          "ink": 28,
+          "paper": 1670,
+          "warm": 28
+        },
+        {
+          "shot": "welcome",
+          "ink": 74,
+          "paper": 1640,
+          "warm": 42
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "height": 667,
+      "touch": true,
+      "framing": "close",
+      "plan": "quiet",
+      "order": [
+        "seat",
+        "paint",
+        "welcome"
+      ],
+      "world": false,
+      "images": [
+        {
+          "shot": "seat",
+          "ink": 70,
+          "paper": 1687,
+          "warm": 0
+        },
+        {
+          "shot": "paint",
+          "ink": 28,
+          "paper": 1687,
+          "warm": 28
+        },
+        {
+          "shot": "welcome",
+          "ink": 74,
+          "paper": 1640,
+          "warm": 43
+        }
+      ]
+    },
+    {
+      "width": 320,
+      "height": 667,
+      "touch": true,
+      "framing": "close",
+      "plan": "quiet",
+      "order": [
+        "seat",
+        "paint",
+        "welcome"
+      ],
+      "world": false,
+      "images": [
+        {
+          "shot": "seat",
+          "ink": 69,
+          "paper": 1644,
+          "warm": 0
+        },
+        {
+          "shot": "paint",
+          "ink": 44,
+          "paper": 1627,
+          "warm": 27
+        },
+        {
+          "shot": "welcome",
+          "ink": 73,
+          "paper": 1602,
+          "warm": 38
+        }
+      ]
+    }
+  ],
+  "screening_private_preflight": [
+    {
+      "width": 1100,
+      "height": 760,
+      "touch": false,
+      "framing": "close",
+      "plan": "quiet",
+      "order": [
+        "seat",
+        "paint",
+        "welcome"
+      ],
+      "world": true,
+      "images": [
+        {
+          "shot": "seat",
+          "ink": 70,
+          "paper": 1687,
+          "warm": 0
+        },
+        {
+          "shot": "paint",
+          "ink": 28,
+          "paper": 1670,
+          "warm": 28
+        },
+        {
+          "shot": "welcome",
+          "ink": 74,
+          "paper": 1640,
+          "warm": 42
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "height": 667,
+      "touch": true,
+      "framing": "wide",
+      "plan": "later",
+      "order": [
+        "welcome",
+        "seat",
+        "paint"
+      ],
+      "world": false,
+      "images": [
+        {
+          "shot": "welcome",
+          "ink": 55,
+          "paper": 1517,
+          "warm": 146
+        },
+        {
+          "shot": "seat",
+          "ink": 55,
+          "paper": 1553,
+          "warm": 115
+        },
+        {
+          "shot": "paint",
+          "ink": 36,
+          "paper": 1546,
+          "warm": 136
+        }
+      ]
+    },
+    {
+      "width": 320,
+      "height": 667,
+      "touch": true,
+      "framing": "close",
+      "plan": "quiet",
+      "order": [
+        "paint",
+        "welcome",
+        "seat"
+      ],
+      "world": false,
+      "images": [
+        {
+          "shot": "paint",
+          "ink": 44,
+          "paper": 1627,
+          "warm": 27
+        },
+        {
+          "shot": "welcome",
+          "ink": 73,
+          "paper": 1602,
+          "warm": 38
+        },
+        {
+          "shot": "seat",
+          "ink": 69,
+          "paper": 1644,
+          "warm": 0
+        }
+      ]
+    },
+    {
+      "width": 520,
+      "height": 360,
+      "touch": true,
+      "framing": "wide",
+      "plan": "later",
+      "order": [
+        "seat",
+        "paint",
+        "welcome"
+      ],
+      "world": false,
+      "images": [
+        {
+          "shot": "seat",
+          "ink": 53,
+          "paper": 1551,
+          "warm": 103
+        },
+        {
+          "shot": "paint",
+          "ink": 13,
+          "paper": 1572,
+          "warm": 123
+        },
+        {
+          "shot": "welcome",
+          "ink": 53,
+          "paper": 1521,
+          "warm": 132
+        }
+      ]
+    },
+    {
+      "width": 559,
+      "height": 360,
+      "touch": true,
+      "framing": "close",
+      "plan": "quiet",
+      "order": [
+        "welcome",
+        "seat",
+        "paint"
+      ],
+      "world": false,
+      "images": [
+        {
+          "shot": "welcome",
+          "ink": 73,
+          "paper": 1630,
+          "warm": 42
+        },
+        {
+          "shot": "seat",
+          "ink": 69,
+          "paper": 1676,
+          "warm": 0
+        },
+        {
+          "shot": "paint",
+          "ink": 31,
+          "paper": 1672,
+          "warm": 28
+        }
+      ]
+    },
+    {
+      "width": 640,
+      "height": 360,
+      "touch": false,
+      "framing": "wide",
+      "plan": "later",
+      "order": [
+        "paint",
+        "welcome",
+        "seat"
+      ],
+      "world": false,
+      "images": [
+        {
+          "shot": "paint",
+          "ink": 13,
+          "paper": 1572,
+          "warm": 123
+        },
+        {
+          "shot": "welcome",
+          "ink": 53,
+          "paper": 1521,
+          "warm": 132
+        },
+        {
+          "shot": "seat",
+          "ink": 53,
+          "paper": 1551,
+          "warm": 103
+        }
+      ]
+    }
+  ],
+  "native_plans": 24,
+  "native_sizes": 8,
+  "public": {
+    "version": "0.12.0",
+    "fingerprint": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567"
+  },
+  "cli_calls": {
+    "ideas_r1": 1,
+    "implementation_r3": 1
+  },
+  "requested_selected_model": "claude-opus-5-5",
+  "requested_selected_effort": "high",
+  "provider_runtime_identity": "unverified",
+  "quota_percent": "unavailable",
+  "errors": [],
+  "external": [],
+  "limits": [
+    "Human/physical device/full AT/cinematic/aesthetic/listening acceptance absent",
+    "Actual tiny easel can be obscured; large reader is the readable film surface",
+    "Native2 reused InputEvent warning fixed with separate release event",
+    "Numbered preflight setup/bridge/helper/world/camera failures retained",
+    "No deployment/full-game-completion claim"
+  ],
+  "sha256": {
+    "artifacts/godot-browser.json": "5df3f418a893fb060dc7647d13f6135a53b59e840a7fb3f8091d6a66fafb9899",
+    "artifacts/godot-web/index.pck": "dc1fdd7cf3ba3701038dd9f405f83a71888778b630e106b26f7e4ed8dbf66ce6",
+    "artifacts/open-seat-1100x760-mouse-paint.png": "0b134a8ce4555481d50e43126d862c859ae274ba1cb1dc4d6f7487dbd20569bb",
+    "artifacts/open-seat-1100x760-mouse-seat.png": "c8b12894c306d03b8f605bd0db8fd6addfd11e9e4f4a8013c5d8898118e8596f",
+    "artifacts/open-seat-1100x760-mouse-welcome.png": "7b26dc2a5d36351007c95e0c4d9308790ef5294917dfd1155e878f6c11f261c2",
+    "artifacts/open-seat-320x667-finger-paint.png": "5a2d73c65c4dba28670f58d94970ca1644b5c280a11dac2cfafd35d438721246",
+    "artifacts/open-seat-320x667-finger-seat.png": "5bb3766d7f8ec2d0b26ba8deeda39ff3b57515a90d3a8c8ff6d4b3238566c02d",
+    "artifacts/open-seat-320x667-finger-welcome.png": "3cf1a35daefffbf4d44ab345cc268ba606624966b2351b44de42397904435456",
+    "artifacts/open-seat-390x667-finger-paint.png": "35d769d0e41abe045d7c533ed49c59ae987f3fbfb40e9979787a2520fe42a30f",
+    "artifacts/open-seat-390x667-finger-seat.png": "61c215d444b7073d72dcbd30e03978e5085775e2ff2dfbe4dfb40e86ed007a54",
+    "artifacts/open-seat-390x667-finger-welcome.png": "6f480b351c4533331593c763486c4274131077e6e650a7461e95b96cb62453c3",
+    "artifacts/open-seat-520x360-finger-paint.png": "c322cb2f54543fece33d992e4be8a3d694e6ebb6e1aaf35d84b6d7dd9b641c3a",
+    "artifacts/open-seat-520x360-finger-seat.png": "3678ebaacc059624ef57474a39e1375de1705e506935e1da2644432710eedfd5",
+    "artifacts/open-seat-520x360-finger-welcome.png": "f4200b678a239da127b800a0ef4ee4987cfe2b3b5d85f0cd379b6f7fece8d787",
+    "artifacts/open-seat-559x360-finger-paint.png": "a597098afa54345b7dc2b3725ca904cf44bff160394b39179c7f4c1199c92671",
+    "artifacts/open-seat-559x360-finger-seat.png": "b46d2b0de3d7ab02536a1af0d34f7914591e54e78bb013648379b3b041217038",
+    "artifacts/open-seat-559x360-finger-welcome.png": "a6214631af57ef401747e48375ef1d097c4d02a524c798436d2ab170830706d4",
+    "artifacts/open-seat-640x360-mouse-paint.png": "5e04d4dc5427d0b3a6e7bb0f399275048f6321ad59ab14485d3ec81e22701f9d",
+    "artifacts/open-seat-640x360-mouse-seat.png": "d967bbe472f1348f09ddc9f94713bba6bc767d463b8eaa32cc94ecb0568eef5b",
+    "artifacts/open-seat-640x360-mouse-welcome.png": "534c5ede9e112c5e56aa9a301d0f400dd8233215d015ea2409d81c27b652c18e",
+    "artifacts/open-seat-automation-before.json": "650677b8ea551dd59d05122e1865001d51cecce78066f85d4b7d0acd1e9153ab",
+    "artifacts/open-seat-automation-payload.json": "9cafe4588d7fca124bd5900f3f96bb69bf28e39903c51fd3e5efa9278635ad1f",
+    "artifacts/open-seat-driver-notes.md": "ba1b2a8e373d4193ff5194c98ca94b0c676ebedba713578cfa48ab9919bbc80b",
+    "artifacts/open-seat-export1.log": "598b62c3e9641ec9fcb636ad85906b713f56b0baea548164303630a1ea59635b",
+    "artifacts/open-seat-export2.log": "47eeb1db399ab6f6c3d1dddd99c2493d0399cd5418a1f8613dc006e3051ecac0",
+    "artifacts/open-seat-export3.log": "b3b71a3bb9169b14d0da81ff8be9d8cde41728d43e408e4fa86af113bea5fd0f",
+    "artifacts/open-seat-export4.log": "4d093a95dac484f5f082b333da967aaa12b18fa0a7687f538af75d893436272b",
+    "artifacts/open-seat-finalize.py": "69c6061ac7d2ed2405d64d1cc5ceea6b8c4ecefe341b3c1c27dcfe36e05fd07c",
+    "artifacts/open-seat-gate-exits.json": "0504e7ce8f93c9ac890431fb7f42c7247e77730a2c77e52c9284e55951f36a5b",
+    "artifacts/open-seat-genuine-390x667.json": "7032d7a462485153d86bb002e56f1372f8e62acdef36c72e70cae78d0cc7b00e",
+    "artifacts/open-seat-genuine-390x667.png": "6f480b351c4533331593c763486c4274131077e6e650a7461e95b96cb62453c3",
+    "artifacts/open-seat-ideas.log": "075b0b212686a21c47d6b433d6a0230bf83b99e4dbea00aa476afb2de9bb34fd",
+    "artifacts/open-seat-native-preflight.log": "2a20f2f9d5adaf653a4b4ee2a329a3371bb6248c1ea42ecb098058be5d371dc4",
+    "artifacts/open-seat-native1.log": "6c7dee335f73b039dd69b1c9c606f140ea934db77a64d5674fa51481951922e7",
+    "artifacts/open-seat-native2.log": "afd37e979b3228ac2aa2e0ef7cb07d0fbe8963b703543a0e5884d6dde63b2afa",
+    "artifacts/open-seat-native3.log": "be4081322006c6d65d54b09c48ed5f6f21f2ea3e90d688087d655382ba482c8f",
+    "artifacts/open-seat-preflight.json": "e5c8a9c5919edc6245f6ccb56b0f760c07910252cd393f439450cde23c102b00",
+    "artifacts/open-seat-preflight.mjs": "0b80abf8dabf00949ad26a0146314153e9039b39b35fe32e3cd3b7deb1a9fb38",
+    "artifacts/open-seat-preflight1-failure.json": "172ad4e9adab945e297c64dce9d1fc0eb4f3e6529563336967092019fdaef0ef",
+    "artifacts/open-seat-preflight1-failure.png": "7210ad565a84c2ae169a154a2ec5e71c20b5c2890833f6f05b89891c0a7c0079",
+    "artifacts/open-seat-preflight1.log": "93a31772f882fc315ac99717f68066cb8a22d55a430acd069c2c064df3952a54",
+    "artifacts/open-seat-preflight2-failure.json": "cbf78a76f62dde161e4a5e28a08cb0b63a4b9506babe086eafe72e23a14185b0",
+    "artifacts/open-seat-preflight2-failure.png": "b93bfb03243a4331e02b0c08b08c229b96bb587780a96645bb73f76df8c4c3ae",
+    "artifacts/open-seat-preflight2.log": "477f90cd9885e0b5e929329ea7f536c2644fc8a6fd4aeb656a6ba9ccad4729ad",
+    "artifacts/open-seat-preflight3-failure.json": "e6c2db6653bf81b0209104255550ed27dac9716fd416d2f5f50519a6177b7137",
+    "artifacts/open-seat-preflight3-failure.png": "f1d204a63444a07719ba537562150861492f27bbef0c64c9aad72c39fc279fd7",
+    "artifacts/open-seat-preflight3.log": "6f2e5a6c83afc1fc599d0341f6fc2e4363d6c87b7172eaa2bee68d99515ed0b9",
+    "artifacts/open-seat-preflight4-failure.json": "b80f8d38ae159aa62ab54c40da92286a1ada910e74ef7b40a3a713e10b7254b9",
+    "artifacts/open-seat-preflight4-failure.png": "a6208a1acfa0a66c6e362340a1bdcc1145228e7a0bc213fa1b142bbee4723152",
+    "artifacts/open-seat-preflight4.log": "e0dcc532c54c8cffc0f59f6d658fb60fa010002f84754e58d0dc169c0a373be8",
+    "artifacts/open-seat-preflight5-failure.json": "6b7b7d5ea47796e6b208e966d97d93b2e8966802e0d43ecf7809da74ba266540",
+    "artifacts/open-seat-preflight5-failure.png": "dbf452feca95fa2abb3c6ef2e02985e578ee6bba95ae068f761026567a744979",
+    "artifacts/open-seat-preflight5.log": "8ece9d7ed58066edb519b8bcec520203c838c203fbef434a60a66110326509fa",
+    "artifacts/open-seat-preflight6-failure.json": "29d2be6f10487f639bd5caf00304051cad02cc77d79c21c0d3bc8700ef1a02ca",
+    "artifacts/open-seat-preflight6-failure.png": "7a0c3551605c7292c73b3a2a92fd48cd4a4605baee7dcaa974a96576a79cbdc7",
+    "artifacts/open-seat-preflight6.log": "69955e2118dee0a2f95bcf94f44c26d22b3439b73d115d8e263507fb409776f1",
+    "artifacts/open-seat-preflight6.pck": "5c036b33ff82a6db173b4b27e1828917d5416a403d2ad02fa91fff4af49dca5f",
+    "artifacts/open-seat-preflight7.json": "e5c8a9c5919edc6245f6ccb56b0f760c07910252cd393f439450cde23c102b00",
+    "artifacts/open-seat-preflight7.log": "ca973d0853e2afe51af63772dfb85a601d0356d8b99bc924c73a58448c117b71",
+    "artifacts/open-seat-preflight8.json": "e5c8a9c5919edc6245f6ccb56b0f760c07910252cd393f439450cde23c102b00",
+    "artifacts/open-seat-preflight8.log": "ca973d0853e2afe51af63772dfb85a601d0356d8b99bc924c73a58448c117b71",
+    "artifacts/open-seat-qa.log": "5027a462c9a95d0d423f8a593b3efd137c609ef06ca4b3b4f24b79d5f865fa68",
+    "artifacts/open-seat-texture-false.png": "134de5e3a7410dbae30ce990891660f14e12e3e3916bae01ff2f02410acd5a07",
+    "artifacts/open-seat-texture-probe.gd": "cb68c3bb3104f466af0a4ba200f292ba51a6be6f6136fa4b6bd1480da4f491b9",
+    "artifacts/open-seat-texture-probe.log": "83cf0b082206af2aa236c83064fbcfa76be1e00a4aa3558574b2f65965d9481c",
+    "artifacts/open-seat-texture-true.png": "253b82ef994658a8c5404d72b9ae5ace5c6186937de069d5bc2580f242e9b3a5",
+    "artifacts/open-seat-verified-browser.log": "0dda6daa36eff49a125a62934686dd99a9cdff94007f24a02ea9c3f5f2fa3650",
+    "artifacts/open-seat-verified-check.log": "bbbf642933db0755ec1b063caec7667a16966ea1db64dadab1526709e88e5537",
+    "artifacts/open-seat-verified-export.log": "47eeb1db399ab6f6c3d1dddd99c2493d0399cd5418a1f8613dc006e3051ecac0",
+    "artifacts/open-seat-verified-native.log": "65f793e6a99927b029804b1dc5148eeab56b1b74ea5a53ef9d12c490d24b5b27",
+    "artifacts/open-seat-verified-node.log": "4367d628515b5e2db801419b0eff3493aaad27842c149975c67734f3d9a8a802",
+    "artifacts/open-seat-world-1100.png": "4870929d377d37ca9e6bb3582fd3dbae7cca9a2344d40918341177529208a258",
+    "docs/ASSETS.md": "bc3091e73b1071a99977e1a431792d12982ab4844de40400c77cb2141f7aff06",
+    "docs/BUILD_STATUS.md": "b48ab7de4de62536049925d61c27e00f7f6dbb42530fd9f91974b5ed148ba03e",
+    "docs/ROADMAP.md": "e3c2e96aa63d66615e3c941cf3af13d05959bc46923197d7b3bb146af8619988",
+    "godot/export_presets.cfg": "ff8636bf366decbad7bbe6803d4c4ebffd7b53b5f627562896d5de13d8413cf4",
+    "godot/film_screening.gd": "d0e8ce92d38ebb29aecd6403acbdebd678840f494686b2e2007b5e036858e59c",
+    "godot/film_screening.gd.uid": "853f18e65266a6f3f20d182b18a0595c8a25bc5676c9da3446efca6c6b0c3a32",
+    "godot/main.gd": "151b86f6901f92bbfe45a4c98a449f90c564508f73bb5af107017cd76805e9cf",
+    "godot/main.tscn": "4ab415614d976aa070ccf83cd51bfcfd36f15bcd1e9b69aa1dafa3104b348fea",
+    "godot/mural_stories.gd": "4dc1f266b997f8210871b4d863c19b43aeeb901beb60c822b6a92de9e48766c2",
+    "godot/mural_workshop.gd": "d44323fee68af2ac907ebba3e59aab32ffa7e08e716016b926a86acc2a20e0c8",
+    "godot/project.godot": "17b7d3433d8317601597ea14d319816873d64a3fac5e2315f04212c983292a14",
+    "godot/rhythm_circle.gd": "dc99624b8670dc7e6329d61830f8ec2416702850c4152d193d5e71883a8f4948",
+    "godot/tests/study_test.gd": "8da362c612125f332c9f28019e99ef6cfc3709032bedc9c28f97eb8b47655d89",
+    "kibitz-runs/2026-10-21-codex-open-seat/r3/claude.log": "0614377fa9fe329503857698f42b6ebb15dfa7d145b1c5d6fc04a7dc42996bd4",
+    "kibitz-runs/2026-10-21-codex-open-seat/r3/claude.md": "ca9534bb498c30bad5d5b4a1f182a8f7b80f4cc03752b79b555ca24659b60bea",
+    "kibitz-runs/2026-10-21-codex-open-seat/r3/claude_budget_selected.txt": "b80401b5bdee9b92d2114d1dcae19e4929eefb76987dd1911802478ede026cf0",
+    "kibitz-runs/2026-10-21-codex-open-seat/r3/claude_effort_selected.txt": "6ef7c9b15ecdd69083724b84cfdc2100351963488b51b4ea2fcbddf493fbec94",
+    "kibitz-runs/2026-10-21-codex-open-seat/r3/claude_model_selected.txt": "005912bee6ee4543cec4404b5a02b9bcb11a6f1dcc134b6693c7ccde5fdd2f69",
+    "kibitz-runs/2026-10-21-codex-open-seat/r3/claude_quota_status.txt": "979c0e822c25f4b77ad4a34dea5acca3ded5dd8751fdb2843ed83506b6fe828a",
+    "kibitz-runs/2026-10-21-codex-open-seat/r3/driver_anchor.md": "42afec44affda66121adade8e7508e2840c7107d00e02ea58218d3fe55a1b19b",
+    "kibitz-runs/2026-10-21-codex-open-seat/r3/final-source-before-browser.json": "cc5859a4d7268f5049f99a83a0e0e68aa9326bb6e36cec841b4ba0c012feef71",
+    "kibitz-runs/2026-10-21-codex-open-seat/r3/final.md": "89c506bedbcd1b180c7182ab1d4b3fbd7c47bbfeb351869011e125790e59a88a",
+    "kibitz-runs/2026-10-21-codex-open-seat/r3/gate-exits.json": "a235ccdebe0d2da7a2b25168a2f167617662386f0edcef0489050b69182d7ee7",
+    "kibitz-runs/2026-10-21-codex-open-seat/r3/input-receipt.json": "ec6cae8a1f5ae3447a867c12276530a1181e1ed8f88e3e36f6236686469b8ae9",
+    "kibitz-runs/2026-10-21-codex-open-seat/r3/input.md": "3adbf14c083afbf716172e124fd81354f0b7cd373e3f2c76c41c11fa6ca83c1e",
+    "kibitz-runs/2026-10-21-codex-open-seat/r3/judgment.md": "4c4624e76034aac6c006f6139cf959e4cddf971d7864ff511c895f46f92445fa",
+    "kibitz-runs/2026-10-21-codex-open-seat/r3/pre-camera-source.json": "f99ea8b75da5fc109a0400dd60b94d0fc1247857749764f1eb5ea7745b503ac4",
+    "kibitz-runs/2026-10-21-codex-open-seat/r3/profiles_used.txt": "a9a11813438ba2fc0c6efd97f13b88bf41af82044d04182d865bdd38eaa32423",
+    "kibitz-runs/2026-10-21-codex-open-seat/r3/scope_receipt.md": "c7bb1cf605c8d7876f897b7954f3a83dce8c588899b83bd39e5238c26dc7343e",
+    "kibitz-runs/2026-10-21-codex-open-seat/r3/source-before.json": "ee4f912467740cae19afe916fc2c186c83d7f6a9c65ff3bf5e5a22822fb5a6f6",
+    "kibitz-runs/2026-10-21-codex-open-seat/r3/source-comparison.json": "f57b33a0fa27ca81a00dfd12d8814dc4248757c27223cc73f3bd429b51787067",
+    "kibitz-runs/2026-10-21-codex-open-seat-ideas/r1/claude.log": "9428a19ab3c7675cc5eff5597079c0f2efd4cc5e81298d7a4092ab6c20e1d488",
+    "kibitz-runs/2026-10-21-codex-open-seat-ideas/r1/claude.md": "4f1030796af796bebcf3d3c8f49179682f101ba701a3b4cc2fb477651457f2da",
+    "kibitz-runs/2026-10-21-codex-open-seat-ideas/r1/claude_budget_selected.txt": "b80401b5bdee9b92d2114d1dcae19e4929eefb76987dd1911802478ede026cf0",
+    "kibitz-runs/2026-10-21-codex-open-seat-ideas/r1/claude_effort_selected.txt": "6ef7c9b15ecdd69083724b84cfdc2100351963488b51b4ea2fcbddf493fbec94",
+    "kibitz-runs/2026-10-21-codex-open-seat-ideas/r1/claude_model_selected.txt": "005912bee6ee4543cec4404b5a02b9bcb11a6f1dcc134b6693c7ccde5fdd2f69",
+    "kibitz-runs/2026-10-21-codex-open-seat-ideas/r1/claude_quota_status.txt": "979c0e822c25f4b77ad4a34dea5acca3ded5dd8751fdb2843ed83506b6fe828a",
+    "kibitz-runs/2026-10-21-codex-open-seat-ideas/r1/driver_anchor.md": "ac48289e6539308159eca8c1fb989c0c14e90a783669fab858cd9515970f99ec",
+    "kibitz-runs/2026-10-21-codex-open-seat-ideas/r1/final.md": "8bf342ae925453af28034404dc65fcf238c1f616bfeedaf2e104edcfe980a24a",
+    "kibitz-runs/2026-10-21-codex-open-seat-ideas/r1/input-receipt.json": "bdce11a1d7ee79b94eb695617c57b34a989b84026c7392df534d08108eab347a",
+    "kibitz-runs/2026-10-21-codex-open-seat-ideas/r1/input.md": "bd65921dff6f78dcb959be80f0ec76cad9a308b1d757a90cee5b47a9bda3e0a8",
+    "kibitz-runs/2026-10-21-codex-open-seat-ideas/r1/judgment.md": "8bf342ae925453af28034404dc65fcf238c1f616bfeedaf2e104edcfe980a24a",
+    "kibitz-runs/2026-10-21-codex-open-seat-ideas/r1/profiles_used.txt": "a9a11813438ba2fc0c6efd97f13b88bf41af82044d04182d865bdd38eaa32423",
+    "kibitz-runs/2026-10-21-codex-open-seat-ideas/r1/scope_receipt.md": "7863af4e15ed1e766b1e8a982b1787a4020a83de66e82c26500a76d4dde29ba6",
+    "kibitz-runs/2026-10-21-codex-open-seat-ideas/r1/selection.md": "6e918635347852197a76b935c829bdd93f9f73b34ab29e76acb9794ceda69822",
+    "kibitz-runs/2026-10-21-codex-open-seat-ideas/r1/source-before.json": "7744a1e55439fe7dff4e2cc5fb35c62bcad15cbee8044a1110104f9cad2e79f8",
+    "kibitz-runs/2026-10-21-codex-open-seat-ideas/r1/source-comparison.json": "a68638434e3d80ebbe7fb5f8f9cb9b9e329c5d819867cf99043022540edc0da3",
+    "session_handoff.md": "b5a3475cc4439f0541ec658e2b1970b348516c5b0c10d99f2f57e6e017a57c7b",
+    "tests/godot-browser.mjs": "0554e4ea8cf0a1ff6eaeae41ab9895735c2b8b050007282f00c254a06df5d3f2",
+    "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160",
+    "kibitz-runs/2026-10-21-codex-open-seat/r3/automation-update.json": "ad21a4fd1d845ee7e7f253f7cd1771c03a217f31c8b5559261f92ba4646975c3"
+  }
+}

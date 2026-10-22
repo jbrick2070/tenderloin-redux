@@ -7,10 +7,11 @@ import { postcardSVG } from '../public/keepsake.js';
 import { programmeSVG } from '../public/programme.js';
 import { tilePanelSVG } from '../public/hosting.js';
 import { civicPlanSVG } from '../public/civic.js';
-import { filmFrameSVG } from '../public/film.js';
+import { filmFrameSVG, filmCaption } from '../public/film.js';
 const [pckStat, ...sourceStats] = await Promise.all([
   stat('artifacts/godot-web/index.pck'),
   stat('godot/main.gd'),
+  stat('godot/film_screening.gd'),
   stat('godot/mural_workshop.gd'),
   stat('godot/rhythm_circle.gd'),
   stat('godot/rhythm_bar.gd'),
@@ -43,6 +44,7 @@ let shortWalkingCaptionChecks = 0, shortWalkingGuideChecks = 0;
 let smallHubReaderChecks = 0;
 let rhythmFixtureSave;
 const rhythmCircleChecks = [];
+const filmScreeningChecks = [];
 const rhythmAuditionChecks = [];
 const muralWorkshopChecks = [];
 let workshopAutoAdvanceChecks = 0;
@@ -970,6 +972,61 @@ async function verifyPassiveActivities(page,context,touch) {
     }
   }
 }
+
+async function verifyFilmScreening(page,context,touch,size,world=false) {
+  const encloses=(a,b)=>b.x>=a.x-1&&b.y>=a.y-1&&b.x+b.width<=a.x+a.width+1&&b.y+b.height<=a.y+a.height+1;
+  const snap=()=>page.evaluate(()=>window.__tenderloinGodotA11ySnapshot), save=()=>page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1'));
+  async function settle(){const f=(await snap()).ui_frame;await page.waitForFunction(f=>{const s=window.__tenderloinGodotA11ySnapshot;return s.ui_frame>f+3&&!s.layout_refit_pending&&!s.film_screening.layout_pending;},f);}
+  async function tap(b){const s=await snap(),c=await page.locator('#canvas').boundingBox();assert.ok(b?.visible&&b.width>=44&&b.height>=44,'screening has reachable44px action');const x=c.x+(b.x+b.width/2)*c.width/s.viewport_width,y=c.y+(b.y+b.height/2)*c.height/s.viewport_height;if(touch)await page.touchscreen.tap(x,y);else await page.mouse.click(x,y);await settle();}
+  await page.setViewportSize(size);await settle();
+  if((await snap()).story_detail.panel.visible){await page.keyboard.press('Escape');await settle();}
+  if(!(await snap()).block_panel_control.visible || (await snap()).block_hub_actions.length===0){await page.keyboard.press('KeyG');await settle();}
+  assert.equal(JSON.parse(await save()).film.phase,'done','screening fixture must be a valid actually completed film');
+  for(let pageIndex=0;pageIndex<3&&!(await snap()).block_hub_actions.some(b=>b.text.includes('Watch Film'));pageIndex++)await tap((await snap()).block_page_next);
+  const before=await save(),parsed=JSON.parse(before),legacy=await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1'));
+  assert.equal(parsed.film.phase,'done');
+  const start=await snap(),music=start.music_playing,point=start.player_grounding;
+  await tap(start.block_hub_actions.find(b=>b.text.includes('Watch Film')));
+  let s=await snap();assert.ok(s.film_screening.visible&&!s.header_control.visible&&!s.block_panel_control.visible);
+  const pose=s.camera_pose,images=[];
+  await tap(s.film_screening.buttons[3]);assert.equal((await snap()).music_playing,!music);await tap((await snap()).film_screening.buttons[3]);assert.equal((await snap()).music_playing,music,'independent Music preserves quiet intent');
+  for(let i=0;i<3;i++){
+    await tap((await snap()).film_screening.buttons[i]);s=await snap();const f=s.film_screening;
+    assert.equal(f.shot,parsed.film.result.order[i]);assert.equal(f.caption,filmCaption(parsed.film.result,f.shot));assert.equal(f.svg,filmFrameSVG(parsed.film.result,f.shot),'all actually displayed drawings preserve original cross-track export parity');assert.ok(f.text.includes(f.caption)&&f.text.includes('Your ending is'));
+    assert.ok(f.buttons[i].pressed&&f.buttons[i].accessible_name.includes('selected'));
+    const status=await page.locator('#godot-a11y-status').textContent();assert.ok(status.includes(f.caption)&&status.includes(f.description),'real live bridge announces complete caption and text alternative');
+    const pix=screenshotPixels(await page.screenshot()),c=await page.locator('#canvas').boundingBox(),r=f.picture;let ink=0,paper=0,warm=0;const sample=[];
+    for(let y=.1;y<.9;y+=.02)for(let x=.05;x<.95;x+=.02){const rgb=pix.pixel(c.x+(r.x+x*r.width)*c.width/s.viewport_width,c.y+(r.y+y*r.height)*c.height/s.viewport_height);if(rgb[0]<100&&rgb[1]<150&&rgb[2]<130)ink++;if(rgb.every(v=>v>190))paper++;if(rgb[0]>140&&rgb[0]>rgb[1]*1.2&&rgb[1]>80)warm++;sample.push(rgb.join(','));}
+    assert.ok(ink>10&&paper>200,'actual frame contains illustrated ink and light paper, not a flat color');if(parsed.film.result.framing==='wide')assert.ok(warm>10,'actual wide frame shows volunteered hands');images.push({shot:f.shot,ink,paper,warm,fingerprint:sample.join('|')});
+    await page.screenshot({path:`artifacts/open-seat-${size.width}x${size.height}-${touch?'finger':'mouse'}-${f.shot}.png`});
+  }
+  assert.equal(new Set(images.map(x=>x.fingerprint)).size,3,'all three actual rendered drawings differ');
+  await tap((await snap()).film_screening.buttons[0]);await page.keyboard.press('Tab');await page.keyboard.press('Space');await settle();assert.equal((await snap()).film_screening.frame,1,'real Tab and Space select the next shot');
+  // Scrolling the complete narrative is an actual read, with no walking.
+  s=await snap();await tap(s.film_screening.reader);await page.keyboard.press('End');await settle();s=await snap();assert.ok(s.film_screening.scroll>0&&s.film_screening.scroll+s.film_screening.scroll_page>=s.film_screening.scroll_max-2,'reader reaches final explanation');
+  if(touch){const b=s.film_screening.reader,c=await page.locator('#canvas').boundingBox(),x=c.x+(b.x+b.width*.5)*c.width/s.viewport_width,y=c.y+(b.y+b.height*.5)*c.height/s.viewport_height,cdp=await context.newCDPSession(page);await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y,id:1}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y+28,id:1}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await cdp.detach();await settle();assert.ok((await snap()).film_screening.scroll<s.film_screening.scroll,'finger reads original complete narrative');}
+  else{const b=s.film_screening.reader;await page.mouse.move(b.x+b.width/2,b.y+b.height/2);await page.mouse.wheel(0,-200);await settle();assert.ok((await snap()).film_screening.scroll<s.film_screening.scroll);}
+  for(let i=0;i<8;i++){await page.keyboard.press('Tab');await settle();assert.ok((await snap()).film_screening.focus_within,'Tab remains in focused screening');}
+  await page.keyboard.down('KeyW');await settle();await page.keyboard.up('KeyW');await page.keyboard.press('Period');await settle();s=await snap();assert.equal(s.player_grounding.x,point.x);assert.equal(s.player_grounding.z,point.z);assert.deepEqual(s.camera_pose,pose,'watching owns no camera');assert.equal(s.music_playing,music);assert.equal(await save(),before,'watching never writes copied save, sequence or awards');
+  for(const boundary of [{width:320,height:568},{width:640,height:360},size]){await page.setViewportSize(boundary);await settle();s=await snap();const f=s.film_screening,v={x:0,y:0,width:boundary.width,height:boundary.height};for(const b of [f.top,f.tray,f.picture,...f.buttons])assert.ok(encloses(v,b),'open rotation keeps art and controls on-screen');assert.ok(f.picture.height>=90);}
+  assert.deepEqual((await snap()).camera_pose,pose,'open rotation preserves the owned camera pose');
+  await page.setViewportSize({width:320,height:568});await settle();await tap((await snap()).film_screening.buttons[4]);assert.ok(!(await snap()).film_screening.visible);assert.equal((await snap()).block_hub_page,2,'close after wide-to-paged rotation reveals Watch Film');
+  await page.setViewportSize(size);await settle();assert.equal(await save(),before);assert.equal((await snap()).music_playing,music);
+  await page.keyboard.press('F4');await settle();assert.ok((await snap()).film_screening.visible);await page.keyboard.press('Escape');await settle();assert.ok(!(await snap()).film_screening.visible);
+  if(world){
+    await page.keyboard.press('KeyM');await page.waitForFunction(()=>{const s=window.__tenderloinGodotA11ySnapshot;return s.mural_detail.panel.visible&&!s.player_grounding.path_active;},null,{timeout:35000});await tap((await snap()).mural_detail.buttons.at(-1));
+    const oldPoint=(await snap()).player_grounding;await page.keyboard.down('KeyS');await page.waitForTimeout(700);await page.keyboard.up('KeyS');await settle();s=await snap();assert.ok(Math.hypot(s.player_grounding.x-oldPoint.x,s.player_grounding.z-oldPoint.z)>.5,'real walking moves avatar aside before framing the actual easel');
+    for(let i=0;i<5;i++)await tap((await snap()).walking_controls.find(b=>b.text.includes('Zoom')&&b.text.includes('+')));
+    s=await snap();const q=s.film_easel.corners,r=s.play_area,c=await page.locator('#canvas').boundingBox(),center={x:q.reduce((n,p)=>n+p.x,0)/4,y:q.reduce((n,p)=>n+p.y,0)/4},x=c.x+(r.x+r.width*.5)*c.width/s.viewport_width,y=c.y+(r.y+r.height*.25)*c.height/s.viewport_height;
+    await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+(r.x+r.width*.5-center.x)*c.width/s.viewport_width,y+(r.y+r.height*.5-center.y)*c.height/s.viewport_height,{steps:10});await page.mouse.up();await settle();s=await snap();assert.ok(s.film_easel.visible&&s.film_easel.textured&&s.film_easel.uv_scale_x===3&&s.film_easel.uv_scale_y===2);
+    const corners=s.film_easel.corners,pix=screenshotPixels(await page.screenshot());let paper=0,ink=0;for(let u=.08;u<.92;u+=.02)for(let v=.14;v<.86;v+=.02){const x=(corners[0].x*(1-u)+corners[1].x*u)*(1-v)+(corners[2].x*(1-u)+corners[3].x*u)*v,y=(corners[0].y*(1-u)+corners[1].y*u)*(1-v)+(corners[2].y*(1-u)+corners[3].y*u)*v;assert.ok(x>=0&&y>=0&&x<size.width&&y<size.height);const rgb=pix.pixel(c.x+x*c.width/s.viewport_width,c.y+y*c.height/s.viewport_height);if(rgb.every(v=>v>180))paper++;if(rgb[0]<100&&rgb[1]<160)ink++;}assert.ok(paper>100&&ink>5,`actual existing world easel renders original paper and ink (${paper}/${ink})`);await page.screenshot({path:`artifacts/open-seat-world-${size.width}.png`});
+  }
+  const inspection=(await snap()).camera_pose;await page.keyboard.press('F4');await settle();assert.ok((await snap()).film_screening.visible);await page.setViewportSize({width:559,height:360});await settle();assert.deepEqual((await snap()).camera_pose,inspection,'actual manual or followed pose survives short-width rotation');await page.setViewportSize(size);await settle();await page.reload();await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');await settle();assert.ok(!(await snap()).film_screening.visible);assert.equal(await save(),before);assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1')),legacy);
+  await page.keyboard.press('F4');await settle();assert.ok((await snap()).film_screening.visible,'completed film reopens after silent startup dismissal');assert.equal((await snap()).film_screening.frame,0,'reload restores transient first frame');await page.keyboard.press('Escape');await settle();
+  if((await snap()).music_playing!==music)await tap((await snap()).music_toggle_control);assert.equal((await snap()).music_playing,music,'test context restores quiet/play intent after the explicit reload');
+  filmScreeningChecks.push({width:size.width,height:size.height,touch,framing:parsed.film.result.framing,plan:parsed.film.result.plan,order:parsed.film.result.order,world,images:images.map(({fingerprint,...x})=>x)});
+}
+
 let shortStartClicked = false;
 let shortStartTouchClicked = false;
 const browser = await chromium.launch({ channel: 'chrome', headless: true, ignoreDefaultArgs: ['--autoplay-policy=no-user-gesture-required'], args: ['--autoplay-policy=user-gesture-required'] });
@@ -1629,6 +1686,7 @@ try {
       const film = JSON.parse(raw).film;
       return film && film.phase === 'done' && Array.isArray(film.captured) && film.captured.length === 3;
     }, null, { timeout: 10000 });
+    await verifyFilmScreening(page,context,size.width<600,size,size.width===1100);
     // Press Slash to opt-in to M5 Experimental Neighborhood Voices and verify separate settings storage + profile presentation + disclaimer
     await page.keyboard.press('Slash');
     await page.waitForFunction(() => {
@@ -2490,9 +2548,10 @@ try {
   }
   assert.deepEqual(external, []);
   assert.deepEqual(errors, []);
-  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, rhythmCircleChecks, rhythmAuditionChecks, muralStoryChecks, livingMuralChecks, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
+  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, filmScreeningChecks, rhythmCircleChecks, rhythmAuditionChecks, muralStoryChecks, livingMuralChecks, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
   assert.ok(queuedActivityRewardChecks > 0, 'at least one actual crowded activity exercises queued reward timer and Close delivery');
   assert.ok(shortStartClicked && shortStartTouchClicked, 'real mouse and touch Start at640x360 were exercised');
+  assert.equal(filmScreeningChecks.length,3,'all required actual progression contexts watch their completed film');
   assert.equal(rhythmAuditionChecks.length,11,'all eleven active/practice cases actually auditioned');
   assert.ok(rhythmAuditionChecks.every(c=>c.outputObserved),'all eleven cases observe real mixer output');
   assert.equal(rhythmCircleChecks.length,11,'three actual progression active, seven genuine late-practice and one private beats-last rhythm case executed');

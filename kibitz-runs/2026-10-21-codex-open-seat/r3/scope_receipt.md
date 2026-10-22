@@ -1,0 +1,2 @@
+# Explicit scoped implementation r3 only
+One independent exact soleClaudeOpus5.5/high implementationQA, separate from earlier pre-coding r1. r1/r2/r4 NOT run as part of this implementation pass; no full campaign claim. Read source/write assigned report only. Codex sole writer/judge. Exact model/effort/quota, input hash before fanout, source comparison retained; no substitution/larger panel/credits/blind authquota retries.

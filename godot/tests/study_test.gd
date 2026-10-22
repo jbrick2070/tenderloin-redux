@@ -3251,6 +3251,7 @@ func run() -> void:
 	await verify_rhythm_bar(study)
 	await verify_rhythm_circle(study)
 	await verify_mural_stories(study,saved_m4_json)
+	await verify_film_screening(study,saved_m4_json)
 	study.clear_godot_save()
 	study.clear_godot_settings()
 	var legacy_settings := FileAccess.open(study.settings_path, FileAccess.WRITE)
@@ -4427,3 +4428,121 @@ func verify_rhythm_bar(study: Node) -> void:
 	study.reward_sounds_enabled = sounds
 	study.apply_music_volume_db()
 	print("RHYTHM_BAR_CHECK masks=256 peak=",peak," finite/music/local/focus/practice/save passed")
+
+
+func verify_film_screening(study: Node, full_profile: String) -> void:
+	var screen: Control = study.film_screening
+	for framing in ["close","wide"]:
+		for plan in ["quiet","later"]:
+			for order in study.all_film_shot_orders():
+				study.apply_save_envelope(full_profile)
+				study.film_result = {"framing":framing,"plan":plan,"order":order.duplicate()}
+				study.film_draft = study.copy_film_plan(study.film_result)
+				study.film_captured.assign(order)
+				study.update_block_3d()
+				study.hide_story_card()
+				study.startup_story_pending = false
+				study.last_story_chapter = int(study.current_chapter().num)
+				study.current_path.clear()
+				study.show_block_panel(true)
+				var before: String = JSON.stringify(study.build_save_envelope())
+				var seq: int = study.save_seq
+				study.following_player = false
+				var pose: Array = study.panel_camera_pose()
+				var point: Vector3 = study.player.position
+				var music: bool = study.music_playing
+				for size in [Vector2i(1100,760),Vector2i(390,667),Vector2i(320,667),Vector2i(320,568),Vector2i(520,360),Vector2i(559,360),Vector2i(640,360),Vector2i(800,480)]:
+					root.content_scale_size = size
+					root.size = size
+					await process_frame
+					await process_frame
+					study.block_film_btn.emit_signal("pressed")
+					await process_frame
+					await process_frame
+					var vp := Rect2(Vector2.ZERO,Vector2(size))
+					require(screen.visible and not study.header_panel.visible and not study.block_panel.visible,"done hub opens focused screening and hides world HUD")
+					require(vp.encloses(screen.top.get_global_rect()) and vp.encloses(screen.tray.get_global_rect()) and vp.encloses(screen.art_rect) and screen.art_rect.size.y>=90,"screening header/reader/art stay on-screen at accepted eight sizes")
+					for i in range(3):
+						screen.shots[i].emit_signal("pressed")
+						var expected: String = order[i]
+						var table: Dictionary = study.FILM_SHOT_LATER_CAPTIONS if plan=="later" else study.FILM_SHOT_QUIET_CAPTIONS
+						require(screen.shot_id()==expected and screen.caption()==table[expected] and screen.reader.text.contains(screen.caption()),"actual copied shot order and all six captions drive visible reader")
+						require(screen.picture.texture!=null and screen.picture.texture.get_width()==840 and screen.picture.texture.get_height()==472,"large reader raster is2x original resolution")
+						var material: StandardMaterial3D = study.film_frame_canvas.material_override
+						require(material.albedo_texture!=null and material.uv1_scale==Vector3(3,2,1) and material.shading_mode==BaseMaterial3D.SHADING_MODE_UNSHADED,"existing world canvas uses letterboxed original texture with corrected BoxMesh UV")
+						for b in screen.shots+[screen.music,screen.back]:
+							require(b.size.x>=44 and b.size.y>=44 and vp.encloses(b.get_global_rect()),"full shot and Back/Music controls remain reachable44px")
+						var key := InputEventKey.new()
+						key.pressed=true
+						key.keycode=KEY_W
+						Input.parse_input_event(key)
+						Input.flush_buffered_events()
+						require(Input.is_key_pressed(KEY_W),"native held-key fixture actually sets global Input")
+						study._physics_process(0.02)
+						var key_up: InputEventKey = key.duplicate()
+						key_up.pressed=false
+						Input.parse_input_event(key_up)
+						Input.flush_buffered_events()
+						require(study.player.position==point,"focused film blocks world walking")
+					var escape := InputEventKey.new()
+					escape.pressed=true
+					escape.keycode=KEY_ESCAPE
+					study._unhandled_input(escape)
+					require(not screen.visible and study.block_panel.visible and study.music_playing==music,"Escape returns to original hub and preserves pause")
+					require(study.save_seq==seq and JSON.stringify(study.build_save_envelope())==before,"watching all frames adds zero save bytes and writes no saved sequence")
+					require(study.panel_camera_pose()==pose,"screening never owns or alters manual/automatic camera pose")
+				study.film_screen_frame=0
+				require(screen.open_screening(),"completed film can reopen")
+				study.apply_save_envelope(full_profile)
+				require(not screen.visible and study.film_screen_frame==0,"actual state reload closes viewer and restores transient first frame")
+	require(screen.textures.size()==6 and screen.world_textures.size()==6,"both texture caches are bounded to six original framing/shot combinations")
+	study.film_phase="planning"
+	require(not screen.open_screening(),"unfinished films cannot enter completed screening")
+	study.apply_save_envelope(full_profile)
+	root.content_scale_size=Vector2i(1100,760)
+	root.size=Vector2i(1100,760)
+	await process_frame
+	study.hide_story_card()
+	study.startup_story_pending=false
+	study.current_path.clear()
+	study.show_block_panel(true)
+	study.block_film_btn.grab_focus()
+	require(screen.open_screening(),"focused Watch Film opens before rotating")
+	root.content_scale_size=Vector2i(320,568)
+	root.size=Vector2i(320,568)
+	await process_frame
+	await process_frame
+	screen.close_screening()
+	require(study.block_hub_page==2 and study.block_film_btn.is_visible_in_tree() and study.block_film_btn.has_focus(),"wide-to-paged Close reveals actual Watch Film and restores focus")
+	for overview in [false,true]:
+		study.following_player=not overview
+		study.in_overview=overview
+		study.in_wide_overview=false
+		var owned_pose: Array = study.panel_camera_pose()
+		require(screen.open_screening(),"followed and overview views open screening")
+		for resize in [Vector2i(520,360),Vector2i(559,360),Vector2i(640,360),Vector2i(320,568)]:
+			root.content_scale_size=resize
+			root.size=resize
+			await process_frame
+			await process_frame
+			await process_frame
+			require(study.panel_camera_pose()==owned_pose and study.following_player==(not overview) and study.in_overview==overview,"focused reader resize never refits hidden followed/overview camera")
+		screen.close_screening()
+	study.in_overview=false
+	study.following_player=false
+	study.set_header_details(true)
+	study.speech_opened_info=false
+	study.trigger_progress_cue("film_shot","Screening reward retention fixture")
+	require(study.reward_banner_timer>0 and study.reward_banner.visible,"reward retention fixture actually starts a visible earned cue")
+	var reward_time: float = study.reward_banner_timer
+	screen.open_screening()
+	study.update_celebration_burst(0.5)
+	require(study.reward_banner_timer==reward_time,"deliberately expanded Info cannot drain hidden earned reward during screening")
+	screen.close_screening()
+	require(study.reward_banner.visible and study.reward_banner_timer>0 and study.reward_banner.modulate.a>0,"Back restores a readable reward rather than a transparent input blocker")
+	study.set_header_details(false)
+	study.apply_save_envelope(full_profile)
+	root.content_scale_size=Vector2i(1100,760)
+	root.size=Vector2i(1100,760)
+	await process_frame
+	print("FILM_SCREENING_CHECK plans=24 sizes=8 captions=6 original_frames=6 save_growth=0")

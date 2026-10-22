@@ -251,7 +251,7 @@ func update_world() -> void:
 
 func open_circle() -> bool:
 	if visible: return true
-	if not available() or game.is_story_card_visible() or game.startup_story_pending or not game.current_path.is_empty() or game.is_mural_workshop_visible():
+	if not available() or game.is_story_card_visible() or game.startup_story_pending or not game.current_path.is_empty() or game.is_mural_workshop_visible() or game.is_film_screening_visible():
 		game.announce_a11y_status("Finish arriving and continue any chapter card before opening Rhythm Circle.")
 		return false
 	restore_generation += 1

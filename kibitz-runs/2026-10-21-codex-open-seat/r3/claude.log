@@ -1,0 +1,19 @@
+STDOUT:
+I wrote the review to `kibitz-runs/2026-10-21-codex-open-seat/r3/claude.md`. My verdict is yes-with-fixes: the native reader looks sound, but one web defect will stall the browser gate that's still pending. I only read code; nothing was run.
+
+**Must fix before the browser gate:**
+- **The browser test's snapshot goes stale while the reader is open.** The game only pushes a new snapshot to the page when it announces something. The usual half-second refresh stops while the reader is open (`main.gd:7404`), and `film_screening.gd` has no replacement; Rhythm Circle has one at `rhythm_circle.gd:503-506`. So in `tests/godot-browser.mjs`:
+  - the wait after tapping the reader, pressing End, or resizing (`:1004`, `:1009`) can only time out;
+  - the Tab check at `:1007` passes without testing anything.
+
+  Fix: send a refresh at the end of `fit_layout()` and on a short timer while the reader is open.
+- **The native pass is out of date.** The plan says it ran before the last import-close edit (`main.gd:13056`), so it needs a fresh run on the final code.
+
+**Should fix:**
+- **Invisible reward banner.** If Info is open, the reward banner's timer keeps running while the reader hides it. Closing the reader then turns it back on at zero opacity. Nothing hides it again, so it blocks taps on the world. The fix is one condition at `main.gd:5866`.
+- **Lost focus after rotating.** Rotating to the phone layout while the reader is open can leave Watch Film on a hidden page of the block panel, so nothing gets focus on close (`film_screening.gd:113-114`).
+- **Native walking check proves nothing.** `study_test.gd:4475-4480` sends a W key straight to the input handler, but walking reads the real key state. The check passes whether or not walking is blocked. Only the browser test really checks this.
+- **Camera not re-checked after resize.** The browser test checks the camera before the resize loop, never after, though resizing can still move it.
+- **Old instruction.** The line at `main.gd:10124` still says Watch Film cycles frames; it now opens the reader.
+
+The review also lists which claims I confirmed against the code, the smaller optional items, and two things I couldn't confirm: whether the reader scrolls on End by itself, and whether the easel image is mirrored.

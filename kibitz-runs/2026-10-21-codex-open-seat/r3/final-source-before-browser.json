@@ -1,0 +1,43 @@
+{
+  "recorded_utc": "2026-10-22T01:59:42.990516+00:00",
+  "head": "aee1b43176abd1b253f77b2b639eb02a40bc1437",
+  "hashes": {
+    "godot/main.gd": "151b86f6901f92bbfe45a4c98a449f90c564508f73bb5af107017cd76805e9cf",
+    "godot/film_screening.gd": "d0e8ce92d38ebb29aecd6403acbdebd678840f494686b2e2007b5e036858e59c",
+    "godot/film_screening.gd.uid": "853f18e65266a6f3f20d182b18a0595c8a25bc5676c9da3446efca6c6b0c3a32",
+    "godot/rhythm_circle.gd": "dc99624b8670dc7e6329d61830f8ec2416702850c4152d193d5e71883a8f4948",
+    "godot/mural_workshop.gd": "d44323fee68af2ac907ebba3e59aab32ffa7e08e716016b926a86acc2a20e0c8",
+    "godot/mural_stories.gd": "4dc1f266b997f8210871b4d863c19b43aeeb901beb60c822b6a92de9e48766c2",
+    "godot/tests/study_test.gd": "8da362c612125f332c9f28019e99ef6cfc3709032bedc9c28f97eb8b47655d89",
+    "tests/godot-browser.mjs": "0554e4ea8cf0a1ff6eaeae41ab9895735c2b8b050007282f00c254a06df5d3f2",
+    "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160",
+    "docs/ROADMAP.md": "e3c2e96aa63d66615e3c941cf3af13d05959bc46923197d7b3bb146af8619988",
+    "docs/ASSETS.md": "bc3091e73b1071a99977e1a431792d12982ab4844de40400c77cb2141f7aff06",
+    "godot/main.tscn": "4ab415614d976aa070ccf83cd51bfcfd36f15bcd1e9b69aa1dafa3104b348fea",
+    "godot/project.godot": "17b7d3433d8317601597ea14d319816873d64a3fac5e2315f04212c983292a14",
+    "godot/export_presets.cfg": "ff8636bf366decbad7bbe6803d4c4ebffd7b53b5f627562896d5de13d8413cf4",
+    "artifacts/godot-web/index.pck": "dc1fdd7cf3ba3701038dd9f405f83a71888778b630e106b26f7e4ed8dbf66ce6"
+  },
+  "pack_bytes": 1755924,
+  "required_viewports": [
+    [
+      1100,
+      760
+    ],
+    [
+      390,
+      667
+    ],
+    [
+      320,
+      667
+    ]
+  ],
+  "four_gates_pass": {
+    "export": 0,
+    "native": 0,
+    "preflight": 0,
+    "node": 0,
+    "check": 0
+  }
+}

@@ -136,13 +136,13 @@ const FILM_SHOT_LABELS: Dictionary = {
 }
 const FILM_SHOT_QUIET_CAPTIONS: Dictionary = {
 	"seat": "A chair waits. There is room for someone new.",
-	"paint": "A neighbor's shape becomes part of something shared.",
+	"paint": "A neighbor’s shape becomes part of something shared.",
 	"welcome": "A place stays open. Joining in is an invitation."
 }
 const FILM_SHOT_LATER_CAPTIONS: Dictionary = {
-	"seat": "\"May I sit here?\" \"We kept a place open.\"",
-	"paint": "\"Your shape belongs beside mine.\"",
-	"welcome": "\"Stay for a moment, or come back another day.\""
+	"seat": "“May I sit here?” “We kept a place open.”",
+	"paint": "“Your shape belongs beside mine.”",
+	"welcome": "“Stay for a moment, or come back another day.”"
 }
 const FILM_FRAMING: Array[String] = ["close", "wide"]
 const FILM_FRAMING_LABELS: Dictionary = {
@@ -793,6 +793,7 @@ var block_page_next: Button
 var block_close_btn: Button
 var block_hub_page := 0
 var rhythm_circle
+var film_screening
 var mural_workshop
 var mural_workshop_selected := "sun"
 var mural_workshop_message := ""
@@ -3078,6 +3079,15 @@ func build_block_banner() -> void:
 	add_child(film_storyboard_node)
 	update_block_3d()
 
+func film_easel_snapshot() -> Dictionary:
+	if film_storyboard_node == null or film_frame_canvas == null: return {"visible":false}
+	var corners: Array[Dictionary] = []
+	for local in [Vector3(-0.48,0.31,0.061),Vector3(0.48,0.31,0.061),Vector3(-0.48,-0.31,0.061),Vector3(0.48,-0.31,0.061)]:
+		var point := camera.unproject_position(film_frame_canvas.to_global(local))
+		corners.append({"x":point.x,"y":point.y})
+	var tex: Texture2D = film_frame_canvas.material_override.albedo_texture
+	return {"visible":film_storyboard_node.visible,"corners":corners,"textured":tex!=null,"frame":film_screen_frame,"uv_scale_x":film_frame_canvas.material_override.uv1_scale.x,"uv_scale_y":film_frame_canvas.material_override.uv1_scale.y}
+
 func film_shot_color(shot_id: String) -> Color:
 	match shot_id:
 		"paint":
@@ -3157,6 +3167,15 @@ func update_block_3d() -> void:
 					active_shot = String(f_ord[0])
 			if film_frame_canvas != null:
 				film_frame_canvas.material_override = mural_material(film_shot_color(active_shot))
+				if film_screening != null:
+					var film_texture: Texture2D = film_screening.texture(film_result, active_shot, true)
+					if film_texture != null:
+						var film_material := mural_material(Color.WHITE)
+						film_material.albedo_texture = film_texture
+						film_material.uv1_scale = Vector3(3,2,1)
+						film_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+						film_material.emission_enabled = false
+						film_frame_canvas.material_override = film_material
 			for p_i in range(film_shot_pips.size()):
 				var is_cap := p_i < film_captured.size()
 				film_shot_pips[p_i].material_override = mural_material(Color("f8cc58")) if is_cap else material(Color("5a665f"))
@@ -5779,7 +5798,7 @@ func build_reward_banner(layer: CanvasLayer) -> void:
 	layer.add_child(reward_banner)
 
 func layout_reward_banner() -> void:
-	if is_mural_workshop_visible() or is_rhythm_circle_visible():
+	if is_mural_workshop_visible() or is_rhythm_circle_visible() or is_film_screening_visible():
 		if reward_banner != null:
 			reward_banner.visible = false
 		return
@@ -5844,7 +5863,7 @@ func trigger_feel_good_burst(title_str: String, detail_str: String, world_pos: V
 func update_celebration_burst(delta: float) -> void:
 	if reward_banner != null and reward_banner_timer > 0.0:
 		layout_reward_banner()
-		if not is_mural_workshop_visible() and not is_rhythm_circle_visible() and (reward_banner.visible or (header_details_expanded and not speech_opened_info)):
+		if not is_mural_workshop_visible() and not is_rhythm_circle_visible() and not is_film_screening_visible() and (reward_banner.visible or (header_details_expanded and not speech_opened_info)):
 			reward_banner_timer -= delta
 		if reward_banner_timer <= 0.45:
 			reward_banner.modulate = Color(1.0, 1.0, 1.0, clampf(reward_banner_timer / 0.45, 0.0, 1.0))
@@ -7382,7 +7401,7 @@ func set_header_details(expanded: bool, refit_map := true) -> void:
 
 func update_conversation_ui(delta: float) -> void:
 	ui_clock = wrapf(ui_clock + delta, 0.0, 3600.0)
-	if is_rhythm_circle_visible():
+	if is_rhythm_circle_visible() or is_film_screening_visible():
 		return
 	var chapter := current_chapter()
 	# Deliver any pending chapter card after the focused workshop closes,
@@ -10102,7 +10121,7 @@ func advance_film_step() -> String:
 		if not film_capture_shot():
 			return "film_blocked"
 		if film_phase == "done":
-			last_panel_dialogue = "Dez: \"That's a wrap on 'The Open Seat' (3/3 frames)! Tap 'Watch Film' to cycle frames.\""
+			last_panel_dialogue = "Dez: \"That's a wrap on 'The Open Seat' (3/3 frames)! Tap 'Watch Film' to see our illustrated short. Period cycles the easel frames.\""
 		else:
 			last_panel_dialogue = "Dez: \"Captured %s (%d/3)! Next frame: %s.\"" % [film_shot_title(next_s), film_captured.size(), film_shot_title(film_next_shot())]
 		update_block_ui()
@@ -11425,6 +11444,8 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"block_detail_scroll_value": block_detail_label.get_v_scroll_bar().value if block_detail_label != null else 0.0,
 		"block_detail_scroll_page": block_detail_label.get_v_scroll_bar().page if block_detail_label != null else 0.0,
 		"block_hub_actions": block_action_snapshots(),
+		"film_screening": film_screening.snapshot() if film_screening != null else {"visible":false},
+		"film_easel": film_easel_snapshot(),
 		"rhythm_circle": rhythm_circle.snapshot() if rhythm_circle != null else {"visible":false},
 		"mural_workshop": mural_workshop.snapshot() if mural_workshop != null else {"visible": false},
 		"mural_compose_entry": activity_detail_snapshot(mural_detail_label, mural_panel, [mural_compose_btn]).buttons[0] if mural_compose_btn != null and mural_compose_btn.is_visible_in_tree() else {"visible": false},
@@ -11590,6 +11611,9 @@ func poll_web_audio() -> void:
 		return
 	load_local_music_bytes(fname, raw)
 
+func is_film_screening_visible() -> bool:
+	return film_screening != null and film_screening.visible
+
 func is_rhythm_circle_visible() -> bool:
 	return rhythm_circle != null and rhythm_circle.visible
 
@@ -11661,7 +11685,7 @@ func edit_mural_scene(id: String, slot: String) -> bool:
 	return true
 
 func open_mural_workshop() -> bool:
-	if is_rhythm_circle_visible():
+	if is_rhythm_circle_visible() or is_film_screening_visible():
 		return false
 	if startup_story_pending or is_story_card_visible():
 		announce_a11y_status("Continue the chapter card before composing the mural.")
@@ -12000,6 +12024,7 @@ func save_godot_state() -> bool:
 	return wrote
 
 func reset_mural_state_to_defaults(status_label: String) -> void:
+	if is_film_screening_visible(): film_screening.close_screening(false)
 	if rhythm_circle != null: rhythm_circle.chapter_completion_notice = ""
 	if rhythm_circle != null and rhythm_circle.visible:
 		rhythm_circle.close_circle(false)
@@ -12476,6 +12501,7 @@ func validate_godot_optional(raw_opt: Variant) -> Dictionary:
 	return {"ok": true, "optional": (raw_opt as Dictionary).duplicate(true)}
 
 func apply_save_envelope(raw_json: String) -> bool:
+	if is_film_screening_visible(): film_screening.close_screening(false)
 	if rhythm_circle != null: rhythm_circle.chapter_completion_notice = ""
 	if rhythm_circle != null and rhythm_circle.visible:
 		rhythm_circle.close_circle(false)
@@ -13027,6 +13053,7 @@ func import_browser_save_json(raw_json: String) -> bool:
 		info.text = "%s\nBrowser save ('%s') is read-only and never overwritten by Godot\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [browser_import_message, BROWSER_WEB_STORAGE_KEY]
 		announce_a11y_status(browser_import_message)
 		return false
+	if is_film_screening_visible(): film_screening.close_screening(false)
 	if rhythm_circle != null and rhythm_circle.visible:
 		rhythm_circle.close_circle(false)
 	if is_mural_workshop_visible():
@@ -13604,7 +13631,7 @@ func _process(delta: float) -> void:
 	flush_web_a11y_status()
 
 func _physics_process(delta: float) -> void:
-	if is_mural_workshop_visible() or is_rhythm_circle_visible():
+	if is_mural_workshop_visible() or is_rhythm_circle_visible() or is_film_screening_visible():
 		return
 	var shift_held := Input.is_key_pressed(KEY_SHIFT) or Input.is_physical_key_pressed(KEY_SHIFT)
 	if shift_held and get_viewport().gui_get_focus_owner() == null:
@@ -13661,7 +13688,7 @@ func _physics_process(delta: float) -> void:
 		advance_walk(delta * (2.2 if OS.has_feature("web") else 1.0))
 
 func is_screen_point_in_ui(screen_pos: Vector2) -> bool:
-	if is_rhythm_circle_visible() or is_mural_workshop_visible() or (mural_compose_btn != null and mural_compose_btn.is_visible_in_tree() and mural_compose_btn.get_global_rect().has_point(screen_pos)):
+	if is_film_screening_visible() or is_rhythm_circle_visible() or is_mural_workshop_visible() or (mural_compose_btn != null and mural_compose_btn.is_visible_in_tree() and mural_compose_btn.get_global_rect().has_point(screen_pos)):
 		return true
 	if reward_banner != null and reward_banner.is_visible_in_tree() and reward_banner.get_global_rect().has_point(screen_pos):
 		return true
@@ -13861,6 +13888,11 @@ func _input(event: InputEvent) -> void:
 		continue_story()
 
 func _unhandled_input(event: InputEvent) -> void:
+	if is_film_screening_visible():
+		if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+			film_screening.close_screening()
+		get_viewport().set_input_as_handled()
+		return
 	if is_rhythm_circle_visible():
 		if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 			rhythm_circle.close_circle()
@@ -13883,6 +13915,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			else:
 				hide_story_card()
 		match k:
+			KEY_F4:
+				film_screening.open_screening()
 			KEY_F3:
 				rhythm_circle.open_circle()
 			KEY_F2:
@@ -14100,7 +14134,7 @@ func update_camera() -> void:
 	camera.force_update_transform()
 	# Hubs and short phone walking keep the followed character in the scene area.
 	# Keep inspection/panned views, heading and zoom under the player's control.
-	if following_player and ((block_panel != null and block_panel.visible and block_panel_mode == "hub") or uses_short_narrow_walking()):
+	if following_player and not is_film_screening_visible() and ((block_panel != null and block_panel.visible and block_panel_mode == "hub") or uses_short_narrow_walking()):
 		var focus := player.position + Vector3.UP
 		var ppm := (camera.unproject_position(target + camera.global_basis.y) - camera.unproject_position(target)).length()
 		if ppm > 1e-5:
@@ -14349,6 +14383,10 @@ func refit_after_layout() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if generation != layout_refit_generation:
+		return
+	if is_film_screening_visible():
+		layout_refit_pending = false
+		sync_web_a11y_status()
 		return
 	var card_up := is_story_card_visible()
 	var pending := startup_story_pending
@@ -14990,7 +15028,10 @@ func make_ui() -> void:
 	block_rook_btn = block_button(block_actions_grid, "Soundcheck w/ Rook", func(): request_rook_soundcheck())
 	block_west_btn = block_button(block_actions_grid, "Walk to Black Hawk", func(): walk_to_or_read_history_stop("blackhawk"))
 	block_civic_btn = block_button(block_actions_grid, "Hold Tenant Circle", func(): advance_civic_step())
-	block_film_btn = block_button(block_actions_grid, "Shoot Short Film", func(): advance_film_step())
+	block_film_btn = block_button(block_actions_grid, "Shoot Short Film", func():
+		if film_phase == "done": film_screening.open_screening()
+		else: advance_film_step()
+	)
 	block_voices_btn = block_button(block_actions_grid, "Read Local Stories", func(): toggle_voices_enabled())
 	block_district_btn = block_button(block_actions_grid, "District Border: On", func(): toggle_district_boundary())
 	block_import_btn = block_button(block_actions_grid, "Import Web Save", func(): import_browser_save_from_web_storage())
@@ -15071,6 +15112,9 @@ func make_ui() -> void:
 		refresh_mural_workshop()
 	)
 	mural_workshop.close_requested.connect(close_mural_workshop)
+	film_screening = preload("res://film_screening.gd").new()
+	layer.add_child(film_screening)
+	film_screening.setup(self)
 	rhythm_circle = preload("res://rhythm_circle.gd").new()
 	layer.add_child(rhythm_circle)
 	rhythm_circle.setup(self,layer)

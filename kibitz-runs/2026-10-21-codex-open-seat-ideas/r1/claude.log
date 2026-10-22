@@ -1,0 +1,20 @@
+STDOUT:
+I've written the review to `kibitz-runs/2026-10-21-codex-open-seat-ideas/r1/claude.md`. I didn't touch any other file. My file tools worked, and every claim cites a real file and line.
+
+**Verdict: yes-with-fixes.** Option (A), the film screening, is the right slice. But the brief calls it a new "original screening experience", and it isn't one. The browser version already ships a manual screening viewer with captions and alt text (`public/game.js:198-205`). In the Godot version, this work is catching up to the browser version.
+
+Things the brief misses that change the design:
+- **Godot never shows captions.** The caption constants at `godot/main.gd:137-146` are declared but never used.
+- **The quiet/later choice is invisible in the screening.** The frame drawings depend only on framing and shot (`main.gd:9354-9381`, `public/film.js:67-74`), so captions are the only place that choice could appear.
+- **Caption text differs between the two versions.** Godot uses straight quotes and apostrophes; the browser uses curly ones. A "captions match the browser" check would fail today.
+- **Captions must stay out of the frame drawings.** The browser test compares the Godot drawing with the browser one byte for byte (`tests/godot-browser.mjs:1692-1694`). Text in the drawing would break that and add a font dependency.
+- **The brief contradicts itself on playback.** One section asks to consider optional playback; another says no timers or autoplay. The browser viewer has no playback, so I recommend cutting it.
+- **How the viewer opens and takes keyboard input is undecided.** Existing tests pin the current frame-cycling behaviour (`godot/tests/study_test.gd:1206`, `1221`, `1939`), and the action list must stay at 12 entries.
+
+The review also suggests:
+- **Easel prior art:** reuse the mural's existing way of turning an SVG into a texture (`godot/mural_stories.gd:93-101`), with letterboxing, because the easel canvas and the drawing have different proportions (about 1.55 vs 1.78).
+- **Viewer quality:** draw the frame at higher resolution for the large viewer, and announce alt text plus caption on each frame change.
+- **Code placement:** build the viewer in its own file rather than in `main.gd`, which is over 15,000 lines.
+- **Save size:** require the save size to stay exactly the same before and after.
+
+I recommend cutting playback, new screen furniture or menu entries, any new saved "watched" flag, and changes to the drawings.

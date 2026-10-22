@@ -1,0 +1,12 @@
+{
+  "godot/main.gd": "a7e0121fc52aec4d9b2ab85c635dd958f8b590edd600e6b9eb271e16e4af4e3b",
+  "godot/film_screening.gd": "d0e8ce92d38ebb29aecd6403acbdebd678840f494686b2e2007b5e036858e59c",
+  "godot/film_screening.gd.uid": "853f18e65266a6f3f20d182b18a0595c8a25bc5676c9da3446efca6c6b0c3a32",
+  "godot/rhythm_circle.gd": "dc99624b8670dc7e6329d61830f8ec2416702850c4152d193d5e71883a8f4948",
+  "godot/mural_workshop.gd": "d44323fee68af2ac907ebba3e59aab32ffa7e08e716016b926a86acc2a20e0c8",
+  "godot/mural_stories.gd": "4dc1f266b997f8210871b4d863c19b43aeeb901beb60c822b6a92de9e48766c2",
+  "godot/tests/study_test.gd": "1b5ec170ea82096413c640a98c4444d0fb95e506cd9dc91004f2d9186a79c3b2",
+  "tests/godot-browser.mjs": "0ec1072a74810c487d66ebab8051eb3dcf531731cf65dd01eb05029112deeca3",
+  "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160",
+  "docs/ROADMAP.md": "e3c2e96aa63d66615e3c941cf3af13d05959bc46923197d7b3bb146af8619988"
+}

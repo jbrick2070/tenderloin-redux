@@ -1,0 +1,2 @@
+# Explicit single pre-coding ideas r1
+Creator mandates exactly one source-reading Claude idea pass BEFORE coding and separate implementation QA later. This is r1 ONLY; no r2/r3/r4 campaign. Driver Codex; only claude-opus-5-5/high. Source reading and assigned report only. No implementation edits yet; Codex sole writer/judge. Input/source hashes and exact model/effort/quota receipts retained. No substitution, larger panel, credits or blind auth/quota retries.
