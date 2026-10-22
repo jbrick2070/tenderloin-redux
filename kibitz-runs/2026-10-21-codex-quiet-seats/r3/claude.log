@@ -1,0 +1,20 @@
+STDOUT:
+I've written the review to `C:\tenderloin-redux\kibitz-runs\2026-10-21-codex-quiet-seats\r3\claude.md`. My verdict is yes-with-fixes. The startup and load order is correct, and the save and validator contract holds. I read the source files but did not run any tests or `git diff`.
+
+The three must-fix items:
+1. **The committed tests don't contain the evidence the plan relies on.** The completion, reload, world-pixel, short-landscape and both-layout checks run only from `artifacts/quiet-seats-preflight.mjs`, and `artifacts/` is gitignored. That script also reads its starting save from a file an earlier browser run wrote, so it can silently reuse a stale one. The fix is to move its six-case loop into `tests/godot-browser.mjs`, using the save captured earlier in the same run, as the beats-last fixture block already does.
+2. **The stools pulled out of the table and floor meshes now shade smoothly instead of flat.** Their new surfaces skip `set_smooth_group(-1)`, which every other surface in that code calls. That changes the look of all 19 stools in every state. I'm inferring the original layout from an earlier review, so a `git diff` should confirm it.
+3. **The pixel check for the guests' coats doesn't prove they render.** Its colour test also matches the stools, the table wood and the floor tiles inside the guests' screen area. Comparing screenshots between the two seating choices, which are already real taps in the test, would fix this without adding hooks.
+
+The nine should-fix items are:
+- Stool reset positions are copied as hard-coded numbers.
+- Keyboard focus is lost when the choice row hides.
+- Shift+Z and the buttons set different reader text.
+- The native test never checks that Close and the 12 hub buttons still fit with the row showing.
+- Collision checks skip the table legs, riser, lettering and barricades.
+- The browser settle check skips the compact-layout pending flag.
+- The native and browser fixtures set the programme order differently.
+- The choice ids are hard-coded instead of read from `HOSTING_QUIETS`.
+- One call site skips the null guard on `quiet_seats`.
+
+Separately, several MCP servers (Asana, Atlassian, Datadog, GitHub, Linear, Notion, PagerDuty, Slack, Box, Runway) need authorization before they can be used. Authorize them in your claude.ai connector settings, or with `claude mcp` or `/mcp` in an interactive session. None of them were needed for this review.

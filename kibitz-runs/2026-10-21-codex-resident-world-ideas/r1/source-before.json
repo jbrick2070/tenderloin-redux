@@ -1,0 +1,11 @@
+{
+  "godot/main.gd": "151b86f6901f92bbfe45a4c98a449f90c564508f73bb5af107017cd76805e9cf",
+  "godot/rhythm_circle.gd": "dc99624b8670dc7e6329d61830f8ec2416702850c4152d193d5e71883a8f4948",
+  "godot/film_screening.gd": "d0e8ce92d38ebb29aecd6403acbdebd678840f494686b2e2007b5e036858e59c",
+  "godot/tests/study_test.gd": "8da362c612125f332c9f28019e99ef6cfc3709032bedc9c28f97eb8b47655d89",
+  "tests/godot-browser.mjs": "0554e4ea8cf0a1ff6eaeae41ab9895735c2b8b050007282f00c254a06df5d3f2",
+  "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160",
+  "docs/ROADMAP.md": "e3c2e96aa63d66615e3c941cf3af13d05959bc46923197d7b3bb146af8619988",
+  "docs/GODOT_APPROACH.md": "5dd9af75f71646ff15e9dcd327e4090c94af331954a8033ab1429c1e36ef3f75",
+  "public/hosting.js": "2155f76740dfe1cc91aa258462cc135aac0cc5da7a15bc981f5031ad8ddebf19"
+}

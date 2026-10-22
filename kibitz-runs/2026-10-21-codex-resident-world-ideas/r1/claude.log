@@ -1,0 +1,21 @@
+STDOUT:
+I wrote the review to `kibitz-runs/2026-10-21-codex-resident-world-ideas/r1/claude.md`. The tool check passed: I could read the real source files.
+
+**Verdict: yes-with-fixes.** Giving the Quiet interval a place in the curb lane is a sound, well-grounded idea. The brief has three gaps that could sink it:
+
+- **Existing browser version not cited:** the frozen browser game already arranges visitors by the Quiet choice. `hostingGuests()` in `public/hosting.js:74-87` clusters them for "arc" and spreads them for "pairs". Godot should copy that behaviour rather than invent a new scene.
+- **"Story and/or quiet" is unresolved:** the Story choice has no browser precedent and risks breaking the no-invented-facts rule. I recommend cutting it and building only the Quiet scene.
+- **The curb lane is nearly full:** the table or open-floor props and the Rhythm Circle visitors take up most of the strip. The Rhythm visitors stay visible for the rest of the session once the Rhythm workshop is done, so the Quiet scene will almost always share space with them. The brief needs measured free areas for each layout and an overlap test before any coding.
+
+The review also flags these:
+- The brief doesn't define what the world shows before, during and after the Quiet interval.
+- An arc-vs-pairs swap may be too small to see from the default camera, so I added a visibility test.
+- Neither the native keyboard path nor the existing browser tests cover choosing story or quiet with a mouse or finger.
+- The proposed seats would look like the civic chapter's existing four-stool circle.
+- I recommend cutting the optional camera focus.
+
+Two things I could not check:
+- whether the Godot block panel already has tappable story/quiet buttons, and where Shift+Z is bound;
+- whether the civic seating sits inside the gathering area.
+
+Both are marked "verify" in the review.

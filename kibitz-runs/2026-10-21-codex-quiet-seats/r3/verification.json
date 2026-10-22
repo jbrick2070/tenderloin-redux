@@ -1,0 +1,561 @@
+{
+  "verified_utc": "2026-10-22T04:42:27.615470+00:00",
+  "baseline": "e03a235d784c93550e41aa7c181d308245068ab7",
+  "gates": {
+    "node": 0,
+    "native": 0,
+    "check": 0,
+    "export": 0,
+    "browser": 0
+  },
+  "node_tests": 104,
+  "pack_bytes": 1766168,
+  "public": {
+    "version": "0.12.0",
+    "fingerprint": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567"
+  },
+  "save_bytes": [
+    1729,
+    1729,
+    1729
+  ],
+  "actual_quiet_cases": [
+    {
+      "width": 1100,
+      "height": 760,
+      "touch": false,
+      "layout": "table",
+      "complete": false,
+      "positions": [
+        [
+          -3.84999990463257,
+          -2.75
+        ],
+        [
+          -0.550000011920929,
+          0.550000011920929
+        ],
+        [
+          -3.84999990463257,
+          -2.75
+        ]
+      ],
+      "images": [
+        "1100x760-mouse-table-pairs-0",
+        "1100x760-mouse-table-arc-1",
+        "1100x760-mouse-table-pairs-2"
+      ],
+      "colored": 0,
+      "total": 0
+    },
+    {
+      "width": 390,
+      "height": 667,
+      "touch": true,
+      "layout": "table",
+      "complete": false,
+      "positions": [
+        [
+          -3.84999990463257,
+          -2.75
+        ],
+        [
+          -0.550000011920929,
+          0.550000011920929
+        ],
+        [
+          -3.84999990463257,
+          -2.75
+        ]
+      ],
+      "images": [
+        "390x667-finger-table-pairs-0",
+        "390x667-finger-table-arc-1",
+        "390x667-finger-table-pairs-2"
+      ],
+      "colored": 0,
+      "total": 0
+    },
+    {
+      "width": 320,
+      "height": 667,
+      "touch": true,
+      "layout": "table",
+      "complete": false,
+      "positions": [
+        [
+          -3.84999990463257,
+          -2.75
+        ],
+        [
+          -0.550000011920929,
+          0.550000011920929
+        ],
+        [
+          -3.84999990463257,
+          -2.75
+        ]
+      ],
+      "images": [
+        "320x667-finger-table-pairs-0",
+        "320x667-finger-table-arc-1",
+        "320x667-finger-table-pairs-2"
+      ],
+      "colored": 0,
+      "total": 0
+    },
+    {
+      "worldChange": {
+        "vacated": {
+          "count": 215,
+          "samples": 484
+        },
+        "occupied": {
+          "count": 228,
+          "samples": 484
+        }
+      },
+      "width": 1100,
+      "height": 760,
+      "touch": false,
+      "layout": "table",
+      "complete": true,
+      "positions": [
+        [
+          -3.84999990463257,
+          -2.75
+        ],
+        [
+          -0.550000011920929,
+          0.550000011920929
+        ],
+        [
+          -3.84999990463257,
+          -2.75
+        ]
+      ],
+      "images": [
+        "1100x760-mouse-table-pairs-0",
+        "1100x760-mouse-table-arc-1",
+        "1100x760-mouse-table-pairs-2"
+      ],
+      "colored": 916,
+      "total": 1716
+    },
+    {
+      "worldChange": {
+        "vacated": {
+          "count": 174,
+          "samples": 437
+        },
+        "occupied": {
+          "count": 173,
+          "samples": 437
+        }
+      },
+      "width": 390,
+      "height": 667,
+      "touch": true,
+      "layout": "floor",
+      "complete": true,
+      "positions": [
+        [
+          -4.19999980926514,
+          -3.20000004768372
+        ],
+        [
+          -1.20000004768372,
+          0
+        ],
+        [
+          -4.19999980926514,
+          -3.20000004768372
+        ]
+      ],
+      "images": [
+        "390x667-finger-floor-pairs-0",
+        "390x667-finger-floor-arc-1",
+        "390x667-finger-floor-pairs-2"
+      ],
+      "colored": 811,
+      "total": 1596
+    },
+    {
+      "worldChange": {
+        "vacated": {
+          "count": 160,
+          "samples": 361
+        },
+        "occupied": {
+          "count": 173,
+          "samples": 361
+        }
+      },
+      "width": 320,
+      "height": 667,
+      "touch": true,
+      "layout": "table",
+      "complete": true,
+      "positions": [
+        [
+          -3.84999990463257,
+          -2.75
+        ],
+        [
+          -0.550000011920929,
+          0.550000011920929
+        ],
+        [
+          -3.84999990463257,
+          -2.75
+        ]
+      ],
+      "images": [
+        "320x667-finger-table-pairs-0",
+        "320x667-finger-table-arc-1",
+        "320x667-finger-table-pairs-2"
+      ],
+      "colored": 698,
+      "total": 1330
+    },
+    {
+      "worldChange": {
+        "vacated": {
+          "count": 23,
+          "samples": 130
+        },
+        "occupied": {
+          "count": 53,
+          "samples": 130
+        }
+      },
+      "width": 520,
+      "height": 360,
+      "touch": true,
+      "layout": "floor",
+      "complete": true,
+      "positions": [
+        [
+          -4.19999980926514,
+          -3.20000004768372
+        ],
+        [
+          -1.20000004768372,
+          0
+        ],
+        [
+          -4.19999980926514,
+          -3.20000004768372
+        ]
+      ],
+      "images": [
+        "520x360-finger-floor-pairs-0",
+        "520x360-finger-floor-arc-1",
+        "520x360-finger-floor-pairs-2"
+      ],
+      "colored": 248,
+      "total": 460
+    },
+    {
+      "worldChange": {
+        "vacated": {
+          "count": 17,
+          "samples": 110
+        },
+        "occupied": {
+          "count": 55,
+          "samples": 110
+        }
+      },
+      "width": 559,
+      "height": 360,
+      "touch": false,
+      "layout": "table",
+      "complete": true,
+      "positions": [
+        [
+          -3.84999990463257,
+          -2.75
+        ],
+        [
+          -0.550000011920929,
+          0.550000011920929
+        ],
+        [
+          -3.84999990463257,
+          -2.75
+        ]
+      ],
+      "images": [
+        "559x360-mouse-table-pairs-0",
+        "559x360-mouse-table-arc-1",
+        "559x360-mouse-table-pairs-2"
+      ],
+      "colored": 198,
+      "total": 380
+    },
+    {
+      "worldChange": {
+        "vacated": {
+          "count": 42,
+          "samples": 130
+        },
+        "occupied": {
+          "count": 61,
+          "samples": 130
+        }
+      },
+      "width": 640,
+      "height": 360,
+      "touch": false,
+      "layout": "floor",
+      "complete": true,
+      "positions": [
+        [
+          -4.19999980926514,
+          -3.20000004768372
+        ],
+        [
+          -1.20000004768372,
+          0
+        ],
+        [
+          -4.19999980926514,
+          -3.20000004768372
+        ]
+      ],
+      "images": [
+        "640x360-mouse-floor-pairs-0",
+        "640x360-mouse-floor-arc-1",
+        "640x360-mouse-floor-pairs-2"
+      ],
+      "colored": 263,
+      "total": 460
+    }
+  ],
+  "required_viewports": [
+    {
+      "width": 1100,
+      "height": 760
+    },
+    {
+      "width": 390,
+      "height": 667
+    },
+    {
+      "width": 320,
+      "height": 667
+    }
+  ],
+  "errors": [],
+  "external": [],
+  "roles": [
+    {
+      "round": "r1",
+      "purpose": "pre-code ideas",
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "source_unchanged": true,
+      "folder": "kibitz-runs/2026-10-21-codex-resident-world-ideas/r1"
+    },
+    {
+      "round": "r3",
+      "purpose": "implementation QA",
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "source_unchanged": true,
+      "folder": "kibitz-runs/2026-10-21-codex-quiet-seats/r3"
+    }
+  ],
+  "limits": [
+    "provider runtime identity and quota percentage not attested",
+    "human aesthetics/recognition/physical phones/full screen reader/listening/pacing/access certification not proved",
+    "expanded Info extremes,width<520/height<360 world layouts/arbitrary4line captions not universally accepted",
+    "default overview does not promise legible small seats; world proof uses real manual FindMe/zoom/pan",
+    "preflight8 predates final modal resync; full2 is final current-source evidence",
+    "no deployment or Linux CI claim"
+  ],
+  "hashes": {
+    "artifacts/godot-browser.json": "a5cf2fec38f46097dc7499b2c873cfb6259e0f9a320c98c627bd25c337a74190",
+    "artifacts/godot-web/index.pck": "e64908f0176a3b5d047476884eca7485aab6b3eac11046e5bffb26a57ff38fa6",
+    "artifacts/quiet-seats-1100x760-mouse-table-arc-1.png": "f0b98b978eb093f536b44ed7d7efde504fecc65dabbcac098cc17d3850df3b28",
+    "artifacts/quiet-seats-1100x760-mouse-table-pairs-0.png": "e8d2045948fe29c47ff76b656557cd9f734338de3e2ee51ca3ea05d1bceb4052",
+    "artifacts/quiet-seats-1100x760-mouse-table-pairs-2.png": "d49e89407f2b438952aa23cc4fb7fcc7454017cdaeb9a856ba2990b2f22bb5f0",
+    "artifacts/quiet-seats-320x667-finger-table-arc-1.png": "139f7d4dd629a93d496afcb58a4297f4e48f4bc4e0bf813deaa553af56ddad63",
+    "artifacts/quiet-seats-320x667-finger-table-pairs-0.png": "6e604b2c1d3135dcf74f6346d6c9a05007edd0f06d9f489fed0f62eafb838b35",
+    "artifacts/quiet-seats-320x667-finger-table-pairs-2.png": "f9953ac6c30c9e0890faefdb5b5f468dec6a5f2f97637c51ef4dbd78f48c7bc3",
+    "artifacts/quiet-seats-390x667-finger-floor-arc-1.png": "79d6411ab4ddf7f5e4dfc1229e6dbd8376d04eca4ab1f6815db20ad84254229e",
+    "artifacts/quiet-seats-390x667-finger-floor-pairs-0.png": "a5741a5b5864a1798c28775cd8515e59c4680218c29c831ff7993277a9843355",
+    "artifacts/quiet-seats-390x667-finger-floor-pairs-2.png": "3c85dd46751a9f4d01d7b14ec96dc44b3a152d0afe9b9b9cc68c4a79a6d1fde6",
+    "artifacts/quiet-seats-390x667-finger-table-arc-1.png": "472bc7dede3404aa945624fab4dcad070e6a959a9c57a53eb55169e118cc4167",
+    "artifacts/quiet-seats-390x667-finger-table-pairs-0.png": "813584878af09ba407d678856c30eaf8466c534b36173a86c1c014731fb7d1f0",
+    "artifacts/quiet-seats-390x667-finger-table-pairs-2.png": "7d7b5e6e678ed14f9c38db5dc5e7e4b633c18109b7dbc82a137b0cf35e62b836",
+    "artifacts/quiet-seats-520x360-finger-floor-arc-1.png": "bee8e3f426239b1e53cbc0b68d63457558f6e1b8d2e576d9f567f78e0a98585a",
+    "artifacts/quiet-seats-520x360-finger-floor-pairs-0.png": "796884f2c510f5c659b1f260fef4cf1b003869eb58f279b90546091540e78fa7",
+    "artifacts/quiet-seats-520x360-finger-floor-pairs-2.png": "012a3dbafbd9dcba52bfa784153002f44b7f4fe051fa93010ad269a11cea923e",
+    "artifacts/quiet-seats-559x360-mouse-table-arc-1.png": "33ca1895f01c3ec5ab1be1ed9921b7dd873eb4996f407717f5598d080bd7cfd0",
+    "artifacts/quiet-seats-559x360-mouse-table-pairs-0.png": "0b3eec5b499e8920b06cf0c98dfbffe7ec4f5a6c7798de233af3eb0089015d8d",
+    "artifacts/quiet-seats-559x360-mouse-table-pairs-2.png": "b47cddc1bf8f2e28bff60e2ff040d80f7e161359ad991d0ecd843c618f15f628",
+    "artifacts/quiet-seats-640x360-mouse-floor-arc-1.png": "b0917003b74e362dd5a1e7769fdc26d2b1214a55b8f1d1b8929e10bc29e2ee68",
+    "artifacts/quiet-seats-640x360-mouse-floor-pairs-0.png": "f0d7a7240dbd61b1b3506352010e6386c18a3bc7717afaf1addc28c886cea1d0",
+    "artifacts/quiet-seats-640x360-mouse-floor-pairs-2.png": "aa93774958446e4549e83bc0d4ff27b449789c59ed40a9973a6fa2fc75730665",
+    "artifacts/quiet-seats-export1.log": "ca3c972615e3617c2ee3e87a520f7840804d83f4f3acc3adc954c51747e86464",
+    "artifacts/quiet-seats-export2.log": "cc17c893351545d9c105511d8727398a017352376b246c13b9364412727d4f3f",
+    "artifacts/quiet-seats-export3.log": "ca3c972615e3617c2ee3e87a520f7840804d83f4f3acc3adc954c51747e86464",
+    "artifacts/quiet-seats-export4.log": "cc17c893351545d9c105511d8727398a017352376b246c13b9364412727d4f3f",
+    "artifacts/quiet-seats-final-facts.json": "79d02c1f700ecb6d855465cfb81bd78a55acabbde56a4b854ccdd979d2ec8ba8",
+    "artifacts/quiet-seats-full1-failure.json": "7b05ea2af84f4b4c7aa93625622ab49b01010cce205224ac64d867aab56a0d3b",
+    "artifacts/quiet-seats-full1-failure.png": "0b6abeed7ae8425c05307c9d8809a2c741a8b8a95cc9f4fc9317be29982873a6",
+    "artifacts/quiet-seats-full1.log": "32c6e41ef6ade0bd08cbc80a484f2615204fa7d8ce3edbc006f9b21c57434206",
+    "artifacts/quiet-seats-full1.pck": "04ae8a3771be1d93fd70e581c3d732f248d30eb6bb696921f0e769d83debdd38",
+    "artifacts/quiet-seats-gate-exits.json": "fa9a6a2959931b99a2a3031ef54c1482c3c3beb9df4b26b24e0160ab5d7f99c9",
+    "artifacts/quiet-seats-native1.log": "1138cc80d42fc1de1121082696c4a57f759468a28d284633c9a95249b59133e9",
+    "artifacts/quiet-seats-native2.log": "df3140386776573c85c013f29e942793cbb77bd7fc829d8cda709d9460f1b328",
+    "artifacts/quiet-seats-native3.log": "c45ca79874c7cd89cf2dfcacc4442b03569b5601f33cce87cfa452391bc3d06d",
+    "artifacts/quiet-seats-native4.log": "1f52498fd29370e81bbb75fd1db0abd6ca47cad9eafc8322f9af094e1f7ed440",
+    "artifacts/quiet-seats-native5.log": "c42648002417d8e42ad726287e1d058dabe24a9fdbee03ab538078f708ff0376",
+    "artifacts/quiet-seats-native6.log": "22965d4fc1683cd9749665ad64ef58d22db195d4ff3dd67455a4fc35aa6cc74e",
+    "artifacts/quiet-seats-native7.log": "f1bc25a81e9f897be1983a9aaf4a62fdc1966049cb22e5c30985b6d8084ca2f2",
+    "artifacts/quiet-seats-native8.log": "e10bc852e40798ba658bae34d263de37d6ae0934b192162334f92296a980781d",
+    "artifacts/quiet-seats-native9.log": "7fdfa05d7cc77153b8c30349644d5010b57aa7b312bb47f5fcc7b998e395fb4d",
+    "artifacts/quiet-seats-pre-full1-check.log": "bbbf642933db0755ec1b063caec7667a16966ea1db64dadab1526709e88e5537",
+    "artifacts/quiet-seats-pre-full1-export.log": "c0a68db14879b2cbe076bf3b9858200dca1c2b359c2cada04add0b1fbf24058e",
+    "artifacts/quiet-seats-pre-full1-native.log": "a9aec85abf4c690d19b7bd752f348aebe2a005fba03288c9c4dccb2f53df0608",
+    "artifacts/quiet-seats-pre-full1-node.log": "c1202c1ea16a32ef9d7f30891045357af79855c7eb173561551865ac3692e51f",
+    "artifacts/quiet-seats-preflight.json": "a3af2b53df5fd82d0b161b0eff98b7549f17ada0ea7fd4d581b7d4e771dfcb95",
+    "artifacts/quiet-seats-preflight1.log": "3036a39f95040ad65fa4d252703dc12b772b77943ec6442b0e7c9c6e7a5ce1d6",
+    "artifacts/quiet-seats-preflight2-failure.json": "5f820b6ecd6653f4091b8861af5094d81a0c12c1515fc35d2200e7f39ba9fb39",
+    "artifacts/quiet-seats-preflight2-failure.png": "6e60e425343563da2cc4706e657379500941b6ffda654bb36b3010885d649bcd",
+    "artifacts/quiet-seats-preflight2.log": "7df7307774453af7923e17ba52696e6aad2bd63a575fe8f229ead65300741e6a",
+    "artifacts/quiet-seats-preflight3-failure.json": "73595369b77c7f867d6360f2f792406bf2b902b14ea12b18f27ab0154176d867",
+    "artifacts/quiet-seats-preflight3-failure.png": "bbb009adadddbbb2a236ac9d909746087ed6aa3c7e60bae5691f4cce332fdbaf",
+    "artifacts/quiet-seats-preflight3.log": "17b49d9cccae4c030bc6eda82cc403b6a209ce83d7a276dac70547335228a286",
+    "artifacts/quiet-seats-preflight4.log": "105b77c319bc1619ce15a728fe4107649ebc0e5df0f4f64f5484cd7c12fbb416",
+    "artifacts/quiet-seats-preflight5-failure.json": "19f226c986ef1dd024d3254dfb9455d51ab6313eb4c1d918fada3f1e6147eaf0",
+    "artifacts/quiet-seats-preflight5-failure.png": "6801e4e70d6e8572ac7541c1a84bf86984e812dbf9d242cb0d95786a6eacda5c",
+    "artifacts/quiet-seats-preflight5.log": "5aa9a2c63bbb764a1929bae4f983b3c8cd9de137494052f9da448ce86e318b7e",
+    "artifacts/quiet-seats-preflight5.pck": "451e3b072c95c3e48fd91e28dc24d7887110cedee593ac39d2a10e7dafbbb565",
+    "artifacts/quiet-seats-preflight6-failure.json": "8aac8b9d47578213f605113069dc34a255507b9ec63a2786feab84f24a17d374",
+    "artifacts/quiet-seats-preflight6-failure.png": "cf94d0511726f0420d678114bc8f757a895244ca15285e72f44b10ae602def1c",
+    "artifacts/quiet-seats-preflight6.log": "167e28478c35f1e5fd9e7251f4032b1fba65a0dfe5140f7594a5e325b9bcf797",
+    "artifacts/quiet-seats-preflight7-failure.png": "df61d4d17213284806913b0f4212d300bab70ddfac57eaecee5cc5ca8fdd1bee",
+    "artifacts/quiet-seats-preflight7.log": "813832717b9506d56e19579fa808483976b57e9937fa75f06c4d3c933fdaad3e",
+    "artifacts/quiet-seats-preflight8-1100x760-mouse-table-arc-1.png": "c0234844a4470146eb55c0410152c8f8b2db349cb40151a0e0c8e3b13dc4a421",
+    "artifacts/quiet-seats-preflight8-1100x760-mouse-table-pairs-0.png": "101ca3334bcc4699a8de217f4195d01ae4fbb85dd5bc91eea6f7fff35d60cbf2",
+    "artifacts/quiet-seats-preflight8-1100x760-mouse-table-pairs-2.png": "65e155a0ddd1df5751af27c4c34d823f540280d87f9c1ce4c1601fea523bb45e",
+    "artifacts/quiet-seats-preflight8-320x667-finger-table-arc-1.png": "0955db3fd3cc5cc120f5c9d905ff8079e60c31b6b994161ccfd676a89945b001",
+    "artifacts/quiet-seats-preflight8-320x667-finger-table-pairs-0.png": "9c6314fce1450ca1b5c4a000a7948a34a4e13c188a8169c132a474c454e3cad2",
+    "artifacts/quiet-seats-preflight8-320x667-finger-table-pairs-2.png": "0c571c1e8ce7792150a69be74b8e23c4e1a59a2bcba4d93443cd38c6db0e19dc",
+    "artifacts/quiet-seats-preflight8-390x667-finger-floor-arc-1.png": "b79a42bdc2d5c348853b6c5f5908b528b75514ddc107ec79b7cd992b605df7e3",
+    "artifacts/quiet-seats-preflight8-390x667-finger-floor-pairs-0.png": "a0945b6cc9264c8839509ab76154df6f74f1fb712167fd1f8fcc6757a26c1ba5",
+    "artifacts/quiet-seats-preflight8-390x667-finger-floor-pairs-2.png": "5d17a6df313f9f2f5d0d17c227258a206ae5c91ba7d28d268a7ae0b661a58bb6",
+    "artifacts/quiet-seats-preflight8-520x360-finger-floor-arc-1.png": "385514d24240a71ccdb69c2a2e53fb0845ee5522514c6d936c8428ca8f6fe8ae",
+    "artifacts/quiet-seats-preflight8-520x360-finger-floor-pairs-0.png": "c921314b4628f97fcc0a70f8e055e04304085f7a0d068b5c811cf0e250896ef0",
+    "artifacts/quiet-seats-preflight8-520x360-finger-floor-pairs-2.png": "eb28f6bcccbb6f9cd33962c84e0c74b4ead18ba9b2cd57eb0d961c6486b97c84",
+    "artifacts/quiet-seats-preflight8-559x360-mouse-table-arc-1.png": "65073aae30e71c68cd5fd0235ffc2e01d6b299f884ad4952969e60fa0e874242",
+    "artifacts/quiet-seats-preflight8-559x360-mouse-table-pairs-0.png": "90fb0fe4b18f534fb19dc075b7eb423c79005b4cce83df0a9e52bb701519e2e6",
+    "artifacts/quiet-seats-preflight8-559x360-mouse-table-pairs-2.png": "e1b92728a05b770ef5a1e2c5f3f668918207fe86f018f5235e5960ab09719678",
+    "artifacts/quiet-seats-preflight8-640x360-mouse-floor-arc-1.png": "e47df0ffdf9dd3ff81f5e0652ff4e3280e62f145d8b28e25b83c6dc3555168d1",
+    "artifacts/quiet-seats-preflight8-640x360-mouse-floor-pairs-0.png": "8b1e1d9a2ab5c57a06d10b153a414155cd75ade2ed59a6d05dc3987866da8f07",
+    "artifacts/quiet-seats-preflight8-640x360-mouse-floor-pairs-2.png": "d2da93ef21f62caffe71cc22831732e2e64fcb3cd2d3893c98d31718ddff66c3",
+    "artifacts/quiet-seats-preflight8-result-1100-mouse-table.json": "23f4c3ca39e8c5c40ce48b268621277be771747a6e3694b1e4e1520bf0866fc1",
+    "artifacts/quiet-seats-preflight8-result-320-finger-table.json": "b66500e78313f506594967b7488c38bed4958a77e2a080c00468a9211cf08646",
+    "artifacts/quiet-seats-preflight8-result-390-finger-floor.json": "d7307fdbc25f6581d7337c604b219350854a23f1de06fd12a372cc39c10862bd",
+    "artifacts/quiet-seats-preflight8-result-520-finger-floor.json": "ada63f7e87ba3e610a597c534fc54ce8bfb5ff358a6a4e19b46ccae560de31cb",
+    "artifacts/quiet-seats-preflight8-result-559-mouse-table.json": "a89690cf8c1f973db0d8e6fc2cda954e433d240907bdde29f48ecb08d5521ac1",
+    "artifacts/quiet-seats-preflight8-result-640-mouse-floor.json": "a3aca8e02137596ad79666c1998c27a11a3ff361d826f7968a2be1c02810d27f",
+    "artifacts/quiet-seats-preflight8-world-1100x760-mouse-table.png": "d9e95c896f1f629a88caa4225eba86b707a550e1b0e39d0f78cd9c6721d76a5e",
+    "artifacts/quiet-seats-preflight8-world-320x667-finger-table.png": "74fa0efca1b81cbe1db181ce0bb7912857ea19ad272c23f26f0458c3c64cf75e",
+    "artifacts/quiet-seats-preflight8-world-390x667-finger-floor.png": "3cdc784591968561e4003ec165ec6e9956ffeea739f714b2271544596e3a006d",
+    "artifacts/quiet-seats-preflight8-world-520x360-finger-floor.png": "4161db196a71580e5ca6dd5eb117a964fc7001425834b1c7cb94f3fcd02160f7",
+    "artifacts/quiet-seats-preflight8-world-559x360-mouse-table.png": "30614cf60f648b188368220d61213975f870f09b7ecbf9b324a834b75d4c49cb",
+    "artifacts/quiet-seats-preflight8-world-640x360-mouse-floor.png": "b1b273a60e4ca44c859e982040451beaf07fdf3127da949ff3ffcdfb960bc8ff",
+    "artifacts/quiet-seats-preflight8-world-pairs-1100x760-mouse-table.png": "9657e2b9a53c8051811a09f8723625ea748ac8793e87b21208273e04e236e27a",
+    "artifacts/quiet-seats-preflight8-world-pairs-320x667-finger-table.png": "03893e1aac55a1ed829716733619b507d49e430798f9fd81ca883a2805f045d0",
+    "artifacts/quiet-seats-preflight8-world-pairs-390x667-finger-floor.png": "9d59b6a1fbb0f3b5ebca96f7b88fc41b49fac108aa6e83a5deef4be722404e2e",
+    "artifacts/quiet-seats-preflight8-world-pairs-520x360-finger-floor.png": "79189929cef923f7ba281337041ae77698b3ff2ea8976f219fe91d95c00e78c2",
+    "artifacts/quiet-seats-preflight8-world-pairs-559x360-mouse-table.png": "639e3bd8dd2ddac709eaa6c937b75e93c9099cfcf7a09c2ccc7e406542c982b9",
+    "artifacts/quiet-seats-preflight8-world-pairs-640x360-mouse-floor.png": "f652b003cb8839f99a0cccb21b33cd4529ab61ec5619ebb368aeb39834327294",
+    "artifacts/quiet-seats-preflight8.json": "a3af2b53df5fd82d0b161b0eff98b7549f17ada0ea7fd4d581b7d4e771dfcb95",
+    "artifacts/quiet-seats-preflight8.log": "105b77c319bc1619ce15a728fe4107649ebc0e5df0f4f64f5484cd7c12fbb416",
+    "artifacts/quiet-seats-qa-cli.log": "ff052c620a4dbb476f3c5c0072b9b9acca69c7f2f226f54203cf06a28f0e1d25",
+    "artifacts/quiet-seats-result-1100-mouse-table.json": "23f4c3ca39e8c5c40ce48b268621277be771747a6e3694b1e4e1520bf0866fc1",
+    "artifacts/quiet-seats-result-320-finger-table.json": "b66500e78313f506594967b7488c38bed4958a77e2a080c00468a9211cf08646",
+    "artifacts/quiet-seats-result-390-finger-floor.json": "d7307fdbc25f6581d7337c604b219350854a23f1de06fd12a372cc39c10862bd",
+    "artifacts/quiet-seats-result-390-finger-table.json": "865b892fb159af847bb4d2dfb7a5f060054149bc1b5f4e265c9775f4f15ee37e",
+    "artifacts/quiet-seats-result-520-finger-floor.json": "ada63f7e87ba3e610a597c534fc54ce8bfb5ff358a6a4e19b46ccae560de31cb",
+    "artifacts/quiet-seats-result-559-mouse-table.json": "a89690cf8c1f973db0d8e6fc2cda954e433d240907bdde29f48ecb08d5521ac1",
+    "artifacts/quiet-seats-result-640-mouse-floor.json": "a3aca8e02137596ad79666c1998c27a11a3ff361d826f7968a2be1c02810d27f",
+    "artifacts/quiet-seats-verified-browser.log": "2d90356932cccad28dbfe66992b78aaa281272d94f6b9ac115fc4aaf15c5b539",
+    "artifacts/quiet-seats-verified-check.log": "bbbf642933db0755ec1b063caec7667a16966ea1db64dadab1526709e88e5537",
+    "artifacts/quiet-seats-verified-export.log": "ca3c972615e3617c2ee3e87a520f7840804d83f4f3acc3adc954c51747e86464",
+    "artifacts/quiet-seats-verified-native.log": "7d159d2240e82f183ce1304ca36fa3ff57b5674e7ef0da9755c589a95ef00837",
+    "artifacts/quiet-seats-verified-node.log": "190cdcaefedff247dc6facbf2175a50db2d1e191d7bb144b47e9e2cbd209ac58",
+    "artifacts/quiet-seats-world-1100x760-mouse-table.png": "e64a3e83d36af4206d20efbaa72eef53ad9d9529b310bc52d33c19cd4185bac8",
+    "artifacts/quiet-seats-world-320x667-finger-table.png": "714a7b822c592b85821eb4512c9741f175e28c87bf5ef10d790263cf62fbdd37",
+    "artifacts/quiet-seats-world-390x667-finger-floor.png": "187608e987c3b511d22289407a61a7fe77cd160ec90c00186d41fe7965e809e6",
+    "artifacts/quiet-seats-world-390x667-finger-table.png": "58a374fc9d547343d3398648fc25bd608d33aa72ca1c6d105e496764a8b3c54f",
+    "artifacts/quiet-seats-world-520x360-finger-floor.png": "bd72b1698cdb89ffc8b5f14e2101c3f5ddb4d7bf8388074d25bc26c703a89fc8",
+    "artifacts/quiet-seats-world-559x360-mouse-table.png": "2071ef2d90da8fca5304bf67408bf69043a16cc511e80bb2cca8a75e039a03e0",
+    "artifacts/quiet-seats-world-640x360-mouse-floor.png": "5ce9048552fcecdf64029beb442abe56a9695f86e9fcb34dcd6792fd754a88df",
+    "artifacts/quiet-seats-world-pairs-1100x760-mouse-table.png": "32cffe1ca2ac4ab4c1923d5c60766277a8473aa5590df54a92e7d59cede88055",
+    "artifacts/quiet-seats-world-pairs-320x667-finger-table.png": "56d3e0421c23979e6cc507a44f5dcf929582bbc69e854450b62514213e8fb038",
+    "artifacts/quiet-seats-world-pairs-390x667-finger-floor.png": "c97a2be2a4821b2ed4e7f8d28fd720e6a4f24826219f43f48b9ed92b0cc47e6c",
+    "artifacts/quiet-seats-world-pairs-520x360-finger-floor.png": "368d12dd4a3b21d1a27fe0792a8d66327e9b4ec0fae212fc66575b73d8376545",
+    "artifacts/quiet-seats-world-pairs-559x360-mouse-table.png": "99b8bbb0e41e72cc766da2055add1887fdadeccb2a4b3849f13f28c4d8124fcb",
+    "artifacts/quiet-seats-world-pairs-640x360-mouse-floor.png": "2c0c6d598d1025622f28bccaf336ba411c54393eaac1ef5cc24704075c9903c8",
+    "artifacts/resident-world-ideas-cli.log": "36c2ccd200dd7218dfb201fe27f5853d7febe92dd33d58f17004f71486a56f9f",
+    "docs/ASSETS.md": "da31199d5f8eb0c80488db2e5939c367499234df18340296dd37a9ba00112da1",
+    "docs/BUILD_STATUS.md": "0816e02c0d52267203edacf77d15999d01938c24a85a169b022ef7c421f80986",
+    "docs/ROADMAP.md": "4cfef920890cf0f5109cb7d1dfaeef5e57f89949b8c0641f3ec6efdbbb02da47",
+    "godot/export_presets.cfg": "ff8636bf366decbad7bbe6803d4c4ebffd7b53b5f627562896d5de13d8413cf4",
+    "godot/film_screening.gd": "d0e8ce92d38ebb29aecd6403acbdebd678840f494686b2e2007b5e036858e59c",
+    "godot/main.gd": "d114cc6c14a1bd3a46523f86bfabdc45add5280a907523788acfb25859649ed9",
+    "godot/main.tscn": "4ab415614d976aa070ccf83cd51bfcfd36f15bcd1e9b69aa1dafa3104b348fea",
+    "godot/mural_stories.gd": "4dc1f266b997f8210871b4d863c19b43aeeb901beb60c822b6a92de9e48766c2",
+    "godot/mural_workshop.gd": "d44323fee68af2ac907ebba3e59aab32ffa7e08e716016b926a86acc2a20e0c8",
+    "godot/project.godot": "17b7d3433d8317601597ea14d319816873d64a3fac5e2315f04212c983292a14",
+    "godot/quiet_seats.gd": "a97c5af6688cdf733b7691064f73f9f762334d4f1f38fcda8aca70b877213d2e",
+    "godot/quiet_seats.gd.uid": "b60d513358206ef91af6d7328923fc3e2fd3e3dc6d717781c735c8a35ff7241d",
+    "godot/rhythm_bar.gd": "4a3bfb3383156ee76a3b39d7b13a1cf84854299d76765227748398ba7f6587d0",
+    "godot/rhythm_circle.gd": "07aa430f9594d8b898d22a982d42d68a70ca1dc8356c8daf959b75fac5087d89",
+    "godot/tests/study_test.gd": "d1465fc42c06dd47887c85cf2f9c12bca6db3bf865601ef14b050e7baa5804c5",
+    "kibitz-runs/2026-10-21-codex-quiet-seats/r3/automation-update.json": "71f6eef35be2518153589c903934af5cd3bd52eb0bf99a1bec326bc15f28b7f5",
+    "kibitz-runs/2026-10-21-codex-quiet-seats/r3/claude.log": "073194943aca5f7e376565ce64a54dd047a931d8f2cb58a14b87ea068386f2e6",
+    "kibitz-runs/2026-10-21-codex-quiet-seats/r3/claude.md": "47afe69fbfd741941cc54431cb1573965bb25c5084dc55e2acf8d3608f114d5a",
+    "kibitz-runs/2026-10-21-codex-quiet-seats/r3/claude_budget_selected.txt": "b80401b5bdee9b92d2114d1dcae19e4929eefb76987dd1911802478ede026cf0",
+    "kibitz-runs/2026-10-21-codex-quiet-seats/r3/claude_effort_selected.txt": "6ef7c9b15ecdd69083724b84cfdc2100351963488b51b4ea2fcbddf493fbec94",
+    "kibitz-runs/2026-10-21-codex-quiet-seats/r3/claude_model_selected.txt": "005912bee6ee4543cec4404b5a02b9bcb11a6f1dcc134b6693c7ccde5fdd2f69",
+    "kibitz-runs/2026-10-21-codex-quiet-seats/r3/claude_quota_status.txt": "88f235beec0b0fd1178cae7910a7429239358d6326e41799fa301c032388f030",
+    "kibitz-runs/2026-10-21-codex-quiet-seats/r3/driver_anchor.md": "fcf566b10acb145e49b6e0b0aa99764cdcb746a16334448d023cae041d36b6da",
+    "kibitz-runs/2026-10-21-codex-quiet-seats/r3/final-source-before-browser.json": "a69297411588e089a493e8df62381acc30ef54d1b00b2598eab135d44eac3c02",
+    "kibitz-runs/2026-10-21-codex-quiet-seats/r3/final.md": "9814266e0c6a8d30ca1e1d73d6a611af904b20271a61b8970534c636bda8bf59",
+    "kibitz-runs/2026-10-21-codex-quiet-seats/r3/full1-source.json": "bddc7f61f0d0371b0f81b20241b90ebb7cb71aba3d8e748a5339134b1d0a21b0",
+    "kibitz-runs/2026-10-21-codex-quiet-seats/r3/input-receipt.json": "a023301c1c3db8f3fb1e0ec49270fed1f9250d3d35bd0bd9b2772ba29c66c535",
+    "kibitz-runs/2026-10-21-codex-quiet-seats/r3/input.md": "c1408df84afeac1ae45ed74f13fae029702b9962b42d7bb160391498288fd006",
+    "kibitz-runs/2026-10-21-codex-quiet-seats/r3/judgment.md": "b4ea53273cb959164c6995d37d621b37786092c4bd743b13794bd425d67e3a5d",
+    "kibitz-runs/2026-10-21-codex-quiet-seats/r3/profiles_used.txt": "a9a11813438ba2fc0c6efd97f13b88bf41af82044d04182d865bdd38eaa32423",
+    "kibitz-runs/2026-10-21-codex-quiet-seats/r3/scope_receipt.md": "d34ad479890724c413da9e9c021cd4a18abb761e4a9ab712db567708da0a6066",
+    "kibitz-runs/2026-10-21-codex-quiet-seats/r3/source-before.json": "b76a592a0851c679751990ac9d74f49106821373f0eacb36dcfa13fca236ce4a",
+    "kibitz-runs/2026-10-21-codex-quiet-seats/r3/source-comparison.json": "4e27dfad400c23b70f7620935d8046632678c4c72aff4330819880860b75667b",
+    "kibitz-runs/2026-10-21-codex-resident-world-ideas/r1/claude.log": "7429d108a129772aa14d3eb95fb0c0e761bafca9ca9b6f41e46f47ff38285056",
+    "kibitz-runs/2026-10-21-codex-resident-world-ideas/r1/claude.md": "257ac1dda92f3334d8bad0db1cae003ae298bca8fa38ad7062b27c881c453bc5",
+    "kibitz-runs/2026-10-21-codex-resident-world-ideas/r1/claude_budget_selected.txt": "b80401b5bdee9b92d2114d1dcae19e4929eefb76987dd1911802478ede026cf0",
+    "kibitz-runs/2026-10-21-codex-resident-world-ideas/r1/claude_effort_selected.txt": "6ef7c9b15ecdd69083724b84cfdc2100351963488b51b4ea2fcbddf493fbec94",
+    "kibitz-runs/2026-10-21-codex-resident-world-ideas/r1/claude_model_selected.txt": "005912bee6ee4543cec4404b5a02b9bcb11a6f1dcc134b6693c7ccde5fdd2f69",
+    "kibitz-runs/2026-10-21-codex-resident-world-ideas/r1/claude_quota_status.txt": "88f235beec0b0fd1178cae7910a7429239358d6326e41799fa301c032388f030",
+    "kibitz-runs/2026-10-21-codex-resident-world-ideas/r1/driver_anchor.md": "a17b711ab236b7f809e19fa7776d4866e55fca08ccd6fe74280a425336911ebd",
+    "kibitz-runs/2026-10-21-codex-resident-world-ideas/r1/final.md": "25de9905dabf85370d8e4a79daa96227cc3f4c731c1ab15d46bf259282724dd1",
+    "kibitz-runs/2026-10-21-codex-resident-world-ideas/r1/input-receipt.json": "56916677f86318250a0157d51f5f6cc22963f0e259ecc4260b8f5c4cb33dc6c9",
+    "kibitz-runs/2026-10-21-codex-resident-world-ideas/r1/input.md": "b75ee255cf65692e6dc2341c57289844b0c5f12d308f9524012cde05d46ffe5f",
+    "kibitz-runs/2026-10-21-codex-resident-world-ideas/r1/judgment.md": "12aa1ca6addcbf3bbd8c9a4e5b18832aa84d9fc66327b67f8149213e36b904d0",
+    "kibitz-runs/2026-10-21-codex-resident-world-ideas/r1/profiles_used.txt": "a9a11813438ba2fc0c6efd97f13b88bf41af82044d04182d865bdd38eaa32423",
+    "kibitz-runs/2026-10-21-codex-resident-world-ideas/r1/scope_receipt.md": "90da01f526cab21f8ecf6d8054959aadc22234a2e8ab7f58a1e0d1fb110a75fa",
+    "kibitz-runs/2026-10-21-codex-resident-world-ideas/r1/selection.md": "e8ef99d8c81ccf74cd3752d6f5ed7067aca515465d5f22bcb5e824aefb4b6664",
+    "kibitz-runs/2026-10-21-codex-resident-world-ideas/r1/source-before.json": "09ce3f61d44b5aaee639a827bd983bb49e4f622d8b2bfddb8c78556ef98ab822",
+    "kibitz-runs/2026-10-21-codex-resident-world-ideas/r1/source-comparison.json": "557fe61c841eebd5a8181a92c4beef135050b395db293a9fe91d26954e7935f0",
+    "session_handoff.md": "6cc12736021f6eb575f61c42541d57c52d3188f0be1a86a52e9835db37d96371",
+    "tests/godot-browser.mjs": "bc18963618f536e3992ad93b726d2f08484539eb84c76ee3a4ca6159bc4208df",
+    "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160"
+  }
+}

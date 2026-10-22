@@ -1,0 +1,17 @@
+{
+  "godot/main.gd": "d114cc6c14a1bd3a46523f86bfabdc45add5280a907523788acfb25859649ed9",
+  "godot/quiet_seats.gd": "7edfb5a60aac43aa7cb7e95a702d2d76ee369e1b2f8156fedb0042445a27179d",
+  "godot/quiet_seats.gd.uid": "b60d513358206ef91af6d7328923fc3e2fd3e3dc6d717781c735c8a35ff7241d",
+  "godot/tests/study_test.gd": "d9e500b9b421497e9852cb5637c0b41b2531b25d4694b923812d028d04112eb7",
+  "tests/godot-browser.mjs": "bc18963618f536e3992ad93b726d2f08484539eb84c76ee3a4ca6159bc4208df",
+  "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160",
+  "godot/rhythm_circle.gd": "dc99624b8670dc7e6329d61830f8ec2416702850c4152d193d5e71883a8f4948",
+  "godot/film_screening.gd": "d0e8ce92d38ebb29aecd6403acbdebd678840f494686b2e2007b5e036858e59c",
+  "godot/mural_workshop.gd": "d44323fee68af2ac907ebba3e59aab32ffa7e08e716016b926a86acc2a20e0c8",
+  "godot/mural_stories.gd": "4dc1f266b997f8210871b4d863c19b43aeeb901beb60c822b6a92de9e48766c2",
+  "godot/rhythm_bar.gd": "4a3bfb3383156ee76a3b39d7b13a1cf84854299d76765227748398ba7f6587d0",
+  "godot/project.godot": "17b7d3433d8317601597ea14d319816873d64a3fac5e2315f04212c983292a14",
+  "godot/main.tscn": "4ab415614d976aa070ccf83cd51bfcfd36f15bcd1e9b69aa1dafa3104b348fea",
+  "godot/export_presets.cfg": "ff8636bf366decbad7bbe6803d4c4ebffd7b53b5f627562896d5de13d8413cf4",
+  "artifacts/godot-web/index.pck": "04ae8a3771be1d93fd70e581c3d732f248d30eb6bb696921f0e769d83debdd38"
+}

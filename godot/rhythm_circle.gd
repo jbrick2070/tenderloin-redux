@@ -287,6 +287,8 @@ func close_circle(announce: bool = true) -> void:
 	step_cues = false
 	for c in saved_visibility:
 		if is_instance_valid(c): c.visible = saved_visibility[c]
+	# Completion can advance to a different activity while the hub is hidden.
+	game.update_block_ui()
 	game.layout_walking_controls_and_hub()
 	if owns_view:
 		game.target = return_pose[0]

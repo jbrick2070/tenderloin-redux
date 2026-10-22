@@ -1,0 +1,7 @@
+{
+  "recorded_utc": "2026-10-22T02:55:09.771922+00:00",
+  "input_sha256": "b75ee255cf65692e6dc2341c57289844b0c5f12d308f9524012cde05d46ffe5f",
+  "requested_model": "claude-opus-5-5",
+  "requested_effort": "high",
+  "phase": "BEFORE fanout and implementation"
+}

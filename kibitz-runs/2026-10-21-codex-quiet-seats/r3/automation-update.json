@@ -1,0 +1,13 @@
+{
+  "verified_utc": "2026-10-22T04:42:58.759373+00:00",
+  "tool_result": "Updated automation in app; mode update; isError false",
+  "id": "build-tenderloin-redux",
+  "status": "ACTIVE",
+  "rrule": "FREQ=MINUTELY;INTERVAL=30",
+  "target_thread_id": "01a159d6-60a3-78e1-92ae-4018509d2539",
+  "created_at": 1792342628584,
+  "prompt_sha256": "6a5ef7005ad6d2b04e1240cc395d86ea7288d445101a4f924ee3e83e169de812",
+  "protected_prefix_chars": 8089,
+  "protected_prefix_sha256": "41b8fc04cc9cd123adff92ae758927589793d2bcf3285f6dc14af495d24beef3",
+  "readback_exact": true
+}

@@ -1,0 +1,7 @@
+# Verified local checkpoint - Thanh's Quiet Seats
+
+2026-10-22T04:42:27.615470+00:00. All five final gates pass after every driver change, including full2's three genuine current progression and six self-contained private quiet cases. Exact one pre-code ideasr1 and one separate implementationr3; source unchanged during both calls. Codex grounded findings, fixed valid issues and reran all gates. Review did not attest provider runtime identity, quota percentage or human acceptance.
+
+Two existing saved quiet choices now produce original seated visitors/open cushion seat on reused original stools in both layouts, with full44px touch choices and unchanged quick completion. Copied result/render/reload, original photo/SVG, geography/anchors, quiet/audio/pause and manual camera persist. Browser prior art credited. Actual upper-body movement is proved by paired rendered captures at a deliberate unchanged inspection pose. The introduced Close overlap and hidden modal-to-hub transition were caught and fixed by actual progression, with failure artifacts retained. Native/actual input gates cover focus, geometry, UI/copy and state boundaries.
+
+No deployment/public release/physical-device/full-screen-reader/human recognition/listening/comfort/certified access claim. Human/full roadmap acceptance remains unfinished. All future rounds require fresh pre-code ideas, separate QA and all five gates. See judgment.md and verification.json for evidence/limits. Normal verified commit/push must include [skip ci].

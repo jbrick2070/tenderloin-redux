@@ -792,6 +792,9 @@ var block_page_prev: Button
 var block_page_next: Button
 var block_close_btn: Button
 var block_hub_page := 0
+var quiet_seats: Node
+var table_quiet_seats: Array[Node3D] = []
+var floor_quiet_seats: Array[Node3D] = []
 var rhythm_circle
 var film_screening
 var mural_workshop
@@ -3099,6 +3102,7 @@ func film_shot_color(shot_id: String) -> Color:
 
 func update_block_3d() -> void:
 	update_layout_3d()
+	if quiet_seats != null: quiet_seats.update_world()
 	if block_banner_node != null:
 		block_banner_node.visible = block_opened
 	if keepsake_frame_node != null:
@@ -6731,7 +6735,14 @@ func layout_walking_controls_and_hub() -> void:
 		panel.anchor_left = 1.0 if dock else 0.0
 		panel.offset_left = -(dock_width + 12.0) if dock else 12.0
 		panel.offset_right = -12.0
-		panel.grow_vertical = Control.GROW_DIRECTION_BEGIN if short_phone else Control.GROW_DIRECTION_END
+		var quiet_choices: bool = panel == block_panel and quiet_seats != null and quiet_seats.row.visible and not dock
+		panel.grow_vertical = Control.GROW_DIRECTION_BEGIN if short_phone or quiet_choices else Control.GROW_DIRECTION_END
+		if quiet_choices and not short_phone:
+			# The extra44px choice row must grow upward, never over Find Me/Close.
+			panel.size = Vector2(vp.x-24.0,0.0)
+			panel.offset_bottom = controls.offset_top-8.0
+			panel.offset_top = panel.offset_bottom-panel.get_combined_minimum_size().y
+			continue
 		if short_phone:
 			panel.size = Vector2(vp.x - 24.0, 0.0)
 			panel.offset_bottom = controls.offset_top - 8.0
@@ -7236,8 +7247,19 @@ func build_gathering_layouts() -> void:
 	for s_i in range(8):
 		for side in [-0.95, 0.95]:
 			var sx := -3.85 + float(s_i) * 1.1
-			colored_prism(t_st, Vector3(sx, 0.0, float(side)), 0.05, 0.05, 0.44, 6, Color("2d3532"), no_cap)
-			colored_prism(t_st, Vector3(sx, 0.44, float(side)), 0.22, 0.22, 0.06, 10, stool_cols[(s_i + (1 if side > 0.0 else 0)) % stool_cols.size()], stool_cols[s_i % stool_cols.size()].lightened(0.15))
+			var stool_surface := SurfaceTool.new()
+			stool_surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+			stool_surface.set_smooth_group(-1)
+			colored_prism(stool_surface, Vector3.ZERO, 0.05, 0.05, 0.44, 6, Color("2d3532"), no_cap)
+			colored_prism(stool_surface, Vector3(0,0.44,0), 0.22, 0.22, 0.06, 10, stool_cols[(s_i + (1 if side > 0.0 else 0)) % stool_cols.size()], stool_cols[s_i % stool_cols.size()].lightened(0.15))
+			stool_surface.generate_normals()
+			var stool := MeshInstance3D.new()
+			stool.name = "TableStool%d_%s"%[s_i,"Front" if side>0 else "Back"]
+			stool.position = Vector3(sx,0,side)
+			stool.mesh = stool_surface.commit()
+			stool.material_override = vertex_color_material()
+			layout_table_node.add_child(stool)
+			if side>0: table_quiet_seats.append(stool)
 	colored_prism(t_st, Vector3(0.0, 0.81, 0.0), 0.12, 0.09, 0.18, 10, Color("6a8d73"), Color("7da586"))
 	for cup_x in [-2.2, -0.9, 0.9, 2.2]:
 		colored_prism(t_st, Vector3(float(cup_x), 0.81, 0.2), 0.045, 0.04, 0.08, 8, Color("f4efe6"), Color("b68a4a"))
@@ -7268,8 +7290,19 @@ func build_gathering_layouts() -> void:
 	for band in range(3):
 		colored_box(f_st, Vector3(-5.24, 0.7 + float(band) * 0.32, 0.0), Vector3(0.01, 0.08, 0.66), Vector2.RIGHT, tile_cols[band], tile_cols[band])
 	for st_x in [-3.6, -1.2, 1.2]:
-		colored_prism(f_st, Vector3(float(st_x), 0.0, -1.05), 0.05, 0.05, 0.44, 6, Color("2d3532"), no_cap)
-		colored_prism(f_st, Vector3(float(st_x), 0.44, -1.05), 0.2, 0.2, 0.06, 10, Color("c37e71"), Color("d8988c"))
+		var stool_surface := SurfaceTool.new()
+		stool_surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+		stool_surface.set_smooth_group(-1)
+		colored_prism(stool_surface, Vector3.ZERO, 0.05, 0.05, 0.44, 6, Color("2d3532"), no_cap)
+		colored_prism(stool_surface, Vector3(0,0.44,0), 0.2, 0.2, 0.06, 10, Color("c37e71"), Color("d8988c"))
+		stool_surface.generate_normals()
+		var stool := MeshInstance3D.new()
+		stool.name = "FloorQuietStool%d"%floor_quiet_seats.size()
+		stool.position = Vector3(st_x,0,-1.05)
+		stool.mesh = stool_surface.commit()
+		stool.material_override = vertex_color_material()
+		layout_floor_node.add_child(stool)
+		floor_quiet_seats.append(stool)
 	f_st.generate_normals()
 	var floor_mesh := MeshInstance3D.new()
 	floor_mesh.name = "OpenFloorSet"
@@ -9562,6 +9595,8 @@ func host_set_quiet(quiet_id: String) -> bool:
 	if current_hosting_activity() != "pause" or not (quiet_id in HOSTING_QUIETS) or String(hosting_draft.get("quiet", "arc")) == quiet_id:
 		return false
 	hosting_draft["quiet"] = quiet_id
+	if quiet_seats != null: last_panel_dialogue = quiet_seats.explanation()
+	update_block_3d()
 	save_godot_state()
 	update_block_ui()
 	return true
@@ -9630,7 +9665,7 @@ func cycle_programme_or_hosting_choice() -> String:
 	elif active == "pause":
 		var next_q := "pairs" if String(hosting_draft.get("quiet", "arc")) == "arc" else "arc"
 		host_set_quiet(next_q)
-		announce_a11y_status("Quiet interval seating set to %s." % next_q)
+		if quiet_seats != null: announce_a11y_status(quiet_seats.explanation())
 		return "pause_" + next_q
 	if programme_order.size() < PROGRAMME_SEGMENTS.size():
 		for sid in PROGRAMME_DEFAULT_ORDER:
@@ -9679,6 +9714,7 @@ func advance_programme_and_hosting_step() -> String:
 		if ok_hc:
 			var next_a := current_hosting_activity()
 			last_panel_dialogue = "Bea: \"All 4 party schedule activities hosted! Now we can hold our Tenant Listening Circle.\"" if next_a == "" else ("Bea: \"Finished %s (%d/4)—up next is %s!\"" % [programme_title(act), hosting_results.size(), programme_title(next_a)])
+			if next_a=="pause" and quiet_seats != null: last_panel_dialogue += " " + quiet_seats.explanation()
 			update_block_ui()
 		return ("hosted_" + act) if ok_hc else "hosting_blocked"
 	var done_msg := "Second Afternoon Programme complete: 4/4 activities hosted across Turk Street."
@@ -10207,6 +10243,8 @@ func neighbor_project_memory_line(neighbor_id: String) -> String:
 				base_mem = "“No microphone needed. A listening hour can have room for a disagreement and a quiet voice.”"
 			"dez":
 				base_mem = "“I helped welcome people who just wanted to listen. Nobody had to sign anything or agree to belong.”"
+	if base_mem.is_empty() and neighbor_id=="thanh" and has_hosted_segment("pause"):
+		base_mem = "“That open arc left room for someone to join without moving everyone.”" if get_hosted_segment_value("pause")=="arc" else "“A pair for a quiet conversation, and an open seat someone could join.”"
 	if not base_mem.is_empty() and not surp_mem.is_empty():
 		return "%s · %s" % [base_mem, surp_mem]
 	return base_mem if not base_mem.is_empty() else surp_mem
@@ -11446,6 +11484,7 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"block_hub_actions": block_action_snapshots(),
 		"film_screening": film_screening.snapshot() if film_screening != null else {"visible":false},
 		"film_easel": film_easel_snapshot(),
+		"quiet_seats": quiet_seats.snapshot() if quiet_seats != null else {},
 		"rhythm_circle": rhythm_circle.snapshot() if rhythm_circle != null else {"visible":false},
 		"mural_workshop": mural_workshop.snapshot() if mural_workshop != null else {"visible": false},
 		"mural_compose_entry": activity_detail_snapshot(mural_detail_label, mural_panel, [mural_compose_btn]).buttons[0] if mural_compose_btn != null and mural_compose_btn.is_visible_in_tree() else {"visible": false},
@@ -13485,6 +13524,8 @@ func update_occlusion(force: bool = true) -> void:
 	var focus_points: Array[Vector2] = [p_xz]
 	if rhythm_circle != null:
 		focus_points.append_array(rhythm_circle.cutaway_points())
+	if quiet_seats != null:
+		focus_points.append_array(quiet_seats.cutaway_points())
 	if not following_player:
 		var framed_xz := Vector2(target.x, target.z)
 		if eatery_guide_idx >= 0 and eatery_guide_idx < eatery_counter_points.size() and framed_xz.distance_to(eatery_counter_points[eatery_guide_idx]) < 16.0:
@@ -14645,6 +14686,7 @@ func make_activity_detail() -> RichTextLabel:
 	return control
 
 func update_block_ui() -> void:
+	if quiet_seats != null: quiet_seats.update_ui()
 	if block_label == null:
 		return
 	var v_count := visited_neighbors.size()
@@ -14679,6 +14721,8 @@ func update_block_ui() -> void:
 			base_detail = "%s  (Click %s or press T to keep chatting)" % [spoken, String(neighbors[talk_idx].get("name", "neighbor"))]
 			if is_narrow_layout():
 				base_detail = spoken
+		elif block_opened and current_hosting_activity()=="pause" and quiet_seats != null:
+			base_detail = quiet_seats.explanation()+" Choose the seats, then Host Activity (Z) when you are ready. Nothing is timed."
 		elif block_opened:
 			base_detail = "The Turk Street block party is open! Choose a conversation or neighborhood activity below:"
 		else:
@@ -15119,6 +15163,11 @@ func make_ui() -> void:
 	layer.add_child(rhythm_circle)
 	rhythm_circle.setup(self,layer)
 	rhythm_circle.build_world()
+	quiet_seats = preload("res://quiet_seats.gd").new()
+	add_child(quiet_seats)
+	quiet_seats.table_seats = table_quiet_seats
+	quiet_seats.floor_seats = floor_quiet_seats
+	quiet_seats.setup(self)
 	var vp := get_viewport()
 	var resize_controls := func():
 		if not is_instance_valid(controls) or not is_inside_tree():

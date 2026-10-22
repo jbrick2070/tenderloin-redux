@@ -3252,6 +3252,7 @@ func run() -> void:
 	await verify_rhythm_circle(study)
 	await verify_mural_stories(study,saved_m4_json)
 	await verify_film_screening(study,saved_m4_json)
+	await verify_quiet_seats(study,saved_m4_json)
 	study.clear_godot_save()
 	study.clear_godot_settings()
 	var legacy_settings := FileAccess.open(study.settings_path, FileAccess.WRITE)
@@ -4546,3 +4547,136 @@ func verify_film_screening(study: Node, full_profile: String) -> void:
 	root.size=Vector2i(1100,760)
 	await process_frame
 	print("FILM_SCREENING_CHECK plans=24 sizes=8 captions=6 original_frames=6 save_growth=0")
+
+func verify_quiet_seats(study: Node, full_profile: String) -> void:
+	var saved := JSON.stringify(study.build_save_envelope())
+	var qs: Node = study.quiet_seats
+	require(qs.TITLES.keys()==study.HOSTING_QUIETS,"quiet titles cover exactly existing choice IDs")
+	var closure_box: AABB = study.gathering_layouts_node.get_node("ClosureBarricades").mesh.get_aabb()
+	var strip_half_width: float = closure_box.size.z*0.5
+	var anchors: Array = []
+	for n in study.neighbor_nodes: anchors.append(n.position)
+	for layout in ["table","floor"]:
+		study.apply_save_envelope(full_profile)
+		study.gathering_layout = layout
+		study.hosting_order.assign(["stories","beats","pause","art"])
+		study.programme_order.assign(study.hosting_order)
+		study.programme_published.assign(study.hosting_order)
+		study.hosting_results.assign([{"id":"stories","value":"memory"},{"id":"beats","value":85}])
+		study.civic_phase = "idle"
+		study.civic_result.clear()
+		study.civic_draft = study.default_civic_draft()
+		study.film_phase = "idle"
+		study.film_result.clear()
+		study.film_draft = study.default_film_draft()
+		study.film_captured.clear()
+		study.hide_story_card()
+		study.startup_story_pending = false
+		study.last_story_chapter = int(study.current_chapter().num)
+		study.current_path.clear()
+		study.talk_partner = -1
+		study.opening_conversation = false
+		study.show_block_panel(true)
+		study.update_block_3d()
+		# The real modal transition must expose newly active choices without reopening G.
+		study.hosting_results.assign([{"id":"stories","value":"memory"}])
+		study.update_block_3d()
+		study.show_block_panel(true)
+		require(study.rhythm_circle.open_circle(),"native beats transition opens real Circle")
+		study.rhythm_circle.complete()
+		for f in range(4): await process_frame
+		require(study.current_hosting_activity()=="pause" and qs.row.is_visible_in_tree() and study.block_detail_label.text.contains("An open arc of seats"),"actual Circle Complete restores new quiet row and complete Thanh reader without G workaround")
+		for size in [Vector2i(1100,760),Vector2i(390,667),Vector2i(320,667),Vector2i(520,360),Vector2i(559,360),Vector2i(640,360)]:
+			root.size = size
+			study.update_block_ui()
+			for f in range(6): await process_frame
+			for id in ["pairs","arc"]:
+				var pose: Array = study.panel_camera_pose()
+				qs.choices[0 if id=="arc" else 1].emit_signal("pressed")
+				for f in range(4): await process_frame
+				require(qs.choice()==id and qs.rendered==id,"quiet button changes actual world draft")
+				require(study.panel_camera_pose()==pose,"quiet choice never takes camera ownership")
+				require(study.block_action_page_count()==3,"quiet choices preserve all original3hub pages")
+				var targets: Array = qs.choices.duplicate()
+				targets.append(study.block_close_btn)
+				for original in study.block_buttons:
+					if original.is_visible_in_tree(): targets.append(original)
+				for b in targets:
+					require(b.is_visible_in_tree() and b.size.y>=44 and Rect2(Vector2.ZERO,Vector2(size)).encloses(b.get_global_rect()),"full quiet choice targets fit viewport")
+					for walking in study.controls.get_children(): require(not b.get_global_rect().intersects(walking.get_global_rect()),"quiet choices/original actions/Close never overlap walking buttons")
+				var li := 0 if layout=="table" else 1
+				var expected: Array = ([-0.55,0.55] if id=="arc" else [-3.85,-2.75]) if li==0 else ([-1.2,0.0] if id=="arc" else [-4.2,-3.2])
+				for i in range(2):
+					var person: Node3D = qs.guests[li][i]
+					require(absf(person.position.x-expected[i])<0.001,"quiet guests occupy intended actual seats")
+					for part in person.get_children():
+						if part is MeshInstance3D and part.visible:
+							var transformed: AABB = person.transform * (part.transform * part.get_aabb())
+							require(transformed.position.x> -6.0 and transformed.end.x<6.0 and transformed.position.z>=-strip_half_width and transformed.end.z<=strip_half_width,"actual guest meshes stay in authored curb-lane strip")
+							var obstacles: Array[AABB] = []
+							if li==0:
+								obstacles.append(AABB(Vector3(-4.6,0.72,-0.45),Vector3(9.2,0.08,0.9)))
+								for leg_x in [-4.3,-1.5,1.5,4.3]:
+									for leg_z in [-0.38,0.38]: obstacles.append(AABB(Vector3(leg_x-0.035,0,leg_z-0.035),Vector3(0.07,0.74,0.07)))
+							else:
+								obstacles.append_array([AABB(Vector3(3.9,0,-1),Vector3(1.6,0.3,2)),AABB(Vector3(4.58,0.3,-0.02),Vector3(0.04,1.3,0.04)),AABB(Vector3(5.06,0.3,-0.95),Vector3(0.48,0.64,0.4)),AABB(Vector3(-5.35,0.45,-0.8),Vector3(0.1,1.2,1.6))])
+							for end_x in [-6.3,6.3]: obstacles.append(AABB(Vector3(end_x-0.22,0,-strip_half_width),Vector3(0.44,1.1,strip_half_width*2)))
+							for obstacle in obstacles: require(not transformed.intersects(obstacle),"quiet body clears actual tabletop/legs/riser/mic/panel/barricades")
+							for visitor in study.rhythm_circle.worlds[li].get_children():
+								if String(visitor.name).begins_with("Visiting"):
+									for old_part in visitor.get_children():
+										if old_part is MeshInstance3D and old_part.visible: require(not transformed.intersects(visitor.transform*(old_part.transform*old_part.get_aabb())),"quiet meshes clear actual Circle guest meshes")
+					for visitor in study.rhythm_circle.worlds[li].get_children():
+						if String(visitor.name).begins_with("Visiting"):
+							require(Vector2(person.position.x,person.position.z).distance_to(Vector2(visitor.position.x,visitor.position.z))>0.7,"quiet visitors do not overlap existing Circle bodies")
+				var music: Array = [study.music_playing,study.music_volume,study.music_mode]
+				qs.update_world()
+				require(music==[study.music_playing,study.music_volume,study.music_mode],"quiet world never changes music")
+		var previous_target: Vector3 = study.target
+		var previous_following: bool = study.following_player
+		study.following_player = false
+		study.target = qs.worlds[0 if layout=="table" else 1].global_position
+		require(qs.cutaway_points().size()==3,"independent quiet inspection supplies actual guest and empty-seat cutaway points")
+		study.following_player = true
+		require(qs.cutaway_points().is_empty(),"quiet props never steal normal player-follow cutaway")
+		study.target = previous_target
+		study.following_player = previous_following
+		study.host_set_quiet("pairs")
+		qs.choices[0].grab_focus()
+		var press := InputEventAction.new()
+		press.action = "ui_accept"
+		press.pressed = true
+		Input.parse_input_event(press)
+		await process_frame
+		var release := InputEventAction.new()
+		release.action = "ui_accept"
+		release.pressed = false
+		Input.parse_input_event(release)
+		await process_frame
+		require(qs.choice()=="arc" and study.block_detail_label.text.contains("An open arc of seats"),"real ui_accept selects quiet seats and updates full reader")
+		study.host_set_quiet("pairs")
+		study.block_hub_page = 2
+		study.layout_block_action_pages()
+		qs.choices[1].grab_focus()
+		study.host_complete_current()
+		require(study.get_viewport().gui_get_focus_owner()==study.block_programme_btn and study.block_hub_page==0,"completing focused quiet choice restores visible hosting focus")
+		var copied := JSON.stringify(study.build_save_envelope())
+		study.hosting_draft.quiet = "arc"
+		qs.update_world()
+		require(qs.choice()=="pairs","copied completed quiet result wins over stale draft")
+		study.apply_save_envelope(copied)
+		study.update_block_3d()
+		if JSON.stringify(study.build_save_envelope())!=copied:
+			print("QUIET_RELOAD_EXPECTED ",copied," ACTUAL ",JSON.stringify(study.build_save_envelope()))
+		require(JSON.stringify(study.build_save_envelope())==copied and qs.choice()=="pairs","reload renders copied quiet scene with zero writes")
+		require(not study.host_set_quiet("arc"),"inactive quiet setter cannot rewrite completed result")
+		require(study.neighbor_project_memory_line("thanh").contains("open seat"),"Thanh remembers actual quiet result")
+		for i in range(anchors.size()): require(study.neighbor_nodes[i].position==anchors[i],"named navigation residents stay at anchors")
+		study.hosting_order.clear()
+		study.hosting_results.clear()
+		qs.update_world()
+		require(qs.choice()=="" and not qs.worlds[0].visible and is_equal_approx(study.floor_quiet_seats[0].position.x,-3.6),"before quiet hidden and neutral stools restored")
+	study.apply_save_envelope(saved)
+	study.update_block_3d()
+	root.size = Vector2i(1100,760)
+	print("QUIET_SEATS_PASS: 2 layouts x6sizes, real buttons/meshes/route/quiet/camera/copied result/reload")

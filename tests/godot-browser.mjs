@@ -5,13 +5,14 @@ import { pathToFileURL } from 'node:url';
 import { initialState, applyAction, serializeSave } from '../public/core.js';
 import { postcardSVG } from '../public/keepsake.js';
 import { programmeSVG } from '../public/programme.js';
-import { tilePanelSVG } from '../public/hosting.js';
+import { tilePanelSVG, QUIET_CHOICES } from '../public/hosting.js';
 import { civicPlanSVG } from '../public/civic.js';
 import { filmFrameSVG, filmCaption } from '../public/film.js';
 const [pckStat, ...sourceStats] = await Promise.all([
   stat('artifacts/godot-web/index.pck'),
   stat('godot/main.gd'),
   stat('godot/film_screening.gd'),
+  stat('godot/quiet_seats.gd'),
   stat('godot/mural_workshop.gd'),
   stat('godot/rhythm_circle.gd'),
   stat('godot/rhythm_bar.gd'),
@@ -45,6 +46,7 @@ let smallHubReaderChecks = 0;
 let rhythmFixtureSave;
 const rhythmCircleChecks = [];
 const filmScreeningChecks = [];
+const quietSeatChecks = [];
 const rhythmAuditionChecks = [];
 const muralWorkshopChecks = [];
 let workshopAutoAdvanceChecks = 0;
@@ -973,6 +975,66 @@ async function verifyPassiveActivities(page,context,touch) {
   }
 }
 
+
+async function verifyQuietSeats(page,touch,size,complete=false,worldProof=false) {
+  const snap=()=>page.evaluate(()=>window.__tenderloinGodotA11ySnapshot),save=()=>page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1'));
+  async function settle(){const f=(await snap()).ui_frame;await page.waitForFunction(f=>{const s=window.__tenderloinGodotA11ySnapshot;return s.ui_frame>f+2&&!s.layout_refit_pending&&!s.compact_panel_layout_pending;},f);}
+  async function tap(b){let s=await snap(),c=await page.locator('#canvas').boundingBox();assert.ok(b.visible&&b.width>=44&&b.height>=44);assert.ok(b.x>=0&&b.y>=0&&b.x+b.width<=size.width+1&&b.y+b.height<=size.height+1,'quiet action actually reachable');const x=c.x+(b.x+b.width/2)*c.width/s.viewport_width,y=c.y+(b.y+b.height/2)*c.height/s.viewport_height;if(touch)await page.touchscreen.tap(x,y);else await page.mouse.click(x,y);await settle();}
+  await page.setViewportSize(size);await settle();
+  if((await snap()).story_detail.panel.visible)await page.keyboard.press('Escape');
+  if(!(await snap()).block_panel_control.visible)await page.keyboard.press('KeyG');
+  await settle();assert.equal((await snap()).hosting_current,'pause');
+  const initial=JSON.parse(await save()),photo=JSON.stringify(initial.epilogue.photo),music=(await snap()).music_playing,pose=(await snap()).camera_pose;
+  const images=[],positions=[];
+  for(const [id,index] of [['pairs',1],['arc',0],['pairs',1]]){
+    await tap((await snap()).quiet_seats.buttons[index]);let q=(await snap()).quiet_seats;
+    assert.equal(q.choice,id);assert.ok(q.buttons[index].selected);assert.equal(q.buttons[index].accessible_name,QUIET_CHOICES[id]+" , selected");assert.equal(q.people.length,2);assert.ok(!q.copied);assert.equal(JSON.parse(await save()).hosting.draft.quiet,id);
+    assert.equal(JSON.stringify(JSON.parse(await save()).epilogue.photo),photo);assert.equal((await snap()).music_playing,music);assert.deepEqual((await snap()).camera_pose,pose,'quiet choice does not take camera');
+    assert.match(q.explanation,/woven green cushion/);assert.match(await page.locator('#godot-a11y-status').textContent(),id==='arc'?/open arc of seats/:/pair and an open seat/);
+    const title=`${size.width}x${size.height}-${touch?'finger':'mouse'}-${initial.gathering_layout}-${id}-${images.length}`;
+    await page.screenshot({path:`artifacts/quiet-seats-${title}.png`});
+    positions.push(q.people.map(p=>p.local_x));images.push(title);
+  }
+  assert.notDeepEqual(positions[0],positions[1],'actual guest meshes move between center and ends');
+  if(!touch){await page.keyboard.press('Shift+Tab');await page.keyboard.press('Space');await settle();assert.equal((await snap()).quiet_seats.choice,'arc','real Tab/Space selects quiet choice');await page.keyboard.press('Shift+KeyZ');await settle();assert.equal((await snap()).quiet_seats.choice,'pairs');}
+  await page.keyboard.press('Shift+KeyZ');await settle();assert.equal((await snap()).quiet_seats.choice,'arc','old real keyboard customization remains');assert.match((await snap()).block_detail_text,/An open arc of seats/,'keyboard change refreshes the complete panel reader');
+  // Close removes the editor while the actual curb-lane scene remains visible.
+  await tap((await snap()).block_close_control);await settle();
+  const fixedPlayer=(await snap()).player_grounding;
+  if(worldProof){
+    await tap((await snap()).walking_controls.find(b=>b.text.includes('Find Me')));
+    for(let i=0;i<4;i++)await tap((await snap()).walking_controls.find(b=>b.text.includes('Zoom')&&b.text.includes('+')));
+    for(let i=0;i<6;i++){
+      const s=await snap(),q=s.quiet_seats,r=s.play_area,c=await page.locator('#canvas').boundingBox(),cx=(q.people[0].x+q.people[1].x+q.cushion.x)/3,cy=(q.people[0].y+q.people[1].y+q.cushion.y)/3;
+      const dx=Math.max(-size.width*.35,Math.min(size.width*.35,r.x+r.width*.5-cx)),dy=Math.max(-size.height*.15,Math.min(size.height*.15,r.y+r.height*.5-cy));if(Math.hypot(dx,dy)<=10)break;
+      const x=c.x+(r.x+r.width*.5)*c.width/size.width,y=c.y+(r.y+r.height*.5)*c.height/size.height;
+      await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+dx*c.width/size.width,y+dy*c.height/size.height,{steps:8});await page.mouse.up();await settle();
+    }
+  }
+  const world=await snap();await page.screenshot({path:`artifacts/quiet-seats-world-${size.width}x${size.height}-${touch?'finger':'mouse'}-${initial.gathering_layout}.png`});
+  const pixels=screenshotPixels(await page.screenshot()),c=await page.locator('#canvas').boundingBox();
+  let colored=0,total=0;
+  for(const person of world.quiet_seats.people){const r=person.bounds;for(let y=Math.max(world.header_control.y+world.header_control.height,r.y);y<Math.min(size.height-110,r.y+r.height);y++)for(let x=Math.max(0,r.x);x<Math.min(size.width,r.x+r.width);x++){
+    const rgb=pixels.pixel(c.x+x*c.width/size.width,c.y+y*c.height/size.height);total++;if((rgb[0]>rgb[2]*1.15&&rgb[0]>100)||(rgb[2]>rgb[0]*1.12&&rgb[2]>100))colored++;
+  }}
+  let worldChange;
+  if(worldProof){
+    assert.equal(world.following_player,false);assert.equal(world.player_grounding.x,fixedPlayer.x);assert.equal(world.player_grounding.z,fixedPlayer.z);
+    const arc=world.quiet_seats.people,arcShot=pixels,inspection=world.camera_pose;
+    await page.keyboard.press('KeyG');await settle();await tap((await snap()).quiet_seats.buttons[1]);await tap((await snap()).block_close_control);await settle();
+    const pair=await snap(),pairShot=screenshotPixels(await page.screenshot());assert.deepEqual(pair.camera_pose,inspection,'choice and Close preserve deliberate manual inspection');
+    await page.screenshot({path:`artifacts/quiet-seats-world-pairs-${size.width}x${size.height}-${touch?'finger':'mouse'}-${initial.gathering_layout}.png`});
+    const changed=r=>{let count=0,samples=0;for(let y=Math.max(0,r.y);y<Math.min(size.height,r.y+r.height*.55);y++)for(let x=Math.max(0,r.x);x<Math.min(size.width,r.x+r.width);x++){samples++;const x0=c.x+x*c.width/size.width,y0=c.y+y*c.height/size.height,a=arcShot.pixel(x0,y0),b=pairShot.pixel(x0,y0);if(a.reduce((n,v,i)=>n+Math.abs(v-b[i]),0)>60)count++;}return {count,samples};};
+    // Upper bodies exclude the relocated stool/cushion: both vacated and newly occupied places must really change.
+    const vacated=changed(arc[1].bounds),occupied=changed(pair.quiet_seats.people[1].bounds);assert.ok(vacated.count>=6&&occupied.count>=6,`actual seated upper bodies visibly move (${vacated.count}/${occupied.count})`);worldChange={vacated,occupied};
+    await page.keyboard.press('KeyG');await settle();await tap((await snap()).quiet_seats.buttons[0]);await tap((await snap()).block_close_control);await settle();
+  }
+  const expected=await save();await page.reload();await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');await settle();assert.equal(await save(),expected,'loading active quiet seating writes nothing');assert.equal((await snap()).quiet_seats.choice,'arc');
+  if(complete){await page.keyboard.press('KeyG');await settle();for(let p=0;p<3&&!(await snap()).block_hub_actions.some(b=>b.text.includes('Host Activity'));p++)await tap((await snap()).block_page_next);await tap((await snap()).block_hub_actions.find(b=>b.text.includes('Host Activity')));await settle();assert.equal((await snap()).quiet_seats.copied,true);const saved=await save();await page.reload();await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');await settle();assert.equal(await save(),saved);assert.ok((await snap()).quiet_seats.copied&&!((await snap()).quiet_seats.row.visible));}
+  if((await snap()).music_playing!==music)await tap((await snap()).music_toggle_control);
+  const result={worldChange,width:size.width,height:size.height,touch,layout:initial.gathering_layout,complete,positions,images,colored,total};quietSeatChecks.push(result);await writeFile(`artifacts/quiet-seats-result-${size.width}-${touch?'finger':'mouse'}-${initial.gathering_layout}.json`,JSON.stringify(result,null,2));return result;
+}
+
 async function verifyFilmScreening(page,context,touch,size,world=false) {
   const encloses=(a,b)=>b.x>=a.x-1&&b.y>=a.y-1&&b.x+b.width<=a.x+a.width+1&&b.y+b.height<=a.y+a.height+1;
   const snap=()=>page.evaluate(()=>window.__tenderloinGodotA11ySnapshot), save=()=>page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1'));
@@ -1649,6 +1711,7 @@ try {
     assert.equal(exportedKeepsake.snapshotExported, true, 'A11y snapshot must report keepsake_exported === true after Shift+KeyY');
     for(let zStep=0;zStep<3;zStep++){await page.keyboard.press('KeyZ');await page.waitForTimeout(80);}
     await verifyRhythmCircle(page,size.width<600,size,true);
+    await verifyQuietSeats(page,size.width<600,size);
     for(let zStep=0;zStep<2;zStep++){await page.keyboard.press('KeyZ');await page.waitForTimeout(80);}
     await page.waitForFunction(() => {
       const raw = window.localStorage.getItem('tenderloin-redux.godot.save.v1');
@@ -2147,6 +2210,7 @@ try {
     assert.deepEqual(afterValidImport.godotSave.hosting?.results?.map(r => r.id), ['beats', 'pause', 'stories', 'art']);
     assert.equal(afterValidImport.godotSave.hosting?.results?.[0]?.value, 0, 'Imported beats segment must preserve 0 listening round value');
     assert.equal(afterValidImport.godotSave.hosting?.results?.[1]?.value, 'pairs', 'Imported pause segment must preserve pairs value');
+    assert.equal((await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot)).quiet_seats.choice,'pairs','imported copied quiet result renders actual scene');
     assert.equal(afterValidImport.godotSave.hosting?.results?.[2]?.value, 'future', 'Imported stories segment must preserve future value');
     assert.equal(afterValidImport.godotSave.hosting?.results?.[3]?.value?.palette, 'cool', 'Imported art segment must preserve cool palette');
     assert.equal(afterValidImport.godotSave.civic?.phase, 'done', 'Explicit KeyI import must map browser M4 civic done phase');
@@ -2519,6 +2583,17 @@ try {
     if(!rhythmFixtureSave)rhythmFixtureSave=await page.evaluate(()=>localStorage.getItem("tenderloin-redux.godot.save.v1"));
     await context.close();
   }
+  // PRIVATE earlier-state copies derive from THIS full run's actually completed save.
+  for(const [width,height,touch,layout] of [[1100,760,false,'table'],[390,667,true,'floor'],[320,667,true,'table'],[520,360,true,'floor'],[559,360,false,'table'],[640,360,false,'floor']]){
+    const fixture=JSON.parse(rhythmFixtureSave),order=width===640?['stories','pause','beats','art']:['stories','beats','pause','art'];assert.equal(fixture.epilogue.photo.status,'taken');
+    fixture.gathering_layout=layout;fixture.programme.order=order;fixture.programme.published=order;fixture.hosting.order=order;fixture.hosting.results=order.slice(0,order.indexOf('pause')).map(id=>fixture.hosting.results.find(r=>r.id===id));fixture.hosting.draft.quiet='arc';
+    fixture.civic={...fixture.civic,phase:'idle',result:null};fixture.film={...fixture.film,phase:'idle',result:null,captured:[]};
+    const size={width,height},context=await browser.newContext({viewport:size,hasTouch:touch}),page=await context.newPage();latestPage=page;
+    await context.addInitScript(f=>{if(!localStorage.getItem('tenderloin-redux.godot.save.v1'))localStorage.setItem('tenderloin-redux.godot.save.v1',JSON.stringify(f));},fixture);
+    context.on('request',r=>{if(!r.url().startsWith(base)&&!r.url().startsWith('data:')&&!r.url().startsWith('blob:'))external.push(r.url());});page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
+    await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending&&!window.__tenderloinGodotA11ySnapshot.layout_refit_pending);await page.keyboard.press('Escape');
+    await verifyQuietSeats(page,touch,size,true,true);await context.close();
+  }
   // A private fixture derived from actual progression covers legal beats-last/zero completion.
   {
     const fixture=JSON.parse(rhythmFixtureSave),order=['stories','pause','art','beats'];
@@ -2548,9 +2623,10 @@ try {
   }
   assert.deepEqual(external, []);
   assert.deepEqual(errors, []);
-  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, filmScreeningChecks, rhythmCircleChecks, rhythmAuditionChecks, muralStoryChecks, livingMuralChecks, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
+  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, quietSeatChecks, filmScreeningChecks, rhythmCircleChecks, rhythmAuditionChecks, muralStoryChecks, livingMuralChecks, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
   assert.ok(queuedActivityRewardChecks > 0, 'at least one actual crowded activity exercises queued reward timer and Close delivery');
   assert.ok(shortStartClicked && shortStartTouchClicked, 'real mouse and touch Start at640x360 were exercised');
+  assert.equal(quietSeatChecks.length,9,'three genuine progression and six private current-source quiet cases are required');
   assert.equal(filmScreeningChecks.length,3,'all required actual progression contexts watch their completed film');
   assert.equal(rhythmAuditionChecks.length,11,'all eleven active/practice cases actually auditioned');
   assert.ok(rhythmAuditionChecks.every(c=>c.outputObserved),'all eleven cases observe real mixer output');
