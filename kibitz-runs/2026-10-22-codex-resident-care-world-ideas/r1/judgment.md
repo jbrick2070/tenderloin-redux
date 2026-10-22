@@ -1,0 +1,18 @@
+# Source-grounded ideas judgment
+- TOOL CHECK PASS and exact requested/selected claude-opus-5-5/high; harness0/all11sources unchanged. Reviewer report is a useful critique, but does NOT provide the requested2-3 developed options. Driver explicitly grounds the loan, keepsake and layout alternatives below; no extra paid pass or fabricated ideation delivery.
+- MUST1 CONFIRMED: persistent LongTable geometry and RookSpeaker remain while loan flags change; no paint-case object. Choose only carrying gear/owner-permitted continued setup, no second table/speaker and no fictional folding of still-visible seats.
+- MUST2 CONFIRMED: public/game.js talk()/returnLoan() supports owner-specific returns/replies in any order. Native return_loan canonicalizes arbitrary valid IDs but Y/advance loop is fixed, generic conversation primary. This is project-native parity/atmosphere, not an externally novel mechanism.
+- MUST3 CONFIRMED/LIMITED: order is choice of whom to thank first, not saved chronology or divergent outcome. Explicitly accept a care/atmosphere slice, not claim branching gameplay.
+- MUST4 ACCEPTED: no new proximity requirement; owner-specific action only while talking; original Y/hub remain. New kits derive only from saved flags, static and truthful if first viewed later.
+- MUST5 CONFIRMED/ACCEPTED: finish_neighbor_arrival has no return_loan; Celeste/Rook arrivals keep their panels. No auto-return hook. Genuine tests explicitly press Talk then the contextual button.
+- SHOULD1 CONFIRMED: beacons currently float bottom0.16m. Ground their base with same XZ/footprint; new parts in original footprint, check rotated/current prop and generated world geometry rather than assume site safe.
+- SHOULD2 ACCEPTED/LIMITED: default projection evidence/actual caption carries meaning, manual world pair proves pixels, no universal tiny-map or human recognition claim.
+- SHOULD3 ACCEPTED/CUT: keepsake_photo/build_keepsake_svg and all earlier frozen photos untouched.
+- SHOULD4 PARTLY MISREAD: browser already has genuine KeyY five-step photo/pack/3returns at tests/godot-browser.mjs:1917. It lacks DIRECT OWNER interaction/pixel coverage, which this slice adds; don't report zero existing loan coverage. Native has core returns/import/full-state checks beyond one visibility assertion; preserve them and add focused real inputs.
+- SHOULD5 CONFIRMED AS ALTERNATIVE, NOT EMPTY FOUNDATION: layout_memory_line plus16LongTable stools/tea and distinct floor/riser/lettering already exist, and quiet/Circle derive visible consequences. Larger new layout work deferred rather than presented as unimplemented.
+- SHOULD6 ACCEPTED: formal npm native suite isolated; no standalone probes. Any future standalone path requires explicit unique save/settings +test-suite asserted before scene; prior default file remains AS FOUND only, no original recovery claim.
+- OPTIONAL accepted adapted owner thank-you/current memory, subordinate to original civic/film priorities. Reject verbatim Bea folded-seats line because persistent seats remain.
+- CUT1 accept no new fields, REJECT claim that this removes all budget concerns: returning IDs/save_seq grows existing payload. Guard common return callback before mutation.
+- CUT2/3 accepted keepsake cut and no authored ready gear. CUT4 not a gameplay change; hard user invariants remain in receipts.
+
+Driver geometry qualification: reviewer called table4.6m long; colored_box uses HALF extent4.6, actual full9.2m. Do not repeat reviewer numeric misread. Later source-grounded table beacon X-only move supersedes sameXZ promise to clear fictional counter; same0.38x0.30 footprint/no named/city/table/speaker move.

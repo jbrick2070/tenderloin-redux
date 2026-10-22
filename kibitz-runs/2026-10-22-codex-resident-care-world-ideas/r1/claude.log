@@ -1,0 +1,22 @@
+STDOUT:
+I wrote the round-1 review to `kibitz-runs/2026-10-22-codex-resident-care-world-ideas/r1/claude.md`. The file tools worked, so the review is based on reading the actual code. I didn't launch the game or touch any save data.
+
+**Verdict: yes-with-fixes.** The main problems:
+
+1. **The "back home" story doesn't fit two of the three loans.**
+   - **Table:** Thanh's own line at `godot/main.gd:7429` says the loaned table is the gathering Long Table. That table stays on screen for the rest of the game (`main.gd:7366`) and carries the quiet seats. A folded table at Thanh's would show the same table in two places. In the Open Floor layout, no table was ever put out, yet the player still "returns" it.
+   - **Speaker:** it can't be moved, and it already sits next to Rook, so there's nothing to visibly bring home.
+   - **Paint case:** only this one has no conflict, because no paint-case prop exists.
+2. **The loan-return idea mostly restores something the Godot port lost.** The frozen browser build already lets you return each owner's item by talking to them, in any order, with their own thank-you lines (`public/game.js:336-405`). In Godot:
+   - Pressing Y returns the loans in a fixed order, from anywhere on the map (`main.gd:9190`).
+   - Thanh speaks every thank-you, even for Celeste's case and Rook's speaker (`main.gd:9228`).
+   - The objective names the owner and gives directions, but the code never checks where the player is.
+
+   The brief should call this porting existing project behaviour, not a new feature.
+3. **The goal and the method don't match.** The creator asked for resident-led choices with world consequences, and the loan slice has no real choice in it. A better-fitting rival is still open on the roadmap (`docs/ROADMAP.md:22`): give the two gathering layouts distinct visible consequences.
+4. **The brief doesn't settle its own conflict.** It wants a direct way to return each loan while banning fetch chores, and the owners are about 117 m apart in total. My suggested rule:
+   - Returning never requires walking anywhere.
+   - When you're talking to an owner, a "Return [their item]" action comes first.
+   - Returns don't trigger automatically when you arrive at a neighbor.
+
+The review also covers checking that the existing prop spots are clear of the walking path and the existing props, whether the small props can be read from the default overhead camera, and keeping the keepsake photo read-only. The current browser test has no coverage for returning loans. I recommend cutting new saved state, the keepsake-easel change, and authoring a "ready" state for every item.

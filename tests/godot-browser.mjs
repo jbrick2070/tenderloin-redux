@@ -16,6 +16,7 @@ const [pckStat, ...sourceStats] = await Promise.all([
   stat('godot/civic_listening.gd'),
   stat('godot/programme_studio.gd'),
   stat('godot/shared_panel.gd'),
+  stat('godot/loan_homecoming.gd'),
   stat('godot/tests/study_test.gd'),
   stat('godot/quiet_seats.gd'),
   stat('godot/bea_invitation.gd'),
@@ -38,7 +39,7 @@ assert.ok(pckStat.size > 0 && pckStat.size <= 2 * 1024 * 1024, `artifacts/godot-
 const BROWSER_SAVE_SENTINEL = JSON.stringify({ schema: 'tenderloin-redux.save', version: 1, sentinel: 'preserve-browser-save-v1' });
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : 'playwright');
 const base = 'http://127.0.0.1:' + (process.env.GODOT_PORT || 4174) + '/';
-const sourceFingerprint={sources:Object.fromEntries(await Promise.all(['godot/main.gd','godot/shared_panel.gd','godot/tests/study_test.gd'].map(async p=>[p,createHash('sha256').update(await readFile(p)).digest('hex')]))),pack_sha256:createHash('sha256').update(await readFile('artifacts/godot-web/index.pck')).digest('hex')};
+const sourceFingerprint={sources:Object.fromEntries(await Promise.all(['godot/main.gd','godot/shared_panel.gd','godot/loan_homecoming.gd','godot/tests/study_test.gd'].map(async p=>[p,createHash('sha256').update(await readFile(p)).digest('hex')]))),pack_sha256:createHash('sha256').update(await readFile('artifacts/godot-web/index.pck')).digest('hex')};
 await mkdir('artifacts', { recursive: true });
 let queuedActivityRewardChecks = 0;
 const shortStoryReadChecks = [];
@@ -327,6 +328,8 @@ async function verifyStoryStreet(page,context,touch,tap,snap,settle,asymmetric=f
   else{await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+dx,y+dy,{steps:8});await page.mouse.up();}
   await settle();s=await snap();q=s.mural_scenes_world.corners;
   for(const p of q)assert.ok(p.x>=s.play_area.x-1&&p.y>=s.play_area.y-1&&p.x<=s.play_area.x+s.play_area.width+1&&p.y<=s.play_area.y+s.play_area.height+1,'actual full scene layer is uncovered in play area');
+  const paper={x:Math.min(...q.map(p=>p.x))-4,y:Math.min(...q.map(p=>p.y))-4,width:Math.max(...q.map(p=>p.x))-Math.min(...q.map(p=>p.x))+8,height:Math.max(...q.map(p=>p.y))-Math.min(...q.map(p=>p.y))+8},guide=s.overlays.guide_label;
+  assert.ok(!guide.visible||guide.x+guide.width<=paper.x||paper.x+paper.width<=guide.x||guide.y+guide.height<=paper.y||paper.y+paper.height<=guide.y,'actual outlined objective stays off deliberately inspected painted people');
   const img=screenshotPixels(await page.screenshot()),bins=[{ink:0,paper:0,skin:0},{ink:0,paper:0,skin:0}];
   for(let u=.03;u<.97;u+=.007)for(let v=.03;v<.97;v+=.009){const x=(q[0].x*(1-u)+q[1].x*u)*(1-v)+(q[2].x*(1-u)+q[3].x*u)*v,y=(q[0].y*(1-u)+q[1].y*u)*(1-v)+(q[2].y*(1-u)+q[3].y*u)*v,rgb=img.pixel(c.x+x*c.width/s.viewport_width,c.y+y*c.height/s.viewport_height),b=bins[u<.5?0:1];if(rgb.reduce((a,v)=>a+v,0)<480)b.ink++;if(rgb[0]>215&&rgb[1]>190&&rgb[2]>150)b.paper++;if(v>.1&&v<.8&&[[200,141,108],[145,111,86]].some(p=>p.every((v,i)=>Math.abs(v-rgb[i])<19)))b.skin++;}
   // Existing overhead street wires cross the blank half too; skin and mostly-paper
@@ -984,6 +987,108 @@ async function verifyPassiveActivities(page,context,touch) {
   }
 }
 
+
+const loanHomecomingChecks=[];
+async function verifyLoanHomecoming(page,touch,size,privateFixture=false,idOverride='') {
+  const snap=()=>page.evaluate(()=>window.__tenderloinGodotA11ySnapshot),save=()=>page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1'));
+  async function settle(){const f=(await snap()).ui_frame;await page.waitForFunction(f=>{const s=window.__tenderloinGodotA11ySnapshot;return s.ui_frame>f+3&&!s.layout_refit_pending&&!s.compact_panel_layout_pending;},f);}
+  async function tap(b){const s=await snap(),c=await page.locator('#canvas').boundingBox();assert.ok(b&&b.visible!==false&&b.width>=44&&b.height>=44,'real loan action is visible and44px');const x=c.x+(b.x+b.width/2)*c.width/s.viewport_width,y=c.y+(b.y+b.height/2)*c.height/s.viewport_height;if(touch)await page.touchscreen.tap(x,y);else await page.mouse.click(x,y);await settle();}
+  const id=idOverride||(size.width===1100||size.width===520?'paint-case':size.width===390||size.width===559?'speaker':'table');
+  const owner={'paint-case':{key:'2',name:'Celeste'},speaker:{key:'3',name:'Rook'},table:{key:'5',name:'Thanh'}}[id];
+  const before=JSON.parse(await save()),legacy=await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1'));
+  assert.ok(before.epilogue.packing&&before.epilogue.returned.length<3&&!before.epilogue.returned.includes(id),'pending-loan state is nonvacuous');
+  if((await snap()).story_detail.panel.visible)await page.keyboard.press('Escape');
+  await page.keyboard.press(owner.key);
+  await page.waitForFunction(id=>{const s=window.__tenderloinGodotA11ySnapshot;return !s.player_grounding.path_active&&(id==='paint-case'?s.mural_detail.panel.visible:id==='speaker'?s.music_detail.panel.visible:s.conversation_actions.some(a=>a.id==='return_owner:table'));},id,{timeout:90000});await settle();
+  assert.deepEqual(JSON.parse(await save()).epilogue.returned,before.epilogue.returned,'walking to an owner never auto-returns');
+  if(id!=='table'){
+    const detail=id==='speaker'?(await snap()).music_detail:(await snap()).mural_detail;
+    assert.ok(detail.panel.visible,'original owner activity still opens on arrival');
+    await tap(detail.buttons.find(b=>b.text.toLowerCase().includes('chat')));
+  }
+  await page.waitForFunction(id=>window.__tenderloinGodotA11ySnapshot.conversation_actions.some(a=>a.id==='return_owner:'+id),id);await settle();
+  let s=await snap(),b=s.conversation_actions.find(a=>a.id==='return_owner:'+id);
+  assert.equal(s.conversation_actions[0].id,b.id);assert.equal(b.label,'Return '+s.loan_homecoming.items.find(x=>x.id===id).title);assert.ok(s.conversation_detail.buttons.find(x=>x.text===b.label).text_fits);
+  // Give the camera real manual ownership before testing that a return preserves it.
+  {const r=s.play_area,c=await page.locator('#canvas').boundingBox(),x=c.x+(r.x+r.width*.45)*c.width/s.viewport_width,y=c.y+(r.y+r.height*.5)*c.height/s.viewport_height;
+   if(touch){const cd=await page.context().newCDPSession(page);await cd.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y,id:1}]});for(let i=1;i<=6;i++)await cd.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+22*i/6,y,id:1}]});await cd.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await cd.detach();}
+   else{await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+22,y,{steps:6});await page.mouse.up();}await settle();s=await snap();assert.equal(s.following_player,false);}
+  const camera=s.camera_pose,point=s.player_grounding,quiet=[s.music_playing,s.music_mode,s.music_volume,s.reward_sounds_enabled];
+  if(size.width===320){
+    // The manual scene pan releases GUI focus. Focus the real Hint control,
+    // then use actual Tab/Space rather than injecting a game focus/action hook.
+    await tap((await snap()).conversation_actions.find(a=>a.id==='whats_next'));
+    assert.deepEqual((await snap()).camera_pose,camera,'a real Hint preserves the manually owned view');
+    for(let i=0;i<8;i++){if((await snap()).loan_homecoming.focused_action===b.id)break;await page.keyboard.press('Tab');await settle();}
+    assert.equal((await snap()).loan_homecoming.focused_action,b.id);await page.keyboard.press('Space');await settle();
+  }else await tap(b);
+  const result=JSON.parse(await save());s=await snap();
+  const expected=['table','paint-case','speaker'].filter(x=>x===id||before.epilogue.returned.includes(x));
+  assert.deepEqual(result.epilogue.returned,expected,'only selected owner loan returned, allowing any order in canonical storage');
+  assert.deepEqual(result.epilogue.photo,before.epilogue.photo,'frozen copied keepsake is untouched');
+  assert.equal(result.celeste_talk_count,before.celeste_talk_count+(id==='paint-case'?1:0),'explicit Celeste Chat retains exactly one original talk callback; other owners add none');
+  assert.deepEqual(s.camera_pose,camera,'direct return preserves current camera exactly');
+  assert.deepEqual([s.music_playing,s.music_mode,s.music_volume,s.reward_sounds_enabled],quiet);
+  assert.equal(s.player_grounding.x,point.x);assert.equal(s.player_grounding.z,point.z);
+  assert.ok(s.announcement.includes(owner.name+':')&&s.announcement.includes('Returned'),'progress and correct owner reply stay readable');
+  const kit=s.loan_homecoming.items.find(x=>x.id===id);assert.ok(kit.returned&&kit.visible&&kit.parts>=3);
+  assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1')),legacy);assert.ok(Buffer.byteLength(await save(),'utf8')<=4096);
+  await page.screenshot({path:`artifacts/loan-homecoming-${size.width}-${touch?'finger':'mouse'}-${id}.png`});await writeFile(`artifacts/loan-homecoming-${size.width}-${touch?'finger':'mouse'}-${id}.json`,JSON.stringify(s,null,2));
+  if(expected.length===3&&size.width===1100&&!privateFixture){await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.story_detail.panel.visible);s=await snap();assert.ok(s.announcement.startsWith('Returned all three neighbor loans (3/3). '+owner.name+':')&&s.announcement.includes('Chapter '),'genuine Chapter3 card itself announces earned3/3 and final owner voice');}
+  if(expected.length<3){const once=await save(),receipt=s.conversation_detail.buttons[3];assert.ok(s.conversation_actions[0].label.startsWith('Returned '));await tap(receipt);await settle();assert.equal(await save(),once,'repeated real activation on receipt returns no other owner and writes no save');}
+  if(privateFixture){await page.reload();await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');await settle();assert.deepEqual(JSON.parse(await save()).epilogue.returned,expected);assert.deepEqual(JSON.parse(await save()).epilogue.photo,before.epilogue.photo);assert.ok((await snap()).loan_homecoming.items.find(x=>x.id===id).visible);}
+  loanHomecomingChecks.push({...size,touch,id,privateFixture,returned:result.epilogue.returned,parts:kit.parts});
+}
+const loanWorldChecks=[];
+async function verifyLoanWorld(browser,completedSave,base) {
+ const images={},poses={};
+ for(const returned of [false,true]){
+  const fixture=JSON.parse(completedSave);fixture.epilogue.returned=returned?['table','paint-case','speaker']:[];fixture.epilogue.packing=true;
+  const context=await browser.newContext({viewport:{width:1100,height:760}});await context.addInitScript(f=>localStorage.setItem('tenderloin-redux.godot.save.v1',JSON.stringify(f)),fixture);
+  const page=await context.newPage();
+  page.on('pageerror',e=>errors.push(String(e)));context.on('request',r=>{if(![base,'blob:','data:'].some(p=>r.url().startsWith(p)))external.push(r.url());});
+  const snapshot=()=>page.evaluate(()=>window.__tenderloinGodotA11ySnapshot);
+  const settle=async()=>{const f=(await snapshot()).ui_frame;await page.waitForFunction(f=>window.__tenderloinGodotA11ySnapshot.ui_frame>f+3&&!window.__tenderloinGodotA11ySnapshot.layout_refit_pending,f);};
+  await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');await page.keyboard.press('KeyF');await settle();
+  const stored=await page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1'));
+  for(const id of ['table','paint-case','speaker']){
+   // Actual zoom and scene drags; projected world bounds are read-only evidence.
+   await page.keyboard.press('KeyF');await settle();
+   for(let i=0;i<6;i++){const s=await snapshot(),b=s.walking_controls[3],c=await page.locator('#canvas').boundingBox();await page.mouse.click(c.x+(b.x+b.width/2)*c.width/s.viewport_width,c.y+(b.y+b.height/2)*c.height/s.viewport_height);await settle();}
+   if(id==='table'){
+    // The diner can legitimately occlude this low kit from the default heading.
+    // Use the player's real orbit gesture to inspect from the open side; never hide it.
+    const s=await snapshot(),r=s.play_area,c=await page.locator('#canvas').boundingBox(),x=c.x+(r.x+r.width*.5)*c.width/s.viewport_width,y=c.y+(r.y+r.height*.5)*c.height/s.viewport_height;
+    await page.mouse.move(x,y);await page.mouse.down({button:'right'});await page.mouse.move(x+370*c.width/s.viewport_width,y,{steps:10});await page.mouse.up({button:'right'});await settle();
+   }
+   for(let i=0;i<30;i++){
+    const s=await snapshot(),q=s.loan_homecoming.items.find(x=>x.id===id).corners,r=s.play_area;
+    const center={x:q.reduce((a,p)=>a+p.x,0)/q.length,y:q.reduce((a,p)=>a+p.y,0)/q.length};
+    const dx=Math.max(-r.width*.35,Math.min(r.width*.35,r.x+r.width*.5-center.x)),dy=Math.max(-r.height*.35,Math.min(r.height*.35,r.y+r.height*.5-center.y));
+    if(Math.hypot(dx,dy)<12)break; // Never turn a final sub8px correction into a real street tap.
+    const canvas=await page.locator('#canvas').boundingBox(),x=canvas.x+(r.x+r.width*.5)*canvas.width/s.viewport_width,y=canvas.y+(r.y+r.height*.5)*canvas.height/s.viewport_height;
+    await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+dx*canvas.width/s.viewport_width,y+dy*canvas.height/s.viewport_height,{steps:6});await page.mouse.up();await settle();
+   }
+   // Force existing common cutaway after the manual view reaches the kit.
+   for(const index of [4,3]){const s=await snapshot(),b=s.walking_controls[index],c=await page.locator('#canvas').boundingBox();await page.mouse.click(c.x+(b.x+b.width/2)*c.width/s.viewport_width,c.y+(b.y+b.height/2)*c.height/s.viewport_height);await settle();}
+   const s=await snapshot(),q=s.loan_homecoming.items.find(x=>x.id===id).corners;
+   assert.equal(s.player_grounding.path_active,false,'manual inspection never starts a route');
+   const region={x:Math.min(...q.map(p=>p.x)),y:Math.min(...q.map(p=>p.y)),width:Math.max(...q.map(p=>p.x))-Math.min(...q.map(p=>p.x)),height:Math.max(...q.map(p=>p.y))-Math.min(...q.map(p=>p.y))};
+   assert.ok(region.width>6&&region.height>6&&region.x>=s.play_area.x&&region.x+region.width<=s.play_area.x+s.play_area.width&&region.y>=s.play_area.y&&region.y+region.height<=s.play_area.y+s.play_area.height,'deliberate manual view contains actual kit bounds');
+   const path=`artifacts/loan-world-${id}-${returned?'returned':'pending'}.png`,png=await page.screenshot({path});
+   images[id+returned]={pixels:screenshotPixels(png),region};poses[id+returned]=s.camera_pose;
+   await writeFile(path.replace('.png','.json'),JSON.stringify({limit:'PRIVATE static before/after state render from THIS completed profile; not a live transition. Actual owner callback evidence is separate.',id,returned,snapshot:s},null,2));
+  }
+  assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1')),stored,'manual kit inspection writes no save');await context.close();
+ }
+ for(const id of ['table','paint-case','speaker']){
+  assert.deepEqual(poses[id+'false'],poses[id+'true'],'paired static render uses exact same real-input manual camera');
+  const a=images[id+'false'],b=images[id+'true'],r=b.region;let changed=0;
+  // Top38% isolates raised carrying gear, avoiding the pre-existing gold counter base.
+  for(let y=Math.ceil(r.y);y<r.y+r.height*.38;y++)for(let x=Math.ceil(r.x);x<r.x+r.width;x++)if(a.pixels.pixel(x,y).reduce((sum,c,i)=>sum+Math.abs(c-b.pixels.pixel(x,y)[i]),0)>35)changed++;
+  assert.ok(changed>=12,`${id} actual raised kit adds pixels beyond base recolor: ${changed}`);loanWorldChecks.push({id,changed,region:r,scope:'PRIVATE static rendered before/after; native mesh and genuine live return inputs separately verified'});
+ }
+}
 
 const sharedPanelChecks=[];
 async function verifySharedPanel(page,touch,size,active=false){
@@ -1914,11 +2019,12 @@ try {
     await page.waitForTimeout(250);
     const blackhawkShot = await page.screenshot({ path: `artifacts/godot-${size.width}-blackhawk.png` });
     assert.notDeepEqual(blockShot, blackhawkShot, `Walking west along Turk St to Black Hawk at Turk & Hyde must visibly update view at ${size.width}`);
-    // Round 7: Press KeyY (5x) to take keepsake photo with consenting neighbors, start packing, and return all 3 borrowed neighbor loans
-    for (let yStep = 0; yStep < 5; yStep++) {
-      await page.keyboard.press('KeyY');
-      await page.waitForTimeout(80);
-    }
+    // Genuine M1: photo and packing; an explicit owner return, then original Y fast path.
+    await page.keyboard.press('KeyY');await page.waitForFunction(()=>JSON.parse(localStorage.getItem('tenderloin-redux.godot.save.v1')).epilogue.photo.status==='taken');
+    await page.keyboard.press('KeyY');await page.waitForFunction(()=>JSON.parse(localStorage.getItem('tenderloin-redux.godot.save.v1')).epilogue.packing===true);
+    await verifyLoanHomecoming(page,size.width!==1100,size);
+    if(size.width===1100){await verifyLoanHomecoming(page,false,size,false,'speaker');await verifyLoanHomecoming(page,false,size,false,'table');}
+    else for (let yStep = 0; yStep < 2; yStep++) { const count=JSON.parse(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1'))).epilogue.returned.length;await page.keyboard.press('KeyY');await page.waitForFunction(n=>JSON.parse(localStorage.getItem('tenderloin-redux.godot.save.v1')).epilogue.returned.length===n+1,count); }
     await page.waitForFunction(() => {
       const raw = window.localStorage.getItem('tenderloin-redux.godot.save.v1');
       if (!raw) return false;
@@ -2297,7 +2403,7 @@ try {
     assert.equal(parsedSave.version, 1);
     assert.equal('voices_enabled' in parsedSave || 'neighborhood_voices' in parsedSave, false, 'Game save JSON must never store voices_enabled / neighborhood_voices preference');
     assert.ok(parsedSave.save_seq >= 30, 'save_seq must increment across talk, 3 motif placements, palette change, Rook soundcheck, Dez/Thanh visits, block opening, Compton\'s Corner, Black Hawk, M1 keepsake/loan returns, M3 programme/hosting, M4 civic/film, and district boundary toggle');
-    assert.equal(parsedSave.celeste_talk_count, 1);
+    assert.equal(parsedSave.celeste_talk_count, size.width===1100?2:1, 'desktop genuine owner path adds exactly one original Celeste Chat; phone paths use the other owners');
     assert.equal(parsedSave.mural_palette, 'sunset');
     assert.equal(parsedSave.rook_soundcheck_done, true);
     assert.equal(parsedSave.block_opened, true);
@@ -2924,7 +3030,15 @@ try {
     const context=await browser.newContext({viewport:{width,height},hasTouch:touch});await context.addInitScript(({save,sentinel})=>{if(!localStorage.getItem('tenderloin-redux.godot.save.v1')){localStorage.setItem('tenderloin-redux.godot.save.v1',save);localStorage.setItem('tenderloin-redux.save.v1',sentinel);}}, {save:JSON.stringify(fixture),sentinel:BROWSER_SAVE_SENTINEL});
     const page=await context.newPage();latestPage=page;page.on('pageerror',error=>errors.push(String(error)));page.on('request',request=>{if(![base,'blob:','data:'].some(p=>request.url().startsWith(p)))external.push(request.url());});await page.goto(base,{waitUntil:'domcontentloaded'});await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');await verifySharedPanel(page,touch,{width,height});await context.close();
   }
-  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, sourceFingerprint, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, beaInvitationChecks, quietSeatChecks, filmScreeningChecks, rhythmCircleChecks, rhythmAuditionChecks, muralStoryChecks, livingMuralChecks, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
+  // PRIVATE pending-return copies of THIS run's actually completed profile.
+  for(const [width,height,touch,layout] of [[520,360,true,'table'],[559,360,false,'floor'],[640,360,true,'floor']]){
+    const fixture=JSON.parse(rhythmFixtureSave);fixture.gathering_layout=layout;fixture.epilogue.packing=true;fixture.epilogue.returned=[];
+    const context=await browser.newContext({viewport:{width,height},hasTouch:touch});await context.addInitScript(f=>{if(!localStorage.getItem('tenderloin-redux.godot.save.v1'))localStorage.setItem('tenderloin-redux.godot.save.v1',JSON.stringify(f));},fixture);
+    const page=await context.newPage();latestPage=page;page.on('pageerror',e=>errors.push(String(e)));page.on('request',r=>{if(![base,'blob:','data:'].some(p=>r.url().startsWith(p)))external.push(r.url());});await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');await verifyLoanHomecoming(page,touch,{width,height},true);await context.close();
+  }
+  await verifyLoanWorld(browser,rhythmFixtureSave,base);
+  assert.equal(loanHomecomingChecks.length,8);assert.equal(loanWorldChecks.length,3);assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
+  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, sourceFingerprint, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, beaInvitationChecks, quietSeatChecks, filmScreeningChecks, rhythmCircleChecks, rhythmAuditionChecks, muralStoryChecks, livingMuralChecks, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
   assert.ok(queuedActivityRewardChecks > 0, 'at least one actual crowded activity exercises queued reward timer and Close delivery');
   assert.ok(shortStartClicked && shortStartTouchClicked, 'real mouse and touch Start at640x360 were exercised');
   assert.equal(beaInvitationChecks.length,7,'three genuine current progression and four private post-quiet invitation cases');
@@ -2957,7 +3071,7 @@ try {
   assert.equal(muralWorkshopChecks.length,8,'seven late and one fresh actual workshop mouse/finger cases executed');
   assert.equal(muralWorkshopChecks.filter(c=>c.photoStatus==='taken').length,7,'all seven late cases preserve a saved taken keepsake');
   assert.equal(workshopAutoAdvanceChecks,3,'a fresh mural exercises all three automatically offered contributions');
-  console.log(JSON.stringify({ runs, sourceFingerprint, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, rhythmCircleChecks, rhythmAuditionChecks, livingMuralChecks, muralWorkshopChecks, workshopAutoAdvanceChecks, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, narrowActivityChecks, passiveActivityChecks, narrowHubChecks, smallHubReaderChecks, shortWalkingChecks, shortWalkingCaptionChecks, shortWalkingGuideChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
+  console.log(JSON.stringify({ runs, sourceFingerprint, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, rhythmCircleChecks, rhythmAuditionChecks, livingMuralChecks, muralWorkshopChecks, workshopAutoAdvanceChecks, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, narrowActivityChecks, passiveActivityChecks, narrowHubChecks, smallHubReaderChecks, shortWalkingChecks, shortWalkingCaptionChecks, shortWalkingGuideChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
 } catch (error) {
   if (latestPage && !latestPage.isClosed()) {
     await latestPage.screenshot({ path: 'artifacts/godot-browser-failure.png' });

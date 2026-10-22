@@ -801,6 +801,7 @@ var film_screening
 var civic_listening
 var programme_studio
 var shared_panel
+var loan_homecoming
 var mural_workshop
 var mural_workshop_selected := "sun"
 var mural_workshop_message := ""
@@ -2905,9 +2906,9 @@ func build_block_banner() -> void:
 
 	loan_return_beacons.clear()
 	var loan_positions: Dictionary = {
-		"table": neighbors[4].pos + Vector3(0.95, 0.32, 0.0),
-		"paint-case": neighbors[1].pos + Vector3(-0.95, 0.32, 0.0),
-		"speaker": ROOK_SPEAKER_POS + Vector3(0.62, 0.32, 0.0)
+		"table": neighbors[neighbor_index_for_id("thanh")].pos + Vector3(-2.2, 0.16, 0.0),
+		"paint-case": neighbors[celeste_index].pos + Vector3(-2.2, 0.16, 0.0),
+		"speaker": ROOK_SPEAKER_POS + Vector3(0.62, 0.16, 0.0)
 	}
 	for lid in LOAN_IDS:
 		var l_beacon := MeshInstance3D.new()
@@ -3147,6 +3148,7 @@ func update_block_3d() -> void:
 			for t_idx in range(hosting_tile_meshes.size()):
 				var tv := int(h_tiles[t_idx]) if t_idx < h_tiles.size() else 0
 				hosting_tile_meshes[t_idx].material_override = mural_material(hosting_tile_color(h_pal, tv))
+	if loan_homecoming != null: loan_homecoming.update_world()
 	if shared_panel != null: shared_panel.update_world()
 	if civic_listening != null: civic_listening.update_world()
 	if civic_setup_node != null:
@@ -6306,6 +6308,7 @@ func talk_to_nearby_neighbor(radius: float = 8.0) -> bool:
 	return true
 
 func show_conversation(index: int) -> void:
+	if loan_homecoming != null: loan_homecoming.confirmed_owner=""
 	talk_partner = index
 	opening_conversation = true
 	show_block_panel(true)
@@ -6441,7 +6444,10 @@ func end_conversation() -> void:
 
 func keep_chatting() -> String:
 	if talk_partner >= 0 and talk_partner < neighbors.size():
-		return talk_with_neighbor(talk_partner)
+		var partner := talk_partner
+		var line := talk_with_neighbor(partner)
+		if loan_homecoming != null and not loan_homecoming.pending(partner).is_empty(): show_conversation(partner)
+		return line
 	return ""
 
 ## The three context actions offered while chatting: the next objective, meeting someone else,
@@ -6454,6 +6460,9 @@ func conversation_actions() -> Array[Dictionary]:
 		acts.append({"id": "layout_floor", "label": "Open Floor (Dez & Celeste)"})
 		acts.append({"id": "hub", "label": "All Block Actions"})
 		return acts
+	var owner_loan: String=loan_homecoming.conversation_loan(talk_partner) if loan_homecoming != null else ""
+	if not owner_loan.is_empty():
+		acts.append({"id":"return_owner:"+owner_loan,"label":("Returned " if epilogue_returned.has(owner_loan) else "Return ")+String(LOAN_TITLES[owner_loan])})
 	match String(obj.get("id", "")):
 		"meet":
 			acts.append({"id": "walk_neighbor:%d" % int(obj.neighbor), "label": "Go Meet %s" % String(neighbors[int(obj.neighbor)].name)})
@@ -6466,7 +6475,7 @@ func conversation_actions() -> Array[Dictionary]:
 		"photo":
 			acts.append({"id": "epilogue", "label": "Take Group Photo"})
 		"pack", "return":
-			acts.append({"id": "epilogue", "label": "Pack Gear" if String(obj.id) == "pack" else "Return Gear (%d/3)" % epilogue_returned.size()})
+			if owner_loan.is_empty(): acts.append({"id": "epilogue", "label": "Pack Gear" if String(obj.id) == "pack" else "Return Gear (%d/3)" % epilogue_returned.size()})
 		"programme":
 			acts.append({"id": "programme", "label": block_programme_btn.text if block_programme_btn != null else "Plan Party Schedule"})
 		"civic":
@@ -6544,6 +6553,8 @@ func next_undiscovered_surprise_for_neighbor(neighbor_idx: int = -1) -> int:
 	return -1
 
 func run_conversation_action_id(act_id: String) -> bool:
+	if act_id.begins_with("return_owner:"):
+		return loan_homecoming != null and loan_homecoming.return_to_owner(act_id.get_slice(":",1))
 	if act_id.begins_with("walk_neighbor:"):
 		return walk_to_neighbor(int(act_id.get_slice(":", 1)))
 	match act_id:
@@ -6718,8 +6729,9 @@ func layout_walking_controls_and_hub() -> void:
 		size_activity_detail(block_detail_label)
 	for b in conv_buttons:
 		b.add_theme_font_size_override("font_size", 13 if side or narrow else 15)
-		b.clip_text = not compact
-		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if compact else TextServer.AUTOWRAP_OFF
+		var owner_return := b in conv_action_btns and String(conv_action_ids[conv_action_btns.find(b)]).begins_with("return_owner:")
+		b.clip_text = not compact and not owner_return
+		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if compact or owner_return else TextServer.AUTOWRAP_OFF
 	for label in [mural_label, music_label]:
 		if label != null:
 			label.add_theme_font_size_override("font_size", 13 if side or narrow else 16)
@@ -6958,6 +6970,7 @@ func update_guide_arrow() -> void:
 	var occupied: Array[Rect2] = []
 	if bea_invitation != null and bea_invitation.inspection_rect().has_area():
 		occupied.append(bea_invitation.inspection_rect())
+	if mural_inspection_rect().has_area(): occupied.append(mural_inspection_rect())
 	if uses_compact_activity_controls() or uses_short_narrow_walking():
 		occupied.append(player_overlay_rect().grow(4.0))
 	if reward_banner != null and reward_banner.is_visible_in_tree():
@@ -7162,6 +7175,9 @@ func show_story_card(chapter: Dictionary, startup := false) -> void:
 	if rhythm_circle != null and not rhythm_circle.chapter_completion_notice.is_empty():
 		chapter_announcement = rhythm_circle.chapter_completion_notice+chapter_announcement
 		rhythm_circle.chapter_completion_notice = ""
+	if loan_homecoming != null:
+		if not startup: chapter_announcement=loan_homecoming.chapter_completion_notice+chapter_announcement
+		loan_homecoming.chapter_completion_notice=""
 	announce_a11y_status(chapter_announcement)
 
 func hide_story_card() -> void:
@@ -9171,6 +9187,7 @@ func return_loan(loan_id: String) -> bool:
 		return false
 	if epilogue_returned.has(loan_id):
 		return false
+	if loan_homecoming != null and not loan_homecoming.allow_return(loan_id): return false
 	var next_returned: Array[String] = []
 	for lid in LOAN_IDS:
 		if lid == loan_id or epilogue_returned.has(lid):
@@ -9180,6 +9197,7 @@ func return_loan(loan_id: String) -> bool:
 	update_block_3d()
 	save_godot_state()
 	trigger_progress_cue("loan_returned", loan_id)
+	if loan_homecoming != null: loan_homecoming.note_completion()
 	update_block_ui()
 	var title := String(LOAN_TITLES.get(loan_id, loan_id))
 	var summary := "Returned %s (%d/3 loans returned)%s" % [title, epilogue_returned.size(), " — Afternoon Epilogue Complete!" if is_epilogue_done() else ""]
@@ -9196,6 +9214,7 @@ func return_next_loan() -> String:
 		if not epilogue_returned.has(lid):
 			if return_loan(lid):
 				return lid
+			return "" # A refused return must not silently skip to a smaller saved item.
 	return ""
 
 func is_epilogue_done() -> bool:
@@ -10296,6 +10315,7 @@ func neighbor_project_memory_line(neighbor_id: String) -> String:
 		base_mem = "“That little folded note reminded me how a small welcome can stay with someone. Listening was enough too.”" if get_hosted_segment_value("stories")=="memory" else "“Different paper flags, and a few left blank for whoever arrives later. I am keeping that invitation open.”"
 	if base_mem.is_empty() and neighbor_id=="thanh" and has_hosted_segment("pause"):
 		base_mem = "“That open arc left room for someone to join without moving everyone.”" if get_hosted_segment_value("pause")=="arc" else "“A pair for a quiet conversation, and an open seat someone could join.”"
+	if base_mem.is_empty() and loan_homecoming != null: base_mem=loan_homecoming.memory(neighbor_id)
 	if not base_mem.is_empty() and not surp_mem.is_empty():
 		return "%s · %s" % [base_mem, surp_mem]
 	return base_mem if not base_mem.is_empty() else surp_mem
@@ -11448,6 +11468,14 @@ func mural_signature_snapshot() -> Dictionary:
 		points.append({"x":p.x,"y":p.y})
 	return {"visible":mural_banner_mesh.is_visible_in_tree(),"corners":points}
 
+func mural_inspection_rect() -> Rect2:
+	# Deliberate nearby inspection reserves the existing painted paper, like Bea's art.
+	if following_player or in_overview or in_wide_overview or mural_scenes.is_empty() or not is_instance_valid(mural_canvas_mesh): return Rect2()
+	if not mural_canvas_mesh.is_visible_in_tree() or camera.is_position_behind(mural_canvas_mesh.global_position) or target.distance_to(mural_canvas_mesh.global_position)>24.0: return Rect2()
+	var art := Rect2(camera.unproject_position(mural_canvas_mesh.to_global(Vector3(-1.64,0.83,0.041))),Vector2.ZERO)
+	for local in [Vector3(1.64,0.83,0.041),Vector3(-1.64,-0.83,0.041),Vector3(1.64,-0.83,0.041)]: art=art.expand(camera.unproject_position(mural_canvas_mesh.to_global(local)))
+	return art.grow(4.0) if art.has_area() and play_area_rect().intersects(art) else Rect2()
+
 func mural_scenes_snapshot() -> Dictionary:
 	var points: Array[Dictionary] = []
 	for local in [Vector3(-1.64,0.83,0.041),Vector3(1.64,0.83,0.041),Vector3(-1.64,-0.83,0.041),Vector3(1.64,-0.83,0.041)]:
@@ -11533,6 +11561,7 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"block_detail_scroll_value": block_detail_label.get_v_scroll_bar().value if block_detail_label != null else 0.0,
 		"block_detail_scroll_page": block_detail_label.get_v_scroll_bar().page if block_detail_label != null else 0.0,
 		"block_hub_actions": block_action_snapshots(),
+		"loan_homecoming": loan_homecoming.snapshot() if loan_homecoming != null else {},
 		"shared_panel": shared_panel.snapshot() if shared_panel != null else {"visible":false},
 		"programme_studio": programme_studio.snapshot() if programme_studio != null else {"visible":false},
 		"civic_listening": civic_listening.snapshot() if civic_listening != null else {"visible":false},
@@ -12130,6 +12159,9 @@ func save_godot_state() -> bool:
 	return wrote
 
 func reset_mural_state_to_defaults(status_label: String) -> void:
+	if loan_homecoming != null:
+		loan_homecoming.chapter_completion_notice=""
+		loan_homecoming.confirmed_owner=""
 	if is_shared_panel_visible(): shared_panel.close_panel(false)
 	if is_programme_studio_visible(): programme_studio.close_studio(false)
 	if is_civic_listening_visible(): civic_listening.close_hour(false)
@@ -12610,6 +12642,9 @@ func validate_godot_optional(raw_opt: Variant) -> Dictionary:
 	return {"ok": true, "optional": (raw_opt as Dictionary).duplicate(true)}
 
 func apply_save_envelope(raw_json: String) -> bool:
+	if loan_homecoming != null:
+		loan_homecoming.chapter_completion_notice=""
+		loan_homecoming.confirmed_owner=""
 	if is_shared_panel_visible(): shared_panel.close_panel(false)
 	if is_programme_studio_visible(): programme_studio.close_studio(false)
 	if is_civic_listening_visible(): civic_listening.close_hour(false)
@@ -13165,6 +13200,9 @@ func import_browser_save_json(raw_json: String) -> bool:
 		info.text = "%s\nBrowser save ('%s') is read-only and never overwritten by Godot\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [browser_import_message, BROWSER_WEB_STORAGE_KEY]
 		announce_a11y_status(browser_import_message)
 		return false
+	if loan_homecoming != null:
+		loan_homecoming.chapter_completion_notice=""
+		loan_homecoming.confirmed_owner=""
 	if is_shared_panel_visible(): shared_panel.close_panel(false)
 	if is_programme_studio_visible(): programme_studio.close_studio(false)
 	if is_civic_listening_visible(): civic_listening.close_hour(false)
@@ -13604,6 +13642,8 @@ func update_occlusion(force: bool = true) -> void:
 		focus_points.append_array(quiet_seats.cutaway_points())
 	if bea_invitation != null:
 		focus_points.append_array(bea_invitation.cutaway_points())
+	if loan_homecoming != null:
+		focus_points.append_array(loan_homecoming.cutaway_points())
 	if shared_panel != null:
 		focus_points.append_array(shared_panel.cutaway_points())
 	if not following_player:
@@ -13668,6 +13708,7 @@ func update_readable_scene_labels() -> void:
 	var occupied: Array[Rect2] = []
 	if bea_invitation != null and bea_invitation.inspection_rect().has_area():
 		occupied.append(bea_invitation.inspection_rect())
+	if mural_inspection_rect().has_area(): occupied.append(mural_inspection_rect())
 	if uses_compact_activity_controls() or uses_short_narrow_walking():
 		occupied.append(player_overlay_rect().grow(4.0))
 	if reward_banner != null and reward_banner.is_visible_in_tree():
@@ -15068,7 +15109,7 @@ func make_ui() -> void:
 	var row1 := HBoxContainer.new()
 	row1.add_theme_constant_override("separation", 4)
 	mural_vbox.add_child(row1)
-	mural_button(row1, "Chat with Celeste", func(): talk_with_celeste())
+	mural_button(row1, "Chat with Celeste", func(): loan_homecoming.chat(celeste_index) if loan_homecoming != null else talk_with_celeste())
 	mural_palette_btn = mural_button(row1, "Palette: Garden", func(): cycle_mural_palette())
 	var row2 := HBoxContainer.new()
 	row2.add_theme_constant_override("separation", 4)
@@ -15114,7 +15155,7 @@ func make_ui() -> void:
 	var m_row2 := HBoxContainer.new()
 	m_row2.add_theme_constant_override("separation", 4)
 	music_vbox.add_child(m_row2)
-	music_rook_btn = music_button(m_row2, "Soundcheck w/ Rook", func(): request_rook_soundcheck())
+	music_rook_btn = music_button(m_row2, "Soundcheck w/ Rook", func(): loan_homecoming.chat(rook_index) if loan_homecoming != null else request_rook_soundcheck())
 	music_load_btn = music_button(m_row2, "Load Local Track", func(): prompt_local_music_file())
 	var m_row3 := HBoxContainer.new()
 	m_row3.add_theme_constant_override("separation", 4)
@@ -15275,6 +15316,9 @@ func make_ui() -> void:
 	programme_studio = preload("res://programme_studio.gd").new()
 	layer.add_child(programme_studio)
 	programme_studio.setup(self)
+	loan_homecoming = preload("res://loan_homecoming.gd").new()
+	layer.add_child(loan_homecoming)
+	loan_homecoming.setup(self)
 	shared_panel = preload("res://shared_panel.gd").new()
 	layer.add_child(shared_panel)
 	shared_panel.setup(self)

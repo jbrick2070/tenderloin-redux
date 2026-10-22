@@ -1,0 +1,13 @@
+{
+  "godot/main.gd": "2af1c4af22c57e804326d407ed9983deee12698190c6d8e81bb669c9096ff4da",
+  "godot/shared_panel.gd": "0cf289edc823919866c03e3687935d9b5c390058e1faa8051255a3fa9067833f",
+  "godot/quiet_seats.gd": "211c67f25397305c0cefd5c2c5f0bc558296ab82848c09b67cf032f0b9fc5cef",
+  "godot/bea_invitation.gd": "4ad40453704987fc9c29c34425b8be66c5fb8057874ab21fdd9cb89ab259b51f",
+  "godot/tests/study_test.gd": "adb817d36fe575c05181dea1014e0290923d2a5bb4aa1df66d6174e980ff1be3",
+  "tests/godot-browser.mjs": "790ae6e372226983c1143ddab4f95b7fa07428cac9628769e764aecd7127242b",
+  "public/keepsake.js": "fb72bf4b444a720e2fb8c1d880b0567e99ea7b017572e4fee3c4747dbfb604b2",
+  "public/core.js": "5bc6a2938983ed064d84a3cbc804728a960fb1e5bd678dcc8a8aa347f19028e8",
+  "docs/ROADMAP.md": "8360810fe6e70113e54de72c3479d165057fc1ee372b41248be8386265f4abf5",
+  "docs/GODOT_APPROACH.md": "4fe7787b8c921187fb7e71ca649790281b5f33768b644f6510bb86ce839e40a4",
+  "session_handoff.md": "b4ae48232f6c7379ecd407478759fdefd4362a9e01f32987749f30920b48def0"
+}

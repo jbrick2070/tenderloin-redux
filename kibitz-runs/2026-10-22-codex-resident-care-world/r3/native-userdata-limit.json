@@ -1,0 +1,8 @@
+{
+  "prior_incident": "Programme Studio standalone diagnostics previously wrote test data to default native user save without overrides. No verified preincident backup exists; earlier progress cannot be claimed preserved, recovered or recoverable.",
+  "current_scope": "AS FOUND after that incident only; raw userdata stays ignored and unstaged. Browser and legacy browser profiles unaffected.",
+  "expected_bytes": 1272,
+  "expected_sha256": "2b7d1e849b4820a1d6c49602930ac3e0b104a8aa132375837038bfef80f2e0e1",
+  "this_round": "No standalone native probes. Only formal npm godot:test with its isolated test-suite paths; source refuses missing test-suite before instantiating scene. Final manifest rechecks unchanged default-file hash.",
+  "future_standalone_policy": "Pass -- --godot-save-path=user://<unique-test-save>.json --godot-settings-path=user://<unique-test-settings>.json --test-suite and assert all flags/paths BEFORE instantiating game. Never rerun bare historical diagnostic probes or guess a recovery/reset."
+}

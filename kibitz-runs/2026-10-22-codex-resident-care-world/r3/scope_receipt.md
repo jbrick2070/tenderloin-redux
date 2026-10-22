@@ -1,0 +1,1 @@
+Creator scope ONE implementationQA r3 only, driver codex/exact sole claude-opus-5-5/high; separate pre-code r1 resident-care-world-ideas. r2/r4 not run. Input SHA256 e834d4271e7917290fd3fd4ac30b6cf4d87b4fe57345a86aac2348cf41882a5b; anchor and input/source digests BEFORE fanout. Read files/write only report; no source/gate/native/git/userdata/delegation.

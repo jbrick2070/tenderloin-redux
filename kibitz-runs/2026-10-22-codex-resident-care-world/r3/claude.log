@@ -1,0 +1,14 @@
+STDOUT:
+I wrote the review to `kibitz-runs/2026-10-22-codex-resident-care-world/r3/claude.md`. My verdict is **yes-with-fixes**: four defects should be fixed before the build. I ran no gates and edited nothing else.
+
+1. **The save-size check blocks the game, not just the save.** The new `allow_return` check (`main.gd:9188`) refuses a loan return when the save would go over 4,096 bytes. The existing save routine already refuses to write an oversized save and keeps progress in memory (`main.gd:12134-12136`), so the check protects nothing. Its only effect is that profiles carrying large imported optional data, or any save within about 13 bytes of the limit, can never finish the loan returns. Those players are stuck before chapter 3 with no way out.
+2. **Pressing the button twice returns a second loan.** After an owner return, the same focused button immediately becomes "Return Gear (n/3)". A repeated Enter, Space or double-tap then hands back a different owner's loan, without talking to that owner, and saves it.
+3. **The chapter-card test passes even if the card never appears.** The return message itself already contains "3/3" and the owner's name, so `study_test.gd:5423` cannot tell whether the chapter card and its notice actually fired.
+4. **The moved table marker overlaps the player and Thanh's crate.**
+   - Arrival places the player about 0.95 m from Thanh, so arriving from the west puts them exactly on the new marker spot.
+   - Thanh's crate swings round when Thanh turns to face an arriving player. From the north it overlaps the marker.
+   - The clearance test checks neither case, and its setup uses the one direction where nothing overlaps.
+
+There are also five should-fix items. The most notable: Rook's Chat button is the only owner entry that requires walking to Rook first, which contradicts the "no proximity chore" goal. And the two Chat buttons now call the new module with no fallback if it is missing.
+
+Separately, several connectors (Box, Play Sheet Music, Runway, and the engineering plugins such as GitHub, Slack and Linear) need authorizing in your claude.ai connector settings or via `/mcp`. They weren't needed for this review.

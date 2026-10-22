@@ -3261,6 +3261,7 @@ func run() -> void:
 	await verify_civic_listening(study,saved_m4_json)
 	await verify_programme_studio(study,saved_m4_json)
 	await verify_shared_panel(study,saved_m4_json)
+	await verify_loan_homecoming(study,saved_m4_json)
 	study.clear_godot_save()
 	study.clear_godot_settings()
 	var legacy_settings := FileAccess.open(study.settings_path, FileAccess.WRITE)
@@ -5351,3 +5352,171 @@ func verify_shared_panel(study: Node, full_profile: String) -> void:
 	study.last_story_chapter=int(study.current_chapter().num)
 	root.size=Vector2i(1100,760)
 	print("SHARED_PANEL_PASS:2layouts x7sizes, six real targets/two palettes/Hang/copies/24rasters/cache8and1/exact4096success4097refusal")
+
+func verify_loan_homecoming(study: Node, full_profile: String) -> void:
+	require(study.is_test_suite_mode(),"Loan Homecoming tests use the isolated formal suite")
+	if not study.is_test_suite_mode(): return
+	var saved := JSON.stringify(study.build_save_envelope())
+	var seed: Dictionary=JSON.parse_string(full_profile)
+	seed.epilogue.returned=[]
+	seed.epilogue.packing=true
+	seed.civic.phase="idle"
+	seed.civic.result=null
+	seed.film.phase="idle"
+	seed.film.result=null
+	seed.film.captured=[]
+	var care: Node=study.loan_homecoming
+	for layout in ["table","floor"]:
+		for size in [Vector2i(1100,760),Vector2i(390,667),Vector2i(320,667),Vector2i(520,360),Vector2i(559,360),Vector2i(640,360),Vector2i(320,568)]:
+			for id in study.LOAN_IDS:
+				study.apply_save_envelope(JSON.stringify(seed))
+				study.hide_story_card()
+				study.startup_story_pending=false
+				study.last_story_chapter=int(study.current_chapter().num)
+				study.gathering_layout=layout
+				study.current_path.clear()
+				var owner_index: int=study.neighbor_index_for_id(study.LOAN_OWNERS[id])
+				study.player.position=study.neighbors[owner_index].pos+Vector3(0.0,0,1.0)
+				var photo := JSON.stringify(study.keepsake_photo)
+				study.finish_neighbor_arrival(owner_index)
+				require(study.epilogue_returned.is_empty(),"actual owner arrival never auto-returns a loan")
+				if id=="paint-case": require(study.mural_panel.visible,"Celeste arrival still opens original mural controls")
+				if id=="speaker": require(study.music_panel.visible,"Rook arrival still opens original music controls")
+				care.chat(owner_index)
+				root.size=size
+				for f in range(8): await process_frame
+				require(study.block_panel.visible and study.block_panel_mode=="talk" and study.conv_action_ids[0]=="return_owner:"+id,"deliberate owner Chat exposes correct direct return first")
+				var button: Button=study.conv_action_btns[0]
+				require(button.text=="Return "+study.LOAN_TITLES[id] and button.size.x>=44 and button.size.y>=44,"full owner item label and44px target remain")
+				require(study.activity_detail_snapshot(study.block_detail_label,study.block_panel,study.conv_buttons).buttons[3].text_fits,"new owner return label actually fits its button after wrapping")
+				require(study.block_panel.get_global_rect().encloses(button.get_global_rect()),"owner return target stays inside fitted conversation")
+				study.pan_camera_by_screen_delta(Vector2(22,0))
+				var pose: Array=study.panel_camera_pose()
+				var quiet: Array=[study.music_playing,study.music_mode,study.music_volume,study.reward_sounds_enabled]
+				button.grab_focus()
+				var down := InputEventAction.new()
+				down.action="ui_accept"
+				down.pressed=true
+				Input.parse_input_event(down)
+				await process_frame
+				var up := InputEventAction.new()
+				up.action="ui_accept"
+				up.pressed=false
+				Input.parse_input_event(up)
+				for f in range(8): await process_frame
+				require(study.epilogue_returned==[id] and care.kits[id].is_visible_in_tree(),"actual ui_accept returns only this owner loan and reveals its kit")
+				var once := JSON.stringify(study.build_save_envelope())
+				Input.parse_input_event(down)
+				await process_frame
+				Input.parse_input_event(up)
+				await process_frame
+				require(study.epilogue_returned==[id] and JSON.stringify(study.build_save_envelope())==once,"repeated actual ui_accept on the returned receipt never returns another loan or writes a save")
+				require(study.conv_action_btns[0].text.begins_with("Returned ") and study.activity_detail_snapshot(study.block_detail_label,study.block_panel,study.conv_buttons).buttons[3].text_fits,"harmless returned receipt retains a complete fitted label")
+				require(study.last_a11y_announcement.contains("Returned "+study.LOAN_TITLES[id]) and study.last_a11y_announcement.contains(study.LOAN_OWNERS[id].capitalize()+":"),"earned return progress and the correct owner's quote are announced")
+				require(study.panel_camera_pose()==pose and [study.music_playing,study.music_mode,study.music_volume,study.reward_sounds_enabled]==quiet,"return retains exact manual camera and quiet settings")
+				require(JSON.stringify(study.keepsake_photo)==photo and JSON.stringify(study.build_save_envelope()).to_utf8_buffer().size()<=4096,"return preserves copied photo and save budget")
+	for order in [["table","paint-case","speaker"],["table","speaker","paint-case"],["paint-case","table","speaker"],["paint-case","speaker","table"],["speaker","table","paint-case"],["speaker","paint-case","table"]]:
+		var first_afternoon: Dictionary=seed.duplicate(true)
+		first_afternoon.programme.published=[]
+		first_afternoon.hosting.order=[]
+		first_afternoon.hosting.results=[]
+		study.apply_save_envelope(JSON.stringify(first_afternoon))
+		study.hide_story_card()
+		study.last_story_chapter=int(study.current_chapter().num)
+		for id in order:
+			study.show_conversation(study.neighbor_index_for_id(study.LOAN_OWNERS[id]))
+			require(care.return_to_owner(id),"all six direct owner-return orders remain valid")
+		for f in range(8): await process_frame
+		require(study.is_story_card_visible() and study.last_a11y_announcement.begins_with("Returned all three neighbor loans (3/3). "+study.LOAN_OWNERS[order[2]].capitalize()+":") and study.last_a11y_announcement.contains("Chapter "),"actual chapter card itself announces earned3/3 and correct final owner voice in all six orders")
+		require(study.epilogue_returned==study.LOAN_IDS,"saved returned list stays canonical regardless of actual order")
+		var copy := JSON.stringify(study.build_save_envelope())
+		require(study.apply_save_envelope(copy) and care.kits.values().all(func(k): return k.is_visible_in_tree()),"late completed reload restores all three returned kits")
+	for id in study.LOAN_IDS:
+		var base: MeshInstance3D=study.loan_return_beacons[id]
+		var kit: Node3D=care.kits[id]
+		require(is_equal_approx(base.position.y-(base.mesh as BoxMesh).size.y/2,0.0),"original marker base is grounded")
+		for part in kit.get_children():
+			var bounds: AABB=(part as MeshInstance3D).get_aabb()
+			bounds=part.transform*bounds
+			require(bounds.position.x>=-0.19 and bounds.end.x<=0.19 and bounds.position.z>=-0.15 and bounds.end.z<=0.15,"actual carrying gear stays in the original beacon footprint")
+		for x in [-0.19,0.19]:
+			for z in [-0.15,0.15]:
+				var p := Vector2(base.global_position.x+x,base.global_position.z+z)
+				require(study.building_containing_point(p)=="" and study.min_wall_distance(p)>=study.WALK_CLEARANCE_M and not study.is_point_in_mural_footprint(p,0.0) and not study.is_point_in_speaker_footprint(p,0.0),"gear stays clear of measured walls and actual prop surfaces; player-radius speaker exclusion is not a gear surface")
+		var kit_bounds := AABB(base.global_position+Vector3(-0.19,-0.16,-0.15),Vector3(0.38,0.59,0.30))
+		var owner_index: int=study.neighbor_index_for_id(study.LOAN_OWNERS[id])
+		var owner_node: Node3D=study.neighbor_nodes[owner_index]
+		var original_rotation: Vector3=owner_node.rotation
+		var player_position: Vector3=study.player.position
+		var player_rotation: Vector3=study.player_visual.rotation
+		require(Vector2(base.position.x,base.position.z).distance_to(study.neighbor_xz(owner_index))>=1.75,"carrying kit clears the0.95m arrival stand ring plus player body and kit half width")
+		for angle in [0.0,PI/2.0,PI,PI*1.5]:
+			owner_node.rotation.y=angle
+			study.player.position=study.neighbors[owner_index].pos+Vector3(cos(angle)*0.95,0,sin(angle)*0.95)
+			study.player_visual.rotation.y=angle
+			for part in study.player_visual.find_children("*","MeshInstance3D",true,false):
+				if part.name not in ["GroundRing","ContactShadow"]:
+					require(not kit_bounds.intersects(part.global_transform*part.get_aabb()),"actual player body meshes clear the kit at four cardinal0.95m arrival stands")
+			for part in owner_node.get_node("NeighborProp").find_children("*","MeshInstance3D",true,false):
+				require(not kit_bounds.intersects(part.global_transform*part.get_aabb()),"actual kit clears all signature prop meshes at four cardinal resident arrival rotations")
+		owner_node.rotation=original_rotation
+		study.player.position=player_position
+		study.player_visual.rotation=player_rotation
+		for counter in study.eatery_counter_nodes:
+			var body: MeshInstance3D=counter.get_node("CounterBody")
+			require(not kit_bounds.intersects(body.global_transform*body.get_aabb()),"actual kit bounding volume stays clear of existing fictional counter furniture")
+		if id=="speaker": require(kit.has_node("CoiledCable") and kit.has_node("SpeakerCover"),"speaker model is cover/cable, not a duplicate monitor")
+		if id=="table": require(kit.has_node("CanvasCarryBag") and kit.has_node("CarryHandle"),"table model is carry bag/straps, not a duplicate table")
+	for target_bytes in [4096,4097]:
+		var near: Dictionary=seed.duplicate(true)
+		near.optional={"padding":""}
+		study.apply_save_envelope(JSON.stringify(near))
+		near=study.build_save_envelope()
+		var preview: Dictionary=near.duplicate(true)
+		preview.epilogue.returned=["table"]
+		preview.save_seq=study.save_seq+2
+		near.optional.padding="x".repeat(target_bytes-JSON.stringify(preview).to_utf8_buffer().size())
+		require(study.apply_save_envelope(JSON.stringify(near)) and study.save_godot_state(),"near-limit owner-return fixture uses isolated formal save file")
+		var before := JSON.stringify(study.build_save_envelope())
+		var file := FileAccess.get_file_as_string(study.save_path)
+		if target_bytes==4096:
+			require(study.return_next_loan()=="table" and FileAccess.get_file_as_string(study.save_path).to_utf8_buffer().size()==4096,"exact4096 loan return succeeds through actual writer")
+		else:
+			require(study.return_next_loan().is_empty() and JSON.stringify(study.build_save_envelope())==before and FileAccess.get_file_as_string(study.save_path)==file,"exact4097 return refuses before state/file/sequence and does not skip to another loan")
+	care.chapter_completion_notice="earned pending notice"
+	require(not study.import_browser_save_json("{}") and care.chapter_completion_notice=="earned pending notice","rejected legacy import preserves pending earned loan notice")
+	study.apply_save_envelope(full_profile)
+	study.hide_story_card()
+	study.last_story_chapter=int(study.current_chapter().num)
+	study.startup_story_pending=false
+	study.show_block_panel(false)
+	study.mural_panel.hide()
+	study.music_panel.hide()
+	study.mural_scenes={"left":"music","right":"garden"}
+	root.size=Vector2i(559,360)
+	for f in range(8): await process_frame
+	study.current_path.clear()
+	study.player.position=Vector3(72.33017,0,-17.2684)
+	study.following_player=false
+	study.in_overview=false
+	study.in_wide_overview=false
+	study.view_size=24.0
+	study.camera_yaw=0.0
+	study.camera_pitch_scale=1.0
+	study.target=Vector3(74.0332,0.19665,-18.1681)
+	study.update_camera()
+	study.update_readable_scene_labels()
+	study.update_guide_arrow()
+	var inspection_pose: Array=study.panel_camera_pose()
+	var paper: Rect2=study.mural_inspection_rect()
+	require(paper.has_area(),"real559x360 failed mural inspection pose has a meaningful protected paper rectangle")
+	require(not study.guide_arrow_label.visible or not paper.intersects(study.guide_arrow_label.get_global_rect()),"outlined objective never covers the inspected musician face")
+	for caption in study.visible_scene_captions: require(not paper.intersects(caption.rect),"nearby world captions reserve inspected original mural art")
+	require(study.panel_camera_pose()==inspection_pose,"art protection never takes over the manual camera")
+	study.following_player=true
+	require(not study.mural_inspection_rect().has_area(),"mural reservation is limited to deliberate manual inspection")
+	study.apply_save_envelope(saved)
+	study.hide_story_card()
+	study.last_story_chapter=int(study.current_chapter().num)
+	root.size=Vector2i(1100,760)
+	print("LOAN_HOMECOMING_PASS:2layouts x7sizes x3owners/6orders/trueui_accept/grounded kits/canonical reload/exact4096and4097")
