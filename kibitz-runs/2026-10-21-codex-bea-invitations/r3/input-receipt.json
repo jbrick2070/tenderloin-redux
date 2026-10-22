@@ -1,0 +1,10 @@
+{
+  "input_sha256": "086677ee00517638e03d10142001efef31481d54c349a14b290465a4580b512a",
+  "prefanout_digest": "input-digest.json",
+  "model_requested": "claude-opus-5-5",
+  "model_selected": "claude-opus-5-5",
+  "effort_requested": "high",
+  "effort_selected": "high",
+  "provider_runtime_identity": "unknown",
+  "quota_percent": "unknown"
+}

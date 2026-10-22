@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { initialState, applyAction, serializeSave } from '../public/core.js';
 import { postcardSVG } from '../public/keepsake.js';
 import { programmeSVG } from '../public/programme.js';
-import { tilePanelSVG, QUIET_CHOICES } from '../public/hosting.js';
+import { tilePanelSVG, QUIET_CHOICES, STORY_CHOICES } from '../public/hosting.js';
 import { civicPlanSVG } from '../public/civic.js';
 import { filmFrameSVG, filmCaption } from '../public/film.js';
 const [pckStat, ...sourceStats] = await Promise.all([
@@ -13,6 +13,7 @@ const [pckStat, ...sourceStats] = await Promise.all([
   stat('godot/main.gd'),
   stat('godot/film_screening.gd'),
   stat('godot/quiet_seats.gd'),
+  stat('godot/bea_invitation.gd'),
   stat('godot/mural_workshop.gd'),
   stat('godot/rhythm_circle.gd'),
   stat('godot/rhythm_bar.gd'),
@@ -47,6 +48,7 @@ let rhythmFixtureSave;
 const rhythmCircleChecks = [];
 const filmScreeningChecks = [];
 const quietSeatChecks = [];
+const beaInvitationChecks = [];
 const rhythmAuditionChecks = [];
 const muralWorkshopChecks = [];
 let workshopAutoAdvanceChecks = 0;
@@ -976,6 +978,77 @@ async function verifyPassiveActivities(page,context,touch) {
 }
 
 
+async function verifyBeaInvitation(page,touch,size,worldProof=false) {
+  const snap=()=>page.evaluate(()=>window.__tenderloinGodotA11ySnapshot),save=()=>page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1'));
+  async function settle(){const f=(await snap()).ui_frame;await page.waitForFunction(f=>{const s=window.__tenderloinGodotA11ySnapshot;return s.ui_frame>f+3&&!s.layout_refit_pending&&!s.compact_panel_layout_pending;},f);}
+  async function tap(b,reading=false){let s=await snap(),c=await page.locator('#canvas').boundingBox();assert.ok(b.visible&&b.width>=44&&b.height>=(reading?1:44)&&b.x>=0&&b.y>=0&&b.x+b.width<=s.viewport_width+1&&b.y+b.height<=s.viewport_height+1,'invitation button reachable');const x=c.x+(b.x+b.width/2)*c.width/s.viewport_width,y=c.y+(b.y+b.height/2)*c.height/s.viewport_height;if(touch)await page.touchscreen.tap(x,y);else await page.mouse.click(x,y);await settle();}
+  await settle();if((await snap()).story_detail.panel.visible)await page.keyboard.press('Escape');
+  if(!(await snap()).block_panel_control.visible)await page.keyboard.press('KeyG');await settle();
+  assert.equal((await snap()).hosting_current,'stories');
+  const legacy=await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1'));
+  const initial=JSON.parse(await save()),photo=JSON.stringify(initial.epilogue.photo),music=(await snap()).music_playing,pose=(await snap()).camera_pose;
+  for(const [id,i] of [['future',1],['memory',0]]){
+    await tap((await snap()).quiet_seats.buttons[i]);let s=await snap(),b=s.bea_invitation;
+    assert.ok(s.quiet_seats.buttons.every(b=>b.text_fits),'all full invitation titles fit');assert.equal(b.choice,id);assert.ok(s.quiet_seats.buttons[i].selected);assert.equal(s.quiet_seats.buttons[i].accessible_name,STORY_CHOICES[id]+' , selected');assert.equal(JSON.parse(await save()).hosting.draft.story,id);
+    assert.match(s.block_detail_text,id==='memory'?/folded note/:/paper flags/);assert.match(s.block_detail_text,/listening is equally welcome/);assert.equal(JSON.stringify(JSON.parse(await save()).epilogue.photo),photo);assert.equal(s.music_playing,music);assert.deepEqual(s.camera_pose,pose);
+  }
+  if(!touch){await page.keyboard.press('Tab');await page.keyboard.press('Space');await settle();assert.equal((await snap()).bea_invitation.choice,'future','actual Tab Space selects invitation');await page.keyboard.press('Shift+KeyZ');await settle();assert.equal((await snap()).bea_invitation.choice,'memory');}
+  await page.keyboard.press('Shift+KeyZ');await settle();assert.equal((await snap()).bea_invitation.choice,'future');assert.match(await page.locator('#godot-a11y-status').textContent(),/Something you hope to make together/);
+  const reader=(await snap()).block_detail_control;await tap(reader,true);await page.keyboard.press('End');await settle();let s=await snap();assert.ok(s.block_detail_scroll_value>0&&s.block_detail_scroll_value+s.block_detail_scroll_page>=s.block_detail_scroll_max-2,'complete Bea example readable to its end');
+  if(touch){const c=await page.locator('#canvas').boundingBox(),x=c.x+(reader.x+reader.width/2)*c.width/s.viewport_width,y=c.y+(reader.y+reader.height/2)*c.height/s.viewport_height,cdp=await page.context().newCDPSession(page);await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y,id:1}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y+25,id:1}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await cdp.detach();}
+  else{const c=await page.locator('#canvas').boundingBox();await page.mouse.move(c.x+(reader.x+reader.width/2)*c.width/s.viewport_width,c.y+(reader.y+reader.height/2)*c.height/s.viewport_height);await page.mouse.wheel(0,-200);}await settle();assert.ok((await snap()).block_detail_scroll_value<s.block_detail_scroll_value,'actual wheel/finger reads full invitation');
+  await page.screenshot({path:`artifacts/invitation-controls-${size.width}x${size.height}-${touch?'finger':'mouse'}.png`});
+  // Leave the genuine representative flow on its original memory choice.
+  await tap((await snap()).quiet_seats.buttons[0]);
+  let changed=0,paperPixels=0,inkPixels=0;
+  if(worldProof){
+    await tap((await snap()).block_close_control);
+    const fixedPlayer=(await snap()).player_grounding;
+    await tap((await snap()).walking_controls.find(b=>b.text.includes('Find Me')));
+    for(let i=0;i<4;i++)await tap((await snap()).walking_controls.find(b=>b.text.includes('Zoom')&&b.text.includes('+')));
+    for(let i=0;i<14;i++){
+      const s=await snap(),p=s.bea_invitation.paper,r=s.play_area,c=await page.locator('#canvas').boundingBox(),dx=Math.max(-s.viewport_width*.35,Math.min(s.viewport_width*.35,r.x+r.width*.5-p.x-p.width*.5)),dy=Math.max(-s.viewport_height*.15,Math.min(s.viewport_height*.15,r.y+r.height*.5-p.y-p.height*.5));if(Math.hypot(dx,dy)<=10)break;
+      const x=c.x+(r.x+r.width*.5)*c.width/s.viewport_width,y=c.y+(r.y+r.height*.5)*c.height/s.viewport_height;
+      if(touch){const cdp=await page.context().newCDPSession(page);await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y,id:1}]});for(let k=1;k<=8;k++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+dx*k/8,y:y+dy*k/8,id:1}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await cdp.detach();}
+      else{await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+dx,y+dy,{steps:8});await page.mouse.up();}await settle();
+    }
+    const a=await snap(),r=a.bea_invitation.paper,c=await page.locator('#canvas').boundingBox(),pixels=screenshotPixels(await page.screenshot()),inspection=a.camera_pose;
+    assert.equal(a.player_grounding.x,fixedPlayer.x);assert.equal(a.player_grounding.z,fixedPlayer.z);
+    const texelChecks=[];
+    const checkTexels=(ss,pix)=>{const checks=ss.bea_invitation.paper_samples.map(q=>{const rgb=q.color.match(/../g).map(h=>parseInt(h,16)),x=c.x+q.x*c.width/ss.viewport_width,y=c.y+q.y*c.height/ss.viewport_height;let error=Infinity,actual;for(let yy=-1;yy<=1;yy++)for(let xx=-1;xx<=1;xx++){const color=pix.pixel(x+xx,y+yy),d=color.reduce((n,v,k)=>n+Math.abs(v-rgb[k]),0);if(d<error){error=d;actual=color;}}return {u:q.u,v:q.v,expected:rgb,actual,error};});texelChecks.push({choice:ss.bea_invitation.choice,checks});};
+    checkTexels(a,pixels);
+    const guide=a.overlays.guide_label;assert.ok(!guide.visible||guide.x+guide.width<=r.x-4||guide.x>=r.x+r.width+4||guide.y+guide.height<=r.y-4||guide.y>=r.y+r.height+4,'actual guidance caption leaves the inspected paper clear');
+
+    assert.ok(!a.following_player&&r.width>=10&&r.height>=10&&r.x>=0&&r.y>a.header_control.y+a.header_control.height&&r.x+r.width<a.viewport_width&&r.y+r.height<a.viewport_height-100,'actual standing paper visible at deliberate manual inspection');
+    await page.screenshot({path:`artifacts/invitation-world-memory-${size.width}x${size.height}-${touch?'finger':'mouse'}-${initial.gathering_layout}.png`});
+    await page.keyboard.press('KeyG');await settle();await tap((await snap()).quiet_seats.buttons[1]);await tap((await snap()).block_close_control);await settle();assert.deepEqual((await snap()).camera_pose,inspection,'selection and Close preserve exact manual inspection');const next=screenshotPixels(await page.screenshot());checkTexels(await snap(),next);
+    // Real cutaway buildings remain as translucent foreground geometry. They tint
+    // unshaded paper too. Mip filtering and overlapping cutaway faces can tint each UV differently.
+    // Both known artwork changes must retain every palette-channel direction
+    // and meaningful contrast; the third unchanged UV stays still. Blank or
+    // scenery-only masks cannot pass both opposed palette transitions.
+    const linear=v=>v<=10.31475?v/3294.6:Math.pow((v/255+0.055)/1.055,2.4),deltas=[];
+    assert.equal(texelChecks.length,2);assert.ok(texelChecks.every(x=>x.checks.length===3));
+    for(let point=0;point<2;point++)for(let channel=0;channel<3;channel++){const before=texelChecks[0].checks[point],after=texelChecks[1].checks[point],expected=linear(after.expected[channel])-linear(before.expected[channel]),observed=linear(after.actual[channel])-linear(before.actual[channel]);assert.ok(expected*observed>0,'both original palette transitions retain every channel direction');deltas.push({expected,observed});}
+    const transmission=deltas.reduce((n,x)=>n+x.expected*x.observed,0)/deltas.reduce((n,x)=>n+x.expected*x.expected,0),residual=Math.sqrt(deltas.reduce((n,x)=>n+Math.pow(x.observed-transmission*x.expected,2),0)/deltas.length);
+    const backgroundChange=texelChecks[0].checks[2].actual.reduce((n,v,i)=>n+Math.abs(v-texelChecks[1].checks[2].actual[i]),0);
+    const contrasts=[0,1].map(point=>texelChecks[0].checks[point].actual.reduce((n,v,i)=>n+Math.abs(v-texelChecks[1].checks[point].actual[i]),0));
+    assert.ok(contrasts.every(n=>n>=45)&&backgroundChange<=45,`both actual original-art UVs change in opposed source-palette directions with contrast ${contrasts}, static paper ${backgroundChange}`);
+    texelChecks.push({transmissionDiagnostic:transmission,residualDiagnostic:residual,backgroundChange,contrasts});
+
+    for(let y=r.y+2;y<r.y+r.height-2;y++)for(let x=r.x+2;x<r.x+r.width-2;x++){const px=c.x+x*c.width/a.viewport_width,py=c.y+y*c.height/a.viewport_height,p=pixels.pixel(px,py),q=next.pixel(px,py);if(p.reduce((n,v,i)=>n+Math.abs(v-q[i]),0)>55)changed++;if(p[0]>200&&p[1]>180&&p[2]>140)paperPixels++;if(p[2]>p[0]&&p[1]>p[0])inkPixels++;}
+    assert.ok(changed>=Math.max(15,(r.width-4)*(r.height-4)*0.20),`original artwork changes >=20% of inner projected bounds (${changed} / ${(r.width-4)*(r.height-4)})`);
+    await writeFile(`artifacts/invitation-texels-${size.width}x${size.height}-${touch?'finger':'mouse'}.json`,JSON.stringify(texelChecks,null,2));
+    await page.screenshot({path:`artifacts/invitation-world-future-${size.width}x${size.height}-${touch?'finger':'mouse'}-${initial.gathering_layout}.png`});
+    await page.keyboard.press('KeyG');await settle();await page.keyboard.press('KeyZ');await settle();assert.equal((await snap()).bea_invitation.copied,true);assert.equal((await snap()).bea_invitation.choice,'future');
+    const copied=await save();await page.reload();await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending&&!window.__tenderloinGodotA11ySnapshot.layout_refit_pending);await page.keyboard.press('Escape');await settle();assert.equal(await save(),copied,'completed invitation reload writes no save or frozen photo');assert.equal((await snap()).bea_invitation.choice,'future');
+    await page.keyboard.press('Digit1');await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.conversation_detail.panel.visible&&!window.__tenderloinGodotA11ySnapshot.player_grounding.path_active,{},{timeout:25000});await settle();assert.match((await snap()).block_detail_text,/paper flags/,'actual Bea conversation remembers copied invitation');assert.equal(JSON.stringify(JSON.parse(await save()).epilogue.photo),photo);
+    await page.screenshot({path:`artifacts/invitation-bea-memory-${size.width}x${size.height}-${touch?'finger':'mouse'}.png`});
+  }
+  assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1')),legacy);
+  beaInvitationChecks.push({width:size.width,height:size.height,touch,layout:initial.gathering_layout,worldProof,changed,paperPixels,inkPixels});
+}
+
 async function verifyQuietSeats(page,touch,size,complete=false,worldProof=false) {
   const snap=()=>page.evaluate(()=>window.__tenderloinGodotA11ySnapshot),save=()=>page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1'));
   async function settle(){const f=(await snap()).ui_frame;await page.waitForFunction(f=>{const s=window.__tenderloinGodotA11ySnapshot;return s.ui_frame>f+2&&!s.layout_refit_pending&&!s.compact_panel_layout_pending;},f);}
@@ -1709,7 +1782,9 @@ try {
     assert.equal(exportedKeepsake.exported?.svg, postcardSVG(savedPhotoForParity), 'Exported Godot keepsake SVG must be 100% byte-for-byte identical to public/keepsake.js postcardSVG()');
     assert.equal(exportedKeepsake.exported?.bytes, Buffer.byteLength(exportedKeepsake.exported.svg, 'utf8'), 'Exported keepsake SVG byte count must match UTF-8 byte length');
     assert.equal(exportedKeepsake.snapshotExported, true, 'A11y snapshot must report keepsake_exported === true after Shift+KeyY');
-    for(let zStep=0;zStep<3;zStep++){await page.keyboard.press('KeyZ');await page.waitForTimeout(80);}
+    for(let zStep=0;zStep<2;zStep++){await page.keyboard.press('KeyZ');await page.waitForTimeout(80);}
+    await verifyBeaInvitation(page,size.width<600,size);
+    await page.keyboard.press('KeyZ');await page.waitForTimeout(80);
     await verifyRhythmCircle(page,size.width<600,size,true);
     await verifyQuietSeats(page,size.width<600,size);
     for(let zStep=0;zStep<2;zStep++){await page.keyboard.press('KeyZ');await page.waitForTimeout(80);}
@@ -2212,6 +2287,7 @@ try {
     assert.equal(afterValidImport.godotSave.hosting?.results?.[1]?.value, 'pairs', 'Imported pause segment must preserve pairs value');
     assert.equal((await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot)).quiet_seats.choice,'pairs','imported copied quiet result renders actual scene');
     assert.equal(afterValidImport.godotSave.hosting?.results?.[2]?.value, 'future', 'Imported stories segment must preserve future value');
+    assert.equal((await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot)).bea_invitation.choice,'future','read-only browser import renders the copied future invitation');
     assert.equal(afterValidImport.godotSave.hosting?.results?.[3]?.value?.palette, 'cool', 'Imported art segment must preserve cool palette');
     assert.equal(afterValidImport.godotSave.civic?.phase, 'done', 'Explicit KeyI import must map browser M4 civic done phase');
     assert.deepEqual(afterValidImport.godotSave.civic?.result, { topic: 'access', format: 'dropin', notes: 'none' }, 'Explicit KeyI import must map browser M4 civic result');
@@ -2594,6 +2670,16 @@ try {
     await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending&&!window.__tenderloinGodotA11ySnapshot.layout_refit_pending);await page.keyboard.press('Escape');
     await verifyQuietSeats(page,touch,size,true,true);await context.close();
   }
+  // PRIVATE current-run copied profiles, stories after quiet interval, real world ink in both layouts.
+  for(const [width,height,touch,layout] of [[1100,760,false,'table'],[320,667,true,'floor'],[520,360,true,'table'],[559,360,false,'floor']]){
+    const fixture=JSON.parse(rhythmFixtureSave),order=['pause','stories','beats','art'];fixture.gathering_layout=layout;fixture.programme.order=order;fixture.programme.published=order;fixture.hosting.order=order;fixture.hosting.results=[{id:'pause',value:'pairs'}];fixture.hosting.draft.story='memory';
+    fixture.civic={phase:'idle',draft:{topic:'repairs',format:'circle',notes:'themes'},result:null};fixture.film={phase:'idle',draft:{framing:'close',plan:'quiet',order:['seat','paint','welcome']},result:null,captured:[]};
+    const size={width,height},context=await browser.newContext({viewport:size,hasTouch:touch}),page=await context.newPage();latestPage=page;
+    await context.addInitScript(f=>{if(!localStorage.getItem('tenderloin-redux.godot.save.v1'))localStorage.setItem('tenderloin-redux.godot.save.v1',JSON.stringify(f));},fixture);
+    context.on('request',r=>{if(!r.url().startsWith(base)&&!r.url().startsWith('data:')&&!r.url().startsWith('blob:'))external.push(r.url());});page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
+    await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending&&!window.__tenderloinGodotA11ySnapshot.layout_refit_pending);await page.keyboard.press('Escape');
+    await verifyBeaInvitation(page,touch,size,true);await context.close();
+  }
   // A private fixture derived from actual progression covers legal beats-last/zero completion.
   {
     const fixture=JSON.parse(rhythmFixtureSave),order=['stories','pause','art','beats'];
@@ -2623,9 +2709,10 @@ try {
   }
   assert.deepEqual(external, []);
   assert.deepEqual(errors, []);
-  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, quietSeatChecks, filmScreeningChecks, rhythmCircleChecks, rhythmAuditionChecks, muralStoryChecks, livingMuralChecks, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
+  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, beaInvitationChecks, quietSeatChecks, filmScreeningChecks, rhythmCircleChecks, rhythmAuditionChecks, muralStoryChecks, livingMuralChecks, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
   assert.ok(queuedActivityRewardChecks > 0, 'at least one actual crowded activity exercises queued reward timer and Close delivery');
   assert.ok(shortStartClicked && shortStartTouchClicked, 'real mouse and touch Start at640x360 were exercised');
+  assert.equal(beaInvitationChecks.length,7,'three genuine current progression and four private post-quiet invitation cases');
   assert.equal(quietSeatChecks.length,9,'three genuine progression and six private current-source quiet cases are required');
   assert.equal(filmScreeningChecks.length,3,'all required actual progression contexts watch their completed film');
   assert.equal(rhythmAuditionChecks.length,11,'all eleven active/practice cases actually auditioned');

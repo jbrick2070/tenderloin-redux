@@ -1,0 +1,26 @@
+STDOUT:
+I've written the review to `kibitz-runs/2026-10-21-codex-bea-invitations/r3/claude.md`. Verdict: yes-with-fixes. Bash was disabled in this session, so I reviewed the current files rather than the diff against 17358a8, and I ran no tests or builds.
+
+**Must-fix:**
+1. **The browser "rendered pixel" check doesn't prove the art rendered** (`tests/godot-browser.mjs:1017-1018`).
+   - Its paper-colour and ink-colour counts are met by scenery already inside the measured rectangle: the table cloth passes the paper test, and the Open Floor and teal tiles pass the ink test.
+   - The only real difference check passes with as few as 15 changed pixels.
+   - Fix: sample a few known points on the artwork and compare them to the expected texture colours. Also require the changed area to be a real share of the rectangle.
+2. **The "folded-paper tent" is actually a V shape that floats and tilts away from the camera** (`godot/bea_invitation.gd:24-39`).
+   - With the current signs, the bottom edges meet and the tops splay apart. The fold sits about 6–7 cm above the table and the floor.
+   - The art faces slightly downward, so the overhead camera sees roughly half the area it would if the paper leaned back.
+   - Fix: flip the two rotations and set the height so the edges rest on the surface. That makes an A-frame, and it still clears the cups.
+
+**Should-fix:**
+- The drag and pixel-scan code uses the browser window size where the click helper uses the game's viewport size. The two only agree at a 1:1 pixel ratio.
+- No test covers handing the shared button row from stories to the quiet interval while a story button has keyboard focus. Only the reverse direction is tested.
+- The story selection relies on the quiet and story option lists having the same length. A third quiet option would crash it.
+- Nothing checks that the two-line story button labels fit at 320 px wide.
+- `choice()` doesn't validate the draft story. An invalid draft would show blank paper, though loading and import already clean the draft.
+
+**Cuts:**
+- A redundant `cull_mode` line in `bea_invitation.gd`.
+- The snapshot's `buttons` field, which re-runs the whole quiet-seats snapshot every time.
+- The snapshot's unused `texture_cache` field.
+
+The startup order, the save/load and import handling, the "viewing never saves" paths, the shared-row handoff when stories finishes, and the story titles matching `public/hosting.js` all checked out. I didn't trace the hub-title, fingerprint, save-size or fallback-font invariants. None of this is final acceptance: no final test results were examined.

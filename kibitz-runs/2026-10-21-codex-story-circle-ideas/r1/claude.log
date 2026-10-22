@@ -1,0 +1,16 @@
+STDOUT:
+I wrote the review to `kibitz-runs/2026-10-21-codex-story-circle-ideas/r1/claude.md`. The tool check passed, and that file is the only thing I created or changed.
+
+**Verdict: yes-with-fixes.** Bea's story circle is the right target: it is the only one of the four hosted activities with nothing to see in the Godot version and no lasting reaction from a resident. The rhythm workshop, art panel and quiet interval all have one.
+
+**Main problems with the plan:**
+- **The goal doesn't fit the method.** The brief wants illustrations "large enough to appreciate" but puts them in the existing action hub, which has no room. Its reader text box is only 20–30px tall (`godot/main.gd:6703`). Quiet Seats' single row of buttons already needed a special fix to stop covering Find Me. That leaves only the "optional" full-screen viewer, the most expensive piece. I recommend putting the illustration on a standing card in the 3D scene instead, drawn from a new original SVG the same way the film easel's picture is (`godot/film_screening.gd:193-207`).
+- **Godot has no readable names for the two story choices.** Shift+Z announces the raw id, so screen-reader users hear "set to future" (`godot/main.gd:9652`). The fix is to copy the titles word-for-word from `public/hosting.js:4`.
+- **Don't build a second row of choice buttons.** The quiet interval row is hardcoded into the hub layout (`godot/main.gd:6738`), and the stories and quiet activities are never active at the same time. One shared row avoids repeating the bug Quiet Seats hit, where closing another window brought back a row that should have stayed hidden.
+- **The obvious resident consequence already exists in the browser version.** Bea has a line reacting to the story choice there (`public/hosting.js:61-64`). In Godot, Thanh got the equivalent in Quiet Seats but Bea didn't. Adding Bea's line also answers a question the brief leaves open: how players re-read the story after it's done, since Godot has no field notes.
+- **The new art could repeat existing art.** The "make something together" choice would naturally become a planter or a shared meal, but Mural Stories already ships Growing Together, Sharing a Bowl and Cooking Together. The motifs should be chosen before any drawing starts.
+- **Placement on the Open Floor needs care.** A card on Dez and Celeste's stage riser or mic would read as "get up and perform," which contradicts "listening is equally welcome." It also must not land on the seats the quiet-interval visitors use.
+
+**Cuts:** the large viewer. It would have to join 38 existing visibility checks for the other full-screen windows, and Quiet Seats shipped without one. Also cut flat paper lying on surfaces, which is probably unreadable from the game camera; a standing card replaces it. The review also lists two smaller alternatives and a naming clash: the game already uses "story card" for its chapter cards.
+
+Several MCP connectors (claude.ai Box, Play Sheet Music, Runway, and the engineering Asana, Atlassian, Datadog, GitHub, Linear, Notion, PagerDuty and Slack plugins) need you to sign in before they can be used. Do that in your claude.ai connector settings, or with `/mcp` in an interactive session. This review didn't need any of them.

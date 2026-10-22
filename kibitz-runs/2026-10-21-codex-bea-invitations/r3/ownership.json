@@ -1,0 +1,12 @@
+{
+  "baseline": "17358a823e0649fcea6b9c4a611d68e3db8feeb6",
+  "lock": {
+    "owner": "codex",
+    "round": "2026-10-21-story-circle",
+    "baseline": "17358a823e0649fcea6b9c4a611d68e3db8feeb6",
+    "created": "2026-10-22T04:50:29.0212665Z"
+  },
+  "preview_pid": 36320,
+  "sole_implementation_writer": "Codex",
+  "review_roles": "one exact sole-Claude ideasr1 and one implementationr3"
+}

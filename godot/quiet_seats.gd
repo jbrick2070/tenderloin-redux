@@ -37,6 +37,9 @@ func setup(owner_game: Node) -> void:
 			style.content_margin_right = 2
 			b.add_theme_stylebox_override(state,style)
 		b.pressed.connect(func():
+			if game.current_hosting_activity()=="stories" and game.bea_invitation != null:
+				game.bea_invitation.select(game.HOSTING_QUIETS.find(id))
+				return
 			game.last_panel_dialogue = explanation()
 			if not game.host_set_quiet(id): game.update_block_ui()
 			game.announce_a11y_status(explanation())
@@ -106,8 +109,12 @@ func explanation() -> String:
 	return 'Thanh: "'+TITLES[id]+'. Two fictional visitors can sit together; the woven green cushion marks an open seat. Sit, stand or leave whenever you like. The sidewalk stays clear. Music is your choice; there is no timer."'
 
 func update_ui() -> void:
+	if game.current_hosting_activity()=="stories" and game.bea_invitation != null:
+		game.bea_invitation.update_choices(row,choices)
+		return
 	var show_choices: bool = game.current_hosting_activity()=="pause" and game.block_opened and game.block_panel.visible and game.block_panel_mode=="hub"
-	if row.visible!=show_choices:
+	if row.visible!=show_choices or row.get_meta("activity","")!="pause":
+		row.set_meta("activity","pause")
 		if show_choices: game.last_panel_dialogue = explanation()+" Choose the seats, then Host Activity (Z) when you are ready."
 		if not show_choices and game.block_panel.visible and game.block_panel_mode=="hub" and choices.any(func(b): return b.has_focus()):
 			game.block_hub_page = game.block_buttons.find(game.block_programme_btn) / game.BLOCK_ACTIONS_PER_PAGE
@@ -116,6 +123,8 @@ func update_ui() -> void:
 		row.visible = show_choices
 		game.layout_walking_controls_and_hub()
 	for i in range(choices.size()):
+		choices[i].text = "An open arc\nof seats" if i==0 else "A pair and\nan open seat"
+		choices[i].tooltip_text = TITLES[game.HOSTING_QUIETS[i]]
 		var selected: bool = choice()==game.HOSTING_QUIETS[i]
 		choices[i].set_pressed_no_signal(selected)
 		choices[i].accessibility_name = TITLES[game.HOSTING_QUIETS[i]]+(" , selected" if selected else "")
@@ -164,6 +173,9 @@ func snapshot() -> Dictionary:
 		item["text"] = b.text
 		item["selected"] = b.button_pressed
 		item["accessible_name"] = b.accessibility_name
+		var text_box: Vector2 = b.size-b.get_theme_stylebox("normal").get_minimum_size()
+		var measured: Vector2 = b.get_theme_font("font").get_multiline_string_size(b.text,HORIZONTAL_ALIGNMENT_CENTER,-1,b.get_theme_font_size("font_size"))
+		item["text_fits"] = measured.x<=text_box.x+1 and measured.y<=text_box.y+1
 		buttons.append(item)
 	return {"choice":choice(),"copied":game.has_hosted_segment("pause"),"people":people,"buttons":buttons,"explanation":explanation(),"row":game.control_snapshot(row),"cushion":game.rect_snapshot(Rect2(game.camera.unproject_position(cushions[selected_layout].global_position),Vector2.ONE)) if not cushions.is_empty() else {}}
 

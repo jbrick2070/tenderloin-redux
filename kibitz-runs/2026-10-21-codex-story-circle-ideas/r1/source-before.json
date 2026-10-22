@@ -1,0 +1,11 @@
+{
+  "godot/main.gd": "d114cc6c14a1bd3a46523f86bfabdc45add5280a907523788acfb25859649ed9",
+  "godot/quiet_seats.gd": "a97c5af6688cdf733b7691064f73f9f762334d4f1f38fcda8aca70b877213d2e",
+  "godot/film_screening.gd": "d0e8ce92d38ebb29aecd6403acbdebd678840f494686b2e2007b5e036858e59c",
+  "godot/rhythm_circle.gd": "07aa430f9594d8b898d22a982d42d68a70ca1dc8356c8daf959b75fac5087d89",
+  "godot/tests/study_test.gd": "d1465fc42c06dd47887c85cf2f9c12bca6db3bf865601ef14b050e7baa5804c5",
+  "tests/godot-browser.mjs": "bc18963618f536e3992ad93b726d2f08484539eb84c76ee3a4ca6159bc4208df",
+  "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160",
+  "docs/ROADMAP.md": "4cfef920890cf0f5109cb7d1dfaeef5e57f89949b8c0641f3ec6efdbbb02da47",
+  "public/hosting.js": "2155f76740dfe1cc91aa258462cc135aac0cc5da7a15bc981f5031ad8ddebf19"
+}

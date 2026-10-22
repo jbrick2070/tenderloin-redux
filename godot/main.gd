@@ -793,6 +793,7 @@ var block_page_next: Button
 var block_close_btn: Button
 var block_hub_page := 0
 var quiet_seats: Node
+var bea_invitation: Node
 var table_quiet_seats: Array[Node3D] = []
 var floor_quiet_seats: Array[Node3D] = []
 var rhythm_circle
@@ -3103,6 +3104,7 @@ func film_shot_color(shot_id: String) -> Color:
 func update_block_3d() -> void:
 	update_layout_3d()
 	if quiet_seats != null: quiet_seats.update_world()
+	if bea_invitation != null: bea_invitation.update_world()
 	if block_banner_node != null:
 		block_banner_node.visible = block_opened
 	if keepsake_frame_node != null:
@@ -6735,9 +6737,9 @@ func layout_walking_controls_and_hub() -> void:
 		panel.anchor_left = 1.0 if dock else 0.0
 		panel.offset_left = -(dock_width + 12.0) if dock else 12.0
 		panel.offset_right = -12.0
-		var quiet_choices: bool = panel == block_panel and quiet_seats != null and quiet_seats.row.visible and not dock
-		panel.grow_vertical = Control.GROW_DIRECTION_BEGIN if short_phone or quiet_choices else Control.GROW_DIRECTION_END
-		if quiet_choices and not short_phone:
+		var hosting_choices: bool = panel == block_panel and hosting_choice_row_visible() and not dock
+		panel.grow_vertical = Control.GROW_DIRECTION_BEGIN if short_phone or hosting_choices else Control.GROW_DIRECTION_END
+		if hosting_choices and not short_phone:
 			# The extra44px choice row must grow upward, never over Find Me/Close.
 			panel.size = Vector2(vp.x-24.0,0.0)
 			panel.offset_bottom = controls.offset_top-8.0
@@ -6942,6 +6944,8 @@ func update_guide_arrow() -> void:
 	lbl_global.y = clampf(lbl_global.y, area.position.y + 7.0, maxf(area.position.y + 7.0, area.end.y - lbl_size.y - 7.0))
 	# Keep the outlined objective name clear of the Talk prompt and transient UI.
 	var occupied: Array[Rect2] = []
+	if bea_invitation != null and bea_invitation.inspection_rect().has_area():
+		occupied.append(bea_invitation.inspection_rect())
 	if uses_compact_activity_controls() or uses_short_narrow_walking():
 		occupied.append(player_overlay_rect().grow(4.0))
 	if reward_banner != null and reward_banner.is_visible_in_tree():
@@ -9554,6 +9558,8 @@ func host_set_story(story_id: String) -> bool:
 	if current_hosting_activity() != "stories" or not (story_id in HOSTING_STORIES) or String(hosting_draft.get("story", "memory")) == story_id:
 		return false
 	hosting_draft["story"] = story_id
+	if bea_invitation != null: last_panel_dialogue = bea_invitation.explanation()
+	update_block_3d()
 	save_godot_state()
 	update_block_ui()
 	return true
@@ -9649,7 +9655,7 @@ func cycle_programme_or_hosting_choice() -> String:
 	if active == "stories":
 		var next_st := "future" if String(hosting_draft.get("story", "memory")) == "memory" else "memory"
 		host_set_story(next_st)
-		announce_a11y_status("Story circle invitation set to %s." % next_st)
+		announce_a11y_status(bea_invitation.explanation() if bea_invitation != null else "Story circle invitation updated.")
 		return "story_" + next_st
 	elif active == "beats":
 		host_toggle_beat(0)
@@ -9706,6 +9712,7 @@ func advance_programme_and_hosting_step() -> String:
 		var ok_st := host_start()
 		if ok_st:
 			last_panel_dialogue = "Bea: \"We're hosting 1/4: %s! Tap 'Host Activity' to lead each segment across the block.\"" % programme_title(hosting_order[0])
+			if hosting_order[0]=="stories" and bea_invitation != null: last_panel_dialogue += " " + bea_invitation.explanation()
 			update_block_ui()
 		return "hosting_started" if ok_st else "hosting_blocked"
 	if not is_hosting_done():
@@ -9715,6 +9722,7 @@ func advance_programme_and_hosting_step() -> String:
 			var next_a := current_hosting_activity()
 			last_panel_dialogue = "Bea: \"All 4 party schedule activities hosted! Now we can hold our Tenant Listening Circle.\"" if next_a == "" else ("Bea: \"Finished %s (%d/4)—up next is %s!\"" % [programme_title(act), hosting_results.size(), programme_title(next_a)])
 			if next_a=="pause" and quiet_seats != null: last_panel_dialogue += " " + quiet_seats.explanation()
+			if next_a=="stories" and bea_invitation != null: last_panel_dialogue += " " + bea_invitation.explanation()
 			update_block_ui()
 		return ("hosted_" + act) if ok_hc else "hosting_blocked"
 	var done_msg := "Second Afternoon Programme complete: 4/4 activities hosted across Turk Street."
@@ -10243,6 +10251,8 @@ func neighbor_project_memory_line(neighbor_id: String) -> String:
 				base_mem = "“No microphone needed. A listening hour can have room for a disagreement and a quiet voice.”"
 			"dez":
 				base_mem = "“I helped welcome people who just wanted to listen. Nobody had to sign anything or agree to belong.”"
+	if base_mem.is_empty() and neighbor_id=="bea" and has_hosted_segment("stories"):
+		base_mem = "“That little folded note reminded me how a small welcome can stay with someone. Listening was enough too.”" if get_hosted_segment_value("stories")=="memory" else "“Different paper flags, and a few left blank for whoever arrives later. I am keeping that invitation open.”"
 	if base_mem.is_empty() and neighbor_id=="thanh" and has_hosted_segment("pause"):
 		base_mem = "“That open arc left room for someone to join without moving everyone.”" if get_hosted_segment_value("pause")=="arc" else "“A pair for a quiet conversation, and an open seat someone could join.”"
 	if not base_mem.is_empty() and not surp_mem.is_empty():
@@ -11484,6 +11494,7 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"block_hub_actions": block_action_snapshots(),
 		"film_screening": film_screening.snapshot() if film_screening != null else {"visible":false},
 		"film_easel": film_easel_snapshot(),
+		"bea_invitation": bea_invitation.snapshot() if bea_invitation != null else {},
 		"quiet_seats": quiet_seats.snapshot() if quiet_seats != null else {},
 		"rhythm_circle": rhythm_circle.snapshot() if rhythm_circle != null else {"visible":false},
 		"mural_workshop": mural_workshop.snapshot() if mural_workshop != null else {"visible": false},
@@ -13526,6 +13537,8 @@ func update_occlusion(force: bool = true) -> void:
 		focus_points.append_array(rhythm_circle.cutaway_points())
 	if quiet_seats != null:
 		focus_points.append_array(quiet_seats.cutaway_points())
+	if bea_invitation != null:
+		focus_points.append_array(bea_invitation.cutaway_points())
 	if not following_player:
 		var framed_xz := Vector2(target.x, target.z)
 		if eatery_guide_idx >= 0 and eatery_guide_idx < eatery_counter_points.size() and framed_xz.distance_to(eatery_counter_points[eatery_guide_idx]) < 16.0:
@@ -13586,6 +13599,8 @@ func update_readable_scene_labels() -> void:
 	var wrap_width := minf(320.0, bubble_viewport_size().x - 32.0)
 	visible_scene_captions.clear()
 	var occupied: Array[Rect2] = []
+	if bea_invitation != null and bea_invitation.inspection_rect().has_area():
+		occupied.append(bea_invitation.inspection_rect())
 	if uses_compact_activity_controls() or uses_short_narrow_walking():
 		occupied.append(player_overlay_rect().grow(4.0))
 	if reward_banner != null and reward_banner.is_visible_in_tree():
@@ -14685,6 +14700,9 @@ func make_activity_detail() -> RichTextLabel:
 	)
 	return control
 
+func hosting_choice_row_visible() -> bool:
+	return quiet_seats != null and quiet_seats.row.visible
+
 func update_block_ui() -> void:
 	if quiet_seats != null: quiet_seats.update_ui()
 	if block_label == null:
@@ -14721,6 +14739,8 @@ func update_block_ui() -> void:
 			base_detail = "%s  (Click %s or press T to keep chatting)" % [spoken, String(neighbors[talk_idx].get("name", "neighbor"))]
 			if is_narrow_layout():
 				base_detail = spoken
+		elif block_opened and current_hosting_activity()=="stories" and bea_invitation != null:
+			base_detail = bea_invitation.explanation()+" Choose the invitation, then Host Activity (Z) when ready. Nothing is timed."
 		elif block_opened and current_hosting_activity()=="pause" and quiet_seats != null:
 			base_detail = quiet_seats.explanation()+" Choose the seats, then Host Activity (Z) when you are ready. Nothing is timed."
 		elif block_opened:
@@ -15168,6 +15188,9 @@ func make_ui() -> void:
 	quiet_seats.table_seats = table_quiet_seats
 	quiet_seats.floor_seats = floor_quiet_seats
 	quiet_seats.setup(self)
+	bea_invitation = preload("res://bea_invitation.gd").new()
+	add_child(bea_invitation)
+	bea_invitation.setup(self)
 	var vp := get_viewport()
 	var resize_controls := func():
 		if not is_instance_valid(controls) or not is_inside_tree():

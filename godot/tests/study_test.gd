@@ -3253,6 +3253,7 @@ func run() -> void:
 	await verify_mural_stories(study,saved_m4_json)
 	await verify_film_screening(study,saved_m4_json)
 	await verify_quiet_seats(study,saved_m4_json)
+	await verify_bea_invitation(study,saved_m4_json)
 	study.clear_godot_save()
 	study.clear_godot_settings()
 	var legacy_settings := FileAccess.open(study.settings_path, FileAccess.WRITE)
@@ -4680,3 +4681,133 @@ func verify_quiet_seats(study: Node, full_profile: String) -> void:
 	study.update_block_3d()
 	root.size = Vector2i(1100,760)
 	print("QUIET_SEATS_PASS: 2 layouts x6sizes, real buttons/meshes/route/quiet/camera/copied result/reload")
+
+func verify_bea_invitation(study: Node, full_profile: String) -> void:
+	var saved := JSON.stringify(study.build_save_envelope())
+	var invitation: Node = study.bea_invitation
+	require(invitation.TITLES.keys()==study.HOSTING_STORIES,"invitation exact existing story IDs")
+	var note: Image = invitation.texture("memory").get_image()
+	var flags: Image = invitation.texture("future").get_image()
+	require(note.get_width()==720 and note.get_height()==480 and note.get_data()!=flags.get_data(),"two original invitation rasters differ at full resolution")
+	require(note.get_pixel(300,430).is_equal_approx(Color("29525e")) and flags.get_pixel(320,250).is_equal_approx(Color("6a9a8c")),"actual note pocket and green paper flag ink render")
+	for id in ["memory","future"]:
+		var raster: Image = invitation.texture(id).get_image()
+		for k in range(invitation.PAPER_UVS.size()):
+			var uv: Vector2 = invitation.PAPER_UVS[k]
+			require(raster.get_pixel(int(uv.x*720),int(uv.y*480)).to_html(false)==invitation.PAPER_COLORS[id][k],"exact original-art probe colors match projected UV samples")
+	var anchors: Array = []
+	for n in study.neighbor_nodes: anchors.append(n.position)
+	for layout in ["table","floor"]:
+		study.apply_save_envelope(full_profile)
+		study.gathering_layout = layout
+		study.hosting_order.assign(["pause","stories","beats","art"])
+		study.programme_order.assign(study.hosting_order)
+		study.programme_published.assign(study.hosting_order)
+		study.hosting_results.clear()
+		study.hosting_draft.story = "memory"
+		study.civic_phase = "idle"
+		study.civic_result.clear()
+		study.civic_draft = study.default_civic_draft()
+		study.film_phase = "idle"
+		study.film_result.clear()
+		study.film_draft = study.default_film_draft()
+		study.film_captured.clear()
+		study.hide_story_card()
+		study.startup_story_pending = false
+		study.last_story_chapter = int(study.current_chapter().num)
+		study.current_path.clear()
+		study.talk_partner = -1
+		study.opening_conversation = false
+		study.show_block_panel(true)
+		study.update_block_3d()
+		require(invitation.choice()=="" and not invitation.worlds[0].visible,"invitation hidden before stories despite open gathering")
+		study.host_complete_current()
+		for f in range(4): await process_frame
+		require(study.quiet_seats.row.visible and study.block_detail_label.text.contains("folded note"),"shared pause-to-stories row refreshes full Bea example without reopening")
+		for size in [Vector2i(1100,760),Vector2i(390,667),Vector2i(320,667),Vector2i(520,360),Vector2i(559,360),Vector2i(640,360)]:
+			root.size = size
+			study.update_block_ui()
+			for f in range(5): await process_frame
+			for i in [1,0]:
+				var pose: Array = study.panel_camera_pose()
+				var music: Array = [study.music_playing,study.music_volume,study.music_mode,study.reward_sounds_enabled]
+				study.quiet_seats.choices[i].emit_signal("pressed")
+				for f in range(4): await process_frame
+				var id: String = study.HOSTING_STORIES[i]
+				require(invitation.choice()==id and invitation.rendered==id,"shared actual buttons change story and world art, never quiet choice")
+				require(study.hosting_draft.quiet=="arc" and study.block_detail_label.text.contains(invitation.EXAMPLES[id]),"full fictional example and quiet draft preserved")
+				require(study.panel_camera_pose()==pose and music==[study.music_playing,study.music_volume,study.music_mode,study.reward_sounds_enabled],"invitation never changes camera or quiet/music preferences")
+				var targets: Array = study.quiet_seats.choices.duplicate()
+				targets.append(study.block_close_btn)
+				for b in study.block_buttons:
+					if b.is_visible_in_tree(): targets.append(b)
+				for b in targets:
+					require(b.size.y>=44 and Rect2(Vector2.ZERO,Vector2(size)).encloses(b.get_global_rect()),"full story actions and Close reachable")
+					for walking in study.controls.get_children(): require(not b.get_global_rect().intersects(walking.get_global_rect()),"shared invitation row never covers walking buttons")
+				var paper: MeshInstance3D = invitation.papers[0 if layout=="table" else 1]
+				require(paper.material_override.albedo_texture==invitation.texture(id),"actual world Quad carries selected complete artwork")
+				var bounds: AABB = paper.get_parent().transform*(paper.transform*paper.get_aabb())
+				require(absf(bounds.position.y-paper.get_parent().position.y)<0.00001,"standing invitation front rests on surface rather than floats")
+				require(paper.rotation.x<0,"illustrated face tilts toward overhead view")
+				for button in study.quiet_seats.snapshot().buttons: require(button.text_fits,"full named invitation label fits measured button")
+				require(bounds.position.z>=-1.15 and bounds.end.z<=1.15 and bounds.position.x> -6 and bounds.end.x<6,"actual paper stays inside fictional curb strip")
+				if layout=="table":
+					for cup_x in [-2.2,-0.9,0.9,2.2]: require(not bounds.intersects(AABB(Vector3(cup_x-0.045,0.81,0.155),Vector3(0.09,0.08,0.09))),"paper clears existing cups")
+				for person in study.quiet_seats.guests[0 if layout=="table" else 1]:
+					for part in person.get_children():
+						if part is MeshInstance3D and part.visible: require(not bounds.intersects(person.transform*(part.transform*part.get_aabb())),"invitation clears actual quiet visitors")
+		var old_target: Vector3 = study.target
+		var old_follow: bool = study.following_player
+		study.following_player = false
+		study.target = invitation.worlds[0 if layout=="table" else 1].global_position
+		study.update_camera()
+		study.update_readable_scene_labels()
+		var protected_paper: Rect2 = invitation.inspection_rect()
+		require(protected_paper.has_area() and (not study.guide_arrow_label.visible or not protected_paper.intersects(study.guide_arrow_label.get_global_rect())),"manual invitation inspection keeps objective caption off actual artwork")
+		study.following_player = old_follow
+		study.target = old_target
+		study.update_camera()
+		study.quiet_seats.choices[1].grab_focus()
+		var press := InputEventAction.new()
+		press.action = "ui_accept"
+		press.pressed = true
+		Input.parse_input_event(press)
+		await process_frame
+		var release := InputEventAction.new()
+		release.action = "ui_accept"
+		release.pressed = false
+		Input.parse_input_event(release)
+		await process_frame
+		require(invitation.choice()=="future","real ui_accept selects full future invitation")
+		study.host_complete_current()
+		require(study.get_hosted_segment_value("stories")=="future" and not study.quiet_seats.row.visible,"completion copies invitation and releases shared row")
+		var copied := JSON.stringify(study.build_save_envelope())
+		study.hosting_draft.story = "memory"
+		invitation.update_world()
+		require(invitation.choice()=="future","copied invitation wins over stale draft")
+		study.apply_save_envelope(copied)
+		study.update_block_3d()
+		require(JSON.stringify(study.build_save_envelope())==copied and not study.host_set_story("memory"),"completed reload/viewing cannot rewrite saved story/photo/sequence")
+		require(study.neighbor_project_memory_line("bea").contains("paper flags"),"Bea remembers copied invitation")
+		for i in range(anchors.size()): require(study.neighbor_nodes[i].position==anchors[i],"Bea and named neighbors remain at navigation anchors")
+		# Reverse live handoff keeps the same focused physical button and resets all semantics.
+		study.hosting_order.assign(["stories","pause","beats","art"])
+		study.programme_order.assign(study.hosting_order)
+		study.programme_published.assign(study.hosting_order)
+		study.hosting_results.clear()
+		study.hosting_draft.story = "future"
+		study.hosting_draft.quiet = "pairs"
+		study.show_block_panel(true)
+		study.update_block_3d()
+		study.quiet_seats.choices[1].grab_focus()
+		study.host_complete_current()
+		for f in range(4): await process_frame
+		require(study.quiet_seats.row.visible and study.quiet_seats.choices[1].has_focus(),"stories-to-pause keeps focused shared row visible")
+		require(study.quiet_seats.choices[1].accessibility_name==study.quiet_seats.TITLES.pairs+" , selected" and study.quiet_seats.choices[1].tooltip_text==study.quiet_seats.TITLES.pairs,"reverse handoff restores full quiet label/tooltip/selected name")
+		require(study.hosting_draft.quiet=="pairs" and study.block_detail_label.text.contains("woven green cushion"),"reverse handoff preserves quiet choice and full Thanh reader")
+
+	require(invitation.textures.size()==2,"original invitation texture cache bounded two")
+	study.apply_save_envelope(saved)
+	study.update_block_3d()
+	root.size = Vector2i(1100,760)
+	print("BEA_INVITATION_PASS: 2layouts x6sizes, shared buttons, true ui_accept, original rasters/world, copied/no-write/camera/quiet")

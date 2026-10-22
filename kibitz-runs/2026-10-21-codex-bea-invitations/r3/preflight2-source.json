@@ -1,0 +1,8 @@
+{
+  "godot/main.gd": "209f7ae84393beafa5eaca14e2292c19d971b350e59d3bac2b0b9bc022c2438c",
+  "godot/bea_invitation.gd": "1b39458e8e1e126c7f73afd3f48543f7323cd34d41014d19ad6c87f6a7d866d8",
+  "godot/quiet_seats.gd": "211c67f25397305c0cefd5c2c5f0bc558296ab82848c09b67cf032f0b9fc5cef",
+  "godot/tests/study_test.gd": "f21bbca65448da2a1ffc3a8edcf0cbc90bf9386b1d4c87da134ba7c2f871ab40",
+  "tests/godot-browser.mjs": "2f1d67bb02ae501abf56c53840a0423daef91eaf6d8451f3d00dc200af42ddf5",
+  "artifacts/godot-web/index.pck": "ed5359cc8727dd56ebffccebeda1b4208a43130a33bc3bc5735d433aa8002c98"
+}
