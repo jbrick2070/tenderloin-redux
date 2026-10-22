@@ -1,0 +1,13 @@
+{
+  "input_sha256": "aee7482521c9705aa1e5e51beed3027c5fe2befd800fbb90d1de1f8f790862eb",
+  "requested_model": "claude-opus-5-5",
+  "selected_model": "claude-opus-5-5",
+  "requested_effort": "high",
+  "selected_effort": "high",
+  "reviewer_rc": 0,
+  "reviewer_rc_basis": "harness collected report and log [OK]claude(rc=0)",
+  "outer_shell_exit_not_captured": true,
+  "tool_check": "PASS",
+  "provider_runtime_identity": "unknown",
+  "quota_percent": "unknown"
+}

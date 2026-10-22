@@ -799,6 +799,7 @@ var floor_quiet_seats: Array[Node3D] = []
 var rhythm_circle
 var film_screening
 var civic_listening
+var programme_studio
 var mural_workshop
 var mural_workshop_selected := "sun"
 var mural_workshop_message := ""
@@ -5806,7 +5807,7 @@ func build_reward_banner(layer: CanvasLayer) -> void:
 	layer.add_child(reward_banner)
 
 func layout_reward_banner() -> void:
-	if is_mural_workshop_visible() or is_rhythm_circle_visible() or (is_film_screening_visible() or is_civic_listening_visible()):
+	if is_focused_activity_visible():
 		if reward_banner != null:
 			reward_banner.visible = false
 		return
@@ -5871,7 +5872,7 @@ func trigger_feel_good_burst(title_str: String, detail_str: String, world_pos: V
 func update_celebration_burst(delta: float) -> void:
 	if reward_banner != null and reward_banner_timer > 0.0:
 		layout_reward_banner()
-		if not is_mural_workshop_visible() and not is_rhythm_circle_visible() and not (is_film_screening_visible() or is_civic_listening_visible()) and (reward_banner.visible or (header_details_expanded and not speech_opened_info)):
+		if not is_focused_activity_visible() and (reward_banner.visible or (header_details_expanded and not speech_opened_info)):
 			reward_banner_timer -= delta
 		if reward_banner_timer <= 0.45:
 			reward_banner.modulate = Color(1.0, 1.0, 1.0, clampf(reward_banner_timer / 0.45, 0.0, 1.0))
@@ -6553,7 +6554,7 @@ func run_conversation_action_id(act_id: String) -> bool:
 		"epilogue":
 			advance_epilogue_step()
 		"programme":
-			advance_programme_and_hosting_step()
+			open_programme_or_host()
 		"civic":
 			advance_civic_step()
 		"film":
@@ -7441,7 +7442,7 @@ func set_header_details(expanded: bool, refit_map := true) -> void:
 
 func update_conversation_ui(delta: float) -> void:
 	ui_clock = wrapf(ui_clock + delta, 0.0, 3600.0)
-	if is_rhythm_circle_visible() or (is_film_screening_visible() or is_civic_listening_visible()):
+	if is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible():
 		return
 	var chapter := current_chapter()
 	# Deliver any pending chapter card after the focused workshop closes,
@@ -8891,7 +8892,7 @@ func refit_panel_after_layout() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if generation == panel_refit_generation:
-		if is_mural_workshop_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible():
+		if is_focused_activity_visible():
 			return
 		if following_player and uses_short_narrow_walking():
 			refresh_hub_camera()
@@ -9488,6 +9489,15 @@ func programme_add(segment_id: String) -> bool:
 	update_block_ui()
 	return true
 
+func programme_remove(segment_id: String) -> bool:
+	if not block_opened or not programme_order.has(segment_id):
+		return false
+	programme_order.erase(segment_id)
+	browser_import_message = ""
+	save_godot_state()
+	update_block_ui()
+	return true
+
 func programme_move(segment_id: String, delta: int) -> bool:
 	if not block_opened:
 		return false
@@ -9515,12 +9525,14 @@ func programme_publish() -> bool:
 	update_block_3d()
 	save_godot_state()
 	trigger_progress_cue("programme_published", "4 segments")
+	last_panel_dialogue = "Bea: \"Future plan posted. Our running gathering keeps its copied order.\"" if not hosting_order.is_empty() else "Bea: \"Party schedule posted on the signboard! Tap 'Start Hosting Party' to kick off the first activity.\""
 	update_block_ui()
 	var titles: Array[String] = []
 	for sid in programme_published:
 		titles.append(programme_title(sid))
 	var summary := "Published Second Afternoon Programme: %s" % " -> ".join(titles)
-	info.text = "%s\n3D Programme Signboard posted by Bea · Press Z to start hosting\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % summary
+	var consequence := "Future plan posted. Running gathering and signboard keep their copied order." if not hosting_order.is_empty() else "3D Programme Signboard posted by Bea · Press Z to start hosting"
+	info.text = "%s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [summary, consequence]
 	announce_a11y_status(summary)
 	return true
 
@@ -9692,6 +9704,10 @@ func cycle_programme_or_hosting_choice() -> String:
 		programme_move("stories", 1 if programme_order[0] == "stories" else -1)
 		return "moved_stories"
 	return "noop"
+
+func open_programme_or_host() -> void:
+	if hosting_order.is_empty() or is_hosting_done(): programme_studio.open_studio(is_hosting_ready_to_start())
+	else: advance_programme_and_hosting_step()
 
 func advance_programme_and_hosting_step() -> String:
 	show_block_panel(true)
@@ -10670,8 +10686,8 @@ func trigger_progress_cue(cue_id: String, reason: String) -> void:
 				burst_detail = "Borrowed gear returned (%d/3)" % epilogue_returned.size()
 				burst_accent = Color("9ef5e5")
 			"programme_published":
-				burst_title = "Evening Programme Published!"
-				burst_detail = "All 4 block gathering segments scheduled on the board"
+				burst_title = "Future Programme Posted" if not hosting_order.is_empty() else "Evening Programme Published!"
+				burst_detail = "Running gathering keeps its copied order" if not hosting_order.is_empty() else "All 4 block gathering segments scheduled on the board"
 				burst_accent = Color("ffd45e")
 			"hosting_segment":
 				burst_title = "Hosted Block Activity — %s" % reason
@@ -11502,6 +11518,7 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"block_detail_scroll_value": block_detail_label.get_v_scroll_bar().value if block_detail_label != null else 0.0,
 		"block_detail_scroll_page": block_detail_label.get_v_scroll_bar().page if block_detail_label != null else 0.0,
 		"block_hub_actions": block_action_snapshots(),
+		"programme_studio": programme_studio.snapshot() if programme_studio != null else {"visible":false},
 		"civic_listening": civic_listening.snapshot() if civic_listening != null else {"visible":false},
 		"film_screening": film_screening.snapshot() if film_screening != null else {"visible":false},
 		"film_easel": film_easel_snapshot(),
@@ -11672,6 +11689,12 @@ func poll_web_audio() -> void:
 		return
 	load_local_music_bytes(fname, raw)
 
+func is_programme_studio_visible() -> bool:
+	return programme_studio != null and programme_studio.visible
+
+func is_focused_activity_visible() -> bool:
+	return is_mural_workshop_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible()
+
 func is_civic_listening_visible() -> bool:
 	return civic_listening != null and civic_listening.visible
 
@@ -11749,7 +11772,7 @@ func edit_mural_scene(id: String, slot: String) -> bool:
 	return true
 
 func open_mural_workshop() -> bool:
-	if is_rhythm_circle_visible() or (is_film_screening_visible() or is_civic_listening_visible()):
+	if is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible():
 		return false
 	if startup_story_pending or is_story_card_visible():
 		announce_a11y_status("Continue the chapter card before composing the mural.")
@@ -12088,6 +12111,7 @@ func save_godot_state() -> bool:
 	return wrote
 
 func reset_mural_state_to_defaults(status_label: String) -> void:
+	if is_programme_studio_visible(): programme_studio.close_studio(false)
 	if is_civic_listening_visible(): civic_listening.close_hour(false)
 	if is_film_screening_visible(): film_screening.close_screening(false)
 	if rhythm_circle != null: rhythm_circle.chapter_completion_notice = ""
@@ -12566,6 +12590,7 @@ func validate_godot_optional(raw_opt: Variant) -> Dictionary:
 	return {"ok": true, "optional": (raw_opt as Dictionary).duplicate(true)}
 
 func apply_save_envelope(raw_json: String) -> bool:
+	if is_programme_studio_visible(): programme_studio.close_studio(false)
 	if is_civic_listening_visible(): civic_listening.close_hour(false)
 	if is_film_screening_visible(): film_screening.close_screening(false)
 	if rhythm_circle != null: rhythm_circle.chapter_completion_notice = ""
@@ -13119,6 +13144,7 @@ func import_browser_save_json(raw_json: String) -> bool:
 		info.text = "%s\nBrowser save ('%s') is read-only and never overwritten by Godot\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [browser_import_message, BROWSER_WEB_STORAGE_KEY]
 		announce_a11y_status(browser_import_message)
 		return false
+	if is_programme_studio_visible(): programme_studio.close_studio(false)
 	if is_civic_listening_visible(): civic_listening.close_hour(false)
 	if is_film_screening_visible(): film_screening.close_screening(false)
 	if rhythm_circle != null and rhythm_circle.visible:
@@ -13704,7 +13730,7 @@ func _process(delta: float) -> void:
 	flush_web_a11y_status()
 
 func _physics_process(delta: float) -> void:
-	if is_mural_workshop_visible() or is_rhythm_circle_visible() or (is_film_screening_visible() or is_civic_listening_visible()):
+	if is_focused_activity_visible():
 		return
 	var shift_held := Input.is_key_pressed(KEY_SHIFT) or Input.is_physical_key_pressed(KEY_SHIFT)
 	if shift_held and get_viewport().gui_get_focus_owner() == null:
@@ -13761,7 +13787,7 @@ func _physics_process(delta: float) -> void:
 		advance_walk(delta * (2.2 if OS.has_feature("web") else 1.0))
 
 func is_screen_point_in_ui(screen_pos: Vector2) -> bool:
-	if (is_film_screening_visible() or is_civic_listening_visible()) or is_rhythm_circle_visible() or is_mural_workshop_visible() or (mural_compose_btn != null and mural_compose_btn.is_visible_in_tree() and mural_compose_btn.get_global_rect().has_point(screen_pos)):
+	if is_focused_activity_visible() or (mural_compose_btn != null and mural_compose_btn.is_visible_in_tree() and mural_compose_btn.get_global_rect().has_point(screen_pos)):
 		return true
 	if reward_banner != null and reward_banner.is_visible_in_tree() and reward_banner.get_global_rect().has_point(screen_pos):
 		return true
@@ -13961,6 +13987,11 @@ func _input(event: InputEvent) -> void:
 		continue_story()
 
 func _unhandled_input(event: InputEvent) -> void:
+	if is_programme_studio_visible():
+		if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+			programme_studio.close_studio()
+		get_viewport().set_input_as_handled()
+		return
 	if is_civic_listening_visible():
 		if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
 			civic_listening.close_hour()
@@ -13993,6 +14024,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			else:
 				hide_story_card()
 		match k:
+			KEY_F6:
+				programme_studio.open_studio()
 			KEY_F5:
 				civic_listening.open_hour()
 			KEY_F4:
@@ -14214,7 +14247,7 @@ func update_camera() -> void:
 	camera.force_update_transform()
 	# Hubs and short phone walking keep the followed character in the scene area.
 	# Keep inspection/panned views, heading and zoom under the player's control.
-	if following_player and not (is_mural_workshop_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible()) and ((block_panel != null and block_panel.visible and block_panel_mode == "hub") or uses_short_narrow_walking()):
+	if following_player and not (is_focused_activity_visible()) and ((block_panel != null and block_panel.visible and block_panel_mode == "hub") or uses_short_narrow_walking()):
 		var focus := player.position + Vector3.UP
 		var ppm := (camera.unproject_position(target + camera.global_basis.y) - camera.unproject_position(target)).length()
 		if ppm > 1e-5:
@@ -14464,7 +14497,7 @@ func refit_after_layout() -> void:
 	await get_tree().process_frame
 	if generation != layout_refit_generation:
 		return
-	if is_mural_workshop_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible():
+	if is_focused_activity_visible():
 		layout_refit_pending = false
 		sync_web_a11y_status()
 		return
@@ -15111,7 +15144,7 @@ func make_ui() -> void:
 	block_open_btn = block_button(block_actions_grid, "Open Block Party", func(): open_block_gathering())
 	block_next_btn = block_button(block_actions_grid, "Meet Next (5 left)", func(): visit_next_unvisited_neighbor())
 	block_epilogue_btn = block_button(block_actions_grid, "Take Group Photo", func(): advance_epilogue_step())
-	block_programme_btn = block_button(block_actions_grid, "Plan Party Schedule", func(): advance_programme_and_hosting_step())
+	block_programme_btn = block_button(block_actions_grid, "Plan Party Schedule", open_programme_or_host)
 	block_mural_btn = block_button(block_actions_grid, "Paint w/ Celeste (0/3)", func(): open_mural_from_block_panel())
 	block_rook_btn = block_button(block_actions_grid, "Soundcheck w/ Rook", func(): request_rook_soundcheck())
 	block_west_btn = block_button(block_actions_grid, "Walk to Black Hawk", func(): walk_to_or_read_history_stop("blackhawk"))
@@ -15206,6 +15239,9 @@ func make_ui() -> void:
 	civic_listening = preload("res://civic_listening.gd").new()
 	layer.add_child(civic_listening)
 	civic_listening.setup(self)
+	programme_studio = preload("res://programme_studio.gd").new()
+	layer.add_child(programme_studio)
+	programme_studio.setup(self)
 	rhythm_circle = preload("res://rhythm_circle.gd").new()
 	layer.add_child(rhythm_circle)
 	rhythm_circle.setup(self,layer)

@@ -1,0 +1,7 @@
+{
+  "utc": "2026-10-22T12:59:07.423955+00:00",
+  "path": "docs/GODOT_APPROACH.md",
+  "before_sha256": "ebbb4059c9cb7a49052386404c7ec9cc506de5bc14b8c7f264e6d2f09ce74ebd",
+  "after_sha256": "4fe7787b8c921187fb7e71ca649790281b5f33768b644f6510bb86ce839e40a4",
+  "scope": "POST-gate docs-only: replace the stale bare native study-test command with explicit test save/settings overrides and --test-suite. Runtime/tests/pack unchanged. All50 files were frozen through the completed browser run; current49/50 retain the same bytes and this exact documentation-only correction is recorded separately."
+}

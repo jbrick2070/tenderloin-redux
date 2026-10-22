@@ -1,0 +1,1 @@
+Scope ONLY r3 implementation QA, driverCodex/laneClaude exactclaude-opus-5-5/high. r1ideas separateprogramme-studio-ideas/r1; r2/r4 NOT run. Inputsha2560c9dc0d2b7b71d81c1e21cdd19f2bb1270090a691ce0e3d4f9eef0d3dfacb0a7. Reports only, no source/docs edits/gates.

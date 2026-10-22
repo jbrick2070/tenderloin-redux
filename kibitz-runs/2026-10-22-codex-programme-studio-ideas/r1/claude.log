@@ -1,0 +1,17 @@
+STDOUT:
+I wrote the review to `C:\tenderloin-redux\kibitz-runs\2026-10-22-codex-programme-studio-ideas\r1\claude.md`. Tool check passed. I ran no gates and edited nothing else.
+
+**Verdict:** yes-with-fixes. Go with the Programme Studio, but only if it carries over the browser's resident replies to the posted order.
+
+- **The gap is real, and bigger than the brief says.** The native game can only ever post the default order. The other order the shortcut produces is one the rules reject. Every non-default order the tests have run came from rewritten save files, never from real play.
+- **The Studio isn't new.** The browser already has the whole editor at `public/game.js:273-296`: owners and pitches, Earlier/Later/Remove, Post, and a "The neighbors answer" poster. So this is copying existing behaviour; only the pinboard look can be original.
+- **One premise in the brief is false.** The signboard is four coloured bars, not a picture (`main.gd:2922-2945`). Once hosting starts it shows the copied gathering order, not the latest posted one (`main.gd:3129`). Re-posting later changes nothing on the board.
+- **Post's messages become false after hosting starts.** Posting always shows "Evening Programme Published!… scheduled on the board" and "Press Z to start hosting" (`main.gd:9517`, `9523`), even then. The Studio would make that routine, so those messages need to depend on whether hosting has begun.
+
+**Other must-fixes before building:**
+- Decide what the Studio does with half-built drafts. Godot has no remove action.
+- Open the Studio from the existing programme button. Don't add a second entry to the navigation row, and leave Z/Shift+Z working as they do now.
+
+The review also recommends cuts: the signboard art, four new card illustrations, a "practice" mode, and the keepsake-gallery alternative. Separately, `docs/GODOT_APPROACH.md:13` names five programme functions that don't exist in the code and should be corrected.
+
+I couldn't confirm whether Godot draws SVG text at all; that's marked "verify" in the review.

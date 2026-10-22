@@ -1,0 +1,14 @@
+{
+  "input_sha256": "0c9dc0d2b7b71d81c1e21cdd19f2bb1270090a691ce0e3d4f9eef0d3dfacb0a7",
+  "prefanout_digest": "input-digest.json",
+  "requested_model": "claude-opus-5-5",
+  "selected_model": "claude-opus-5-5",
+  "requested_effort": "high",
+  "selected_effort": "high",
+  "reviewer_rc": 0,
+  "harness_exit": 0,
+  "tool_check": "PASS",
+  "reviewer_ran_gates": false,
+  "provider_runtime_identity": "unknown",
+  "quota_percent": "unknown"
+}

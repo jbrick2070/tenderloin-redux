@@ -1,0 +1,22 @@
+STDOUT:
+I've written the review to `kibitz-runs/2026-10-22-codex-programme-studio/r3/claude.md`. The verdict is **yes-with-fixes**: the draft, posted and hosted copies stay separate, and the four pitches and four replies match `public/programme.js` word for word, but three integration defects need fixing before build.
+
+Bash is disabled in this session, so I couldn't diff the sibling files. I reviewed their current code and ran no tests.
+
+**Must-fix:**
+1. **Start Hosting doesn't use the original callback.** `programme_studio.gd:161` calls `host_start()` directly instead of `advance_programme_and_hosting_step()` (`main.gd:9732-9738`). So hosting started from the Studio skips Bea's "We're hosting 1/4" line, and a stories-first order also loses her story invitation. The tests don't catch this: the native test checks only `hosting_order`, and the browser case starts with beats. Fix: call `advance_programme_and_hosting_step()`, still after `close_studio()`.
+2. **Editing the draft after posting can block hosting.** At `programme_studio.gd:157/207-208` the Post check runs before the hosting check. If you remove a card after posting, the primary button disables in both views, while the hub still says "Start Hosting Party" and just reopens the Studio. Only the Z key can start hosting. Fix: in the Posted view, make the primary "Start hosting" whenever `is_hosting_ready_to_start()` is true.
+3. **A refused open shows nothing.** When `open_studio()` refuses, it only updates the screen-reader announcement. So tapping the suggested "Plan Party Schedule" while the player is walking now does nothing visible; before this change that tap ran the quick path. Fix: also show the message in `last_panel_dialogue` or `info.text`.
+
+**Should-fix (8 items in the file), main ones:**
+- F6 opens the Studio during active hosting, but the hub button doesn't.
+- The Bea conversation action reuses the hub button's label but runs the Z quick path, so the same label does different things.
+- The first post is labelled "Post revision"; `public/game.js` uses a different label when nothing has been posted yet.
+- Test gaps:
+  - The native test doesn't cover 320x568.
+  - Nothing checks the picture has a useful size, and 44px is never checked after Post.
+  - None of the "partial draft" fixtures reloads a draft before the first post.
+
+Things I checked that hold up: reward timing, mutual exclusion with the other activities, input and walking guards, save/reload of the separate copies, the layout re-fit (no loop), and the 8-entry pinboard cache.
+
+The file also lists two small cuts and a few items marked "verify".

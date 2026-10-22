@@ -1,0 +1,1 @@
+Scope ONLY r1 pre-coding ideation; r2/r3/r4 NOT run in this call. Driver Codex, lane Claude only, exactclaude-opus-5-5/high. Inputinput.md sha256aee7482521c9705aa1e5e51beed3027c5fe2befd800fbb90d1de1f8f790862eb. Separate implementationr3 will follow chosen code. No source edits permitted.

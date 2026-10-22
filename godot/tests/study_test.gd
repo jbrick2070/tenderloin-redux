@@ -3255,6 +3255,7 @@ func run() -> void:
 	await verify_quiet_seats(study,saved_m4_json)
 	await verify_bea_invitation(study,saved_m4_json)
 	await verify_civic_listening(study,saved_m4_json)
+	await verify_programme_studio(study,saved_m4_json)
 	study.clear_godot_save()
 	study.clear_godot_settings()
 	var legacy_settings := FileAccess.open(study.settings_path, FileAccess.WRITE)
@@ -4685,6 +4686,220 @@ func verify_quiet_seats(study: Node, full_profile: String) -> void:
 	root.size = Vector2i(1100,760)
 	print("QUIET_SEATS_PASS: 2 layouts x6sizes, real buttons/meshes/route/quiet/camera/copied result/reload")
 
+func verify_programme_studio(study: Node, full_profile: String) -> void:
+	require(study.is_test_suite_mode(),"native Studio diagnostics must use test-suite or explicit isolated save/settings paths")
+	if not study.is_test_suite_mode(): return
+	var original := JSON.stringify(study.build_save_envelope())
+	var studio: Control=study.programme_studio
+	var desired: Array[String]=["beats","pause","stories","art"]
+	for layout in ["table","floor"]:
+		for size in [Vector2i(1100,760),Vector2i(390,667),Vector2i(320,667),Vector2i(520,360),Vector2i(559,360),Vector2i(640,360),Vector2i(320,568)]:
+			study.apply_save_envelope(full_profile)
+			study.hide_story_card()
+			study.startup_story_pending=false
+			study.last_story_chapter=6
+			study.current_path.clear()
+			study.gathering_layout=layout
+			study.programme_order.clear()
+			study.programme_published.clear()
+			study.hosting_order.clear()
+			study.hosting_results.clear()
+			study.civic_phase="idle"
+			study.civic_result.clear()
+			study.film_phase="idle"
+			study.film_result.clear()
+			study.film_captured.clear()
+			study.following_player=false
+			study.target=Vector3(12,3,-10)
+			study.panel_frame_control=null
+			study.update_camera()
+			study.show_block_panel(true)
+			root.size=size
+			study.last_story_chapter=int(study.current_chapter().num)
+			study.hide_story_card()
+			for f in range(5): await process_frame
+			study.pan_camera_by_screen_delta(Vector2(24,0))
+			var pose: Array=study.panel_camera_pose()
+			var photo := JSON.stringify(study.keepsake_photo)
+			var quiet: Array=[study.music_playing,study.music_volume,study.music_mode,study.reward_sounds_enabled]
+			var before := JSON.stringify(study.build_save_envelope())
+			study.current_path.append(study.player_xz()+Vector2(4,0))
+			study.block_programme_btn.emit_signal("pressed")
+			require(not studio.visible and study.block_detail_label.text.contains("Stop Walking") and JSON.stringify(study.build_save_envelope())==before,"route refusal is visibly explained in hub reader with zero save writes")
+			study.current_path.clear()
+			study.block_programme_btn.emit_signal("pressed")
+			if not studio.visible: print("PROGRAMME_ENTRY_FAILURE "+JSON.stringify({"size":str(size),"layout":layout,"opened":study.block_opened,"startup":study.startup_story_pending,"story":study.is_story_card_visible(),"mural":study.is_mural_workshop_visible(),"circle":study.is_rhythm_circle_visible(),"film":study.is_film_screening_visible(),"civic":study.is_civic_listening_visible(),"path":study.current_path.size(),"announcement":study.last_a11y_announcement}))
+			require(studio.visible and JSON.stringify(study.build_save_envelope())==before,"actual programme hub entry opens partial draft with no fill/save write")
+			if not studio.visible: continue
+			for index in [1,0,2,3]:
+				studio.cards[index].emit_signal("pressed")
+				studio.edits[0].emit_signal("pressed")
+			for f in range(4): await process_frame
+			require(studio.primary.disabled and studio.description().contains("between"),"invalid quiet ordering explains why Post is disabled")
+			studio.edits[1].grab_focus()
+			for i in range(2):
+				var down := InputEventAction.new()
+				down.action="ui_accept"
+				down.pressed=true
+				Input.parse_input_event(down)
+				await process_frame
+				var up := InputEventAction.new()
+				up.action="ui_accept"
+				Input.parse_input_event(up)
+				await process_frame
+			require(study.programme_order==desired and studio.edits[1].has_focus(),"true ui_accept moves the same selected Quiet card twice and retains Earlier focus")
+			var bounds := Rect2(Vector2.ZERO,Vector2(size))
+			for c in [studio.top,studio.tray,studio.picture]: require(bounds.encloses(c.get_global_rect()),"complete programme layout fits all six viewports")
+			for b in studio.cards+studio.edits+[studio.primary,studio.view,studio.music,studio.back]:
+				require(b.is_visible_in_tree() and b.size.x>=44 and b.size.y>=44 and bounds.encloses(b.get_global_rect()),"all full named programme controls are >=44px and reachable")
+			for i in range(4): require(studio.cards[i].text.contains(study.programme_title(studio.IDS[i])),"full original proposal title retained")
+			require(studio.reader.get_theme_font_size("normal_font_size")==16 and studio.reader.size.y>=40,"complete programme prose uses scrollable16px text")
+			require(studio.picture.size.x>=200 and studio.picture.size.y>=90,"draft pinboard has meaningful visible size, not a collapsed1px rectangle")
+			studio.primary.emit_signal("pressed")
+			for f in range(4): await process_frame
+			require(study.programme_published==desired and studio.posted and studio.replies(desired).size()==4,"Post copies exact chosen order and reveals four original resident replies")
+			require(studio.picture.size.x>=200 and studio.picture.size.y>=90,"posted pinboard retains meaningful size after primary label rewrap")
+			for b in studio.cards+studio.edits+[studio.primary,studio.view,studio.music,studio.back]: require(b.size.x>=44 and b.size.y>=44 and bounds.encloses(b.get_global_rect()),"posted controls remain fully on-screen and >=44px after rewrap")
+			for i in range(4): require(study.programme_segment_bars[i].material_override.albedo_color==study.programme_segment_color(desired[i],false),"actual existing world bars follow posted order before hosting")
+			studio.view.emit_signal("pressed")
+			studio.cards[2].emit_signal("pressed")
+			studio.edits[0].emit_signal("pressed")
+			require(study.programme_order.size()==3 and studio.primary.disabled,"unfinished revision is kept separately from the posted complete plan")
+			studio.view.emit_signal("pressed")
+			require(studio.primary.text=="Start hosting" and not studio.primary.disabled,"Posted view can start its complete copy despite an incomplete draft")
+			studio.primary.emit_signal("pressed")
+			require(not studio.visible and study.hosting_order==desired,"actual Studio Start Hosting copies nondefault order through original callback")
+			require(study.last_panel_dialogue.begins_with('Bea: "We\'re hosting 1/4'),"Studio starts through complete original hosting wrapper and Bea introduction")
+			var active_save := JSON.stringify(study.build_save_envelope())
+			require(not studio.open_studio() and study.block_detail_label.text.contains("Finish hosting") and JSON.stringify(study.build_save_envelope())==active_save,"mid-host keyboard and hub entry policy agrees and refusal is visible without a write")
+			study.block_programme_btn.emit_signal("pressed")
+			require(study.hosting_results.size()==1 and study.current_hosting_activity()=="pause","active hosting hub action keeps its original completion callback")
+			for i in range(3): study.host_complete_current()
+			study.hide_story_card()
+			var hosted := JSON.stringify(study.hosting_results)
+			require(studio.open_studio(),"completed profile can revise a separate future plan")
+			studio.cards[2].emit_signal("pressed")
+			if not study.programme_order.has("art"): studio.edits[0].emit_signal("pressed")
+			for i in range(3): studio.edits[1].emit_signal("pressed")
+			studio.primary.emit_signal("pressed")
+			require(study.programme_published==["art","beats","pause","stories"] and study.hosting_order==desired and JSON.stringify(study.hosting_results)==hosted,"future revision never rewrites running/copied hosted order or results")
+			require(studio.description().contains("future plan") and study.info.text.contains("Running gathering"),"post-host revision truthfully distinguishes future plan from existing signboard")
+			for i in range(4): require(study.programme_segment_bars[i].material_override.albedo_color==study.programme_segment_color(desired[i],true),"actual copied world bars stay hosted after future revision")
+			studio.view.emit_signal("pressed")
+			studio.edits[0].emit_signal("pressed")
+			require(study.programme_order.size()==3 and study.programme_published.size()==4,"Remove only edits partial draft, preserving posted copy")
+			studio.edits[0].emit_signal("pressed")
+			require(study.programme_order.size()==4,"Add explicitly restores removed card")
+			var saved := JSON.stringify(study.build_save_envelope())
+			studio.close_studio(false)
+			var key := InputEventKey.new()
+			key.keycode=KEY_F6
+			key.pressed=true
+			Input.parse_input_event(key)
+			await process_frame
+			var key_up := InputEventKey.new()
+			key_up.keycode=KEY_F6
+			Input.parse_input_event(key_up)
+			await process_frame
+			require(studio.visible and JSON.stringify(study.build_save_envelope())==saved,"real F6 reopens without a write or a practice state")
+			var held := InputEventKey.new()
+			held.physical_keycode=KEY_W
+			held.pressed=true
+			var position: Vector3=study.player.position
+			Input.parse_input_event(held)
+			Input.flush_buffered_events()
+			require(Input.is_physical_key_pressed(KEY_W),"native held-key guard receives a genuinely pressed W")
+			await physics_frame
+			var release := InputEventKey.new()
+			release.keycode=KEY_W
+			release.physical_keycode=KEY_W
+			release.pressed=false
+			Input.parse_input_event(release)
+			Input.flush_buffered_events()
+			require(not Input.is_physical_key_pressed(KEY_W),"native logical+physical W release clears the actual pressed state")
+			await physics_frame
+			await physics_frame
+			require(study.player.position==position,"held walking cannot move under Programme Studio")
+			studio.close_studio(false)
+			for f in range(4): await process_frame
+			if study.panel_camera_pose()!=pose or JSON.stringify(study.keepsake_photo)!=photo: print("PROGRAMME_RETURN_FAILURE "+JSON.stringify({"size":str(size),"before":pose,"after":study.panel_camera_pose(),"following":study.following_player,"photo_equal":JSON.stringify(study.keepsake_photo)==photo}))
+			require(study.panel_camera_pose()==pose and JSON.stringify(study.keepsake_photo)==photo,"programme editing preserves exact manual camera and frozen photo")
+			require(quiet==[study.music_playing,study.music_volume,study.music_mode,study.reward_sounds_enabled],"programme editing preserves quiet preferences")
+			require(saved.to_utf8_buffer().size()<=4096 and study.apply_save_envelope(saved),"programme revision remains under budget and reload-valid")
+			require(not studio.visible and study.programme_published==["art","beats","pause","stories"] and study.hosting_order==desired,"reload closes Studio and restores distinct posted/hosted copies")
+	for a in studio.IDS:
+		for b in studio.IDS:
+			for c in studio.IDS:
+				for d in studio.IDS:
+					if {a:1,b:1,c:1,d:1}.size()!=4: continue
+					var order: Array=[a,b,c,d]
+					var image: Image=studio.texture(order).get_image()
+					require(image.get_width()==720 and image.get_height()==480 and image.has_mipmaps(),"all24 original pinboard order rasters render/mipmap")
+					require(studio.replies(order).size()==(4 if study.programme_issue(order)=="" else 0),"resident replies only describe valid posted orders")
+	require(studio.textures.size()<=8,"pinboard cache stays bounded8")
+	for text in studio.PITCHES+studio.replies(desired):
+		for i in range(text.length()): require(text.unicode_at(i)<128 or ThemeDB.fallback_font.has_char(text.unicode_at(i)),"every nonASCII authored programme pitch/reply renders in fallback font")
+	study.apply_save_envelope(full_profile)
+	study.current_path.clear()
+	study.hosting_order.clear()
+	study.hosting_results.clear()
+	study.programme_order.clear()
+	study.programme_order.append("art")
+	study.programme_published.clear()
+	for id in ["stories","beats","pause","art"]: study.programme_published.append(id)
+	study.civic_phase="idle"
+	study.civic_result.clear()
+	study.film_phase="idle"
+	study.film_result.clear()
+	study.film_captured.clear()
+	study.last_story_chapter=int(study.current_chapter().num)
+	study.hide_story_card()
+	root.size=Vector2i(1100,760)
+	for f in range(4): await process_frame
+	var first := JSON.stringify(study.build_save_envelope())
+	study.run_conversation_action_id("programme")
+	require(studio.visible and studio.posted and studio.primary.text=="Start hosting" and JSON.stringify(study.build_save_envelope())==first,"conversation Start Hosting label opens the same posted review even with partial draft")
+	studio.primary.emit_signal("pressed")
+	require(study.hosting_order==["stories","beats","pause","art"] and study.last_panel_dialogue.contains(study.bea_invitation.explanation()),"stories-first Studio start includes original Bea invitation explanation")
+	var stored := FileAccess.get_file_as_string(study.save_path)
+	var large: Dictionary=JSON.parse_string(full_profile)
+	large.optional["budget_probe"]="x".repeat(5000)
+	require(study.apply_save_envelope(JSON.stringify(large)),"existing bounded optional import can be larger than4096 without discarding core")
+	study.hide_story_card()
+	study.current_path.clear()
+	studio.open_studio()
+	var seq: int=study.save_seq
+	studio.cards[0].emit_signal("pressed")
+	(studio.edits[1] if study.programme_order.find("stories")>0 else studio.edits[2]).emit_signal("pressed")
+	require(studio.reader.text.contains("Visit-only") and study.save_seq==seq,"non-growing oversized-profile move visibly reports visit-only without incrementing sequence")
+	studio.edits[0].emit_signal("pressed")
+	var reduced: Array=study.programme_order.duplicate()
+	studio.edits[0].emit_signal("pressed")
+	require(study.programme_order==reduced and studio.reader.text.contains("Change not made") and study.save_seq==seq,"oversized-profile growth is refused visibly before draft mutation")
+	require(FileAccess.get_file_as_string(study.save_path)==stored,"budget refusals and visit-only edits preserve exact last valid stored file")
+	studio.close_studio(false)
+	var near: Dictionary=JSON.parse_string(full_profile)
+	var removed: String=near.programme.order.pop_back()
+	near.optional["budget_probe"]=""
+	study.apply_save_envelope(JSON.stringify(near))
+	var base_bytes: int=JSON.stringify(study.build_save_envelope()).to_utf8_buffer().size()
+	near.optional["budget_probe"]="x".repeat(4094-base_bytes)
+	require(study.apply_save_envelope(JSON.stringify(near)) and study.save_godot_state(),"near-limit partial imported profile is a valid stored test save")
+	study.hide_story_card()
+	study.current_path.clear()
+	studio.open_studio()
+	var near_stored := FileAccess.get_file_as_string(study.save_path)
+	var near_order: Array=study.programme_order.duplicate()
+	var near_seq: int=study.save_seq
+	studio.cards[studio.IDS.find(removed)].emit_signal("pressed")
+	studio.edits[0].emit_signal("pressed")
+	require(study.programme_order==near_order and study.save_seq==near_seq and studio.reader.text.contains("Change not made"),"growth across4096 refuses before modifying an otherwise valid draft")
+	require(JSON.stringify(study.build_save_envelope()).to_utf8_buffer().size()<=4096 and FileAccess.get_file_as_string(study.save_path)==near_stored,"near-limit refusal preserves valid envelope budget and exact stored file")
+	studio.close_studio(false)
+	study.apply_save_envelope(original)
+	root.size=Vector2i(1100,760)
+	print("PROGRAMME_STUDIO_PASS: 2layouts x7sizes, route/midhost refusal, posted-vs-partial Start, stories-first wrapper, true input,24rasters/cache8")
+
 func verify_civic_listening(study: Node, full_profile: String) -> void:
 	var original := JSON.stringify(study.build_save_envelope())
 	var hour: Control = study.civic_listening
@@ -4734,10 +4949,16 @@ func verify_civic_listening(study: Node, full_profile: String) -> void:
 			held.physical_keycode=KEY_W
 			held.pressed=true
 			Input.parse_input_event(held)
+			Input.flush_buffered_events()
+			require(Input.is_physical_key_pressed(KEY_W),"native held-key guard receives a genuinely pressed W")
 			await physics_frame
 			var release := InputEventKey.new()
+			release.keycode=KEY_W
 			release.physical_keycode=KEY_W
+			release.pressed=false
 			Input.parse_input_event(release)
+			Input.flush_buffered_events()
+			require(not Input.is_physical_key_pressed(KEY_W),"native logical+physical W release clears the actual pressed state")
 			require(study.player.position==position,"real held movement cannot walk under focused civic reader")
 			hour.advance.grab_focus()
 			var press := InputEventAction.new()

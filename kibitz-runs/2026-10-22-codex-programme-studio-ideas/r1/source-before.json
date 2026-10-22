@@ -1,0 +1,12 @@
+{
+  "godot/main.gd": "248eb56c309f763ab8624eb9a8edf572516d84e04a7eb7989eea4cf769db746b",
+  "godot/civic_listening.gd": "8655fdb9b4bfa9cf32cd9871c92ac3f063e11f251647814b48b148ddbdc83648",
+  "godot/rhythm_circle.gd": "2d8353bf97a750969a1729b7581700585fbb9f726dcc5c80d42d20b338ae857f",
+  "godot/film_screening.gd": "c83e108fe15f8839d3e2c76a8868f1dc9d20a88f044515b9c1ad47c5940f1262",
+  "godot/quiet_seats.gd": "211c67f25397305c0cefd5c2c5f0bc558296ab82848c09b67cf032f0b9fc5cef",
+  "godot/bea_invitation.gd": "4ad40453704987fc9c29c34425b8be66c5fb8057874ab21fdd9cb89ab259b51f",
+  "public/programme.js": "2051dcab8e9d4e835690cc4d07726dbebce12980c27b648e5549016fa0a5a1d5",
+  "public/hosting.js": "2155f76740dfe1cc91aa258462cc135aac0cc5da7a15bc981f5031ad8ddebf19",
+  "tests/godot-browser.mjs": "3545bbd1cc6bf4d1dc0affec54b75f712ad70bbca89a349d96ee437c18c5ece9",
+  "docs/ROADMAP.md": "a07c5e0e71dd9d06a819feb072c14f621093c31d62c8b33ea19483e0b4b368b7"
+}

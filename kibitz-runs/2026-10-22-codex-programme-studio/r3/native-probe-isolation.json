@@ -1,0 +1,15 @@
+{
+  "recorded_utc": "2026-10-22T11:42:43.030790+00:00",
+  "incident": "Standalone diagnostic probes omitted test-suite/save/settings overrides and wrote test data to the default native save. This is a driver test-isolation error, not a game save migration.",
+  "default_native_file_sha256_as_found": "2b7d1e849b4820a1d6c49602930ac3e0b104a8aa132375837038bfef80f2e0e1",
+  "default_native_file_bytes_as_found": 1272,
+  "default_native_file_mtime_utc": "2026-10-22T11:25:21.362432+00:00",
+  "original_preprobe_native_profile_backup_verified": false,
+  "earlier_native_progress_recoverable_from_verified_evidence": false,
+  "preserved_current_file": "artifacts/programme-studio-native-user-preservation/godot_block_save_v1.json",
+  "raw_user_file_staged": false,
+  "browser_and_legacy_browser_profiles_affected": false,
+  "fix": "Standalone probes require explicit isolated save+settings overrides and --test-suite before game instantiation; new diagnostic template refuses otherwise. Native Studio tests also require test-suite mode. Formal npm godot:test already isolated. Current default native hash remains unchanged through subsequent correctly isolated native runs.",
+  "limitation": "Do not claim pre-round personal native progress was preserved or restored. No guessed reset/deletion/recovery of default file is authorized or performed.",
+  "negative_no_flags_guard": "PASS: strict standalone diagnostic exits1 before game instantiation; default native file hash unchanged"
+}

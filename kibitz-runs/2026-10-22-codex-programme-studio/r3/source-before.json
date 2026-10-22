@@ -1,0 +1,15 @@
+{
+  "godot/main.gd": "79cf9304e1f72c5d0890307051fac428ce2051603e73d537a3cd768b2ef1f240",
+  "godot/programme_studio.gd": "5d7c44e438e8aaf5cca82423e967da5143efa46d2a77aa7c9bb2021255b2d2c6",
+  "godot/civic_listening.gd": "503aea365d117909c0eaf3c7bb610e2e4d118fadb1a9300e77ab42ac4e1e9a21",
+  "godot/film_screening.gd": "6b9888b1a09f0c482682e2fc751674db9cf29bb8114a6e6a011efae77d301dc4",
+  "godot/rhythm_circle.gd": "c93caa1eac2b7dba09a6e8b1d8a71fd18b1c13122e9d1f7ddfd8464a640bcd10",
+  "godot/tests/study_test.gd": "338af132d7adc398d1bcd94595481889c74c7aa260c384290a9939ff5ab9c2ce",
+  "tests/godot-browser.mjs": "3aca20bff48de118895c4c4d178d4be72b69c36e1cce6243e939091fa9b527f8",
+  "README.md": "d85b932c9e773633cff062215b0a06aa9cddcde86a730776b0cc0aeef7fec419",
+  "docs/ASSETS.md": "b76b0536c8e427305135727a6f19ca5ed8f91487dddec2085b31efe4453f48f3",
+  "docs/GODOT_APPROACH.md": "ad36cb7c40bba167e4ace3453336af22b74502ca9ab2736fbdfa8e3a0bf6c858",
+  "docs/ROADMAP.md": "561c3b85f9c7daa56d8ab2ed69ac0e9893f24341fb07f9b6696809f49a5d6138",
+  "session_handoff.md": "d80d020d2da8cca4b967b736502d30bed39667d44b06ceb2c94a9f419171324c",
+  "docs/BUILD_STATUS.md": "eee46beef50472db627ab2b9d30bd8595d8ec9dfd2f6a8e564eea10db90470cf"
+}
