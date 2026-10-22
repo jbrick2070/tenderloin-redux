@@ -102,7 +102,7 @@ func available() -> bool:
 
 func open_screening() -> bool:
 	if visible: return true
-	if not available() or game.startup_story_pending or game.is_story_card_visible() or not game.current_path.is_empty() or game.is_mural_workshop_visible() or game.is_rhythm_circle_visible() or game.is_civic_listening_visible() or game.is_programme_studio_visible():
+	if not available() or game.startup_story_pending or game.is_story_card_visible() or not game.current_path.is_empty() or game.is_mural_workshop_visible() or game.is_rhythm_circle_visible() or game.is_civic_listening_visible() or game.is_programme_studio_visible() or game.is_shared_panel_visible():
 		game.announce_a11y_status("Finish the three-shot film, arriving and any chapter card before watching The Open Seat.")
 		return false
 	return_focus = get_viewport().gui_get_focus_owner()

@@ -1,0 +1,12 @@
+{
+  "verified_utc": "2026-10-22T15:49:48.179454+00:00",
+  "name": "Build Tenderloin Redux",
+  "status": "ACTIVE",
+  "rrule": "FREQ=MINUTELY;INTERVAL=30",
+  "target_thread_id": "01a159d6-60a3-78e1-92ae-4018509d2539",
+  "created_at_preserved": true,
+  "protected_prefix_unchanged": true,
+  "prompt_sha256": "805b43a23ded2761956d28358a64fd8b7083700c83fb759469fa2e5b2ea84bc4",
+  "prior_native_incident_guard_retained": true,
+  "dedicated_test_entry_preinstantiation_guard_added": true
+}

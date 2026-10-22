@@ -800,6 +800,7 @@ var rhythm_circle
 var film_screening
 var civic_listening
 var programme_studio
+var shared_panel
 var mural_workshop
 var mural_workshop_selected := "sun"
 var mural_workshop_message := ""
@@ -3146,6 +3147,7 @@ func update_block_3d() -> void:
 			for t_idx in range(hosting_tile_meshes.size()):
 				var tv := int(h_tiles[t_idx]) if t_idx < h_tiles.size() else 0
 				hosting_tile_meshes[t_idx].material_override = mural_material(hosting_tile_color(h_pal, tv))
+	if shared_panel != null: shared_panel.update_world()
 	if civic_listening != null: civic_listening.update_world()
 	if civic_setup_node != null:
 		var c_vis := is_civic_available() and (civic_phase in ["meeting", "done"]) and not civic_result.is_empty()
@@ -6480,6 +6482,10 @@ func conversation_actions() -> Array[Dictionary]:
 				acts.append({"id": "surprise", "label": "Spot Surprise (%d/%d)" % [discovered_surprises.size(), NEIGHBORHOOD_SURPRISE_IDS.size()]})
 			else:
 				acts.append({"id": "landmark_tour", "label": String(obj.tour_action)} if obj.has("tour_id") else {"id": "museum", "label": "Visit the Museum"})
+	if shared_panel != null and has_hosted_segment("art") and talk_partner==neighbor_index_for_id("dez"):
+		acts.append({"id":"shared_panel","label":"Celeste's Shared Panel"})
+		acts.append({"id":"hub","label":"All Block Actions"})
+		return acts
 	var someone_else := -1
 	for i in range(neighbors.size()):
 		var cand := posmod(talk_partner + 1 + i, neighbors.size())
@@ -6555,6 +6561,8 @@ func run_conversation_action_id(act_id: String) -> bool:
 			advance_epilogue_step()
 		"programme":
 			open_programme_or_host()
+		"shared_panel":
+			return shared_panel.open_panel()
 		"civic":
 			advance_civic_step()
 		"film":
@@ -7442,7 +7450,7 @@ func set_header_details(expanded: bool, refit_map := true) -> void:
 
 func update_conversation_ui(delta: float) -> void:
 	ui_clock = wrapf(ui_clock + delta, 0.0, 3600.0)
-	if is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible():
+	if is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible():
 		return
 	var chapter := current_chapter()
 	# Deliver any pending chapter card after the focused workshop closes,
@@ -9688,7 +9696,7 @@ func cycle_programme_or_hosting_choice() -> String:
 		var next_pal := "cool" if String(hosting_draft.get("palette", "warm")) == "warm" else "warm"
 		host_set_palette(next_pal)
 		host_cycle_tile(0)
-		announce_a11y_status("Shared art panel palette set to %s." % next_pal)
+		announce_a11y_status("Shared art panel palette set to %s; tile 1 is now %s." % [next_pal, ["circle", "wave", "triangle"][int(hosting_draft.tiles[0])]])
 		return "art_" + next_pal
 	elif active == "pause":
 		var next_q := "pairs" if String(hosting_draft.get("quiet", "arc")) == "arc" else "arc"
@@ -9707,6 +9715,7 @@ func cycle_programme_or_hosting_choice() -> String:
 
 func open_programme_or_host() -> void:
 	if hosting_order.is_empty() or is_hosting_done(): programme_studio.open_studio(is_hosting_ready_to_start())
+	elif current_hosting_activity()=="art": shared_panel.open_panel()
 	else: advance_programme_and_hosting_step()
 
 func advance_programme_and_hosting_step() -> String:
@@ -9743,6 +9752,12 @@ func advance_programme_and_hosting_step() -> String:
 		return "hosting_started" if ok_st else "hosting_blocked"
 	if not is_hosting_done():
 		var act := current_hosting_activity()
+		if act=="art" and shared_panel != null and not shared_panel.allow_hang():
+			last_panel_dialogue='Celeste: "'+shared_panel.message+' Z cannot save this completion either."'
+			info.text=last_panel_dialogue
+			update_block_ui()
+			announce_a11y_status(last_panel_dialogue)
+			return "hosting_blocked"
 		var ok_hc := host_complete_current()
 		if ok_hc:
 			var next_a := current_hosting_activity()
@@ -11105,7 +11120,7 @@ func setup_web_a11y_bridge() -> void:
 		if (window.__tenderloinWebA11yReady) return;
 		window.__tenderloinWebA11yReady = true;
 		window.addEventListener('contextmenu', function(e) { e.preventDefault(); });
-		window.addEventListener('keydown', function(e) { if ((e.code === 'F2' || e.code === 'F3') && document.activeElement === document.getElementById('canvas')) e.preventDefault(); });
+		window.addEventListener('keydown', function(e) { if ((e.code === 'F2' || e.code === 'F3' || e.code === 'F7') && document.activeElement === document.getElementById('canvas')) e.preventDefault(); });
 		var srStyle = 'position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;';
 		var live = document.getElementById('godot-a11y-status');
 		if (!live) {
@@ -11518,6 +11533,7 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"block_detail_scroll_value": block_detail_label.get_v_scroll_bar().value if block_detail_label != null else 0.0,
 		"block_detail_scroll_page": block_detail_label.get_v_scroll_bar().page if block_detail_label != null else 0.0,
 		"block_hub_actions": block_action_snapshots(),
+		"shared_panel": shared_panel.snapshot() if shared_panel != null else {"visible":false},
 		"programme_studio": programme_studio.snapshot() if programme_studio != null else {"visible":false},
 		"civic_listening": civic_listening.snapshot() if civic_listening != null else {"visible":false},
 		"film_screening": film_screening.snapshot() if film_screening != null else {"visible":false},
@@ -11689,11 +11705,14 @@ func poll_web_audio() -> void:
 		return
 	load_local_music_bytes(fname, raw)
 
+func is_shared_panel_visible() -> bool:
+	return shared_panel != null and shared_panel.visible
+
 func is_programme_studio_visible() -> bool:
 	return programme_studio != null and programme_studio.visible
 
 func is_focused_activity_visible() -> bool:
-	return is_mural_workshop_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible()
+	return is_mural_workshop_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible()
 
 func is_civic_listening_visible() -> bool:
 	return civic_listening != null and civic_listening.visible
@@ -11772,7 +11791,7 @@ func edit_mural_scene(id: String, slot: String) -> bool:
 	return true
 
 func open_mural_workshop() -> bool:
-	if is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible():
+	if is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible():
 		return false
 	if startup_story_pending or is_story_card_visible():
 		announce_a11y_status("Continue the chapter card before composing the mural.")
@@ -12111,6 +12130,7 @@ func save_godot_state() -> bool:
 	return wrote
 
 func reset_mural_state_to_defaults(status_label: String) -> void:
+	if is_shared_panel_visible(): shared_panel.close_panel(false)
 	if is_programme_studio_visible(): programme_studio.close_studio(false)
 	if is_civic_listening_visible(): civic_listening.close_hour(false)
 	if is_film_screening_visible(): film_screening.close_screening(false)
@@ -12590,6 +12610,7 @@ func validate_godot_optional(raw_opt: Variant) -> Dictionary:
 	return {"ok": true, "optional": (raw_opt as Dictionary).duplicate(true)}
 
 func apply_save_envelope(raw_json: String) -> bool:
+	if is_shared_panel_visible(): shared_panel.close_panel(false)
 	if is_programme_studio_visible(): programme_studio.close_studio(false)
 	if is_civic_listening_visible(): civic_listening.close_hour(false)
 	if is_film_screening_visible(): film_screening.close_screening(false)
@@ -13144,6 +13165,7 @@ func import_browser_save_json(raw_json: String) -> bool:
 		info.text = "%s\nBrowser save ('%s') is read-only and never overwritten by Godot\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [browser_import_message, BROWSER_WEB_STORAGE_KEY]
 		announce_a11y_status(browser_import_message)
 		return false
+	if is_shared_panel_visible(): shared_panel.close_panel(false)
 	if is_programme_studio_visible(): programme_studio.close_studio(false)
 	if is_civic_listening_visible(): civic_listening.close_hour(false)
 	if is_film_screening_visible(): film_screening.close_screening(false)
@@ -13582,6 +13604,8 @@ func update_occlusion(force: bool = true) -> void:
 		focus_points.append_array(quiet_seats.cutaway_points())
 	if bea_invitation != null:
 		focus_points.append_array(bea_invitation.cutaway_points())
+	if shared_panel != null:
+		focus_points.append_array(shared_panel.cutaway_points())
 	if not following_player:
 		var framed_xz := Vector2(target.x, target.z)
 		if eatery_guide_idx >= 0 and eatery_guide_idx < eatery_counter_points.size() and framed_xz.distance_to(eatery_counter_points[eatery_guide_idx]) < 16.0:
@@ -13987,6 +14011,11 @@ func _input(event: InputEvent) -> void:
 		continue_story()
 
 func _unhandled_input(event: InputEvent) -> void:
+	if is_shared_panel_visible():
+		if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+			shared_panel.close_panel()
+		get_viewport().set_input_as_handled()
+		return
 	if is_programme_studio_visible():
 		if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
 			programme_studio.close_studio()
@@ -14024,6 +14053,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			else:
 				hide_story_card()
 		match k:
+			KEY_F7:
+				shared_panel.open_panel()
 			KEY_F6:
 				programme_studio.open_studio()
 			KEY_F5:
@@ -14798,6 +14829,8 @@ func update_block_ui() -> void:
 				base_detail = spoken
 		elif block_opened and current_hosting_activity()=="stories" and bea_invitation != null:
 			base_detail = bea_invitation.explanation()+" Choose the invitation, then Host Activity (Z) when ready. Nothing is timed."
+		elif block_opened and current_hosting_activity()=="art" and shared_panel != null:
+			base_detail = shared_panel.explanation()+" Host Activity opens the paper; Z keeps the quick path."
 		elif block_opened and current_hosting_activity()=="pause" and quiet_seats != null:
 			base_detail = quiet_seats.explanation()+" Choose the seats, then Host Activity (Z) when you are ready. Nothing is timed."
 		elif block_opened:
@@ -15242,6 +15275,10 @@ func make_ui() -> void:
 	programme_studio = preload("res://programme_studio.gd").new()
 	layer.add_child(programme_studio)
 	programme_studio.setup(self)
+	shared_panel = preload("res://shared_panel.gd").new()
+	layer.add_child(shared_panel)
+	shared_panel.setup(self)
+	shared_panel.update_world()
 	rhythm_circle = preload("res://rhythm_circle.gd").new()
 	layer.add_child(rhythm_circle)
 	rhythm_circle.setup(self,layer)

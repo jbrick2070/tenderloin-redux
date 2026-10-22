@@ -1,0 +1,14 @@
+{
+  "requested_model": "claude-opus-5-5",
+  "selected_model": "claude-opus-5-5",
+  "requested_effort": "high",
+  "selected_effort": "high",
+  "harness_rc": 0,
+  "reviewer_rc": 0,
+  "tool_check": "PASS",
+  "source_files_unchanged": 13,
+  "default_native_as_found_hash_unchanged": true,
+  "provider_runtime_identity": "unknown",
+  "quota_percent": "unknown",
+  "calls": "ONE actual r3. Initial shell wrapper prepared receipts but exited before harness; no provider artifacts/agent call. See launcher-diagnosis.json."
+}

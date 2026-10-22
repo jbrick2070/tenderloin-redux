@@ -1,0 +1,1 @@
+ScopeONLY implementationQA r3, exactsoleclaude-opus-5-5/high, drivercodex. Separateprecode r1 shared-panel-ideas/r1; r2/r4NOTrun. Inputsha256bc00226c0af69c6889ab60af7e7a17d8e796e804281587a0d44480d55f178562. Readfiles/writeONLYreport; no source/docs edits/gates/native/userdata/delegation.

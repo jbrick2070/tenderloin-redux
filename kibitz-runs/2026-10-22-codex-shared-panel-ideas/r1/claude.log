@@ -1,0 +1,22 @@
+STDOUT:
+I wrote the review to `kibitz-runs/2026-10-22-codex-shared-panel-ideas/r1/claude.md`. My verdict is **yes-with-fixes**: the Shared Panel slice is a reasonable size, but its main promise doesn't hold up against the code.
+
+- **The frame is too far from where hosting happens.** The panel sits beside the mural, about 40 m from the gathering where hosting takes place. Live draft updates there would happen out of view, unless the camera moves, which the brief rules out. I recommend showing the live draft on the 2D editing surface and changing the 3D frame only once the result is copied.
+- **The plan names no screen for the six tiles.** The only existing hosting choice row has two buttons, and another scene asserts it stays that size. Six tiles plus two palettes won't fit. I suggest an overlay modelled on the mural workshop's six-cell canvas.
+- **The panel's show/refresh rule isn't written down.** The panel only appears after the art activity is complete. The tile and palette setters never trigger a 3D refresh, and four existing tests pin when it is hidden or shown.
+- **Edits on an oversized save become visit-only silently.** The setters ignore whether the save succeeded. On an oversized imported profile, edits change only the current visit with no message saying so. The mural-scene code already has the right "Changed for this visit; the save is full" message to copy.
+- **The ShiftZ quirk is undecided.** ShiftZ also cycles tile 0 but only announces the palette change. The plan needs to say whether to keep that or fix it.
+- **Cut the completed-save practice mode.** By design it has no lasting effect, and it is the riskiest part of the slice. Also cut the optional View camera work if the 2D-surface option is chosen.
+
+The should-fix items are:
+- **Tile shapes:** get them onto the 3D tiles using the frozen SVG builder as a texture, without moving the boxes.
+- **Celeste's voice:** add a line for the art activity; it currently falls back to generic hub text.
+- **Mural overlap:** the panel's circle/wave/triangle shapes sit close to the finished mural's sun/wave/rise motifs.
+- **Alternatives:** the brief pre-selects its opportunity and lists none to compare against.
+
+**Not verified:**
+- I didn't trace where the camera points during art hosting.
+- I only partly read the browser tile controls.
+- The oversized-save behaviour is inferred from the save function alone and needs the driver to check it.
+
+Several connected services (Box, Runway, Play Sheet Music, and the engineering plugins such as GitHub, Slack and Linear) need authorising before they can be used. Use the claude.ai connector settings, or `/mcp` in an interactive session. This review didn't need them.

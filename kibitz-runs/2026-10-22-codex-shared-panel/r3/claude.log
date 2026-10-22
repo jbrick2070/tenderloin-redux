@@ -1,0 +1,29 @@
+STDOUT:
+My verdict is **yes-with-fixes**: the Shared Panel is wired correctly end to end, but the current browser results can't count as acceptance yet. The review is at `kibitz-runs/2026-10-22-codex-shared-panel/r3/claude.md`. I could read the repo fine, but this lane has no shell or git, so I couldn't diff against HEAD. The "unchanged from before" claims are left as verify items.
+
+**One blocker:** the browser checks ran against an export that predates the final `main.gd` and native-test edits. So the 9-case browser run and the 1100px world check are not evidence for the current code. Re-export, re-run, and record the source file hashes in the test output so this can be checked later.
+
+**Wiring I confirmed is correct:**
+- Hang closes the panel before the original completion step runs.
+- The size check Hang does before saving matches the bytes that actually get written.
+- The painted tile fronts face the sidewalk.
+- The tile image coordinates match the SVG's tile layout.
+- Reset, save-load and web import all close the panel before changing state.
+
+**Main should-fixes:**
+- **Missing per-frame guard:** the other activity screens re-hide the controls behind them every frame and close themselves if they stop being available. `shared_panel.gd`'s `_process` does neither; the fix is to copy their few lines.
+- **Two different save rules:** Hang refuses an edit that would push the save over 4096 bytes. The Z key goes straight to completion and finishes the art step in memory without saving, with no notice.
+- **Small screens:** the layout has no lower bound. On short screens under 520px wide, the art area can shrink to zero or below, and tile buttons then overlap and hit the wrong tile. No test covers heights under 360px.
+- **Weak tests:**
+  - The near-limit save test only proves refusal. Nothing proves an edit that exactly fits still succeeds.
+  - The "this visit only" test never checks that the tile actually changed in memory.
+- **Smaller items:**
+  - Closing an untouched draft announces "your copied panel is unchanged" when no copied panel exists yet.
+  - Pressing Warm or Cool leaves focus on a now-disabled button.
+  - The painted fronts sit 1mm off the tile boxes, which may flicker on low-precision web devices (that last one is an assumption).
+
+**Suggested cuts:**
+- **Save-size check on tile and palette edits:** these edits can never change the save size, so their refusal branch is unreachable and a single "already over the limit?" check would do.
+- **World texture cache:** the 8-entry cache only ever shows one image at a time.
+
+Separately, several connectors (Box, Runway, Play Sheet Music, and the engineering plugins such as GitHub and Slack) need authorising before they can be used. Do that in claude.ai connector settings, or via `/mcp` in an interactive session.

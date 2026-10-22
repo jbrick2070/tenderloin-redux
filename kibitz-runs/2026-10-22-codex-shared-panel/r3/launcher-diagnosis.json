@@ -1,0 +1,7 @@
+{
+  "utc": "2026-10-22T13:32:50.658885+00:00",
+  "first_shell_wrapper_exit": 0,
+  "first_shell_log_bytes": 0,
+  "input_or_reviewer_artifacts_created": false,
+  "scope": "Preparation succeeded, but shell returned before running harness. No reviewer/input/quota files exist, so this was not a provider review or quota/auth failure. Use explicit Python subprocess return-code receipt for the single actual r3 launch; do not trust a null/stale shell LASTEXITCODE."
+}

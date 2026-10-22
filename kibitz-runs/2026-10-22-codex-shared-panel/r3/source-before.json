@@ -1,0 +1,15 @@
+{
+  "godot/main.gd": "99859b8a0a4bcee034f8820743ed34e8f77d9436b8a4dee60fe054ae1423df0c",
+  "godot/shared_panel.gd": "dbc2045119486ca4b6b35b9c9f02190e99d1a27fc804535b7bc0bcbf361d1296",
+  "godot/shared_panel.gd.uid": "7d968c1c405c55e0dff1d07d47d529f991cfec4b738f1a769799e6d26d7a258a",
+  "godot/programme_studio.gd": "b9e2200905730fee77e785946e45f05555bd1becd8de76ade20a37ecd6667e1e",
+  "godot/rhythm_circle.gd": "5391f7f4a7b5715c187f9cdc25f761c7a45e50c083904f671d43e57b45a27aa7",
+  "godot/film_screening.gd": "20a8015f821333f337158d5eb1ab820240db9999413f339451afb6a4923271dd",
+  "godot/civic_listening.gd": "5e010e2f55c436c4b7abb28345b3a2fe4e8124d7f494340d193733a9ce5e7849",
+  "godot/tests/study_test.gd": "63af3d0e6f6462d4d90898a73c267aab78dbc0fc8b3d9aa2d48dbdc7e631d60a",
+  "tests/godot-browser.mjs": "c5bf15b9bef39046d41166f2270b70c02dbda06b27bc240067e352b80686a230",
+  "README.md": "196c238b9b8870b82ff7e04bf6c11c2eca25927be6968dda901d559fc344de0f",
+  "docs/ASSETS.md": "03a627310ba8a8b64c52d1065576db655ac46bd99c2784a2697b9529689672fe",
+  "docs/ROADMAP.md": "6d48af193364e596d4f683d51f8137bfe2b7e85b413f8be9c0c2b849f7ffd4f0",
+  "docs/GODOT_APPROACH.md": "4fe7787b8c921187fb7e71ca649790281b5f33768b644f6510bb86ce839e40a4"
+}

@@ -1,0 +1,9 @@
+{
+  "utc": "2026-10-22T13:50:49.635472+00:00",
+  "sources": {
+    "godot/main.gd": "2af1c4af22c57e804326d407ed9983deee12698190c6d8e81bb669c9096ff4da",
+    "godot/shared_panel.gd": "0cf289edc823919866c03e3687935d9b5c390058e1faa8051255a3fa9067833f",
+    "godot/tests/study_test.gd": "f2508d50b6120013b3a6e69443659bf3030eae9b3593689c53b0e4a47a2a4861",
+    "tests/godot-browser.mjs": "b28616494d0abd9701bad17a3eddd71ca8b7fa083a660ca4cf1f12fc1f01bc49"
+  }
+}

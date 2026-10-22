@@ -1,0 +1,12 @@
+{
+  "godot/main.gd": "bc79cebee92bd2ed6495858ce468d3499279a67c0aa92c4a137c82f1e81d0722",
+  "godot/programme_studio.gd": "b9e2200905730fee77e785946e45f05555bd1becd8de76ade20a37ecd6667e1e",
+  "godot/rhythm_circle.gd": "c93caa1eac2b7dba09a6e8b1d8a71fd18b1c13122e9d1f7ddfd8464a640bcd10",
+  "godot/tests/study_test.gd": "c23129d8c5cdb9c8cff7bdf60417dc613453e021f477a1ed20f7e1a319bdc0aa",
+  "tests/godot-browser.mjs": "51a67a9ad73a614e075a9c131f7f7ed414db203fae1d33a4356dd0ca7d4a51b5",
+  "public/hosting.js": "2155f76740dfe1cc91aa258462cc135aac0cc5da7a15bc981f5031ad8ddebf19",
+  "public/game.js": "9395bebadb20eab4c74d8f8fd2634f4705f94e3399a010eecf86f63603b7d54d",
+  "docs/ROADMAP.md": "561c3b85f9c7daa56d8ab2ed69ac0e9893f24341fb07f9b6696809f49a5d6138",
+  "docs/ASSETS.md": "b76b0536c8e427305135727a6f19ca5ed8f91487dddec2085b31efe4453f48f3",
+  "docs/GODOT_APPROACH.md": "4fe7787b8c921187fb7e71ca649790281b5f33768b644f6510bb86ce839e40a4"
+}

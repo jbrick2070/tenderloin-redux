@@ -2,6 +2,10 @@ extends SceneTree
 var failed := false
 
 func _initialize() -> void:
+	if not OS.get_cmdline_user_args().has("--test-suite"):
+		push_error("study_test.gd requires --test-suite BEFORE game instantiation; use the isolated npm godot:test launcher")
+		quit(1)
+		return
 	call_deferred("run")
 
 func require(condition: bool, message: String) -> void:
@@ -3256,6 +3260,7 @@ func run() -> void:
 	await verify_bea_invitation(study,saved_m4_json)
 	await verify_civic_listening(study,saved_m4_json)
 	await verify_programme_studio(study,saved_m4_json)
+	await verify_shared_panel(study,saved_m4_json)
 	study.clear_godot_save()
 	study.clear_godot_settings()
 	var legacy_settings := FileAccess.open(study.settings_path, FileAccess.WRITE)
@@ -5163,3 +5168,186 @@ func verify_bea_invitation(study: Node, full_profile: String) -> void:
 	study.update_block_3d()
 	root.size = Vector2i(1100,760)
 	print("BEA_INVITATION_PASS: 2layouts x6sizes, shared buttons, true ui_accept, original rasters/world, copied/no-write/camera/quiet")
+
+func verify_shared_panel(study: Node, full_profile: String) -> void:
+	require(study.is_test_suite_mode(),"Shared Panel native diagnostics require test-suite BEFORE mutations")
+	if not study.is_test_suite_mode(): return
+	var original := JSON.stringify(study.build_save_envelope())
+	var panel: Control=study.shared_panel
+	var expected: Array=[1,2,0,0,2,1]
+	for layout in ["table","floor"]:
+		for size in [Vector2i(1100,760),Vector2i(390,667),Vector2i(320,667),Vector2i(520,360),Vector2i(559,360),Vector2i(640,360),Vector2i(320,568)]:
+			study.apply_save_envelope(full_profile)
+			var at: int=study.hosting_order.find("art")
+			require(at>=0,"native actual completed callback profile includes art")
+			study.hosting_results.resize(at)
+			study.hosting_draft=study.default_hosting_draft()
+			study.civic_phase="idle"
+			study.civic_result.clear()
+			study.film_phase="idle"
+			study.film_result.clear()
+			study.film_captured.clear()
+			study.current_path.clear()
+			study.hide_story_card()
+			study.startup_story_pending=false
+			study.last_story_chapter=int(study.current_chapter().num)
+			study.gathering_layout=layout
+			study.following_player=false
+			study.panel_frame_control=null
+			study.target=Vector3(12,3,-10)
+			study.update_camera()
+			study.show_block_panel(true)
+			root.size=size
+			study.update_block_3d()
+			for f in range(6): await process_frame
+			study.pan_camera_by_screen_delta(Vector2(24,0))
+			var pose: Array=study.panel_camera_pose()
+			var quiet: Array=[study.music_playing,study.music_volume,study.music_mode,study.reward_sounds_enabled]
+			var before := JSON.stringify(study.build_save_envelope())
+			var photo := JSON.stringify(study.keepsake_photo)
+			study.block_programme_btn.emit_signal("pressed")
+			for f in range(6): await process_frame
+			require(panel.visible and panel.editing() and JSON.stringify(study.build_save_envelope())==before,"actual Host Activity opens art paper with zero opening writes")
+			require(not study.hosting_tile_panel_node.visible,"active preview remains on paper; world visibility contract is completion-only")
+			if not panel.visible: continue
+			panel.pads[0].grab_focus()
+			var down := InputEventAction.new()
+			down.action="ui_accept"
+			down.pressed=true
+			Input.parse_input_event(down)
+			await process_frame
+			var up := InputEventAction.new()
+			up.action="ui_accept"
+			up.pressed=false
+			Input.parse_input_event(up)
+			await process_frame
+			for i in range(1,6): panel.pads[i].emit_signal("pressed")
+			panel.options[1].emit_signal("pressed")
+			for f in range(6): await process_frame
+			require(panel.options[0].has_focus(),"palette activation moves actual focus to the remaining enabled palette")
+			require(panel.value().tiles==expected and panel.value().palette=="cool","all six wired controls and real ui_accept change exact shapes; Cool uses original callback")
+			var snap: Dictionary=panel.snapshot()
+			for box in snap.buttons:
+				require(float(box.width)>=44 and float(box.height)>=44 and float(box.x)>=0 and float(box.y)>=0 and float(box.x)+float(box.width)<=size.x+1 and float(box.y)+float(box.height)<=size.y+1,"eleven targets stay44px and within current viewport")
+			require(float(snap.picture.width)>=200 and float(snap.picture.height)>=90 and panel.reader.get_theme_font_size("normal_font_size")==16,"large original paper and full16px scrollable reader remain")
+			require(panel.reader.text.contains("Tile 6") or panel.reader.text.contains("6 wave"),"current exact tile and complete shape description are readable")
+			panel.close_panel(false)
+			for f in range(4): await process_frame
+			require(study.panel_camera_pose()==pose and quiet==[study.music_playing,study.music_volume,study.music_mode,study.reward_sounds_enabled],"Back preserves exact manual pose and quiet settings")
+			var saved := JSON.stringify(study.build_save_envelope())
+			require(study.apply_save_envelope(saved) and not panel.visible and study.hosting_draft.tiles==expected,"active art reload preserves actual draft and closes paper")
+			study.hide_story_card()
+			study.last_story_chapter=int(study.current_chapter().num)
+			study.current_path.clear()
+			require(panel.open_panel(),"active draft reopens")
+			panel.options[0].emit_signal("pressed")
+			panel.options[1].emit_signal("pressed")
+			panel.options[2].emit_signal("pressed")
+			for f in range(4): await process_frame
+			require(not panel.visible and study.has_hosted_segment("art") and study.get_hosted_segment_value("art").tiles==expected and study.hosting_tile_panel_node.visible,"Hang closes first and copies exact result through original hosting wrapper/world visibility")
+			require(JSON.stringify(study.keepsake_photo)==photo,"all tile/palette/Hang actions preserve earlier frozen keepsake")
+			study.hide_story_card()
+			study.last_story_chapter=int(study.current_chapter().num)
+			var copied := JSON.stringify(study.get_hosted_segment_value("art"))
+			study.hosting_draft.palette="warm"
+			study.hosting_draft.tiles=[0,0,0,0,0,0]
+			var stable := JSON.stringify(study.build_save_envelope())
+			study.show_conversation(study.neighbor_index_for_id("dez"))
+			require(study.conv_action_ids[1]=="shared_panel" and study.run_conversation_action(1) and panel.visible and not panel.editing() and JSON.stringify(panel.value())==copied,"actual Dez conversation reaches copied reader rather than stale draft, retaining primary objective and All Actions")
+			panel.cycle(0)
+			panel.palette("warm")
+			panel.hang()
+			require(JSON.stringify(study.build_save_envelope())==stable and panel.options[2].disabled,"completed reader refuses edits/Hang and writes zero saves")
+			panel.close_panel(false)
+			for face in panel.faces:
+				var base: MeshInstance3D=face.get_parent()
+				require(base.mesh is BoxMesh and base.mesh.size==Vector3(0.30,0.30,0.12) and face.mesh is QuadMesh and face.mesh.size==Vector2(0.30,0.30) and is_equal_approx(face.position.z,0.065),"six physical tile boxes stay unchanged; thin original painted fronts clear actual front faces")
+				var paint: StandardMaterial3D=face.material_override
+				require(not paint.emission_enabled and paint.albedo_texture.get_image().has_mipmaps() and paint.uv1_scale.is_equal_approx(Vector3(98.0/360.0,98.0/240.0,1)),"world shapes use mipmapped nonemissive cropped frozen3:2SVG, not BoxMesh UV guesses")
+			var normal: Vector3=study.hosting_tile_panel_node.global_basis.z
+			require(Vector2(normal.x,normal.z).dot(study.mural_normal())>0.99,"painted +Z front faces actual sidewalk/mural stand direction")
+	# All three source glyphs/palettes and cache bounds without a model/schema change.
+	for i in range(24):
+		var v := {"palette":"cool" if i%2 else "warm","tiles":[i%3,(i/3)%3,(i/9)%3,2,1,0]}
+		var ink: Texture2D=panel.texture(v,false)
+		var world: Texture2D=panel.texture(v,true)
+		require(ink!=null and world!=null and ink.get_width()==720 and ink.get_height()==480,"native frozen art raster is720x480")
+	require(panel.textures.size()<=8 and panel.world_textures.size()<=1,"reader cache bounded8/world cache bounded1")
+	# Oversized imported bags remain explicit visit-only; completion growth must refuse.
+	study.apply_save_envelope(full_profile)
+	var at: int=study.hosting_order.find("art")
+	study.hosting_results.resize(at)
+	study.hosting_draft=study.default_hosting_draft()
+	study.civic_phase="idle"
+	study.civic_result.clear()
+	study.film_phase="idle"
+	study.film_result.clear()
+	study.film_captured.clear()
+	var oversize: Dictionary=study.build_save_envelope()
+	for target_bytes in [4096,4097]:
+		var near: Dictionary=oversize.duplicate(true)
+		near.optional={"padding":""}
+		require(study.apply_save_envelope(JSON.stringify(near)),"normalize empty optional fixture before measuring actual serialized budget")
+		near=study.build_save_envelope()
+		var after_hang: Dictionary=near.duplicate(true)
+		after_hang.hosting.results.append({"id":"art","value":panel.value()})
+		after_hang.save_seq=study.save_seq+2
+		near.optional.padding="x".repeat(target_bytes-JSON.stringify(after_hang).to_utf8_buffer().size())
+		require(study.apply_save_envelope(JSON.stringify(near)) and study.save_godot_state(),"valid near-limit art profile writes only isolated native test file")
+		study.hide_story_card()
+		study.last_story_chapter=int(study.current_chapter().num)
+		study.current_path.clear()
+		var near_file := FileAccess.get_file_as_string(study.save_path)
+		var near_before := JSON.stringify(study.build_save_envelope())
+		require(near_before.to_utf8_buffer().size()<=4096 and panel.open_panel(),"near-limit valid art draft opens within4096")
+		after_hang=study.build_save_envelope()
+		after_hang.hosting.results.append({"id":"art","value":panel.value()})
+		after_hang.save_seq=study.save_seq+1
+		require(JSON.stringify(after_hang).to_utf8_buffer().size()==target_bytes,"actual next-envelope prediction is exactly the independent boundary fixture")
+		panel.hang()
+		if target_bytes==4096:
+			require(not panel.visible and study.has_hosted_segment("art") and FileAccess.get_file_as_string(study.save_path).to_utf8_buffer().size()==4096,"exact4096 completion succeeds through actual save writer, preventing over-strict budget preview")
+		else:
+			require(panel.visible and panel.message.contains("Change not made") and JSON.stringify(study.build_save_envelope())==near_before and FileAccess.get_file_as_string(study.save_path)==near_file,"exact4097 completion refuses BEFORE mutation/storage")
+		panel.close_panel(false)
+	oversize.optional={"test":"x".repeat(5000)}
+	require(study.apply_save_envelope(JSON.stringify(oversize)),"existing oversized optional import contract remains")
+	study.hide_story_card()
+	study.last_story_chapter=int(study.current_chapter().num)
+	study.current_path.clear()
+	var file_before := FileAccess.get_file_as_string(study.save_path)
+	var sequence: int=study.save_seq
+	require(panel.open_panel(),"isolated oversized profile opens art paper")
+	var previous_tile: int=int(study.hosting_draft.tiles[5])
+	panel.cycle(5)
+	require(int(study.hosting_draft.tiles[5])==(previous_tile+1)%3 and int(panel.value().tiles[5])==(previous_tile+1)%3,"visit-only receipt describes an actual in-memory tile change")
+	require(panel.message.contains("visit") and study.save_seq==sequence and FileAccess.get_file_as_string(study.save_path)==file_before,"non-growing oversized tile edit is visibly visit-only with exact stored file/sequence unchanged")
+	var before_hang := JSON.stringify(study.build_save_envelope())
+	panel.hang()
+	require(panel.visible and panel.message.contains("Change not made") and JSON.stringify(study.build_save_envelope())==before_hang,"oversized Hang growth refuses BEFORE state/progress mutation")
+	panel.close_panel(false)
+	require(study.advance_programme_and_hosting_step()=="hosting_blocked" and JSON.stringify(study.build_save_envelope())==before_hang and FileAccess.get_file_as_string(study.save_path)==file_before,"legacy Z callback shares art Hang budget guard and truthfully refuses unsavable progress")
+	study.apply_save_envelope(full_profile)
+	study.hide_story_card()
+	study.last_story_chapter=int(study.current_chapter().num)
+	study.current_path.clear()
+	for tiny in [Vector2i(390,240),Vector2i(320,200)]:
+		root.size=tiny
+		panel.open_panel()
+		for f in range(8): await process_frame
+		require(panel.picture.size.x>0 and panel.picture.size.y>0 and not panel.painting_room and panel.pads.all(func(b): return not b.visible) and panel.reader.text.contains("enlarge"),"below accepted size gracefully disables overlapping tiny paint targets without negative picture geometry")
+		panel.close_panel(false)
+	root.size=Vector2i(1100,760)
+	for f in range(6): await process_frame
+	panel.open_panel()
+	study.block_panel.visible=true
+	for f in range(3): await process_frame
+	require(not study.block_panel.visible,"focused art re-hides siblings after derived UI updates")
+	study.block_opened=false
+	for f in range(3): await process_frame
+	require(not panel.visible,"lost art precondition closes stale focused paper")
+	study.apply_save_envelope(original)
+	study.hide_story_card()
+	study.last_story_chapter=int(study.current_chapter().num)
+	root.size=Vector2i(1100,760)
+	print("SHARED_PANEL_PASS:2layouts x7sizes, six real targets/two palettes/Hang/copies/24rasters/cache8and1/exact4096success4097refusal")

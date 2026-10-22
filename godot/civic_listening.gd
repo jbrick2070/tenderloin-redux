@@ -139,7 +139,7 @@ func request_text(p: Dictionary) -> String:
 
 func open_hour() -> bool:
 	if visible: return true
-	if not available() or game.startup_story_pending or game.is_story_card_visible() or not game.current_path.is_empty() or game.is_mural_workshop_visible() or game.is_rhythm_circle_visible() or game.is_film_screening_visible() or game.is_programme_studio_visible():
+	if not available() or game.startup_story_pending or game.is_story_card_visible() or not game.current_path.is_empty() or game.is_mural_workshop_visible() or game.is_rhythm_circle_visible() or game.is_film_screening_visible() or game.is_programme_studio_visible() or game.is_shared_panel_visible():
 		game.announce_a11y_status("Finish hosting, arriving and any open activity before the Listening Hour.")
 		return false
 	return_focus = get_viewport().gui_get_focus_owner()
