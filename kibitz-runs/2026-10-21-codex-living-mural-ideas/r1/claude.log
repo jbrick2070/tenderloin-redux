@@ -1,0 +1,22 @@
+STDOUT:
+My verdict is **yes-with-fixes**: the plan can go ahead once a few concept gaps are closed. The full review is written to `kibitz-runs/2026-10-21-codex-living-mural-ideas/r1/claude.md`, and I didn't touch any other file. The file-read check passed first, and every factual claim in the driver anchor matched the code.
+
+**Must-fix before build:**
+1. **Facade wording in option B.** The anchor's "not a real facade" reads like a facade is the missing upgrade. The roadmap forbids that (`docs/ROADMAP.md:32` and `:45`), and the game's own text at `godot/main.gd:8686` promises no facade is painted.
+2. **Option A is mostly already built.** The palette cycle and the art showing on the portable board both exist. Any new "artist palette" would need a new save field, which contradicts the anchor's "no new save key needed".
+3. **"Must feel like large art" can't gate a build** while aesthetics are also listed as unverifiable. I proposed measurable stand-ins: how much of the paper each figure covers, pixel differences between every pair of scenes, and whether the key prop is visible on the world board.
+4. **The three required marks sit on top of the scene art on the world board** (`main.gd:3262-3264`). A small instrument or trowel can be hidden, and the earlier round left that unresolved.
+5. **Two slots with five scenes means pick 2 of 5.** The player can never show music, cooking and painting together, which is the combination the creator asked for. The plan should state that trade-off openly or get consent to add a third slot.
+
+**Should-fix:**
+- Option B is undefined.
+- Five choice buttons would crowd the paper on short wide screens (520 and 559 × 360).
+- The browser tests tap buttons by position, so adding scenes shifts every index and could silently turn "Lift" taps into "Back" taps.
+- New scene IDs should be 8 characters or fewer. A longer ID replacing a shorter one is refused when the save is already over budget.
+- The "Paint Scenes" entry is hard to discover.
+- The musician scene should be explicitly visual-only.
+- The musician scene shouldn't simply copy the hand-drum icon from the existing border.
+
+**Recommended slice:** add Musician at Work and Gardening Together as two new scenes using the existing palette, two slots and board, with no new save key. Before adding them, label the snapshot buttons by role and re-run the current three-scene tests that way. Also add one line from a matching neighbour per new scene and a Celeste prompt pointing to "Paint Scenes" after the three marks are done; neither saves anything.
+
+One environment note: several MCP connectors (Asana, Atlassian, Datadog, GitHub, Linear, Notion, PagerDuty, Slack, Box, Runway) need authorising before they can be used. Do that through claude.ai connector settings, or `/mcp` in an interactive session. None of them were needed for this review.

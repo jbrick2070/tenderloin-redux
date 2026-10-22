@@ -1,0 +1,24 @@
+STDOUT:
+The review is written to `C:\tenderloin-redux\kibitz-runs\2026-10-21-codex-living-mural\r3\claude.md`. I could not diff against the baseline (2e41ed4) in this lane, so claims that depend on that diff are marked "verify:".
+
+**Verdict: yes-with-fixes.** The page switching, button callbacks and keyboard focus are wired correctly. Three things block acceptance:
+
+1. **The rhythm natural-end test is still flaky, not fixed.** Native runs 2 and 3 used the same 4.5-second real-time wait. Run 2 failed and run 3 passed, so the switch from "3.3 scene seconds" to a 4.5 s real-time wait did not fix it.
+   - The new `RHYTHM_NATURAL_END` line can't help on a pass: `rhythm_bar.gd:59` reports position 0.0 whenever the bar isn't playing, so every passing run prints the same thing.
+   - I recommend logging the playback position inside the wait loop, plus elapsed time and audio-driver details, and treating the gate as closed only after 3 full passing runs in a row.
+   - The edit to that existing check in `study_test.gd` should be disclosed as a test change.
+
+2. **The new Dez/Thanh reply breaks the speech bubble.** `main.gd:8525` adds the reply after the closing quote of lines like `Dez: "..."`. The bubble parser (`main.gd:4643-4647`) only strips the name and quotes when the line ends with `"`. With the reply added, the bubble shows the raw `Dez: "…" That painted guitar…` text. The tests only check that the text contains "painted guitar", so they miss it. The fix is to put the reply inside the closing quote.
+
+3. **Preflight3 hasn't finished.** Its log has no final results yet, so acceptance can't cite it.
+
+Should-fix items:
+- The hidden third choice button indexes past the end of the page list if something triggers it programmatically (`mural_stories.gd:158`).
+- The page button's 44px size is only checked natively on page 2, not page 1 (`study_test.gd:4161`).
+- The test snapshot changes shape when panels are hidden, which caused both earlier preflight crashes. One reader in `godot-browser.mjs:372` is still unguarded.
+- The "silent illustration" note disappears after the first placement.
+- The music volume dip during a drum bar is restored only when the bar's "finished" signal fires (`rhythm_circle.gd:45-52`). The per-frame update never restores it.
+
+Two cuts are safe:
+- Move the save-size check out of the 8-screen-size loop, since the save is 1589 bytes at every size.
+- Drop a duplicate layout-pending check in the browser test.

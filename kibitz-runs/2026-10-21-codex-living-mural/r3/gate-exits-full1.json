@@ -1,0 +1,12 @@
+{
+  "native_consecutive": [
+    0,
+    0,
+    0
+  ],
+  "export": 0,
+  "check": 0,
+  "node": 0,
+  "browser": 1,
+  "first_full_failure": "Float32 activity-camera projection delta~0.000015m at559x360; no production camera change"
+}

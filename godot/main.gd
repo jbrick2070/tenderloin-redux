@@ -8522,7 +8522,16 @@ func neighbor_greeting_line(n_id: String) -> String:
 		options[4] = "%s: \"%s\"" % [speaker_name, surp_mem.trim_prefix("“").trim_suffix("”")]
 	if options.is_empty():
 		return "Choose a conversation topic or neighborhood action below"
-	return options[posmod(maxi(1, int(neighbor_talk_counts.get(n_id, 1))) - 1, options.size())]
+	var line := options[posmod(maxi(1, int(neighbor_talk_counts.get(n_id, 1))) - 1, options.size())]
+	var art_reply := mural_neighbor_reply(n_id)
+	return line.left(-1)+art_reply+'"' if not art_reply.is_empty() and line.ends_with('"') else line+art_reply
+
+func mural_neighbor_reply(n_id: String) -> String:
+	if n_id == "dez" and "music" in mural_scenes.values():
+		return " That painted guitar leaves room for a quiet song, too."
+	if n_id == "thanh" and "garden" in mural_scenes.values():
+		return " Two pairs of hands tending that painted planter. Growing something takes neighbors, too."
+	return ""
 
 func talk_with_neighbor(index: int) -> String:
 	if index < 0 or index >= neighbors.size():
@@ -11607,10 +11616,10 @@ func mural_composition_reply() -> String:
 		line += " My Rise carries it to the right."
 	else:
 		line += " My Rise links the shapes together."
-	return line + " Three neighbors' ideas, arranged your way." + (" "+mural_scene_reply() if not mural_scenes.is_empty() else "")
+	return line + " Three neighbors' ideas, arranged your way. Choose Compose Mural, then Paint Scenes for food, music, art or gardening." + (" "+mural_scene_reply() if not mural_scenes.is_empty() else "")
 
 func mural_scene_reply() -> String:
-	if mural_scenes.is_empty(): return "A shared meal or a painter at work can tell another story here."
+	if mural_scenes.is_empty(): return "A meal, a painter, a guitarist or neighbors growing plants can tell another story here."
 	var names: Array[String] = []
 	for slot in ["left","right"]:
 		if mural_scenes.has(slot): names.append("%s on the %s" % [preload("res://mural_stories.gd").NAMES[mural_scenes[slot]],slot])

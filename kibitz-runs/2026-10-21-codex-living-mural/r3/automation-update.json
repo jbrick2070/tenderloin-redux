@@ -1,0 +1,13 @@
+{
+  "verified_at": "2026-10-22T01:12:43.921675+00:00",
+  "tool": "mcp__codex_app__automation_update",
+  "readback_matches_payload": true,
+  "status": "ACTIVE",
+  "rrule": "FREQ=MINUTELY;INTERVAL=30",
+  "target_thread_id": "01a159d6-60a3-78e1-92ae-4018509d2539",
+  "created_at": 1792342628584,
+  "policy_prefix_chars": 8089,
+  "policy_prefix_sha256": "41b8fc04cc9cd123adff92ae758927589793d2bcf3285f6dc14af495d24beef3",
+  "prompt_chars": 13193,
+  "all_original_identity_and_cadence_fields_preserved": true
+}

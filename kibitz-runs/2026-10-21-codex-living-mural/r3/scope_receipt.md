@@ -1,0 +1,2 @@
+# Explicit implementation QA scope
+One sole-Claude exact claude-opus-5-5/high implementation review, r3 ONLY. Earlier fresh pre-code ideas is separate living-mural-ideas/r1 with unchanged source and grounded pre-code selection. r1/r2/r4 are not run in THIS implementation QA campaign. Codex sole writer/judge; Claude reads actual source and writes only assigned report. Record exact model/effort/quota, source unchanged during call; no model substitution/larger panel/auth retry. Driver will ground every finding, apply valid fixes and rerun all5gates.

@@ -1,0 +1,2 @@
+# Explicit scoped pre-coding ideas pass
+Creator explicitly requests one source-reading ideas r1 BEFORE code and separate later implementation QA r3. This campaign is ONLY r1; r2/r3/r4 are not invoked. Driver Codex; sole Claude requested claude-opus-5-5/high. Read source, write report only. No runtime/test implementation edits yet. Retain input hash, selected model/effort/quota receipts and source comparison; stop on auth/quota failure, no substitution/retry/larger panel.

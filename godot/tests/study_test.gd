@@ -4133,6 +4133,7 @@ func verify_mural_stories(study: Node, full_profile: String) -> void:
 		require(study.keepsake_photo == old.epilogue.photo and study.hosting_results == old.hosting.results,"optional validation preserves actual copied photo and later progress")
 		require(study.mural_scenes.size() <= 1,"unknown and duplicate stories filter independently")
 	require(preload("res://mural_stories.gd").clean({"left":"sharing","right":"painting"}) == {"left":"sharing","right":"painting"},"two distinct known scenes survive validation")
+	require(preload("res://mural_stories.gd").clean({"left":"music","right":"garden"}) == {"left":"music","right":"garden"},"new short scene IDs round trip through the existing bounded optional contract")
 	study.apply_save_envelope(JSON.stringify(old))
 	study.hide_story_card()
 	study.startup_story_pending = false
@@ -4157,7 +4158,7 @@ func verify_mural_stories(study: Node, full_profile: String) -> void:
 		require(art.visible and not study.mural_workshop.panel.visible and study.is_mural_workshop_visible(),"new reader is a submode of the original modal guard")
 		var view := Rect2(Vector2.ZERO,Vector2(size))
 		require(view.grow(1).encloses(art.panel.get_global_rect()) and not art.layout_pending,"new paper panel settles on screen")
-		for b in art.choices+art.targets+art.lifts+[art.palette_button,art.music_button,art.back_button]:
+		for b in art.choices+art.targets+art.lifts+[art.palette_button,art.music_button,art.back_button,art.page_button]:
 			require(b.size.x >= 44 and b.size.y >= 44,"all story targets retain44px")
 			require(art.panel.get_global_rect().grow(1).encloses(b.get_global_rect()),"complete scene controls are reachable inside the panel")
 		for b in art.choices:
@@ -4169,6 +4170,43 @@ func verify_mural_stories(study: Node, full_profile: String) -> void:
 		art.reader.custom_minimum_size.y = 36
 		for f in range(8): await process_frame
 		require(not art.layout_pending and view.grow(1).encloses(art.panel.get_global_rect()),"reader shrink settles back on screen")
+		var original_paper: Vector2 = art.paper_rect.size
+		var before_page: String = JSON.stringify(study.build_save_envelope())
+		art.page_button.emit_signal("pressed")
+		for f in range(8): await process_frame
+		require(art.scene_page==1 and art.choices[0].accessibility_name=="Making Music" and art.choices[1].accessibility_name=="Growing Together" and not art.choices[2].visible,"second artist page exposes two full original names without a phantom third choice")
+		require(before_page==JSON.stringify(study.build_save_envelope()),"browsing scenes is not an art edit or save")
+		require(art.paper_rect.size.y>=original_paper.y-1 and art.paper_rect.size.x>=original_paper.x-1,"more scenes do not shrink the primary painting surface")
+		for b in art.choices+art.targets+art.lifts+[art.palette_button,art.music_button,art.back_button,art.page_button]:
+			if b.visible:
+				require(b.size.x>=44 and b.size.y>=44 and art.panel.get_global_rect().grow(1).encloses(b.get_global_rect()),"new page keeps all visible targets inside the panel at44px")
+		var music_before: bool = study.music_playing
+		art.choices[0].emit_signal("pressed")
+		art.targets[0].emit_signal("pressed")
+		art.choices[1].emit_signal("pressed")
+		art.targets[1].emit_signal("pressed")
+		require(study.mural_scenes=={"left":"music","right":"garden"} and study.music_playing==music_before,"actual new choice and paper callbacks paint both silent original scenes")
+		require(study.neighbor_greeting_line("dez").contains("painted guitar") and study.neighbor_greeting_line("thanh").contains("painted planter"),"both real resident dialogue builders notice current live art without a new relationship flag")
+		for resident in ["dez","thanh"]:
+			var spoken: String = study.spoken_text_from_line(study.neighbor_greeting_line(resident))
+			require(not spoken.begins_with(resident.capitalize()+":") and not spoken.contains('"') and spoken.contains("painted"),"new resident reactions stay inside the existing spoken dialogue contract")
+			study.show_neighbor_speech(3 if resident=="dez" else 4,study.neighbor_greeting_line(resident))
+			require(study.speech_bubble_text==spoken,"actual speech entry receives parsed resident art reaction")
+			study.hide_speech_bubble()
+		art.choices[2].emit_signal("pressed")
+		require(art.selected=="garden","stale hidden-choice activation cannot index outside the shorter page")
+		require(photo==JSON.stringify(study.keepsake_photo) and svg==study.build_keepsake_svg(study.keepsake_photo) and study.spark_count()==sparks,"new art never rewrites copied work or grants additional Sparks")
+		var new_roundtrip: Dictionary = study.build_save_envelope().duplicate(true)
+		new_roundtrip.optional["bounded_art_metadata"] = "x".repeat(512)
+		new_roundtrip.discovered_surprises = study.NEIGHBORHOOD_SURPRISE_IDS.duplicate()
+		require(JSON.stringify(new_roundtrip).to_utf8_buffer().size()<=4096,"actual completed profile plus new pair/all surprises/512bytes remains bounded")
+		art.lifts[0].emit_signal("pressed")
+		art.lifts[1].emit_signal("pressed")
+		require(study.mural_neighbor_reply("dez").is_empty() and study.mural_neighbor_reply("thanh").is_empty(),"lifting removes derived resident reactions immediately")
+		art.page_button.emit_signal("pressed")
+		for f in range(8): await process_frame
+		require(art.scene_page==0 and art.choices[2].visible,"page return preserves all three existing choices")
+		print("LIVING_MURAL_CHECK ",size," paper=",art.paper_rect.size)
 		art.select_scene("cooking")
 		art.targets[0].emit_signal("pressed")
 		require(study.mural_scenes.get("left")=="cooking","actual target callback paints chosen left scene")
@@ -4345,7 +4383,21 @@ func verify_rhythm_bar(study: Node) -> void:
 	require(not circle.audition_active(),"live mute stops immediately")
 	study.music_volume = 0.7
 	circle.play_bar()
-	await create_timer(3.3).timeout
+	require(circle.audition_active(),"natural-end check starts from a genuinely playing finite bar")
+	var natural_deadline := Time.get_ticks_msec()+4500
+	var natural_start := Time.get_ticks_msec()
+	var natural_frames := 0
+	var natural_position := 0.0
+	var inactive_at := -1
+	while (circle.audition_active() or not is_equal_approx(study.sketch_player.volume_db,linear_to_db(0.7))) and Time.get_ticks_msec()<natural_deadline:
+		natural_frames += 1
+		if circle.audition_active(): natural_position = circle.audition.get_playback_position()
+		elif inactive_at < 0: inactive_at = Time.get_ticks_msec()-natural_start
+		await process_frame
+	# The mixer can clear playing before its finished signal reaches the main thread.
+	# Await BOTH unchanged postconditions; never manually stop or restore gain in this check.
+	print("RHYTHM_NATURAL_END ",circle.audition.snapshot()," elapsed_ms=",Time.get_ticks_msec()-natural_start," frames=",natural_frames," last_position=",natural_position," inactive_at_ms=",inactive_at," driver=",AudioServer.get_driver_name()," since_mix=",AudioServer.get_time_since_last_mix()," sketch_gain=",study.sketch_player.volume_db," expected=",linear_to_db(0.7))
+	require(natural_position>=2.5 and Time.get_ticks_msec()-natural_start>=2500,"natural end observes actual playback near the finite end, not an unrelated early stop")
 	require(not circle.audition_active() and is_equal_approx(study.sketch_player.volume_db,linear_to_db(0.7)),"natural end releases duck, no loop or queue")
 	circle.listen()
 	starts = circle.audition.starts

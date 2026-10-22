@@ -175,11 +175,14 @@ func setup(owner_game: Node) -> void:
 func open_stories() -> void:
 	panel.visible = false
 	stories.visible = true
-	stories.message = "Choose an illustrated scene, then the left or right half. Optional art saves as you go; lifting a scene keeps the original three marks."
+	stories.scene_page = 0
+	stories.selected = "cooking"
+	stories.thumbnail_palette = ""
+	stories.message = "Choose any two of five illustrated scenes, then the left or right half. Music & Garden shows more scenes. Optional art saves as you go; lifting keeps the original three marks."
 	stories.scroll.scroll_vertical = 0
 	stories.present()
 	stories.choices[0].grab_focus()
-	game.announce_a11y_status("Mural Stories. Cooking Together, Sharing a Bowl, Making Street Art. Choose a scene, then a half of the paper. Escape returns to Mural Workshop.")
+	game.announce_a11y_status("Mural Stories. Food and art page 1 of 2. Music & Garden shows two more scenes. Choose any two scenes, then a half of the paper. Escape returns to Mural Workshop.")
 
 func close_stories() -> void:
 	reset_mode()

@@ -1,8 +1,10 @@
 extends Control
 ## Original fictional community-art layer. No real artist, business or mural claim.
-const IDS := ["cooking", "sharing", "painting"]
+const IDS := ["cooking", "sharing", "painting", "music", "garden"]
 const SLOTS := ["left", "right"]
-const NAMES := {"cooking":"Cooking Together", "sharing":"Sharing a Bowl", "painting":"Making Street Art"}
+const NAMES := {"cooking":"Cooking Together", "sharing":"Sharing a Bowl", "painting":"Making Street Art", "music":"Making Music", "garden":"Growing Together"}
+const LABELS := {"cooking":"Cooking\nTogether", "sharing":"Sharing\na Bowl", "painting":"Making\nStreet Art", "music":"Making\nMusic", "garden":"Growing\nTogether"}
+const PAGES := [["cooking", "sharing", "painting"], ["music", "garden"]]
 static var textures: Dictionary = {}
 static var thumbnails: Dictionary = {}
 var game: Node
@@ -19,6 +21,8 @@ var reader: RichTextLabel
 var palette_button: Button
 var music_button: Button
 var back_button: Button
+var page_button: Button
+var scene_page := 0
 var choices: Array[Button] = []
 var targets: Array[Button] = []
 var lifts: Array[Button] = []
@@ -61,6 +65,20 @@ static func vignette(id: String, pal: Array) -> String:
 			art += '<path d="M93 34L189 27L185 148L91 153Z" fill="#ecd4aa" stroke="%s" stroke-width="3"/><path d="M104 61Q142 20 176 59M106 109Q125 71 169 88M111 129Q141 97 174 121" fill="none" stroke="%s" stroke-width="13" stroke-linecap="round"/><path d="M106 69Q141 38 174 65M108 116Q134 85 173 97" fill="none" stroke="%s" stroke-width="6" stroke-linecap="round"/><path d="M101 152L96 182M177 150L185 181" stroke="%s" stroke-width="5"/>' % [ink,pal[0],pal[1],ink]
 			art += '<circle cx="51" cy="54" r="16" fill="#71452f"/><path d="M35 48Q31 29 53 31Q70 31 68 49L59 40L36 43Z" fill="%s"/><path d="M31 78Q46 68 62 78L71 129H25Z" fill="%s"/><path d="M32 128L27 178M61 128L69 178" stroke="%s" stroke-width="12" stroke-linecap="round"/><path d="M27 178H15M69 178H81" stroke="%s" stroke-width="7" stroke-linecap="round"/>' % [ink,pal[2],ink,ink]
 			art += '<path d="M61 82L79 99L105 75M33 84L18 110L39 122" fill="none" stroke="#71452f" stroke-width="9" stroke-linecap="round"/><path d="M101 69L108 66L114 85L105 88Z" fill="%s" stroke="%s" stroke-width="2"/><path d="M106 65L110 63" stroke="%s" stroke-width="3"/><g fill="%s"><circle cx="118" cy="59" r="2"/><circle cx="126" cy="56" r="2.6"/><circle cx="126" cy="64" r="1.8"/><circle cx="133" cy="61" r="2"/></g><path d="M39 126L45 119L50 124L45 134Z" fill="%s"/>' % [pal[0],ink,ink,pal[1],pal[1]]
+		"music":
+			# A complete seated guitarist, not a repeat of the small drum border.
+			art = '<path d="M18 184Q12 163 39 159L173 163Q194 174 179 187Z" fill="%s" opacity=".2"/>' % pal[1]
+			art += '<path d="M46 133H116M52 133L43 180M109 133L120 180" fill="none" stroke="%s" stroke-width="6"/>' % ink
+			art += head
+			art += '<path d="M57 70Q76 62 94 73L105 124L61 133L45 106Z" fill="%s"/><path d="M61 128L91 142L86 177M94 125L119 138L132 172" fill="none" stroke="%s" stroke-width="13" stroke-linecap="round"/><path d="M86 177H72M132 172L144 169" stroke="%s" stroke-width="7" stroke-linecap="round"/>' % [pal[1],ink,ink]
+			art += '<path d="M90 91Q70 82 66 104Q60 113 74 121Q66 144 90 148Q111 153 119 135Q133 127 119 114L114 107Z" fill="%s" stroke="%s" stroke-width="3"/><path d="M105 110L164 72L171 81L114 121Z" fill="#bd8152" stroke="%s" stroke-width="3"/><path d="M158 72L173 63L181 77L167 86Z" fill="%s" stroke="%s" stroke-width="3"/><circle cx="98" cy="121" r="9" fill="%s"/><path d="M86 139L83 132M86 134L172 74M88 136L173 76M90 138L174 78" stroke="#f4e3ba" stroke-width="1.5"/><path d="M54 82L51 106L88 123M92 80L121 97L143 92" fill="none" stroke="#aa6549" stroke-width="9" stroke-linecap="round"/><path d="M147 43v17q-10-4-10 3t13-1V40l19-5v19q-10-4-10 3t13-1V31Z" fill="%s"/>' % [pal[2],ink,ink,pal[0],ink,ink,pal[0]]
+		"garden":
+			# Two people share care work around an imagined portable planter.
+			art = '<path d="M12 184Q14 163 38 160H178Q200 173 182 187Z" fill="%s" opacity=".2"/>' % pal[0]
+			art += '<circle cx="39" cy="55" r="16" fill="#71452f"/><path d="M23 50Q18 30 40 30Q61 31 56 51L46 40L24 45Z" fill="%s"/><path d="M21 78Q38 66 56 78L64 127H17Z" fill="%s"/><path d="M26 126L23 177M51 127L62 176" stroke="%s" stroke-width="12" stroke-linecap="round"/>' % [ink,pal[0],ink]
+			art += '<circle cx="163" cy="65" r="16" fill="#aa6549"/><path d="M147 60Q139 36 164 39Q184 40 180 64L171 48L148 53Z" fill="%s"/><path d="M146 87Q161 75 179 88L185 137L143 145Z" fill="%s"/><path d="M150 140L133 162L153 178M177 136L178 175" fill="none" stroke="%s" stroke-width="12" stroke-linecap="round"/>' % [ink,pal[1],ink]
+			art += '<path d="M64 137L141 135L135 173L71 174Z" fill="#b97952" stroke="%s" stroke-width="3"/><path d="M60 132H145V142H60Z" fill="%s" stroke="%s" stroke-width="3"/><path d="M84 130V109M107 131V94M127 131V111" fill="none" stroke="%s" stroke-width="3"/><path d="M84 118Q64 118 69 106Q83 100 84 118M84 114Q82 99 96 100Q102 113 84 114M107 112Q88 110 92 98Q106 93 107 112M108 104Q109 84 124 91Q130 104 108 104M127 123Q115 111 125 105Q139 108 127 123M127 119Q132 104 144 112Q147 125 127 119Z" fill="%s"/>' % [ink,pal[2],ink,ink,pal[1]]
+			art += '<path d="M52 84L68 99L84 96M148 96L135 113L119 123" fill="none" stroke="#aa6549" stroke-width="9" stroke-linecap="round"/><path d="M60 99L85 95L91 116L67 122Z" fill="%s" stroke="%s" stroke-width="3"/><path d="M67 103Q53 91 57 107L66 113M86 104L99 108L98 113L88 113M99 116L102 124M104 115L108 122M112 125L117 118L121 126Z" fill="none" stroke="%s" stroke-width="3" stroke-linecap="round"/>' % [pal[2],ink,ink]
 	return '<g stroke-linejoin="round">'+art+'</g>'
 
 static func svg(scenes: Dictionary, pal: Array) -> String:
@@ -85,7 +103,7 @@ static func texture(scenes: Dictionary, pal: Array) -> ImageTexture:
 static func thumbnail(id: String, pal: Array) -> ImageTexture:
 	var key := id+str(pal)
 	if not thumbnails.has(key):
-		if thumbnails.size() >= 9: thumbnails.clear()
+		if thumbnails.size() >= IDS.size()*3: thumbnails.clear()
 		var image := Image.new()
 		if image.load_svg_from_string('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">'+vignette(id,pal)+'</svg>') != OK: return null
 		thumbnails[key] = ImageTexture.create_from_image(image)
@@ -135,8 +153,10 @@ func setup(owner_game: Node, owner_workshop: Control) -> void:
 	tools.add_theme_constant_override("h_separation",4)
 	tools.add_theme_constant_override("v_separation",4)
 	body.add_child(tools)
-	for id in IDS:
-		var b: Button = workshop.button(tools,NAMES[id],func(): select_scene(id))
+	for i in range(3):
+		var id: String = PAGES[0][i]
+		var b: Button = workshop.button(tools,NAMES[id],func():
+			if i < PAGES[scene_page].size(): select_scene(PAGES[scene_page][i]))
 		b.custom_minimum_size.y = 60
 		b.toggle_mode = true
 		b.text = ""
@@ -159,7 +179,7 @@ func setup(owner_game: Node, owner_workshop: Control) -> void:
 		row.add_child(icon)
 		var label := Label.new()
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		label.text = {"cooking":"Cooking\nTogether","sharing":"Sharing\na Bowl","painting":"Making\nStreet Art"}[id]
+		label.text = LABELS[id]
 		label.add_theme_font_size_override("font_size",12)
 		row.add_child(label)
 		choices.append(b)
@@ -188,24 +208,38 @@ func setup(owner_game: Node, owner_workshop: Control) -> void:
 	outer.add_child(footer)
 	palette_button = workshop.button(footer,"Palette",func(): game.cycle_mural_palette())
 	music_button = workshop.button(footer,"Music",func(): game.toggle_music_playback())
-	back_button = workshop.button(footer,"Back to Mural",func(): workshop.close_stories())
+	back_button = workshop.button(footer,"Back to\nMural",func(): workshop.close_stories())
+	page_button = workshop.button(footer,"Music &\nGarden",change_page)
+	wire_focus()
+	for node in [title,attribution,content]: node.minimum_size_changed.connect(queue_layout)
+	visible = false
+
+func wire_focus() -> void:
 	var ring: Array[Control] = [reader]
-	ring.append_array(choices)
+	for b in choices:
+		if b.visible: ring.append(b)
 	ring.append_array(targets)
 	ring.append_array(lifts)
-	ring.append_array([palette_button,music_button,back_button])
+	ring.append_array([palette_button,music_button,back_button,page_button])
 	for i in range(ring.size()):
 		var node := ring[i]
 		node.focus_next = node.get_path_to(ring[(i+1)%ring.size()])
 		node.focus_previous = node.get_path_to(ring[posmod(i-1,ring.size())])
 		for direction in ["left","right","top","bottom"]:
 			node.set("focus_neighbor_"+direction,node.focus_previous if direction in ["left","top"] else node.focus_next)
-	for node in [title,attribution,content]: node.minimum_size_changed.connect(queue_layout)
-	visible = false
 
 func select_scene(id: String) -> void:
+	if not id in IDS: return
 	selected = id
 	message = NAMES[id]+" is on your brush. Touch the left or right half to paint; a second placement moves it."
+	present()
+	game.announce_a11y_status(message)
+
+func change_page() -> void:
+	scene_page = 1-scene_page
+	selected = PAGES[scene_page][0]
+	thumbnail_palette = ""
+	message = "Choose any two of five scenes. " + ("Making Music is a silent illustration; Growing Together pictures a shared planter." if scene_page == 1 else "Food and art scenes. Music and gardening are on the other page.")
 	present()
 	game.announce_a11y_status(message)
 
@@ -214,14 +248,24 @@ func present() -> void:
 	palette_button.text = "Palette:\n"+String(game.mural_palette).capitalize()
 	music_button.text = "Music:\n"+("On" if game.music_playing else "Off")
 	var text: String = message+" Celeste: "+game.mural_scene_reply()+" Story scenes sit under the original marks on the street board. Your earlier keepsake stays as it was."
+	if selected == "music" or "music" in game.mural_scenes.values(): text += " Making Music is a silent illustration; Music controls the soundtrack separately."
 	if reader.text != text:
 		reader.text = text
 		reader.scroll_to_line(0)
 	var pal: Array = game.KEEPSAKE_PALETTE_HEX.get(game.mural_palette,game.KEEPSAKE_PALETTE_HEX.garden)
-	for i in range(IDS.size()):
-		choices[i].set_pressed_no_signal(selected == IDS[i])
-		if thumbnail_palette != str(pal): choices[i].get_child(0).get_child(0).texture = thumbnail(IDS[i],pal)
+	page_button.text = "Music &\nGarden" if scene_page == 0 else "Food &\nArt"
+	page_button.accessibility_name = "Show music and gardening scenes, page 2 of 2" if scene_page == 0 else "Show food and art scenes, page 1 of 2"
+	for i in range(choices.size()):
+		choices[i].visible = i < PAGES[scene_page].size()
+		if not choices[i].visible: continue
+		var id: String = PAGES[scene_page][i]
+		choices[i].accessibility_name = NAMES[id]
+		choices[i].tooltip_text = NAMES[id]+". Choose a half of the paper to paint or move this scene."
+		choices[i].set_pressed_no_signal(selected == id)
+		choices[i].get_child(0).get_child(1).text = LABELS[id]
+		if thumbnail_palette != str(pal): choices[i].get_child(0).get_child(0).texture = thumbnail(id,pal)
 	thumbnail_palette = str(pal)
+	wire_focus()
 	for i in range(SLOTS.size()):
 		var id: String = game.mural_scenes.get(SLOTS[i],"")
 		targets[i].accessibility_name = "%s half: %s. Paint %s here." % [String(SLOTS[i]).capitalize(),NAMES.get(id,"open paper"),NAMES[selected]]
@@ -292,12 +336,18 @@ func snapshot() -> Dictionary:
 	buttons.append_array(choices)
 	buttons.append_array(targets)
 	buttons.append_array(lifts)
-	buttons.append_array([palette_button,music_button,back_button])
+	buttons.append_array([palette_button,music_button,back_button,page_button])
 	var detail: Dictionary = game.activity_detail_snapshot(reader,panel,buttons)
 	var snaps: Array = detail.buttons
 	for i in range(3):
-		snaps[i]["text"] = NAMES[IDS[i]]
+		var id: String = PAGES[scene_page][i] if i < PAGES[scene_page].size() else ""
+		snaps[i]["text"] = NAMES.get(id,"")
+		snaps[i]["role"] = "choice:"+id
 		var row: Control = choices[i].get_child(0)
 		snaps[i]["text_fits"] = choices[i].get_global_rect().grow(1).encloses(row.get_global_rect())
-	out.merge({"panel":game.control_snapshot(panel),"reader":detail,"buttons":snaps,"selected":selected,"scenes":game.mural_scenes.duplicate(),"paper":game.rect_snapshot(Rect2(paper.global_position+paper_rect.position,paper_rect.size)),"focus_within":get_viewport().gui_get_focus_owner()!=null and is_ancestor_of(get_viewport().gui_get_focus_owner())})
+	for i in range(2):
+		snaps[3+i]["role"] = "target:"+SLOTS[i]
+		snaps[5+i]["role"] = "lift:"+SLOTS[i]
+	for i in range(4): snaps[7+i]["role"] = ["palette","music","back","page"][i]
+	out.merge({"panel":game.control_snapshot(panel),"reader":detail,"buttons":snaps,"page":scene_page,"selected":selected,"scenes":game.mural_scenes.duplicate(),"paper":game.rect_snapshot(Rect2(paper.global_position+paper_rect.position,paper_rect.size)),"focus_within":get_viewport().gui_get_focus_owner()!=null and is_ancestor_of(get_viewport().gui_get_focus_owner())})
 	return out

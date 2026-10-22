@@ -1,0 +1,1162 @@
+{
+  "created": "2026-10-22T01:12:04.575431+00:00",
+  "baseline": "2e41ed44df03a8d860e3050231321cb4ae6c14e3",
+  "five_gates": "PASS",
+  "native_consecutive": 3,
+  "fresh_native_after_js_fix": true,
+  "max_art_camera_drift_m": 1.4988642425139018e-05,
+  "node_tests": 104,
+  "pack_bytes": 1744072,
+  "save_bytes": [
+    1729,
+    1729,
+    1729
+  ],
+  "living_cases": [
+    {
+      "size": {
+        "width": 1100,
+        "height": 760
+      },
+      "touch": false,
+      "changes": [
+        183,
+        220
+      ],
+      "props": [
+        79,
+        84
+      ],
+      "pairDifference": 289,
+      "paper": {
+        "height": 300,
+        "width": 600,
+        "x": 250,
+        "y": 271.5
+      },
+      "world": {
+        "bins": [
+          {
+            "ink": 2005,
+            "paper": 3898,
+            "skin": 52
+          },
+          {
+            "ink": 2896,
+            "paper": 3598,
+            "skin": 373
+          }
+        ],
+        "corners": [
+          {
+            "x": 562.112243652344,
+            "y": 334.474578857422
+          },
+          {
+            "x": 646.288452148438,
+            "y": 369.605743408203
+          },
+          {
+            "x": 562.112243652344,
+            "y": 377.394866943359
+          },
+          {
+            "x": 646.288452148438,
+            "y": 412.526031494141
+          }
+        ],
+        "asymmetric": false,
+        "propSamples": [
+          325,
+          349
+        ]
+      },
+      "reactions": [
+        "Dez: \"The block party is jumping! Tap 'Plan Party Schedule' or 'Shoot Short Film' to work on our afternoon projects. That painted guitar leaves room for a quiet song, too.\" \u00b7 \u201cWe ended on a shared motif. A different order would tell a different little story.\u201d  (Click Dez or press T to keep chatting)",
+        "Thanh: \"Pull up a stool and pour some hot jasmine tea! We can snap a group photo, host the party schedule, or hold our tenant circle. Two pairs of hands tending that painted planter. Growing something takes neighbors, too.\" \u00b7 \u201cThe crew held the take while I used the route. A production should fit around the people who live here.\u201d  (Click Thanh or press T to keep chatting)"
+      ],
+      "saveBytes": 1584
+    },
+    {
+      "size": {
+        "width": 520,
+        "height": 360
+      },
+      "touch": false,
+      "changes": [
+        145,
+        226
+      ],
+      "props": [
+        77,
+        88
+      ],
+      "pairDifference": 266,
+      "paper": {
+        "height": 136,
+        "width": 272,
+        "x": 192,
+        "y": 104
+      },
+      "world": {
+        "bins": [
+          {
+            "ink": 3258,
+            "paper": 2599,
+            "skin": 115
+          },
+          {
+            "ink": 3451,
+            "paper": 3130,
+            "skin": 559
+          }
+        ],
+        "corners": [
+          {
+            "x": 270.087738037109,
+            "y": 167.601699829102
+          },
+          {
+            "x": 309.960662841797,
+            "y": 184.242782592773
+          },
+          {
+            "x": 270.087738037109,
+            "y": 187.932357788086
+          },
+          {
+            "x": 309.960662841797,
+            "y": 204.573440551758
+          }
+        ],
+        "asymmetric": false,
+        "propSamples": [
+          83,
+          355
+        ]
+      },
+      "reactions": [],
+      "saveBytes": 1584
+    },
+    {
+      "size": {
+        "width": 559,
+        "height": 360
+      },
+      "touch": false,
+      "changes": [
+        180,
+        228
+      ],
+      "props": [
+        77,
+        86
+      ],
+      "pairDifference": 273,
+      "paper": {
+        "height": 136,
+        "width": 272,
+        "x": 211.5,
+        "y": 104
+      },
+      "world": {
+        "bins": [
+          {
+            "ink": 2391,
+            "paper": 2612,
+            "skin": 44
+          },
+          {
+            "ink": 2752,
+            "paper": 2657,
+            "skin": 367
+          }
+        ],
+        "corners": [
+          {
+            "x": 291.400024414062,
+            "y": 157.662734985352
+          },
+          {
+            "x": 331.273193359375,
+            "y": 174.303817749023
+          },
+          {
+            "x": 291.400024414062,
+            "y": 177.993621826172
+          },
+          {
+            "x": 331.273193359375,
+            "y": 194.634704589844
+          }
+        ],
+        "asymmetric": false,
+        "propSamples": [
+          239,
+          337
+        ]
+      },
+      "reactions": [],
+      "saveBytes": 1584
+    },
+    {
+      "size": {
+        "width": 390,
+        "height": 667
+      },
+      "touch": true,
+      "changes": [
+        145,
+        219
+      ],
+      "props": [
+        77,
+        86
+      ],
+      "pairDifference": 268,
+      "paper": {
+        "height": 175,
+        "width": 350,
+        "x": 20,
+        "y": 296
+      },
+      "world": {
+        "bins": [
+          {
+            "ink": 2859,
+            "paper": 2917,
+            "skin": 127
+          },
+          {
+            "ink": 3134,
+            "paper": 3310,
+            "skin": 608
+          }
+        ],
+        "corners": [
+          {
+            "x": 176.763412475586,
+            "y": 275.250122070312
+          },
+          {
+            "x": 250.639526367188,
+            "y": 306.082580566406
+          },
+          {
+            "x": 176.763412475586,
+            "y": 312.918762207031
+          },
+          {
+            "x": 250.639526367188,
+            "y": 343.751190185547
+          }
+        ],
+        "asymmetric": false,
+        "propSamples": [
+          113,
+          353
+        ]
+      },
+      "reactions": [
+        "Dez: \"The block party is jumping! Tap 'Plan Party Schedule' or 'Shoot Short Film' to work on our afternoon projects. That painted guitar leaves room for a quiet song, too.\" \u00b7 \u201cWe ended on a shared motif. A different order would tell a different little story.\u201d",
+        "Thanh: \"Pull up a stool and pour some hot jasmine tea! We can snap a group photo, host the party schedule, or hold our tenant circle. Two pairs of hands tending that painted planter. Growing something takes neighbors, too.\" \u00b7 \u201cThe crew held the take while I used the route. A production should fit around the people who live here.\u201d"
+      ],
+      "saveBytes": 1583
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 667
+      },
+      "touch": true,
+      "changes": [
+        180,
+        227
+      ],
+      "props": [
+        75,
+        87
+      ],
+      "pairDifference": 291,
+      "paper": {
+        "height": 140,
+        "width": 280,
+        "x": 20,
+        "y": 313.5
+      },
+      "world": {
+        "bins": [
+          {
+            "ink": 2398,
+            "paper": 3421,
+            "skin": 36
+          },
+          {
+            "ink": 3380,
+            "paper": 3102,
+            "skin": 394
+          }
+        ],
+        "corners": [
+          {
+            "x": 138.262954711914,
+            "y": 275.250122070312
+          },
+          {
+            "x": 212.138854980469,
+            "y": 306.082366943359
+          },
+          {
+            "x": 138.262954711914,
+            "y": 312.918731689453
+          },
+          {
+            "x": 212.138854980469,
+            "y": 343.7509765625
+          }
+        ],
+        "asymmetric": false,
+        "propSamples": [
+          49,
+          355
+        ]
+      },
+      "reactions": [
+        "Dez: \"The block party is jumping! Tap 'Plan Party Schedule' or 'Shoot Short Film' to work on our afternoon projects. That painted guitar leaves room for a quiet song, too.\" \u00b7 \u201cWe ended on a shared motif. A different order would tell a different little story.\u201d",
+        "Thanh: \"Pull up a stool and pour some hot jasmine tea! We can snap a group photo, host the party schedule, or hold our tenant circle. Two pairs of hands tending that painted planter. Growing something takes neighbors, too.\" \u00b7 \u201cThe crew held the take while I used the route. A production should fit around the people who live here.\u201d"
+      ],
+      "saveBytes": 1584
+    },
+    {
+      "size": {
+        "width": 520,
+        "height": 360
+      },
+      "touch": true,
+      "changes": [
+        145,
+        226
+      ],
+      "props": [
+        77,
+        88
+      ],
+      "pairDifference": 266,
+      "paper": {
+        "height": 136,
+        "width": 272,
+        "x": 192,
+        "y": 104
+      },
+      "world": {
+        "bins": [
+          {
+            "ink": 3579,
+            "paper": 2259,
+            "skin": 54
+          },
+          {
+            "ink": 3479,
+            "paper": 3071,
+            "skin": 622
+          }
+        ],
+        "corners": [
+          {
+            "x": 270.406341552734,
+            "y": 167.785263061523
+          },
+          {
+            "x": 310.279510498047,
+            "y": 184.426467895508
+          },
+          {
+            "x": 270.406341552734,
+            "y": 188.115921020508
+          },
+          {
+            "x": 310.279510498047,
+            "y": 204.757125854492
+          }
+        ],
+        "asymmetric": false,
+        "propSamples": [
+          83,
+          367
+        ]
+      },
+      "reactions": [],
+      "saveBytes": 1584
+    },
+    {
+      "size": {
+        "width": 559,
+        "height": 360
+      },
+      "touch": true,
+      "changes": [
+        180,
+        228
+      ],
+      "props": [
+        77,
+        86
+      ],
+      "pairDifference": 273,
+      "paper": {
+        "height": 136,
+        "width": 272,
+        "x": 211.5,
+        "y": 104
+      },
+      "world": {
+        "bins": [
+          {
+            "ink": 2391,
+            "paper": 2612,
+            "skin": 44
+          },
+          {
+            "ink": 2752,
+            "paper": 2657,
+            "skin": 367
+          }
+        ],
+        "corners": [
+          {
+            "x": 291.400024414062,
+            "y": 157.662734985352
+          },
+          {
+            "x": 331.273193359375,
+            "y": 174.303817749023
+          },
+          {
+            "x": 291.400024414062,
+            "y": 177.993621826172
+          },
+          {
+            "x": 331.273193359375,
+            "y": 194.634704589844
+          }
+        ],
+        "asymmetric": false,
+        "propSamples": [
+          239,
+          337
+        ]
+      },
+      "reactions": [],
+      "saveBytes": 1583
+    },
+    {
+      "size": {
+        "width": 390,
+        "height": 667
+      },
+      "touch": true,
+      "changes": [
+        145,
+        219
+      ],
+      "props": [
+        77,
+        86
+      ],
+      "pairDifference": 268,
+      "paper": {
+        "height": 175,
+        "width": 350,
+        "x": 20,
+        "y": 296
+      },
+      "world": {
+        "bins": [
+          {
+            "ink": 2096,
+            "paper": 4390,
+            "skin": 74
+          },
+          {
+            "ink": 2705,
+            "paper": 4103,
+            "skin": 590
+          }
+        ],
+        "corners": [
+          {
+            "x": 176.762985229492,
+            "y": 265.250213623047
+          },
+          {
+            "x": 250.638885498047,
+            "y": 296.082427978516
+          },
+          {
+            "x": 176.762985229492,
+            "y": 302.918823242188
+          },
+          {
+            "x": 250.638885498047,
+            "y": 333.751037597656
+          }
+        ],
+        "asymmetric": false,
+        "propSamples": [
+          314,
+          353
+        ]
+      },
+      "reactions": [],
+      "saveBytes": 962
+    }
+  ],
+  "targeted_cases": [
+    {
+      "size": {
+        "width": 1100,
+        "height": 760
+      },
+      "touch": false,
+      "changes": [
+        183,
+        228
+      ],
+      "props": [
+        79,
+        84
+      ],
+      "pairDifference": 267,
+      "paper": {
+        "height": 300,
+        "width": 600,
+        "x": 250,
+        "y": 271.5
+      },
+      "world": {
+        "bins": [
+          {
+            "ink": 1880,
+            "paper": 2986,
+            "skin": 44
+          },
+          {
+            "ink": 2855,
+            "paper": 2563,
+            "skin": 370
+          }
+        ],
+        "corners": [
+          {
+            "x": 562.111999511719,
+            "y": 334.474334716797
+          },
+          {
+            "x": 646.288452148438,
+            "y": 369.605499267578
+          },
+          {
+            "x": 562.111999511719,
+            "y": 377.395080566406
+          },
+          {
+            "x": 646.288452148438,
+            "y": 412.526275634766
+          }
+        ],
+        "asymmetric": false,
+        "propSamples": [
+          325,
+          331
+        ]
+      },
+      "reactions": [
+        "Dez: \"The block party is jumping! Tap 'Plan Party Schedule' or 'Shoot Short Film' to work on our afternoon projects. That painted guitar leaves room for a quiet song, too.\"  (Click Dez or press T to keep chatting)",
+        "Thanh: \"Pull up a stool and pour some hot jasmine tea! We can snap a group photo, host the party schedule, or hold our tenant circle. Two pairs of hands tending that painted planter. Growing something takes neighbors, too.\"  (Click Thanh or press T to keep chatting)"
+      ],
+      "saveBytes": 1455
+    },
+    {
+      "size": {
+        "width": 390,
+        "height": 667
+      },
+      "touch": true,
+      "changes": [
+        184,
+        229
+      ],
+      "props": [
+        82,
+        87
+      ],
+      "pairDifference": 267,
+      "paper": {
+        "height": 175,
+        "width": 350,
+        "x": 20,
+        "y": 296
+      },
+      "world": {
+        "bins": [
+          {
+            "ink": 1918,
+            "paper": 2995,
+            "skin": 59
+          },
+          {
+            "ink": 2752,
+            "paper": 2599,
+            "skin": 370
+          }
+        ],
+        "corners": [
+          {
+            "x": 176.763198852539,
+            "y": 265.250640869141
+          },
+          {
+            "x": 250.638885498047,
+            "y": 296.082855224609
+          },
+          {
+            "x": 176.763198852539,
+            "y": 302.918823242188
+          },
+          {
+            "x": 250.638885498047,
+            "y": 333.751037597656
+          }
+        ],
+        "asymmetric": false,
+        "propSamples": [
+          308,
+          340
+        ]
+      },
+      "reactions": [
+        "Dez: \"The block party is jumping! Tap 'Plan Party Schedule' or 'Shoot Short Film' to work on our afternoon projects. That painted guitar leaves room for a quiet song, too.\"",
+        "Thanh: \"Pull up a stool and pour some hot jasmine tea! We can snap a group photo, host the party schedule, or hold our tenant circle. Two pairs of hands tending that painted planter. Growing something takes neighbors, too.\""
+      ],
+      "saveBytes": 1455
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 667
+      },
+      "touch": true,
+      "changes": [
+        180,
+        232
+      ],
+      "props": [
+        75,
+        87
+      ],
+      "pairDifference": 269,
+      "paper": {
+        "height": 140,
+        "width": 280,
+        "x": 20,
+        "y": 313.5
+      },
+      "world": {
+        "bins": [
+          {
+            "ink": 1909,
+            "paper": 3009,
+            "skin": 47
+          },
+          {
+            "ink": 2738,
+            "paper": 2677,
+            "skin": 382
+          }
+        ],
+        "corners": [
+          {
+            "x": 138.262954711914,
+            "y": 265.250183105469
+          },
+          {
+            "x": 212.139282226562,
+            "y": 296.082641601562
+          },
+          {
+            "x": 138.262954711914,
+            "y": 302.918823242188
+          },
+          {
+            "x": 212.139282226562,
+            "y": 333.751251220703
+          }
+        ],
+        "asymmetric": false,
+        "propSamples": [
+          310,
+          337
+        ]
+      },
+      "reactions": [
+        "Dez: \"The block party is jumping! Tap 'Plan Party Schedule' or 'Shoot Short Film' to work on our afternoon projects. That painted guitar leaves room for a quiet song, too.\"",
+        "Thanh: \"Pull up a stool and pour some hot jasmine tea! We can snap a group photo, host the party schedule, or hold our tenant circle. Two pairs of hands tending that painted planter. Growing something takes neighbors, too.\""
+      ],
+      "saveBytes": 1455
+    },
+    {
+      "size": {
+        "width": 520,
+        "height": 360
+      },
+      "touch": true,
+      "changes": [
+        185,
+        232
+      ],
+      "props": [
+        81,
+        88
+      ],
+      "pairDifference": 267,
+      "paper": {
+        "height": 136,
+        "width": 272,
+        "x": 192,
+        "y": 104
+      },
+      "world": {
+        "bins": [
+          {
+            "ink": 1882,
+            "paper": 3071,
+            "skin": 100
+          },
+          {
+            "ink": 2723,
+            "paper": 2593,
+            "skin": 325
+          }
+        ],
+        "corners": [
+          {
+            "x": 270.087738037109,
+            "y": 157.601501464844
+          },
+          {
+            "x": 309.960906982422,
+            "y": 174.242584228516
+          },
+          {
+            "x": 270.087738037109,
+            "y": 177.932388305664
+          },
+          {
+            "x": 309.960906982422,
+            "y": 194.573486328125
+          }
+        ],
+        "asymmetric": false,
+        "propSamples": [
+          349,
+          338
+        ]
+      },
+      "reactions": [],
+      "saveBytes": 1455
+    },
+    {
+      "size": {
+        "width": 559,
+        "height": 360
+      },
+      "touch": true,
+      "changes": [
+        180,
+        228
+      ],
+      "props": [
+        77,
+        86
+      ],
+      "pairDifference": 273,
+      "paper": {
+        "height": 136,
+        "width": 272,
+        "x": 211.5,
+        "y": 104
+      },
+      "world": {
+        "bins": [
+          {
+            "ink": 1951,
+            "paper": 2941,
+            "skin": 54
+          },
+          {
+            "ink": 2751,
+            "paper": 2694,
+            "skin": 367
+          }
+        ],
+        "corners": [
+          {
+            "x": 291.294281005859,
+            "y": 157.601501464844
+          },
+          {
+            "x": 331.167327880859,
+            "y": 174.242477416992
+          },
+          {
+            "x": 291.294281005859,
+            "y": 177.932388305664
+          },
+          {
+            "x": 331.167327880859,
+            "y": 194.573364257812
+          }
+        ],
+        "asymmetric": false,
+        "propSamples": [
+          329,
+          349
+        ]
+      },
+      "reactions": [],
+      "saveBytes": 1455
+    },
+    {
+      "size": {
+        "width": 1100,
+        "height": 760,
+        "privateDefaults": true
+      },
+      "touch": false,
+      "changes": [
+        183,
+        228
+      ],
+      "props": [
+        79,
+        84
+      ],
+      "pairDifference": 267,
+      "paper": {
+        "height": 300,
+        "width": 600,
+        "x": 250,
+        "y": 271.5
+      },
+      "world": {
+        "bins": [
+          {
+            "ink": 1949,
+            "paper": 3193,
+            "skin": 44
+          },
+          {
+            "ink": 2707,
+            "paper": 2612,
+            "skin": 411
+          }
+        ],
+        "corners": [
+          {
+            "x": 562.112243652344,
+            "y": 334.474578857422
+          },
+          {
+            "x": 646.288452148438,
+            "y": 369.605743408203
+          },
+          {
+            "x": 562.112243652344,
+            "y": 377.394866943359
+          },
+          {
+            "x": 646.288452148438,
+            "y": 412.526031494141
+          }
+        ],
+        "asymmetric": false,
+        "propSamples": [
+          325,
+          329
+        ]
+      },
+      "reactions": [
+        "Dez: \"The block party is jumping! Tap 'Plan Party Schedule' or 'Shoot Short Film' to work on our afternoon projects. That painted guitar leaves room for a quiet song, too.\"  (Click Dez or press T to keep chatting)",
+        "Thanh: \"Pull up a stool and pour some hot jasmine tea! We can snap a group photo, host the party schedule, or hold our tenant circle. Two pairs of hands tending that painted planter. Growing something takes neighbors, too.\"  (Click Thanh or press T to keep chatting)"
+      ],
+      "saveBytes": 1455
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 667,
+        "privateDefaults": true
+      },
+      "touch": true,
+      "changes": [
+        180,
+        232
+      ],
+      "props": [
+        75,
+        87
+      ],
+      "pairDifference": 269,
+      "paper": {
+        "height": 140,
+        "width": 280,
+        "x": 20,
+        "y": 313.5
+      },
+      "world": {
+        "bins": [
+          {
+            "ink": 1957,
+            "paper": 3210,
+            "skin": 53
+          },
+          {
+            "ink": 2597,
+            "paper": 2711,
+            "skin": 428
+          }
+        ],
+        "corners": [
+          {
+            "x": 138.263168334961,
+            "y": 265.250183105469
+          },
+          {
+            "x": 212.139282226562,
+            "y": 296.082427978516
+          },
+          {
+            "x": 138.263168334961,
+            "y": 302.918823242188
+          },
+          {
+            "x": 212.139282226562,
+            "y": 333.751037597656
+          }
+        ],
+        "asymmetric": false,
+        "propSamples": [
+          310,
+          337
+        ]
+      },
+      "reactions": [
+        "Dez: \"The block party is jumping! Tap 'Plan Party Schedule' or 'Shoot Short Film' to work on our afternoon projects. That painted guitar leaves room for a quiet song, too.\"",
+        "Thanh: \"Pull up a stool and pour some hot jasmine tea! We can snap a group photo, host the party schedule, or hold our tenant circle. Two pairs of hands tending that painted planter. Growing something takes neighbors, too.\""
+      ],
+      "saveBytes": 1455
+    }
+  ],
+  "paid_cli_calls": {
+    "ideas_r1": 1,
+    "implementation_r3": 1
+  },
+  "requested_selected_model": "claude-opus-5-5",
+  "requested_selected_effort": "high",
+  "provider_runtime_identity": "unverified",
+  "quota_percent": "unavailable",
+  "public": {
+    "version": "0.12.0",
+    "fingerprint": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567"
+  },
+  "errors": [],
+  "external": [],
+  "limits": [
+    "Human/physical-device/full AT aesthetic and listening acceptance unverified",
+    "Earlier uninstrumented audio failures do not identify which conjunct failed; later reproduced failure diagnosed",
+    "First full browser Float32 assertion failure retained; corrected oracle keeps exact modes/angles/zoom",
+    "r3 input hash recorded post-review, not pre-fanout",
+    "No deployment or full-game completion claim"
+  ],
+  "sha256": {
+    "artifacts/codex-mural-stories-world-1100x760-mouse-living.png": "92432931ab41134f3e0b24ababeac4110182dd253519c5f1e32286f4ef77c547",
+    "artifacts/codex-mural-stories-world-1100x760-mouse.png": "009e869b322f8124f81cb6623234745731dcca527d97b2844a4cadfc87b15a40",
+    "artifacts/codex-mural-stories-world-320x667-finger-living.png": "71a4b174932441455d81b1a80f0c6d7822cf38e3fd1d791f9241aac9b3343f46",
+    "artifacts/codex-mural-stories-world-320x667-finger.png": "d36a6628db24465888b1a23f02040ce10a473dc4baf3b73a70d2cf3c35d70871",
+    "artifacts/codex-mural-stories-world-390x667-finger-left-only.png": "bdc3670f4d1c82ce511dc2f23f57d988e4e87804ba16ec1064dd41a4435858b9",
+    "artifacts/codex-mural-stories-world-390x667-finger-living.png": "b7dd368ce069b7beb1904b2e7bd61b24fada643f391940d6399d7e2098626b24",
+    "artifacts/codex-mural-stories-world-390x667-finger.png": "8578a29669b25017e813cbc36a13fffe613cf386a894e2008047f3113f71564c",
+    "artifacts/codex-mural-stories-world-520x360-finger-living.png": "339e354c39d4bb155c5804f1a6128703d5e8e350643fda84ded4bd04acb63054",
+    "artifacts/codex-mural-stories-world-520x360-finger.png": "f2ac0868c39be7b8829d04885af4fe4ad306dcc013e4ca759e9c81e20bde88df",
+    "artifacts/codex-mural-stories-world-520x360-mouse-living.png": "aa15f41f133891f1584d72c73c08c2dc41d77e55fa7a06d0dccc3f9d3dbe20d2",
+    "artifacts/codex-mural-stories-world-520x360-mouse.png": "eac5f31d3ce1977f467652dc26801513ff4b6b7289be16aa19a65d9c1d335985",
+    "artifacts/codex-mural-stories-world-559x360-finger-living.png": "bcc65506036c289812f3f7d0a36dd182f36b3a08262c064c7914c1c3208562d3",
+    "artifacts/codex-mural-stories-world-559x360-finger.png": "153de8af840bc27da9a62303b23a7220f7dc6c2ed47be14b44783b579a5c7499",
+    "artifacts/codex-mural-stories-world-559x360-mouse-living.png": "7b29b54d7500e081bcad8c5dc41e1f6f736e47e8843b94c1344e214f5420309b",
+    "artifacts/codex-mural-stories-world-559x360-mouse.png": "f4b5c37acc6897b2e20033ded5cc77ab9fbc1898f82ceb77dab01e15625b2788",
+    "artifacts/godot-browser.json": "03b75d83ac3b584a6d3fc7da91f06af325c3d2b9e2c9f2b4f11b6fb5f0abfefd",
+    "artifacts/godot-web/index.pck": "a6c80921eb5a96ed0079b1fd28c150226b3aefb69e76c4e5490ebbcdc45d3779",
+    "artifacts/living-audio-probe.gd": "946c6c4a374950974628d2ec4d12278637f4aaed89841918c3319947dc3ec00b",
+    "artifacts/living-audio-probe.log": "eb8bd85eb0b0817409399eb852c48f228703ce424e80757d0c0eef0bd20fdb3b",
+    "artifacts/living-audio-probe2.log": "de609e6dd8fdba1d9c1e7c10db79eb945804f6ce866d55ce62648c9cbd055d1e",
+    "artifacts/living-mural-1100x760-mouse.json": "4163b9effd4030404f47b65315081e8de718b48460aa008cae82f6d3eefe4bb6",
+    "artifacts/living-mural-320x667-finger.json": "949a227c89cbeb0a83e61a7866e16779637b1e85d06c9a233a2bd1a7e6085993",
+    "artifacts/living-mural-390x667-finger.json": "b556901780d3f757ad68258fe2875cbad52ce7f5f8ba5e7555de23f6231067e9",
+    "artifacts/living-mural-520x360-finger.json": "b67a1fe9e2ca6eccafe428926c872aafb8c04d079a4a82ed8b2d2abf07d33848",
+    "artifacts/living-mural-520x360-mouse.json": "699fb61b28258654cdb17c60e549e004f2d00e01a177ed76baabe68487940ffb",
+    "artifacts/living-mural-559x360-finger.json": "8ba18df191d4fc89117dabb51845b07af2a790e8fd7edf9970bbbf3cd26f2d5c",
+    "artifacts/living-mural-559x360-mouse.json": "df6fe456d1bd15e8fb44e3538e75e2fe05bced8720c217c9a5cc172ed3c44b3d",
+    "artifacts/living-mural-automation-before.json": "3ca629a845fe79abac9fbe3f360ee17bfae175f6ff1df89f3a48793b06a4d243",
+    "artifacts/living-mural-automation-payload.json": "9ebeb4ab72efb7d45e4c3f7cc7332ed395be4f7953674f789747d449fb9812a0",
+    "artifacts/living-mural-composed-1100x760-mouse.png": "48e377f073caab086cba95586b21b57734b025cfdf6635499898daf0c0cff2ee",
+    "artifacts/living-mural-composed-320x667-finger.png": "693afd7375c9b5349cb4f9d6f2ed403dcc90302721bc3a0b8c0132c55d03aad5",
+    "artifacts/living-mural-composed-390x667-finger.png": "af1ac6150e61e0b87cb431a809a6be0ed7d33d79664f123c9fb8f02b2bb9c530",
+    "artifacts/living-mural-composed-520x360-finger.png": "939bf172154045b38ce86907fdf22ba7fa9b83a8644536b6749905a18a8df782",
+    "artifacts/living-mural-composed-520x360-mouse.png": "939bf172154045b38ce86907fdf22ba7fa9b83a8644536b6749905a18a8df782",
+    "artifacts/living-mural-composed-559x360-finger.png": "9cb3ab919a60f433fb47ef3ce6711b12cca5c0310ca02d0f993ce61a52843051",
+    "artifacts/living-mural-composed-559x360-mouse.png": "9cb3ab919a60f433fb47ef3ce6711b12cca5c0310ca02d0f993ce61a52843051",
+    "artifacts/living-mural-defaults/codex-mural-stories-world-1100x760-mouse-living.png": "360d777d20eabb01d352b22364483fb07786d1f4fb9e6d8357f03fab10cb0fb3",
+    "artifacts/living-mural-defaults/codex-mural-stories-world-320x667-finger-living.png": "638bf2f077e73868c0f7ad17c63e00d018ab158687fa0b22b29209f5af1ac0b7",
+    "artifacts/living-mural-defaults/living-mural-1100x760-mouse.json": "2c0cc028fae0f2f1c2de55aa7d0b5199e894b24c0db86de07ef36377306d0258",
+    "artifacts/living-mural-defaults/living-mural-320x667-finger.json": "c7fcf03a6e841ba230d314db25e322e158f0fa571a6efc144239df55d6de199f",
+    "artifacts/living-mural-defaults/living-mural-composed-1100x760-mouse.png": "6d3d0fbf663bd78e6d60b06b5ccbc12afa1f6c53c885ec8d05eff9644b0ed686",
+    "artifacts/living-mural-defaults/living-mural-composed-320x667-finger.png": "4868f1bd343deb773e296f6f6d90d40fb6b6358157cb663942e17016728b1ae9",
+    "artifacts/living-mural-defaults/living-mural-garden-1100x760-mouse.png": "b97aa5736c6969df1fe5c7e44a369d5fc616c154ffa43400cef6aa519d5d4d26",
+    "artifacts/living-mural-defaults/living-mural-garden-320x667-finger.png": "791f474c2cef29c2fe70da2fac1ec264a1c60d111498afb71d13ca92cb1bfe31",
+    "artifacts/living-mural-defaults/living-mural-music-1100x760-mouse.png": "7d116d24daea6aabdf73f78fbc394f0ac7edb3e9091cab5eecfd66a39eb15c0c",
+    "artifacts/living-mural-defaults/living-mural-music-320x667-finger.png": "7855bb97e9fbc7fc4174fea572a8412f41f2147a56ae3660381d962bf5a11e1c",
+    "artifacts/living-mural-export1.log": "73fbe7cd5a687235d97b559eef557c57f0b98bf285bbd64b355ce55601b0aed3",
+    "artifacts/living-mural-export2.log": "91466bd73bc8e4abc4ee0cd424d006470fd85678b4b2bf85e74325e53eecc1e9",
+    "artifacts/living-mural-finalize.py": "f3860c1e72d8c4eb4a5ca8c8bcf1d194fd000e33522f1f6762d0dd0346312628",
+    "artifacts/living-mural-full1-failure.json": "1c8554732e181a0e5f860d0c7042d9d76b8f40657e49637b04bbe1d2b1a756ab",
+    "artifacts/living-mural-full1-failure.png": "4e798c9db4e663f6f7d5f238699b8043f704f93c9863680301d44b4b9a1412f8",
+    "artifacts/living-mural-full1-replay-profile.json": "fea6ccee02af06178abaf3e0aee3cf06f6ad8106151c02f8a3f1401fcfd6723f",
+    "artifacts/living-mural-full1.log": "ef551e8c42ec5922920234408a6899bf40bf74e3d9996a4198891c7849d4d1d2",
+    "artifacts/living-mural-full1.pck": "a6c80921eb5a96ed0079b1fd28c150226b3aefb69e76c4e5490ebbcdc45d3779",
+    "artifacts/living-mural-garden-1100x760-mouse.png": "95ff60913096f9ca0364d58e77c88aaef03a50f6f8145f32fe23319513ee3994",
+    "artifacts/living-mural-garden-320x667-finger.png": "b59440a55d8d84daebb329b91c78eb4a5d9a76cacb4472666881a7ea5b4ba6a9",
+    "artifacts/living-mural-garden-390x667-finger.png": "6413626ed848ec7a07ad42482913a8ea089086888d867022c5eb2287af45f602",
+    "artifacts/living-mural-garden-520x360-finger.png": "4103752c44ae2fc8d4866bfb078b8e35e7195d33fd2c21eb66504c24256f2fa9",
+    "artifacts/living-mural-garden-520x360-mouse.png": "4103752c44ae2fc8d4866bfb078b8e35e7195d33fd2c21eb66504c24256f2fa9",
+    "artifacts/living-mural-garden-559x360-finger.png": "97e2781fc525e4f8527c186cfd23028fb95ec5f95697175f884f6b50c35027ae",
+    "artifacts/living-mural-garden-559x360-mouse.png": "97e2781fc525e4f8527c186cfd23028fb95ec5f95697175f884f6b50c35027ae",
+    "artifacts/living-mural-ideas.log": "84ef753e143099cd097f38038a5b82b005bdf9c26c2af3f775ab516bcc24a836",
+    "artifacts/living-mural-late-390x667-finger.json": "1bcd0536b51f2151e235287a28bca8024888d74492a29f9907c9a392b464f98e",
+    "artifacts/living-mural-late-390x667-finger.png": "a942754e878f077a20c9bd05268f3403b9424dd7769e8b4483bbe39a4a31adf0",
+    "artifacts/living-mural-music-1100x760-mouse.png": "c7a464a636b2e719cf644090041aefcf309efd0e2caa5e77be58b843ee91d544",
+    "artifacts/living-mural-music-320x667-finger.png": "5657c288839371ee1b03b20232b4872730bcb0fa4dc5d099381e9fddbd7f259d",
+    "artifacts/living-mural-music-390x667-finger.png": "2f7790a4d6759318133112d56d0ce75f7fa17a9d3c413325f873456bf7fb2d48",
+    "artifacts/living-mural-music-520x360-finger.png": "06699bc847c60d7818d5f429ab8ba5dd768f5c608066a5ff6b56d9e5c15ecac9",
+    "artifacts/living-mural-music-520x360-mouse.png": "06699bc847c60d7818d5f429ab8ba5dd768f5c608066a5ff6b56d9e5c15ecac9",
+    "artifacts/living-mural-music-559x360-finger.png": "5e868a24214a475334a7a6c244e7913bdfde59dc1ccf1b5c740e3c3ab3f492df",
+    "artifacts/living-mural-music-559x360-mouse.png": "5e868a24214a475334a7a6c244e7913bdfde59dc1ccf1b5c740e3c3ab3f492df",
+    "artifacts/living-mural-native-stability-1.log": "3d016137850baf08b22eafa0ed8e88415630adfe5412f45131a42376430cf730",
+    "artifacts/living-mural-native1.log": "a3fd412af32c3040b9db2353fb735ef175969cc23b152237e4d05d1ae8b3945a",
+    "artifacts/living-mural-native2.log": "d81cbe7fa5a24f0f6e20e17bb87b520c239356248d09fa5c191ea48296a92d64",
+    "artifacts/living-mural-native3.log": "88f3ff152467758dbfae2c38a41dc4d413790fdd2c5acbacc03c3c87ba902211",
+    "artifacts/living-mural-normal/codex-mural-stories-world-1100x760-mouse-living.png": "943a2ac8beeefcc3100beed5f993526c9eeac4f456c5477885f5db0bc6dcb929",
+    "artifacts/living-mural-normal/codex-mural-stories-world-320x667-finger-living.png": "d0a20b92d3e96b92ef3be1ab536dcfe77c75ce3e37a5fc738cf0241e60a84618",
+    "artifacts/living-mural-normal/living-mural-1100x760-mouse.json": "5ec0cd0603aac889338078fab10b4a190ff9853250ca669ca165ce3b0887ac5d",
+    "artifacts/living-mural-normal/living-mural-320x667-finger.json": "8895bae207d8c01c31c69d5590ddf5e6b41c2934c64e78ce34f1340c8777280a",
+    "artifacts/living-mural-normal/living-mural-composed-1100x760-mouse.png": "821378147d56dd53a062480688d8c5c764260b94924490770c53fd2cea15c0cf",
+    "artifacts/living-mural-normal/living-mural-composed-320x667-finger.png": "c081943d331c5f93e70e8acad14892843cc70fa3249ead30b606eb03b16bd8c2",
+    "artifacts/living-mural-normal/living-mural-garden-1100x760-mouse.png": "80d9cc6ade8735bb5a29bda888533266e36c3f78e402d26572fe38ea38b9934e",
+    "artifacts/living-mural-normal/living-mural-garden-320x667-finger.png": "91dab539f899ce9ccc9a6292cdffcd52e843554d43f5723b1ff302eb3b681c2e",
+    "artifacts/living-mural-normal/living-mural-music-1100x760-mouse.png": "bfcfcab30230af898993baca40b53cab09f99ddb9b0d139f3244d9a3648edaed",
+    "artifacts/living-mural-normal/living-mural-music-320x667-finger.png": "d880f7744ca68424f4195210472f2af6add3a1366873630c7f0fb5ea17ff9952",
+    "artifacts/living-mural-preflight-build.py": "796597a73436109d5b664fa5446e42d95bde884a70e67e4f1675739369096f52",
+    "artifacts/living-mural-preflight-failure.json": "77cb6e72431ae13f53f451a4cf415ee99cc6719034aaa7e3476a4a47451eed08",
+    "artifacts/living-mural-preflight-failure.png": "4230c00720a88289608c9f1bd764c000d8d647f89e74604b5b02abb99fb0e922",
+    "artifacts/living-mural-preflight.json": "060e1bfec0b932dcbdffadd5dba5ac9f05c7b2072dfe8d09ae6dc49a28737fb6",
+    "artifacts/living-mural-preflight.log": "8d68895f693f7bdc312f9861ed8c80f49f3c763c5db545e28eef91cbfaeca8e7",
+    "artifacts/living-mural-preflight.mjs": "b7982773416ce558cce158b99bdcd96f2d9906a47cc84391349d121418edeb60",
+    "artifacts/living-mural-preflight1-failure.json": "5705841841448acad1b1e2c0c1794d4caa472d9c8185e365950eb33133bfd14d",
+    "artifacts/living-mural-preflight1-failure.png": "948a3ccd76579f0b5431e28d727cd54fb3db0913276eb1dd3332d90388adde5d",
+    "artifacts/living-mural-preflight1.log": "8d68895f693f7bdc312f9861ed8c80f49f3c763c5db545e28eef91cbfaeca8e7",
+    "artifacts/living-mural-preflight2-failure.json": "77cb6e72431ae13f53f451a4cf415ee99cc6719034aaa7e3476a4a47451eed08",
+    "artifacts/living-mural-preflight2-failure.log": "177fb6316ab1c4fd3a24a421d06b6293c991c0661fd557afdd6f422ad2930c22",
+    "artifacts/living-mural-preflight2-failure.png": "4230c00720a88289608c9f1bd764c000d8d647f89e74604b5b02abb99fb0e922",
+    "artifacts/living-mural-preflight2.log": "177fb6316ab1c4fd3a24a421d06b6293c991c0661fd557afdd6f422ad2930c22",
+    "artifacts/living-mural-preflight3.log": "88cecdc674b06e5335ac0afa2971181455478409aa4bf6f2b157be9b1f71466c",
+    "artifacts/living-mural-preflight4.json": "060e1bfec0b932dcbdffadd5dba5ac9f05c7b2072dfe8d09ae6dc49a28737fb6",
+    "artifacts/living-mural-preflight4.log": "ffee113572d6799cadd24d31f5f874c0294d8d1bfc2226c0c144592b3425d790",
+    "artifacts/living-mural-prepare.py": "be3485fc1dc59b5326c8871dd780c683ba5fedaebd8da2a369d445d973f3559b",
+    "artifacts/living-mural-qa-prepare.py": "ba2c729bb27171aa94cc8d333496a0198cb0b73c7d529a6f81569959596c47b6",
+    "artifacts/living-mural-qa.log": "ddbe6c27ba26a8a8862bc09f3216ecbb54e6936ac0762944691bb96067be5038",
+    "artifacts/living-mural-replay-build.py": "4c978063bce699ec8873bea8b323e4f6af34fcca5265e4a6800db4e80b791aed",
+    "artifacts/living-mural-replay.json": "871af9e52a8a68eca40bec8723cb0838b08c0379016274e92b6757233666f624",
+    "artifacts/living-mural-replay.log": "8a1745b23aa6b827d6e8b8107a3bb04aa5cdfe4641a1b13d827c478d6425f902",
+    "artifacts/living-mural-replay.mjs": "5cbb106c2d3d9a33c3da4ff5468a607169c383e6204dfd250fca695bb415bc19",
+    "artifacts/living-mural-reviewed-before-fixes.pck": "c4830938a48e78481f5d86a8c53daf4b6d4a1acf0a852d613f384c7aca788ef6",
+    "artifacts/living-mural-verified-browser.log": "b4e21b49bc1c2677c5565253c95649465065f9c04fe43d59fc073a9f46391c62",
+    "artifacts/living-mural-verified-check.log": "bbbf642933db0755ec1b063caec7667a16966ea1db64dadab1526709e88e5537",
+    "artifacts/living-mural-verified-export.log": "cd03a96aa187dfeccbbeb0dcc833b2642f4e39bb4cf55e2c27fdb7443455acfa",
+    "artifacts/living-mural-verified-native-1.log": "638bb7c7e7dd624a9a7716d6c1365dc7826b09fa3f2cb8a2db6f2dd545d3349d",
+    "artifacts/living-mural-verified-native-2.log": "5016313523346f5995fea275765b8e42bc5e96991b87b66fee1f04364ba2cad3",
+    "artifacts/living-mural-verified-native-3.log": "effc7ee1811008b949a69f7a09200c42d54f00dcd576aa833086d69201cc8bcc",
+    "artifacts/living-mural-verified-native.log": "1fad5b79372502fbc1e45d491bd9841f92d1e09e298def693aae3e69f072769e",
+    "artifacts/living-mural-verified-node.log": "d6ff7e6b513d46333cc5d3d746e84e1ff76e859cf79bdc64386666dc315e99f1",
+    "docs/BUILD_STATUS.md": "8c7f0c54ab6569e7d5c6af107e31392eb00d22b550bd2fec85573bbdd100508f",
+    "docs/ROADMAP.md": "e2c126ba8f078bb52fec0b368061cf8c6c98c9a05f3672aab68212db5db17ddf",
+    "godot/main.gd": "a94ab72f619da5c5b12e4d6f5a907073cf7359d410203b1125f40f18861da9f4",
+    "godot/mural_stories.gd": "4dc1f266b997f8210871b4d863c19b43aeeb901beb60c822b6a92de9e48766c2",
+    "godot/mural_workshop.gd": "d44323fee68af2ac907ebba3e59aab32ffa7e08e716016b926a86acc2a20e0c8",
+    "godot/rhythm_bar.gd": "4a3bfb3383156ee76a3b39d7b13a1cf84854299d76765227748398ba7f6587d0",
+    "godot/rhythm_circle.gd": "9eaac6c5f5ad3b21a3237499fbbeb265d9e43e5ac2f264e0a6d65ce91f563fd1",
+    "godot/tests/study_test.gd": "0316eebe88236edf4c15aa24b0b8b096f56fa2406239ce070444d0cec536e37a",
+    "kibitz-runs/2026-10-21-codex-living-mural/r3/claude.log": "9687b150379683bbe9c11ee56f8c087e922daf578ac6909b1a68524a4b54e100",
+    "kibitz-runs/2026-10-21-codex-living-mural/r3/claude.md": "a1acb88b0f628b15ca6fbb91a41a0948f3d392c92fc8767ea0d448120098e415",
+    "kibitz-runs/2026-10-21-codex-living-mural/r3/claude_budget_selected.txt": "b80401b5bdee9b92d2114d1dcae19e4929eefb76987dd1911802478ede026cf0",
+    "kibitz-runs/2026-10-21-codex-living-mural/r3/claude_effort_selected.txt": "6ef7c9b15ecdd69083724b84cfdc2100351963488b51b4ea2fcbddf493fbec94",
+    "kibitz-runs/2026-10-21-codex-living-mural/r3/claude_model_selected.txt": "005912bee6ee4543cec4404b5a02b9bcb11a6f1dcc134b6693c7ccde5fdd2f69",
+    "kibitz-runs/2026-10-21-codex-living-mural/r3/claude_quota_status.txt": "979c0e822c25f4b77ad4a34dea5acca3ded5dd8751fdb2843ed83506b6fe828a",
+    "kibitz-runs/2026-10-21-codex-living-mural/r3/driver_anchor.md": "6a0b0d9be09e8a32a186f08f608fc0c2b05b1c1519f4ccf1173c91380b5d753b",
+    "kibitz-runs/2026-10-21-codex-living-mural/r3/final-source-before-browser.json": "e5fdcaafcf57ef506b0363d84d72a13307f57fcdb82fe256b9f1eafeaa9a664e",
+    "kibitz-runs/2026-10-21-codex-living-mural/r3/final.md": "fc6c85125a260f88f93fe146840f2141f8fa97618c8c70ca4442e007c76a28bf",
+    "kibitz-runs/2026-10-21-codex-living-mural/r3/full1-source-before-browser.json": "bf5a7df66947272b2c0c0c2462e63f12ba4120e83fa598e7ae410d65b74042f7",
+    "kibitz-runs/2026-10-21-codex-living-mural/r3/gate-exits-full1.json": "b2938fa49fe9fd4de4f017cae81b95611b48e9cbf8a918998646f9e633c7e2af",
+    "kibitz-runs/2026-10-21-codex-living-mural/r3/gate-exits.json": "8346af5f0b747e45976796dae22beed9d845115bcbf99a3cbd7c2b13a298c46b",
+    "kibitz-runs/2026-10-21-codex-living-mural/r3/input-receipt.json": "5bf3f5f6a4ed11c843c622bcdfe4c82bf46f93948023095e5d459bad9779d5c3",
+    "kibitz-runs/2026-10-21-codex-living-mural/r3/input-sha256.txt": "f364ac73cb6b2c3e3353c48fdcb0b9b74ce15e4fdd0d4c0fde7e9d1c57fc3469",
+    "kibitz-runs/2026-10-21-codex-living-mural/r3/input.md": "447809150aa7120e7c576472054e25a35526e92c81f354c58d35eaf0943b3a08",
+    "kibitz-runs/2026-10-21-codex-living-mural/r3/judgment.md": "afe3c54676dfcb225401f9daf15672d3b2acd279533ce2687654089226c7a32a",
+    "kibitz-runs/2026-10-21-codex-living-mural/r3/profiles_used.txt": "a9a11813438ba2fc0c6efd97f13b88bf41af82044d04182d865bdd38eaa32423",
+    "kibitz-runs/2026-10-21-codex-living-mural/r3/scope_receipt.md": "cae36b6b724759f26bc91e42296e5a330ebfbb6de7e19e7e9a08eddca1777e94",
+    "kibitz-runs/2026-10-21-codex-living-mural/r3/source-after.json": "7ba61ed14cc3b2a418c3f249675503d70b4d53e877e6af550d9892b4984ff707",
+    "kibitz-runs/2026-10-21-codex-living-mural/r3/source-before.json": "7ba61ed14cc3b2a418c3f249675503d70b4d53e877e6af550d9892b4984ff707",
+    "kibitz-runs/2026-10-21-codex-living-mural/r3/source-comparison.json": "1ffdab5afe0c9cb6dc8ce9341fd9afa4fefb252d46e70faa0996a2b557ba118a",
+    "kibitz-runs/2026-10-21-codex-living-mural-ideas/r1/claude.log": "f30b09f6d395bf4bee80e63b493482cfb3d850b2dd797152a8ff711449ab16de",
+    "kibitz-runs/2026-10-21-codex-living-mural-ideas/r1/claude.md": "6e670dce047a3654256c3aebf2116cc10f9a5d550afcf6dbc9726277cecec015",
+    "kibitz-runs/2026-10-21-codex-living-mural-ideas/r1/claude_budget_selected.txt": "b80401b5bdee9b92d2114d1dcae19e4929eefb76987dd1911802478ede026cf0",
+    "kibitz-runs/2026-10-21-codex-living-mural-ideas/r1/claude_effort_selected.txt": "6ef7c9b15ecdd69083724b84cfdc2100351963488b51b4ea2fcbddf493fbec94",
+    "kibitz-runs/2026-10-21-codex-living-mural-ideas/r1/claude_model_selected.txt": "005912bee6ee4543cec4404b5a02b9bcb11a6f1dcc134b6693c7ccde5fdd2f69",
+    "kibitz-runs/2026-10-21-codex-living-mural-ideas/r1/claude_quota_status.txt": "979c0e822c25f4b77ad4a34dea5acca3ded5dd8751fdb2843ed83506b6fe828a",
+    "kibitz-runs/2026-10-21-codex-living-mural-ideas/r1/driver_anchor.md": "b79e33cba607e739fe74ca48c684138a02305b6f57d9ded02754f5ff379e00c5",
+    "kibitz-runs/2026-10-21-codex-living-mural-ideas/r1/final.md": "75baa3cc8a38f6ca151311065a234f6bd0c38119e5d64e9fd5df6ed9902c836c",
+    "kibitz-runs/2026-10-21-codex-living-mural-ideas/r1/input-sha256.txt": "0963d060acfdd81c0b4a33fe315e4a7d89d943140278e60855cf0e78b2639fbc",
+    "kibitz-runs/2026-10-21-codex-living-mural-ideas/r1/input.md": "a92e06b19aa528c34f1ba42d7d8add35441d97be418e5bc4f5a56da9e5991350",
+    "kibitz-runs/2026-10-21-codex-living-mural-ideas/r1/judgment.md": "75baa3cc8a38f6ca151311065a234f6bd0c38119e5d64e9fd5df6ed9902c836c",
+    "kibitz-runs/2026-10-21-codex-living-mural-ideas/r1/profiles_used.txt": "a9a11813438ba2fc0c6efd97f13b88bf41af82044d04182d865bdd38eaa32423",
+    "kibitz-runs/2026-10-21-codex-living-mural-ideas/r1/scope_receipt.md": "49e967b7b28fb636e09d997713d8e890684e77228830a1f2a0e65ca712953242",
+    "kibitz-runs/2026-10-21-codex-living-mural-ideas/r1/selection.md": "75baa3cc8a38f6ca151311065a234f6bd0c38119e5d64e9fd5df6ed9902c836c",
+    "kibitz-runs/2026-10-21-codex-living-mural-ideas/r1/source-after.json": "7ac68282af315211be93965cc2a3e0ea0201715ec8c5f8e040639b9b408d98d9",
+    "kibitz-runs/2026-10-21-codex-living-mural-ideas/r1/source-before.json": "7ac68282af315211be93965cc2a3e0ea0201715ec8c5f8e040639b9b408d98d9",
+    "session_handoff.md": "bc3763eb2546f000aeb90b04d06156d66d53cd0570d62b0ed9b42d03d8950683",
+    "tests/godot-browser.mjs": "963c4113e2ae1504f3754d5ab40a151f404ad87481a24afdc67a92bacf1deeb7",
+    "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160",
+    "kibitz-runs/2026-10-21-codex-living-mural/r3/automation-update.json": "149438e509b12e2cfb8a4baef9f8c91cfd50072efc69e9aa86041e4577e48bea"
+  },
+  "automation": {
+    "verified_at": "2026-10-22T01:12:43.921675+00:00",
+    "tool": "mcp__codex_app__automation_update",
+    "readback_matches_payload": true,
+    "status": "ACTIVE",
+    "rrule": "FREQ=MINUTELY;INTERVAL=30",
+    "target_thread_id": "01a159d6-60a3-78e1-92ae-4018509d2539",
+    "created_at": 1792342628584,
+    "policy_prefix_chars": 8089,
+    "policy_prefix_sha256": "41b8fc04cc9cd123adff92ae758927589793d2bcf3285f6dc14af495d24beef3",
+    "prompt_chars": 13193,
+    "all_original_identity_and_cadence_fields_preserved": true
+  }
+}

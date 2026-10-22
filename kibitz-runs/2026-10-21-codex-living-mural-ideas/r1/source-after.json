@@ -1,0 +1,11 @@
+{
+  "godot/main.gd": "d8dc5200287da4ba1f7554a8586377f9e586882568a497cc2934235073e6f7fd",
+  "godot/mural_stories.gd": "f53f3cadb9a24ad0adc11c741ee6dc27c6b8252aaa16319b837cf7abe7fca0c8",
+  "godot/mural_workshop.gd": "12e059bd2724fec59adb741d48dcc9f0aaba85a132ff79111d7bfd71b79fb158",
+  "godot/rhythm_circle.gd": "9eaac6c5f5ad3b21a3237499fbbeb265d9e43e5ac2f264e0a6d65ce91f563fd1",
+  "godot/tests/study_test.gd": "3996a4d9896fff6de98f23ace3ccf0ab60fc3b1e99c77cc871b84e939f73e5f6",
+  "tests/godot-browser.mjs": "ddb2cfa2a67dafab57c4ed6d003e428e90d0253782fd38f818f282340e4ddfd3",
+  "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160",
+  "docs/ROADMAP.md": "c1e229be884d60affe1744bb4aed0e91bfcf348f6ec07ad4e20a97ee8f9337d2",
+  "session_handoff.md": "813fbdbac1394410e92c22c8cadd5acbc0f6f38294ebdb042b567f40e0981148"
+}
