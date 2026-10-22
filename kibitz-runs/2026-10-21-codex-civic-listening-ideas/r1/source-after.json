@@ -1,0 +1,11 @@
+{
+  "godot/main.gd": "84b4b992c4b59e597334899bce5e18ae995d65751dad5ca089db964ae3897f97",
+  "godot/film_screening.gd": "d0e8ce92d38ebb29aecd6403acbdebd678840f494686b2e2007b5e036858e59c",
+  "godot/quiet_seats.gd": "211c67f25397305c0cefd5c2c5f0bc558296ab82848c09b67cf032f0b9fc5cef",
+  "godot/bea_invitation.gd": "4ad40453704987fc9c29c34425b8be66c5fb8057874ab21fdd9cb89ab259b51f",
+  "godot/tests/study_test.gd": "9778c3cddffee3931f930922ab6e7bf8472d99a95152029bff913be5ce71071a",
+  "tests/godot-browser.mjs": "e2d85ef49e471b784d636971b345ff8b6ea210255ea80615479bb9705c8ee407",
+  "public/civic.js": "85cf245d0d7b15365edf35c9a7b3b8642fe17a325d5b5a600a92cc93697cf6d8",
+  "docs/ROADMAP.md": "8b07f6a805be0863e9852e26ff579cbd9a7d98c9028a3b18cee36a5097b745e9",
+  "docs/ASSETS.md": "f3672b7d55738416db1ed5084e9f918c62c61c224055e1101b7ad1d5c6558ee6"
+}

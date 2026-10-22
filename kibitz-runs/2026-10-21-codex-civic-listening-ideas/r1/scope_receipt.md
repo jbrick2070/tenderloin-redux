@@ -1,0 +1,1 @@
+Explicit creator-scoped pre-coding ideation r1 ONLY. Driver codex, only claude, exact claude-opus-5-5/high. r2/r3/r4 omitted from ideas; separate sole-Claude implementationr3 later. No source edits by reviewer; Codex sole writer/judge. No substitution/larger panel/credits/blind quota retry. Anchor/input/source hashes recorded before fanout.

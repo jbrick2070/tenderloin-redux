@@ -6,12 +6,13 @@ import { initialState, applyAction, serializeSave } from '../public/core.js';
 import { postcardSVG } from '../public/keepsake.js';
 import { programmeSVG } from '../public/programme.js';
 import { tilePanelSVG, QUIET_CHOICES, STORY_CHOICES } from '../public/hosting.js';
-import { civicPlanSVG } from '../public/civic.js';
+import { civicPlanSVG, civicConversation } from '../public/civic.js';
 import { filmFrameSVG, filmCaption } from '../public/film.js';
 const [pckStat, ...sourceStats] = await Promise.all([
   stat('artifacts/godot-web/index.pck'),
   stat('godot/main.gd'),
   stat('godot/film_screening.gd'),
+  stat('godot/civic_listening.gd'),
   stat('godot/quiet_seats.gd'),
   stat('godot/bea_invitation.gd'),
   stat('godot/mural_workshop.gd'),
@@ -49,6 +50,7 @@ const rhythmCircleChecks = [];
 const filmScreeningChecks = [];
 const quietSeatChecks = [];
 const beaInvitationChecks = [];
+const civicListeningChecks = [];
 const rhythmAuditionChecks = [];
 const muralWorkshopChecks = [];
 let workshopAutoAdvanceChecks = 0;
@@ -978,6 +980,66 @@ async function verifyPassiveActivities(page,context,touch) {
 }
 
 
+async function verifyCivicListening(page,touch,size,readOnly=false) {
+  const snap=()=>page.evaluate(()=>window.__tenderloinGodotA11ySnapshot),save=()=>page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1'));
+  async function settle(){const f=(await snap()).ui_frame;await page.waitForFunction(f=>{const s=window.__tenderloinGodotA11ySnapshot;return s.ui_frame>f+3&&!s.civic_listening.layout_pending&&!s.layout_refit_pending;},f);}
+  async function tap(b,reading=false){const s=await snap(),c=await page.locator('#canvas').boundingBox();assert.ok(b.visible&&!b.disabled&&b.width>=44&&b.height>=(reading?1:44)&&b.x>=0&&b.y>=0&&b.x+b.width<=s.viewport_width+1&&b.y+b.height<=s.viewport_height+1,'Listening Hour control on screen');const x=c.x+(b.x+b.width/2)*c.width/s.viewport_width,y=c.y+(b.y+b.height/2)*c.height/s.viewport_height;if(touch)await page.touchscreen.tap(x,y);else await page.mouse.click(x,y);await settle();}
+  await settle();if((await snap()).story_detail.panel.visible)await page.keyboard.press('Escape');
+  if(!(await snap()).block_panel_control.visible)await page.keyboard.press('KeyG');await settle();
+  const original=await save(),photo=JSON.stringify(JSON.parse(original).epilogue.photo),initial=await snap(),pose=initial.camera_pose;
+  const overlap=(a,b)=>a.x<b.x+b.width&&b.x<a.x+a.width&&a.y<b.y+b.height&&b.y<a.y+a.height;
+  for(const b of [initial.civic_listening.entry,initial.block_close_control,initial.block_page_previous,initial.block_page_next].filter(b=>b.visible))for(const w of initial.walking_controls)assert.ok(!overlap(b,w),'Listening entry and hub navigation clear every walking button');
+  await tap(initial.civic_listening.entry);assert.equal(await save(),original,'opening never writes or starts civic hour');
+  if(!readOnly){
+    await tap((await snap()).civic_listening.buttons[9]);assert.equal((await snap()).civic_listening.phase,'planning');
+    for(let category=0;category<3;category++){
+      await tap((await snap()).civic_listening.buttons[category]);
+      await tap((await snap()).civic_listening.buttons[4]);
+      let h=(await snap()).civic_listening;
+      assert.equal(h.plan[['topic','format','notes'][category]],['access','dropin','none'][category]);
+      for(const b of h.buttons.filter(b=>b.visible))assert.ok(b.width>=44&&b.height>=44);
+    }
+    await tap((await snap()).civic_listening.buttons[2]);
+    const without=screenshotPixels(await page.screenshot());
+    await tap((await snap()).civic_listening.buttons[3]);
+    let h=(await snap()).civic_listening;const withNotes=screenshotPixels(await page.screenshot()),rect=h.picture,c=await page.locator('#canvas').boundingBox(),vp=await snap();let changed=0;
+    for(let y=rect.y+2;y<rect.y+rect.height-2;y+=2)for(let x=rect.x+2;x<rect.x+rect.width-2;x+=2){const px=c.x+x*c.width/vp.viewport_width,py=c.y+y*c.height/vp.viewport_height;if(without.pixel(px,py).some((v,k)=>Math.abs(v-withNotes.pixel(px,py)[k])>24))changed++;}
+    assert.ok(changed>=20,'actual notes choice changes rendered illustration ink');
+    if(size.width<600){await tap((await snap()).civic_listening.buttons[4]);}
+    const s=await snap(),pos=[s.player_grounding.x,s.player_grounding.z],muted=s.music_playing;
+    await page.keyboard.down('KeyW');await page.waitForTimeout(200);await page.keyboard.up('KeyW');await settle();assert.deepEqual([(await snap()).player_grounding.x,(await snap()).player_grounding.z],pos,'held W cannot move under civic view');assert.equal((await snap()).music_playing,muted);
+    await page.screenshot({path:`artifacts/listening-planning-${size.width}-${touch?'finger':'mouse'}.png`});
+    if(!touch){
+      await tap((await snap()).civic_listening.buttons[3]);await page.keyboard.press('Tab');await page.keyboard.press('Space');await settle();assert.equal((await snap()).civic_listening.plan.notes,'none','real Tab Space changes actual named notes option');
+      await tap((await snap()).civic_listening.buttons[3]);
+    }
+    await tap((await snap()).civic_listening.buttons[9]);assert.equal((await snap()).civic_listening.phase,'meeting');
+  }
+  const stable=await save(),h=(await snap()).civic_listening;
+  assert.deepEqual(h.dialogue,civicConversation(h.plan).map(x=>x.text),'actual reader script exactly mirrors project-native four authored voices');
+  for(let i=0;i<4;i++){await tap((await snap()).civic_listening.buttons[5+i]);let v=(await snap()).civic_listening;assert.match(v.text,new RegExp(['Bea','Thanh','Celeste','Dez'][i]+':'));assert.ok(v.text.includes(civicConversation(v.plan)[i].text));assert.equal(await save(),stable,'reading turns writes no result/photo/progress');}
+  await tap((await snap()).civic_listening.reader,true);await page.keyboard.press('End');await settle();let end=(await snap()).civic_listening;assert.ok(end.scroll>0&&end.scroll>=end.scroll_max-end.scroll_page-2,'End reads final complete civic line');
+  if(touch){const c=await page.locator('#canvas').boundingBox(),r=end.reader,session=await page.context().newCDPSession(page),x=c.x+(r.x+r.width*.6)*c.width/(await snap()).viewport_width,y=c.y+(r.y+r.height*.35)*c.height/(await snap()).viewport_height;await session.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y,id:1}]});for(let dy=10;dy<=38;dy+=7)await session.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y+dy,id:1}]});await session.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await session.detach();}
+  else{const c=await page.locator('#canvas').boundingBox(),r=end.reader;await page.mouse.move(c.x+r.x+r.width*.5,c.y+r.y+r.height*.5);await page.mouse.wheel(0,-200);}await settle();assert.ok((await snap()).civic_listening.scroll<end.scroll,'actual finger/wheel reads back');
+  await page.screenshot({path:`artifacts/listening-voices-${size.width}-${touch?'finger':'mouse'}-${readOnly?'remember':'meeting'}.png`});
+  if(!readOnly){
+    await tap((await snap()).civic_listening.buttons[11]);assert.ok((await snap()).civic_listening.entry_focused,'meeting Back restores actual entry focus');assert.equal(await save(),stable);
+    await page.keyboard.press('F5');await settle();await page.keyboard.press('Escape');await settle();assert.ok((await snap()).civic_listening.entry_focused,'meeting Escape restores actual entry focus');
+    await page.keyboard.press('F5');await settle();await tap((await snap()).civic_listening.buttons[9]);assert.equal((await snap()).civic_listening.phase,'done');
+  }
+  const done=await save();assert.equal(JSON.stringify(JSON.parse(done).epilogue.photo),photo);
+  const top=(await snap()).civic_listening.top;assert.ok(top.x>=0&&top.y>=0&&top.x+top.width<=size.width&&top.y+top.height<=size.height,'complete wrapped heading stays on screen');
+  const oldSize={...size};await page.setViewportSize({width:520,height:360});await settle();for(const b of (await snap()).civic_listening.buttons.filter(b=>b.visible))assert.ok(b.x>=0&&b.y>=0&&b.x+b.width<=520&&b.y+b.height<=360);
+  await page.setViewportSize(oldSize);await settle();assert.deepEqual((await snap()).camera_pose,pose,'focused resize preserves exact camera');
+  await tap((await snap()).civic_listening.buttons[11]);assert.equal((await snap()).civic_listening.visible,false);
+  if((await snap()).story_detail.panel.visible){await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.story_start_focus,null,{timeout:2000});assert.ok((await snap()).story_start_focus,'newly unlocked film chapter deliberately owns focus');await page.keyboard.press('Escape');await settle();}
+  else assert.ok((await snap()).civic_listening.entry_focused,'real Back restores entry focus');
+  assert.equal(await save(),done);
+  await page.keyboard.press('F5');await settle();assert.equal((await snap()).civic_listening.visible,true,'real F5 opens re-read without browser reload');assert.equal(await save(),done);await page.keyboard.press('Escape');await settle();assert.equal((await snap()).civic_listening.visible,false);assert.ok((await snap()).civic_listening.entry_focused,'real Escape restores entry focus');assert.equal(await save(),done);
+  civicListeningChecks.push({width:size.width,height:size.height,touch,readOnly,plan:h.plan});
+  await writeFile(`artifacts/listening-${size.width}-${touch?'finger':'mouse'}-${readOnly?'remember':'active'}.json`,JSON.stringify({plan:h.plan,readOnly,photoUnchanged:true,dialogueParity:true,camera:(await snap()).camera_pose},null,2));
+}
+
 async function verifyBeaInvitation(page,touch,size,worldProof=false) {
   const snap=()=>page.evaluate(()=>window.__tenderloinGodotA11ySnapshot),save=()=>page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1'));
   async function settle(){const f=(await snap()).ui_frame;await page.waitForFunction(f=>{const s=window.__tenderloinGodotA11ySnapshot;return s.ui_frame>f+3&&!s.layout_refit_pending&&!s.compact_panel_layout_pending;},f);}
@@ -1803,11 +1865,7 @@ try {
     assert.equal(initialVoicesState.settingsRaw, null, 'M5 Neighborhood Voices settings key must not exist before explicit user toggle');
     assert.equal(initialVoicesState.voicesEnabled, false, 'M5 Neighborhood Voices must start default-off');
     assert.equal(initialVoicesState.voicesStatus, 'off', 'M5 Neighborhood Voices initial status must be off');
-    // Press KeyQ (3x) to start, convene, and complete M4 Peaceful Tenant Listening Hour
-    for (let qStep = 0; qStep < 3; qStep++) {
-      await page.keyboard.press('KeyQ');
-      await page.waitForTimeout(80);
-    }
+    await verifyCivicListening(page,size.width<600,size);
     await page.waitForFunction(() => {
       const raw = window.localStorage.getItem('tenderloin-redux.godot.save.v1');
       if (!raw) return false;
@@ -1825,6 +1883,7 @@ try {
       return film && film.phase === 'done' && Array.isArray(film.captured) && film.captured.length === 3;
     }, null, { timeout: 10000 });
     await verifyFilmScreening(page,context,size.width<600,size,size.width===1100);
+    await verifyCivicListening(page,size.width<600,size,true);
     // Press Slash to opt-in to M5 Experimental Neighborhood Voices and verify separate settings storage + profile presentation + disclaimer
     await page.keyboard.press('Slash');
     await page.waitForFunction(() => {
@@ -2135,7 +2194,7 @@ try {
     assert.deepEqual(parsedSave.programme?.published, ['stories', 'beats', 'pause', 'art']);
     assert.equal(parsedSave.hosting?.results?.length, 4);
     assert.equal(parsedSave.civic?.phase, 'done');
-    assert.equal(parsedSave.civic?.result?.topic, 'repairs');
+    assert.deepEqual(parsedSave.civic?.result, {topic:'access',format:'dropin',notes:size.width<600?'none':'themes'}, 'reload retains the exact three choices made through the new real controls');
     assert.equal(parsedSave.film?.phase, 'done');
     assert.deepEqual(parsedSave.film?.captured, ['seat', 'paint', 'welcome']);
     assert.deepEqual(parsedSave.visited_neighbors, ['bea', 'celeste', 'dez', 'rook', 'thanh']);
@@ -2670,6 +2729,15 @@ try {
     await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending&&!window.__tenderloinGodotA11ySnapshot.layout_refit_pending);await page.keyboard.press('Escape');
     await verifyQuietSeats(page,touch,size,true,true);await context.close();
   }
+  // PRIVATE listening invitations derive from THIS run's genuine completed profile.
+  for(const [width,height,touch,layout] of [[520,360,true,'floor'],[559,360,false,'table'],[640,360,true,'table']]){
+    const fixture=JSON.parse(rhythmFixtureSave);fixture.gathering_layout=layout;fixture.civic={phase:'idle',draft:{topic:'repairs',format:'circle',notes:'themes'},result:null};fixture.film={...fixture.film,phase:'idle',result:null,captured:[]};
+    const size={width,height},context=await browser.newContext({viewport:size,hasTouch:touch}),page=await context.newPage();latestPage=page;
+    await context.addInitScript(f=>localStorage.setItem('tenderloin-redux.godot.save.v1',JSON.stringify(f)),fixture);
+    context.on('request',r=>{if(!r.url().startsWith(base)&&!r.url().startsWith('data:')&&!r.url().startsWith('blob:'))external.push(r.url());});page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
+    await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending&&!window.__tenderloinGodotA11ySnapshot.layout_refit_pending);await page.keyboard.press('Escape');
+    await verifyCivicListening(page,touch,size);await context.close();
+  }
   // PRIVATE current-run copied profiles, stories after quiet interval, real world ink in both layouts.
   for(const [width,height,touch,layout] of [[1100,760,false,'table'],[320,667,true,'floor'],[520,360,true,'table'],[559,360,false,'floor']]){
     const fixture=JSON.parse(rhythmFixtureSave),order=['pause','stories','beats','art'];fixture.gathering_layout=layout;fixture.programme.order=order;fixture.programme.published=order;fixture.hosting.order=order;fixture.hosting.results=[{id:'pause',value:'pairs'}];fixture.hosting.draft.story='memory';
@@ -2709,7 +2777,7 @@ try {
   }
   assert.deepEqual(external, []);
   assert.deepEqual(errors, []);
-  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, beaInvitationChecks, quietSeatChecks, filmScreeningChecks, rhythmCircleChecks, rhythmAuditionChecks, muralStoryChecks, livingMuralChecks, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
+  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, civicListeningChecks, beaInvitationChecks, quietSeatChecks, filmScreeningChecks, rhythmCircleChecks, rhythmAuditionChecks, muralStoryChecks, livingMuralChecks, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
   assert.ok(queuedActivityRewardChecks > 0, 'at least one actual crowded activity exercises queued reward timer and Close delivery');
   assert.ok(shortStartClicked && shortStartTouchClicked, 'real mouse and touch Start at640x360 were exercised');
   assert.equal(beaInvitationChecks.length,7,'three genuine current progression and four private post-quiet invitation cases');
@@ -2729,6 +2797,7 @@ try {
   assert.equal(narrowActivityChecks.length, 39, 'twenty-seven mouse and twelve finger narrow-small activity cases exercised');
   assert.equal(narrowActivityChecks.filter(c=>c.width>=520&&c.width<560&&c.height<560).length,12,'all twelve new small landscape readers were exercised');
   assert.equal(passiveActivityChecks.length,12,'all twelve real passive walking arrivals were exercised');
+  assert.equal(civicListeningChecks.length,9,'three genuine active plus three post-film re-reads and three current-run private short invitations');
   assert.equal(narrowHubChecks.length, 12, 'eight mouse and four finger narrow hub handoffs exercised');
   assert.equal(smallHubReaderChecks,4,'all four new mouse/finger small dock cases read overflowing full dialogue');
   assert.equal(shortWalkingChecks.length,10,'six mouse and four finger short walking cases exercised');
@@ -2736,7 +2805,7 @@ try {
   assert.equal(muralWorkshopChecks.length,8,'seven late and one fresh actual workshop mouse/finger cases executed');
   assert.equal(muralWorkshopChecks.filter(c=>c.photoStatus==='taken').length,7,'all seven late cases preserve a saved taken keepsake');
   assert.equal(workshopAutoAdvanceChecks,3,'a fresh mural exercises all three automatically offered contributions');
-  console.log(JSON.stringify({ runs, rhythmCircleChecks, rhythmAuditionChecks, livingMuralChecks, muralWorkshopChecks, workshopAutoAdvanceChecks, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, narrowActivityChecks, passiveActivityChecks, narrowHubChecks, smallHubReaderChecks, shortWalkingChecks, shortWalkingCaptionChecks, shortWalkingGuideChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
+  console.log(JSON.stringify({ runs, civicListeningChecks, rhythmCircleChecks, rhythmAuditionChecks, livingMuralChecks, muralWorkshopChecks, workshopAutoAdvanceChecks, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, narrowActivityChecks, passiveActivityChecks, narrowHubChecks, smallHubReaderChecks, shortWalkingChecks, shortWalkingCaptionChecks, shortWalkingGuideChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
 } catch (error) {
   if (latestPage && !latestPage.isClosed()) {
     await latestPage.screenshot({ path: 'artifacts/godot-browser-failure.png' });

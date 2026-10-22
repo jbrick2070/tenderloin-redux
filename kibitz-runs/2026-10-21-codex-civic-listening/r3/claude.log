@@ -1,0 +1,16 @@
+STDOUT:
+I wrote the review to `kibitz-runs\2026-10-21-codex-civic-listening\r3\claude.md`. Verdict: it can be built once the fixes below are made. I read the real source and didn't edit anything or run any gates.
+
+**Must fix before build:**
+1. **Focus is lost after closing.** If you open the Listening Hour from its hub button, then press Back or Escape, nothing gets keyboard focus. While the hour is open, `_process` hides the entry button (`civic_listening.gd:212-215`). `close_hour` never makes it visible again before trying to give focus back (`civic_listening.gd:151-156`), so neither focus target is visible. Neither test presses the entry button and then checks focus after closing.
+2. **The board and table notices look washed out.** `update_world` builds its material from `mural_material(Color.WHITE)`, which adds a flat white glow on top of the picture (`main.gd:2587-2592`). That fades the dark ink, including the closed notebook that shows the "no notes" choice. It also creates two new materials on every `update_block_3d` call. Bea's invitation already does this properly (`bea_invitation.gd:104-109`): a plain unlit material, only rebuilt when the choice changes.
+
+**Should fix:**
+- **Hub layout:** the new entry row isn't counted by the existing extra-row case in `main.gd:6742`. At the 1100, 390 and 320 test sizes, the Previous/Next/Close row may be pushed under the walking controls. I couldn't measure this, so it needs checking.
+- **Heading at 320px wide:** the heading label doesn't wrap, so the top panel may be wider than the screen. No test checks the top panel's bounds.
+- **Reader picture smoothing:** the generated mipmaps only help the 3D notices. The reader picture never uses them, because nothing sets a mipmap texture filter in the project.
+- **Hard-coded breakpoints:** the 520/560 side-tray sizes repeat constants already defined in `main.gd`.
+- **Screen reader:** `step()` probably announces twice per phase change, once from the core callback and once from `refresh(true)`.
+- **Test gaps:** the browser test presses Tab and Shift+Tab without checking anything. The Godot test triggers Escape by calling `_unhandled_input` directly instead of sending a real key. The Godot test never uses the entry button at all.
+
+The review also lists the things I checked and found correct, with file and line numbers. That includes the civic setters, how saves load and import, the guards that keep the other activities from opening at the same time, the camera and held-key blocking, and an exact match with the four voices in `public/civic.js`.

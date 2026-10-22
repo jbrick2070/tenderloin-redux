@@ -3254,6 +3254,7 @@ func run() -> void:
 	await verify_film_screening(study,saved_m4_json)
 	await verify_quiet_seats(study,saved_m4_json)
 	await verify_bea_invitation(study,saved_m4_json)
+	await verify_civic_listening(study,saved_m4_json)
 	study.clear_godot_save()
 	study.clear_godot_settings()
 	var legacy_settings := FileAccess.open(study.settings_path, FileAccess.WRITE)
@@ -3966,6 +3967,8 @@ func verify_rhythm_circle(study: Node) -> void:
 		for size in [Vector2i(1100,760),Vector2i(390,667),Vector2i(320,667),Vector2i(520,360),Vector2i(559,360),Vector2i(320,568)]:
 			root.size = size
 			study.show_block_panel(true)
+			study.last_story_chapter=int(study.current_chapter().num)
+			study.hide_story_card()
 			for f in range(5): await process_frame
 			study.hide_story_card()
 			if size.x==1100:
@@ -4681,6 +4684,134 @@ func verify_quiet_seats(study: Node, full_profile: String) -> void:
 	study.update_block_3d()
 	root.size = Vector2i(1100,760)
 	print("QUIET_SEATS_PASS: 2 layouts x6sizes, real buttons/meshes/route/quiet/camera/copied result/reload")
+
+func verify_civic_listening(study: Node, full_profile: String) -> void:
+	var original := JSON.stringify(study.build_save_envelope())
+	var hour: Control = study.civic_listening
+	for layout in ["table","floor"]:
+		for size in [Vector2i(1100,760),Vector2i(390,667),Vector2i(320,667),Vector2i(520,360),Vector2i(559,360),Vector2i(640,360),Vector2i(599,667),Vector2i(600,667),Vector2i(700,667),Vector2i(599,640)]:
+			study.apply_save_envelope(full_profile)
+			study.hide_story_card()
+			study.startup_story_pending=false
+			study.current_path.clear()
+			study.gathering_layout=layout
+			study.civic_phase="idle"
+			study.civic_draft=study.default_civic_draft()
+			study.civic_result.clear()
+			study.film_phase="idle"
+			study.film_result.clear()
+			study.update_block_3d()
+			root.size=size
+			study.show_block_panel(true)
+			study.last_story_chapter=int(study.current_chapter().num)
+			study.hide_story_card()
+			for f in range(5): await process_frame
+			var save_before := JSON.stringify(study.build_save_envelope())
+			var pose: Array = study.panel_camera_pose()
+			var position: Vector3 = study.player.position
+			var music: Array=[study.music_playing,study.music_volume,study.music_mode,study.reward_sounds_enabled]
+			require(hour.entry.is_visible_in_tree() and hour.entry.size.y>=44,"actual hub entry is visible and tappable after hosting")
+			for control in [hour.entry,study.block_close_btn,study.block_page_prev,study.block_page_next]:
+				if control.is_visible_in_tree():
+					for walking in study.controls.get_children():
+						if control.get_global_rect().intersects(walking.get_global_rect()): print("CIVIC_NAV_OVERLAP "+JSON.stringify({"size":str(size),"layout":layout,"control":control.text,"box":study.rect_snapshot(control.get_global_rect()),"walking":walking.text,"walk":study.rect_snapshot(walking.get_global_rect()),"panel":study.rect_snapshot(study.block_panel.get_global_rect()),"minimum":str(study.block_panel.get_combined_minimum_size()),"nav":str(study.block_page_nav.get_combined_minimum_size()),"entry":hour.entry.text,"compact":hour.nav_compact}))
+						require(not control.get_global_rect().intersects(walking.get_global_rect()),"new entry and original hub navigation never cover walking controls")
+			hour.entry.grab_focus()
+			hour.entry.emit_signal("pressed")
+			require(hour.visible and JSON.stringify(study.build_save_envelope())==save_before,"optional actual entry opens without starting/writing")
+			hour.advance.emit_signal("pressed")
+			require(study.civic_phase=="planning","real Start planning retains core civic callback")
+			for category in range(3):
+				hour.tabs[category].emit_signal("pressed")
+				hour.choices[1].emit_signal("pressed")
+				for f in range(4): await process_frame
+				require(study.civic_draft[hour.KEYS[category]]==["access","dropin","none"][category],"named category and exact option changes original field")
+				for b in hour.tabs+hour.choices+[hour.advance,hour.music,hour.back]:
+					require(b.is_visible_in_tree() and b.size.x>=44 and b.size.y>=44 and Rect2(Vector2.ZERO,Vector2(size)).encloses(b.get_global_rect()),"complete planning controls on screen at all six sizes")
+				require(Rect2(Vector2.ZERO,Vector2(size)).encloses(hour.top.get_global_rect()),"wrapped full heading stays inside viewport")
+				require(hour.reader.get_theme_font_size("normal_font_size")==16 and hour.reader.size.y>=76 and hour.picture.size.y>=32,"full scrollable text and useful illustration remain")
+			var held := InputEventKey.new()
+			held.physical_keycode=KEY_W
+			held.pressed=true
+			Input.parse_input_event(held)
+			await physics_frame
+			var release := InputEventKey.new()
+			release.physical_keycode=KEY_W
+			Input.parse_input_event(release)
+			require(study.player.position==position,"real held movement cannot walk under focused civic reader")
+			hour.advance.grab_focus()
+			var press := InputEventAction.new()
+			press.action="ui_accept"
+			press.pressed=true
+			Input.parse_input_event(press)
+			await process_frame
+			var up := InputEventAction.new()
+			up.action="ui_accept"
+			Input.parse_input_event(up)
+			await process_frame
+			require(study.civic_phase=="meeting" and hour.voices[0].has_focus(),"real ui_accept convenes copied plan and moves focus off hidden categories")
+			var copied: Dictionary=study.civic_result.duplicate()
+			var seq: int=study.save_seq
+			for i in range(4):
+				hour.voices[i].emit_signal("pressed")
+				require(hour.reader.text.contains(hour.SPEAKERS[i]+": "+hour.dialogue(copied)[i]),"four full original fictional voices readable independently")
+				require(not hour.tabs[0].is_visible_in_tree() and not hour.choices[0].is_visible_in_tree(),"meeting and re-read never offer inactive setters")
+				require(study.save_seq==seq,"speaker reading writes no save")
+			require(hour.request_text(copied).begins_with("No meeting notes."),"no-notes choice equally valid with truthful no recording")
+			require(study.civic_setup_node.visible and study.civic_dropin_group.visible and not study.civic_circle_group.visible,"existing actual civic format world group remains")
+			require(hour.surfaces[1].material_override.albedo_texture==hour.texture(copied),"existing tabletop carries original notice texture")
+			require(not hour.surfaces[0].material_override.emission_enabled and hour.surfaces[0].material_override.shading_mode==BaseMaterial3D.SHADING_MODE_UNSHADED,"world notice has no untextured white emission wash")
+			var original_material: Material=hour.surfaces[0].material_override
+			study.update_block_3d()
+			require(hour.surfaces[0].material_override==original_material,"same copied notice reuses material rather than reallocating")
+			hour.advance.emit_signal("pressed")
+			require(study.civic_phase=="done" and not hour.advance.visible and hour.voices[3].has_focus(),"existing civic completion no timer/no required turn count")
+			study.film_result=JSON.parse_string(full_profile).film.result.duplicate(true)
+			study.film_phase="done"
+			study.last_story_chapter=int(study.current_chapter().num)
+			study.hide_story_card()
+			var done_save := JSON.stringify(study.build_save_envelope())
+			hour.close_hour()
+			for f in range(4): await process_frame
+			require(hour.entry.has_focus(),"Back restores actual entry keyboard focus synchronously")
+			require(hour.open_hour() and hour.reader.text.contains(hour.dialogue(copied)[0]),"copied listening hour remains reachable after film memories")
+			hour.voices[2].emit_signal("pressed")
+			require(JSON.stringify(study.build_save_envelope())==done_save,"completed re-read does not change save/result/photo/sequence")
+			var escape := InputEventKey.new()
+			escape.keycode=KEY_ESCAPE
+			escape.pressed=true
+			study._unhandled_input(escape)
+			for f in range(3): await process_frame
+			require(not hour.visible and study.panel_camera_pose()==pose and study.player.position==position,"Back and real Escape preserve camera and position")
+			require(hour.entry.has_focus(),"Escape restores entry focus without waiting for a later visibility frame")
+			require(music==[study.music_playing,study.music_volume,study.music_mode,study.reward_sounds_enabled],"quiet/music/preferences not changed by viewing")
+			# A queued hub/viewport fit must not move the still-followed Circle entry.
+			var followed_before_circle: bool=study.following_player
+			study.following_player=true
+			study.refresh_hub_camera()
+			for f in range(5): await process_frame
+			var before_circle: Array=study.panel_camera_pose()
+			study.refit_panel_after_layout()
+			study.refit_after_layout()
+			require(study.rhythm_circle.open_circle(),"real Circle entry opens with both hub refits pending")
+			for f in range(6): await process_frame
+			require(study.panel_camera_pose()==before_circle,"pending hub fits preserve exact Circle entry pose before explicit View Circle")
+			require(JSON.stringify(study.build_save_envelope())==done_save,"pending-fit Circle entry is still read-only practice")
+			study.rhythm_circle.close_circle(false)
+			study.following_player=followed_before_circle
+	for topic in study.CIVIC_TOPICS:
+		for format_id in study.CIVIC_FORMATS:
+			for notes in study.CIVIC_NOTES:
+				var p := {"topic":topic,"format":format_id,"notes":notes}
+				var image: Image=hour.texture(p).get_image()
+				require(image.get_width()==720 and image.get_height()==480,"all eight original notice rasters render at native resolution")
+				require(image.get_pixel(360,355).to_html(false)==("fff9e9" if notes=="themes" else "3c5b63"),"actual theme card versus closed notebook ink")
+				require(hour.dialogue(p).size()==4 and hour.request_text(p).contains("not sent" if notes=="themes" else "Nothing is recorded"),"all eight plans retain full dialogue and truthful notes consequence")
+		require(hour.texture({"topic":topic,"format":"circle","notes":"themes"}).get_image().get_data()!=hour.texture({"topic":topic,"format":"circle","notes":"none"}).get_image().get_data(),"notes choice produces actual rendered art consequence")
+	require(hour.textures.size()==8,"notice raster cache bounded eight")
+	study.apply_save_envelope(original)
+	root.size=Vector2i(1100,760)
+	print("CIVIC_LISTENING_PASS: 2layouts x10sizes, all8rasters, true input, copied re-read and exact quiet/camera/save")
 
 func verify_bea_invitation(study: Node, full_profile: String) -> void:
 	var saved := JSON.stringify(study.build_save_envelope())

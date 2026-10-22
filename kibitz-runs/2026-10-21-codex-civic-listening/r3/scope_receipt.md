@@ -1,0 +1,1 @@
+Explicit creator-scoped separate implementation QA r3 ONLY; r1 ideas already completed separately. Drivercodex/onlyclaude/exactclaude-opus-5-5/high. No r1/r2/r4 in this QA campaign. Codex sole writer/judge; report-only reviewer, no source edits/gates. No substitution/largerpanel/purchase/blindquota retry. Input/anchor/scope hashes before fanout.

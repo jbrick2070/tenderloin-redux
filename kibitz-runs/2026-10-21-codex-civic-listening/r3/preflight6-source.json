@@ -1,0 +1,7 @@
+{
+  "godot/main.gd": "c8b0a79390f0852a2944a5c0c2d2f8af7d715e47192759841cf18fc6db7f0512",
+  "godot/civic_listening.gd": "4cd4bc94409cb38f212585470eb00da0c9a3da01c79d417b5cb0cfb19306b3ca",
+  "godot/tests/study_test.gd": "a4e3397adc2bfa896c08ff967d588ef171953adecfca0df79f5227a911a0635f",
+  "tests/godot-browser.mjs": "329f4ac5dc32accad585af60d88656fb1996228ac1c322230a80d334690c2bf8",
+  "artifacts/godot-web/index.pck": "9be63691f402df5a145afed6b048bc94a7c927678cad675e83748355390318af"
+}

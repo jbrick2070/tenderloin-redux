@@ -1,0 +1,6 @@
+VERDICT: feasible candidate, selection pending independent source-reading ideas.
+CONFIRMED main.gd civic_set_choice supports each field only while planning, civic_convene copies draft and existing3D is shown only meeting/done. All8 combinations available only through cycling in current Godot UI. Existing civicPlanSVG parity must stay byte-identical.
+CONFIRMED public/civic.js civicConversation contains four distinct respectful fictional voices; Godot progression currently says convened then complete, without that exchange. Film screening provides a full reader/modal precedent; no mandatory new performance/timer justified.
+MUST FIX before implementation: choose meaningful scene/value, preserve Qfast path/save schema/full12hubtitles/manual camera, direct options cannot write after convene, repeated reading zero writes. Any new authored notice must not imply real housing repairs or collect names/testimony.
+SHOULD FIX: reuse current world board/surfaces, no duplicated residents/geometry, original art/scoped source-local prior art. Full prose/44px reachability and actual pixels/callbacks/copy/reload must be tested.
+UNVERIFIABLE: human cultural/aesthetic/pacing/screen-reader/physical-device acceptance. No claim external novelty search.

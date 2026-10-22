@@ -1,0 +1,17 @@
+{
+  "verified_utc": "2026-10-22T10:29:56.195181+00:00",
+  "tool": "mcp__codex_app__automation_update",
+  "mode": "update",
+  "id": "build-tenderloin-redux",
+  "status": "ACTIVE",
+  "rrule": "FREQ=MINUTELY;INTERVAL=30",
+  "name": "Build Tenderloin Redux",
+  "target_thread_id": "01a159d6-60a3-78e1-92ae-4018509d2539",
+  "created_at": 1792342628584,
+  "identity_cadence_creation_preserved": true,
+  "protected_prefix_chars": 8089,
+  "protected_prefix_sha256": "41b8fc04cc9cd123adff92ae758927589793d2bcf3285f6dc14af495d24beef3",
+  "exact_requested_prompt_matches": true,
+  "prompt_sha256": "87700cd4c5eea60c2790b394b80a5e43558ea0eba8bb2c1439ee5e34abb7b8ab",
+  "notification_intent_preserved": true
+}

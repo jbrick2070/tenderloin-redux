@@ -798,6 +798,7 @@ var table_quiet_seats: Array[Node3D] = []
 var floor_quiet_seats: Array[Node3D] = []
 var rhythm_circle
 var film_screening
+var civic_listening
 var mural_workshop
 var mural_workshop_selected := "sun"
 var mural_workshop_message := ""
@@ -3144,6 +3145,7 @@ func update_block_3d() -> void:
 			for t_idx in range(hosting_tile_meshes.size()):
 				var tv := int(h_tiles[t_idx]) if t_idx < h_tiles.size() else 0
 				hosting_tile_meshes[t_idx].material_override = mural_material(hosting_tile_color(h_pal, tv))
+	if civic_listening != null: civic_listening.update_world()
 	if civic_setup_node != null:
 		var c_vis := is_civic_available() and (civic_phase in ["meeting", "done"]) and not civic_result.is_empty()
 		civic_setup_node.visible = c_vis
@@ -5804,7 +5806,7 @@ func build_reward_banner(layer: CanvasLayer) -> void:
 	layer.add_child(reward_banner)
 
 func layout_reward_banner() -> void:
-	if is_mural_workshop_visible() or is_rhythm_circle_visible() or is_film_screening_visible():
+	if is_mural_workshop_visible() or is_rhythm_circle_visible() or (is_film_screening_visible() or is_civic_listening_visible()):
 		if reward_banner != null:
 			reward_banner.visible = false
 		return
@@ -5869,7 +5871,7 @@ func trigger_feel_good_burst(title_str: String, detail_str: String, world_pos: V
 func update_celebration_burst(delta: float) -> void:
 	if reward_banner != null and reward_banner_timer > 0.0:
 		layout_reward_banner()
-		if not is_mural_workshop_visible() and not is_rhythm_circle_visible() and not is_film_screening_visible() and (reward_banner.visible or (header_details_expanded and not speech_opened_info)):
+		if not is_mural_workshop_visible() and not is_rhythm_circle_visible() and not (is_film_screening_visible() or is_civic_listening_visible()) and (reward_banner.visible or (header_details_expanded and not speech_opened_info)):
 			reward_banner_timer -= delta
 		if reward_banner_timer <= 0.45:
 			reward_banner.modulate = Color(1.0, 1.0, 1.0, clampf(reward_banner_timer / 0.45, 0.0, 1.0))
@@ -6740,7 +6742,7 @@ func layout_walking_controls_and_hub() -> void:
 		var hosting_choices: bool = panel == block_panel and hosting_choice_row_visible() and not dock
 		panel.grow_vertical = Control.GROW_DIRECTION_BEGIN if short_phone or hosting_choices else Control.GROW_DIRECTION_END
 		if hosting_choices and not short_phone:
-			# The extra44px choice row must grow upward, never over Find Me/Close.
+			# Fit actual content above walking targets, including taller native fonts.
 			panel.size = Vector2(vp.x-24.0,0.0)
 			panel.offset_bottom = controls.offset_top-8.0
 			panel.offset_top = panel.offset_bottom-panel.get_combined_minimum_size().y
@@ -6805,6 +6807,7 @@ func layout_block_action_pages() -> void:
 	block_close_btn.custom_minimum_size.x = 44.0 if narrow else 94.0
 	if narrow:
 		block_label.text = "Block Actions · %d/%d · Sparks: %d" % [block_hub_page + 1, count, spark_count()]
+	if civic_listening != null: civic_listening.fit_entry_navigation()
 	layout_walking_controls_and_hub()
 
 func change_block_action_page(step: int) -> void:
@@ -7438,7 +7441,7 @@ func set_header_details(expanded: bool, refit_map := true) -> void:
 
 func update_conversation_ui(delta: float) -> void:
 	ui_clock = wrapf(ui_clock + delta, 0.0, 3600.0)
-	if is_rhythm_circle_visible() or is_film_screening_visible():
+	if is_rhythm_circle_visible() or (is_film_screening_visible() or is_civic_listening_visible()):
 		return
 	var chapter := current_chapter()
 	# Deliver any pending chapter card after the focused workshop closes,
@@ -8888,8 +8891,15 @@ func refit_panel_after_layout() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if generation == panel_refit_generation:
+		if is_mural_workshop_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible():
+			return
 		if following_player and uses_short_narrow_walking():
 			refresh_hub_camera()
+		elif following_player and civic_listening != null and civic_listening.entry.is_visible_in_tree() and block_panel.visible and block_panel_mode=="hub":
+			# YOU's billboard can rebuild after a resize. Fit only if it now clips;
+			# already-fitted and deliberately panned views keep their exact pose.
+			var body := player_overlay_rect()
+			if body.has_area() and not play_area_rect().grow(-1.0).encloses(body): refresh_hub_camera()
 		else:
 			refit_panel_camera()
 
@@ -11492,6 +11502,7 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"block_detail_scroll_value": block_detail_label.get_v_scroll_bar().value if block_detail_label != null else 0.0,
 		"block_detail_scroll_page": block_detail_label.get_v_scroll_bar().page if block_detail_label != null else 0.0,
 		"block_hub_actions": block_action_snapshots(),
+		"civic_listening": civic_listening.snapshot() if civic_listening != null else {"visible":false},
 		"film_screening": film_screening.snapshot() if film_screening != null else {"visible":false},
 		"film_easel": film_easel_snapshot(),
 		"bea_invitation": bea_invitation.snapshot() if bea_invitation != null else {},
@@ -11661,6 +11672,9 @@ func poll_web_audio() -> void:
 		return
 	load_local_music_bytes(fname, raw)
 
+func is_civic_listening_visible() -> bool:
+	return civic_listening != null and civic_listening.visible
+
 func is_film_screening_visible() -> bool:
 	return film_screening != null and film_screening.visible
 
@@ -11735,7 +11749,7 @@ func edit_mural_scene(id: String, slot: String) -> bool:
 	return true
 
 func open_mural_workshop() -> bool:
-	if is_rhythm_circle_visible() or is_film_screening_visible():
+	if is_rhythm_circle_visible() or (is_film_screening_visible() or is_civic_listening_visible()):
 		return false
 	if startup_story_pending or is_story_card_visible():
 		announce_a11y_status("Continue the chapter card before composing the mural.")
@@ -12074,6 +12088,7 @@ func save_godot_state() -> bool:
 	return wrote
 
 func reset_mural_state_to_defaults(status_label: String) -> void:
+	if is_civic_listening_visible(): civic_listening.close_hour(false)
 	if is_film_screening_visible(): film_screening.close_screening(false)
 	if rhythm_circle != null: rhythm_circle.chapter_completion_notice = ""
 	if rhythm_circle != null and rhythm_circle.visible:
@@ -12551,6 +12566,7 @@ func validate_godot_optional(raw_opt: Variant) -> Dictionary:
 	return {"ok": true, "optional": (raw_opt as Dictionary).duplicate(true)}
 
 func apply_save_envelope(raw_json: String) -> bool:
+	if is_civic_listening_visible(): civic_listening.close_hour(false)
 	if is_film_screening_visible(): film_screening.close_screening(false)
 	if rhythm_circle != null: rhythm_circle.chapter_completion_notice = ""
 	if rhythm_circle != null and rhythm_circle.visible:
@@ -13103,6 +13119,7 @@ func import_browser_save_json(raw_json: String) -> bool:
 		info.text = "%s\nBrowser save ('%s') is read-only and never overwritten by Godot\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [browser_import_message, BROWSER_WEB_STORAGE_KEY]
 		announce_a11y_status(browser_import_message)
 		return false
+	if is_civic_listening_visible(): civic_listening.close_hour(false)
 	if is_film_screening_visible(): film_screening.close_screening(false)
 	if rhythm_circle != null and rhythm_circle.visible:
 		rhythm_circle.close_circle(false)
@@ -13687,7 +13704,7 @@ func _process(delta: float) -> void:
 	flush_web_a11y_status()
 
 func _physics_process(delta: float) -> void:
-	if is_mural_workshop_visible() or is_rhythm_circle_visible() or is_film_screening_visible():
+	if is_mural_workshop_visible() or is_rhythm_circle_visible() or (is_film_screening_visible() or is_civic_listening_visible()):
 		return
 	var shift_held := Input.is_key_pressed(KEY_SHIFT) or Input.is_physical_key_pressed(KEY_SHIFT)
 	if shift_held and get_viewport().gui_get_focus_owner() == null:
@@ -13744,7 +13761,7 @@ func _physics_process(delta: float) -> void:
 		advance_walk(delta * (2.2 if OS.has_feature("web") else 1.0))
 
 func is_screen_point_in_ui(screen_pos: Vector2) -> bool:
-	if is_film_screening_visible() or is_rhythm_circle_visible() or is_mural_workshop_visible() or (mural_compose_btn != null and mural_compose_btn.is_visible_in_tree() and mural_compose_btn.get_global_rect().has_point(screen_pos)):
+	if (is_film_screening_visible() or is_civic_listening_visible()) or is_rhythm_circle_visible() or is_mural_workshop_visible() or (mural_compose_btn != null and mural_compose_btn.is_visible_in_tree() and mural_compose_btn.get_global_rect().has_point(screen_pos)):
 		return true
 	if reward_banner != null and reward_banner.is_visible_in_tree() and reward_banner.get_global_rect().has_point(screen_pos):
 		return true
@@ -13944,6 +13961,11 @@ func _input(event: InputEvent) -> void:
 		continue_story()
 
 func _unhandled_input(event: InputEvent) -> void:
+	if is_civic_listening_visible():
+		if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+			civic_listening.close_hour()
+		get_viewport().set_input_as_handled()
+		return
 	if is_film_screening_visible():
 		if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
 			film_screening.close_screening()
@@ -13971,6 +13993,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			else:
 				hide_story_card()
 		match k:
+			KEY_F5:
+				civic_listening.open_hour()
 			KEY_F4:
 				film_screening.open_screening()
 			KEY_F3:
@@ -14190,7 +14214,7 @@ func update_camera() -> void:
 	camera.force_update_transform()
 	# Hubs and short phone walking keep the followed character in the scene area.
 	# Keep inspection/panned views, heading and zoom under the player's control.
-	if following_player and not is_film_screening_visible() and ((block_panel != null and block_panel.visible and block_panel_mode == "hub") or uses_short_narrow_walking()):
+	if following_player and not (is_mural_workshop_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible()) and ((block_panel != null and block_panel.visible and block_panel_mode == "hub") or uses_short_narrow_walking()):
 		var focus := player.position + Vector3.UP
 		var ppm := (camera.unproject_position(target + camera.global_basis.y) - camera.unproject_position(target)).length()
 		if ppm > 1e-5:
@@ -14199,7 +14223,7 @@ func update_camera() -> void:
 			camera.position = target + get_camera_offset_vec() * offset_scale
 			camera.look_at(target)
 			camera.force_update_transform()
-			if uses_compact_narrow_hub() or (uses_side_block_hub() and is_narrow_layout()) or uses_short_narrow_walking():
+			if uses_compact_narrow_hub() or (uses_side_block_hub() and is_narrow_layout()) or uses_short_narrow_walking() or (civic_listening != null and civic_listening.entry.visible):
 				# Focus at one meter is not the center of the enlarged body/YOU bounds.
 				# Fit those bounds after content growth without changing heading or zoom.
 				var body := player_overlay_rect()
@@ -14440,7 +14464,7 @@ func refit_after_layout() -> void:
 	await get_tree().process_frame
 	if generation != layout_refit_generation:
 		return
-	if is_film_screening_visible():
+	if is_mural_workshop_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible():
 		layout_refit_pending = false
 		sync_web_a11y_status()
 		return
@@ -14701,7 +14725,7 @@ func make_activity_detail() -> RichTextLabel:
 	return control
 
 func hosting_choice_row_visible() -> bool:
-	return quiet_seats != null and quiet_seats.row.visible
+	return (quiet_seats != null and quiet_seats.row.visible) or (civic_listening != null and civic_listening.entry.visible)
 
 func update_block_ui() -> void:
 	if quiet_seats != null: quiet_seats.update_ui()
@@ -15179,6 +15203,9 @@ func make_ui() -> void:
 	film_screening = preload("res://film_screening.gd").new()
 	layer.add_child(film_screening)
 	film_screening.setup(self)
+	civic_listening = preload("res://civic_listening.gd").new()
+	layer.add_child(civic_listening)
+	civic_listening.setup(self)
 	rhythm_circle = preload("res://rhythm_circle.gd").new()
 	layer.add_child(rhythm_circle)
 	rhythm_circle.setup(self,layer)

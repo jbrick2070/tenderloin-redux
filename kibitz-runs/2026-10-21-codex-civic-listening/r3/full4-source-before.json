@@ -1,0 +1,21 @@
+{
+  "created_utc": "2026-10-22T07:53:46.300815+00:00",
+  "files": {
+    "godot/main.gd": "c8b0a79390f0852a2944a5c0c2d2f8af7d715e47192759841cf18fc6db7f0512",
+    "godot/civic_listening.gd": "6a134d735d380dffe22a503652b389f4921473da9be6e4dfc8b30dbfeb681934",
+    "godot/civic_listening.gd.uid": "3dc303bef24ace0b7afca48a382776f7858f6bd6a0e7efc866bed853bb4e57df",
+    "godot/film_screening.gd": "c83e108fe15f8839d3e2c76a8868f1dc9d20a88f044515b9c1ad47c5940f1262",
+    "godot/quiet_seats.gd": "211c67f25397305c0cefd5c2c5f0bc558296ab82848c09b67cf032f0b9fc5cef",
+    "godot/bea_invitation.gd": "4ad40453704987fc9c29c34425b8be66c5fb8057874ab21fdd9cb89ab259b51f",
+    "godot/rhythm_circle.gd": "2d8353bf97a750969a1729b7581700585fbb9f726dcc5c80d42d20b338ae857f",
+    "godot/rhythm_bar.gd": "4a3bfb3383156ee76a3b39d7b13a1cf84854299d76765227748398ba7f6587d0",
+    "godot/mural_workshop.gd": "d44323fee68af2ac907ebba3e59aab32ffa7e08e716016b926a86acc2a20e0c8",
+    "godot/mural_stories.gd": "4dc1f266b997f8210871b4d863c19b43aeeb901beb60c822b6a92de9e48766c2",
+    "godot/mural_signature.gd": "a8b25e10edef62c77fb4ccb6e98c08972c579e61659ac80386a04a03bc851da2",
+    "godot/tests/study_test.gd": "a4e3397adc2bfa896c08ff967d588ef171953adecfca0df79f5227a911a0635f",
+    "tests/godot-browser.mjs": "3545bbd1cc6bf4d1dc0affec54b75f712ad70bbca89a349d96ee437c18c5ece9",
+    "docs/ROADMAP.md": "a07c5e0e71dd9d06a819feb072c14f621093c31d62c8b33ea19483e0b4b368b7",
+    "docs/ASSETS.md": "99f1a4776c04084933769221c5929cf57d71034665a9f3bebf2a530bd2f82bdb",
+    "artifacts/godot-web/index.pck": "c8ebb4a5d4cf01041e945fe45ed41633700eeb349d64bb3241241cb56c0160f2"
+  }
+}
