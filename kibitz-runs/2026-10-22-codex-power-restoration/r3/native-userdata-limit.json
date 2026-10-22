@@ -1,0 +1,49 @@
+{
+  "utc": "2026-10-22T20:16:41.367405+00:00",
+  "prior_incident": "Default native user save was overwritten by earlier Programme Studio unsafe probes. No verified preincident backup, restoration or recovery. Browser/legacy profiles unaffected. Do not reset/delete/guess recovery or stage raw userdata.",
+  "asfound_bytes": 1272,
+  "asfound_sha256": "2b7d1e849b4820a1d6c49602930ac3e0b104a8aa132375837038bfef80f2e0e1",
+  "this_round": "Three successful standalone diagnostics strictly isolated with exact unique save/settings flags and --test-suite asserted BEFORE scene loading; same default ASFOUND hash before and after each. First geometry attempt failed parse BEFORE scene loading; failed log retained. Formal native full suite also isolated.",
+  "diagnostics": {
+    "power-story-boundary-probe": {
+      "utc": "2026-10-22T19:56:44.314581+00:00",
+      "exit": 0,
+      "script_sha256": "85022b016416977ad53b61d4783c7b210ae9d2c20e568dd188a8ce636a78d396",
+      "flags_asserted_before_scene": true,
+      "explicit_unique_save_settings": [
+        "--godot-save-path=user://power_story_boundary_20261022_1955_save.json",
+        "--godot-settings-path=user://power_story_boundary_20261022_1955_settings.json",
+        "--test-suite"
+      ],
+      "native_default_before_after": "2b7d1e849b4820a1d6c49602930ac3e0b104a8aa132375837038bfef80f2e0e1",
+      "native_limit": "Prior incident ASFOUND only; not preincident original/recovered. This one diagnostic is strictly isolated, not a final full native gate."
+    },
+    "power-story-boundary-probe2": {
+      "utc": "2026-10-22T19:57:28.901869+00:00",
+      "exit": 0,
+      "script_sha256": "5d7e7c60f51c7702829215cf8a7597e15c96460b07e867a2bca63b601ad0b125",
+      "flags_asserted_before_scene": true,
+      "explicit_unique_save_settings": [
+        "--godot-save-path=user://power_story_boundary_20261022_1958_save.json",
+        "--godot-settings-path=user://power_story_boundary_20261022_1958_settings.json",
+        "--test-suite"
+      ],
+      "native_default_before_after": "2b7d1e849b4820a1d6c49602930ac3e0b104a8aa132375837038bfef80f2e0e1",
+      "native_limit": "Prior incident ASFOUND only; not preincident original/recovered. This one diagnostic is strictly isolated, not a final full native gate."
+    },
+    "power-story-geometry-probe": {
+      "utc": "2026-10-22T20:09:58.894110+00:00",
+      "exit": 0,
+      "script_sha256": "7f3494f7540fc56e117d310b5ab948c22906577d456d640825283e5722005bcc",
+      "flags_asserted_before_scene": true,
+      "explicit_unique_save_settings": [
+        "--godot-save-path=user://power_story_boundary_20261022_2009_save.json",
+        "--godot-settings-path=user://power_story_boundary_20261022_2009_settings.json",
+        "--test-suite"
+      ],
+      "native_default_before_after": "2b7d1e849b4820a1d6c49602930ac3e0b104a8aa132375837038bfef80f2e0e1",
+      "native_limit": "Prior incident ASFOUND only; not preincident original/recovered. This one diagnostic is strictly isolated, not a final full native gate."
+    }
+  },
+  "future": "Never instantiate standalone diagnostics before asserting explicit unique user save/settings overrides AND --test-suite. Dedicated native study entry refuses missing test-suite; do not use unsafe bare tests of guard."
+}

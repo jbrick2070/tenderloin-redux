@@ -17,6 +17,7 @@ const [pckStat, ...sourceStats] = await Promise.all([
   stat('godot/programme_studio.gd'),
   stat('godot/shared_panel.gd'),
   stat('godot/loan_homecoming.gd'),
+  stat('godot/power_story.gd'),
   stat('godot/tests/study_test.gd'),
   stat('godot/quiet_seats.gd'),
   stat('godot/bea_invitation.gd'),
@@ -39,7 +40,7 @@ assert.ok(pckStat.size > 0 && pckStat.size <= 2 * 1024 * 1024, `artifacts/godot-
 const BROWSER_SAVE_SENTINEL = JSON.stringify({ schema: 'tenderloin-redux.save', version: 1, sentinel: 'preserve-browser-save-v1' });
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : 'playwright');
 const base = 'http://127.0.0.1:' + (process.env.GODOT_PORT || 4174) + '/';
-const sourceFingerprint={sources:Object.fromEntries(await Promise.all(['godot/main.gd','godot/shared_panel.gd','godot/loan_homecoming.gd','godot/tests/study_test.gd'].map(async p=>[p,createHash('sha256').update(await readFile(p)).digest('hex')]))),pack_sha256:createHash('sha256').update(await readFile('artifacts/godot-web/index.pck')).digest('hex')};
+const sourceFingerprint={sources:Object.fromEntries(await Promise.all(['godot/main.gd','godot/shared_panel.gd','godot/loan_homecoming.gd','godot/power_story.gd','godot/tests/study_test.gd'].map(async p=>[p,createHash('sha256').update(await readFile(p)).digest('hex')]))),pack_sha256:createHash('sha256').update(await readFile('artifacts/godot-web/index.pck')).digest('hex')};
 await mkdir('artifacts', { recursive: true });
 let queuedActivityRewardChecks = 0;
 const shortStoryReadChecks = [];
@@ -721,6 +722,7 @@ async function verifyNarrowHub(page, context, touch) {
       assert.equal(s.compact_narrow_hub, !(width >= 520 && height < 560));
       assert.ok(s.following_player && encloses(screen,panel) && panel.y >= s.header_control.y + s.header_control.height + 7 && !overlaps(panel,s.controls_control), 'All Actions follows the player and clears the header and walking controls');
       assert.ok(s.play_area.width >= 200 && s.play_area.height >= 100 && s.overlays.player.width > 0 && encloses(s.play_area,s.overlays.player), 'narrow hub retains the full enlarged player and YOU');
+      for(const b of [s.block_page_previous,s.block_page_next,s.block_close_control,s.rhythm_circle.entry,s.civic_listening.entry,s.power_story.entry].filter(b=>b.visible)) assert.ok(b.width>=44&&b.height>=44&&encloses(panel,b),'ALL six actual navigation siblings fit inside the on-screen hub');
       for (const b of [...s.block_hub_actions,s.block_page_previous,s.block_page_next,s.block_close_control]) assert.ok(b.width >= 44 && b.height >= 44 && encloses(panel,b), 'all narrow menu targets remain reachable');
       for (const b of s.block_hub_actions) { assert.ok(b.text_fits, `full narrow hub title: ${b.text}`); seen.push(b.id); fullTitles.push(b.text); }
       for (const b of s.walking_controls) assert.ok(b.width >= 44 && b.height >= 44 && b.text_fits && encloses(screen,b), 'compact walking targets fit');
@@ -1146,6 +1148,93 @@ async function verifySharedPanel(page,touch,size,active=false){
     await tap((await snap()).walking_controls.find(b=>b.text.includes('Find Me')));
   }
   sharedPanelChecks.push({width:size.width,height:size.height,touch,active,changed,value,worldInk,worldFaces:(await snap()).shared_panel.world.length});
+}
+
+const powerStoryChecks=[];
+async function verifyPowerStory(page,touch,size,privateFixture=false){
+  const snap=()=>page.evaluate(()=>window.__tenderloinGodotA11ySnapshot),save=()=>page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1'));
+  async function settle(){const f=(await snap()).ui_frame;await page.waitForFunction(f=>{const s=window.__tenderloinGodotA11ySnapshot;return s.ui_frame>f+3&&!s.layout_refit_pending&&!s.power_story.layout_pending;},f);}
+  async function tap(b){const s=await snap(),c=await page.locator('#canvas').boundingBox();assert.ok(b?.visible&&!b.disabled&&b.width>=44&&b.height>=44,'real named44px Power Story control');assert.ok(b.x>=0&&b.y>=0&&b.x+b.width<=s.viewport_width+1&&b.y+b.height<=s.viewport_height+1,'Power Story target on screen');const x=c.x+(b.x+b.width/2)*c.width/s.viewport_width,y=c.y+(b.y+b.height/2)*c.height/s.viewport_height;if(touch)await page.touchscreen.tap(x,y);else await page.mouse.click(x,y);await settle();}
+  const original=await save(),legacy=await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1'));
+  await page.setViewportSize(size);await settle();if((await snap()).story_detail.panel.visible){await page.keyboard.press('Escape');await settle();}
+  if((await snap()).block_panel_control.visible){await page.keyboard.press('KeyG');await settle();}
+  await page.keyboard.press('KeyG');await settle();
+  if(privateFixture&&size.width===520){await tap((await snap()).music_toggle_control);assert.ok((await snap()).music_playing,'one actual finger episode runs with original Music On');}
+  const before=await snap(),quiet=[before.music_playing,before.music_mode,before.music_volume,before.reward_sounds_enabled],initialLight=[before.evening_mode,before.power_story.night_glow,before.power_story.pool_alpha];
+  for(const n of [before.block_page_previous,before.block_page_next,before.rhythm_circle.entry,before.civic_listening.entry,before.block_close_control,before.power_story.entry].filter(b=>b.visible))assert.ok(n.width>=44&&n.height>=44&&n.x>=0&&n.x+n.width<=size.width+1,'ALL actual navigation siblings fit, including Power/Circle without civic');
+  await tap(before.power_story.entry);assert.ok((await snap()).power_story.visible,'real mouse/finger navigation entry opens optional episode');
+  await tap((await snap()).power_story.buttons[7]);let s=await snap();assert.ok(s.power_story.active&&!s.power_story.restored);assert.equal(s.power_story.pool_alpha,0);assert.equal(s.evening_mode,initialLight[0]);
+  const solutions=[[2,1,0,3],[0,2,1,3],[1,2,3,0]],pixels=[],world=[];
+  for(let station=0;station<3;station++){
+    await tap((await snap()).power_story.buttons[4+station]);
+    await tap((await snap()).power_story.buttons[8]);
+    if(station===0){
+      await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.player_grounding.path_active);await settle();
+      await page.keyboard.down('KeyW');await page.waitForTimeout(120);await page.keyboard.up('KeyW');await settle();
+      assert.ok(!(await snap()).power_story.traveling&&!(await snap()).power_story.visible,'real manual walking cancels pending arrival');
+      assert.ok((await snap()).objective_control_text.includes('Power Story'),'episode next step stays in the actual world header');
+      await tap((await snap()).walking_controls.find(b=>b.text==='Power Story'));await tap((await snap()).power_story.buttons[8]);
+      await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.player_grounding.path_active);await settle();
+      await tap((await snap()).walking_controls.find(b=>b.text==='Stop Walking'));
+      assert.equal((await snap()).power_story.traveling,false,'real Stop cancels pending repair view');assert.equal((await snap()).power_story.visible,false);
+      await page.keyboard.press('F8');await settle();await tap((await snap()).power_story.buttons[8]);
+    }
+    await page.waitForFunction(()=>{const s=window.__tenderloinGodotA11ySnapshot;return s.power_story.visible&&s.power_story.near&&!s.player_grounding.path_active;},null,{timeout:90000});await settle();
+    s=await snap();assert.equal(s.power_story.station,station);assert.equal(s.power_story.restored,(1<<station)-1);
+    for(const b of s.power_story.buttons)assert.ok(b.visible&&b.width>=44&&b.height>=44&&b.x>=0&&b.y>=0&&b.x+b.width<=size.width+1&&b.y+b.height<=size.height+1,'all connector and full named44px actions fit');
+    await tap(s.power_story.buttons[9]);assert.ok((await snap()).power_story.text.includes('Not connected yet'));
+    let worldBefore,worldPose,worldRect;
+    if(station===0){
+      await tap((await snap()).power_story.buttons[12]);await settle();
+      // A genuine scene drag owns the camera before the focused repair reopens.
+      const t=await snap(),r=t.play_area,c=await page.locator('#canvas').boundingBox(),x=c.x+(r.x+r.width*.45)*c.width/t.viewport_width,y=c.y+(r.y+r.height*.7)*c.height/t.viewport_height;
+      if(touch){const cd=await page.context().newCDPSession(page);await cd.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y,id:0}]});for(let k=1;k<=4;k++)await cd.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+24*k/4,y,id:0}]});await cd.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await cd.detach();}
+      else{await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+24,y,{steps:4});await page.mouse.up();}
+      await settle();const w=await snap();assert.equal(w.following_player,false,'real drag owns manual camera');worldPose=w.camera_pose;worldBefore=screenshotPixels(await page.screenshot());
+      const corners=w.power_story.world[0].corners;worldRect={x:Math.min(...corners.map(p=>p.x)),y:Math.min(...corners.map(p=>p.y)),right:Math.max(...corners.map(p=>p.x)),bottom:Math.max(...corners.map(p=>p.y))};
+      await page.screenshot({path:`artifacts/power-story-${size.width}-${touch?'finger':'mouse'}-world-dark.png`});
+      await page.keyboard.press('F8');await settle();assert.deepEqual((await snap()).camera_pose,worldPose,'opening repair respects real manual pan');
+    }
+    const position=(await snap()).player_grounding,pose=(await snap()).camera_pose,zoom=(await snap()).camera_view_size;
+    if(station===0){for(const boundary of [{width:320,height:667},{width:520,height:360},size]){await page.setViewportSize(boundary);await settle();const z=await snap();for(const b of z.power_story.buttons)assert.ok(b.visible&&b.width>=44&&b.height>=44&&b.x>=0&&b.y>=0&&b.x+b.width<=boundary.width+1&&b.y+b.height<=boundary.height+1,'live rotation keeps all repair controls useful');}assert.deepEqual((await snap()).camera_pose,pose);assert.equal((await snap()).camera_view_size,zoom);}
+
+    await page.keyboard.down('KeyW');await page.waitForTimeout(120);await page.keyboard.up('KeyW');await settle();assert.deepEqual((await snap()).camera_pose,pose,'held walking key cannot take camera during repair');assert.deepEqual([(await snap()).player_grounding.x,(await snap()).player_grounding.z],[position.x,position.z]);
+    const diagramBefore=screenshotPixels(await page.screenshot()),art=(await snap()).power_story.picture;
+    for(let i=0;i<4;i++){
+      s=await snap();const count=(solutions[station][i]-s.power_story.turns[station][i]+4)%4;
+      for(let n=0;n<count;n++)await tap((await snap()).power_story.buttons[i]);
+    }
+    s=await snap();assert.deepEqual(s.power_story.turns[station],solutions[station]);assert.ok(s.power_story.connected,'real connector rotations complete topology');
+    const after=screenshotPixels(await page.screenshot()),c=await page.locator('#canvas').boundingBox();let changed=0;
+    for(let y=art.y+2;y<art.y+art.height-2;y++)for(let x=art.x+2;x<art.x+art.width-2;x++){const px=c.x+x*c.width/s.viewport_width,py=c.y+y*c.height/s.viewport_height;if(after.pixel(px,py).some((v,i)=>Math.abs(v-diagramBefore.pixel(px,py)[i])>40))changed++;}
+    assert.ok(changed>=30,'actual painted connector paths visibly turn, not just a changed status');pixels.push(changed);
+    await tap(s.power_story.buttons[9]);assert.equal((await snap()).power_story.restored,(1<<(station+1))-1);assert.equal(await save(),original,'real repairs write no saved chapter/photo/sequence');
+    await page.screenshot({path:`artifacts/power-story-${size.width}-${touch?'finger':'mouse'}-relay-${station+1}.png`});
+    if(station===0){
+      await tap((await snap()).power_story.buttons[12]);await settle();s=await snap();assert.deepEqual(s.camera_pose,worldPose,'world before/after uses exact same manual pose');
+      const afterWorld=screenshotPixels(await page.screenshot()),c=await page.locator('#canvas').boundingBox();let changed=0;
+      assert.ok(worldRect.x>=0&&worldRect.y>=0&&worldRect.right<size.width&&worldRect.bottom<size.height,'actual lamp projection visible in paired world');
+      for(let y=worldRect.y;y<worldRect.bottom;y++)for(let x=worldRect.x;x<worldRect.right;x++){const px=c.x+x*c.width/s.viewport_width,py=c.y+y*c.height/s.viewport_height;if(afterWorld.pixel(px,py).some((v,i)=>Math.abs(v-worldBefore.pixel(px,py)[i])>35))changed++;}
+      assert.ok(changed>=3,'real globe pixels light up after this repair');world.push(changed);
+      await page.screenshot({path:`artifacts/power-story-${size.width}-${touch?'finger':'mouse'}-world-lit.png`});
+      await page.keyboard.press('F8');await settle();
+    }
+  }
+  s=await snap();assert.ok(s.power_story.won&&s.power_story.text.includes('You brought our lights back'));assert.equal(s.power_story.night_glow,1);assert.equal(s.power_story.pool_alpha,1);
+  assert.deepEqual([s.music_playing,s.music_mode,s.music_volume,s.reward_sounds_enabled],quiet,'episode never changes quiet/music preferences');
+  // Full-size clue reader remains usable through actual page/scroll input.
+  await tap(s.power_story.buttons[12]);await page.keyboard.press('F8');await settle();s=await snap();
+  {const b=s.power_story.reader,c=await page.locator('#canvas').boundingBox(),x=c.x+(b.x+b.width/2)*c.width/s.viewport_width,y=c.y+(b.y+b.height-8)*c.height/s.viewport_height;
+   if(touch){const cd=await page.context().newCDPSession(page);await cd.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y,id:0}]});for(let k=1;k<=5;k++){await cd.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y-52*k/5,id:0}]});await page.waitForTimeout(20);}await cd.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await cd.detach();}
+   else{await page.mouse.click(x,y);await page.keyboard.press('End');}
+   await settle();assert.ok((await snap()).power_story.scroll>0,'complete16px reader has real finger or keyboard scrolling');}
+
+  await tap((await snap()).power_story.buttons[10]);assert.equal((await snap()).power_story.active,false);
+  assert.deepEqual([(await snap()).evening_mode,(await snap()).power_story.night_glow,(await snap()).power_story.pool_alpha],initialLight,'explicit end restores usual lighting');
+  await tap((await snap()).power_story.buttons[7]);assert.ok((await snap()).power_story.active);await page.reload();await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');await settle();
+  assert.equal((await snap()).power_story.active,false,'actual reload ends visit-only blackout');assert.equal((await snap()).power_story.restored,0);assert.equal(await save(),original);assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1')),legacy);
+  const result={...size,touch,privateFixture,pixels,world,saveBytes:Buffer.byteLength(original),threeWalks:true,stop:true,hero:true,reload:true};powerStoryChecks.push(result);
+  await writeFile(`artifacts/power-story-${size.width}-${touch?'finger':'mouse'}.json`,JSON.stringify(result,null,2));
 }
 
 const programmeStudioChecks=[];
@@ -2951,6 +3040,7 @@ try {
     await page.setViewportSize(size);
     await verifyMuralWorkshop(page, context, size.width < 600, size);
     await verifyMuralStories(page, context, size.width < 600, size);
+    await verifyPowerStory(page,size.width<600,size);
     if(!rhythmFixtureSave)rhythmFixtureSave=await page.evaluate(()=>localStorage.getItem("tenderloin-redux.godot.save.v1"));
     await context.close();
   }
@@ -3036,9 +3126,16 @@ try {
     const context=await browser.newContext({viewport:{width,height},hasTouch:touch});await context.addInitScript(f=>{if(!localStorage.getItem('tenderloin-redux.godot.save.v1'))localStorage.setItem('tenderloin-redux.godot.save.v1',JSON.stringify(f));},fixture);
     const page=await context.newPage();latestPage=page;page.on('pageerror',e=>errors.push(String(e)));page.on('request',r=>{if(![base,'blob:','data:'].some(p=>r.url().startsWith(p)))external.push(r.url());});await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');await verifyLoanHomecoming(page,touch,{width,height},true);await context.close();
   }
+  // PRIVATE completed copies of THIS run exercise all short repair docks.
+  for(const [width,height,touch,layout] of [[520,360,true,'floor'],[559,360,false,'table'],[640,360,true,'floor']]){
+    const fixture=JSON.parse(rhythmFixtureSave);fixture.gathering_layout=layout;
+    const context=await browser.newContext({viewport:{width,height},hasTouch:touch});await context.addInitScript(f=>{if(!localStorage.getItem('tenderloin-redux.godot.save.v1'))localStorage.setItem('tenderloin-redux.godot.save.v1',JSON.stringify(f));},fixture);
+    const page=await context.newPage();latestPage=page;page.on('pageerror',e=>errors.push(String(e)));page.on('request',r=>{if(![base,'blob:','data:'].some(p=>r.url().startsWith(p)))external.push(r.url());});await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');await verifyPowerStory(page,touch,{width,height},true);await context.close();
+  }
+  assert.equal(powerStoryChecks.length,6);assert.equal(powerStoryChecks.filter(c=>!c.privateFixture).length,3);
   await verifyLoanWorld(browser,rhythmFixtureSave,base);
   assert.equal(loanHomecomingChecks.length,8);assert.equal(loanWorldChecks.length,3);assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
-  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, sourceFingerprint, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, beaInvitationChecks, quietSeatChecks, filmScreeningChecks, rhythmCircleChecks, rhythmAuditionChecks, muralStoryChecks, livingMuralChecks, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
+  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, sourceFingerprint, powerStoryChecks, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, beaInvitationChecks, quietSeatChecks, filmScreeningChecks, rhythmCircleChecks, rhythmAuditionChecks, muralStoryChecks, livingMuralChecks, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
   assert.ok(queuedActivityRewardChecks > 0, 'at least one actual crowded activity exercises queued reward timer and Close delivery');
   assert.ok(shortStartClicked && shortStartTouchClicked, 'real mouse and touch Start at640x360 were exercised');
   assert.equal(beaInvitationChecks.length,7,'three genuine current progression and four private post-quiet invitation cases');
@@ -3071,7 +3168,7 @@ try {
   assert.equal(muralWorkshopChecks.length,8,'seven late and one fresh actual workshop mouse/finger cases executed');
   assert.equal(muralWorkshopChecks.filter(c=>c.photoStatus==='taken').length,7,'all seven late cases preserve a saved taken keepsake');
   assert.equal(workshopAutoAdvanceChecks,3,'a fresh mural exercises all three automatically offered contributions');
-  console.log(JSON.stringify({ runs, sourceFingerprint, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, rhythmCircleChecks, rhythmAuditionChecks, livingMuralChecks, muralWorkshopChecks, workshopAutoAdvanceChecks, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, narrowActivityChecks, passiveActivityChecks, narrowHubChecks, smallHubReaderChecks, shortWalkingChecks, shortWalkingCaptionChecks, shortWalkingGuideChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
+  console.log(JSON.stringify({ runs, sourceFingerprint, powerStoryChecks, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, rhythmCircleChecks, rhythmAuditionChecks, livingMuralChecks, muralWorkshopChecks, workshopAutoAdvanceChecks, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, narrowActivityChecks, passiveActivityChecks, narrowHubChecks, smallHubReaderChecks, shortWalkingChecks, shortWalkingCaptionChecks, shortWalkingGuideChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
 } catch (error) {
   if (latestPage && !latestPage.isClosed()) {
     await latestPage.screenshot({ path: 'artifacts/godot-browser-failure.png' });

@@ -26,7 +26,10 @@ var layout_pending := false
 var snapshot_clock := 0.0
 var rendered := ""
 var nav_compact := false
+var nav_layout_pending := false
 var nav_styles: Dictionary = {}
+var nav_fonts: Dictionary = {}
+var nav_compact_styles: Dictionary = {}
 
 func setup(owner_game: Node) -> void:
 	game = owner_game
@@ -93,7 +96,14 @@ func setup(owner_game: Node) -> void:
 	game.block_page_nav.move_child(entry,game.block_page_nav.get_child_count()-2)
 	for b in [game.block_page_prev,game.block_page_next,game.block_close_btn]:
 		nav_styles[b]={}
-		for state in ["normal","hover","pressed","hover_pressed"]: nav_styles[b][state]=b.get_theme_stylebox(state)
+		nav_fonts[b]=b.get_theme_font_size("font_size")
+		nav_compact_styles[b]={}
+		for state in ["normal","hover","pressed","hover_pressed"]:
+			nav_styles[b][state]=b.get_theme_stylebox(state)
+			var style: StyleBox=nav_styles[b][state].duplicate()
+			style.content_margin_left=2
+			style.content_margin_right=2
+			nav_compact_styles[b][state]=style
 	entry.hide()
 	game.block_page_nav.minimum_size_changed.connect(queue_nav_refit)
 	game.block_page_nav.resized.connect(queue_nav_refit)
@@ -228,31 +238,45 @@ func fit_entry_navigation() -> void:
 	if game.uses_side_block_hub(): width=clampf(vp.x*0.52,280.0 if vp.x<game.WIDE_SIDE_PANEL_MIN_WIDTH else 312.0,440.0)
 	var room: float=width-game.block_panel.get_theme_stylebox("panel").get_minimum_size().x
 	var labels := ["Previous","Next %d/%d"%[mini(game.block_hub_page+2,game.block_action_page_count()),game.block_action_page_count()],"Close"]
-	var needed := 76.0
+	var needed: float=76.0 if entry.visible else 0.0
 	for b in game.block_page_nav.get_children():
 		if b==entry or not b is Button or not b.visible: continue
 		var index: int=[game.block_page_prev,game.block_page_next,game.block_close_btn].find(b)
-		var minimum: float=b.get_combined_minimum_size().x
+		var minimum: float=76.0 if game.rhythm_circle != null and b==game.rhythm_circle.entry else b.get_combined_minimum_size().x
 		if index>=0:
-			minimum=maxf(b.custom_minimum_size.x,b.get_theme_font("font").get_string_size(labels[index],HORIZONTAL_ALIGNMENT_LEFT,-1,b.get_theme_font_size("font_size")).x+nav_styles[b]["normal"].get_minimum_size().x)
+			minimum=maxf(b.custom_minimum_size.x,b.get_theme_font("font").get_string_size(labels[index],HORIZONTAL_ALIGNMENT_LEFT,-1,int(nav_fonts[b])).x+nav_styles[b]["normal"].get_minimum_size().x)
 		needed+=minimum+4.0
-	var compact: bool=entry.visible and needed>room
-	if compact!=nav_compact:
-		nav_compact=compact
-		for b in nav_styles:
-			for state in nav_styles[b]:
-				var style: StyleBox=nav_styles[b][state]
-				if compact:
-					style=style.duplicate()
-					style.content_margin_left=2
-					style.content_margin_right=2
-				b.add_theme_stylebox_override(state,style)
-	game.block_page_nav.add_theme_constant_override("separation",3 if compact else 4)
+	var compact: bool=(entry.visible or (game.power_story != null and game.power_story.entry.visible)) and needed>room
+	nav_compact=compact
+	# update_block_ui refreshes Close's normal style: reapply the cached nav style,
+	# even when the compact mode itself did not change. Do not allocate every frame.
+	for b in nav_styles:
+		for state in nav_styles[b]:
+			var style: StyleBox=nav_compact_styles[b][state] if compact else nav_styles[b][state]
+			if b.get_theme_stylebox(state)!=style: b.add_theme_stylebox_override(state,style)
+	# Six 44px nav targets need the entire 264px interior of the smallest side dock.
+	# Spend only the remaining width on gaps; keep every full accessible name.
+	var nav_count: int=game.block_page_nav.get_children().filter(func(b): return b is Button and b.visible).size()
+	var gap: int=mini(3,maxi(0,int(floor((room-nav_count*44.0)/maxi(1,nav_count-1))))) if compact else 4
+	game.block_page_nav.add_theme_constant_override("separation",gap)
+	for b in nav_fonts: b.add_theme_font_size_override("font_size",mini(13,int(nav_fonts[b])) if compact else int(nav_fonts[b]))
 	for i in range(3):
 		var b: Button=[game.block_page_prev,game.block_page_next,game.block_close_btn][i]
 		b.text=["Prev","Next","Close"][i] if compact else labels[i]
 		b.tooltip_text=labels[i]
 		b.accessibility_name=labels[i]
+	if game.rhythm_circle != null:
+		var circle: Button=game.rhythm_circle.entry
+		circle.text="Circle" if compact else "Rhythm\nCircle"
+		circle.custom_minimum_size.x=44 if compact else 76
+		circle.accessibility_name="Dez's Rhythm Circle (F3)"
+		for state in ["normal","hover","pressed","hover_pressed"]:
+			var style: StyleBox=circle.get_theme_stylebox(state)
+			if style.content_margin_left!=2 or style.content_margin_right!=2:
+				style=style.duplicate()
+				style.content_margin_left=2
+				style.content_margin_right=2
+				circle.add_theme_stylebox_override(state,style)
 	entry.text="Listen" if compact else "Listening\nHour"
 	entry.custom_minimum_size.x=44 if compact else 76
 	entry.size_flags_horizontal=Control.SIZE_SHRINK_END
@@ -266,7 +290,21 @@ func fit_entry_navigation() -> void:
 			entry.add_theme_stylebox_override(state,style)
 
 func queue_nav_refit() -> void:
-	if not visible and entry.is_visible_in_tree() and game.following_player:
+	if visible: return
+	if game.uses_side_block_hub() and not nav_layout_pending:
+		# Container minimum may shrink one frame AFTER the last entry appears.
+		# Restore the intended dock width once settled; changing only the minimum
+		# leaves the old expanded Control width in the actual Web renderer.
+		nav_layout_pending=true
+		settle_navigation.call_deferred()
+	if entry.is_visible_in_tree() and game.following_player:
+		game.refit_panel_after_layout()
+
+func settle_navigation() -> void:
+	nav_layout_pending=false
+	if visible or not game.uses_side_block_hub(): return
+	game.layout_walking_controls_and_hub()
+	if game.following_player and not game.is_focused_activity_visible():
 		game.refit_panel_after_layout()
 
 func refresh_entry() -> void:

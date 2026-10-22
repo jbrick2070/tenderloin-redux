@@ -1,0 +1,18 @@
+STDOUT:
+The verdict is **yes-with-fixes**: the outage idea can be built, but it shouldn't be built as written. The full review is in `kibitz-runs\2026-10-22-codex-power-restoration-ideas\r1\claude.md`. I only read files and wrote that one file; no source was changed and nothing was run.
+
+**What the code shows:**
+- **Wrong source lead.** `update_day_evening_lighting` doesn't exist. The real hooks are `apply_time_of_day()` (`godot/main.gd:4884`), `toggle_evening_lights()` (`godot/main.gd:4900`) and Shift+L (`godot/main.gd:14251`).
+- **Light can't come back station by station today.** The window glow is one setting shared by every building, and all the street light pools are a single merged mesh. So repairing one station could only dim or brighten the whole district at once. The cheapest fix is to light up props that already have their own material: the 3 gathering lanterns and the 7 stylised street lamps.
+- **The evening toggle can break the outage.** The game starts in daylight, where a blackout barely shows. During an outage, Shift+L would restore all the light for free. The doc needs to say how the outage handles day/evening and how it puts the player's setting back afterwards.
+- **"Fix transformers and be the hero" clashes with the rules.** It's the real-grid repair picture the doc forbids, and a lone hero is at odds with `docs/CONCEPT.md` ("work alongside residents"). I suggest the broken kit is the gathering's own fictional festival gear, with residents each helping at one station.
+- **No puzzle is defined.** The obvious off-the-shelf choice, colour-matched wires, breaks the shape-and-text-cue rule in `CONCEPT.md`, and adding a timer or a fail state breaks other rules.
+- **Copying the existing panel pattern would make it feel like a form.** `shared_panel` hides everything else on screen, which is the "settings worksheet" the doc wants to avoid. Each station should be a small overlay on the visible world.
+- **The start trigger needs to work on phones.** F2–F7 are all taken, and F-keys don't exist at the required phone sizes. It should start from a resident conversation action, using the same entry checks the shared panel uses.
+
+**What to cut:**
+- **Option B (saved chapter):** recent features already test the save file at exactly 4096 bytes, its limit. Session-only progress already has precedent in the landmark tour.
+- **Option C (single station):** one station gives no repeating phase loop. Fold it into a trimmed Option A: three stations sharing one mechanic, session-only.
+- **Any change to the shared building shader** in the first version.
+
+Two points rest on assumptions I couldn't confirm. I took "hero" to mean feeling capable rather than working alone; if the creator wants a solo hero, that's a question for them. I also didn't confirm that resident conversation buttons are reachable at the 390×667 and 320×667 phone sizes.

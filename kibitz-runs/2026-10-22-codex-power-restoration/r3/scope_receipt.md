@@ -1,0 +1,1 @@
+ONE explicitly scoped implementationQA r3, drivercodex/sole claude-opus-5-5 high. Separateprecode r1 done; r2/r4 NOTrun. Source/anchor/inputdigest BEFOREfanout. Input SHA2564cc0d7da6d3d9465da7ab3773ca3c54e4e054ec9015b2d1fb32de38d16ae968b. No source/gate/native/git/userdata/delegation.

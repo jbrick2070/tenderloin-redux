@@ -1,0 +1,21 @@
+STDOUT:
+I wrote the round-3 review to `kibitz-runs/2026-10-22-codex-power-restoration/r3/claude.md`. My verdict is yes-with-fixes: one real wiring bug needs fixing before the build. I only read code; I didn't edit anything or run any tests or gates.
+
+**The must-fix:** the Power Story can still open by surprise when the player moves by hand. Only `stop_walking()` (`godot/main.gd:13527`) cancels a pending walk to a relay. Other paths cancel the walk route but leave the story waiting to open:
+- WASD or arrow-key movement (`walk_step`, `godot/main.gd:8028`)
+- the overview and wide overview, including the plain L key (`godot/main.gd:14462`, `14520`)
+
+If the player is within 2 m of the relay when that happens, `godot/power_story.gd:417-419` treats the stopped walk as an arrival and opens the story. That breaks the plan's own promise that manual interruptions won't open it. Neither test suite catches this: both held-W checks run while the story is already open, and the game ignores movement keys then. The fix is the same one-line latch reset that `stop_walking()` already has, at those cancel sites, plus one native test.
+
+**Should-fix items:**
+1. After every load or import, the first time the player opens Power it shows a stale "Usual lighting restored" message. `reset_session` never clears the message `end_session` sets.
+2. If the walk to a relay fails, the player is left in the world with the story and block menu both closed. The story closes before the walk is attempted, and nothing reopens it on failure.
+3. On very short windows the connector buttons hide themselves and nothing replaces them. The puzzle can't be solved and keyboard focus is lost.
+4. The relay walk targets are recalculated on every call, including in every accessibility snapshot. They never change, so they can be computed once at setup.
+5. A blocked route to a relay fails silently, with no announcement.
+6. The browser test's "save unchanged" check could fail for reasons unrelated to the story, if walking past landmarks records discoveries.
+7. The Power button may push the block menu's bottom row off screen at 320 px when the Listening Hour entry is hidden.
+
+Items 6 and 7 depend on fixture data and layouts I couldn't check without running the game, so the review marks them "verify:" rather than confirmed.
+
+Separately, several connected services in this session need sign-in before their tools work: Box, Play Sheet Music, Runway, and the engineering plugins (Asana, Atlassian, Datadog, GitHub, Linear, Notion, PagerDuty, Slack). Connect the claude.ai ones in your claude.ai connector settings, and the plugins with `/mcp` in an interactive session. None of them were needed for this review.

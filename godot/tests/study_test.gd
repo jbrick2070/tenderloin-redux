@@ -3262,6 +3262,7 @@ func run() -> void:
 	await verify_programme_studio(study,saved_m4_json)
 	await verify_shared_panel(study,saved_m4_json)
 	await verify_loan_homecoming(study,saved_m4_json)
+	await verify_power_story(study,saved_m4_json)
 	study.clear_godot_save()
 	study.clear_godot_settings()
 	var legacy_settings := FileAccess.open(study.settings_path, FileAccess.WRITE)
@@ -5352,6 +5353,205 @@ func verify_shared_panel(study: Node, full_profile: String) -> void:
 	study.last_story_chapter=int(study.current_chapter().num)
 	root.size=Vector2i(1100,760)
 	print("SHARED_PANEL_PASS:2layouts x7sizes, six real targets/two palettes/Hang/copies/24rasters/cache8and1/exact4096success4097refusal")
+
+func verify_power_story(study: Node, full_profile: String) -> void:
+	require(study.is_test_suite_mode(),"power story runs only inside isolated formal suite")
+	if not study.is_test_suite_mode(): return
+	var original := JSON.stringify(study.build_save_envelope())
+	var story: Node=study.power_story
+	var solutions := [[2,1,0,3],[0,2,1,3],[1,2,3,0]]
+	# Exhaustive topology oracle: these endpoints have one full four-elbow solution.
+	for station in range(3):
+		story.station=station
+		var solutions_found := 0
+		for mask in range(256):
+			story.turns[station]=[mask%4,(mask/4)%4,(mask/16)%4,(mask/64)%4]
+			var expected: bool=story.turns[station]==solutions[station]
+			require(story.connected()==expected,"all256 connector states obey actual full-path topology")
+			if story.connected(): solutions_found+=1
+		require(solutions_found==1,"each relay has exactly one untimed four-connector solution")
+	for layout in ["table","floor"]:
+		for size in [Vector2i(1100,760),Vector2i(390,667),Vector2i(320,667),Vector2i(520,360),Vector2i(559,360),Vector2i(640,360)]:
+			study.apply_save_envelope(full_profile)
+			study.hide_story_card()
+			study.last_story_chapter=int(study.current_chapter().num)
+			study.startup_story_pending=false
+			study.current_path.clear()
+			study.gathering_layout=layout
+			study.evening_mode=layout=="floor"
+			study.apply_time_of_day()
+			var evening: bool=study.evening_mode
+			var lighting := [study.world_env.background_color,study.world_env.ambient_light_color,study.world_env.ambient_light_energy,study.sun_light.light_color,study.sun_light.light_energy,study.rim_light.light_color,study.rim_light.light_energy,study.light_pool_material.albedo_color,study.building_shader_material.get_shader_parameter("night_glow")]
+			var saved := JSON.stringify(study.build_save_envelope())
+			var file := FileAccess.get_file_as_string(study.save_path)
+			var quiet := [study.music_playing,study.music_mode,study.music_volume,study.reward_sounds_enabled]
+			root.size=size
+			for f in range(6): await process_frame
+			require(story.open_story(),"optional episode opens after block completion")
+			story.begin()
+			require(story.active and story.restored==0 and not study.light_pool_material.albedo_color.a and study.evening_mode==evening,"outage has readable after-dark override without changing time preference")
+			require(study.current_objective().id=="power_story" and study.current_objective().text.contains("0/3"),"deliberate episode supplies its own full next objective")
+			study.toggle_evening_lights()
+			require(study.evening_mode==evening and story.active,"evening shortcut cannot bypass episode or alter saved time intent")
+			for station in range(3):
+				story.choose(station)
+				var goal: Vector2=story.relay_goal(station)
+				require(study.is_walkable_point(goal),"relay uses a genuinely walkable stand point")
+				study.player.position=Vector3(goal.x,0,goal.y)
+				study.following_player=false
+				study.target=Vector3(goal.x,1,goal.y)
+				study.update_camera()
+				var pose: Array=study.panel_camera_pose()
+				story.refresh(false)
+				for f in range(8): await process_frame
+				var vp := Rect2(Vector2.ZERO,Vector2(size))
+				for b in story.pads+story.tabs+story.actions:
+					require(b.is_visible_in_tree() and b.size.x>=44 and b.size.y>=44 and vp.encloses(b.get_global_rect()),"all4diagram targets and9full named controls fit accepted sizes at44px")
+				require(story.reader.size.y>=story.reader.get_theme_font("normal_font").get_height(16) and vp.encloses(story.reader.get_global_rect()),"full16px clue reader stays scrollable and on screen")
+				story.check_path()
+				require(story.restored==(1<<station)-1 and story.message.contains("Not connected yet"),"wrong wiring is an untimed no-penalty not-yet state")
+				for i in range(4):
+					for press in range((solutions[station][i]-int(story.turns[station][i])+4)%4):
+						story.pads[i].grab_focus()
+						var down := InputEventAction.new()
+						down.action="ui_accept"
+						down.pressed=true
+						Input.parse_input_event(down)
+						await process_frame
+						var up := InputEventAction.new()
+						up.action="ui_accept"
+						up.pressed=false
+						Input.parse_input_event(up)
+						await process_frame
+				story.actions[2].pressed.emit()
+				require(story.restored==(1<<(station+1))-1 and story.fixtures[station].material_override==story.originals[station] and story.fixtures[station+7].material_override==story.originals[station+7],"actual input restores only selected lamp and gathering lantern")
+				require(study.panel_camera_pose()==pose and quiet==[study.music_playing,study.music_mode,study.music_volume,study.reward_sounds_enabled],"repair owns no manual camera or music settings")
+				require(JSON.stringify(study.build_save_envelope())==saved and FileAccess.get_file_as_string(study.save_path)==file,"entire episode makes zero save/photo/sequence/file writes")
+				require(story.boxes[station].is_visible_in_tree(),"fictional original relay kit is visible on existing pole")
+				require(story.boxes[station].get_child_count()==2 and story.boxes[station].get_children().all(func(c): return c is MeshInstance3D),"portable relay adds only decorative meshes, no collider or named resident")
+			require(story.won and story.restored==7 and story.message.contains("You brought our lights back") and study.light_pool_material.albedo_color.a==1,"three-phase hero moment restores shared world lights")
+			var won_state := JSON.stringify(study.build_save_envelope())
+			story.check_path()
+			require(JSON.stringify(study.build_save_envelope())==won_state,"completion is idempotent and offers no hidden saved award")
+			story.close_story(false)
+			require(story.active and story.won and story.open_story(),"Back keeps completed visit readable and resumable")
+			story.end_session(false)
+			require(not story.active and study.evening_mode==evening and story.fixtures.all(func(m): return m.material_override==story.originals[story.fixtures.find(m)]),"explicit End restores exact original materials and day/evening intent")
+			require(lighting==[study.world_env.background_color,study.world_env.ambient_light_color,study.world_env.ambient_light_energy,study.sun_light.light_color,study.sun_light.light_energy,study.rim_light.light_color,study.rim_light.light_energy,study.light_pool_material.albedo_color,study.building_shader_material.get_shader_parameter("night_glow")],"every overridden lighting property restores exactly for both day and evening")
+			require(study.current_objective().id!="power_story" and story.heading.text.contains("ended"),"End restores normal chapter guidance and truthfully labels ended story")
+			story.close_story(false)
+	# Real route dispatch, Stop latch, deliberate arrival then repair (no teleport).
+	# These pole-mounted noncolliding meshes need physical wall clearance, not a walking-body radius.
+	# Check BOTH box and indicator: the first wall-facing indicator would otherwise enter the footprint.
+	for kit in story.boxes:
+		for body: MeshInstance3D in kit.get_children():
+			var bounds: AABB=body.global_transform*body.get_aabb()
+			for x in [bounds.position.x,bounds.end.x]:
+				for z in [bounds.position.z,bounds.end.z]: require(study.building_containing_point(Vector2(x,z))=="" and study.min_wall_distance(Vector2(x,z))>=0.05,"actual box AND indicator corners keep 5cm physical wall clearance without claiming human circulation width")
+	study.apply_save_envelope(full_profile)
+	study.hide_story_card()
+	study.last_story_chapter=int(study.current_chapter().num)
+	study.current_path.clear()
+	root.size=Vector2i(1100,760)
+	story.open_story()
+	story.begin()
+	story.walk_to_relay()
+	require(story.traveling and not study.current_path.is_empty() and not story.visible,"Walk dispatches original actual path and closes repair")
+	study.stop_walking()
+	for f in range(4): await process_frame
+	require(not story.traveling and not story.visible,"Stop cancels pending automatic repair entry")
+	story.open_story()
+	story.walk_to_relay()
+	var steps := 0
+	while not study.current_path.is_empty() and steps<500:
+		study.advance_walk(0.1)
+		steps+=1
+	for f in range(6): await process_frame
+	require(steps>0 and steps<500 and story.visible and story.near(),"real path arrival opens repair at the actual relay")
+	var position: Vector3=study.player.position
+	var held := InputEventKey.new()
+	held.keycode=KEY_W
+	held.pressed=true
+	Input.parse_input_event(held)
+	for f in range(4): await physics_frame
+	held.pressed=false
+	Input.parse_input_event(held)
+	require(study.player.position==position,"held walking input cannot move player during focused repair")
+	story.close_story(false)
+	for interruption in ["manual","overview","wide","neighbor","goodbye"]:
+		story.station=0
+		var goal: Vector2=story.relay_goal(0)
+		var start := goal
+		for offset in [Vector2(-4,0),Vector2(0,4),Vector2(4,0),Vector2(0,-4),Vector2(-4,4),Vector2(4,4)]:
+			if study.is_walkable_point(goal+offset) and study.segment_walkable(goal+offset,goal): start=goal+offset; break
+		require(start.distance_to(goal)>=4 and study.is_walkable_point(start),"interruption fixture begins on a verified walkable connected street point")
+		study.player.position=Vector3(start.x,0,start.y)
+		story.open_story()
+		story.walk_to_relay()
+		while study.player_xz().distance_to(goal)>1.7 and not study.current_path.is_empty(): study.advance_walk(0.02)
+		require(not study.current_path.is_empty() and study.player_xz().distance_to(goal)<story.ARRIVAL_M,"interruption is nonvacuously within arrival radius with a live route")
+		match interruption:
+			"manual": study.walk_step(Vector2.UP,0.05)
+			"overview": study.overview(false)
+			"wide": study.wide_overview(false)
+			"neighbor": study.choose_next(1)
+			"goodbye": study.end_conversation()
+		for f in range(6): await process_frame
+		require(not story.visible and not story.traveling,"manual/map/selection/goodbye interruption cannot surprise-open a nearby repair")
+	# Small unaccepted windows decline painting clearly, never focus a hidden target.
+	study.current_path.clear()
+	story.open_story()
+	for tiny in [Vector2i(320,300),Vector2i(390,240)]:
+		root.size=tiny
+		for f in range(8): await process_frame
+		require(not story.connector_room and story.pads.all(func(b): return not b.visible) and story.reader.text.contains("taller or wider") and story.actions[2].disabled,"tiny window gives a complete explanation and disables unavailable connector input")
+	story.close_story(false)
+	# Current full and pre-civic profiles must fit ALL navigation siblings, not just Power.
+	for civic_ready in [false,true]:
+		var nav_seed: Dictionary=JSON.parse_string(full_profile)
+		if not civic_ready:
+			var results: Array=[]
+			for id in nav_seed.hosting.order:
+				if id=="beats": break
+				for result in nav_seed.hosting.results:
+					if result.id==id: results.append(result)
+			nav_seed.hosting.results=results
+			nav_seed.civic.phase="idle"
+			nav_seed.civic.result=null
+			nav_seed.film.phase="idle"
+			nav_seed.film.result=null
+			nav_seed.film.captured=[]
+		study.apply_save_envelope(JSON.stringify(nav_seed))
+		study.hide_story_card()
+		study.last_story_chapter=int(study.current_chapter().num)
+		study.block_panel_mode="hub"
+		study.show_block_panel(true)
+		for width in [320,520,559]:
+			root.size=Vector2i(width,667 if width==320 else 360)
+			for f in range(10): await process_frame
+			require(study.rhythm_circle.entry.is_visible_in_tree() and story.entry.is_visible_in_tree(),"Power and Circle are genuinely visible in both civic-available boundaries")
+			var hub_bounds: Rect2=study.block_panel.get_global_rect()
+			require(Rect2(Vector2.ZERO,Vector2(root.size)).encloses(hub_bounds) and not hub_bounds.intersects(study.controls.get_global_rect()),"all navigation keeps the whole hub on screen and clear of walking, not merely each button")
+			require(study.block_close_btn.get_theme_font("font").get_string_size("Close",HORIZONTAL_ALIGNMENT_LEFT,-1,study.block_close_btn.get_theme_font_size("font_size")).x+study.block_close_btn.get_theme_stylebox("normal").get_minimum_size().x<=study.block_close_btn.size.x,"compact Close remains one complete word")
+			for b in study.block_page_nav.get_children():
+				if b is Button and b.is_visible_in_tree(): require(b.size.x>=44 and b.size.y>=44 and b.get_global_rect().position.x>=0 and b.get_global_rect().end.x<=width,"every real navigation sibling fits44px at narrow widths")
+	# Reproduce late six-entry minimum shrink WITHOUT a viewport resize or a new profile.
+	study.apply_save_envelope(full_profile)
+	study.hide_story_card()
+	study.last_story_chapter=int(study.current_chapter().num)
+	root.size=Vector2i(520,360)
+	study.show_block_panel(true)
+	for f in range(10): await process_frame
+	study.block_panel.size.x=295
+	study.civic_listening.queue_nav_refit()
+	for f in range(10): await process_frame
+	require(study.block_panel.get_global_rect().end.x<=508.01 and not study.civic_listening.nav_layout_pending,"settled navigation returns an already expanded Web dock to280px without a viewport resize or pending loop")
+	study.apply_save_envelope(original)
+	study.hide_story_card()
+	study.last_story_chapter=int(study.current_chapter().num)
+	require(not story.active and not story.visible and story.boxes.all(func(b): return not b.visible),"reload/import ends visit-only episode and restores ordinary world")
+	require(story.message.is_empty() and not story.won and story.restored==0,"reset clears stale outcome copy and visit-only progress")
+	print("POWER_STORY_PASS:2layouts x6sizes, all768topologies/actualui_accept/3lamps+lanterns/hero/routeStopArrival+5nearinterruptions/quiet/manual/no-save/reload/nav6/tiny2")
 
 func verify_loan_homecoming(study: Node, full_profile: String) -> void:
 	require(study.is_test_suite_mode(),"Loan Homecoming tests use the isolated formal suite")

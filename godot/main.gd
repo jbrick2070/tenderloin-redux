@@ -802,6 +802,7 @@ var civic_listening
 var programme_studio
 var shared_panel
 var loan_homecoming
+var power_story
 var mural_workshop
 var mural_workshop_selected := "sun"
 var mural_workshop_message := ""
@@ -4896,8 +4897,12 @@ func apply_time_of_day() -> void:
 		light_pool_material.albedo_color = Color(1.0, 1.0, 1.0, 1.0 if evening_mode else DAY_LIGHT_POOL_ALPHA)
 	if building_shader_material != null:
 		building_shader_material.set_shader_parameter("night_glow", 1.0 if evening_mode else 0.0)
+	if power_story != null: power_story.apply_lighting()
 
 func toggle_evening_lights() -> bool:
+	if power_story != null and power_story.active:
+		announce_a11y_status("Power Story has its own after-dark lighting. End story restores your usual day/evening choice.")
+		return evening_mode
 	evening_mode = not evening_mode
 	apply_time_of_day()
 	var msg := "Evening on Turk Street: storefront windows and street lamps pool warm light across the sidewalks." if evening_mode else "Daylight over the Tenderloin: the storefront light pools fade back."
@@ -6050,6 +6055,7 @@ func update_landmark_tour_completion() -> void:
 	announce_a11y_status("Neighborhood Tour Complete! All %d stops visited this session. Your 10 keepsakes stay saved; the optional tour starts fresh next session." % int(tour.total))
 
 func current_objective() -> Dictionary:
+	if power_story != null and power_story.active: return power_story.objective()
 	var p := player_xz() if player != null else Vector2(PLAYER_START.x, PLAYER_START.z)
 	var met := visited_neighbors.size()
 	var total := neighbors.size()
@@ -6402,6 +6408,7 @@ func ask_whats_next() -> String:
 	return line
 
 func end_conversation() -> void:
+	if power_story != null: power_story.cancel_intent()
 	var partner := -1
 	if mural_panel != null and mural_panel.visible:
 		partner = celeste_index
@@ -7466,7 +7473,7 @@ func set_header_details(expanded: bool, refit_map := true) -> void:
 
 func update_conversation_ui(delta: float) -> void:
 	ui_clock = wrapf(ui_clock + delta, 0.0, 3600.0)
-	if is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible():
+	if is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible() or is_power_story_visible():
 		return
 	var chapter := current_chapter()
 	# Deliver any pending chapter card after the focused workshop closes,
@@ -8018,6 +8025,7 @@ func resume_walking_view() -> void:
 	following_player = true
 
 func walk_step(input_dir: Vector2, delta: float) -> bool:
+	if power_story != null: power_story.cancel_intent()
 	if input_dir.length_squared() < 1e-6 or delta <= 0.0:
 		return false
 	current_path.clear()
@@ -8115,6 +8123,7 @@ func choose_next_neighbor(direction: int = 1) -> bool:
 	return walk_to_neighbor(selected_neighbor)
 
 func walk_to_neighbor(index: int) -> bool:
+	if power_story != null: power_story.cancel_intent()
 	if index < 0 or index >= neighbors.size():
 		return false
 	var n: Dictionary = neighbors[index]
@@ -8166,6 +8175,7 @@ func walk_to_neighbor(index: int) -> bool:
 	return true
 
 func walk_to_mural() -> bool:
+	if power_story != null: power_story.cancel_intent()
 	selected_neighbor = -1
 	arrived_neighbor = -1
 	walking_to_mural = true
@@ -8207,6 +8217,7 @@ func walk_to_mural() -> bool:
 	return true
 
 func walk_to_speaker() -> bool:
+	if power_story != null: power_story.cancel_intent()
 	selected_neighbor = -1
 	arrived_neighbor = -1
 	walking_to_mural = false
@@ -8248,6 +8259,7 @@ func walk_to_speaker() -> bool:
 	return true
 
 func walk_to_history_stop(stop_id: String) -> bool:
+	if power_story != null: power_story.cancel_intent()
 	if not (stop_id in HISTORY_STOP_IDS):
 		return false
 	var rec := get_history_stop_record(stop_id)
@@ -8494,6 +8506,7 @@ func toggle_district_boundary() -> bool:
 	return district_boundary_visible
 
 func walk_to_point(goal_xz: Vector2) -> bool:
+	if power_story != null: power_story.cancel_intent()
 	var safe_goal := nearest_walkable_point(goal_xz, WALK_CLEARANCE_M)
 	if goal_xz.distance_to(safe_goal) > 28.5 or not is_walkable_point(safe_goal, WALK_CLEARANCE_M):
 		current_path.clear()
@@ -11140,7 +11153,7 @@ func setup_web_a11y_bridge() -> void:
 		if (window.__tenderloinWebA11yReady) return;
 		window.__tenderloinWebA11yReady = true;
 		window.addEventListener('contextmenu', function(e) { e.preventDefault(); });
-		window.addEventListener('keydown', function(e) { if ((e.code === 'F2' || e.code === 'F3' || e.code === 'F7') && document.activeElement === document.getElementById('canvas')) e.preventDefault(); });
+		window.addEventListener('keydown', function(e) { if ((e.code === 'F2' || e.code === 'F3' || e.code === 'F7' || e.code === 'F8') && document.activeElement === document.getElementById('canvas')) e.preventDefault(); });
 		var srStyle = 'position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;';
 		var live = document.getElementById('godot-a11y-status');
 		if (!live) {
@@ -11534,6 +11547,7 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"walk_control": control_snapshot(walk_control),
 		"walk_control_text": walk_control.text if walk_control != null else "",
 		"header_details_expanded": header_details_expanded,
+		"objective_control_text": objective_label.text if objective_label != null else "",
 		"progress_text": progress_label.text if progress_label != null else "",
 		"conversation_header": block_label.text if block_label != null else "",
 		"block_panel_control": control_snapshot(block_panel),
@@ -11561,6 +11575,7 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"block_detail_scroll_value": block_detail_label.get_v_scroll_bar().value if block_detail_label != null else 0.0,
 		"block_detail_scroll_page": block_detail_label.get_v_scroll_bar().page if block_detail_label != null else 0.0,
 		"block_hub_actions": block_action_snapshots(),
+		"power_story": power_story.snapshot() if power_story != null else {},
 		"loan_homecoming": loan_homecoming.snapshot() if loan_homecoming != null else {},
 		"shared_panel": shared_panel.snapshot() if shared_panel != null else {"visible":false},
 		"programme_studio": programme_studio.snapshot() if programme_studio != null else {"visible":false},
@@ -11740,8 +11755,11 @@ func is_shared_panel_visible() -> bool:
 func is_programme_studio_visible() -> bool:
 	return programme_studio != null and programme_studio.visible
 
+func is_power_story_visible() -> bool:
+	return power_story != null and power_story.visible
+
 func is_focused_activity_visible() -> bool:
-	return is_mural_workshop_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible()
+	return is_power_story_visible() or is_mural_workshop_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible()
 
 func is_civic_listening_visible() -> bool:
 	return civic_listening != null and civic_listening.visible
@@ -11820,7 +11838,7 @@ func edit_mural_scene(id: String, slot: String) -> bool:
 	return true
 
 func open_mural_workshop() -> bool:
-	if is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible():
+	if is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible() or is_power_story_visible():
 		return false
 	if startup_story_pending or is_story_card_visible():
 		announce_a11y_status("Continue the chapter card before composing the mural.")
@@ -12159,6 +12177,9 @@ func save_godot_state() -> bool:
 	return wrote
 
 func reset_mural_state_to_defaults(status_label: String) -> void:
+	if power_story != null:
+		power_story.close_story(false)
+		power_story.reset_session()
 	if loan_homecoming != null:
 		loan_homecoming.chapter_completion_notice=""
 		loan_homecoming.confirmed_owner=""
@@ -12642,6 +12663,9 @@ func validate_godot_optional(raw_opt: Variant) -> Dictionary:
 	return {"ok": true, "optional": (raw_opt as Dictionary).duplicate(true)}
 
 func apply_save_envelope(raw_json: String) -> bool:
+	if power_story != null:
+		power_story.close_story(false)
+		power_story.reset_session()
 	if loan_homecoming != null:
 		loan_homecoming.chapter_completion_notice=""
 		loan_homecoming.confirmed_owner=""
@@ -13200,6 +13224,9 @@ func import_browser_save_json(raw_json: String) -> bool:
 		info.text = "%s\nBrowser save ('%s') is read-only and never overwritten by Godot\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [browser_import_message, BROWSER_WEB_STORAGE_KEY]
 		announce_a11y_status(browser_import_message)
 		return false
+	if power_story != null:
+		power_story.close_story(false)
+		power_story.reset_session()
 	if loan_homecoming != null:
 		loan_homecoming.chapter_completion_notice=""
 		loan_homecoming.confirmed_owner=""
@@ -13437,6 +13464,7 @@ func advance_walk(delta: float) -> bool:
 					current_path.remove_at(0)
 				if not current_path.is_empty():
 					continue
+			if power_story != null and power_story.traveling: power_story.blocked_route()
 			current_path.clear()
 			break
 		player.position = Vector3(nxt.x, 0.0, nxt.y)
@@ -13506,6 +13534,7 @@ func advance_walk(delta: float) -> bool:
 	return true
 
 func stop_walking() -> void:
+	if power_story != null: power_story.cancel_intent()
 	var was_walking := not current_path.is_empty()
 	current_path.clear()
 	walking_to_mural = false
@@ -13528,10 +13557,15 @@ func update_walk_control() -> void:
 	if uses_compact_activity_controls():
 		walk_control.text = ("Stop" if walking else "Walk") if bubble_viewport_size().x < SIDE_HUB_MIN_WIDTH and has_side_panel_dock() else ("Stop Walk" if walking else "Walk / Talk")
 	walk_control.tooltip_text = "Stop here without changing progress. Escape also stops." if walking else "Walk to the next neighbor and talk on arrival."
+	if not walking and power_story != null and power_story.active:
+		walk_control.text="Power Story"
+		walk_control.tooltip_text="Resume the relay adventure or End story to return to your afternoon."
 
 func activate_walk_control() -> void:
 	if not current_path.is_empty():
 		stop_walking()
+	elif power_story != null and power_story.active:
+		power_story.open_from_walking()
 	else:
 		choose_next_neighbor(1)
 
@@ -14052,6 +14086,11 @@ func _input(event: InputEvent) -> void:
 		continue_story()
 
 func _unhandled_input(event: InputEvent) -> void:
+	if is_power_story_visible():
+		if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+			power_story.close_story()
+		get_viewport().set_input_as_handled()
+		return
 	if is_shared_panel_visible():
 		if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
 			shared_panel.close_panel()
@@ -14094,6 +14133,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			else:
 				hide_story_card()
 		match k:
+			KEY_F8:
+				power_story.open_story()
 			KEY_F7:
 				shared_panel.open_panel()
 			KEY_F6:
@@ -14344,6 +14385,7 @@ func update_camera() -> void:
 					camera.force_update_transform()
 
 func choose_next(direction: int) -> void:
+	if power_story != null: power_story.cancel_intent()
 	in_overview = false
 	in_wide_overview = false
 	following_player = false
@@ -14405,6 +14447,7 @@ func lidar_summary_line(b_id: String, city_h: float) -> String:
 	return "2023 LiDAR: %d raised roof part%s, up to %.1f m" % [raised.size(), "" if raised.size() == 1 else "s", float(raised[raised.size() - 1].h)]
 
 func overview(announce_view := true) -> void:
+	if power_story != null: power_story.cancel_intent()
 	in_overview = true
 	hide_speech_bubble()
 	hide_story_card()
@@ -14462,6 +14505,7 @@ func overview(announce_view := true) -> void:
 		announce_a11y_status("Overview: %d city footprints." % data.buildings.size())
 
 func wide_overview(announce_view := true) -> void:
+	if power_story != null: power_story.cancel_intent()
 	in_overview = false
 	in_wide_overview = true
 	hide_speech_bubble()
@@ -15322,6 +15366,9 @@ func make_ui() -> void:
 	shared_panel = preload("res://shared_panel.gd").new()
 	layer.add_child(shared_panel)
 	shared_panel.setup(self)
+	power_story = preload("res://power_story.gd").new()
+	layer.add_child(power_story)
+	power_story.setup(self)
 	shared_panel.update_world()
 	rhythm_circle = preload("res://rhythm_circle.gd").new()
 	layer.add_child(rhythm_circle)

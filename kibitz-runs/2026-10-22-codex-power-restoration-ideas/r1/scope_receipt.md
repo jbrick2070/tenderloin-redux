@@ -1,0 +1,1 @@
+Creator-requested pre-coding ideation ONLY scoped r1; exact sole claude-opus-5-5/high, driver codex, r2/r3/r4 NOT run in this ideas pass. Separate implementation r3 later mandatory. Input artifacts\power-restoration-ideas-input.md SHA256 e11341743eae950b36c2125ccd3cb6ca1e9db3959c1a46922be5ef6d1681afc1; source/anchor/input digest BEFORE fanout. No implementation edits.

@@ -1,0 +1,18 @@
+{
+  "ideas": {
+    "ideas": 0,
+    "sources_unchanged": true
+  },
+  "qa": {
+    "qa": 0,
+    "sources_unchanged": true
+  },
+  "gates": {
+    "native": 0,
+    "export": 0,
+    "check": 0,
+    "node": 0,
+    "browser": 0
+  },
+  "limits": "Exact requested/selected alias and effort verified by selected receipts. Provider runtime identity/quota-percent unknown. Driver fixes after implementation review not independently re-reviewed; all5fresh after final fixes."
+}
