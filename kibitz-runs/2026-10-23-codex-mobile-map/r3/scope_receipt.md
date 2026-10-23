@@ -1,0 +1,1 @@
+Creator requires separate implementation r3 after exact scoped pre-code r1. Driver codex; only claude; requested exact claude-opus-5-5/high. r1/r2/r4 omitted in this implementation QA campaign; prior distinct r1 path above. Input SHA256 1071dd9455d131a0c6c368f7a490de3274c8d78b49b1f23e76f696bf3b859737. No model substitution/larger panel/purchased credits/blind quota-auth retry.

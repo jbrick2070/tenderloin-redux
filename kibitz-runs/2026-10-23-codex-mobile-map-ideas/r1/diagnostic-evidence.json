@@ -1,0 +1,28 @@
+{
+  "scope": "pre-code source diagnosis only; not implementation QA or all5 gate",
+  "files": {
+    "docs/MOBILE_CHROME_DIAGNOSIS.md": "e27a89f8af5a1e9345e681e9a048b663561ded3b073f5f5915aa371815f729f1",
+    "artifacts/mobile-chrome-20261023/deploy-run-receipt.json": "86aa662b39b8cd533f787b70688132d3ee02113f24605588aed4421ab46a0c55",
+    "artifacts/mobile-chrome-20261023/deployed-source-comparison.json": "43b7c465bf5f4db178f9aac1d32537a69e943f9c2beaef6b5cd85f933c623d38",
+    "artifacts/mobile-chrome-20261023/keyboard-live-audio-diagnostic.json": "99645672c78c55c1aeabc65842095a497c0a630f53fb160d36f1e79a2be170f9",
+    "artifacts/mobile-chrome-20261023/keyboard-live-phone-after-enter.png": "ec18fdbfdd42d47b41a3d342b3800c6cb36f7536e9a650a0ce62bdf6850755e1",
+    "artifacts/mobile-chrome-20261023/keyboard-live-phone-before-start.png": "3aa1b696169ecfcca4a773a91007e6eaf69a804b9e0ffafea51e84f28e661027",
+    "artifacts/mobile-chrome-20261023/launch1-failure.txt": "bcaa1f3de2ee1d7fd50f8fdb3d4c262e697fbf8fd392ff65fa4ffa07044f6c5b",
+    "artifacts/mobile-chrome-20261023/live-audio-diagnostic-launch1-rejected.mjs": "6c113b40f9ae4928dfcd7b62b7a23e0b6e30636b0a0079a79b0ecdb605d1dc76",
+    "artifacts/mobile-chrome-20261023/live-audio-diagnostic.json": "df51aa4a648123d5307a6920d18fba69578bf6bc666e179c5194e3db01352ed6",
+    "artifacts/mobile-chrome-20261023/live-audio-diagnostic.mjs": "dd7cec04568302b14492a1fb6b5a23743a5b469302b3a318a3ac32a9cf59372a",
+    "artifacts/mobile-chrome-20261023/live-http.json": "1bda8033dfa30792d982b013e3cda2af648c74c5ca345a0dfa4ba2dbb091c2cf",
+    "artifacts/mobile-chrome-20261023/live-index.html": "f5bdd8c1640ea2897e2e15e42b62c5b42b0d2e3e932ac0f28cc2fd04567517ee",
+    "artifacts/mobile-chrome-20261023/live-index.pck": "654f9b29e7d5076bf19e36d62c6b1b4c15b47c8792fec63c79c01260fb8f7b78",
+    "artifacts/mobile-chrome-20261023/live-pack-receipt.json": "64b1d668ef8ebb5eca8f4a4ca749cd488cf1ae37cf55d6007e7c5f4712dc38ce",
+    "artifacts/mobile-chrome-20261023/live-phone-after-enter.png": "ec18fdbfdd42d47b41a3d342b3800c6cb36f7536e9a650a0ce62bdf6850755e1",
+    "artifacts/mobile-chrome-20261023/live-phone-after-pinch.png": "4494bb7f96ea9623a17765f010982e41628497489f0b65bde2cd2367151bc461",
+    "artifacts/mobile-chrome-20261023/live-phone-after-touch.png": "575021305f8a49bb32c0ef72ce5c84ce7d5f649de5964c6d40342abd8b70b660",
+    "artifacts/mobile-chrome-20261023/live-phone-before-start.png": "e70e4757152a40fc910c6b1772afdc15858514f8f0f83583fc6bb4937ea3f94b",
+    "artifacts/mobile-chrome-20261023/live-pinch-diagnostic.json": "6edc12e9c218c35a69e46df319fb881d3f70c573880c51f78c67f91053b5ac5b",
+    "artifacts/mobile-chrome-20261023/touch1-live-audio-diagnostic.json": "442fd1c3d98cbe6466aa8f6ba9461323fefc47398af0a6c1ccfe6bcfab5f275c",
+    "artifacts/mobile-chrome-20261023/touch1-live-phone-after-pinch.png": "da7b93ed0669c7afbfeb49b1abf0835e2c663bc5f60133017d662e38eab2cb65",
+    "artifacts/mobile-chrome-20261023/touch1-live-phone-after-touch.png": "055fdc61631c4fe0a17bc82342a23f64aa3e90b8d3c8e8867d4ff9d9295495c8",
+    "artifacts/mobile-chrome-20261023/touch1-live-pinch-diagnostic.json": "6ffb18cdba7334e782c7d756d08fddee4d76b0d3a9139e025fec4d2bbc0cec5e"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "godot/main.gd": "52ffbe33194d5ffc0d0254f091edf9ca4993dbc12cc955de2ad55f1f6b625697",
+  "godot/project.godot": "17b7d3433d8317601597ea14d319816873d64a3fac5e2315f04212c983292a14",
+  "godot/tests/study_test.gd": "37ffb8e975ef58d0e77f33274011dec128823e263261d090da5518758d05b592",
+  "tests/godot-browser.mjs": "5088c7fa1456be39e9e9a31f867e1f05638c84764962e2126a15930c6bfbd87b",
+  "tests/godot-data.test.mjs": "932dfa259e008cd99650462570d6147aabcdd7d2d04fa85b20884ee518239329",
+  "godot/rhythm_bar.gd": "cb26254359014631c7a6f58b9ab574a33fe5e10a5ea315b0b91556fe7378fcab",
+  "docs/ROADMAP.md": "a03a38442d6ae60fb50547bdc18cc2abf4ea399a8613b8977bb93b91ad4423f1",
+  "docs/GODOT_APPROACH.md": "4fe7787b8c921187fb7e71ca649790281b5f33768b644f6510bb86ce839e40a4",
+  "session_handoff.md": "4baecaa7d5e248505dc25a887cd8b214ccea81a392327db5477e558a32b47eb5",
+  "docs/BUILD_STATUS.md": "e21f80a064856252c476f6c5ec50017658ca029726d66ddf7f139d65e4da40bc",
+  "artifacts/mobile-chrome-20261023/live-index.html": "f5bdd8c1640ea2897e2e15e42b62c5b42b0d2e3e932ac0f28cc2fd04567517ee",
+  "artifacts/mobile-chrome-20261023/live-index.pck": "654f9b29e7d5076bf19e36d62c6b1b4c15b47c8792fec63c79c01260fb8f7b78"
+}

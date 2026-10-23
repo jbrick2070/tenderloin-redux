@@ -1,0 +1,16 @@
+{
+  "recorded_utc": "2026-10-23T19:33:33.545499+00:00",
+  "selected": "two-finger map zoom parity and existing touch guidance",
+  "implementation_started": false,
+  "code_sources": {
+    "godot/main.gd": "52ffbe33194d5ffc0d0254f091edf9ca4993dbc12cc955de2ad55f1f6b625697",
+    "godot/tests/study_test.gd": "37ffb8e975ef58d0e77f33274011dec128823e263261d090da5518758d05b592",
+    "tests/godot-browser.mjs": "5088c7fa1456be39e9e9a31f867e1f05638c84764962e2126a15930c6bfbd87b"
+  },
+  "rejected": [
+    "unproved audio runtime/score change",
+    "new tutorial UI",
+    "two-finger pan/twist",
+    "deployment/public change"
+  ]
+}

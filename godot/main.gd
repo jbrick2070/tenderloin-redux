@@ -514,6 +514,18 @@ var last_occlusion_neighbor := -2
 var last_ribbon_pos := Vector2(INF, INF)
 var last_ribbon_count := -1
 var pointer_active := false
+var map_touch_contacts: Dictionary = {}
+const MAP_PINCH_MIN_DISTANCE := 8.0
+var map_pinch_refused := false
+var map_pinch_blocked := false
+var map_pinch_active := false
+var map_pinch_pending := false
+var map_pinch_distance := 0.0
+var map_pinch_start_size := 0.0
+var map_pinch_next_size := 0.0
+var map_pinch_center := Vector2.ZERO
+var map_pinch_ground := Vector2.ZERO
+var map_pinch_following := false
 var pointer_dragging := false
 var pointer_down_pos := Vector2.ZERO
 var pointer_last_pos := Vector2.ZERO
@@ -10646,6 +10658,7 @@ func resume_voices() -> bool:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_WINDOW_FOCUS_OUT or what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		cancel_map_pinch()
 		suspend_voices()
 		if rhythm_circle != null: rhythm_circle.stop_audition()
 	elif what == NOTIFICATION_APPLICATION_RESUMED or what == NOTIFICATION_WM_WINDOW_FOCUS_IN or what == NOTIFICATION_APPLICATION_FOCUS_IN:
@@ -11636,6 +11649,7 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"reward_sound_last_cue": reward_sound_last_cue,
 		"reward_audio_playing": reward_audio_player != null and reward_audio_player.playing,
 		"camera_view_size": view_size,
+		"map_pinch": {"active":map_pinch_active,"blocked":map_pinch_blocked,"contacts":map_touch_contacts.size(),"pending":map_pinch_pending,"refused":map_pinch_refused,"anchor_screen":{"x":camera.unproject_position(Vector3(map_pinch_ground.x,0,map_pinch_ground.y)).x,"y":camera.unproject_position(Vector3(map_pinch_ground.x,0,map_pinch_ground.y)).y}},
 		"camera_pose": {"target_x": target.x, "target_y": target.y, "target_z": target.z, "yaw": camera_yaw, "pitch": camera_pitch_scale},
 		"following_player": following_player,
 		"in_overview": in_overview,
@@ -11748,6 +11762,7 @@ func poll_web_audio() -> void:
 		var perf_json := JSON.stringify(measure_local_performance())
 		JavaScriptBridge.eval("window.__tenderloinLastPerfSnapshot = JSON.parse(%s);" % JSON.stringify(perf_json), true)
 	var bar_stop: Variant = JavaScriptBridge.eval("var bs = Boolean(window.__tenderloinRhythmStopPending); window.__tenderloinRhythmStopPending = false; bs;", true)
+	if bool(bar_stop): cancel_map_pinch()
 	if bool(bar_stop) and rhythm_circle != null: rhythm_circle.stop_audition()
 	var voices_lc_var: Variant = JavaScriptBridge.eval("var vlc = window.__tenderloinWebVoicesLifecyclePending || ''; window.__tenderloinWebVoicesLifecyclePending = ''; String(vlc);", true)
 	var voices_lc := String(voices_lc_var) if voices_lc_var is String else ""
@@ -13922,10 +13937,11 @@ func update_readable_scene_labels() -> void:
 	update_guide_arrow() # Place objective text after the current captions and Talk prompt.
 
 func _process(delta: float) -> void:
+	poll_web_audio()
+	apply_map_pinch()
 	if player_nameplate != null and camera != null:
 		player_nameplate.pixel_size = screen_constant_scale(1.0) / player_visual.scale.y
 		player_nameplate.visible = not in_overview and not in_wide_overview
-	poll_web_audio()
 	if music_playing:
 		advance_music_clock(delta)
 	update_people_animation(delta)
@@ -14173,12 +14189,95 @@ func pan_camera_by_screen_delta(delta_px: Vector2) -> void:
 	target.z = clampf(target.z, walk_bounds.position.y, walk_bounds.end.y)
 	update_camera()
 
+func cancel_map_pinch() -> void:
+	map_touch_contacts.clear()
+	map_pinch_active = false
+	map_pinch_blocked = false
+	map_pinch_refused = false
+	map_pinch_pending = false
+	pointer_active = false
+	pointer_dragging = false
+	orbit_dragging = false
+
+func map_pinch_input(event: InputEvent) -> bool:
+	# Mouse emulation belongs to the original one-finger path until a second contact.
+	if event is InputEventMouse and event.device == InputEvent.DEVICE_ID_EMULATION:
+		if event is InputEventMouseButton and not event.pressed: return false
+		return map_pinch_blocked
+	if event is InputEventScreenTouch:
+		if event.canceled:
+			cancel_map_pinch()
+			return false
+		if event.pressed:
+			var allowed := not startup_story_pending and not is_story_card_visible() and not is_focused_activity_visible() and play_area_rect().has_point(event.position) and not is_screen_point_in_ui(event.position)
+			map_touch_contacts[event.index] = {"position":event.position,"allowed":allowed}
+			if map_touch_contacts.size() >= 2:
+				var was_blocked := map_pinch_blocked or map_pinch_refused
+				pointer_active = false
+				pointer_dragging = false
+				orbit_dragging = false
+				if map_touch_contacts.size() == 2 and not was_blocked:
+					var pair := map_touch_contacts.values()
+					map_pinch_distance = pair[0].position.distance_to(pair[1].position)
+					map_pinch_refused = not (pair[0].allowed and pair[1].allowed)
+					map_pinch_blocked = not map_pinch_refused
+					map_pinch_active = not map_pinch_refused and map_pinch_distance >= MAP_PINCH_MIN_DISTANCE
+					map_pinch_start_size = map_pinch_next_size if map_pinch_pending else view_size
+					if map_pinch_refused: map_pinch_pending = false
+					map_pinch_center = (pair[0].position + pair[1].position) * 0.5
+					map_pinch_ground = screen_to_ground_xz(map_pinch_center)
+					map_pinch_following = following_player
+				else:
+					map_pinch_active = false
+					map_pinch_pending = false
+		else:
+			map_touch_contacts.erase(event.index)
+			map_pinch_active = false
+			if map_touch_contacts.is_empty():
+				map_pinch_blocked = false
+				map_pinch_refused = false
+			# GUI owners must receive their release even when map input was suppressed.
+			return false
+		return map_pinch_blocked
+	if event is InputEventScreenDrag and map_touch_contacts.has(event.index):
+		map_touch_contacts[event.index].position = event.position
+		if map_pinch_active:
+			if is_focused_activity_visible() or is_story_card_visible():
+				map_pinch_active = false
+				map_pinch_pending = false
+			else:
+				var pair := map_touch_contacts.values()
+				var distance: float = pair[0].position.distance_to(pair[1].position)
+				if distance >= MAP_PINCH_MIN_DISTANCE:
+					map_pinch_next_size = clamp_view_size(map_pinch_start_size * map_pinch_distance / distance)
+					map_pinch_pending = true
+		return map_pinch_blocked
+	return false
+
+func apply_map_pinch() -> void:
+	if not map_pinch_pending: return
+	map_pinch_pending = false
+	if is_focused_activity_visible() or is_story_card_visible(): return
+	in_overview = false
+	in_wide_overview = false
+	view_size = map_pinch_next_size
+	update_camera()
+	if not map_pinch_following and not following_player:
+		var drift := map_pinch_ground - screen_to_ground_xz(map_pinch_center)
+		target.x = clampf(target.x + drift.x, walk_bounds.position.x, walk_bounds.end.x)
+		target.z = clampf(target.z + drift.y, walk_bounds.position.y, walk_bounds.end.y)
+		update_camera()
+	update_occlusion(true)
+
 func _input(event: InputEvent) -> void:
 	# Observe real input before Controls consume it; never replay cues from loading.
 	var key_activation: bool = event is InputEventKey and event.pressed and not event.echo and event.keycode not in [KEY_ESCAPE, KEY_SHIFT, KEY_CTRL, KEY_ALT, KEY_META]
 	var mouse_activation: bool = event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_MIDDLE]
 	if key_activation or mouse_activation or (event is InputEventScreenTouch and not event.pressed):
 		reward_audio_unlocked = true
+	if map_pinch_input(event):
+		get_viewport().set_input_as_handled()
+		return
 	if event is InputEventKey and event.pressed and is_story_card_visible():
 		var reading_key: Key = event.keycode if event.keycode != KEY_NONE else event.physical_keycode
 		var page_key := reading_key in [KEY_PAGEUP, KEY_PAGEDOWN, KEY_HOME, KEY_END]
@@ -14731,14 +14830,19 @@ func projected_wider_bounds() -> Rect2:
 						bounds = bounds.expand(screen)
 	return bounds
 
+func clamp_view_size(value: float) -> float:
+	return clampf(value, 24.0, maxf(900.0, overview_size * 2.5))
+
 func zoom(factor: float) -> void:
 	in_overview = false
 	in_wide_overview = false
-	view_size = clampf(view_size * factor, 24, maxf(900, overview_size * 2.5))
+	view_size = clamp_view_size(view_size * factor)
 	update_camera()
 	update_occlusion(true)
 
 func overview_text() -> String:
+	if DisplayServer.is_touchscreen_available() and is_narrow_layout():
+		return "Tap a neighbor to walk over and talk\nDrag pans · pinch or Zoom +/- zooms · What's Next? offers a hint\n%d city footprints · 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % data.buildings.size()
 	return "Tap a neighbor to walk over and talk · T talks · Esc says goodbye\nWASD/arrows walk · drag pans · right-drag rotates · scroll zooms · G: all block actions\n%d city footprints · 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % data.buildings.size()
 
 func wide_overview_text() -> String:
@@ -14746,6 +14850,7 @@ func wide_overview_text() -> String:
 	return "%d Tenderloin footprints (%d opening + %d wider) · 7 OSM streets\nRight-drag: Rotate 3D · District (%s, C) · Compton's (J) · Black Hawk (H)\nCity 2010 survey & 5xmc-5bjj (2017) / PDDL · Streets © OpenStreetMap / ODbL" % [all_buildings.size(), data.buildings.size(), wider_meshes.size(), dist_state]
 
 func refit_after_layout() -> void:
+	cancel_map_pinch()
 	layout_refit_generation += 1
 	var generation := layout_refit_generation
 	layout_refit_pending = true
@@ -15536,6 +15641,7 @@ func make_ui() -> void:
 	bea_invitation.setup(self)
 	var vp := get_viewport()
 	var resize_controls := func():
+		cancel_map_pinch()
 		if not is_instance_valid(controls) or not is_inside_tree():
 			return
 		if mural_workshop != null:

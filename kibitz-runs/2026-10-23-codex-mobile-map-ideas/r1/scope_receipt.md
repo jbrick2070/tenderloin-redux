@@ -1,0 +1,1 @@
+Creator mandatory PRE-CODE r1 only. Driver codex; only claude; requested exact claude-opus-5-5/high. No r2/r3/r4 in ideas campaign; implementation r3 separately after coding. Read-only report; Codex sole writer/judge. Input SHA256 ca53a5213069730ae1d24a9e8f4fc5d02e31844b0628e675435893b598c68e71. No substitution/panel expansion/purchased credits/blind quota-auth retry.

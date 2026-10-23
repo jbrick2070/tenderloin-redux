@@ -1,0 +1,24 @@
+STDOUT:
+My verdict on the two-finger map zoom is **yes-with-fixes**: the zoom logic in `godot/main.gd` matches the selected design, but there are four must-fixes to make before the mandatory all-5 gates. The full review is in `C:\tenderloin-redux\kibitz-runs\2026-10-23-codex-mobile-map\r3\claude.md`. This was a read-only review: I ran nothing, and the running native and browser helpers' results aren't covered.
+
+**Must-fix:**
+1. **Refusing a pinch swallows the touches.** Once a second finger lands, `map_pinch_input` blocks every touch, drag, release and emulated-mouse event, even when the gesture is refused (`main.gd:14201-14246`). So a reader being scrolled or the rhythm circle loses its finger mid-gesture, and the first finger's release never arrives. That last part is confirmed in the code. Whether it then sends the next tap to the wrong control depends on engine internals I couldn't read. Fix: never consume releases or cancels, and let drags through when the gesture is refused.
+2. **One browser-test call likely breaks the Chrome protocol.** `tests/godot-browser.mjs:1396` sends `touchEnd` with a touch point in it, which the protocol forbids. The "first release blocks the remaining finger" result can't be trusted until that line sends a `touchMove` without the lifted finger instead.
+3. **The native test proves less than it claims.** It never releases some of the touches it presses (`study_test.gd:6215`, `6220`, `6225`). From the second screen size on, the engine stops generating the emulated mouse press, so "first release cannot walk or pan" passes for the wrong reason at 4 of the 5 sizes.
+4. **Coverage the selection asked for is missing:**
+   - no two-finger case on the rhythm circle
+   - only one finger-release order is tested
+   - no centroid-anchor check in the browser test
+   - the max zoom clamp is never reached, though the pass line says "clamps"
+   - no one-finger tap-to-walk after a pinch
+   - no browser case for a gesture starting on the UI
+
+The review also has nine should-fixes. The main ones:
+- On returning to the page, the leftover zoom is applied before the lifecycle cancel runs.
+- The pinch path skips the reward-audio unlock.
+- Nothing cancels the gesture when the screen is resized or rotated.
+- The touch-aware overview text drops keyboard hints for touchscreen-laptop users.
+
+Several Godot engine behaviours (dispatch order, mouse emulation, how the viewport tracks touch focus) are marked "verify:" in the review because I couldn't read engine source here.
+
+Several connected services are unauthenticated in this session (Box, Runway, and the engineering plugins: Asana, Atlassian, Datadog, GitHub, Linear, Notion, PagerDuty, Slack). They stay unavailable until you authorize them in your claude.ai connector settings or with `/mcp`.

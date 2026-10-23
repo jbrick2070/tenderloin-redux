@@ -1,5 +1,6 @@
 extends SceneTree
 var failed := false
+var pinch_test_contacts: Dictionary = {}
 
 func _initialize() -> void:
 	if not OS.get_cmdline_user_args().has("--test-suite"):
@@ -3266,6 +3267,7 @@ func run() -> void:
 	await verify_dog_story(study,saved_m4_json)
 	await verify_lantern_procession(study,saved_m4_json)
 	await verify_voting_story(study,saved_m4_json)
+	await verify_map_pinch(study,saved_m4_json)
 	study.clear_godot_save()
 	study.clear_godot_settings()
 	var legacy_settings := FileAccess.open(study.settings_path, FileAccess.WRITE)
@@ -6168,3 +6170,102 @@ func verify_voting_story(study: Node, full_profile: String) -> void:
 	story.close_story(false); study.apply_save_envelope(full_profile)
 	require(not story.active and not story.visible and not story.paper.visible,"import/reload clears visit")
 	print("VOTING_STORY_PASS:2layouts x6sizes/trueui_accept/2sourcegoals/bothorders/mapmismatch/threeactualwalksStop/exactquietmanual/zero-save")
+
+func pinch_touch(index: int, point: Vector2, pressed: bool, canceled := false) -> void:
+	var event := InputEventScreenTouch.new()
+	event.index=index; event.position=point; event.pressed=pressed; event.canceled=canceled
+	if pressed: pinch_test_contacts[index]=point
+	else: pinch_test_contacts.erase(index)
+	Input.parse_input_event(event)
+
+func pinch_drag(index: int, point: Vector2) -> void:
+	var event := InputEventScreenDrag.new(); event.index=index; event.position=point
+	event.relative=point-Vector2(pinch_test_contacts.get(index,point)); pinch_test_contacts[index]=point
+	Input.parse_input_event(event)
+
+func pinch_release_all() -> void:
+	for index in pinch_test_contacts.keys(): pinch_touch(index,pinch_test_contacts[index],false)
+
+func verify_map_pinch(study: Node, profile: String) -> void:
+	require(study.is_test_suite_mode(),"pinch native checks require isolated profile")
+	study.apply_save_envelope(profile); study.hide_story_card(); study.startup_story_pending=false
+	study.last_story_chapter=int(study.current_chapter().num); study.end_conversation()
+	var save: String=JSON.stringify(study.build_save_envelope())
+	for size in [Vector2i(1100,760),Vector2i(390,667),Vector2i(320,667),Vector2i(559,360),Vector2i(599,360)]:
+		root.size=size
+		for f in range(8): await process_frame
+		pinch_release_all(); study.frame_player_for_walking(); study.cancel_map_pinch()
+		var area: Rect2=study.play_area_rect(); var center: Vector2=area.get_center()
+		var a := center-Vector2(30,0); var b := center+Vector2(30,0)
+		require(not study.is_screen_point_in_ui(a) and not study.is_screen_point_in_ui(b),"native pinch begins on unobstructed map")
+		var player: Vector2=study.player_xz(); var initial: float=study.view_size
+		var followed: bool=study.following_player
+		pinch_touch(0,a,true); await process_frame
+		require(study.pointer_active,"first real touch arms emulated mouse before suppression")
+		pinch_touch(1,b,true); pinch_drag(1,center+Vector2(90,0))
+		for f in range(3): await process_frame
+		require(absf(study.view_size-clampf(initial*0.5,24,maxf(900,study.overview_size*2.5)))<0.001,"spread zooms in with original minimum")
+		require(study.following_player==followed and study.player_xz()==player and study.current_path.is_empty(),"pinch keeps follow/player/route intent")
+		pinch_touch(0,a,false); pinch_drag(1,center+Vector2(110,0))
+		var held: float=study.view_size
+		for f in range(3): await process_frame
+		require(study.map_pinch_blocked and study.view_size==held and study.current_path.is_empty(),"first index release and remaining finger cannot walk or pan")
+		pinch_touch(1,b,false); await process_frame
+		require(not study.map_pinch_blocked and study.map_touch_contacts.is_empty(),"all contacts release gesture ownership")
+		study.following_player=false; study.view_size=100; study.update_camera()
+		center.x-=15; a=center-Vector2(30,0); b=center+Vector2(30,0)
+		var anchor: Vector2=study.screen_to_ground_xz(center)
+		pinch_touch(0,a,true); pinch_touch(1,b,true); pinch_drag(0,center-Vector2(90,0)); pinch_drag(1,center+Vector2(90,0))
+		for f in range(3): await process_frame
+		require(absf(study.view_size-100.0/3.0)<0.001 and study.screen_to_ground_xz(center).distance_to(anchor)<0.02,"manual initial centroid stays on same ground point")
+		pinch_drag(0,center-Vector2(10,0)); pinch_drag(1,center+Vector2(10,0))
+		for f in range(3): await process_frame
+		require(absf(study.view_size-300)<0.001,"pinch closes to zoom out")
+		pinch_touch(2,center,true); var third_size: float=study.view_size
+		pinch_drag(0,center-Vector2(60,0)); await process_frame
+		require(not study.map_pinch_active and study.view_size==third_size,"extra contact cancels until all lift")
+		study.notification(NOTIFICATION_APPLICATION_FOCUS_OUT)
+		require(study.map_touch_contacts.is_empty() and not study.map_pinch_pending and not study.pointer_active,"notification focus loss clears touch and emulated mouse intent")
+		pinch_release_all()
+		pinch_touch(0,a,true); pinch_touch(1,b,true); pinch_drag(1,b+Vector2(40,0)); pinch_touch(1,b,false,true)
+		await process_frame
+		require(not study.map_pinch_active and not study.map_pinch_pending,"touch cancel clears pending zoom")
+		pinch_release_all(); study.cancel_map_pinch(); study.view_size=100; study.update_camera()
+		var ui: Vector2=study.header_panel.get_global_rect().get_center()
+		pinch_touch(0,ui,true); pinch_touch(1,b,true); pinch_drag(1,b+Vector2(50,0)); await process_frame
+		require(study.view_size==100,"UI-origin second contact refuses map zoom")
+		pinch_release_all(); study.cancel_map_pinch()
+		study.view_size=30; study.update_camera(); pinch_touch(0,a,true); pinch_touch(1,b,true); pinch_drag(1,center+Vector2(90,0))
+		for f in range(3): await process_frame
+		require(study.view_size==24,"actual gesture hits minimum clamp"); pinch_release_all()
+		study.view_size=study.clamp_view_size(1e9)*0.9; study.update_camera(); pinch_touch(0,a,true); pinch_touch(1,b,true); pinch_drag(1,center-Vector2(10,0))
+		for f in range(3): await process_frame
+		require(study.view_size==study.clamp_view_size(1e9),"actual gesture hits maximum clamp"); pinch_release_all()
+		study.frame_player_for_walking(); pinch_touch(0,a,true); pinch_touch(1,b,true); pinch_touch(1,b,false); pinch_drag(0,a-Vector2(12,0)); await process_frame
+		require(study.map_pinch_blocked and study.current_path.is_empty(),"opposite release order keeps emulating finger suppressed"); pinch_release_all()
+		pinch_touch(0,a,true); await process_frame; require(study.pointer_active,"one-finger touch recovers after all-lift"); pinch_drag(0,a+Vector2(20,0)); pinch_touch(0,a+Vector2(20,0),false); await process_frame
+		require(not study.following_player and not study.pointer_active and study.current_path.is_empty(),"one-finger pan recovers without route")
+		require(JSON.stringify(study.build_save_envelope())==save,"all pinch paths preserve persistent progress")
+	pinch_release_all(); study.cancel_map_pinch()
+	root.size=Vector2i(390,667)
+	for f in range(8): await process_frame
+	require(study.film_screening.open_screening(),"reader refusal case opens completed screening")
+	for f in range(8): await process_frame
+	var reader: RichTextLabel=study.film_screening.reader
+	var rp: Vector2=reader.get_global_rect().get_center(); reader.get_v_scroll_bar().value=0
+	pinch_touch(0,rp,true); pinch_drag(0,rp-Vector2(0,12)); await process_frame
+	var first_scroll: float=reader.get_v_scroll_bar().value
+	pinch_touch(1,Vector2(50,180),true); pinch_drag(0,rp-Vector2(0,28)); await process_frame
+	require(reader.get_v_scroll_bar().value>first_scroll,"refused second finger preserves actual reader GUI scroll")
+	pinch_release_all(); study.film_screening.close_screening(false)
+	require(study.rhythm_circle.open_circle(),"rhythm refusal opens actual owner")
+	for f in range(8): await process_frame
+	study.rhythm_circle.view_circle(); require(study.rhythm_circle.owns_view,"rhythm owner takes view before raw touch refusal"); var rc: Vector2=study.rhythm_circle.scene_rect.get_center()
+	pinch_touch(0,rc,true); pinch_touch(1,rc+Vector2(20,0),true); pinch_drag(0,rc+Vector2(10,0)); await process_frame
+	require(not study.rhythm_circle.owns_view,"rhythm raw touch still pans its own scene with second contact")
+	pinch_release_all(); await process_frame; require(not study.rhythm_circle.dragging,"rhythm receives actual release")
+	study.rhythm_circle.close_circle(false); study.cancel_map_pinch()
+	study.apply_save_envelope(profile); study.hide_story_card(); study.startup_story_pending=false; study.last_story_chapter=int(study.current_chapter().num)
+	root.size=Vector2i(1100,760)
+	require(study.overview_text().contains("WASD/arrows walk · drag pans · right-drag rotates · scroll zooms"),"desktop overview guidance retained")
+	print("MAP_PINCH_PASS:5sizes/actualtouch/spread/pinch/clamps/manualanchor/follow/bothreleaseorders/extra/cancel/notificationfocus/UI/readerGUI/rhythmGUI/recovery/save")

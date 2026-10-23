@@ -1,0 +1,19 @@
+STDOUT:
+I've written the review to `kibitz-runs/2026-10-23-codex-mobile-map-ideas/r1/claude.md`. The tool check passed, and every claim is tied to a file and line in the repo or marked "verify". I made no other changes.
+
+**Verdict: yes-with-fixes.** The pinch half matches the real code and can be built. The music half needs rework before a slice is chosen.
+
+The main findings:
+- **Live site:** `.github/workflows/deploy-pages.yml` deploys the Godot export to the site root on every push to `main`, and `public/` only goes to `/browser`. The only thing stopping a deploy is the `[skip ci]` commit suffix. So any mobile fix that ships takes all of `main` with it. Three places still say otherwise: `godot/project.godot:1`, `session_handoff.md:13` and `session_handoff.md:21`.
+- **No phone test route:** the creator's phone only loads the deployed site, and deploying is forbidden. Phone confirmation therefore stays open until the creator approves some way to get a build onto the phone.
+- **Music hypotheses:** the plan names only one cause (the audio buffer starving on a single-threaded web build). The code supports a second: a new player hears only sine bass at about 98–147 Hz (`main.gd:10655`, `main.gd:10952`), which phone speakers may barely reproduce. That part is my assumption and needs checking on a device. A third is the phone's OS mute or audio-unlock state, which is unknown.
+- **Music test could falsely pass:** a desktop Chromium test that only measures output volume would pass even if the phone stays silent. The review suggests adding a frequency check and a throttled-CPU run, using the existing audio probe in `tests/godot-browser.mjs:141-175` rather than building a new one.
+- **Pinch behaviour is undecided:**
+  - The existing zoom keeps the camera following the player, while panning stops it. On the phone layout, the follow camera recentres on the player, which would undo a pinch anchored between the fingers.
+  - The plan doesn't say whether moving two fingers also pans the map.
+  - The rhythm circle (`godot/rhythm_circle.gd:478-493`) handles touch itself and would react to a second finger at the same time.
+- **Already in place:** "Zoom +/-" buttons are always on screen, so this is a missing gesture rather than missing zoom. The in-game hint text (`main.gd:14742`) only describes mouse controls, even on phones.
+
+I recommend cutting the slice to pinch plus a touch-aware version of that hint line, with music reduced to diagnosis only and no code change.
+
+Several connectors (GitHub, Slack, Linear, Asana, Atlassian, Datadog, Notion, PagerDuty, Box, Runway) need authorizing before they can be used. Claude.ai connectors are authorized in your claude.ai connector settings; the others via `claude mcp` or `/mcp` in an interactive session. None were needed for this review.
