@@ -32,6 +32,7 @@ func setup(owner_game: Node) -> void:
 	box.add_child(title)
 	var parade := make_button(box,"Halloween: Lantern Procession",func(): close_picker(); game.lantern_procession.open_story())
 	entries.append(parade)
+	entries.append(make_button(box,"Election Walk: November 2024",func(): close_picker(); game.voting_story.open_story()))
 	var row := HBoxContainer.new()
 	box.add_child(row)
 	earlier=make_button(row,"Earlier",func(): change_page(-1))
@@ -89,6 +90,7 @@ func refresh() -> void:
 	page=clampi(page,0,maxi(0,(entries.size()-1)/3))
 	for i in range(entries.size()): entries[i].visible=i/3==page
 	entries[0].disabled=not game.lantern_procession.available()
+	entries[1].disabled=not game.voting_story.available()
 	earlier.get_parent().visible=entries.size()>3
 	earlier.disabled=page==0
 	later.disabled=(page+1)*3>=entries.size()

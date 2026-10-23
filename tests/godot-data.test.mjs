@@ -227,7 +227,7 @@ test('M6 release quality: docs/ASSETS.md, godot/data/SOURCES.md, export_presets.
   assert.ok(incMatch, 'export_presets.cfg must declare include_filter');
   assert.ok(excMatch, 'export_presets.cfg must declare exclude_filter');
   const includedFiles = incMatch[1].split(',').map(s => s.trim()).filter(Boolean);
-  assert.deepEqual(includedFiles, ['data/buildings.json', 'data/neighborhood_voices.json', 'data/street_trees.json', 'data/lidar_2023.json', 'data/power_place.json', 'ENGINE_LICENSE.txt']);
+  assert.deepEqual(includedFiles, ['data/buildings.json', 'data/neighborhood_voices.json', 'data/street_trees.json', 'data/lidar_2023.json', 'data/power_place.json', 'data/voting_places.json', 'ENGINE_LICENSE.txt']);
   for (const relPath of includedFiles) {
     const buf = await readFile(new URL('../godot/' + relPath, import.meta.url));
     assert.ok(buf.byteLength > 0, `godot/${relPath} must exist and be non-empty`);
@@ -363,4 +363,24 @@ test('2023 LiDAR roofs and post-2010 buildings are re-derivable offline from ret
   }
   const current = currentFootprints(output, lidar);
   assert.equal(current.length, output.buildings.length + output.wider_buildings.length - lidar.superseded.length + lidar.additions.length);
+});
+
+
+test('historical polling observation points derive from dated official rows and separate city coordinates', async () => {
+  const {deriveVotingPlaces}=await import('../scripts/build-voting-places.mjs');
+  const rows=await readFile(new URL('../docs/research/2026-10-22-episode-locations/polling-2024-official-selected-rows.tsv',import.meta.url),'utf8');
+  const addresses=JSON.parse(await readFile(new URL('../docs/research/2026-10-22-episode-locations/polling-addresses.json',import.meta.url)));
+  const geometry=JSON.parse(await readFile(new URL('../godot/data/buildings.json',import.meta.url)));
+  const bundled=JSON.parse(await readFile(new URL('../godot/data/voting_places.json',import.meta.url)));
+  const derived=deriveVotingPlaces(rows,addresses,geometry);
+  const {source_sha256,...content}=bundled;assert.deepEqual(content,derived);
+  for(const [path,hash] of Object.entries(source_sha256))assert.equal(createHash('sha256').update(await readFile(path)).digest('hex'),hash);
+  assert.equal(new Set(derived.streets.map(s=>s.id)).size,derived.streets.length);
+  assert.deepEqual(derived.sites.map(s=>[s.id,s.eas_id,s.address,s.room]),[['750','490999','380 Eddy St','Lobby'],['2092','490979','246 Eddy St','Meeting Room']]);
+  for(const site of derived.sites){
+    assert.ok(Math.abs(Math.hypot(...site.observation.map((v,i)=>v-site.centerline[i]))-site.offset_m)<1e-7);
+    assert.ok(Math.hypot(...site.observation.map((v,i)=>v-site.xz[i]))>5,'outdoor game observation is distinct from address pin');
+  }
+  assert.throws(()=>deriveVotingPlaces(rows.replace('380 Eddy St\tBtw','398 Eddy St\tBtw'),addresses,geometry),/identity/);
+  assert.throws(()=>deriveVotingPlaces(rows,addresses.filter(a=>a.eas_address_id!=='490979'),geometry),/identity/);
 });

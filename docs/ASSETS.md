@@ -107,3 +107,7 @@ Godot `quiet_seats.gd` supplies original static seated poses, anonymous fictiona
 ### Original Halloween procession
 
 `godot/lantern_procession.gd` contains original procedural bat/stargazer capes, paper moon/star lanterns, two anonymous visitors, a carried miniature paper boat and four cached original SVG costume illustrations. No external event artwork, music or costumes are copied. `godot/story_picker.gd` provides a paged episode gateway. This is a fictional visit-only route on existing measured geography; TLCBD event precedents do not establish a historical parade route.
+
+### Original historical election map
+
+`godot/voting_story.gd` draws an original schematic paper map from two published polling-site address pins and existing Eddy centerlines, with original palette/check marks and a carried folio. Native text carries the full source/address distinctions. `godot/data/voting_places.json` is derived offline by `scripts/build-voting-places.mjs`; no official logos, event artwork, ballots or real-person preferences are copied. See `docs/ELECTION_STORY_SOURCES.md`.

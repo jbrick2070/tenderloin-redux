@@ -1,0 +1,1 @@
+Creator requires separate soleClaude implementation r3 after pre-code r1. Driver codex, only claude, exact claude-opus-5-5/high. r2/r4 omitted by explicit scope; no larger panel/substitution/paid credits/blind quota-auth retries. Input artifacts/voting-review-input.md SHA256 c08b1c84d95d62a7eebabd0c52cc58ce5d245d0a2560a8d3d9569cd2d9507fd3

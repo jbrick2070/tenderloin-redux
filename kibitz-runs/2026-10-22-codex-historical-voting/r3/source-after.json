@@ -1,0 +1,16 @@
+{
+  "godot/voting_story.gd": "56850aea2ef34f62f9a33919e9ab8948c2c56af6700e11655a4abd89b4d6b688",
+  "godot/main.gd": "52ffbe33194d5ffc0d0254f091edf9ca4993dbc12cc955de2ad55f1f6b625697",
+  "godot/story_picker.gd": "2f81c7e049be5ef27f3f818015b5438aadb72799ce2abc136a27427e6832c3fa",
+  "godot/power_story.gd": "1a0633d659da0168897083462b3d3b18858bac628e891c396e518265600d2fd7",
+  "godot/power_place.gd": "f192f25dbe721d6a33c826046237cc41653bd473b50c8fed5c22bb94819309ed",
+  "godot/lantern_procession.gd": "3d067733a757e580794dc3dbefd2d8331c328cdb79dd2481e52d7f6d00f20138",
+  "godot/dog_story.gd": "7ce9d5e459c772c6a2824b5af88cb7a26405a34718768b5a10b60510fd2e6db2",
+  "godot/data/voting_places.json": "6e7f5f8b6242ce7696719ac60fddddbeaf6d14f2a67de6d3b4477e25478968e7",
+  "scripts/build-voting-places.mjs": "7a8d34f7568e67b967da837613322aa8bf902ecac95e1da1038964d64f8dec5b",
+  "godot/export_presets.cfg": "c48690c627327b17003865086e89eed43e143d1e391174551a54b702ed4f7c85",
+  "godot/tests/study_test.gd": "d974c2f2c42a8f9e017998e4d81f5cc519ff2e4e6931bc7661e689479f93435b",
+  "tests/godot-browser.mjs": "7739780eb809e886fb54b17605a793bd84d6603a9337e5d39516512151136dbe",
+  "tests/godot-data.test.mjs": "96d934ec5d80581387a96556e8008c525a466ed051edd6b86741a06842adaf33",
+  "docs/ELECTION_STORY_SOURCES.md": "c8e76d6d5c1fccf5c44d88c13c580c434a80792154178d8301ac746b3b813809"
+}

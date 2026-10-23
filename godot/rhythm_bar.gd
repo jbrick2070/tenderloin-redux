@@ -43,7 +43,8 @@ static func make_bar(mask: int) -> AudioStreamWAV:
 func setup() -> void:
 	prepare_template() # Prepare once before Start Exploring, never inside the first pad press.
 	name = "OriginalRhythmBar"
-	playback_type = AudioServer.PLAYBACK_TYPE_STREAM
+	# Finite PCM uses browser-native samples on Web, avoiding frame-bound stream starvation.
+	playback_type = AudioServer.PLAYBACK_TYPE_DEFAULT
 	max_polyphony = 1
 
 func start_bar(mask: int) -> void:

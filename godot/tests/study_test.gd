@@ -3265,6 +3265,7 @@ func run() -> void:
 	await verify_power_story(study,saved_m4_json)
 	await verify_dog_story(study,saved_m4_json)
 	await verify_lantern_procession(study,saved_m4_json)
+	await verify_voting_story(study,saved_m4_json)
 	study.clear_godot_save()
 	study.clear_godot_settings()
 	var legacy_settings := FileAccess.open(study.settings_path, FileAccess.WRITE)
@@ -6080,3 +6081,90 @@ func verify_lantern_procession(study: Node, full_profile: String) -> void:
 	study.apply_save_envelope(full_profile); study.hide_story_card(); study.last_story_chapter=int(study.current_chapter().num)
 	root.size=Vector2i(1100,760)
 	print("LANTERN_PROCESSION_PASS:2layouts x6sizes/actualui_accept/routes/Stop/movingmesh/costumes/gateway/quiet/manual/zero-save")
+
+
+func verify_voting_story(study: Node, full_profile: String) -> void:
+	require(study.is_test_suite_mode(),"election walk requires isolated native profile")
+	if not study.is_test_suite_mode(): return
+	var story: Node=study.voting_story
+	require(story.sites_valid and story.goals.size()==2,"two sourced outdoor observations available")
+	if not story.sites_valid: return
+	require(story.valid_source(story.source),"exact published source identities accepted")
+	var malformed: Dictionary=story.source.duplicate(true); malformed.sites.reverse()
+	require(not story.valid_source(malformed),"reordered source identities refuse")
+	malformed=story.source.duplicate(true); malformed.sites[0].observation[0]=INF
+	require(not story.valid_source(malformed),"nonfinite observation refuses")
+	study.power_place.loaded=false; require(not story.available(),"degraded power geometry disables dependent episode safely"); study.power_place.loaded=true
+	require(story.home.distance_to(study.neighbor_xz(0))>3.9,"share stand beside Bea, not inside her walker")
+	for layout in ["table","floor"]:
+		for size in [Vector2i(1100,760),Vector2i(390,667),Vector2i(320,667),Vector2i(520,360),Vector2i(559,360),Vector2i(640,360)]:
+			var data: Dictionary=JSON.parse_string(full_profile); data.gathering_layout=layout
+			study.apply_save_envelope(JSON.stringify(data)); study.hide_story_card(); study.last_story_chapter=int(study.current_chapter().num); study.startup_story_pending=false
+			root.size=size
+			for f in range(8): await process_frame
+			var saved := JSON.stringify(study.build_save_envelope())
+			var file: String=FileAccess.get_file_as_string(study.save_path)
+			var quiet: Array=[study.music_playing,study.music_mode,study.music_volume,study.reward_sounds_enabled]
+			study.following_player=false; var pose: Array=study.panel_camera_pose()
+			study.story_picker.open_picker()
+			for f in range(6): await process_frame
+			require(study.story_picker.entries.size()==2 and Rect2(Vector2.ZERO,Vector2(size)).encloses(study.story_picker.panel.get_global_rect()),"two full story entries fit")
+			study.story_picker.close_picker(); require(story.open_story(),"historical map reader opens")
+			story.buttons[4].grab_focus()
+			var down := InputEventAction.new(); down.action="ui_accept"; down.pressed=true; Input.parse_input_event(down); await process_frame
+			var up := InputEventAction.new(); up.action="ui_accept"; up.pressed=false; Input.parse_input_event(up)
+			for f in range(6): await process_frame
+			require(story.active and story.paper.visible,"real ui_accept begins visible original paper")
+			require(study.panel_camera_pose()==pose,"election reader preserves manual camera")
+			for b in story.buttons: require(b.size.x>=44 and b.size.y>=44 and Rect2(Vector2.ZERO,Vector2(size)).encloses(b.get_global_rect()),"12 named election controls fit")
+			require(story.reader.scroll_active and story.reader.get_theme_font_size("normal_font_size")==16,"full16px source reader")
+			story.record_site(); require(story.observed==0,"remote Record cannot claim a site")
+			for i in ([0,1] if layout=="table" else [1,0]):
+				story.choose(i)
+				require(study.is_walkable_point(story.goal(),0.85) and study.building_containing_point(story.goal()).is_empty(),"observation outside measured footprint with clearance")
+				require(story.goal().distance_to(Vector2(story.source.sites[i].xz[0],story.source.sites[i].xz[1]))>5,"city address pin is not a walking goal")
+				study.player.position=Vector3(story.goal().x,0,story.goal().y); story.record_site()
+			var observed: int=story.observed; story.record_site(); require(story.observed==observed,"repeated Record is harmless")
+			story.make_map(); require(story.phase==2 and story.observed==3,"both orders reach actual map placement")
+			story.close_story(false); story.open_story(); require(story.buttons[story.selected].has_focus(),"reopened map focuses enabled label")
+			for f in range(6): await process_frame
+			for pad in story.pads: require(pad.size.x>=44 and pad.size.y>=44 and Rect2(Vector2.ZERO,Vector2(size)).encloses(pad.get_global_rect()),"map pin targets fit at44px")
+			require(not story.pads[0].get_global_rect().intersects(story.pads[1].get_global_rect()),"map targets do not overlap")
+			story.choose(0); story.place_label(1); require(story.placed==0 and story.phase==2,"mismatch keeps all observed progress")
+			story.place_label(0); story.choose(1); story.place_label(1)
+			require(story.phase==3 and story.placed==3 and not story.won,"two exact labels need deliberate return/share")
+			for f in range(6): await process_frame
+			for label in story.map_labels: require(label.visible and Rect2(Vector2.ZERO,Vector2(size)).encloses(label.get_global_rect()),"actual native address labels fit")
+			story.share_map(); require(not story.won,"remote Share refuses")
+			study.player.position=Vector3(story.home.x,0,story.home.y); story.share_map(); require(story.won,"near gathering Share completes")
+			require(story.reader.text.contains("380 Eddy") and story.reader.text.contains("398 Eddy") and story.reader.text.contains("246 Eddy") and story.reader.text.contains("240 Eddy") and story.reader.text.contains("later relocations unverified"),"full dated distinctions retained")
+			require(story.textures.size()<=32 and saved==JSON.stringify(study.build_save_envelope()) and file==FileAccess.get_file_as_string(study.save_path) and quiet==[study.music_playing,study.music_mode,study.music_volume,study.reward_sounds_enabled],"visit art bounded zero-save exact quiet/file")
+			story.end_session(); require(story.buttons[4].has_focus(),"End focuses enabled Begin"); story.close_story(false); require(not story.paper.visible,"End clears original paper")
+	for walk_layout in ["table","floor"]:
+		var walk_data: Dictionary=JSON.parse_string(full_profile); walk_data.gathering_layout=walk_layout
+		study.apply_save_envelope(JSON.stringify(walk_data)); study.hide_story_card(); study.last_story_chapter=int(study.current_chapter().num)
+		root.size=Vector2i(1100,760); study.player.position=Vector3(story.home.x,0,story.home.y); study.following_player=false
+		var walking_pose: Array=study.panel_camera_pose(); story.open_story(); story.begin()
+		for i in [1,0,2]:
+			if i<2: story.choose(i)
+			else:
+				story.make_map(); story.choose(0); story.place_label(0); story.choose(1); story.place_label(1)
+			story.walk_route()
+			if i==1: require(story.via_pending,"real outbound walk takes sourced Taylor/Eddy via")
+			var steps := 0
+			while (not study.current_path.is_empty() or story.traveling) and steps<10000:
+				study.advance_walk(0.1); story._process(0); steps+=1
+				if steps==8:
+					study.stop_walking(); require(not story.traveling and not story.via_pending,"Stop cancels owned route legs")
+					story.open_story(); story.walk_route()
+			for f in range(8): await process_frame
+			require(steps<10000 and story.near() and story.visible,"actual sourced route reaches exterior/gathering within2m")
+			require(study.panel_camera_pose()==walking_pose,"exact manual camera survives actual route and arrival")
+			if i<2:
+				require(story.buttons[6].has_focus(),"actual arrival focuses enabled Record")
+				story.record_site()
+			else: story.share_map()
+		require(story.won,"three real walks and deliberate map/Share completed")
+	story.close_story(false); study.apply_save_envelope(full_profile)
+	require(not story.active and not story.visible and not story.paper.visible,"import/reload clears visit")
+	print("VOTING_STORY_PASS:2layouts x6sizes/trueui_accept/2sourcegoals/bothorders/mapmismatch/threeactualwalksStop/exactquietmanual/zero-save")

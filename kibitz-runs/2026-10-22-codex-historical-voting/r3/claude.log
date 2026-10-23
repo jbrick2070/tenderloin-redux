@@ -1,0 +1,22 @@
+STDOUT:
+I wrote the review to `kibitz-runs/2026-10-22-codex-historical-voting/r3/claude.md`. I ran no tests or gates and changed no other files.
+
+**Verdict: yes-with-fixes.** The hooks in `main.gd` appear at every site where `power_story` does, and the site coordinates match the map.
+
+**Must-fix:**
+1. **Crash when the power-story data is bad.** `voting_story.gd:203` always reads a junction point from the power-story data file. When that file fails validation, the data is empty, and Election Walk still shows as available because its validity check (`voting_story.gd:93-103`) never asks whether that file loaded. Pressing Walk then hits a missing-key error. The fix is to add `game.power_place.loaded` to `sites_valid`.
+2. **Keyboard focus lands in the wrong place.**
+   - Reopening the story while placing labels puts focus on Walk, which is disabled in that step.
+   - After arriving at a site, focus goes to Walk instead of Record site.
+   - After End walk, focus stays on End walk, which has just become disabled.
+3. **A data test check can never fail.** At `tests/godot-data.test.mjs:379` the distance check has no absolute value, so a zero offset passes. Separately, the provenance hashes in `voting_places.json` are never checked by any test.
+
+**Should-fix (main ones):**
+- **Detour between the two sites.** The route rule sends walks between the two sites east to Taylor and Eddy first, roughly 174 m out of the way.
+- **Player stands inside Bea.** "Return to Bea" walks to Bea's exact position, ignoring the usual 0.95 m arrival offset.
+- **Hard-coded site names aren't checked against the data.** Site names and order are written into the UI, but setup never confirms the data file has them in that order.
+- **Duplicate streets.** The build script repeats about 10 street entries in `voting_places.json`, so each is drawn twice.
+- **Evidence claims without matching assertions:**
+  - Nothing checks the camera stays put during a walk.
+  - Nothing shows the Taylor/Eddy routing step ever runs.
+  - The "559mouse" run label can't come from this test harness, which runs every width under 600 px as finger.

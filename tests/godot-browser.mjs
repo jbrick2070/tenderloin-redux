@@ -43,7 +43,7 @@ assert.ok(pckStat.size > 0 && pckStat.size <= 2 * 1024 * 1024, `artifacts/godot-
 const BROWSER_SAVE_SENTINEL = JSON.stringify({ schema: 'tenderloin-redux.save', version: 1, sentinel: 'preserve-browser-save-v1' });
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : 'playwright');
 const base = 'http://127.0.0.1:' + (process.env.GODOT_PORT || 4174) + '/';
-const sourceFingerprint={sources:Object.fromEntries(await Promise.all(['godot/main.gd','godot/shared_panel.gd','godot/loan_homecoming.gd','godot/power_story.gd','godot/dog_story.gd','godot/lantern_procession.gd','godot/story_picker.gd','godot/power_place.gd','godot/data/power_place.json','godot/tests/study_test.gd'].map(async p=>[p,createHash('sha256').update(await readFile(p)).digest('hex')]))),pack_sha256:createHash('sha256').update(await readFile('artifacts/godot-web/index.pck')).digest('hex')};
+const sourceFingerprint={sources:Object.fromEntries(await Promise.all(['godot/main.gd','godot/shared_panel.gd','godot/loan_homecoming.gd','godot/power_story.gd','godot/dog_story.gd','godot/lantern_procession.gd','godot/story_picker.gd','godot/voting_story.gd','godot/data/voting_places.json','godot/power_place.gd','godot/data/power_place.json','godot/tests/study_test.gd'].map(async p=>[p,createHash('sha256').update(await readFile(p)).digest('hex')]))),pack_sha256:createHash('sha256').update(await readFile('artifacts/godot-web/index.pck')).digest('hex')};
 await mkdir('artifacts', { recursive: true });
 let queuedActivityRewardChecks = 0;
 const shortStoryReadChecks = [];
@@ -141,21 +141,44 @@ async function verifyStreetSignature(page,tap,snap) {
 // Observe the real WebAudio mixer destination; never create a test tone or action hook.
 function installRhythmAudioProbe() {
   window.__rhythmOutputTaps=[];
-  const connect=AudioNode.prototype.connect;
-  AudioNode.prototype.connect=function(destination,...ports){
-    if(destination instanceof AudioDestinationNode){
-      const tap=this.context.createAnalyser();tap.fftSize=2048;
-      connect.call(this,tap,...ports);connect.call(tap,destination);
-      window.__rhythmOutputTaps.push(tap);return destination;
+  const connect=AudioNode.prototype.connect,mixers=new WeakMap();
+  const code=`class MixerEnvelope extends AudioWorkletProcessor {
+    constructor(){super();this.capture=0;this.reset();this.frames=Math.round(sampleRate*.016);this.port.onmessage=e=>{this.capture=e.data.capture;this.reset();};}
+    reset(){this.energy=0;this.count=0;this.total=0;this.lastQuantum=null;this.clockJumps=0;}
+    process(inputs,outputs){const channels=inputs[0]||[],length=outputs[0][0].length;
+      if(this.lastQuantum!==null&&currentFrame!==this.lastQuantum)this.clockJumps++;
+      this.lastQuantum=currentFrame+length;
+      for(let i=0;i<length;i++){
+        let energy=0;for(const c of channels)energy+=c[i]*c[i];this.energy+=channels.length?energy/channels.length:0;this.count++;this.total++;
+        if(this.count===this.frames){this.port.postMessage({capture:this.capture,ms:(this.total-this.count)/sampleRate*1000,rms:Math.sqrt(this.energy/this.count),frames:this.count,expected:this.frames,clock_frame:currentFrame+i,clock_jumps:this.clockJumps});this.energy=0;this.count=0;}
+      }return true;
     }
-    return connect.call(this,destination,...ports);
+  }registerProcessor('mixer-envelope',MixerEnvelope);`;
+  AudioNode.prototype.connect=function(destination,...ports){
+    const result=connect.call(this,destination,...ports);
+    if(destination instanceof AudioDestinationNode){
+      const source=this,context=this.context;
+      if(!mixers.has(context)){
+      const tap={context,trace:[],error:null,ready:false};window.__rhythmOutputTaps.push(tap);
+      const url=URL.createObjectURL(new Blob([code],{type:'text/javascript'}));
+      const ready=context.audioWorklet.addModule(url).finally(()=>URL.revokeObjectURL(url)).then(()=>{
+        const node=new AudioWorkletNode(context,'mixer-envelope');tap.node=node;
+        node.port.onmessage=e=>{tap.trace.push(e.data);if(tap.trace.length>2000)tap.trace.splice(0,tap.trace.length-2000);};
+        // The observer's output is silence; the original destination connection remains audible.
+        connect.call(node,destination);tap.ready=true;return node;
+      }).catch(e=>{tap.error=String(e);throw e;});
+      mixers.set(context,ready);
+      }
+      mixers.get(context).then(node=>connect.call(source,node,ports[0]||0,0)).catch(()=>{});
+    }return result;
   };
 }
 
 async function verifyRhythmAudition(page,touch,size,tap,snap,save,settle,active) {
   const initial=(await snap()).rhythm_circle.pattern,wasMusic=(await snap()).music_playing;
   const setMask=async mask=>{for(let bit=0;bit<8;bit++)if(((await snap()).rhythm_circle.pattern^mask)&(1<<bit))await tap((await snap()).rhythm_circle.pads[bit]);};
-  const start=async()=>{const n=(await snap()).rhythm_circle.audition.starts;await tap((await snap()).rhythm_circle.options[6]);await page.waitForFunction(n=>{const a=window.__tenderloinGodotA11ySnapshot.rhythm_circle.audition;return a.playing&&a.starts===n+1;},n);};
+  let audioMark=0;
+  const start=async()=>{await page.waitForFunction(()=>window.__rhythmOutputTaps?.length&&window.__rhythmOutputTaps.every(t=>t.ready||t.error));audioMark=await page.evaluate(()=>{const t=window.__rhythmOutputTaps;if(t.length!==1||t[0].error)throw new Error('Expected one ready actual mixer observer: '+JSON.stringify(t.map(x=>x.error)));window.__rhythmInputAudioMark=null;window.addEventListener('pointerdown',()=>{window.__rhythmInputAudioMark=(window.__rhythmCaptureSerial||0)+1;window.__rhythmCaptureSerial=window.__rhythmInputAudioMark;t[0].node.port.postMessage({capture:window.__rhythmInputAudioMark});},{once:true,capture:true});return 0;});const n=(await snap()).rhythm_circle.audition.starts;await tap((await snap()).rhythm_circle.options[6]);audioMark=await page.evaluate(()=>window.__rhythmInputAudioMark);assert.ok(Number.isFinite(audioMark),'real pointer event timestamps mixer capture');await page.waitForFunction(n=>{const a=window.__tenderloinGodotA11ySnapshot.rhythm_circle.audition;return a.playing&&a.starts===n+1;},n);};
   if(!wasMusic)await tap((await snap()).rhythm_circle.options[1]);
   if((await snap()).music_mode==='local'){
     await tap((await snap()).rhythm_circle.options[6]);assert.ok(!(await snap()).rhythm_circle.audition.playing);assert.match((await snap()).rhythm_circle.message,/Local music/);
@@ -163,12 +186,14 @@ async function verifyRhythmAudition(page,touch,size,tap,snap,save,settle,active)
   }
   await setMask(129);
   const frozen=await save(),pose=(await snap()).camera_pose;
-  const capture=async()=>page.evaluate(async()=>{
-    const taps=window.__rhythmOutputTaps||[];if(!taps.length)return null;
-    const trace=[],start=performance.now();
-    while(performance.now()-start<3000){let energy=0;for(const tap of taps){const a=new Float32Array(tap.fftSize);tap.getFloatTimeDomainData(a);energy+=a.reduce((n,v)=>n+v*v,0)/a.length;}trace.push({ms:performance.now()-start,rms:Math.sqrt(energy)});await new Promise(r=>setTimeout(r,16));}
+  const capture=async()=>{
+    await page.waitForFunction(mark=>window.__rhythmOutputTaps[0].trace.some(t=>t.capture===mark&&t.ms>=2990),audioMark);
+    const trace=await page.evaluate(mark=>window.__rhythmOutputTaps[0].trace.filter(t=>t.capture===mark&&t.ms<3000),audioMark);
+    await writeFile(`artifacts/rhythm-capture-${size.width}-${active?'hosting':'practice'}-${(await snap()).rhythm_circle.pattern}.json`,JSON.stringify(trace,null,2));
+    assert.ok(trace.length>=180&&trace[0].ms<25&&trace.at(-1).ms>2970,'complete three-second audio-thread coverage');
+    assert.ok(trace.every((t,i)=>t.frames===t.expected&&(!i||t.ms-trace[i-1].ms<25)),'actual audio-frame bins have no missing coverage');
     return trace;
-  });
+  };
   await start();
   const playing=await snap();assert.equal(playing.rhythm_circle.audition.pattern,129);assert.ok(playing.rhythm_circle.active_step>=0,'audition drives real world poses even with optional sketch cues off');
   assert.equal(await save(),frozen,'audition itself never writes active draft or practice');assert.equal(playing.rhythm_circle.sketch_gain,-80);assert.equal(playing.music_sample_rms,0,'sketch RMS reports intentional audition duck');assert.ok(playing.rhythm_circle.audition.build_usec<20000,'actual Web mask assembly stays under20ms after pre-start preparation');assert.deepEqual(playing.camera_pose,pose);
@@ -179,9 +204,10 @@ async function verifyRhythmAudition(page,touch,size,tap,snap,save,settle,active)
   let dense=null;
   if(sparse){
     await setMask(255);const denseSave=await save();await start();dense=await capture();await page.waitForFunction(()=>!window.__tenderloinGodotA11ySnapshot.rhythm_circle.audition.playing);assert.equal(await save(),denseSave);
-    const stats=trace=>{let last=-1000,bursts=0,run=0,longest=0;for(const t of trace){if(t.rms>.003){if(t.ms-last>160)bursts++;last=t.ms;run=0;}else{run+=16;longest=Math.max(longest,run);}}return {bursts,longest,peak:Math.max(...trace.map(t=>t.rms))};};
-    const a=stats(sparse),b=stats(dense);assert.ok(a.peak>.005&&b.peak>.005,'real mixer output has nonzero original drum PCM');assert.ok(a.longest>1300&&b.longest<650,'actual sparse rests are quiet while dense pattern has recurring strikes');assert.ok(b.bursts>=5&&b.bursts>a.bursts,'real output changes with the eight-pad pattern, not a fixed music RMS field');
+    const stats=trace=>{let last=-1000,bursts=0,run=0,longest=0,previous=0;for(const t of trace){if(t.rms>.003){if(t.ms-last>160)bursts++;last=t.ms;run=0;}else{run+=t.ms-previous;longest=Math.max(longest,run);}previous=t.ms;}return {bursts,longest,peak:Math.max(...trace.map(t=>t.rms))};};
+    const a=stats(sparse),b=stats(dense);
     await writeFile(`artifacts/rhythm-bar-output-${size.width}x${size.height}-${active?'hosting':'practice'}-${touch?'touch':'mouse'}.json`,JSON.stringify({sparse,dense,sparseStats:a,denseStats:b},null,2));
+    assert.ok(a.peak>.005&&b.peak>.005,'real mixer output has nonzero original drum PCM');assert.ok(a.longest>1300&&b.longest<650,'actual sparse rests are quiet while dense pattern has recurring strikes');assert.ok(b.bursts>=5&&b.bursts>a.bursts,'real output changes with the eight-pad pattern, not a fixed music RMS field');
   }
   await setMask(129);await start();await page.keyboard.press('Space');await page.waitForFunction(()=>!window.__tenderloinGodotA11ySnapshot.rhythm_circle.audition.playing,null,{timeout:800});await settle();
   await start();await tap((await snap()).rhythm_circle.pads[1]);assert.ok(!(await snap()).rhythm_circle.audition.playing,'real edit stops the frozen bar');
@@ -657,7 +683,7 @@ async function verifyMuralWorkshop(page, context, touch, originalSize, requireTa
 
 async function verifyShortWalking(page,context,touch) {
   const snapshot=()=>page.evaluate(()=>window.__tenderloinGodotA11ySnapshot);
-  async function settle(){const s=await snapshot();await page.waitForFunction(f=>window.__tenderloinGodotA11ySnapshot.ui_frame>f+3&&!window.__tenderloinGodotA11ySnapshot.compact_panel_layout_pending,s.ui_frame);}
+  async function settle(){const s=await snapshot();await page.waitForFunction(f=>window.__tenderloinGodotA11ySnapshot.ui_frame>f+3&&!window.__tenderloinGodotA11ySnapshot.compact_panel_layout_pending&&!window.__tenderloinGodotA11ySnapshot.layout_refit_pending,s.ui_frame);}
   const encloses=(a,b)=>b.x>=a.x-1&&b.y>=a.y-1&&b.x+b.width<=a.x+a.width+1&&b.y+b.height<=a.y+a.height+1;
   const overlaps=(a,b)=>a.x<b.x+b.width&&a.x+a.width>b.x&&a.y<b.y+b.height&&a.y+a.height>b.y;
   async function tap(b){const s=await snapshot(),c=await page.locator('#canvas').boundingBox();assert.ok(b.visible&&b.width>=44&&b.height>=44);const x=c.x+(b.x+b.width/2)*c.width/s.viewport_width,y=c.y+(b.y+b.height/2)*c.height/s.viewport_height;if(touch)await page.touchscreen.tap(x,y);else await page.mouse.click(x,y);await settle();}
@@ -674,7 +700,7 @@ async function verifyShortWalking(page,context,touch) {
       for(const caption of arrival.overlays.captions){shortWalkingCaptionChecks++;assert.ok(!overlaps(caption,arrival.overlays.player),'real arrival caption leaves the enlarged player clear');}
       await page.screenshot({path:'artifacts/codex-small-hub-walking-caption-599x480-mouse.png'});await writeFile('artifacts/codex-small-hub-walking-caption-599x480-mouse.json',JSON.stringify(arrival,null,2));
     }
-    await page.keyboard.press('KeyG');await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.block_hub_actions.length===4);await tap((await snapshot()).block_close_control);
+    await page.keyboard.press('KeyG');await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.block_panel_control.visible&&window.__tenderloinGodotA11ySnapshot.block_hub_actions.length===4);await settle();await tap((await snapshot()).block_close_control);
     await page.waitForFunction(()=>!window.__tenderloinGodotA11ySnapshot.block_panel_control.visible&&window.__tenderloinGodotA11ySnapshot.following_player);await settle();const closed=await snapshot();assert.ok(closed.short_narrow_walking&&encloses(closed.play_area,closed.overlays.player),'hub Close alone restores the followed short walking view before Find Me');
     await tap((await snapshot()).walking_controls[2]);let s=await snapshot();const save=await page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1'));
     assert.ok(s.short_narrow_walking&&s.following_player&&!s.block_panel_control.visible&&s.play_area.height>=100&&s.overlays.player.width>0&&encloses(s.play_area,s.overlays.player),'Close and Find Me retain the full enlarged player and YOU in short walking space');
@@ -1312,6 +1338,43 @@ async function verifyLarkinStory(page,touch,size,privateFixture=false){
 }
 
 const dogStoryChecks=[];
+const votingStoryChecks=[];
+async function verifyVotingStory(page,touch,size,privateFixture=false){
+ const snap=()=>page.evaluate(()=>window.__tenderloinGodotA11ySnapshot),save=()=>page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1'));
+ async function settle(){const f=(await snap()).ui_frame;await page.waitForFunction(f=>{const s=window.__tenderloinGodotA11ySnapshot;return s.ui_frame>f+5&&!s.voting_story.layout_pending;},f);}
+ async function tap(b){const s=await snap(),c=await page.locator('#canvas').boundingBox();assert.ok(b&&b.visible!==false&&b.width>=44&&b.height>=44);const x=c.x+(b.x+b.width/2)*c.width/s.viewport_width,y=c.y+(b.y+b.height/2)*c.height/s.viewport_height;if(touch)await page.touchscreen.tap(x,y);else await page.mouse.click(x,y);await settle();}
+ const before=await save(),legacy=await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1')),quiet=(await snap()).music_playing;
+ await page.keyboard.press('F8');await settle();await tap((await snap()).power_story.more_entry);assert.equal((await snap()).story_picker.entries.length,2);
+ await tap((await snap()).story_picker.entries[1]);let s=await snap();assert.ok(s.voting_story.visible&&s.voting_story.sites_valid);
+ const pose=s.camera_pose;for(const b of s.voting_story.buttons)assert.ok(b.x>=0&&b.y>=0&&b.x+b.width<=size.width+1&&b.y+b.height<=size.height+1);
+ // Actual source-reader input, including in finger contexts.
+ const reader=s.voting_story.reader,c=await page.locator('#canvas').boundingBox();
+ if(touch){const session=await page.context().newCDPSession(page),x=c.x+(reader.x+reader.width*.5)*c.width/s.viewport_width,y=c.y+(reader.y+reader.height*.8)*c.height/s.viewport_height;await session.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});for(let j=1;j<=8;j++)await session.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y-j*reader.height*.07*c.height/s.viewport_height}]});await session.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await session.detach();}
+ else{await page.mouse.click(c.x+(reader.x+reader.width*.5)*c.width/s.viewport_width,c.y+(reader.y+reader.height*.5)*c.height/s.viewport_height);await page.keyboard.press('End');}
+ await settle();assert.ok((await snap()).voting_story.scroll>0,'actual source reader scrolls');
+ await tap((await snap()).voting_story.buttons[3]);await tap((await snap()).voting_story.buttons[4]);assert.ok((await snap()).voting_story.active);assert.deepEqual((await snap()).camera_pose,pose);const held=(await snap()).player_grounding;await page.keyboard.down('KeyW');await page.waitForTimeout(140);await page.keyboard.up('KeyW');await settle();assert.ok(Math.hypot((await snap()).player_grounding.x-held.x,(await snap()).player_grounding.z-held.z)<.01,'held movement stays still in election reader');
+ for(const i of [1,0]){
+  await tap((await snap()).voting_story.buttons[i]);await tap((await snap()).voting_story.buttons[5]);
+  if(!(await snap()).voting_story.near)await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.player_grounding.path_active,null,{timeout:10000});
+  if(i===1){await page.waitForTimeout(220);await tap((await snap()).walk_control);assert.ok(!(await snap()).voting_story.traveling);await tap((await snap()).walk_control);await tap((await snap()).voting_story.buttons[5]);}
+  await page.waitForFunction(()=>{const s=window.__tenderloinGodotA11ySnapshot;return s.voting_story.visible&&s.voting_story.near&&!s.player_grounding.path_active;},null,{timeout:90000});
+  s=await snap();assert.ok(Math.hypot(s.player_grounding.x-s.voting_story.goal[0],s.player_grounding.z-s.voting_story.goal[1])<=2);await tap(s.voting_story.buttons[6]);
+ }
+ assert.equal((await snap()).voting_story.observed,3);await tap((await snap()).voting_story.buttons[7]);await tap((await snap()).voting_story.buttons[0]);
+ await tap((await snap()).voting_story.pads[1]);assert.equal((await snap()).voting_story.placed,0);assert.equal((await snap()).voting_story.observed,3);
+ await tap((await snap()).voting_story.pads[0]);await tap((await snap()).voting_story.buttons[1]);await tap((await snap()).voting_story.pads[1]);assert.equal((await snap()).voting_story.phase,3);
+ await tap((await snap()).voting_story.buttons[5]);await page.waitForFunction(()=>{const s=window.__tenderloinGodotA11ySnapshot;return s.voting_story.visible&&s.voting_story.near&&!s.player_grounding.path_active;},null,{timeout:90000});await tap((await snap()).voting_story.buttons[8]);s=await snap();assert.ok(s.voting_story.won&&s.voting_story.paper_visible);assert.deepEqual(s.voting_story.map_labels.map(l=>l.text),['1 380 Eddy St\nCadillac','2 246 Eddy St\nBoeddeker']);assert.ok(s.voting_story.map_labels.every(l=>l.visible&&l.x>=0&&l.y>=0&&l.x+l.width<=size.width+1&&l.y+l.height<=size.height+1));
+ assert.equal(await save(),before);assert.equal(s.music_playing,quiet);assert.match(s.voting_story.text,/later relocations unverified/);assert.match(s.voting_story.text,/398 Eddy/);assert.match(s.voting_story.text,/240 Eddy/);
+ await page.screenshot({path:`artifacts/voting-${size.width}-${touch?'finger':'mouse'}.png`});
+ const completed=s.voting_story;await tap(completed.buttons[11]);await page.keyboard.press('KeyF');await settle();
+ for(let i=0;i<6;i++)await tap((await snap()).walking_controls.find(b=>b.text.includes('Zoom')&&b.text.includes('+')));
+ await page.screenshot({path:`artifacts/voting-world-${size.width}-${touch?'finger':'mouse'}.png`});await writeFile(`artifacts/voting-world-${size.width}-${touch?'finger':'mouse'}.json`,JSON.stringify({snapshot:await snap(),sourceFingerprint},null,2));
+ const inspection=(await snap()).camera_pose;await page.keyboard.press('F8');await settle();assert.deepEqual((await snap()).camera_pose,inspection);assert.ok((await snap()).voting_story.buttons[11].focused);
+ await tap((await snap()).voting_story.buttons[9]);assert.ok(!(await snap()).voting_story.active);await tap((await snap()).voting_story.buttons[11]);
+ await page.reload();await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');await settle();assert.ok(!(await snap()).voting_story.active);assert.equal(await save(),before);assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1')),legacy);
+ const result={size,touch,privateFixture,observed:completed.observed,placed:completed.placed,goals:completed.goals,sourceFingerprint};votingStoryChecks.push(result);await writeFile(`artifacts/voting-${size.width}-${touch?'finger':'mouse'}.json`,JSON.stringify(result,null,2));
+}
+
 const lanternProcessionChecks=[];
 async function verifyLanternProcession(page,touch,size,privateFixture=false) {
  const encloses=(a,b)=>b.x>=a.x-1&&b.y>=a.y-1&&b.x+b.width<=a.x+a.width+1&&b.y+b.height<=a.y+a.height+1;
@@ -1333,7 +1396,7 @@ async function verifyLanternProcession(page,touch,size,privateFixture=false) {
    await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.lantern_procession.progress>12,null,{timeout:30000});
    s=await snap();assert.ok(s.lantern_procession.crew.every((p,i)=>Math.hypot(...p.position.map((v,j)=>v-start[i].position[j]))>3));
    await tap(s.walk_control);await settle();const held=(await snap()).lantern_procession.progress;await page.waitForTimeout(300);assert.equal((await snap()).lantern_procession.progress,held);assert.ok(!(await snap()).lantern_procession.traveling);
-   await tap((await snap()).walk_control);assert.ok((await snap()).lantern_procession.visible);await tap((await snap()).lantern_procession.buttons[5]);
+   await tap((await snap()).walk_control);await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.lantern_procession.visible);assert.ok((await snap()).lantern_procession.visible);await tap((await snap()).lantern_procession.buttons[5]);
   }
   await page.waitForFunction(()=>{const s=window.__tenderloinGodotA11ySnapshot;return s.lantern_procession.visible&&s.lantern_procession.near&&!s.player_grounding.path_active;},null,{timeout:90000});
   await tap((await snap()).lantern_procession.buttons[6]);
@@ -1678,7 +1741,9 @@ async function verifyFilmScreening(page,context,touch,size,world=false) {
   await page.keyboard.press('F4');await settle();assert.ok((await snap()).film_screening.visible);await page.keyboard.press('Escape');await settle();assert.ok(!(await snap()).film_screening.visible);
   if(world){
     await page.keyboard.press('KeyM');await page.waitForFunction(()=>{const s=window.__tenderloinGodotA11ySnapshot;return s.mural_detail.panel.visible&&!s.player_grounding.path_active;},null,{timeout:35000});await tap((await snap()).mural_detail.buttons.at(-1));
-    const oldPoint=(await snap()).player_grounding;await page.keyboard.down('KeyS');await page.waitForTimeout(700);await page.keyboard.up('KeyS');await settle();s=await snap();assert.ok(Math.hypot(s.player_grounding.x-oldPoint.x,s.player_grounding.z-oldPoint.z)>.5,'real walking moves avatar aside before framing the actual easel');
+    const oldPoint=(await snap()).player_grounding;await page.keyboard.down('KeyS');try{await page.waitForFunction(p=>{const q=window.__tenderloinGodotA11ySnapshot.player_grounding;return Math.hypot(q.x-p.x,q.z-p.z)>=3;},oldPoint,{timeout:10000});}finally{await page.keyboard.up('KeyS');}await settle();s=await snap();assert.ok(Math.hypot(s.player_grounding.x-oldPoint.x,s.player_grounding.z-oldPoint.z)>=3,'real walking moves avatar aside before framing the actual easel');
+    // Use actual camera input for a lower inspection angle; small world ink can be occluded overhead.
+    await page.keyboard.down('Shift');await page.keyboard.down('ArrowDown');await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.camera_pose.pitch<=.550001);await page.keyboard.up('ArrowDown');await page.keyboard.up('Shift');await settle();
     for(let i=0;i<5;i++)await tap((await snap()).walking_controls.find(b=>b.text.includes('Zoom')&&b.text.includes('+')));
     s=await snap();const q=s.film_easel.corners,r=s.play_area,c=await page.locator('#canvas').boundingBox(),center={x:q.reduce((n,p)=>n+p.x,0)/4,y:q.reduce((n,p)=>n+p.y,0)/4},x=c.x+(r.x+r.width*.5)*c.width/s.viewport_width,y=c.y+(r.y+r.height*.25)*c.height/s.viewport_height;
     await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+(r.x+r.width*.5-center.x)*c.width/s.viewport_width,y+(r.y+r.height*.5-center.y)*c.height/s.viewport_height,{steps:10});await page.mouse.up();await settle();s=await snap();assert.ok(s.film_easel.visible&&s.film_easel.textured&&s.film_easel.uv_scale_x===3&&s.film_easel.uv_scale_y===2);
@@ -3213,6 +3278,7 @@ try {
     await verifyLarkinStory(page,size.width<600,size);
     await verifyDogStory(page,size.width<600,size);
     await verifyLanternProcession(page,size.width<600,size);
+    await verifyVotingStory(page,size.width<600,size);
     if(!rhythmFixtureSave)rhythmFixtureSave=await page.evaluate(()=>localStorage.getItem("tenderloin-redux.godot.save.v1"));
     await context.close();
   }
@@ -3310,12 +3376,13 @@ try {
     const context=await browser.newContext({viewport:{width,height},hasTouch:touch});await context.addInitScript(f=>{if(!localStorage.getItem('tenderloin-redux.godot.save.v1'))localStorage.setItem('tenderloin-redux.godot.save.v1',JSON.stringify(f));},fixture);
     const page=await context.newPage();latestPage=page;page.on('pageerror',e=>errors.push(String(e)));page.on('request',r=>{if(![base,'blob:','data:'].some(p=>r.url().startsWith(p)))external.push(r.url());});await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');await verifyDogStory(page,touch,{width,height},true);await context.close();
   }
+  assert.equal(votingStoryChecks.length,3);assert.ok(votingStoryChecks.every(c=>!c.privateFixture));
   assert.equal(lanternProcessionChecks.length,3);assert.ok(lanternProcessionChecks.every(c=>!c.privateFixture));
   assert.equal(dogStoryChecks.length,6);assert.equal(dogStoryChecks.filter(c=>!c.privateFixture).length,3);
   assert.equal(larkinStoryChecks.length,3);assert.equal(powerStoryChecks.length,6);assert.equal(powerStoryChecks.filter(c=>!c.privateFixture).length,3);
   await verifyLoanWorld(browser,rhythmFixtureSave,base);
   assert.equal(loanHomecomingChecks.length,8);assert.equal(loanWorldChecks.length,3);assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
-  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, sourceFingerprint, lanternProcessionChecks, dogStoryChecks, larkinStoryChecks, powerStoryChecks, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, beaInvitationChecks, quietSeatChecks, filmScreeningChecks, rhythmCircleChecks, rhythmAuditionChecks, muralStoryChecks, livingMuralChecks, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
+  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, sourceFingerprint, votingStoryChecks, lanternProcessionChecks, dogStoryChecks, larkinStoryChecks, powerStoryChecks, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, beaInvitationChecks, quietSeatChecks, filmScreeningChecks, rhythmCircleChecks, rhythmAuditionChecks, muralStoryChecks, livingMuralChecks, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
   assert.ok(queuedActivityRewardChecks > 0, 'at least one actual crowded activity exercises queued reward timer and Close delivery');
   assert.ok(shortStartClicked && shortStartTouchClicked, 'real mouse and touch Start at640x360 were exercised');
   assert.equal(beaInvitationChecks.length,7,'three genuine current progression and four private post-quiet invitation cases');
@@ -3348,7 +3415,7 @@ try {
   assert.equal(muralWorkshopChecks.length,8,'seven late and one fresh actual workshop mouse/finger cases executed');
   assert.equal(muralWorkshopChecks.filter(c=>c.photoStatus==='taken').length,7,'all seven late cases preserve a saved taken keepsake');
   assert.equal(workshopAutoAdvanceChecks,3,'a fresh mural exercises all three automatically offered contributions');
-  console.log(JSON.stringify({ runs, sourceFingerprint, lanternProcessionChecks, dogStoryChecks, larkinStoryChecks, powerStoryChecks, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, rhythmCircleChecks, rhythmAuditionChecks, livingMuralChecks, muralWorkshopChecks, workshopAutoAdvanceChecks, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, narrowActivityChecks, passiveActivityChecks, narrowHubChecks, smallHubReaderChecks, shortWalkingChecks, shortWalkingCaptionChecks, shortWalkingGuideChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
+  console.log(JSON.stringify({ runs, sourceFingerprint, votingStoryChecks, lanternProcessionChecks, dogStoryChecks, larkinStoryChecks, powerStoryChecks, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, rhythmCircleChecks, rhythmAuditionChecks, livingMuralChecks, muralWorkshopChecks, workshopAutoAdvanceChecks, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, narrowActivityChecks, passiveActivityChecks, narrowHubChecks, smallHubReaderChecks, shortWalkingChecks, shortWalkingCaptionChecks, shortWalkingGuideChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
 } catch (error) {
   if (latestPage && !latestPage.isClosed()) {
     await latestPage.screenshot({ path: 'artifacts/godot-browser-failure.png' });

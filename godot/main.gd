@@ -806,6 +806,7 @@ var power_place: Node
 var power_story
 var dog_story
 var lantern_procession
+var voting_story
 var story_picker
 var mural_workshop
 var mural_workshop_selected := "sun"
@@ -6062,6 +6063,7 @@ func update_landmark_tour_completion() -> void:
 	announce_a11y_status("Neighborhood Tour Complete! All %d stops visited this session. Your 10 keepsakes stay saved; the optional tour starts fresh next session." % int(tour.total))
 
 func current_objective() -> Dictionary:
+	if voting_story != null and voting_story.active: return voting_story.objective()
 	if lantern_procession != null and lantern_procession.active: return lantern_procession.objective()
 	if dog_story != null and dog_story.active: return dog_story.objective()
 	if power_story != null and power_story.active: return power_story.objective()
@@ -6420,6 +6422,7 @@ func end_conversation() -> void:
 	if power_story != null: power_story.cancel_intent()
 	if dog_story != null: dog_story.cancel_intent()
 	if lantern_procession != null: lantern_procession.cancel_intent()
+	if voting_story != null: voting_story.cancel_intent()
 	var partner := -1
 	if mural_panel != null and mural_panel.visible:
 		partner = celeste_index
@@ -7484,7 +7487,7 @@ func set_header_details(expanded: bool, refit_map := true) -> void:
 
 func update_conversation_ui(delta: float) -> void:
 	ui_clock = wrapf(ui_clock + delta, 0.0, 3600.0)
-	if is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible() or is_power_story_visible() or is_dog_story_visible() or is_lantern_procession_visible() or (story_picker!=null and story_picker.visible):
+	if is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible() or is_power_story_visible() or is_dog_story_visible() or is_lantern_procession_visible() or is_voting_story_visible() or (story_picker!=null and story_picker.visible):
 		return
 	var chapter := current_chapter()
 	# Deliver any pending chapter card after the focused workshop closes,
@@ -8041,6 +8044,7 @@ func walk_step(input_dir: Vector2, delta: float) -> bool:
 	if power_story != null: power_story.cancel_intent()
 	if dog_story != null: dog_story.cancel_intent()
 	if lantern_procession != null: lantern_procession.cancel_intent()
+	if voting_story != null: voting_story.cancel_intent()
 	if input_dir.length_squared() < 1e-6 or delta <= 0.0:
 		return false
 	current_path.clear()
@@ -8141,6 +8145,7 @@ func walk_to_neighbor(index: int) -> bool:
 	if power_story != null: power_story.cancel_intent()
 	if dog_story != null: dog_story.cancel_intent()
 	if lantern_procession != null: lantern_procession.cancel_intent()
+	if voting_story != null: voting_story.cancel_intent()
 	if index < 0 or index >= neighbors.size():
 		return false
 	var n: Dictionary = neighbors[index]
@@ -8195,6 +8200,7 @@ func walk_to_mural() -> bool:
 	if power_story != null: power_story.cancel_intent()
 	if dog_story != null: dog_story.cancel_intent()
 	if lantern_procession != null: lantern_procession.cancel_intent()
+	if voting_story != null: voting_story.cancel_intent()
 	selected_neighbor = -1
 	arrived_neighbor = -1
 	walking_to_mural = true
@@ -8239,6 +8245,7 @@ func walk_to_speaker() -> bool:
 	if power_story != null: power_story.cancel_intent()
 	if dog_story != null: dog_story.cancel_intent()
 	if lantern_procession != null: lantern_procession.cancel_intent()
+	if voting_story != null: voting_story.cancel_intent()
 	selected_neighbor = -1
 	arrived_neighbor = -1
 	walking_to_mural = false
@@ -8283,6 +8290,7 @@ func walk_to_history_stop(stop_id: String) -> bool:
 	if power_story != null: power_story.cancel_intent()
 	if dog_story != null: dog_story.cancel_intent()
 	if lantern_procession != null: lantern_procession.cancel_intent()
+	if voting_story != null: voting_story.cancel_intent()
 	if not (stop_id in HISTORY_STOP_IDS):
 		return false
 	var rec := get_history_stop_record(stop_id)
@@ -8532,6 +8540,7 @@ func walk_to_point(goal_xz: Vector2) -> bool:
 	if power_story != null: power_story.cancel_intent()
 	if dog_story != null: dog_story.cancel_intent()
 	if lantern_procession != null: lantern_procession.cancel_intent()
+	if voting_story != null: voting_story.cancel_intent()
 	var safe_goal := nearest_walkable_point(goal_xz, WALK_CLEARANCE_M)
 	if goal_xz.distance_to(safe_goal) > 28.5 or not is_walkable_point(safe_goal, WALK_CLEARANCE_M):
 		current_path.clear()
@@ -11603,6 +11612,7 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"power_story": power_story.snapshot() if power_story != null else {},
 		"dog_story": dog_story.snapshot() if dog_story != null else {},
 		"lantern_procession": lantern_procession.snapshot() if lantern_procession != null else {},
+		"voting_story": voting_story.snapshot() if voting_story != null else {},
 		"story_picker": story_picker.snapshot() if story_picker != null else {},
 		"loan_homecoming": loan_homecoming.snapshot() if loan_homecoming != null else {},
 		"shared_panel": shared_panel.snapshot() if shared_panel != null else {"visible":false},
@@ -11784,12 +11794,15 @@ func is_programme_studio_visible() -> bool:
 	return programme_studio != null and programme_studio.visible
 
 func active_story_episode():
-	for episode in [lantern_procession,dog_story,power_story]:
+	for episode in [voting_story,lantern_procession,dog_story,power_story]:
 		if episode!=null and episode.active: return episode
 	return null
 
 func is_lantern_procession_visible() -> bool:
 	return lantern_procession!=null and lantern_procession.visible
+
+func is_voting_story_visible() -> bool:
+	return voting_story!=null and voting_story.visible
 
 func is_dog_story_visible() -> bool:
 	return dog_story != null and dog_story.visible
@@ -11798,7 +11811,7 @@ func is_power_story_visible() -> bool:
 	return power_story != null and power_story.visible
 
 func is_focused_activity_visible() -> bool:
-	return is_lantern_procession_visible() or (story_picker!=null and story_picker.visible) or is_dog_story_visible() or is_power_story_visible() or is_mural_workshop_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible()
+	return is_voting_story_visible() or is_lantern_procession_visible() or (story_picker!=null and story_picker.visible) or is_dog_story_visible() or is_power_story_visible() or is_mural_workshop_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible()
 
 func is_civic_listening_visible() -> bool:
 	return civic_listening != null and civic_listening.visible
@@ -11877,7 +11890,7 @@ func edit_mural_scene(id: String, slot: String) -> bool:
 	return true
 
 func open_mural_workshop() -> bool:
-	if is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible() or is_power_story_visible() or is_dog_story_visible() or is_lantern_procession_visible() or (story_picker!=null and story_picker.visible):
+	if is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible() or is_power_story_visible() or is_dog_story_visible() or is_lantern_procession_visible() or is_voting_story_visible() or (story_picker!=null and story_picker.visible):
 		return false
 	if startup_story_pending or is_story_card_visible():
 		announce_a11y_status("Continue the chapter card before composing the mural.")
@@ -12225,6 +12238,9 @@ func reset_mural_state_to_defaults(status_label: String) -> void:
 	if lantern_procession != null:
 		lantern_procession.close_story(false)
 		lantern_procession.reset_session()
+	if voting_story != null:
+		voting_story.close_story(false)
+		voting_story.reset_session()
 	if story_picker != null: story_picker.close_picker()
 	if loan_homecoming != null:
 		loan_homecoming.chapter_completion_notice=""
@@ -12718,6 +12734,9 @@ func apply_save_envelope(raw_json: String) -> bool:
 	if lantern_procession != null:
 		lantern_procession.close_story(false)
 		lantern_procession.reset_session()
+	if voting_story != null:
+		voting_story.close_story(false)
+		voting_story.reset_session()
 	if story_picker != null: story_picker.close_picker()
 	if loan_homecoming != null:
 		loan_homecoming.chapter_completion_notice=""
@@ -13286,6 +13305,9 @@ func import_browser_save_json(raw_json: String) -> bool:
 	if lantern_procession != null:
 		lantern_procession.close_story(false)
 		lantern_procession.reset_session()
+	if voting_story != null:
+		voting_story.close_story(false)
+		voting_story.reset_session()
 	if story_picker != null: story_picker.close_picker()
 	if loan_homecoming != null:
 		loan_homecoming.chapter_completion_notice=""
@@ -13524,6 +13546,7 @@ func advance_walk(delta: float) -> bool:
 					current_path.remove_at(0)
 				if not current_path.is_empty():
 					continue
+			if voting_story != null and voting_story.traveling: voting_story.blocked_route()
 			if lantern_procession != null and lantern_procession.traveling: lantern_procession.blocked_route()
 			if dog_story != null and dog_story.traveling: dog_story.blocked_route()
 			if power_story != null and power_story.traveling: power_story.blocked_route()
@@ -13599,6 +13622,7 @@ func stop_walking() -> void:
 	if power_story != null: power_story.cancel_intent()
 	if dog_story != null: dog_story.cancel_intent()
 	if lantern_procession != null: lantern_procession.cancel_intent()
+	if voting_story != null: voting_story.cancel_intent()
 	var was_walking := not current_path.is_empty()
 	current_path.clear()
 	walking_to_mural = false
@@ -13633,9 +13657,15 @@ func update_walk_control() -> void:
 		walk_control.text="Parade"
 		walk_control.tooltip_text="Resume the costume makers and lantern march."
 
+	if not walking and voting_story!=null and voting_story.active:
+		walk_control.text="Election map"
+		walk_control.tooltip_text="Resume your historical polling-list map walk."
+
 func activate_walk_control() -> void:
 	if not current_path.is_empty():
 		stop_walking()
+	elif voting_story != null and voting_story.active:
+		voting_story.open_from_walking()
 	elif lantern_procession != null and lantern_procession.active:
 		lantern_procession.open_from_walking()
 	elif dog_story != null and dog_story.active:
@@ -14175,6 +14205,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event is InputEventKey and event.pressed and not event.echo and event.keycode==KEY_ESCAPE: story_picker.back_to_stories()
 		get_viewport().set_input_as_handled()
 		return
+	if is_voting_story_visible():
+		if event is InputEventKey and event.pressed and not event.echo and event.keycode==KEY_ESCAPE: voting_story.close_story()
+		get_viewport().set_input_as_handled()
+		return
 	if is_lantern_procession_visible():
 		if event is InputEventKey and event.pressed and not event.echo and event.keycode==KEY_ESCAPE: lantern_procession.close_story()
 		get_viewport().set_input_as_handled()
@@ -14485,6 +14519,7 @@ func choose_next(direction: int) -> void:
 	if power_story != null: power_story.cancel_intent()
 	if dog_story != null: dog_story.cancel_intent()
 	if lantern_procession != null: lantern_procession.cancel_intent()
+	if voting_story != null: voting_story.cancel_intent()
 	in_overview = false
 	in_wide_overview = false
 	following_player = false
@@ -14549,6 +14584,7 @@ func overview(announce_view := true) -> void:
 	if power_story != null: power_story.cancel_intent()
 	if dog_story != null: dog_story.cancel_intent()
 	if lantern_procession != null: lantern_procession.cancel_intent()
+	if voting_story != null: voting_story.cancel_intent()
 	in_overview = true
 	hide_speech_bubble()
 	hide_story_card()
@@ -14609,6 +14645,7 @@ func wide_overview(announce_view := true) -> void:
 	if power_story != null: power_story.cancel_intent()
 	if dog_story != null: dog_story.cancel_intent()
 	if lantern_procession != null: lantern_procession.cancel_intent()
+	if voting_story != null: voting_story.cancel_intent()
 	in_overview = false
 	in_wide_overview = true
 	hide_speech_bubble()
@@ -15478,6 +15515,9 @@ func make_ui() -> void:
 	lantern_procession = preload("res://lantern_procession.gd").new()
 	layer.add_child(lantern_procession)
 	lantern_procession.setup(self)
+	voting_story = preload("res://voting_story.gd").new()
+	layer.add_child(voting_story)
+	voting_story.setup(self)
 	story_picker = preload("res://story_picker.gd").new()
 	layer.add_child(story_picker)
 	story_picker.setup(self)

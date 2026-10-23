@@ -1,0 +1,15 @@
+STDOUT:
+The review is written to `C:\tenderloin-redux\kibitz-runs\2026-10-22-codex-historical-voting-ideas\r1\claude.md`. Verdict: **yes-with-fixes**. The tool check passed. I didn't change any code or run any tests.
+
+The main problems I found, all traced to the code:
+
+1. **Cadillac Hotel conflict:** the game already shows the Cadillac frontage as the "Tenderloin Museum & Info Hub · 398 Eddy" (`main.gd:672`, `main.gd:4203`). The polling list says "380 Eddy, Lobby". The episode has to explain that both addresses are the same building, or players will read it as an error.
+2. **Boeddeker conflict:** the game labels it "240 Eddy St" with an "Eddy St gate" (`main.gd:195`, `main.gd:4417-4561`). The polling list says "246 Eddy, Meeting Room". The plan forbids presenting a guessed entrance, so that gate must not become the episode's destination. Visiting the park the normal way would also fire a progress cue, which counts as an award.
+3. **Repeats Power Story:** the proposed "preparation, delivery, return" loop is the same loop Power Story already runs on the same Eddy route. Delivering anything to a real polling place also isn't backed by the research.
+4. **"The list" is overstated:** the research holds only a four-row excerpt, and the city listed 501 polling places. Glide can't be reached on the current map, so the game must say it shows three walkable sites, not the list.
+5. **"Bounded hooks" doesn't hold:** `main.gd` names each existing episode in about 40 places. A fourth episode either needs a shared episode list first, or a written list of everything the new module must hook into.
+6. **Routing:** the workaround that keeps Power Story's walks on the Eddy route is private to `power_story.gd:363-369`. The new episode needs to reuse it.
+
+As requested, the review also includes three alternative episode ideas, a recommended first slice ("Where Neighbors Voted, 2024"), and four cuts.
+
+Some connectors in this session (Box, Runway, Asana, Atlassian, Datadog, GitHub, Linear, Notion, PagerDuty, Slack) need authorization before they can be used. The claude.ai ones are set up in your claude.ai connector settings; the others via `/mcp` in an interactive session. This review didn't need any of them.

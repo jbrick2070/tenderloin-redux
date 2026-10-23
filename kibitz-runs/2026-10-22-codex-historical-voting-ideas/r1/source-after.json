@@ -1,0 +1,14 @@
+{
+  "godot/main.gd": "05d84a50ed16e0e5b62aaa8bd17abcf8342ac9073d6e650c71cdc12640bd6093",
+  "godot/story_picker.gd": "4ba451ee9c6d3207969cdbbdaa0437c73e44581e421609f3f49c11e643f9281d",
+  "godot/lantern_procession.gd": "3d067733a757e580794dc3dbefd2d8331c328cdb79dd2481e52d7f6d00f20138",
+  "godot/power_story.gd": "1a0633d659da0168897083462b3d3b18858bac628e891c396e518265600d2fd7",
+  "godot/power_place.gd": "f192f25dbe721d6a33c826046237cc41653bd473b50c8fed5c22bb94819309ed",
+  "godot/dog_story.gd": "7ce9d5e459c772c6a2824b5af88cb7a26405a34718768b5a10b60510fd2e6db2",
+  "godot/tests/study_test.gd": "da08484eb2f9b6d77c56d2d6d16725b7f32493e0e4bd063e05029c509e72ed6e",
+  "tests/godot-browser.mjs": "12516e4264c5b9438596a28b2a542e99c0095e8e01ded5a28b569aa6ba639d6a",
+  "docs/EPISODE_LOCATION_RESEARCH.md": "8064cebc54ede081cf0cf850cf2b34610f3891507196137682a40266958e8d33",
+  "docs/ROADMAP.md": "40bb45c5635bb79264f22672ab2c717cd0dd4343eac154a1d57cf3a65fbe9b33",
+  "docs/research/2026-10-22-episode-locations/polling-2024-official-selected-rows.tsv": "71689d465d8ac6e9272ff7c625ab3c887c60f55bcb95ef9355aac1195fab5d48",
+  "docs/research/2026-10-22-episode-locations/polling-addresses.json": "9d6b164ef9874f2ac4fae057bf7caeb9d38567b3bc9f3291cca3104135635e59"
+}

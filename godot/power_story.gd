@@ -138,7 +138,7 @@ func setup(owner_game: Node) -> void:
 	)
 	entry=button(game.block_page_nav,"Story",open_story)
 	entry.size_flags_horizontal=Control.SIZE_SHRINK_END
-	entry.tooltip_text="Neighborhood Stories: power, missing dogs and Halloween (F8)"
+	entry.tooltip_text="Neighborhood Stories: power, missing dogs, Halloween and election (F8)"
 	entry.accessibility_name=entry.tooltip_text
 	game.block_page_nav.move_child(entry,game.block_page_nav.get_child_count()-2)
 	entry.hide()
