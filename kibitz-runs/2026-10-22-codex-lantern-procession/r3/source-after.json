@@ -1,0 +1,13 @@
+{
+  "godot/main.gd": "147169f2e71e7624638735395064067e7ced3de9e367deceae8e61e41b4a0be3",
+  "godot/lantern_procession.gd": "d00040b534e4b6ad6356e8a0d91f1601ffbb5f5b55cbff6a87ee78e72b68c25d",
+  "godot/story_picker.gd": "a352e07370c9dc88328ac57ed069b85f90d1229ed846d0ac27f5c3a0e4e5b046",
+  "godot/power_story.gd": "517851fd4da3a480fe97e4f6b0514deb17988fbd1f43f398fcb22019a3e80966",
+  "godot/dog_story.gd": "7ce9d5e459c772c6a2824b5af88cb7a26405a34718768b5a10b60510fd2e6db2",
+  "godot/tests/study_test.gd": "466647aa4c3d6bc64bb3c90c64f2a6d8ea59edecc6bea8fddc177a68b1bfe7bc",
+  "tests/godot-browser.mjs": "1ec18133b9a34c84b326a2cf9bb291af54d52b8df577fd36e14d3222910c5720",
+  "tests/godot-data.test.mjs": "338e3becc7eb041938398d0f75ab3377eed843cc659b64a6891467f324cde963",
+  "docs/HALLOWEEN_STORY_SOURCES.md": "0e581cb0997585967dc7af3af572c82180635b8bec7b95f3fd34903e2571da85",
+  "docs/ROADMAP.md": "7ef7ced953671902bee00a203c6fde761e710bf48a172476a02436efbef3777d",
+  "docs/ASSETS.md": "1d911c9712a694fd577c20f6844cf0cf27e1ef4484210ecbf3b35e6479993a94"
+}

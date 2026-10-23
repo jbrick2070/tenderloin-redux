@@ -1,0 +1,17 @@
+STDOUT:
+I wrote the review to `kibitz-runs\2026-10-22-codex-lantern-procession\r3\claude.md`. File reads all worked, and I did not run any tests or change any code.
+
+**Verdict: buildable after fixes.** Setup order and the hooks into `main.gd` match the Dog story's pattern. Three problems should be fixed before build:
+
+1. **You can win without marching.** The finish only checks that the player is standing at the end of the route. It never checks how far the parade got (`lantern_procession.gd:273-282`). The two visitors only move while the player is on a March walk. Walking with WASD, tapping the street, or using neighbor hotkeys stops that, and the walk-control "Parade" button then lets the player choose Welcome. The visitors are left about 28 m back at the start, and neither test covers this path.
+2. **The visitors can jump forward in one frame** (`lantern_procession.gd:350-355`). Parade progress is taken from wherever the player meets the route line, with no limit tied to how far they actually moved. A player who walks ahead with WASD and then chooses March sees both visitors leap, for example from 8 m to 30 m.
+3. **The 0.85 m clearance only covers buildings, not props.** The route check (`main.gd:7817-7832`) looks at building walls and the mural/speaker footprints. It ignores street lamps, trees, NPCs and the other activities' props. The native test only checks building footprints, so "clearance including existing props" is not shown. I couldn't confirm whether any lamp, tree or NPC actually sits within 0.85 m of the chosen segment.
+
+The review also lists nine should-fix items, mostly test and focus issues:
+- The browser March step may time out depending on where the Dog test leaves the player.
+- The browser run has no count check for the lantern results.
+- No browser call uses a private profile for this episode, so the "PRIVATE prior completed profiles" claim doesn't apply here.
+- Focus goes to a disabled button after the parade is won.
+- The picker's Escape and focus handling don't return to the Power story.
+
+I also recommend cutting the picker's Earlier/Later page buttons until there is a fourth story.

@@ -1,0 +1,1289 @@
+{
+  "baseline": "ccb5ce67edd609da3d23c2dd9ac542564a87d6b4",
+  "status": "all_five_local_gates_pass",
+  "recorded_utc": "2026-10-23T06:12:58.662588+00:00",
+  "gates": {
+    "native": {
+      "rc": 0,
+      "log": "artifacts/lantern-verified-native.log",
+      "evidence": "artifacts/lantern-native-final.log"
+    },
+    "export": {
+      "rc": 0,
+      "log": "artifacts/lantern-verified-export.log"
+    },
+    "check": {
+      "rc": 0,
+      "log": "artifacts/lantern-verified-check.log"
+    },
+    "node": {
+      "rc": 0,
+      "log": "artifacts/lantern-verified-node.log"
+    },
+    "browser": {
+      "rc": 0,
+      "log": "artifacts/lantern-verified-browser.log",
+      "evidence": "artifacts/lantern-full1/execution.json"
+    }
+  },
+  "full_browser": {
+    "rc": 0,
+    "seconds": 3983.059844017029,
+    "sources_unchanged": true,
+    "files": 41,
+    "default_native_asfound_unchanged": true
+  },
+  "sources": {
+    "godot/bea_invitation.gd": "4ad40453704987fc9c29c34425b8be66c5fb8057874ab21fdd9cb89ab259b51f",
+    "godot/civic_listening.gd": "2eca8cffc35ed2753544e137515fdd6e67b1d6933fb60717763e4c540061c7e7",
+    "godot/dog_story.gd": "7ce9d5e459c772c6a2824b5af88cb7a26405a34718768b5a10b60510fd2e6db2",
+    "godot/export_presets.cfg": "48eefcc72abc4bb51ea67180a66c4c0f16b1d07a5b14a393d6506e5935e3c7b7",
+    "godot/film_screening.gd": "20a8015f821333f337158d5eb1ab820240db9999413f339451afb6a4923271dd",
+    "godot/lantern_procession.gd": "3d067733a757e580794dc3dbefd2d8331c328cdb79dd2481e52d7f6d00f20138",
+    "godot/loan_homecoming.gd": "0cac31652903848832ded6d2131c97e50e82a8c89f03e69c885aa543574472f9",
+    "godot/main.gd": "05d84a50ed16e0e5b62aaa8bd17abcf8342ac9073d6e650c71cdc12640bd6093",
+    "godot/mural_signature.gd": "a8b25e10edef62c77fb4ccb6e98c08972c579e61659ac80386a04a03bc851da2",
+    "godot/mural_stories.gd": "4dc1f266b997f8210871b4d863c19b43aeeb901beb60c822b6a92de9e48766c2",
+    "godot/mural_workshop.gd": "d44323fee68af2ac907ebba3e59aab32ffa7e08e716016b926a86acc2a20e0c8",
+    "godot/power_place.gd": "f192f25dbe721d6a33c826046237cc41653bd473b50c8fed5c22bb94819309ed",
+    "godot/power_story.gd": "1a0633d659da0168897083462b3d3b18858bac628e891c396e518265600d2fd7",
+    "godot/programme_studio.gd": "b9e2200905730fee77e785946e45f05555bd1becd8de76ade20a37ecd6667e1e",
+    "godot/project.godot": "17b7d3433d8317601597ea14d319816873d64a3fac5e2315f04212c983292a14",
+    "godot/quiet_seats.gd": "211c67f25397305c0cefd5c2c5f0bc558296ab82848c09b67cf032f0b9fc5cef",
+    "godot/rhythm_bar.gd": "4a3bfb3383156ee76a3b39d7b13a1cf84854299d76765227748398ba7f6587d0",
+    "godot/rhythm_circle.gd": "5391f7f4a7b5715c187f9cdc25f761c7a45e50c083904f671d43e57b45a27aa7",
+    "godot/shared_panel.gd": "0cf289edc823919866c03e3687935d9b5c390058e1faa8051255a3fa9067833f",
+    "godot/story_picker.gd": "4ba451ee9c6d3207969cdbbdaa0437c73e44581e421609f3f49c11e643f9281d",
+    "godot/data/buildings.json": "8b3afd7a6ec3d00ac22fb77347caeafa262be2f55ad1ddbf0a9dd296afd332d2",
+    "godot/data/lidar_2023.json": "b59ba7348bdc2c78c867993cef230353708163d1d0caa50602668f73323cdc93",
+    "godot/data/neighborhood_voices.json": "662571e5de9eb0cc9f10e25146b8da08a302758009159462b6f2a460889d0271",
+    "godot/data/power_place.json": "5eac6de7921c9eb6afaa1752a9bfc6a693e63ca70a19ea3b6d82f268b2178f52",
+    "godot/data/source_receipt.json": "4ee6ed720f64c2c4417f9607446916fd610f57dadb04ddeab66a8dbeb789c3b7",
+    "godot/data/street_trees.json": "4623f1ae6744d321967aa06250ca936267a5edac0b51aec21cc00927397dbdad",
+    "godot/tests/study_test.gd": "da08484eb2f9b6d77c56d2d6d16725b7f32493e0e4bd063e05029c509e72ed6e",
+    "godot/data/source/boeddeker_park.osm.json": "96f0c7dadc0bb43f703fbf7a72d9fc3d37f5b1075f3d4e3e4aac280e0af55c7c",
+    "godot/data/source/lidar_ept_manifest.json": "99d6fb66c87994e077a0005ae646a91063cd0364ff3a59e434c1a5f3b9bea9b5",
+    "godot/data/source/metadata.json": "93407284a55c676b96d941042dcdd6223e5e5338f3b33a0faa639b56dd2309e6",
+    "godot/data/source/osm_buildings.json": "6b00db9038f08223d5966e85264ea16340a4be3fd8267a612ec9a25fad9fbf7b",
+    "godot/data/source/street_trees_tkzw-k3nq.json": "270f370a13a9a76b72e0bc2c42dc1760cfdd0fda129fb29b3e3283003875847d",
+    "godot/data/source/larkin/3mea-di5p-metadata.json": "0c4e38f8d3c2f69150cd14c04254cd9e6c874e396b5934da9631e58929ea154a",
+    "godot/data/source/larkin/address.json": "703eac0174a434f40cfa753cc0132983ea129392a04579c325f0ec1fc4eab862",
+    "godot/data/source/larkin/gmfx-8h6i-metadata.json": "865c26aeab7026f7bf734fce77fee8f9f22b4a7ba4ee2d94aac65e9adfa1e2a4",
+    "godot/data/source/larkin/intersection.json": "b3a465baa27dfc09b34d371db7529039b0a118659bc4474aa88cb54221c75cef",
+    "godot/data/source/larkin/receipt.json": "c20abc4e7ead499b1ccc88915321b3d06ec4cdfa1563a74324b835917d260559",
+    "tests/godot-browser.mjs": "12516e4264c5b9438596a28b2a542e99c0095e8e01ded5a28b569aa6ba639d6a",
+    "tests/godot-data.test.mjs": "338e3becc7eb041938398d0f75ab3377eed843cc659b64a6891467f324cde963",
+    "scripts/build-power-place.mjs": "dc474ebc01bd1702fe36f7282a6574e404e4f71fba1d7ff9d8bb8088357181de",
+    "artifacts/godot-web/index.pck": "e3d9ec3c137c42e4cb4ebdaac65e973579b11460683d983145434f39e468ac20"
+  },
+  "matrix_counts": {
+    "lanternProcessionChecks": 3,
+    "dogStoryChecks": 6,
+    "larkinStoryChecks": 3,
+    "powerStoryChecks": 6,
+    "loanHomecomingChecks": 8,
+    "loanWorldChecks": 3,
+    "sharedPanelChecks": 9,
+    "programmeStudioChecks": 7,
+    "civicListeningChecks": 9,
+    "beaInvitationChecks": 7,
+    "quietSeatChecks": 9,
+    "filmScreeningChecks": 3,
+    "rhythmCircleChecks": 11,
+    "rhythmAuditionChecks": 11,
+    "muralStoryChecks": 8,
+    "livingMuralChecks": 8
+  },
+  "genuine_lantern_cases": [
+    {
+      "size": {
+        "width": 1100,
+        "height": 760
+      },
+      "touch": false,
+      "privateFixture": false,
+      "progress": 35.9842359870672,
+      "route": [
+        [
+          85.1051712036133,
+          -15.5769519805908
+        ],
+        [
+          49.5620384216309,
+          -9.85980606079102
+        ]
+      ],
+      "crew": [
+        {
+          "corners": [
+            {
+              "x": 608.8505859375,
+              "y": 413.538635253906
+            },
+            {
+              "x": 608.8505859375,
+              "y": 391.475036621094
+            },
+            {
+              "x": 600.93505859375,
+              "y": 419.860382080078
+            },
+            {
+              "x": 600.93505859375,
+              "y": 397.796783447266
+            }
+          ],
+          "position": [
+            53.5268402099609,
+            -10.4975481033325
+          ],
+          "visible": true
+        },
+        {
+          "corners": [
+            {
+              "x": 663.599304199219,
+              "y": 436.388092041016
+            },
+            {
+              "x": 663.599304199219,
+              "y": 414.324493408203
+            },
+            {
+              "x": 655.684020996094,
+              "y": 442.709808349609
+            },
+            {
+              "x": 655.684020996094,
+              "y": 420.646240234375
+            }
+          ],
+          "position": [
+            57.47607421875,
+            -11.1327857971191
+          ],
+          "visible": true
+        }
+      ],
+      "sourceFingerprint": {
+        "sources": {
+          "godot/main.gd": "05d84a50ed16e0e5b62aaa8bd17abcf8342ac9073d6e650c71cdc12640bd6093",
+          "godot/shared_panel.gd": "0cf289edc823919866c03e3687935d9b5c390058e1faa8051255a3fa9067833f",
+          "godot/loan_homecoming.gd": "0cac31652903848832ded6d2131c97e50e82a8c89f03e69c885aa543574472f9",
+          "godot/power_story.gd": "1a0633d659da0168897083462b3d3b18858bac628e891c396e518265600d2fd7",
+          "godot/dog_story.gd": "7ce9d5e459c772c6a2824b5af88cb7a26405a34718768b5a10b60510fd2e6db2",
+          "godot/lantern_procession.gd": "3d067733a757e580794dc3dbefd2d8331c328cdb79dd2481e52d7f6d00f20138",
+          "godot/story_picker.gd": "4ba451ee9c6d3207969cdbbdaa0437c73e44581e421609f3f49c11e643f9281d",
+          "godot/power_place.gd": "f192f25dbe721d6a33c826046237cc41653bd473b50c8fed5c22bb94819309ed",
+          "godot/data/power_place.json": "5eac6de7921c9eb6afaa1752a9bfc6a693e63ca70a19ea3b6d82f268b2178f52",
+          "godot/tests/study_test.gd": "da08484eb2f9b6d77c56d2d6d16725b7f32493e0e4bd063e05029c509e72ed6e"
+        },
+        "pack_sha256": "e3d9ec3c137c42e4cb4ebdaac65e973579b11460683d983145434f39e468ac20"
+      }
+    },
+    {
+      "size": {
+        "width": 390,
+        "height": 667
+      },
+      "touch": true,
+      "privateFixture": false,
+      "progress": 35.9842359870672,
+      "route": [
+        [
+          85.1051712036133,
+          -15.5769519805908
+        ],
+        [
+          49.5620384216309,
+          -9.85980606079102
+        ]
+      ],
+      "crew": [
+        {
+          "corners": [
+            {
+              "x": 246.649124145508,
+              "y": 362.9345703125
+            },
+            {
+              "x": 246.649124145508,
+              "y": 343.570861816406
+            },
+            {
+              "x": 239.702224731445,
+              "y": 368.482727050781
+            },
+            {
+              "x": 239.702224731445,
+              "y": 349.119018554688
+            }
+          ],
+          "position": [
+            53.5268402099609,
+            -10.4975481033325
+          ],
+          "visible": true
+        },
+        {
+          "corners": [
+            {
+              "x": 294.698333740234,
+              "y": 382.987976074219
+            },
+            {
+              "x": 294.698333740234,
+              "y": 363.624267578125
+            },
+            {
+              "x": 287.751647949219,
+              "y": 388.5361328125
+            },
+            {
+              "x": 287.751647949219,
+              "y": 369.172424316406
+            }
+          ],
+          "position": [
+            57.47607421875,
+            -11.1327857971191
+          ],
+          "visible": true
+        }
+      ],
+      "sourceFingerprint": {
+        "sources": {
+          "godot/main.gd": "05d84a50ed16e0e5b62aaa8bd17abcf8342ac9073d6e650c71cdc12640bd6093",
+          "godot/shared_panel.gd": "0cf289edc823919866c03e3687935d9b5c390058e1faa8051255a3fa9067833f",
+          "godot/loan_homecoming.gd": "0cac31652903848832ded6d2131c97e50e82a8c89f03e69c885aa543574472f9",
+          "godot/power_story.gd": "1a0633d659da0168897083462b3d3b18858bac628e891c396e518265600d2fd7",
+          "godot/dog_story.gd": "7ce9d5e459c772c6a2824b5af88cb7a26405a34718768b5a10b60510fd2e6db2",
+          "godot/lantern_procession.gd": "3d067733a757e580794dc3dbefd2d8331c328cdb79dd2481e52d7f6d00f20138",
+          "godot/story_picker.gd": "4ba451ee9c6d3207969cdbbdaa0437c73e44581e421609f3f49c11e643f9281d",
+          "godot/power_place.gd": "f192f25dbe721d6a33c826046237cc41653bd473b50c8fed5c22bb94819309ed",
+          "godot/data/power_place.json": "5eac6de7921c9eb6afaa1752a9bfc6a693e63ca70a19ea3b6d82f268b2178f52",
+          "godot/tests/study_test.gd": "da08484eb2f9b6d77c56d2d6d16725b7f32493e0e4bd063e05029c509e72ed6e"
+        },
+        "pack_sha256": "e3d9ec3c137c42e4cb4ebdaac65e973579b11460683d983145434f39e468ac20"
+      }
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 667
+      },
+      "touch": true,
+      "privateFixture": false,
+      "progress": 35.9842359870672,
+      "route": [
+        [
+          85.1051712036133,
+          -15.5769519805908
+        ],
+        [
+          49.5620384216309,
+          -9.85980606079102
+        ]
+      ],
+      "crew": [
+        {
+          "corners": [
+            {
+              "x": 211.649124145508,
+              "y": 362.9345703125
+            },
+            {
+              "x": 211.649124145508,
+              "y": 343.570861816406
+            },
+            {
+              "x": 204.702224731445,
+              "y": 368.482727050781
+            },
+            {
+              "x": 204.702224731445,
+              "y": 349.119018554688
+            }
+          ],
+          "position": [
+            53.5268402099609,
+            -10.4975481033325
+          ],
+          "visible": true
+        },
+        {
+          "corners": [
+            {
+              "x": 259.698303222656,
+              "y": 382.987976074219
+            },
+            {
+              "x": 259.698303222656,
+              "y": 363.624267578125
+            },
+            {
+              "x": 252.75163269043,
+              "y": 388.5361328125
+            },
+            {
+              "x": 252.75163269043,
+              "y": 369.172424316406
+            }
+          ],
+          "position": [
+            57.47607421875,
+            -11.1327857971191
+          ],
+          "visible": true
+        }
+      ],
+      "sourceFingerprint": {
+        "sources": {
+          "godot/main.gd": "05d84a50ed16e0e5b62aaa8bd17abcf8342ac9073d6e650c71cdc12640bd6093",
+          "godot/shared_panel.gd": "0cf289edc823919866c03e3687935d9b5c390058e1faa8051255a3fa9067833f",
+          "godot/loan_homecoming.gd": "0cac31652903848832ded6d2131c97e50e82a8c89f03e69c885aa543574472f9",
+          "godot/power_story.gd": "1a0633d659da0168897083462b3d3b18858bac628e891c396e518265600d2fd7",
+          "godot/dog_story.gd": "7ce9d5e459c772c6a2824b5af88cb7a26405a34718768b5a10b60510fd2e6db2",
+          "godot/lantern_procession.gd": "3d067733a757e580794dc3dbefd2d8331c328cdb79dd2481e52d7f6d00f20138",
+          "godot/story_picker.gd": "4ba451ee9c6d3207969cdbbdaa0437c73e44581e421609f3f49c11e643f9281d",
+          "godot/power_place.gd": "f192f25dbe721d6a33c826046237cc41653bd473b50c8fed5c22bb94819309ed",
+          "godot/data/power_place.json": "5eac6de7921c9eb6afaa1752a9bfc6a693e63ca70a19ea3b6d82f268b2178f52",
+          "godot/tests/study_test.gd": "da08484eb2f9b6d77c56d2d6d16725b7f32493e0e4bd063e05029c509e72ed6e"
+        },
+        "pack_sha256": "e3d9ec3c137c42e4cb4ebdaac65e973579b11460683d983145434f39e468ac20"
+      }
+    }
+  ],
+  "private_preflight_cases": [
+    {
+      "size": {
+        "width": 1100,
+        "height": 760
+      },
+      "touch": false,
+      "privateFixture": true,
+      "progress": 35.9842359870672,
+      "route": [
+        [
+          85.1051712036133,
+          -15.5769519805908
+        ],
+        [
+          49.5620384216309,
+          -9.85980606079102
+        ]
+      ],
+      "crew": [
+        {
+          "corners": [
+            {
+              "x": 608.8505859375,
+              "y": 413.538635253906
+            },
+            {
+              "x": 608.8505859375,
+              "y": 391.475036621094
+            },
+            {
+              "x": 600.93505859375,
+              "y": 419.860382080078
+            },
+            {
+              "x": 600.93505859375,
+              "y": 397.796783447266
+            }
+          ],
+          "position": [
+            53.5268402099609,
+            -10.4975481033325
+          ],
+          "visible": true
+        },
+        {
+          "corners": [
+            {
+              "x": 663.599304199219,
+              "y": 436.388092041016
+            },
+            {
+              "x": 663.599304199219,
+              "y": 414.324493408203
+            },
+            {
+              "x": 655.684020996094,
+              "y": 442.709808349609
+            },
+            {
+              "x": 655.684020996094,
+              "y": 420.646240234375
+            }
+          ],
+          "position": [
+            57.47607421875,
+            -11.1327857971191
+          ],
+          "visible": true
+        }
+      ],
+      "sourceFingerprint": {
+        "sources": {
+          "godot/main.gd": "05d84a50ed16e0e5b62aaa8bd17abcf8342ac9073d6e650c71cdc12640bd6093",
+          "godot/shared_panel.gd": "0cf289edc823919866c03e3687935d9b5c390058e1faa8051255a3fa9067833f",
+          "godot/loan_homecoming.gd": "0cac31652903848832ded6d2131c97e50e82a8c89f03e69c885aa543574472f9",
+          "godot/power_story.gd": "1a0633d659da0168897083462b3d3b18858bac628e891c396e518265600d2fd7",
+          "godot/dog_story.gd": "7ce9d5e459c772c6a2824b5af88cb7a26405a34718768b5a10b60510fd2e6db2",
+          "godot/lantern_procession.gd": "3d067733a757e580794dc3dbefd2d8331c328cdb79dd2481e52d7f6d00f20138",
+          "godot/story_picker.gd": "4ba451ee9c6d3207969cdbbdaa0437c73e44581e421609f3f49c11e643f9281d",
+          "godot/power_place.gd": "f192f25dbe721d6a33c826046237cc41653bd473b50c8fed5c22bb94819309ed",
+          "godot/data/power_place.json": "5eac6de7921c9eb6afaa1752a9bfc6a693e63ca70a19ea3b6d82f268b2178f52",
+          "godot/tests/study_test.gd": "da08484eb2f9b6d77c56d2d6d16725b7f32493e0e4bd063e05029c509e72ed6e"
+        },
+        "pack_sha256": "e3d9ec3c137c42e4cb4ebdaac65e973579b11460683d983145434f39e468ac20"
+      }
+    },
+    {
+      "size": {
+        "width": 390,
+        "height": 667
+      },
+      "touch": true,
+      "privateFixture": true,
+      "progress": 35.9842359870672,
+      "route": [
+        [
+          85.1051712036133,
+          -15.5769519805908
+        ],
+        [
+          49.5620384216309,
+          -9.85980606079102
+        ]
+      ],
+      "crew": [
+        {
+          "corners": [
+            {
+              "x": 246.649124145508,
+              "y": 362.9345703125
+            },
+            {
+              "x": 246.649124145508,
+              "y": 343.570861816406
+            },
+            {
+              "x": 239.702224731445,
+              "y": 368.482727050781
+            },
+            {
+              "x": 239.702224731445,
+              "y": 349.119018554688
+            }
+          ],
+          "position": [
+            53.5268402099609,
+            -10.4975481033325
+          ],
+          "visible": true
+        },
+        {
+          "corners": [
+            {
+              "x": 294.698333740234,
+              "y": 382.987976074219
+            },
+            {
+              "x": 294.698333740234,
+              "y": 363.624267578125
+            },
+            {
+              "x": 287.751647949219,
+              "y": 388.5361328125
+            },
+            {
+              "x": 287.751647949219,
+              "y": 369.172424316406
+            }
+          ],
+          "position": [
+            57.47607421875,
+            -11.1327857971191
+          ],
+          "visible": true
+        }
+      ],
+      "sourceFingerprint": {
+        "sources": {
+          "godot/main.gd": "05d84a50ed16e0e5b62aaa8bd17abcf8342ac9073d6e650c71cdc12640bd6093",
+          "godot/shared_panel.gd": "0cf289edc823919866c03e3687935d9b5c390058e1faa8051255a3fa9067833f",
+          "godot/loan_homecoming.gd": "0cac31652903848832ded6d2131c97e50e82a8c89f03e69c885aa543574472f9",
+          "godot/power_story.gd": "1a0633d659da0168897083462b3d3b18858bac628e891c396e518265600d2fd7",
+          "godot/dog_story.gd": "7ce9d5e459c772c6a2824b5af88cb7a26405a34718768b5a10b60510fd2e6db2",
+          "godot/lantern_procession.gd": "3d067733a757e580794dc3dbefd2d8331c328cdb79dd2481e52d7f6d00f20138",
+          "godot/story_picker.gd": "4ba451ee9c6d3207969cdbbdaa0437c73e44581e421609f3f49c11e643f9281d",
+          "godot/power_place.gd": "f192f25dbe721d6a33c826046237cc41653bd473b50c8fed5c22bb94819309ed",
+          "godot/data/power_place.json": "5eac6de7921c9eb6afaa1752a9bfc6a693e63ca70a19ea3b6d82f268b2178f52",
+          "godot/tests/study_test.gd": "da08484eb2f9b6d77c56d2d6d16725b7f32493e0e4bd063e05029c509e72ed6e"
+        },
+        "pack_sha256": "e3d9ec3c137c42e4cb4ebdaac65e973579b11460683d983145434f39e468ac20"
+      }
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 667
+      },
+      "touch": true,
+      "privateFixture": true,
+      "progress": 35.9842359870672,
+      "route": [
+        [
+          85.1051712036133,
+          -15.5769519805908
+        ],
+        [
+          49.5620384216309,
+          -9.85980606079102
+        ]
+      ],
+      "crew": [
+        {
+          "corners": [
+            {
+              "x": 211.649124145508,
+              "y": 362.9345703125
+            },
+            {
+              "x": 211.649124145508,
+              "y": 343.570861816406
+            },
+            {
+              "x": 204.702224731445,
+              "y": 368.482727050781
+            },
+            {
+              "x": 204.702224731445,
+              "y": 349.119018554688
+            }
+          ],
+          "position": [
+            53.5268402099609,
+            -10.4975481033325
+          ],
+          "visible": true
+        },
+        {
+          "corners": [
+            {
+              "x": 259.698303222656,
+              "y": 382.987976074219
+            },
+            {
+              "x": 259.698303222656,
+              "y": 363.624267578125
+            },
+            {
+              "x": 252.75163269043,
+              "y": 388.5361328125
+            },
+            {
+              "x": 252.75163269043,
+              "y": 369.172424316406
+            }
+          ],
+          "position": [
+            57.47607421875,
+            -11.1327857971191
+          ],
+          "visible": true
+        }
+      ],
+      "sourceFingerprint": {
+        "sources": {
+          "godot/main.gd": "05d84a50ed16e0e5b62aaa8bd17abcf8342ac9073d6e650c71cdc12640bd6093",
+          "godot/shared_panel.gd": "0cf289edc823919866c03e3687935d9b5c390058e1faa8051255a3fa9067833f",
+          "godot/loan_homecoming.gd": "0cac31652903848832ded6d2131c97e50e82a8c89f03e69c885aa543574472f9",
+          "godot/power_story.gd": "1a0633d659da0168897083462b3d3b18858bac628e891c396e518265600d2fd7",
+          "godot/dog_story.gd": "7ce9d5e459c772c6a2824b5af88cb7a26405a34718768b5a10b60510fd2e6db2",
+          "godot/lantern_procession.gd": "3d067733a757e580794dc3dbefd2d8331c328cdb79dd2481e52d7f6d00f20138",
+          "godot/story_picker.gd": "4ba451ee9c6d3207969cdbbdaa0437c73e44581e421609f3f49c11e643f9281d",
+          "godot/power_place.gd": "f192f25dbe721d6a33c826046237cc41653bd473b50c8fed5c22bb94819309ed",
+          "godot/data/power_place.json": "5eac6de7921c9eb6afaa1752a9bfc6a693e63ca70a19ea3b6d82f268b2178f52",
+          "godot/tests/study_test.gd": "da08484eb2f9b6d77c56d2d6d16725b7f32493e0e4bd063e05029c509e72ed6e"
+        },
+        "pack_sha256": "e3d9ec3c137c42e4cb4ebdaac65e973579b11460683d983145434f39e468ac20"
+      }
+    },
+    {
+      "size": {
+        "width": 520,
+        "height": 360
+      },
+      "touch": true,
+      "privateFixture": true,
+      "progress": 35.9842359870672,
+      "route": [
+        [
+          85.1051712036133,
+          -15.5769519805908
+        ],
+        [
+          49.5620384216309,
+          -9.85980606079102
+        ]
+      ],
+      "crew": [
+        {
+          "corners": [
+            {
+              "x": 287.87646484375,
+              "y": 190.886596679688
+            },
+            {
+              "x": 287.87646484375,
+              "y": 180.435424804688
+            },
+            {
+              "x": 284.127136230469,
+              "y": 193.881103515625
+            },
+            {
+              "x": 284.127136230469,
+              "y": 183.429931640625
+            }
+          ],
+          "position": [
+            53.5268402099609,
+            -10.4975481033325
+          ],
+          "visible": true
+        },
+        {
+          "corners": [
+            {
+              "x": 313.81005859375,
+              "y": 201.710083007812
+            },
+            {
+              "x": 313.81005859375,
+              "y": 191.258911132812
+            },
+            {
+              "x": 310.060729980469,
+              "y": 204.70458984375
+            },
+            {
+              "x": 310.060729980469,
+              "y": 194.25341796875
+            }
+          ],
+          "position": [
+            57.47607421875,
+            -11.1327857971191
+          ],
+          "visible": true
+        }
+      ],
+      "sourceFingerprint": {
+        "sources": {
+          "godot/main.gd": "05d84a50ed16e0e5b62aaa8bd17abcf8342ac9073d6e650c71cdc12640bd6093",
+          "godot/shared_panel.gd": "0cf289edc823919866c03e3687935d9b5c390058e1faa8051255a3fa9067833f",
+          "godot/loan_homecoming.gd": "0cac31652903848832ded6d2131c97e50e82a8c89f03e69c885aa543574472f9",
+          "godot/power_story.gd": "1a0633d659da0168897083462b3d3b18858bac628e891c396e518265600d2fd7",
+          "godot/dog_story.gd": "7ce9d5e459c772c6a2824b5af88cb7a26405a34718768b5a10b60510fd2e6db2",
+          "godot/lantern_procession.gd": "3d067733a757e580794dc3dbefd2d8331c328cdb79dd2481e52d7f6d00f20138",
+          "godot/story_picker.gd": "4ba451ee9c6d3207969cdbbdaa0437c73e44581e421609f3f49c11e643f9281d",
+          "godot/power_place.gd": "f192f25dbe721d6a33c826046237cc41653bd473b50c8fed5c22bb94819309ed",
+          "godot/data/power_place.json": "5eac6de7921c9eb6afaa1752a9bfc6a693e63ca70a19ea3b6d82f268b2178f52",
+          "godot/tests/study_test.gd": "da08484eb2f9b6d77c56d2d6d16725b7f32493e0e4bd063e05029c509e72ed6e"
+        },
+        "pack_sha256": "e3d9ec3c137c42e4cb4ebdaac65e973579b11460683d983145434f39e468ac20"
+      }
+    },
+    {
+      "size": {
+        "width": 559,
+        "height": 360
+      },
+      "touch": false,
+      "privateFixture": true,
+      "progress": 35.9842359870672,
+      "route": [
+        [
+          85.1051712036133,
+          -15.5769519805908
+        ],
+        [
+          49.5620384216309,
+          -9.85980606079102
+        ]
+      ],
+      "crew": [
+        {
+          "corners": [
+            {
+              "x": 307.37646484375,
+              "y": 190.886596679688
+            },
+            {
+              "x": 307.37646484375,
+              "y": 180.435424804688
+            },
+            {
+              "x": 303.627136230469,
+              "y": 193.881103515625
+            },
+            {
+              "x": 303.627136230469,
+              "y": 183.429931640625
+            }
+          ],
+          "position": [
+            53.5268402099609,
+            -10.4975481033325
+          ],
+          "visible": true
+        },
+        {
+          "corners": [
+            {
+              "x": 333.31005859375,
+              "y": 201.710083007812
+            },
+            {
+              "x": 333.31005859375,
+              "y": 191.258911132812
+            },
+            {
+              "x": 329.560729980469,
+              "y": 204.70458984375
+            },
+            {
+              "x": 329.560729980469,
+              "y": 194.25341796875
+            }
+          ],
+          "position": [
+            57.47607421875,
+            -11.1327857971191
+          ],
+          "visible": true
+        }
+      ],
+      "sourceFingerprint": {
+        "sources": {
+          "godot/main.gd": "05d84a50ed16e0e5b62aaa8bd17abcf8342ac9073d6e650c71cdc12640bd6093",
+          "godot/shared_panel.gd": "0cf289edc823919866c03e3687935d9b5c390058e1faa8051255a3fa9067833f",
+          "godot/loan_homecoming.gd": "0cac31652903848832ded6d2131c97e50e82a8c89f03e69c885aa543574472f9",
+          "godot/power_story.gd": "1a0633d659da0168897083462b3d3b18858bac628e891c396e518265600d2fd7",
+          "godot/dog_story.gd": "7ce9d5e459c772c6a2824b5af88cb7a26405a34718768b5a10b60510fd2e6db2",
+          "godot/lantern_procession.gd": "3d067733a757e580794dc3dbefd2d8331c328cdb79dd2481e52d7f6d00f20138",
+          "godot/story_picker.gd": "4ba451ee9c6d3207969cdbbdaa0437c73e44581e421609f3f49c11e643f9281d",
+          "godot/power_place.gd": "f192f25dbe721d6a33c826046237cc41653bd473b50c8fed5c22bb94819309ed",
+          "godot/data/power_place.json": "5eac6de7921c9eb6afaa1752a9bfc6a693e63ca70a19ea3b6d82f268b2178f52",
+          "godot/tests/study_test.gd": "da08484eb2f9b6d77c56d2d6d16725b7f32493e0e4bd063e05029c509e72ed6e"
+        },
+        "pack_sha256": "e3d9ec3c137c42e4cb4ebdaac65e973579b11460683d983145434f39e468ac20"
+      }
+    },
+    {
+      "size": {
+        "width": 640,
+        "height": 360
+      },
+      "touch": true,
+      "privateFixture": true,
+      "progress": 35.9842359870672,
+      "route": [
+        [
+          85.1051712036133,
+          -15.5769519805908
+        ],
+        [
+          49.5620384216309,
+          -9.85980606079102
+        ]
+      ],
+      "crew": [
+        {
+          "corners": [
+            {
+              "x": 347.876586914062,
+              "y": 195.88671875
+            },
+            {
+              "x": 347.876586914062,
+              "y": 185.435546875
+            },
+            {
+              "x": 344.127136230469,
+              "y": 198.881225585938
+            },
+            {
+              "x": 344.127136230469,
+              "y": 188.430053710938
+            }
+          ],
+          "position": [
+            53.5268402099609,
+            -10.4975481033325
+          ],
+          "visible": true
+        },
+        {
+          "corners": [
+            {
+              "x": 373.810180664062,
+              "y": 206.710144042969
+            },
+            {
+              "x": 373.810180664062,
+              "y": 196.258972167969
+            },
+            {
+              "x": 370.060852050781,
+              "y": 209.704650878906
+            },
+            {
+              "x": 370.060852050781,
+              "y": 199.253479003906
+            }
+          ],
+          "position": [
+            57.47607421875,
+            -11.1327857971191
+          ],
+          "visible": true
+        }
+      ],
+      "sourceFingerprint": {
+        "sources": {
+          "godot/main.gd": "05d84a50ed16e0e5b62aaa8bd17abcf8342ac9073d6e650c71cdc12640bd6093",
+          "godot/shared_panel.gd": "0cf289edc823919866c03e3687935d9b5c390058e1faa8051255a3fa9067833f",
+          "godot/loan_homecoming.gd": "0cac31652903848832ded6d2131c97e50e82a8c89f03e69c885aa543574472f9",
+          "godot/power_story.gd": "1a0633d659da0168897083462b3d3b18858bac628e891c396e518265600d2fd7",
+          "godot/dog_story.gd": "7ce9d5e459c772c6a2824b5af88cb7a26405a34718768b5a10b60510fd2e6db2",
+          "godot/lantern_procession.gd": "3d067733a757e580794dc3dbefd2d8331c328cdb79dd2481e52d7f6d00f20138",
+          "godot/story_picker.gd": "4ba451ee9c6d3207969cdbbdaa0437c73e44581e421609f3f49c11e643f9281d",
+          "godot/power_place.gd": "f192f25dbe721d6a33c826046237cc41653bd473b50c8fed5c22bb94819309ed",
+          "godot/data/power_place.json": "5eac6de7921c9eb6afaa1752a9bfc6a693e63ca70a19ea3b6d82f268b2178f52",
+          "godot/tests/study_test.gd": "da08484eb2f9b6d77c56d2d6d16725b7f32493e0e4bd063e05029c509e72ed6e"
+        },
+        "pack_sha256": "e3d9ec3c137c42e4cb4ebdaac65e973579b11460683d983145434f39e468ac20"
+      }
+    }
+  ],
+  "capture_scope": "1100/390/320 current root captures come from the genuine full run; 520/559/640 root captures remain PRIVATE preflight4. The separate preflight4 archive retains all six private cases before overwrites. Each case includes its sourceFingerprint.",
+  "runs": [
+    {
+      "activityDetailReadabilityVerified": true,
+      "activityTouchDragVerified": false,
+      "activityKeyboardScrollVerified": true,
+      "readableHubActionsVerified": true,
+      "boundedHubDetailsVerified": true,
+      "defaultMusicOnVerified": true,
+      "runningAudioContextVerified": true,
+      "touchMusicToggleVerified": true,
+      "readableRewardAndGuideVerified": true,
+      "inspectionResumeVerified": true,
+      "walkingStopControlVerified": true,
+      "compactHeaderHeight": 98,
+      "compactInfoToggleVerified": true,
+      "startupOrientationVerified": true,
+      "findMeAndMapVerified": true,
+      "rewardSoundsAndMuteVerified": true,
+      "persistentProgressVerified": true,
+      "surpriseDiscoveryVerified": true,
+      "surpriseKeepsakeReloadVerified": true,
+      "chapter6ConversationVerified": true,
+      "sessionLandmarkTourVerified": true,
+      "fullSaveBytes": 1727,
+      "viewport": {
+        "width": 1100,
+        "height": 760
+      },
+      "overviewBytes": 248410,
+      "selectedBytes": 213505,
+      "neighborBytes": 226851,
+      "muralBytes": 226022,
+      "musicBytes": 189221,
+      "blockBytes": 167260,
+      "blackhawkBytes": 208400,
+      "wideBytes": 243799,
+      "keyboardActivationVerified": true,
+      "neighborWalkVerified": true,
+      "muralSaveReloadVerified": true,
+      "rookMusicAuditionVerified": true,
+      "blockCompletionVerified": true,
+      "widerTenderloinVerified": true,
+      "m1EpilogueVerified": true,
+      "m3HostingVerified": true,
+      "m4CivicFilmVerified": true,
+      "m5VoicesIsolatedVerified": true,
+      "m6KeepsakeSvgExportVerified": true,
+      "m6PerfBudgetVerified": true,
+      "perfSnapshot": {
+        "astar_expanded_cells": 2222,
+        "astar_used": true,
+        "district_boundary_present": true,
+        "object_node_count": 2887,
+        "opening_buildings_count": 58,
+        "pathfind_blackhawk_usec": 84200,
+        "pathfind_blackhawk_waypoints": 3,
+        "pathfind_budget_max_usec": 250000,
+        "pathfind_cold_cache": true,
+        "save_budget_max_bytes": 4096,
+        "save_budget_max_usec": 50000,
+        "save_bytes": 1534,
+        "save_roundtrip_usec": 200,
+        "street_ways_count": 20,
+        "svg_samples": {
+          "civic_plan": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"420\" height=\"210\" viewBox=\"0 0 420 210\"><title>Small listening circle: schematic shared-space plan</title><rect width=\"420\" height=\"210\" rx=\"12\" fill=\"#f3eedf\"/><path d=\"M20 100H400\" stroke=\"#91bac2\" stroke-width=\"32\"/><path d=\"M20 100H400\" stroke=\"#fffdf5\" stroke-width=\"2\" stroke-dasharray=\"7 6\"/><circle cx=\"100\" cy=\"42\" r=\"10\" fill=\"#75907c\"/><circle cx=\"145\" cy=\"30\" r=\"10\" fill=\"#75907c\"/><circle cx=\"190\" cy=\"42\" r=\"10\" fill=\"#75907c\"/><circle cx=\"100\" cy=\"158\" r=\"10\" fill=\"#75907c\"/><circle cx=\"145\" cy=\"170\" r=\"10\" fill=\"#75907c\"/><circle cx=\"190\" cy=\"158\" r=\"10\" fill=\"#75907c\"/><rect x=\"260\" y=\"30\" width=\"75\" height=\"32\" rx=\"4\" fill=\"#d9a2b2\"/><text x=\"310\" y=\"105\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#253f35\">Clear route</text><text x=\"22\" y=\"199\" font-family=\"sans-serif\" font-size=\"11\" fill=\"#253f35\">Fictional setup \u00b7 schematic, not surveyed access widths</text></svg>",
+          "film_frame": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"420\" height=\"236\" viewBox=\"0 0 420 236\"><title>An empty seat \u2014 original illustrated frame</title><rect width=\"420\" height=\"236\" rx=\"12\" fill=\"#253f35\"/><rect x=\"12\" y=\"17\" width=\"396\" height=\"202\" rx=\"5\" fill=\"#ecebdc\"/><path d=\"M20 190H400\" stroke=\"#91bac2\" stroke-width=\"6\"/><g transform=\"translate(-30 -8) scale(1.2)\"><path d=\"M155 143V103H220V143M157 119H218M159 143V167M216 143V167\" fill=\"none\" stroke=\"#276a5a\" stroke-width=\"8\" stroke-linecap=\"round\"/></g><path d=\"M25 9H395M25 227H395\" stroke=\"#f3eedf\" stroke-width=\"4\" stroke-dasharray=\"8 10\"/></svg>",
+          "keepsake": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 640 480\" role=\"img\" aria-labelledby=\"title desc\"><title id=\"title\">Stories around the Long Table</title><desc id=\"desc\">Fictional gathering keepsake with Bea, Celeste, Dez, Thanh. Rook is not pictured. An original illustration, not a photograph of a real place or person.</desc><rect width=\"640\" height=\"480\" rx=\"8\" fill=\"#faf3df\"/><rect x=\"20\" y=\"20\" width=\"600\" height=\"395\" rx=\"3\" fill=\"#dce2cc\"/><path d=\"M20 105h600M20 282h600\" stroke=\"#c3cdb6\" stroke-width=\"2\"/><path d=\"M45 69Q320 138 595 69\" fill=\"none\" stroke=\"#647b62\" stroke-width=\"2\"/><path d=\"M55 72h20l-10 22z\" fill=\"#c37e71\"/><path d=\"M92 79.5657117545147h20l-10 22z\" fill=\"#276a5a\"/><path d=\"M129 86.75204712999698h20l-10 22z\" fill=\"#d6a449\"/><path d=\"M166 93.19865326319695h20l-10 22z\" fill=\"#c37e71\"/><path d=\"M203 98.58227040391301h20l-10 22z\" fill=\"#276a5a\"/><path d=\"M240 102.63294150868225h20l-10 22z\" fill=\"#d6a449\"/><path d=\"M277 105.147549014182h20l-10 22z\" fill=\"#c37e71\"/><path d=\"M314 106h20l-10 22z\" fill=\"#276a5a\"/><path d=\"M351 105.147549014182h20l-10 22z\" fill=\"#d6a449\"/><path d=\"M388 102.63294150868225h20l-10 22z\" fill=\"#c37e71\"/><path d=\"M425 98.58227040391301h20l-10 22z\" fill=\"#276a5a\"/><path d=\"M462 93.19865326319695h20l-10 22z\" fill=\"#d6a449\"/><path d=\"M499 86.75204712999698h20l-10 22z\" fill=\"#c37e71\"/><path d=\"M536 79.5657117545147h20l-10 22z\" fill=\"#276a5a\"/><path d=\"M573 72h20l-10 22z\" fill=\"#d6a449\"/><rect x=\"91\" y=\"123\" width=\"455\" height=\"145\" rx=\"4\" fill=\"#f4e3ba\" stroke=\"#b58e5d\" stroke-width=\"8\"/><g transform=\"translate(135 155)\" stroke=\"#c37e71\" stroke-width=\"5\" stroke-linecap=\"round\"><path d=\"M-15 0h30M0-15v30M-11-11l22 22M-11 11l22-22\"/></g><path d=\"M248 198q12-17 24 0t24 0M248 209q12-17 24 0t24 0\" stroke=\"#276a5a\" stroke-width=\"4\" fill=\"none\"/><text x=\"407\" y=\"247\" text-anchor=\"middle\" font-family=\"Georgia,serif\" font-size=\"24\" fill=\"#d6a449\">RISE</text><g data-guest=\"bea\" transform=\"translate(161 321)\"><ellipse cx=\"3\" cy=\"47\" rx=\"34\" ry=\"7\" fill=\"#64735b22\"/><path d=\"M-10 10v33M10 10v33\" stroke=\"#3d5149\" stroke-width=\"10\" stroke-linecap=\"round\"/><rect x=\"-22\" y=\"-30\" width=\"44\" height=\"50\" rx=\"12\" fill=\"#c5874f\"/><path d=\"M-25-19v35M25-19v35\" stroke=\"#966345\" stroke-width=\"8\" stroke-linecap=\"round\"/><circle cy=\"-49\" r=\"18\" fill=\"#966345\"/><path d=\"M-18-52a18 18 0 0 1 36 0\" fill=\"#dad7c6\"/><g stroke=\"#496557\" stroke-width=\"4\" fill=\"none\"><path d=\"M-31 10l-8 39h68l-6-39\"/><path d=\"M-35 33h61\"/></g><circle cx=\"-37\" cy=\"52\" r=\"5\" fill=\"#496557\"/><circle cx=\"29\" cy=\"52\" r=\"5\" fill=\"#496557\"/><text y=\"76\" text-anchor=\"middle\" font-size=\"15\" fill=\"#41594e\">Bea</text></g><g data-guest=\"celeste\" transform=\"translate(267 321)\"><ellipse cx=\"3\" cy=\"47\" rx=\"34\" ry=\"7\" fill=\"#64735b22\"/><path d=\"M-10 10v33M10 10v33\" stroke=\"#3d5149\" stroke-width=\"10\" stroke-linecap=\"round\"/><rect x=\"-22\" y=\"-30\" width=\"44\" height=\"50\" rx=\"12\" fill=\"#c87d82\"/><path d=\"M-25-19v35M25-19v35\" stroke=\"#8b5b3f\" stroke-width=\"8\" stroke-linecap=\"round\"/><circle cy=\"-49\" r=\"18\" fill=\"#8b5b3f\"/><path d=\"M-18-52a18 18 0 0 1 36 0\" fill=\"#383c32\"/><text y=\"76\" text-anchor=\"middle\" font-size=\"15\" fill=\"#41594e\">Celeste</text></g><g data-guest=\"dez\" transform=\"translate(373 321)\"><ellipse cx=\"3\" cy=\"47\" rx=\"34\" ry=\"7\" fill=\"#64735b22\"/><path d=\"M-10 10v33M10 10v33\" stroke=\"#3d5149\" stroke-width=\"10\" stroke-linecap=\"round\"/><rect x=\"-22\" y=\"-30\" width=\"44\" height=\"50\" rx=\"12\" fill=\"#978aaf\"/><path d=\"M-25-19v35M25-19v35\" stroke=\"#704b37\" stroke-width=\"8\" stroke-linecap=\"round\"/><circle cy=\"-49\" r=\"18\" fill=\"#704b37\"/><path d=\"M-18-52a18 18 0 0 1 36 0\" fill=\"#292f2b\"/><path d=\"M-20-50a20 20 0 0 1 40 0\" fill=\"none\" stroke=\"#dfc57f\" stroke-width=\"4\"/><rect x=\"-23\" y=\"-54\" width=\"6\" height=\"17\" rx=\"2\" fill=\"#dfc57f\"/><rect x=\"17\" y=\"-54\" width=\"6\" height=\"17\" rx=\"2\" fill=\"#dfc57f\"/><text y=\"76\" text-anchor=\"middle\" font-size=\"15\" fill=\"#41594e\">Dez</text></g><g data-guest=\"thanh\" transform=\"translate(479 321)\"><ellipse cx=\"3\" cy=\"47\" rx=\"34\" ry=\"7\" fill=\"#64735b22\"/><path d=\"M-10 10v33M10 10v33\" stroke=\"#3d5149\" stroke-width=\"10\" stroke-linecap=\"round\"/><rect x=\"-22\" y=\"-30\" width=\"44\" height=\"50\" rx=\"12\" fill=\"#b59b5d\"/><path d=\"M-25-19v35M25-19v35\" stroke=\"#c38c65\" stroke-width=\"8\" stroke-linecap=\"round\"/><circle cy=\"-49\" r=\"18\" fill=\"#c38c65\"/><path d=\"M-18-52a18 18 0 0 1 36 0\" fill=\"#454236\"/><text y=\"76\" text-anchor=\"middle\" font-size=\"15\" fill=\"#41594e\">Thanh</text></g><text x=\"320\" y=\"438\" text-anchor=\"middle\" font-family=\"Georgia,serif\" font-size=\"22\" fill=\"#294f44\">Stories around the Long Table</text><text x=\"320\" y=\"461\" text-anchor=\"middle\" font-family=\"sans-serif\" font-size=\"9\" letter-spacing=\"1.5\" fill=\"#6b7b68\">TENDERLOIN REDUX \u00b7 FICTIONAL GATHERING \u00b7 ORIGINAL ILLUSTRATION</text></svg>",
+          "programme": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"640\" height=\"460\" viewBox=\"0 0 640 460\" role=\"img\" aria-labelledby=\"title desc\"><title id=\"title\">Stories open the afternoon</title><desc id=\"desc\">Fictional future gathering. 1. Story circle. 2. Rhythm workshop. 3. Quiet interval. 4. Shared art panel.</desc><rect width=\"640\" height=\"460\" rx=\"18\" fill=\"#f8ecd9\"/><text x=\"32\" y=\"44\" font-family=\"sans-serif\" font-size=\"15\" fill=\"#425547\">OUR NEXT AFTERNOON \u00b7 A FICTIONAL PLAN</text><text x=\"32\" y=\"82\" font-family=\"sans-serif\" font-size=\"25\" fill=\"#253c33\">Stories open the afternoon</text><g transform=\"translate(32 110)\"><rect width=\"576\" height=\"61\" rx=\"9\" fill=\"#e5b66d\"/><text x=\"18\" y=\"39\" font-family=\"sans-serif\" font-size=\"22\" fill=\"#253c33\">1. Story circle</text><circle cx=\"546\" cy=\"30\" r=\"12\" fill=\"#f8ecd9\"/></g><g transform=\"translate(32 183)\"><rect width=\"576\" height=\"61\" rx=\"9\" fill=\"#91bac2\"/><text x=\"18\" y=\"39\" font-family=\"sans-serif\" font-size=\"22\" fill=\"#253c33\">2. Rhythm workshop</text><circle cx=\"546\" cy=\"30\" r=\"12\" fill=\"#f8ecd9\"/></g><g transform=\"translate(32 256)\"><rect width=\"576\" height=\"61\" rx=\"9\" fill=\"#a3b48c\"/><text x=\"18\" y=\"39\" font-family=\"sans-serif\" font-size=\"22\" fill=\"#253c33\">3. Quiet interval</text><circle cx=\"546\" cy=\"30\" r=\"12\" fill=\"#f8ecd9\"/></g><g transform=\"translate(32 329)\"><rect width=\"576\" height=\"61\" rx=\"9\" fill=\"#d9a2b2\"/><text x=\"18\" y=\"39\" font-family=\"sans-serif\" font-size=\"22\" fill=\"#253c33\">4. Shared art panel</text><circle cx=\"546\" cy=\"30\" r=\"12\" fill=\"#f8ecd9\"/></g><text x=\"32\" y=\"435\" font-family=\"sans-serif\" font-size=\"14\" fill=\"#425547\">Come and go. Listening counts. No date or real event is announced.</text></svg>",
+          "tile_panel": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"360\" height=\"240\" viewBox=\"0 0 360 240\" role=\"img\" aria-labelledby=\"title desc\"><title id=\"title\">Our six-tile portable panel</title><desc id=\"desc\">Original abstract neighbor-made panel, warm palette. Tiles numbered left to right, top to bottom.</desc><rect width=\"360\" height=\"240\" rx=\"14\" fill=\"#f8ecd9\"/><g transform=\"translate(24 20)\"><rect width=\"98\" height=\"98\" rx=\"7\" fill=\"#e5b66d\"/><circle cx=\"49\" cy=\"49\" r=\"24\" fill=\"#f8ecd9\"/></g><g transform=\"translate(130 20)\"><rect width=\"98\" height=\"98\" rx=\"7\" fill=\"#d9a2b2\"/><path d=\"M12 64 Q32 20 50 50 T86 36\" stroke=\"#f8ecd9\" stroke-width=\"10\" fill=\"none\"/></g><g transform=\"translate(236 20)\"><rect width=\"98\" height=\"98\" rx=\"7\" fill=\"#75907c\"/><path d=\"M20 76 L49 22 L78 76Z\" fill=\"#f8ecd9\"/></g><g transform=\"translate(24 126)\"><rect width=\"98\" height=\"98\" rx=\"7\" fill=\"#75907c\"/><path d=\"M20 76 L49 22 L78 76Z\" fill=\"#f8ecd9\"/></g><g transform=\"translate(130 126)\"><rect width=\"98\" height=\"98\" rx=\"7\" fill=\"#d9a2b2\"/><path d=\"M12 64 Q32 20 50 50 T86 36\" stroke=\"#f8ecd9\" stroke-width=\"10\" fill=\"none\"/></g><g transform=\"translate(236 126)\"><rect width=\"98\" height=\"98\" rx=\"7\" fill=\"#e5b66d\"/><circle cx=\"49\" cy=\"49\" r=\"24\" fill=\"#f8ecd9\"/></g></svg>"
+        },
+        "total_buildings_count": 188,
+        "voices_teardown_budget_max_usec": 50000,
+        "voices_teardown_measured": true,
+        "voices_teardown_usec": 1,
+        "wider_buildings_count": 130,
+        "wider_street_ways_count": 41,
+        "within_budget": true
+      },
+      "browserSaveImportVerified": true,
+      "domA11yLiveVerified": true,
+      "intermediateHubWidthsVerified": [
+        599,
+        600,
+        700,
+        800,
+        900,
+        1000,
+        1049,
+        1050,
+        1100
+      ]
+    },
+    {
+      "activityDetailReadabilityVerified": true,
+      "activityTouchDragVerified": true,
+      "activityKeyboardScrollVerified": true,
+      "readableHubActionsVerified": true,
+      "boundedHubDetailsVerified": true,
+      "defaultMusicOnVerified": true,
+      "runningAudioContextVerified": true,
+      "touchMusicToggleVerified": true,
+      "readableRewardAndGuideVerified": true,
+      "inspectionResumeVerified": true,
+      "walkingStopControlVerified": true,
+      "compactHeaderHeight": 94,
+      "compactInfoToggleVerified": true,
+      "startupOrientationVerified": true,
+      "findMeAndMapVerified": true,
+      "rewardSoundsAndMuteVerified": true,
+      "persistentProgressVerified": true,
+      "surpriseDiscoveryVerified": true,
+      "surpriseKeepsakeReloadVerified": true,
+      "chapter6ConversationVerified": true,
+      "sessionLandmarkTourVerified": true,
+      "fullSaveBytes": 1723,
+      "viewport": {
+        "width": 390,
+        "height": 667
+      },
+      "overviewBytes": 86388,
+      "selectedBytes": 82420,
+      "neighborBytes": 99092,
+      "muralBytes": 92295,
+      "musicBytes": 83005,
+      "blockBytes": 88251,
+      "blackhawkBytes": 95580,
+      "wideBytes": 87604,
+      "keyboardActivationVerified": true,
+      "neighborWalkVerified": true,
+      "muralSaveReloadVerified": true,
+      "rookMusicAuditionVerified": true,
+      "blockCompletionVerified": true,
+      "widerTenderloinVerified": true,
+      "m1EpilogueVerified": true,
+      "m3HostingVerified": true,
+      "m4CivicFilmVerified": true,
+      "m5VoicesIsolatedVerified": true,
+      "m6KeepsakeSvgExportVerified": true,
+      "m6PerfBudgetVerified": true,
+      "perfSnapshot": {
+        "astar_expanded_cells": 2222,
+        "astar_used": true,
+        "district_boundary_present": true,
+        "object_node_count": 2887,
+        "opening_buildings_count": 58,
+        "pathfind_blackhawk_usec": 82700,
+        "pathfind_blackhawk_waypoints": 3,
+        "pathfind_budget_max_usec": 250000,
+        "pathfind_cold_cache": true,
+        "save_budget_max_bytes": 4096,
+        "save_budget_max_usec": 50000,
+        "save_bytes": 1530,
+        "save_roundtrip_usec": 100,
+        "street_ways_count": 20,
+        "svg_samples": {
+          "civic_plan": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"420\" height=\"210\" viewBox=\"0 0 420 210\"><title>Small listening circle: schematic shared-space plan</title><rect width=\"420\" height=\"210\" rx=\"12\" fill=\"#f3eedf\"/><path d=\"M20 100H400\" stroke=\"#91bac2\" stroke-width=\"32\"/><path d=\"M20 100H400\" stroke=\"#fffdf5\" stroke-width=\"2\" stroke-dasharray=\"7 6\"/><circle cx=\"100\" cy=\"42\" r=\"10\" fill=\"#75907c\"/><circle cx=\"145\" cy=\"30\" r=\"10\" fill=\"#75907c\"/><circle cx=\"190\" cy=\"42\" r=\"10\" fill=\"#75907c\"/><circle cx=\"100\" cy=\"158\" r=\"10\" fill=\"#75907c\"/><circle cx=\"145\" cy=\"170\" r=\"10\" fill=\"#75907c\"/><circle cx=\"190\" cy=\"158\" r=\"10\" fill=\"#75907c\"/><rect x=\"260\" y=\"30\" width=\"75\" height=\"32\" rx=\"4\" fill=\"#d9a2b2\"/><text x=\"310\" y=\"105\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#253f35\">Clear route</text><text x=\"22\" y=\"199\" font-family=\"sans-serif\" font-size=\"11\" fill=\"#253f35\">Fictional setup \u00b7 schematic, not surveyed access widths</text></svg>",
+          "film_frame": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"420\" height=\"236\" viewBox=\"0 0 420 236\"><title>An empty seat \u2014 original illustrated frame</title><rect width=\"420\" height=\"236\" rx=\"12\" fill=\"#253f35\"/><rect x=\"12\" y=\"17\" width=\"396\" height=\"202\" rx=\"5\" fill=\"#ecebdc\"/><path d=\"M20 190H400\" stroke=\"#91bac2\" stroke-width=\"6\"/><g transform=\"translate(-30 -8) scale(1.2)\"><path d=\"M155 143V103H220V143M157 119H218M159 143V167M216 143V167\" fill=\"none\" stroke=\"#276a5a\" stroke-width=\"8\" stroke-linecap=\"round\"/></g><path d=\"M25 9H395M25 227H395\" stroke=\"#f3eedf\" stroke-width=\"4\" stroke-dasharray=\"8 10\"/></svg>",
+          "keepsake": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 640 480\" role=\"img\" aria-labelledby=\"title desc\"><title id=\"title\">Stories around the Long Table</title><desc id=\"desc\">Fictional gathering keepsake with Bea, Celeste, Dez, Thanh. Rook is not pictured. An original illustration, not a photograph of a real place or person.</desc><rect width=\"640\" height=\"480\" rx=\"8\" fill=\"#faf3df\"/><rect x=\"20\" y=\"20\" width=\"600\" height=\"395\" rx=\"3\" fill=\"#dce2cc\"/><path d=\"M20 105h600M20 282h600\" stroke=\"#c3cdb6\" stroke-width=\"2\"/><path d=\"M45 69Q320 138 595 69\" fill=\"none\" stroke=\"#647b62\" stroke-width=\"2\"/><path d=\"M55 72h20l-10 22z\" fill=\"#c37e71\"/><path d=\"M92 79.5657117545147h20l-10 22z\" fill=\"#276a5a\"/><path d=\"M129 86.75204712999698h20l-10 22z\" fill=\"#d6a449\"/><path d=\"M166 93.19865326319695h20l-10 22z\" fill=\"#c37e71\"/><path d=\"M203 98.58227040391301h20l-10 22z\" fill=\"#276a5a\"/><path d=\"M240 102.63294150868225h20l-10 22z\" fill=\"#d6a449\"/><path d=\"M277 105.147549014182h20l-10 22z\" fill=\"#c37e71\"/><path d=\"M314 106h20l-10 22z\" fill=\"#276a5a\"/><path d=\"M351 105.147549014182h20l-10 22z\" fill=\"#d6a449\"/><path d=\"M388 102.63294150868225h20l-10 22z\" fill=\"#c37e71\"/><path d=\"M425 98.58227040391301h20l-10 22z\" fill=\"#276a5a\"/><path d=\"M462 93.19865326319695h20l-10 22z\" fill=\"#d6a449\"/><path d=\"M499 86.75204712999698h20l-10 22z\" fill=\"#c37e71\"/><path d=\"M536 79.5657117545147h20l-10 22z\" fill=\"#276a5a\"/><path d=\"M573 72h20l-10 22z\" fill=\"#d6a449\"/><rect x=\"91\" y=\"123\" width=\"455\" height=\"145\" rx=\"4\" fill=\"#f4e3ba\" stroke=\"#b58e5d\" stroke-width=\"8\"/><g transform=\"translate(135 155)\" stroke=\"#c37e71\" stroke-width=\"5\" stroke-linecap=\"round\"><path d=\"M-15 0h30M0-15v30M-11-11l22 22M-11 11l22-22\"/></g><path d=\"M248 198q12-17 24 0t24 0M248 209q12-17 24 0t24 0\" stroke=\"#276a5a\" stroke-width=\"4\" fill=\"none\"/><text x=\"407\" y=\"247\" text-anchor=\"middle\" font-family=\"Georgia,serif\" font-size=\"24\" fill=\"#d6a449\">RISE</text><g data-guest=\"bea\" transform=\"translate(161 321)\"><ellipse cx=\"3\" cy=\"47\" rx=\"34\" ry=\"7\" fill=\"#64735b22\"/><path d=\"M-10 10v33M10 10v33\" stroke=\"#3d5149\" stroke-width=\"10\" stroke-linecap=\"round\"/><rect x=\"-22\" y=\"-30\" width=\"44\" height=\"50\" rx=\"12\" fill=\"#c5874f\"/><path d=\"M-25-19v35M25-19v35\" stroke=\"#966345\" stroke-width=\"8\" stroke-linecap=\"round\"/><circle cy=\"-49\" r=\"18\" fill=\"#966345\"/><path d=\"M-18-52a18 18 0 0 1 36 0\" fill=\"#dad7c6\"/><g stroke=\"#496557\" stroke-width=\"4\" fill=\"none\"><path d=\"M-31 10l-8 39h68l-6-39\"/><path d=\"M-35 33h61\"/></g><circle cx=\"-37\" cy=\"52\" r=\"5\" fill=\"#496557\"/><circle cx=\"29\" cy=\"52\" r=\"5\" fill=\"#496557\"/><text y=\"76\" text-anchor=\"middle\" font-size=\"15\" fill=\"#41594e\">Bea</text></g><g data-guest=\"celeste\" transform=\"translate(267 321)\"><ellipse cx=\"3\" cy=\"47\" rx=\"34\" ry=\"7\" fill=\"#64735b22\"/><path d=\"M-10 10v33M10 10v33\" stroke=\"#3d5149\" stroke-width=\"10\" stroke-linecap=\"round\"/><rect x=\"-22\" y=\"-30\" width=\"44\" height=\"50\" rx=\"12\" fill=\"#c87d82\"/><path d=\"M-25-19v35M25-19v35\" stroke=\"#8b5b3f\" stroke-width=\"8\" stroke-linecap=\"round\"/><circle cy=\"-49\" r=\"18\" fill=\"#8b5b3f\"/><path d=\"M-18-52a18 18 0 0 1 36 0\" fill=\"#383c32\"/><text y=\"76\" text-anchor=\"middle\" font-size=\"15\" fill=\"#41594e\">Celeste</text></g><g data-guest=\"dez\" transform=\"translate(373 321)\"><ellipse cx=\"3\" cy=\"47\" rx=\"34\" ry=\"7\" fill=\"#64735b22\"/><path d=\"M-10 10v33M10 10v33\" stroke=\"#3d5149\" stroke-width=\"10\" stroke-linecap=\"round\"/><rect x=\"-22\" y=\"-30\" width=\"44\" height=\"50\" rx=\"12\" fill=\"#978aaf\"/><path d=\"M-25-19v35M25-19v35\" stroke=\"#704b37\" stroke-width=\"8\" stroke-linecap=\"round\"/><circle cy=\"-49\" r=\"18\" fill=\"#704b37\"/><path d=\"M-18-52a18 18 0 0 1 36 0\" fill=\"#292f2b\"/><path d=\"M-20-50a20 20 0 0 1 40 0\" fill=\"none\" stroke=\"#dfc57f\" stroke-width=\"4\"/><rect x=\"-23\" y=\"-54\" width=\"6\" height=\"17\" rx=\"2\" fill=\"#dfc57f\"/><rect x=\"17\" y=\"-54\" width=\"6\" height=\"17\" rx=\"2\" fill=\"#dfc57f\"/><text y=\"76\" text-anchor=\"middle\" font-size=\"15\" fill=\"#41594e\">Dez</text></g><g data-guest=\"thanh\" transform=\"translate(479 321)\"><ellipse cx=\"3\" cy=\"47\" rx=\"34\" ry=\"7\" fill=\"#64735b22\"/><path d=\"M-10 10v33M10 10v33\" stroke=\"#3d5149\" stroke-width=\"10\" stroke-linecap=\"round\"/><rect x=\"-22\" y=\"-30\" width=\"44\" height=\"50\" rx=\"12\" fill=\"#b59b5d\"/><path d=\"M-25-19v35M25-19v35\" stroke=\"#c38c65\" stroke-width=\"8\" stroke-linecap=\"round\"/><circle cy=\"-49\" r=\"18\" fill=\"#c38c65\"/><path d=\"M-18-52a18 18 0 0 1 36 0\" fill=\"#454236\"/><text y=\"76\" text-anchor=\"middle\" font-size=\"15\" fill=\"#41594e\">Thanh</text></g><text x=\"320\" y=\"438\" text-anchor=\"middle\" font-family=\"Georgia,serif\" font-size=\"22\" fill=\"#294f44\">Stories around the Long Table</text><text x=\"320\" y=\"461\" text-anchor=\"middle\" font-family=\"sans-serif\" font-size=\"9\" letter-spacing=\"1.5\" fill=\"#6b7b68\">TENDERLOIN REDUX \u00b7 FICTIONAL GATHERING \u00b7 ORIGINAL ILLUSTRATION</text></svg>",
+          "programme": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"640\" height=\"460\" viewBox=\"0 0 640 460\" role=\"img\" aria-labelledby=\"title desc\"><title id=\"title\">Stories open the afternoon</title><desc id=\"desc\">Fictional future gathering. 1. Story circle. 2. Rhythm workshop. 3. Quiet interval. 4. Shared art panel.</desc><rect width=\"640\" height=\"460\" rx=\"18\" fill=\"#f8ecd9\"/><text x=\"32\" y=\"44\" font-family=\"sans-serif\" font-size=\"15\" fill=\"#425547\">OUR NEXT AFTERNOON \u00b7 A FICTIONAL PLAN</text><text x=\"32\" y=\"82\" font-family=\"sans-serif\" font-size=\"25\" fill=\"#253c33\">Stories open the afternoon</text><g transform=\"translate(32 110)\"><rect width=\"576\" height=\"61\" rx=\"9\" fill=\"#e5b66d\"/><text x=\"18\" y=\"39\" font-family=\"sans-serif\" font-size=\"22\" fill=\"#253c33\">1. Story circle</text><circle cx=\"546\" cy=\"30\" r=\"12\" fill=\"#f8ecd9\"/></g><g transform=\"translate(32 183)\"><rect width=\"576\" height=\"61\" rx=\"9\" fill=\"#91bac2\"/><text x=\"18\" y=\"39\" font-family=\"sans-serif\" font-size=\"22\" fill=\"#253c33\">2. Rhythm workshop</text><circle cx=\"546\" cy=\"30\" r=\"12\" fill=\"#f8ecd9\"/></g><g transform=\"translate(32 256)\"><rect width=\"576\" height=\"61\" rx=\"9\" fill=\"#a3b48c\"/><text x=\"18\" y=\"39\" font-family=\"sans-serif\" font-size=\"22\" fill=\"#253c33\">3. Quiet interval</text><circle cx=\"546\" cy=\"30\" r=\"12\" fill=\"#f8ecd9\"/></g><g transform=\"translate(32 329)\"><rect width=\"576\" height=\"61\" rx=\"9\" fill=\"#d9a2b2\"/><text x=\"18\" y=\"39\" font-family=\"sans-serif\" font-size=\"22\" fill=\"#253c33\">4. Shared art panel</text><circle cx=\"546\" cy=\"30\" r=\"12\" fill=\"#f8ecd9\"/></g><text x=\"32\" y=\"435\" font-family=\"sans-serif\" font-size=\"14\" fill=\"#425547\">Come and go. Listening counts. No date or real event is announced.</text></svg>",
+          "tile_panel": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"360\" height=\"240\" viewBox=\"0 0 360 240\" role=\"img\" aria-labelledby=\"title desc\"><title id=\"title\">Our six-tile portable panel</title><desc id=\"desc\">Original abstract neighbor-made panel, warm palette. Tiles numbered left to right, top to bottom.</desc><rect width=\"360\" height=\"240\" rx=\"14\" fill=\"#f8ecd9\"/><g transform=\"translate(24 20)\"><rect width=\"98\" height=\"98\" rx=\"7\" fill=\"#e5b66d\"/><circle cx=\"49\" cy=\"49\" r=\"24\" fill=\"#f8ecd9\"/></g><g transform=\"translate(130 20)\"><rect width=\"98\" height=\"98\" rx=\"7\" fill=\"#d9a2b2\"/><path d=\"M12 64 Q32 20 50 50 T86 36\" stroke=\"#f8ecd9\" stroke-width=\"10\" fill=\"none\"/></g><g transform=\"translate(236 20)\"><rect width=\"98\" height=\"98\" rx=\"7\" fill=\"#75907c\"/><path d=\"M20 76 L49 22 L78 76Z\" fill=\"#f8ecd9\"/></g><g transform=\"translate(24 126)\"><rect width=\"98\" height=\"98\" rx=\"7\" fill=\"#75907c\"/><path d=\"M20 76 L49 22 L78 76Z\" fill=\"#f8ecd9\"/></g><g transform=\"translate(130 126)\"><rect width=\"98\" height=\"98\" rx=\"7\" fill=\"#d9a2b2\"/><path d=\"M12 64 Q32 20 50 50 T86 36\" stroke=\"#f8ecd9\" stroke-width=\"10\" fill=\"none\"/></g><g transform=\"translate(236 126)\"><rect width=\"98\" height=\"98\" rx=\"7\" fill=\"#e5b66d\"/><circle cx=\"49\" cy=\"49\" r=\"24\" fill=\"#f8ecd9\"/></g></svg>"
+        },
+        "total_buildings_count": 188,
+        "voices_teardown_budget_max_usec": 50000,
+        "voices_teardown_measured": true,
+        "voices_teardown_usec": 1,
+        "wider_buildings_count": 130,
+        "wider_street_ways_count": 41,
+        "within_budget": true
+      },
+      "browserSaveImportVerified": true,
+      "domA11yLiveVerified": true
+    },
+    {
+      "activityDetailReadabilityVerified": true,
+      "activityTouchDragVerified": true,
+      "activityKeyboardScrollVerified": true,
+      "readableHubActionsVerified": true,
+      "boundedHubDetailsVerified": true,
+      "defaultMusicOnVerified": true,
+      "runningAudioContextVerified": true,
+      "touchMusicToggleVerified": true,
+      "readableRewardAndGuideVerified": true,
+      "inspectionResumeVerified": true,
+      "walkingStopControlVerified": true,
+      "compactHeaderHeight": 94,
+      "compactInfoToggleVerified": true,
+      "startupOrientationVerified": true,
+      "findMeAndMapVerified": true,
+      "rewardSoundsAndMuteVerified": true,
+      "persistentProgressVerified": true,
+      "surpriseDiscoveryVerified": true,
+      "surpriseKeepsakeReloadVerified": true,
+      "chapter6ConversationVerified": true,
+      "sessionLandmarkTourVerified": true,
+      "fullSaveBytes": 1723,
+      "viewport": {
+        "width": 320,
+        "height": 667
+      },
+      "overviewBytes": 68582,
+      "selectedBytes": 70219,
+      "neighborBytes": 85911,
+      "muralBytes": 83438,
+      "musicBytes": 75819,
+      "blockBytes": 79628,
+      "blackhawkBytes": 91836,
+      "wideBytes": 70313,
+      "keyboardActivationVerified": true,
+      "neighborWalkVerified": true,
+      "muralSaveReloadVerified": true,
+      "rookMusicAuditionVerified": true,
+      "blockCompletionVerified": true,
+      "widerTenderloinVerified": true,
+      "m1EpilogueVerified": true,
+      "m3HostingVerified": true,
+      "m4CivicFilmVerified": true,
+      "m5VoicesIsolatedVerified": true,
+      "m6KeepsakeSvgExportVerified": true,
+      "m6PerfBudgetVerified": true,
+      "perfSnapshot": {
+        "astar_expanded_cells": 2222,
+        "astar_used": true,
+        "district_boundary_present": true,
+        "object_node_count": 2887,
+        "opening_buildings_count": 58,
+        "pathfind_blackhawk_usec": 80800,
+        "pathfind_blackhawk_waypoints": 3,
+        "pathfind_budget_max_usec": 250000,
+        "pathfind_cold_cache": true,
+        "save_budget_max_bytes": 4096,
+        "save_budget_max_usec": 50000,
+        "save_bytes": 1530,
+        "save_roundtrip_usec": 200,
+        "street_ways_count": 20,
+        "svg_samples": {
+          "civic_plan": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"420\" height=\"210\" viewBox=\"0 0 420 210\"><title>Small listening circle: schematic shared-space plan</title><rect width=\"420\" height=\"210\" rx=\"12\" fill=\"#f3eedf\"/><path d=\"M20 100H400\" stroke=\"#91bac2\" stroke-width=\"32\"/><path d=\"M20 100H400\" stroke=\"#fffdf5\" stroke-width=\"2\" stroke-dasharray=\"7 6\"/><circle cx=\"100\" cy=\"42\" r=\"10\" fill=\"#75907c\"/><circle cx=\"145\" cy=\"30\" r=\"10\" fill=\"#75907c\"/><circle cx=\"190\" cy=\"42\" r=\"10\" fill=\"#75907c\"/><circle cx=\"100\" cy=\"158\" r=\"10\" fill=\"#75907c\"/><circle cx=\"145\" cy=\"170\" r=\"10\" fill=\"#75907c\"/><circle cx=\"190\" cy=\"158\" r=\"10\" fill=\"#75907c\"/><rect x=\"260\" y=\"30\" width=\"75\" height=\"32\" rx=\"4\" fill=\"#d9a2b2\"/><text x=\"310\" y=\"105\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#253f35\">Clear route</text><text x=\"22\" y=\"199\" font-family=\"sans-serif\" font-size=\"11\" fill=\"#253f35\">Fictional setup \u00b7 schematic, not surveyed access widths</text></svg>",
+          "film_frame": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"420\" height=\"236\" viewBox=\"0 0 420 236\"><title>An empty seat \u2014 original illustrated frame</title><rect width=\"420\" height=\"236\" rx=\"12\" fill=\"#253f35\"/><rect x=\"12\" y=\"17\" width=\"396\" height=\"202\" rx=\"5\" fill=\"#ecebdc\"/><path d=\"M20 190H400\" stroke=\"#91bac2\" stroke-width=\"6\"/><g transform=\"translate(-30 -8) scale(1.2)\"><path d=\"M155 143V103H220V143M157 119H218M159 143V167M216 143V167\" fill=\"none\" stroke=\"#276a5a\" stroke-width=\"8\" stroke-linecap=\"round\"/></g><path d=\"M25 9H395M25 227H395\" stroke=\"#f3eedf\" stroke-width=\"4\" stroke-dasharray=\"8 10\"/></svg>",
+          "keepsake": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 640 480\" role=\"img\" aria-labelledby=\"title desc\"><title id=\"title\">Stories around the Long Table</title><desc id=\"desc\">Fictional gathering keepsake with Bea, Celeste, Dez, Thanh. Rook is not pictured. An original illustration, not a photograph of a real place or person.</desc><rect width=\"640\" height=\"480\" rx=\"8\" fill=\"#faf3df\"/><rect x=\"20\" y=\"20\" width=\"600\" height=\"395\" rx=\"3\" fill=\"#dce2cc\"/><path d=\"M20 105h600M20 282h600\" stroke=\"#c3cdb6\" stroke-width=\"2\"/><path d=\"M45 69Q320 138 595 69\" fill=\"none\" stroke=\"#647b62\" stroke-width=\"2\"/><path d=\"M55 72h20l-10 22z\" fill=\"#c37e71\"/><path d=\"M92 79.5657117545147h20l-10 22z\" fill=\"#276a5a\"/><path d=\"M129 86.75204712999698h20l-10 22z\" fill=\"#d6a449\"/><path d=\"M166 93.19865326319695h20l-10 22z\" fill=\"#c37e71\"/><path d=\"M203 98.58227040391301h20l-10 22z\" fill=\"#276a5a\"/><path d=\"M240 102.63294150868225h20l-10 22z\" fill=\"#d6a449\"/><path d=\"M277 105.147549014182h20l-10 22z\" fill=\"#c37e71\"/><path d=\"M314 106h20l-10 22z\" fill=\"#276a5a\"/><path d=\"M351 105.147549014182h20l-10 22z\" fill=\"#d6a449\"/><path d=\"M388 102.63294150868225h20l-10 22z\" fill=\"#c37e71\"/><path d=\"M425 98.58227040391301h20l-10 22z\" fill=\"#276a5a\"/><path d=\"M462 93.19865326319695h20l-10 22z\" fill=\"#d6a449\"/><path d=\"M499 86.75204712999698h20l-10 22z\" fill=\"#c37e71\"/><path d=\"M536 79.5657117545147h20l-10 22z\" fill=\"#276a5a\"/><path d=\"M573 72h20l-10 22z\" fill=\"#d6a449\"/><rect x=\"91\" y=\"123\" width=\"455\" height=\"145\" rx=\"4\" fill=\"#f4e3ba\" stroke=\"#b58e5d\" stroke-width=\"8\"/><g transform=\"translate(135 155)\" stroke=\"#c37e71\" stroke-width=\"5\" stroke-linecap=\"round\"><path d=\"M-15 0h30M0-15v30M-11-11l22 22M-11 11l22-22\"/></g><path d=\"M248 198q12-17 24 0t24 0M248 209q12-17 24 0t24 0\" stroke=\"#276a5a\" stroke-width=\"4\" fill=\"none\"/><text x=\"407\" y=\"247\" text-anchor=\"middle\" font-family=\"Georgia,serif\" font-size=\"24\" fill=\"#d6a449\">RISE</text><g data-guest=\"bea\" transform=\"translate(161 321)\"><ellipse cx=\"3\" cy=\"47\" rx=\"34\" ry=\"7\" fill=\"#64735b22\"/><path d=\"M-10 10v33M10 10v33\" stroke=\"#3d5149\" stroke-width=\"10\" stroke-linecap=\"round\"/><rect x=\"-22\" y=\"-30\" width=\"44\" height=\"50\" rx=\"12\" fill=\"#c5874f\"/><path d=\"M-25-19v35M25-19v35\" stroke=\"#966345\" stroke-width=\"8\" stroke-linecap=\"round\"/><circle cy=\"-49\" r=\"18\" fill=\"#966345\"/><path d=\"M-18-52a18 18 0 0 1 36 0\" fill=\"#dad7c6\"/><g stroke=\"#496557\" stroke-width=\"4\" fill=\"none\"><path d=\"M-31 10l-8 39h68l-6-39\"/><path d=\"M-35 33h61\"/></g><circle cx=\"-37\" cy=\"52\" r=\"5\" fill=\"#496557\"/><circle cx=\"29\" cy=\"52\" r=\"5\" fill=\"#496557\"/><text y=\"76\" text-anchor=\"middle\" font-size=\"15\" fill=\"#41594e\">Bea</text></g><g data-guest=\"celeste\" transform=\"translate(267 321)\"><ellipse cx=\"3\" cy=\"47\" rx=\"34\" ry=\"7\" fill=\"#64735b22\"/><path d=\"M-10 10v33M10 10v33\" stroke=\"#3d5149\" stroke-width=\"10\" stroke-linecap=\"round\"/><rect x=\"-22\" y=\"-30\" width=\"44\" height=\"50\" rx=\"12\" fill=\"#c87d82\"/><path d=\"M-25-19v35M25-19v35\" stroke=\"#8b5b3f\" stroke-width=\"8\" stroke-linecap=\"round\"/><circle cy=\"-49\" r=\"18\" fill=\"#8b5b3f\"/><path d=\"M-18-52a18 18 0 0 1 36 0\" fill=\"#383c32\"/><text y=\"76\" text-anchor=\"middle\" font-size=\"15\" fill=\"#41594e\">Celeste</text></g><g data-guest=\"dez\" transform=\"translate(373 321)\"><ellipse cx=\"3\" cy=\"47\" rx=\"34\" ry=\"7\" fill=\"#64735b22\"/><path d=\"M-10 10v33M10 10v33\" stroke=\"#3d5149\" stroke-width=\"10\" stroke-linecap=\"round\"/><rect x=\"-22\" y=\"-30\" width=\"44\" height=\"50\" rx=\"12\" fill=\"#978aaf\"/><path d=\"M-25-19v35M25-19v35\" stroke=\"#704b37\" stroke-width=\"8\" stroke-linecap=\"round\"/><circle cy=\"-49\" r=\"18\" fill=\"#704b37\"/><path d=\"M-18-52a18 18 0 0 1 36 0\" fill=\"#292f2b\"/><path d=\"M-20-50a20 20 0 0 1 40 0\" fill=\"none\" stroke=\"#dfc57f\" stroke-width=\"4\"/><rect x=\"-23\" y=\"-54\" width=\"6\" height=\"17\" rx=\"2\" fill=\"#dfc57f\"/><rect x=\"17\" y=\"-54\" width=\"6\" height=\"17\" rx=\"2\" fill=\"#dfc57f\"/><text y=\"76\" text-anchor=\"middle\" font-size=\"15\" fill=\"#41594e\">Dez</text></g><g data-guest=\"thanh\" transform=\"translate(479 321)\"><ellipse cx=\"3\" cy=\"47\" rx=\"34\" ry=\"7\" fill=\"#64735b22\"/><path d=\"M-10 10v33M10 10v33\" stroke=\"#3d5149\" stroke-width=\"10\" stroke-linecap=\"round\"/><rect x=\"-22\" y=\"-30\" width=\"44\" height=\"50\" rx=\"12\" fill=\"#b59b5d\"/><path d=\"M-25-19v35M25-19v35\" stroke=\"#c38c65\" stroke-width=\"8\" stroke-linecap=\"round\"/><circle cy=\"-49\" r=\"18\" fill=\"#c38c65\"/><path d=\"M-18-52a18 18 0 0 1 36 0\" fill=\"#454236\"/><text y=\"76\" text-anchor=\"middle\" font-size=\"15\" fill=\"#41594e\">Thanh</text></g><text x=\"320\" y=\"438\" text-anchor=\"middle\" font-family=\"Georgia,serif\" font-size=\"22\" fill=\"#294f44\">Stories around the Long Table</text><text x=\"320\" y=\"461\" text-anchor=\"middle\" font-family=\"sans-serif\" font-size=\"9\" letter-spacing=\"1.5\" fill=\"#6b7b68\">TENDERLOIN REDUX \u00b7 FICTIONAL GATHERING \u00b7 ORIGINAL ILLUSTRATION</text></svg>",
+          "programme": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"640\" height=\"460\" viewBox=\"0 0 640 460\" role=\"img\" aria-labelledby=\"title desc\"><title id=\"title\">Stories open the afternoon</title><desc id=\"desc\">Fictional future gathering. 1. Story circle. 2. Rhythm workshop. 3. Quiet interval. 4. Shared art panel.</desc><rect width=\"640\" height=\"460\" rx=\"18\" fill=\"#f8ecd9\"/><text x=\"32\" y=\"44\" font-family=\"sans-serif\" font-size=\"15\" fill=\"#425547\">OUR NEXT AFTERNOON \u00b7 A FICTIONAL PLAN</text><text x=\"32\" y=\"82\" font-family=\"sans-serif\" font-size=\"25\" fill=\"#253c33\">Stories open the afternoon</text><g transform=\"translate(32 110)\"><rect width=\"576\" height=\"61\" rx=\"9\" fill=\"#e5b66d\"/><text x=\"18\" y=\"39\" font-family=\"sans-serif\" font-size=\"22\" fill=\"#253c33\">1. Story circle</text><circle cx=\"546\" cy=\"30\" r=\"12\" fill=\"#f8ecd9\"/></g><g transform=\"translate(32 183)\"><rect width=\"576\" height=\"61\" rx=\"9\" fill=\"#91bac2\"/><text x=\"18\" y=\"39\" font-family=\"sans-serif\" font-size=\"22\" fill=\"#253c33\">2. Rhythm workshop</text><circle cx=\"546\" cy=\"30\" r=\"12\" fill=\"#f8ecd9\"/></g><g transform=\"translate(32 256)\"><rect width=\"576\" height=\"61\" rx=\"9\" fill=\"#a3b48c\"/><text x=\"18\" y=\"39\" font-family=\"sans-serif\" font-size=\"22\" fill=\"#253c33\">3. Quiet interval</text><circle cx=\"546\" cy=\"30\" r=\"12\" fill=\"#f8ecd9\"/></g><g transform=\"translate(32 329)\"><rect width=\"576\" height=\"61\" rx=\"9\" fill=\"#d9a2b2\"/><text x=\"18\" y=\"39\" font-family=\"sans-serif\" font-size=\"22\" fill=\"#253c33\">4. Shared art panel</text><circle cx=\"546\" cy=\"30\" r=\"12\" fill=\"#f8ecd9\"/></g><text x=\"32\" y=\"435\" font-family=\"sans-serif\" font-size=\"14\" fill=\"#425547\">Come and go. Listening counts. No date or real event is announced.</text></svg>",
+          "tile_panel": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"360\" height=\"240\" viewBox=\"0 0 360 240\" role=\"img\" aria-labelledby=\"title desc\"><title id=\"title\">Our six-tile portable panel</title><desc id=\"desc\">Original abstract neighbor-made panel, warm palette. Tiles numbered left to right, top to bottom.</desc><rect width=\"360\" height=\"240\" rx=\"14\" fill=\"#f8ecd9\"/><g transform=\"translate(24 20)\"><rect width=\"98\" height=\"98\" rx=\"7\" fill=\"#e5b66d\"/><circle cx=\"49\" cy=\"49\" r=\"24\" fill=\"#f8ecd9\"/></g><g transform=\"translate(130 20)\"><rect width=\"98\" height=\"98\" rx=\"7\" fill=\"#d9a2b2\"/><path d=\"M12 64 Q32 20 50 50 T86 36\" stroke=\"#f8ecd9\" stroke-width=\"10\" fill=\"none\"/></g><g transform=\"translate(236 20)\"><rect width=\"98\" height=\"98\" rx=\"7\" fill=\"#75907c\"/><path d=\"M20 76 L49 22 L78 76Z\" fill=\"#f8ecd9\"/></g><g transform=\"translate(24 126)\"><rect width=\"98\" height=\"98\" rx=\"7\" fill=\"#75907c\"/><path d=\"M20 76 L49 22 L78 76Z\" fill=\"#f8ecd9\"/></g><g transform=\"translate(130 126)\"><rect width=\"98\" height=\"98\" rx=\"7\" fill=\"#d9a2b2\"/><path d=\"M12 64 Q32 20 50 50 T86 36\" stroke=\"#f8ecd9\" stroke-width=\"10\" fill=\"none\"/></g><g transform=\"translate(236 126)\"><rect width=\"98\" height=\"98\" rx=\"7\" fill=\"#e5b66d\"/><circle cx=\"49\" cy=\"49\" r=\"24\" fill=\"#f8ecd9\"/></g></svg>"
+        },
+        "total_buildings_count": 188,
+        "voices_teardown_budget_max_usec": 50000,
+        "voices_teardown_measured": true,
+        "voices_teardown_usec": 1,
+        "wider_buildings_count": 130,
+        "wider_street_ways_count": 41,
+        "within_budget": true
+      },
+      "browserSaveImportVerified": true,
+      "domA11yLiveVerified": true
+    }
+  ],
+  "errors": [],
+  "external": [],
+  "pack_bytes": 1918556,
+  "public": {
+    "version": "0.12.0",
+    "fingerprint": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567"
+  },
+  "evidence_sha256": {
+    "godot/bea_invitation.gd": "4ad40453704987fc9c29c34425b8be66c5fb8057874ab21fdd9cb89ab259b51f",
+    "godot/civic_listening.gd": "2eca8cffc35ed2753544e137515fdd6e67b1d6933fb60717763e4c540061c7e7",
+    "godot/dog_story.gd": "7ce9d5e459c772c6a2824b5af88cb7a26405a34718768b5a10b60510fd2e6db2",
+    "godot/export_presets.cfg": "48eefcc72abc4bb51ea67180a66c4c0f16b1d07a5b14a393d6506e5935e3c7b7",
+    "godot/film_screening.gd": "20a8015f821333f337158d5eb1ab820240db9999413f339451afb6a4923271dd",
+    "godot/lantern_procession.gd": "3d067733a757e580794dc3dbefd2d8331c328cdb79dd2481e52d7f6d00f20138",
+    "godot/loan_homecoming.gd": "0cac31652903848832ded6d2131c97e50e82a8c89f03e69c885aa543574472f9",
+    "godot/main.gd": "05d84a50ed16e0e5b62aaa8bd17abcf8342ac9073d6e650c71cdc12640bd6093",
+    "godot/mural_signature.gd": "a8b25e10edef62c77fb4ccb6e98c08972c579e61659ac80386a04a03bc851da2",
+    "godot/mural_stories.gd": "4dc1f266b997f8210871b4d863c19b43aeeb901beb60c822b6a92de9e48766c2",
+    "godot/mural_workshop.gd": "d44323fee68af2ac907ebba3e59aab32ffa7e08e716016b926a86acc2a20e0c8",
+    "godot/power_place.gd": "f192f25dbe721d6a33c826046237cc41653bd473b50c8fed5c22bb94819309ed",
+    "godot/power_story.gd": "1a0633d659da0168897083462b3d3b18858bac628e891c396e518265600d2fd7",
+    "godot/programme_studio.gd": "b9e2200905730fee77e785946e45f05555bd1becd8de76ade20a37ecd6667e1e",
+    "godot/project.godot": "17b7d3433d8317601597ea14d319816873d64a3fac5e2315f04212c983292a14",
+    "godot/quiet_seats.gd": "211c67f25397305c0cefd5c2c5f0bc558296ab82848c09b67cf032f0b9fc5cef",
+    "godot/rhythm_bar.gd": "4a3bfb3383156ee76a3b39d7b13a1cf84854299d76765227748398ba7f6587d0",
+    "godot/rhythm_circle.gd": "5391f7f4a7b5715c187f9cdc25f761c7a45e50c083904f671d43e57b45a27aa7",
+    "godot/shared_panel.gd": "0cf289edc823919866c03e3687935d9b5c390058e1faa8051255a3fa9067833f",
+    "godot/story_picker.gd": "4ba451ee9c6d3207969cdbbdaa0437c73e44581e421609f3f49c11e643f9281d",
+    "godot/data/buildings.json": "8b3afd7a6ec3d00ac22fb77347caeafa262be2f55ad1ddbf0a9dd296afd332d2",
+    "godot/data/lidar_2023.json": "b59ba7348bdc2c78c867993cef230353708163d1d0caa50602668f73323cdc93",
+    "godot/data/neighborhood_voices.json": "662571e5de9eb0cc9f10e25146b8da08a302758009159462b6f2a460889d0271",
+    "godot/data/power_place.json": "5eac6de7921c9eb6afaa1752a9bfc6a693e63ca70a19ea3b6d82f268b2178f52",
+    "godot/data/source_receipt.json": "4ee6ed720f64c2c4417f9607446916fd610f57dadb04ddeab66a8dbeb789c3b7",
+    "godot/data/street_trees.json": "4623f1ae6744d321967aa06250ca936267a5edac0b51aec21cc00927397dbdad",
+    "godot/tests/study_test.gd": "da08484eb2f9b6d77c56d2d6d16725b7f32493e0e4bd063e05029c509e72ed6e",
+    "godot/data/source/boeddeker_park.osm.json": "96f0c7dadc0bb43f703fbf7a72d9fc3d37f5b1075f3d4e3e4aac280e0af55c7c",
+    "godot/data/source/lidar_ept_manifest.json": "99d6fb66c87994e077a0005ae646a91063cd0364ff3a59e434c1a5f3b9bea9b5",
+    "godot/data/source/metadata.json": "93407284a55c676b96d941042dcdd6223e5e5338f3b33a0faa639b56dd2309e6",
+    "godot/data/source/osm_buildings.json": "6b00db9038f08223d5966e85264ea16340a4be3fd8267a612ec9a25fad9fbf7b",
+    "godot/data/source/street_trees_tkzw-k3nq.json": "270f370a13a9a76b72e0bc2c42dc1760cfdd0fda129fb29b3e3283003875847d",
+    "godot/data/source/larkin/3mea-di5p-metadata.json": "0c4e38f8d3c2f69150cd14c04254cd9e6c874e396b5934da9631e58929ea154a",
+    "godot/data/source/larkin/address.json": "703eac0174a434f40cfa753cc0132983ea129392a04579c325f0ec1fc4eab862",
+    "godot/data/source/larkin/gmfx-8h6i-metadata.json": "865c26aeab7026f7bf734fce77fee8f9f22b4a7ba4ee2d94aac65e9adfa1e2a4",
+    "godot/data/source/larkin/intersection.json": "b3a465baa27dfc09b34d371db7529039b0a118659bc4474aa88cb54221c75cef",
+    "godot/data/source/larkin/receipt.json": "c20abc4e7ead499b1ccc88915321b3d06ec4cdfa1563a74324b835917d260559",
+    "tests/godot-browser.mjs": "12516e4264c5b9438596a28b2a542e99c0095e8e01ded5a28b569aa6ba639d6a",
+    "tests/godot-data.test.mjs": "338e3becc7eb041938398d0f75ab3377eed843cc659b64a6891467f324cde963",
+    "scripts/build-power-place.mjs": "dc474ebc01bd1702fe36f7282a6574e404e4f71fba1d7ff9d8bb8088357181de",
+    "artifacts/godot-web/index.pck": "e3d9ec3c137c42e4cb4ebdaac65e973579b11460683d983145434f39e468ac20",
+    "artifacts/lantern-verified-browser.log": "e3a8a4f8e861e75f803bd1da99b74f74e4264d80d0146cdcc6001d1beee89512",
+    "artifacts/lantern-verified-check.log": "9fc22c0ab37adad967e81573bf9f79e85f8d171f6e1a084d3b9e5bd230e30bd0",
+    "artifacts/lantern-verified-export.log": "18534d7825a9391eb20f47e42cdebdda930c87367a4f40a227b35ae38a87e647",
+    "artifacts/lantern-verified-native.log": "38991ec77c2a5f57a31efff93fe83b6670fe711b8bfcfd7baa879ced2fe7ac72",
+    "artifacts/lantern-verified-node.log": "e2f154c27a5bb430a9a26d458780224ac1ec405ef46f6846082cdd558497a9f2",
+    "artifacts/lantern-full1/execution.json": "0d5e5b1671416224b65482eeb53c7744a6608654b4e327ac10f6336121c6e2bd",
+    "artifacts/lantern-full1/godot-browser.json": "df6761f18c0dd20920d9507647b6fa644f28607310a4f9aba78dcf9d9b764594",
+    "artifacts/lantern-full1/source-after.json": "74a73ee39d8a6560845dcf8ba6b3795f588624a28c28c70e0c634a322aaa5c68",
+    "artifacts/lantern-full1/source-before.json": "74a73ee39d8a6560845dcf8ba6b3795f588624a28c28c70e0c634a322aaa5c68",
+    "artifacts/lantern-full1/captures/lantern-1100-mouse.json": "45ddeba0176347295e9918e844afcbf344dd32ae66ebe47d5b7a7f7eacf0cea1",
+    "artifacts/lantern-full1/captures/lantern-1100-mouse.png": "25918b72bfd24ea065082590f1003e3a9996288ed25f1b643132358ae165bb27",
+    "artifacts/lantern-full1/captures/lantern-320-finger.json": "2c9d430109d253caed4229370fe91e96bfdd253a38466f4c33dc4926b68f13dd",
+    "artifacts/lantern-full1/captures/lantern-320-finger.png": "f2d6cb4ae72299b427a3d6ae672c270ca44b48ab5e1fe54549e19db47bc3475a",
+    "artifacts/lantern-full1/captures/lantern-390-finger.json": "9d193b37f0bcec1b220352ff4233a3af42fdc74339ae6c74b85751f32d43451e",
+    "artifacts/lantern-full1/captures/lantern-390-finger.png": "46eb214a5a5fd99a75ba88b0fa8a45844585d10a6a9f25c01b397e0d56e2a364",
+    "artifacts/lantern-full1/captures/lantern-520-finger.json": "834a72174e250b58064a5a4ca2c33bef589d0d848b282a34f141b1ef63123b3d",
+    "artifacts/lantern-full1/captures/lantern-520-finger.png": "af043b9e2973e97a24afa713765de0ca391503e87b5e3d9a902844885de9e9c9",
+    "artifacts/lantern-full1/captures/lantern-559-mouse.json": "f3d774b41ac25e2f82d26ee95b688b17138228cc657c17e8dfb4c002e4e8e21c",
+    "artifacts/lantern-full1/captures/lantern-559-mouse.png": "267e857306c33c769a93bcc56a4fa85024440b775db3c317c48e36f71f0afe49",
+    "artifacts/lantern-full1/captures/lantern-640-finger.json": "02fa8a2d2cd82573bdea84e09c01149162df126117d185022f7ed50cde496629",
+    "artifacts/lantern-full1/captures/lantern-640-finger.png": "4be25ff9ad1f6fd0b9693c545a38dbfd3256243f56054ad00411bf951beca775",
+    "artifacts/lantern-full1/captures/lantern-world-1100-mouse.json": "e93effb0d0cab1ebd5d42a9ab28e99efac4f35b0212dd72215e035f6e9e215df",
+    "artifacts/lantern-full1/captures/lantern-world-1100-mouse.png": "32d5e216301add06e69063ac067185c9c031f52ecba5fc7b4e5e087d5ea124ee",
+    "artifacts/lantern-full1/captures/lantern-world-320-finger.json": "536b3e0339eba45c7a9f64f2a19d58d914062fe40a5cfcc2f437df9b8bea12a3",
+    "artifacts/lantern-full1/captures/lantern-world-320-finger.png": "03a5665baee1b1705e05d2e705df9347750976f62f06f3fef12a3d0e936d4e86",
+    "artifacts/lantern-full1/captures/lantern-world-390-finger.json": "7972e74e2f312429f9eee5e3d920356e2ba1d276fb1730287ba4c28b3717db7b",
+    "artifacts/lantern-full1/captures/lantern-world-390-finger.png": "f826526d0a392c5f0f2395aa3da42e6edc3c931ac4e5aee274360f713e7c7ac2",
+    "artifacts/lantern-full1/captures/lantern-world-520-finger.json": "2f21d11d12291163f7558bc808ab3d94c9854727e1347dda2c3c9fdc93860a90",
+    "artifacts/lantern-full1/captures/lantern-world-520-finger.png": "ea661e6115bc8a65c6d26e4b055e60538cf06ec9a5d58bd6fe3f004f2d36a338",
+    "artifacts/lantern-full1/captures/lantern-world-559-mouse.json": "4d8ae9cd1ce52b01e6423140f6b296a4819012732491824c8c048dfad8dc68cf",
+    "artifacts/lantern-full1/captures/lantern-world-559-mouse.png": "e2b0f780dd9f90da00b2d492e5af27f5b19eee85f2efb950264dd56ffae5f292",
+    "artifacts/lantern-full1/captures/lantern-world-640-finger.json": "6c7f975d92614e4d3e278e1169d644e591798ca0353fcc4e439f3f2312b9e97c",
+    "artifacts/lantern-full1/captures/lantern-world-640-finger.png": "bd5a9c7d15ac38a4723e5239abd11fbafca1be798c9acee53f170300ed024d64",
+    "artifacts/lantern-preflight-4-archive/lantern-1100-mouse.json": "6a058337cd1bb9f5bb37a973f6844410d2b477994d2c5a8597d489f213075d7b",
+    "artifacts/lantern-preflight-4-archive/lantern-1100-mouse.png": "750cb7a6316fc623957885a46fe69777e51478f6c12b9ede12fa97c79eaba345",
+    "artifacts/lantern-preflight-4-archive/lantern-320-finger.json": "d1f385b0ba49ff9329f5f07659ac4cc44d0a46fd5ee058c81570b1b8595c069f",
+    "artifacts/lantern-preflight-4-archive/lantern-320-finger.png": "0f1f59a5cc0346a261085cf6ebd6185d3a6eca3f5dd65aa9e4491b26047fb03b",
+    "artifacts/lantern-preflight-4-archive/lantern-390-finger.json": "57b68d0f912c73b66b2e28a1dd3ea9c52f0dca4d09d01cf2a3a1011a8a8f7cde",
+    "artifacts/lantern-preflight-4-archive/lantern-390-finger.png": "63088648f4a87c7632cb18f38c7d75fbfd2a9c6460cffce3f415265442bfd79e",
+    "artifacts/lantern-preflight-4-archive/lantern-520-finger.json": "834a72174e250b58064a5a4ca2c33bef589d0d848b282a34f141b1ef63123b3d",
+    "artifacts/lantern-preflight-4-archive/lantern-520-finger.png": "af043b9e2973e97a24afa713765de0ca391503e87b5e3d9a902844885de9e9c9",
+    "artifacts/lantern-preflight-4-archive/lantern-559-mouse.json": "f3d774b41ac25e2f82d26ee95b688b17138228cc657c17e8dfb4c002e4e8e21c",
+    "artifacts/lantern-preflight-4-archive/lantern-559-mouse.png": "267e857306c33c769a93bcc56a4fa85024440b775db3c317c48e36f71f0afe49",
+    "artifacts/lantern-preflight-4-archive/lantern-640-finger.json": "02fa8a2d2cd82573bdea84e09c01149162df126117d185022f7ed50cde496629",
+    "artifacts/lantern-preflight-4-archive/lantern-640-finger.png": "4be25ff9ad1f6fd0b9693c545a38dbfd3256243f56054ad00411bf951beca775",
+    "artifacts/lantern-preflight-4-archive/lantern-preflight-4.json": "f5f611555984ae4d0f7ffdea28c7823f3a6080f6d297a90d2ac026e2c5bcee96",
+    "artifacts/lantern-preflight-4-archive/lantern-preflight-4.log": "2f5d749a7edd0b7c027eaa624ad3f1c986ba4f0d320bc7428ddcf16a6a2e7b2a",
+    "artifacts/lantern-preflight-4-archive/lantern-preflight-4.mjs": "6c526046ec20756fba2e9c0fe721d449090818390158f419db664e827d4a7370",
+    "artifacts/lantern-preflight-4-archive/lantern-world-1100-mouse.json": "1edc0b84b8378e417291f26e0df4f0a01c13e1f51619d06cae1f6f08ba84f4d1",
+    "artifacts/lantern-preflight-4-archive/lantern-world-1100-mouse.png": "8539dd9f87315b60cd13703db330fd97fa21f36c0d9b1e7a9cf2d3aaab04abfc",
+    "artifacts/lantern-preflight-4-archive/lantern-world-320-finger.json": "0128128ff2a2a7f16e84f4554883232bb3b5fbc4cf865c0a7af7bdda90091e2a",
+    "artifacts/lantern-preflight-4-archive/lantern-world-320-finger.png": "03a5665baee1b1705e05d2e705df9347750976f62f06f3fef12a3d0e936d4e86",
+    "artifacts/lantern-preflight-4-archive/lantern-world-390-finger.json": "897a4286ad0a8c14a24600da48938ac4b2a58a4e1ba1bbdedde9e6595710d453",
+    "artifacts/lantern-preflight-4-archive/lantern-world-390-finger.png": "9ae2583eb4c45c428142e3a787f9642669c56d60ae8b95a4cc4197e46c5beee4",
+    "artifacts/lantern-preflight-4-archive/lantern-world-520-finger.json": "2f21d11d12291163f7558bc808ab3d94c9854727e1347dda2c3c9fdc93860a90",
+    "artifacts/lantern-preflight-4-archive/lantern-world-520-finger.png": "ea661e6115bc8a65c6d26e4b055e60538cf06ec9a5d58bd6fe3f004f2d36a338",
+    "artifacts/lantern-preflight-4-archive/lantern-world-559-mouse.json": "4d8ae9cd1ce52b01e6423140f6b296a4819012732491824c8c048dfad8dc68cf",
+    "artifacts/lantern-preflight-4-archive/lantern-world-559-mouse.png": "e2b0f780dd9f90da00b2d492e5af27f5b19eee85f2efb950264dd56ffae5f292",
+    "artifacts/lantern-preflight-4-archive/lantern-world-640-finger.json": "6c7f975d92614e4d3e278e1169d644e591798ca0353fcc4e439f3f2312b9e97c",
+    "artifacts/lantern-preflight-4-archive/lantern-world-640-finger.png": "bd5a9c7d15ac38a4723e5239abd11fbafca1be798c9acee53f170300ed024d64",
+    "kibitz-runs/2026-10-22-codex-lantern-procession-ideas/r1/claude.log": "a7c10742f3b7c4d07f01d954299a35c4253cd7c5efe0524e762705038ecf2981",
+    "kibitz-runs/2026-10-22-codex-lantern-procession-ideas/r1/claude.md": "59e9f834640ec6969e8cbc8f2208ca6d3290a88e9f5f4ffcf12eb6f257613f9f",
+    "kibitz-runs/2026-10-22-codex-lantern-procession-ideas/r1/claude_budget_selected.txt": "b80401b5bdee9b92d2114d1dcae19e4929eefb76987dd1911802478ede026cf0",
+    "kibitz-runs/2026-10-22-codex-lantern-procession-ideas/r1/claude_effort_selected.txt": "6ef7c9b15ecdd69083724b84cfdc2100351963488b51b4ea2fcbddf493fbec94",
+    "kibitz-runs/2026-10-22-codex-lantern-procession-ideas/r1/claude_model_selected.txt": "005912bee6ee4543cec4404b5a02b9bcb11a6f1dcc134b6693c7ccde5fdd2f69",
+    "kibitz-runs/2026-10-22-codex-lantern-procession-ideas/r1/claude_quota_status.txt": "979c0e822c25f4b77ad4a34dea5acca3ded5dd8751fdb2843ed83506b6fe828a",
+    "kibitz-runs/2026-10-22-codex-lantern-procession-ideas/r1/driver_anchor.md": "65f7a15bc3ef4aab6864fb859f487529e321fee223ef270180b045608ea60acb",
+    "kibitz-runs/2026-10-22-codex-lantern-procession-ideas/r1/execution-receipt.json": "13c398bb107f670a2c9535c0ce7ba8672b7584a8018f1312377078661d0dc90f",
+    "kibitz-runs/2026-10-22-codex-lantern-procession-ideas/r1/final.md": "8a3cf14b20bef6f577316ef66f3b6b641e9af2bdc6ae2636265d02964b01f6b7",
+    "kibitz-runs/2026-10-22-codex-lantern-procession-ideas/r1/input-digest.json": "c73f8a70f8d719bbc1d0ae88df6f333f5ec85036c69443254874b3f6d92d58bb",
+    "kibitz-runs/2026-10-22-codex-lantern-procession-ideas/r1/input.md": "dcb059e61fc0052ffcca2c5eebab8d1487aed8811bd0fd4ef69623727680b7b6",
+    "kibitz-runs/2026-10-22-codex-lantern-procession-ideas/r1/judgment.md": "8a3cf14b20bef6f577316ef66f3b6b641e9af2bdc6ae2636265d02964b01f6b7",
+    "kibitz-runs/2026-10-22-codex-lantern-procession-ideas/r1/pin-check.txt": "dbecc237012900f4f0c5dd71a4bdd3a1e00e65253d1f37cb8b6835fe2c7ce128",
+    "kibitz-runs/2026-10-22-codex-lantern-procession-ideas/r1/profiles_used.txt": "a9a11813438ba2fc0c6efd97f13b88bf41af82044d04182d865bdd38eaa32423",
+    "kibitz-runs/2026-10-22-codex-lantern-procession-ideas/r1/scope_receipt.md": "7886ec32bd98ba7a2a91d24d5a456831b061a9789cfb729d1ca4b1f6f024fd6d",
+    "kibitz-runs/2026-10-22-codex-lantern-procession-ideas/r1/selection-before-code.json": "355b2ce88fa8016c885b418162b7a5da81750a09271d39327acde665e45557e5",
+    "kibitz-runs/2026-10-22-codex-lantern-procession-ideas/r1/source-after.json": "a07e77415ac3078a2383c5c82af0974a4936c59d389444a485eaf19cda7b0e1f",
+    "kibitz-runs/2026-10-22-codex-lantern-procession-ideas/r1/source-before.json": "a07e77415ac3078a2383c5c82af0974a4936c59d389444a485eaf19cda7b0e1f",
+    "kibitz-runs/2026-10-22-codex-lantern-procession-ideas/r1/source-comparison.json": "d7844307a85abbbf7a0e07488538bad4d1a2a1013791d35a88324e57a725f7ec",
+    "kibitz-runs/2026-10-22-codex-lantern-procession/r3/claude.log": "9c8d656502394065566283bc1fad919990ae3e74500e6436bc11ed64320f2985",
+    "kibitz-runs/2026-10-22-codex-lantern-procession/r3/claude.md": "f2c08cd22b30ec1830663c023fc02f3b728593408f4620e005e6a03ab17fff52",
+    "kibitz-runs/2026-10-22-codex-lantern-procession/r3/claude_budget_selected.txt": "b80401b5bdee9b92d2114d1dcae19e4929eefb76987dd1911802478ede026cf0",
+    "kibitz-runs/2026-10-22-codex-lantern-procession/r3/claude_effort_selected.txt": "6ef7c9b15ecdd69083724b84cfdc2100351963488b51b4ea2fcbddf493fbec94",
+    "kibitz-runs/2026-10-22-codex-lantern-procession/r3/claude_model_selected.txt": "005912bee6ee4543cec4404b5a02b9bcb11a6f1dcc134b6693c7ccde5fdd2f69",
+    "kibitz-runs/2026-10-22-codex-lantern-procession/r3/claude_quota_status.txt": "979c0e822c25f4b77ad4a34dea5acca3ded5dd8751fdb2843ed83506b6fe828a",
+    "kibitz-runs/2026-10-22-codex-lantern-procession/r3/driver_anchor.md": "fae9bc457151abf605967afbd8e48803f719dc55f9557a2027c58be1d31de2fe",
+    "kibitz-runs/2026-10-22-codex-lantern-procession/r3/execution-receipt.json": "13c398bb107f670a2c9535c0ce7ba8672b7584a8018f1312377078661d0dc90f",
+    "kibitz-runs/2026-10-22-codex-lantern-procession/r3/final.md": "16ae690484363e271a453540d29fbe393c84ab158db818ad44760dea18544d09",
+    "kibitz-runs/2026-10-22-codex-lantern-procession/r3/input-digest.json": "1c6e00d105dce7edf55fb41c2f11bd1dc0fbdbe3359f045477eabcb244db3eb8",
+    "kibitz-runs/2026-10-22-codex-lantern-procession/r3/input.md": "aa9bab526842bb9af1fd4918111253f63cc8c8a9dbc92f1246fb304efa203138",
+    "kibitz-runs/2026-10-22-codex-lantern-procession/r3/judgment.md": "16ae690484363e271a453540d29fbe393c84ab158db818ad44760dea18544d09",
+    "kibitz-runs/2026-10-22-codex-lantern-procession/r3/pin-check.txt": "3fe07832dd185a02283d079e350fc9858490d2dd4d411f5d1ba35f39d5f7ae5b",
+    "kibitz-runs/2026-10-22-codex-lantern-procession/r3/profiles_used.txt": "a9a11813438ba2fc0c6efd97f13b88bf41af82044d04182d865bdd38eaa32423",
+    "kibitz-runs/2026-10-22-codex-lantern-procession/r3/scope_receipt.md": "6161f33affc80e223d220d6b054e9b3a82f3cd43b84e32c0ee26eaa494ce2c59",
+    "kibitz-runs/2026-10-22-codex-lantern-procession/r3/source-after.json": "a2d22a89dd1296f3de43d012eff5dd0ad9973ec7a72bba379fb25126fee83e80",
+    "kibitz-runs/2026-10-22-codex-lantern-procession/r3/source-before.json": "a2d22a89dd1296f3de43d012eff5dd0ad9973ec7a72bba379fb25126fee83e80",
+    "kibitz-runs/2026-10-22-codex-lantern-procession/r3/source-comparison.json": "f98b3fdae5c3b0fadf7bc35d3a9eb85839200f47945b2ba037de2b56991b7511",
+    "session_handoff.md": "e1208a988bc9b60717f08ea2eca3d1452bef706307719a1195ab004f5aaaa0dd",
+    "docs/BUILD_STATUS.md": "a844ad1fbd2343f01a4a98c69d58fef56af3ec56154cd565ded8d090c39e9e43",
+    "docs/ROADMAP.md": "40bb45c5635bb79264f22672ab2c717cd0dd4343eac154a1d57cf3a65fbe9b33",
+    "docs/ASSETS.md": "1d911c9712a694fd577c20f6844cf0cf27e1ef4484210ecbf3b35e6479993a94",
+    "docs/HALLOWEEN_STORY_SOURCES.md": "b29f3f16e7ca1dbf274140bbb53761822c41b4ce0d6ed4e815daf181ae66c883"
+  },
+  "limits": [
+    "One exact sole-Claude Opus5.5/high r1 before code and separate r3; later grounded driver fixes were not independently re-reviewed.",
+    "Three full-run genuine progression cases are separate from six PRIVATE historical completed-profile preflights.",
+    "Manual world inspection uses real mouse pan even in touch contexts; not finger-only camera evidence.",
+    "Small visitor art and engine geometry checks do not establish human recognition, aesthetic acceptance, physical circulation, device, full AT, pacing or field validation.",
+    "Historical native-userdata incident has no verified preincident backup or recovery; only postincident ASFOUND hash preservation is proved.",
+    "No deployment or public release; public browser 0.12 unchanged."
+  ]
+}

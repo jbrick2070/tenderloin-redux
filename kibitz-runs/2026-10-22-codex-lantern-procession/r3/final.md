@@ -1,0 +1,25 @@
+# Driver grounding and judgment
+
+Exact sole Claude Opus5.5/high r3 completed rc0, ToolCheckPASS, all11 anchored sources unchanged. Reviewer ran no tests. Driver changes below followed that review and were not independently re-reviewed. All five fresh gates now PASS after these fixes; final results and limits follow below.
+
+Must1 CONFIRMED: Welcome lacked group progress guard. Runtime and button now require progress>=35/36m; native explicitly moves player alone to finish and verifies refusal.
+Must2 CONFIRMED: projection could jump after a detour. March now returns the player to the paused progress point first, without crew movement; subsequent projection increase is capped by actual per-tick player distance. Native verifies return intent and no progress jump. Normal actual Stop/resume/finish also passes focused probe.
+Must3 CONFIRMED scope gap. route_clear now uses larger mural/speaker clearance, lamp points+0.35m, tree points+0.5m, named neighbors+1.4m, and conservative local10x5m half-extents plus clearance around the gathering (covering both layouts/closure/seats/papers/instrument). Reviewer suggestion to use cutaway_points is REJECTED as a clearance oracle: those methods depend on camera/visibility and do not enumerate physical geometry. Actual native samples and participant mesh corners remain. No human circulation claim. Player cape horizontal dimensions compressed within existing body width; no camera/physics geometry change.
+
+Should1 CONFIRMED dependency risk: browser skips path-start wait when already near assembly.
+Should2 PARTLY MISREAD: preflight PRIVATE copies do exist in ignored artifacts/lantern-preflight-1.mjs; not in full suite, as correctly noted. Full suite now asserts exactly3genuine lantern cases. Preflight6PRIVATE cases separately reported, never called fresh progression.
+Should3 CONFIRMED: completed entry now focuses enabledBack.
+Should4 CONFIRMED: invalid route gets specific explanation; picker entry disabled and fallbackfocusBack.
+Should5 CONFIRMED: Escape and Back share back_to_stories restoring Power/More focus; refusal announces; page changes focus entry. Reset uses close_picker without reopening a modal.
+Should6 CONFIRMED: lateral offsets now use tangent.orthogonal.
+Should7 CONFIRMED: reset/End/import clear costume and lantern and rebuild original geometry.
+Should8 ACCEPT TEST REQUIREMENT, REJECT automatic takeover: manual camera remains exact across deliberate Walk/March; user can Find Me if they want following. No universal on-screen group claim. Genuine full-run1100/390/320 world captures inspected or retained; manual mouse pan in touch contexts, no universal framing or human recognition claim.
+Should9 CONFIRMED: loss of availability closes stale reader after reset.
+Optional inputhandled/name/tooltip CONFIRMED and fixed. Earlier/Later UI is hidden until >3 actual entries; keep bounded paging capacity for authorized voting/cooking without showing dead controls.
+
+Additional driver findings: candidate1 browser picker stopped live snapshots despite visible UI; now sync0.2s. Native2 gateway measured before layoutsettled; isolated flags-guarded actual probe proves all5choices44px inside1100/320/520, native now waits6frames. Concave original paper polygons now use triangulate_polygon rather than trianglefan. Failure evidence source/PCK/PNG/JSON/log retained artifacts/lantern-candidate-1. Native feature probe uses unique explicit save/settings overrides andtest-suite assertedBEFOREscene, actual ASFOUNDnative hash unchanged. Focused probe passes but not replacement for full5 gates.
+
+
+Final verification: native GODOT_STUDY_PASS/LANTERN_PROCESSION_PASS with noERROR/WARNING; export; check;105Node; complete browser3983.06s/rc0 at1100x760,390x667,320x667 errors=[]external=[]. All41 source/PCK hashes frozen; pack1918556B/e3d9ec3c137c42e4cb4ebdaac65e973579b11460683d983145434f39e468ac20; saves1727/1723/1723B. Three genuine current-progression Halloween cases complete actual walks, group progress35.984m, Stop/resume, Welcome, End/reload and exact save/legacy preservation. Six PRIVATE preflight4 historical-profile cases are separately archived and labelled; they do not establish new progression. All prior episode/reader/hub/walking/progression matrices pass. verification.json binds logs, sources, receipts and captures.
+
+Driver inspected genuine1100/320 world and390 reader. Visitors are small; world inspection uses actual mouse pan even in touch contexts, not finger-only camera proof. Native reader scroll properties are verified; no Halloween-specific browser scroll gesture or human recognition/aesthetic/physical-access/device/fullAT/pacing/listening acceptance claimed. Native default1272B remains postincident ASFOUND hash2b7d1e849b4820a1d6c49602930ac3e0b104a8aa132375837038bfef80f2e0e1 only, no verified preincident recovery. public0.12 fingerprint unchanged. Reviewer ran no gates, and later grounded driver fixes were not independently re-reviewed. No deployment or public-release claim.

@@ -1,0 +1,18 @@
+STDOUT:
+The verdict is **yes-with-fixes**: the procession can be built on what's already in the code, but four design decisions need making before Codex picks a slice. I wrote the review to `kibitz-runs/2026-10-22-codex-lantern-procession-ideas/r1/claude.md`. Bash is disabled in this session, so I only read and searched files; nothing was run. I touched no other file.
+
+The four undecided points:
+
+1. **How the procession moves.** The doc doesn't say whether participants follow the player or are placed along a fixed route. Nothing in the code supports followers: the walking loop has no hook for them, and the dog episode shipped without escort AI. I recommend placing participants at fixed gaps behind the player's progress along one route that is checked for walkability at setup.
+2. **Who wears the costumes.** It could be the player, anonymous visitors, or the named residents. I recommend the player plus 2–4 anonymous visitors.
+3. **Whether the story menu is sized for more than Halloween.** The doc mixes up two width limits. The main menu row is full at six buttons, but the story menu's own button row holds four today, and by my arithmetic a fifth button probably still fits. A sixth does not. So the real reason to add paging is Halloween plus the mayoral episode (and cooking later), and the design should say so.
+4. **Whether the payoff is just another lantern relight.** The game already has lanterns in three places, and lighting them at the gathering is exactly the Power episode's ending. The payoff should be the costumed crowd walking with you, with lanterns carried as props.
+
+Other findings in the review:
+- **Día de los Muertos risk.** A flower costume plus candle-like lanterns plus an evening procession reads as the Día de los Muertos blend the research notes forbid.
+- **Wiring cost.** Each story episode is wired by hand into about a dozen places in `main.gd` (Stop, reset, Escape, objective, walk button, camera). A third and fourth episode multiply the risk of getting Stop/Back ownership wrong.
+- **Should-fix items:**
+  - "Feels like a parade" has no way to be checked before human playtesting.
+  - The route repeats the same Turk Street blocks the dog episode and history walk already use.
+  - The creator's new order (Halloween and mayoral before cooking) isn't recorded in the roadmap or build status yet.
+- **Cuts:** I suggest dropping the float and possibly the second costume.

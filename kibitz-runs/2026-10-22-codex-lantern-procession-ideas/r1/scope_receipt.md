@@ -1,0 +1,1 @@
+PRE-CODING scopedr1 only, drivercodex/soleclaude/exactclaude-opus-5-5/high. Two-to-three concrete ideas, feasibility/priorart/recommendedslice/native+actualbrowser acceptance. Read source/write report only; no code/tests/agents. Not implementationQA/four-round campaign.

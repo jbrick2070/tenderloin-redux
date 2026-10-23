@@ -3264,6 +3264,7 @@ func run() -> void:
 	await verify_loan_homecoming(study,saved_m4_json)
 	await verify_power_story(study,saved_m4_json)
 	await verify_dog_story(study,saved_m4_json)
+	await verify_lantern_procession(study,saved_m4_json)
 	study.clear_godot_save()
 	study.clear_godot_settings()
 	var legacy_settings := FileAccess.open(study.settings_path, FileAccess.WRITE)
@@ -5986,3 +5987,96 @@ func verify_dog_story(study: Node, full_profile: String) -> void:
 	require(not story.active and not story.visible and not story.reunion.visible,"reload resets visit completely")
 	root.size=Vector2i(1100,760)
 	print("DOG_STORY_PASS:2layouts x6sizes/trueui_accept/clue-led choices/decoy/wrongmatch/bothorders/3realwalksStop/reunion/remoteSFACC/no-save/quiet/manual/reload")
+
+func verify_lantern_procession(study: Node, full_profile: String) -> void:
+	require(study.is_test_suite_mode(),"parade only runs with isolated test profile")
+	if not study.is_test_suite_mode(): return
+	var story: Node=study.lantern_procession
+	require(story.sites_valid and story.route.size()==2,"prevalidated actual street route exists")
+	if not story.sites_valid: return
+	for layout in ["table","floor"]:
+		for size in [Vector2i(1100,760),Vector2i(390,667),Vector2i(320,667),Vector2i(520,360),Vector2i(559,360),Vector2i(640,360)]:
+			var data: Dictionary=JSON.parse_string(full_profile); data.gathering_layout=layout
+			study.apply_save_envelope(JSON.stringify(data)); study.hide_story_card()
+			study.last_story_chapter=int(study.current_chapter().num); study.startup_story_pending=false
+			root.size=size
+			for f in range(6): await process_frame
+			var saved := JSON.stringify(study.build_save_envelope())
+			var file: String=FileAccess.get_file_as_string(study.save_path)
+			var quiet: Array=[study.music_playing,study.music_mode,study.music_volume,study.reward_sounds_enabled]
+			study.following_player=false
+			var pose: Array=study.panel_camera_pose()
+			study.power_story.open_story()
+			for f in range(6): await process_frame
+			require(study.power_story.snapshot().buttons.size()==13,"Power button indices unchanged")
+			for b in study.power_story.tabs+[study.power_story.dogs_entry,study.power_story.more_entry]:
+				require(b.size.x>=44 and b.size.y>=44 and Rect2(Vector2.ZERO,Vector2(size)).encloses(b.get_global_rect()),"all five gateway choices fit")
+			study.power_story.close_story(false)
+			study.story_picker.open_picker()
+			for f in range(5): await process_frame
+			require(study.story_picker.visible and Rect2(Vector2.ZERO,Vector2(size)).encloses(study.story_picker.panel.get_global_rect()),"paged episode picker fits")
+			study.story_picker.close_picker()
+			require(story.open_story(),"Halloween opens after gathering")
+			story.choose_costume(1); story.choose_lantern(1)
+			story.buttons[4].grab_focus()
+			var down := InputEventAction.new(); down.action="ui_accept"; down.pressed=true
+			Input.parse_input_event(down); await process_frame
+			var up := InputEventAction.new(); up.action="ui_accept"; up.pressed=false
+			Input.parse_input_event(up)
+			for f in range(6): await process_frame
+			require(story.active and story.player_costume.visible,"real ui_accept begins visible costume procession")
+			require(study.panel_camera_pose()==pose,"Halloween reader exact manual camera")
+			for b in story.buttons: require(b.size.x>=44 and b.size.y>=44 and Rect2(Vector2.ZERO,Vector2(size)).encloses(b.get_global_rect()),"ten named44px Halloween controls fit")
+			require(story.reader.scroll_active and story.reader.get_theme_font_size("normal_font_size")==16,"full16px scrollable parade reader")
+			for distance in range(0,145): require(story.route_clear(story.route_point(float(distance)/4.0)),"route clears lamps trees people and both gathering layout envelopes")
+			for distance in range(8,37):
+				story.progress=float(distance); story.update_world(false)
+				for person in story.crew:
+					for mesh in person.find_children("*","MeshInstance3D",true,false):
+						for corner in range(8):
+							var point: Vector3=mesh.global_transform*mesh.get_aabb().get_endpoint(corner)
+							require(study.building_containing_point(Vector2(point.x,point.z)).is_empty(),"all moving participant mesh corners outside actual footprints")
+			story.progress=8; story.update_world(false)
+			study.player.position=Vector3(story.goal().x,0,story.goal().y)
+			story.advance()
+			require(story.phase==1 and not story.won,"assembly deliberately begins march")
+			var assembly: Vector3=study.player.position
+			study.player.position=Vector3(story.goal().x,0,story.goal().y)
+			story.advance()
+			require(not story.won and story.progress==8,"walking alone to finish cannot win with crew left behind")
+			story.walk_route()
+			require(story.returning and story.trip_goal.distance_to(story.route_point(story.progress))<0.01,"off-route resume returns to paused group before marching")
+			study.advance_walk(0.1); story._process(0)
+			require(story.progress==8,"return walk cannot teleport visitors forward")
+			study.stop_walking(); study.player.position=assembly
+			story.open_story()
+
+			story.choose_costume(0); require(story.costume==1,"costume locked during march")
+			story.close_story(false)
+			require(study.power_story.open_story() and story.visible and not study.power_story.visible,"F8 resumes active parade")
+			require(not study.dog_story.open_story(),"parade excludes dog overlap")
+			story.end_session(); story.close_story(false)
+			require(story.costume==0 and story.lantern==0,"End resets visit choices")
+			require(saved==JSON.stringify(study.build_save_envelope()) and file==FileAccess.get_file_as_string(study.save_path) and quiet==[study.music_playing,study.music_mode,study.music_volume,study.reward_sounds_enabled],"parade zero-save and quiet settings unchanged")
+	study.apply_save_envelope(full_profile); study.hide_story_card(); study.last_story_chapter=int(study.current_chapter().num)
+	story.open_story(); story.begin()
+	for leg in range(2):
+		story.walk_route()
+		var steps := 0
+		while not study.current_path.is_empty() and steps<5000:
+			study.advance_walk(0.1); story._process(0); steps+=1
+			if steps==8:
+				study.stop_walking()
+				var held: float=story.progress
+				for f in range(3): story._process(1)
+				require(not story.traveling and story.progress==held,"Stop freezes procession without timer-driven movement")
+				story.open_story(); story.walk_route()
+		for f in range(8): await process_frame
+		require(steps<5000 and story.near() and story.visible,"actual parade route arrives without teleport")
+		story.advance()
+	require(story.won and story.progress>35 and story.crew[0].position.distance_to(story.crew[1].position)>3.9,"actual moving group reaches deliberate finish at fixed spacing")
+	story.end_session(); story.close_story(false)
+	require(not story.player_costume.visible and not story.crew[0].visible,"End removes visit costume and crew")
+	study.apply_save_envelope(full_profile); study.hide_story_card(); study.last_story_chapter=int(study.current_chapter().num)
+	root.size=Vector2i(1100,760)
+	print("LANTERN_PROCESSION_PASS:2layouts x6sizes/actualui_accept/routes/Stop/movingmesh/costumes/gateway/quiet/manual/zero-save")

@@ -1,0 +1,12 @@
+{
+  "godot/main.gd": "838517cbbf44be57ffdb5c8daf0ecf7d89f7b6fdd7420c53756a49136bf077a1",
+  "godot/dog_story.gd": "a6eb2572c74b30515e6794094d0d0ed124077698891a1520858406cb3a88cc05",
+  "godot/power_story.gd": "fce7642d45c91ad64f3a42b234523d0375ea91587d3b870ba6ef89f914af44a4",
+  "godot/power_place.gd": "f192f25dbe721d6a33c826046237cc41653bd473b50c8fed5c22bb94819309ed",
+  "godot/tests/study_test.gd": "c8d80d1060cc3ef8720dce570107c7aaa47d66cec63742db660388c2aa2af41d",
+  "tests/godot-browser.mjs": "9c2e7517e27fbe153731351496a83b90f7cab53c6904a90f0b6baa1fd82717c1",
+  "tests/godot-data.test.mjs": "338e3becc7eb041938398d0f75ab3377eed843cc659b64a6891467f324cde963",
+  "docs/ROADMAP.md": "93daead6f08b79ad02ed2d085143d8d5946ad7b59f8bd7dba5e84e7433d5ffcb",
+  "docs/EPISODE_LOCATION_RESEARCH.md": "8064cebc54ede081cf0cf850cf2b34610f3891507196137682a40266958e8d33",
+  "docs/ASSETS.md": "f70cb020b9fd2de861fe0cb76cb49950bc5d25c3a600495d11529423b04c4afd"
+}

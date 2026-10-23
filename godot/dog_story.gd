@@ -205,7 +205,7 @@ func choose_lead(index: int) -> void:
 
 func open_story() -> bool:
 	if visible: return true
-	if not available() or game.power_story.active or game.startup_story_pending or game.is_story_card_visible() or game.is_focused_activity_visible() or not game.current_path.is_empty():
+	if not available() or (game.active_story_episode()!=null and game.active_story_episode()!=self) or game.startup_story_pending or game.is_story_card_visible() or game.is_focused_activity_visible() or not game.current_path.is_empty():
 		game.announce_a11y_status("Finish arriving and close other activities. End an active power story before Two Dogs Home.")
 		return false
 	return_focus=get_viewport().gui_get_focus_owner()
@@ -233,7 +233,7 @@ func close_story(announce: bool=true) -> void:
 	if announce: game.announce_a11y_status("Back to the block. Dog search stays for this visit; End search or reload clears it.")
 
 func begin() -> void:
-	if not visible or active or game.power_story.active or not available(): return
+	if not visible or active or (game.active_story_episode()!=null and game.active_story_episode()!=self) or not available(): return
 	active=true
 	won=false
 	found=0
@@ -331,7 +331,7 @@ func refresh(announce: bool) -> void:
 	reader.text=text+"\nVisit only: Back keeps this search; End or reload clears it. No saved progress, photo, reward or soundtrack changes."
 	if announce: reader.scroll_to_line(0)
 	picture.texture=textures[profile]
-	buttons[6].disabled=active or game.power_story.active or not sites_valid
+	buttons[6].disabled=active or (game.active_story_episode()!=null and game.active_story_episode()!=self) or not sites_valid
 	for i in range(3,6): buttons[i].disabled=not active
 	buttons[7].disabled=not active or lead<0
 	buttons[8].disabled=not active or not near() or won
