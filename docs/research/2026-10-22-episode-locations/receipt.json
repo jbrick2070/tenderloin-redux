@@ -1,0 +1,21 @@
+{
+  "research_date": "2026-10-22",
+  "polling_dataset": "https://sfelections.org/tools/election_data/datasets/2024-11-05/PODJ011_PollingPlaces_20241003.txt",
+  "published_list_date": "2024-10-03",
+  "election_date": "2024-11-05",
+  "election_abbr": "2024NOVGEN",
+  "method": "Official page dropdown and rendered text document read through in-app browser; only four selected rows retained, not full source bytes. Web/urllib403 and browser download timeout honestly retained in ignored scratch receipts.",
+  "limits": [
+    "Published snapshot, not proof against subsequent relocations",
+    "City EAS address points are separate current records, not historical entrances or voter assignments",
+    "Animal facilities are outside Tenderloin/current model; exact EAS query did not return250Florida",
+    "Research is not a pre-coding CLI idea pass or implemented gameplay"
+  ],
+  "sha256": {
+    "animal-addresses.json": "b6ae0bc3497b036de1c9d2771ee77e6ecf6d219841207281e07697f4c03acaef",
+    "geography-receipt.json": "7af0fbdd34a377c14aa907e5f705d56faa6a93b731c148774e494d1367a19a58",
+    "polling-2024-official-selected-rows.tsv": "71689d465d8ac6e9272ff7c625ab3c887c60f55bcb95ef9355aac1195fab5d48",
+    "polling-addresses.json": "9d6b164ef9874f2ac4fae057bf7caeb9d38567b3bc9f3291cca3104135635e59",
+    "polling-browser-source.txt": "d5219a661a99cf856cfa2e15cee28ef0b23ccb71eaca1c712a8896758ac56570"
+  }
+}

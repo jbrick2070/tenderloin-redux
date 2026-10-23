@@ -18,6 +18,8 @@ const [pckStat, ...sourceStats] = await Promise.all([
   stat('godot/shared_panel.gd'),
   stat('godot/loan_homecoming.gd'),
   stat('godot/power_story.gd'),
+  stat('godot/power_place.gd'),
+  stat('godot/data/power_place.json'),
   stat('godot/tests/study_test.gd'),
   stat('godot/quiet_seats.gd'),
   stat('godot/bea_invitation.gd'),
@@ -40,7 +42,7 @@ assert.ok(pckStat.size > 0 && pckStat.size <= 2 * 1024 * 1024, `artifacts/godot-
 const BROWSER_SAVE_SENTINEL = JSON.stringify({ schema: 'tenderloin-redux.save', version: 1, sentinel: 'preserve-browser-save-v1' });
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : 'playwright');
 const base = 'http://127.0.0.1:' + (process.env.GODOT_PORT || 4174) + '/';
-const sourceFingerprint={sources:Object.fromEntries(await Promise.all(['godot/main.gd','godot/shared_panel.gd','godot/loan_homecoming.gd','godot/power_story.gd','godot/tests/study_test.gd'].map(async p=>[p,createHash('sha256').update(await readFile(p)).digest('hex')]))),pack_sha256:createHash('sha256').update(await readFile('artifacts/godot-web/index.pck')).digest('hex')};
+const sourceFingerprint={sources:Object.fromEntries(await Promise.all(['godot/main.gd','godot/shared_panel.gd','godot/loan_homecoming.gd','godot/power_story.gd','godot/power_place.gd','godot/data/power_place.json','godot/tests/study_test.gd'].map(async p=>[p,createHash('sha256').update(await readFile(p)).digest('hex')]))),pack_sha256:createHash('sha256').update(await readFile('artifacts/godot-web/index.pck')).digest('hex')};
 await mkdir('artifacts', { recursive: true });
 let queuedActivityRewardChecks = 0;
 const shortStoryReadChecks = [];
@@ -322,6 +324,12 @@ async function verifyStoryStreet(page,context,touch,tap,snap,settle,asymmetric=f
   await page.keyboard.press('KeyM');await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.mural_detail.panel.visible&&!window.__tenderloinGodotA11ySnapshot.player_grounding.path_active,null,{timeout:35000});await settle();await tap((await snap()).mural_detail.buttons.at(-1));
   // Step aside with real walking input so the enlarged avatar cannot cover the art.
   {const p=(await snap()).player_grounding;await page.keyboard.down('KeyA');try{await page.waitForFunction(p=>{const s=window.__tenderloinGodotA11ySnapshot.player_grounding;return Math.hypot(s.x-p.x,s.z-p.z)>3;},p,{timeout:10000});}finally{await page.keyboard.up('KeyA');}await settle();}
+  // The unchanged overhead wire can cover the tiny musician's face in short views.
+  // Deliberately lower the player's inspection angle; keep geography and pixel checks.
+  if(tag==='-living'&&(await snap()).viewport_height<560){
+    await page.keyboard.down('Shift');await page.keyboard.down('ArrowDown');
+    try{await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.camera_pose.pitch<.72);}finally{await page.keyboard.up('ArrowDown');await page.keyboard.up('Shift');}await settle();
+  }
   for(let i=0;i<5;i++)await tap((await snap()).walking_controls.find(b=>b.text.includes('Zoom')&&b.text.includes('+')));
   let s=await snap(),q=s.mural_scenes_world.corners,r=s.play_area,c=await page.locator('#canvas').boundingBox(),cx=q.reduce((a,p)=>a+p.x,0)/4,cy=q.reduce((a,p)=>a+p.y,0)/4;
   const x=c.x+(r.x+r.width*.5)*c.width/s.viewport_width,y=c.y+(r.y+r.height*.25)*c.height/s.viewport_height,dx=(r.x+r.width*.55-cx)*c.width/s.viewport_width,dy=(r.y+r.height*.5-cy)*c.height/s.viewport_height;
@@ -1235,6 +1243,68 @@ async function verifyPowerStory(page,touch,size,privateFixture=false){
   assert.equal((await snap()).power_story.active,false,'actual reload ends visit-only blackout');assert.equal((await snap()).power_story.restored,0);assert.equal(await save(),original);assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1')),legacy);
   const result={...size,touch,privateFixture,pixels,world,saveBytes:Buffer.byteLength(original),threeWalks:true,stop:true,hero:true,reload:true};powerStoryChecks.push(result);
   await writeFile(`artifacts/power-story-${size.width}-${touch?'finger':'mouse'}.json`,JSON.stringify(result,null,2));
+}
+
+const larkinStoryChecks=[];
+async function verifyLarkinStory(page,touch,size,privateFixture=false){
+  const snap=()=>page.evaluate(()=>window.__tenderloinGodotA11ySnapshot),save=()=>page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1'));
+  async function settle(){const f=(await snap()).ui_frame;await page.waitForFunction(f=>{const s=window.__tenderloinGodotA11ySnapshot;return s.ui_frame>f+3&&!s.layout_refit_pending&&!s.power_story.layout_pending;},f);}
+  async function tap(b,reader=false){const s=await snap(),c=await page.locator('#canvas').boundingBox();assert.ok(b?.visible&&!b.disabled&&b.width>=44&&b.height>=(reader?1:44));assert.ok(b.x>=0&&b.y>=0&&b.x+b.width<=s.viewport_width+1&&b.y+b.height<=s.viewport_height+1,'Larkin controls fully inside viewport');const x=c.x+(b.x+b.width/2)*c.width/s.viewport_width,y=c.y+(b.y+b.height/2)*c.height/s.viewport_height;if(touch)await page.touchscreen.tap(x,y);else await page.mouse.click(x,y);await settle();}
+  await page.setViewportSize(size);await settle();
+  if((await snap()).story_detail.panel.visible){await page.keyboard.press('Escape');await settle();}
+  const original=await save(),legacy=await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1')),initial=await snap(),quiet=[initial.music_playing,initial.music_volume,initial.music_mode,initial.reward_sounds_enabled],pose=initial.camera_pose;
+  await page.keyboard.press('F8');await settle();await tap((await snap()).power_story.buttons[5]);
+  let s=await snap(),h=s.power_story;assert.ok(h.historical&&!h.active&&h.site_valid&&h.map_view);assert.deepEqual(s.camera_pose,pose);
+  assert.ok(h.text.includes('April 21, 2017')&&h.text.includes('600 Larkin')&&h.text.includes('PG&E restored')&&h.text.includes('not an entrance'));
+  assert.ok(Math.hypot(h.site_source_xz[0]+593.405,h.site_source_xz[1]+10.084)<.002,'independently pinned city junction, never spawn fallback');
+  const map=screenshotPixels(await page.screenshot()),c=await page.locator('#canvas').boundingBox(),mapX=h.picture.x+(28+(-593.405+620)*1.35)/360*h.picture.width,mapY=h.picture.y+(24+(-10.084+100)*1.35)/240*h.picture.height;
+  const dot=map.pixel(c.x+mapX*c.width/s.viewport_width,c.y+mapY*c.height/s.viewport_height);assert.ok(dot[0]>200&&dot[1]>150&&dot[2]<160,`actual gold junction marker matches independent projected point (${dot})`);
+  const mapLabelPixels=[];assert.deepEqual(h.map_labels.map(b=>b.text),['Larkin / Eddy','40 m','N','Eddy Street']);
+  for(const label of h.map_labels){assert.ok(label.visible&&label.x>=h.picture.x&&label.y>=h.picture.y&&label.x+label.width<=h.picture.x+h.picture.width+1&&label.y+label.height<=h.picture.y+h.picture.height+1);let ink=0;for(let y=label.y;y<label.y+label.height;y++)for(let x=label.x;x<label.x+label.width;x++){const rgb=map.pixel(c.x+x*c.width/s.viewport_width,c.y+y*c.height/s.viewport_height);if(rgb[0]>190&&rgb[1]>180&&rgb[2]>130)ink++;}assert.ok(ink>=5,`actual map label ${label.text} has visible fallback-font ink (${ink})`);mapLabelPixels.push(ink);}
+  await page.screenshot({path:`artifacts/larkin-map-${size.width}-${touch?'finger':'mouse'}.png`});
+  await tap(h.reader,true);await page.keyboard.press('End');await settle();assert.ok((await snap()).power_story.scroll>0,'complete source reader reaches actual scroll end');
+  assert.equal(await save(),original);await tap((await snap()).power_story.buttons[7]);assert.ok((await snap()).power_story.active);
+  const solutions=[[2,1,0,3],[0,2,1,3],[1,2,3,0]],arrivals=[],world=[];
+  for(let station=0;station<3;station++){
+    await tap((await snap()).power_story.buttons[4+station]);const start=(await snap()).player_grounding;
+    await tap((await snap()).power_story.buttons[8]);
+    await page.evaluate(()=>{window.__larkinTrail=[];});
+    if(station===0){await page.waitForFunction(()=>{const s=window.__tenderloinGodotA11ySnapshot;return s.player_grounding.x < -300 && s.player_grounding.path_active;},null,{timeout:180000});await settle();await tap((await snap()).walking_controls.find(b=>b.text==='Stop Walking'));const stopped=await snap();assert.ok(!stopped.power_story.traveling&&!stopped.power_story.via_pending&&!stopped.power_story.visible);const resumeX=stopped.player_grounding.x;await page.keyboard.press('F8');await settle();await tap((await snap()).power_story.buttons[8]);assert.equal((await snap()).power_story.via_pending,false,'mid-Eddy resume avoids eastward detour');await page.evaluate(x=>{window.__larkinResumeX=x;},resumeX);}
+    await page.waitForFunction(()=>{const s=window.__tenderloinGodotA11ySnapshot;window.__larkinTrail.push([s.player_grounding.x,s.player_grounding.z]);return s.power_story.visible&&s.power_story.near&&!s.player_grounding.path_active;},null,{timeout:300000});await settle();
+    const trail=await page.evaluate(()=>window.__larkinTrail);assert.ok(trail.length>5,'nonvacuous real route samples');const place=JSON.parse(await readFile('godot/data/power_place.json','utf8')),eddy=place.eddy.points;
+    function segmentDistance(p,a,b){const dx=b[0]-a[0],dz=b[1]-a[1],q=Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dz)/(dx*dx+dz*dz)));return Math.hypot(p[0]-a[0]-q*dx,p[1]-a[1]-q*dz);}
+    for(const p of trail.filter(p=>p[0]<eddy.at(-1)[0]))assert.ok(Math.min(...eddy.slice(1).map((b,i)=>segmentDistance(p,eddy[i],b)))<=12,'actual western trip samples remain on sourced Eddy corridor');
+    if(station===0){const resumeX=await page.evaluate(()=>window.__larkinResumeX);assert.ok(trail.every(p=>p[0]<=resumeX+.01),'real Stop/resume never backtracks east');}
+    s=await snap();h=s.power_story;assert.equal(h.station,station);const endpoint=[s.player_grounding.x,s.player_grounding.z];
+    if(station===0){assert.ok(Math.hypot(endpoint[0]+593.405,endpoint[1]+10.084)<2,'actual walk reaches real Larkin/Eddy');assert.ok(Math.hypot(endpoint[0]-start.x,endpoint[1]-start.z)>400,'nonvacuous traversal from old gathering area');}
+    if(station===1){assert.ok(endpoint[0]>0,'actual trip returns to original Turk gathering');assert.ok(h.text.includes('straight line')&&h.text.includes('Turk near Taylor/Mason'));}
+    assert.ok(Math.hypot(endpoint[0]-h.world[station].goal_x,endpoint[1]-h.world[station].goal_z)<2,'actual endpoint reaches the selected light kit');
+    if(station===0){const arrived=[...endpoint];await tap(h.buttons[8]);assert.ok((await snap()).power_story.visible&&!(await snap()).player_grounding.path_active,'Walk at reached Larkin stays in view');assert.deepEqual([(await snap()).player_grounding.x,(await snap()).player_grounding.z],arrived);}
+    arrivals.push(endpoint);for(const b of h.buttons)assert.ok(b.visible&&b.width>=44&&b.height>=44,'all historical repair actions remain44px');
+    await tap(h.buttons[9]);assert.ok((await snap()).power_story.text.includes('Not connected yet'));
+    let beforeWorld,worldPose,worldRect;
+    if(station===0){
+      await tap((await snap()).power_story.buttons[12]);await page.keyboard.press('KeyF');await settle();
+      for(let i=0;i<2;i++)await tap((await snap()).walking_controls.find(b=>b.text.includes('Zoom')&&b.text.includes('+')));
+      const t=await snap(),r=t.play_area,c=await page.locator('#canvas').boundingBox(),x=c.x+(r.x+r.width*.45)*c.width/t.viewport_width,y=c.y+(r.y+r.height*.7)*c.height/t.viewport_height;
+      if(touch){const cd=await page.context().newCDPSession(page);await cd.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y,id:0}]});for(let k=1;k<=4;k++)await cd.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+24*k/4,y,id:0}]});await cd.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await cd.detach();}
+      else{await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+24,y,{steps:4});await page.mouse.up();}
+      await settle();const w=await snap();assert.equal(w.following_player,false);worldPose=w.camera_pose;beforeWorld=screenshotPixels(await page.screenshot());const q=w.power_story.world[0].corners;worldRect={x:Math.min(...q.map(p=>p.x)),y:Math.min(...q.map(p=>p.y)),right:Math.max(...q.map(p=>p.x)),bottom:Math.max(...q.map(p=>p.y))};
+      await page.screenshot({path:`artifacts/larkin-world-${size.width}-${touch?'finger':'mouse'}-before.png`});await page.keyboard.press('F8');await settle();
+      const at=(await snap()).player_grounding;await page.keyboard.down('KeyW');await page.waitForTimeout(140);await page.keyboard.up('KeyW');await settle();assert.deepEqual([(await snap()).player_grounding.x,(await snap()).player_grounding.z],[at.x,at.z]);
+      await tap((await snap()).power_story.buttons[7]);assert.ok((await snap()).power_story.map_view);
+      for(const boundary of [{width:520,height:360},{width:320,height:667},size]){await page.setViewportSize(boundary);await settle();const z=await snap();assert.deepEqual(z.camera_pose,worldPose);for(const b of z.power_story.buttons.filter(b=>b.visible))assert.ok(b.width>=44&&b.height>=44&&b.x>=0&&b.y>=0&&b.x+b.width<=boundary.width+1&&b.y+b.height<=boundary.height+1,'open case-map rotation retains full controls');}
+      await tap((await snap()).power_story.buttons[7]);assert.ok(!(await snap()).power_story.map_view);
+    }
+    for(let i=0;i<4;i++){s=await snap();for(let n=0,count=(solutions[station][i]-s.power_story.turns[station][i]+4)%4;n<count;n++)await tap((await snap()).power_story.buttons[i]);}
+    if(!touch&&station===1){const b=(await snap()).power_story.buttons[0];await tap(b);await page.keyboard.press('Space');await page.keyboard.press('Space');await page.keyboard.press('Space');await settle();assert.deepEqual((await snap()).power_story.turns[station],solutions[station],'actual focused Space rotations return to correct path');}
+    await tap((await snap()).power_story.buttons[9]);assert.equal((await snap()).power_story.restored,(1<<(station+1))-1);assert.equal(await save(),original);
+    if(station===0){await tap((await snap()).power_story.buttons[12]);await settle();s=await snap();assert.deepEqual(s.camera_pose,worldPose);assert.ok(worldRect.x>=0&&worldRect.y>=0&&worldRect.right<size.width&&worldRect.bottom<size.height,'real battery globe fully on screen');const after=screenshotPixels(await page.screenshot()),c=await page.locator('#canvas').boundingBox();let changed=0;for(let y=worldRect.y;y<worldRect.bottom;y++)for(let x=worldRect.x;x<worldRect.right;x++){const px=c.x+x*c.width/s.viewport_width,py=c.y+y*c.height/s.viewport_height;if(after.pixel(px,py).some((v,i)=>Math.abs(v-beforeWorld.pixel(px,py)[i])>35))changed++;}assert.ok(changed>=5,`actual Larkin battery globe lights visibly (${changed})`);world.push(changed);await page.screenshot({path:`artifacts/larkin-world-${size.width}-${touch?'finger':'mouse'}-after.png`});await page.keyboard.press('F8');await settle();}
+  }
+  s=await snap();assert.ok(s.power_story.won&&s.power_story.text.includes('kept our neighbors connected')&&s.power_story.text.includes('4:46 p.m.'));assert.equal(s.power_story.night_glow,0);assert.equal(s.power_story.pool_alpha,0);assert.deepEqual([s.music_playing,s.music_volume,s.music_mode,s.reward_sounds_enabled],quiet);
+  await page.screenshot({path:`artifacts/larkin-finish-${size.width}-${touch?'finger':'mouse'}.png`});await tap(s.power_story.buttons[10]);assert.ok(!(await snap()).power_story.world[0].box_visible);assert.equal(await save(),original);
+  await tap((await snap()).power_story.buttons[7]);await page.reload();await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');await settle();assert.ok(!(await snap()).power_story.historical&&!(await snap()).power_story.active);assert.equal(await save(),original);assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1')),legacy);
+  const result={...size,touch,privateFixture,arrivals,world,mapDot:dot,mapLabelPixels,sourceFingerprint};larkinStoryChecks.push(result);await writeFile(`artifacts/larkin-story-${size.width}-${touch?'finger':'mouse'}.json`,JSON.stringify(result,null,2));
 }
 
 const programmeStudioChecks=[];
@@ -3041,6 +3111,7 @@ try {
     await verifyMuralWorkshop(page, context, size.width < 600, size);
     await verifyMuralStories(page, context, size.width < 600, size);
     await verifyPowerStory(page,size.width<600,size);
+    await verifyLarkinStory(page,size.width<600,size);
     if(!rhythmFixtureSave)rhythmFixtureSave=await page.evaluate(()=>localStorage.getItem("tenderloin-redux.godot.save.v1"));
     await context.close();
   }
@@ -3132,10 +3203,10 @@ try {
     const context=await browser.newContext({viewport:{width,height},hasTouch:touch});await context.addInitScript(f=>{if(!localStorage.getItem('tenderloin-redux.godot.save.v1'))localStorage.setItem('tenderloin-redux.godot.save.v1',JSON.stringify(f));},fixture);
     const page=await context.newPage();latestPage=page;page.on('pageerror',e=>errors.push(String(e)));page.on('request',r=>{if(![base,'blob:','data:'].some(p=>r.url().startsWith(p)))external.push(r.url());});await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');await verifyPowerStory(page,touch,{width,height},true);await context.close();
   }
-  assert.equal(powerStoryChecks.length,6);assert.equal(powerStoryChecks.filter(c=>!c.privateFixture).length,3);
+  assert.equal(larkinStoryChecks.length,3);assert.equal(powerStoryChecks.length,6);assert.equal(powerStoryChecks.filter(c=>!c.privateFixture).length,3);
   await verifyLoanWorld(browser,rhythmFixtureSave,base);
   assert.equal(loanHomecomingChecks.length,8);assert.equal(loanWorldChecks.length,3);assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
-  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, sourceFingerprint, powerStoryChecks, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, beaInvitationChecks, quietSeatChecks, filmScreeningChecks, rhythmCircleChecks, rhythmAuditionChecks, muralStoryChecks, livingMuralChecks, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
+  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, sourceFingerprint, larkinStoryChecks, powerStoryChecks, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, beaInvitationChecks, quietSeatChecks, filmScreeningChecks, rhythmCircleChecks, rhythmAuditionChecks, muralStoryChecks, livingMuralChecks, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
   assert.ok(queuedActivityRewardChecks > 0, 'at least one actual crowded activity exercises queued reward timer and Close delivery');
   assert.ok(shortStartClicked && shortStartTouchClicked, 'real mouse and touch Start at640x360 were exercised');
   assert.equal(beaInvitationChecks.length,7,'three genuine current progression and four private post-quiet invitation cases');
@@ -3168,7 +3239,7 @@ try {
   assert.equal(muralWorkshopChecks.length,8,'seven late and one fresh actual workshop mouse/finger cases executed');
   assert.equal(muralWorkshopChecks.filter(c=>c.photoStatus==='taken').length,7,'all seven late cases preserve a saved taken keepsake');
   assert.equal(workshopAutoAdvanceChecks,3,'a fresh mural exercises all three automatically offered contributions');
-  console.log(JSON.stringify({ runs, sourceFingerprint, powerStoryChecks, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, rhythmCircleChecks, rhythmAuditionChecks, livingMuralChecks, muralWorkshopChecks, workshopAutoAdvanceChecks, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, narrowActivityChecks, passiveActivityChecks, narrowHubChecks, smallHubReaderChecks, shortWalkingChecks, shortWalkingCaptionChecks, shortWalkingGuideChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
+  console.log(JSON.stringify({ runs, sourceFingerprint, larkinStoryChecks, powerStoryChecks, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, rhythmCircleChecks, rhythmAuditionChecks, livingMuralChecks, muralWorkshopChecks, workshopAutoAdvanceChecks, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, narrowActivityChecks, passiveActivityChecks, narrowHubChecks, smallHubReaderChecks, shortWalkingChecks, shortWalkingCaptionChecks, shortWalkingGuideChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
 } catch (error) {
   if (latestPage && !latestPage.isClosed()) {
     await latestPage.screenshot({ path: 'artifacts/godot-browser-failure.png' });

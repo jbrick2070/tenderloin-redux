@@ -1,0 +1,13 @@
+{
+  "godot/main.gd": "030cd9d70cb67a4696b869a9a8794c66c88e9e70d43e3e6d92f3d3b90b9ffd4e",
+  "godot/power_story.gd": "dec4cdb16441c54ceca7e9d8b1b91685f2643ca2f8f4855b926d081da0de2024",
+  "godot/civic_listening.gd": "2eca8cffc35ed2753544e137515fdd6e67b1d6933fb60717763e4c540061c7e7",
+  "godot/tests/study_test.gd": "07d79a58ea1e7b2fb4cc16f1041538fc9a469860533648701a6eece860922cc9",
+  "tests/godot-browser.mjs": "701037aa7064a2ba42d2a26428a300b412105ac99f663de017f23fb49183372f",
+  "tests/godot-data.test.mjs": "55c729e4387ef8ca93b8ed2c29b323cf1e276717ea1e751dc20fee1fa7bcf160",
+  "scripts/build-godot-data.mjs": "131cf33c03dadef027ed2e9edd83edd4366c1b9aa33551bb96ba85fd4b1579b8",
+  "godot/data/buildings.json": "8b3afd7a6ec3d00ac22fb77347caeafa262be2f55ad1ddbf0a9dd296afd332d2",
+  "godot/data/source/osm_buildings.json": "6b00db9038f08223d5966e85264ea16340a4be3fd8267a612ec9a25fad9fbf7b",
+  "docs/ROADMAP.md": "e5b90ae0fdfdc613963970f71a1d9f2cd1f37f0a63710e0107ce0cd8861d75b2",
+  "session_handoff.md": "53b92828e8fc6f7280bc4553f808567df259f18e6d389bf82544b74cdfcbbc06"
+}

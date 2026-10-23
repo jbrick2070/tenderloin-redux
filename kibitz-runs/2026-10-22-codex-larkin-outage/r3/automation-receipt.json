@@ -1,0 +1,12 @@
+{
+  "id": "build-tenderloin-redux",
+  "kind": "heartbeat",
+  "status": "ACTIVE",
+  "rrule": "FREQ=MINUTELY;INTERVAL=30",
+  "target_thread_id": "01a159d6-60a3-78e1-92ae-4018509d2539",
+  "prompt_sha256": "6a453336990cc5cb829d59fccae8663aede60a3b94be0e4aa21f795c2ab949f7",
+  "checkpoint": "Larkin 2017 and episode location research",
+  "verified_exact_prompt": true,
+  "notification_intent": "preserved: quiet unless meaningful milestone/failure/action",
+  "no_cutoff": true
+}

@@ -1,0 +1,5 @@
+ElectionAbbr	PollingSiteID	PollingSiteName	TableID	PollingPlaceDesc1	PollingPlaceDesc2	SamBalAddr1	SamBalAddr2	VotingPctID	VotingPctName	PollPlaceRegPctID	PollPlaceRegPctPortion	BallotTypeList
+2024NOVGEN	750	7528 - 380 Eddy St		Cadillac Hotel - Lobby	380 Eddy St	Btw Jones & Leavenworth	1.1% Slope	7528   	Pct 7528	7528   		12
+2024NOVGEN	2092	7534 - 246 Eddy St (loc 7533)		Boeddeker Park & Clubhouse - Meeting Room	246 Eddy St	Btw Jones & Taylor	8.3% Slope - Ramped Access	7534   	Pct 7534	7534   		12
+2024NOVGEN	3592	7529 - 234 Hyde St		Faithful Fools	234 Hyde St	Btw Eddy & Turk	0.1% Slope	7529   	Pct 7529	7529   		12
+2024NOVGEN	3981	7533 - 330 Ellis St		Glide Memorial Church - 2nd Floor Sanctuary	330 Ellis St	Btw Taylor & Jones	2.0% Slope - Access Via Elevator	7533   	Pct 7533	7533   		12

@@ -1,0 +1,27 @@
+STDOUT:
+My verdict is yes-with-fixes: the startup order, export packaging and data derivation are sound, but three problems should be fixed before build. The review is written to `kibitz-runs/2026-10-22-codex-larkin-outage/r3/claude.md`. I only read source files; I ran no commands, tests, native processes or git.
+
+**Must-fix before build:**
+1. **The west walking-bound extension reaches beyond Eddy** (`power_place.gd:44`).
+   - It widens the whole walking area to x = -603, not just Eddy. That opens about 30–40 m of Turk Street west of Hyde (way 686250332), an area with no modeled buildings.
+   - This contradicts `docs/POWER_STORY_SOURCES.md:18`, which says only the Eddy approach is extended.
+   - Because `build_muni_overhead_lines` (`main.gd:2004`) runs after `power_place.setup` and reads the same bounds, trolley wires and poles now also extend west on both Eddy and Turk. The existing trolley test only checks minimum counts, so it won't catch this.
+   - Fix: limit the extension to near the Eddy line, and give the trolley builder the old bounds.
+2. **The rule for detouring via Taylor/Eddy misfires** (`power_story.gd:333`).
+   - Station 0 always detours via Taylor/Eddy. A player who Stops partway along Eddy and presses Walk again is sent east to Taylor and back, up to about 1.1 km. Walk also triggers the detour when the player is already at the station.
+   - The return rule uses a hard-coded `x < -500`, which misses players between -500 and Hyde (-450). Those players get the unrestricted route that the code comment says grazes the Turk/Hyde wall. That the graze happens from those positions is my assumption.
+3. **The route tests only check where the player ends up.**
+   - A replan during walking ignores the via (`main.gd:13466`), so a route that skipped the Eddy approach would still pass both the native and browser tests.
+   - They need to check the path itself, cover station 2 from Larkin, and include a Stop-then-Walk case.
+
+**Should-fix:**
+- **Via lost on replan:** a replan mid-walk drops the via point, so the two legs should be walked separately.
+- **No load guard:** `power_place.gd` has none. A missing or broken `power_place.json` would crash startup. A partial guard leaves the goal at (0,0), which could pass the site check and quietly move the location.
+- **Hard-coded Taylor/Eddy point:** the build script never checks it against street 277480424. It matches today, but the data test compares the builder's output with itself.
+- **Utility-role wording:** historical mode still says "Repair view" and announces "Welcome lights" from the Festival story. The evening-toggle message also says "after-dark" although this story is daytime.
+- **Snapshot tracks the wrong object:** for historical stations 1–2 it watches a street lamp that never changes, not the relay lamp.
+- **Test gaps:** the full lighting reset after a historical End is never checked, and the station 1–2 browser endpoint checks are weak.
+
+The only cut I suggest is the trimesh collision in `power_place.gd:38`. Nothing in `main.gd` uses physics for movement or picking, so it does nothing.
+
+Separately, several MCP connectors (Box, Runway, Play Sheet Music and the engineering plugins such as GitHub and Slack) need authorization in your connector settings or via `/mcp`. They weren't needed for this review.

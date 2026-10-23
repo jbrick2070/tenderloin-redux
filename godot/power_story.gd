@@ -43,6 +43,15 @@ var connector_room := true
 var dark: StandardMaterial3D
 var warm: StandardMaterial3D
 var entry_generation := 0
+var historical := false
+var map_view := false
+var site_kit: Node3D
+var site_lamp: MeshInstance3D
+var site_valid := false
+var credit: Label
+var map_labels: Array[Label] = []
+var leg_goal := Vector2.ZERO
+var via_pending := false
 
 func setup(owner_game: Node) -> void:
 	game=owner_game
@@ -62,7 +71,7 @@ func setup(owner_game: Node) -> void:
 	heading.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	heading.add_theme_font_size_override("font_size",18)
 	head.add_child(heading)
-	var credit := Label.new()
+	credit=Label.new()
 	credit.text="Fictional event kit | City/PDDL | OSM/ODbL"
 	credit.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	credit.add_theme_font_size_override("font_size",10)
@@ -73,6 +82,13 @@ func setup(owner_game: Node) -> void:
 	picture.texture_filter=CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	picture.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	add_child(picture)
+	for text in ["Larkin / Eddy", "40 m", "N", "Eddy Street"]:
+		var label := Label.new()
+		label.text=text
+		label.mouse_filter=Control.MOUSE_FILTER_IGNORE
+		label.add_theme_color_override("font_color",Color("fff1cc"))
+		add_child(label)
+		map_labels.append(label)
 	for i in range(4):
 		var pad := Button.new()
 		pad.custom_minimum_size=Vector2(44,44)
@@ -144,6 +160,26 @@ func setup(owner_game: Node) -> void:
 	for i in range(3): goals.append(game.nearest_walkable_point(game.street_lamp_points[i]+Vector2(0,1.4)))
 	dark=game.material(Color("283c4b"))
 	warm=game.mural_material(Color("ffe8a3"))
+	site_kit=Node3D.new()
+	site_kit.name="FictionalLarkinBatteryStand"
+	game.add_child(site_kit)
+	site_kit.position=Vector3(game.power_place.goal.x,0,game.power_place.goal.y+2.2)
+	for spec in [[Vector3(0.8,0.08,0.65),Vector3(0,0.04,0)],[Vector3(0.08,0.9,0.08),Vector3(0,0.5,0)],[Vector3(0.6,0.4,0.3),Vector3(0,1.1,0)]]:
+		var body := MeshInstance3D.new()
+		var stand_shape := BoxMesh.new()
+		stand_shape.size=spec[0]
+		body.mesh=stand_shape
+		body.position=spec[1]
+		body.material_override=game.material(Color("407b83"))
+		site_kit.add_child(body)
+	site_lamp=MeshInstance3D.new()
+	var globe := SphereMesh.new()
+	globe.radius=0.25
+	globe.height=0.5
+	site_lamp.mesh=globe
+	site_lamp.position=Vector3(0,1.6,0)
+	site_kit.add_child(site_lamp)
+	site_valid=game.power_place.loaded and game.is_walkable_point(game.power_place.goal) and game.power_place.goal.distance_to(game.nearest_walkable_point(game.power_place.goal))<0.01
 	for c in [top,tray]: c.minimum_size_changed.connect(queue_layout)
 	resized.connect(queue_layout)
 	hide()
@@ -179,7 +215,10 @@ func near() -> bool:
 	return game.player_xz().distance_to(relay_goal(station))<=ARRIVAL_M and game.current_path.is_empty()
 
 func relay_goal(index: int) -> Vector2:
-	return goals[index] if index<goals.size() else Vector2.ZERO
+	return game.power_place.goal if historical and index==0 else (goals[index] if index<goals.size() else Vector2.ZERO)
+
+func phase_name(index: int) -> String:
+	return ["Larkin / Eddy battery light","Turk gathering art lights","Turk gathering rhythm lights"][index] if historical else NAMES[index]
 
 func objective() -> Dictionary:
 	var count := int((restored&1)!=0)+int((restored&2)!=0)+int((restored&4)!=0)
@@ -188,7 +227,7 @@ func objective() -> Dictionary:
 		for i in range(3):
 			if (restored&(1<<i))==0: next=i; break
 	var goal := relay_goal(next)
-	return {"id":"power_story","has_target":restored!=7,"target":Vector3(goal.x,0,goal.y),"target_name":"Festival relay %d"%(next+1),"text":"Power Story: %s (%d/3 lights restored)"%[NAMES[next] if restored!=7 else "You brought the lights back!",count],"hint":"Choose Power Story to walk to and repair the next fictional relay. " + ("End story returns to your usual afternoon." if restored==7 else VOICES[next]+" has a clue for "+NAMES[next]+".")}
+	return {"id":"power_story","has_target":restored!=7,"target":Vector3(goal.x,0,goal.y),"target_name":phase_name(next),"text":"Power Story: %s (%d/3 lights restored)"%[phase_name(next) if restored!=7 else ("Neighbors connected!" if historical else "You brought the lights back!"),count],"hint":"Choose Power Story to walk to and connect the next fictional light kit. " + ("End story returns to your usual afternoon." if restored==7 else VOICES[next]+" has a clue for "+phase_name(next)+".")}
 
 func open_story() -> bool:
 	if visible: return true
@@ -212,6 +251,7 @@ func open_story() -> bool:
 
 func cancel_intent() -> void:
 	traveling=false
+	via_pending=false
 	entry_generation+=1
 
 func open_from_walking() -> void:
@@ -237,13 +277,20 @@ func close_story(announce: bool=true) -> void:
 	if announce: game.announce_a11y_status("Back to the block. "+("Power Story progress stays for this visit; End story restores ordinary lighting. Reload starts fresh." if active else "Ordinary lighting and saved progress are unchanged."))
 
 func begin() -> void:
-	if not visible or active or not available(): return
+	if active:
+		if historical and visible:
+			map_view=not map_view
+			refresh(true)
+		return
+	if not visible or not available() or (historical and not site_valid): return
 	active=true
+	map_view=false
 	won=false
 	restored=0
 	station=0
 	turns=[[0,0,1,1],[2,0,3,1],[3,0,1,2]]
 	message='Bea: "Our fictional festival light kit has gone dark. Help us link the three relays. No rush - we have each other."'
+	if historical: message='Bea: "Let us keep neighbors connected while the utility crews work. First, bring a portable battery light to our imagined meeting point at Larkin and Eddy."'
 	game.apply_time_of_day()
 	update_world()
 	refresh(true)
@@ -263,29 +310,58 @@ func reset_session() -> void:
 	won=false
 	restored=0
 	station=0
+	historical=false
+	map_view=false
 	turns=[[0,0,1,1],[2,0,3,1],[3,0,1,2]]
 	message=""
 
 func choose(index: int) -> void:
 	if index<0 or index>2: return
+	if not active:
+		if index<2:
+			historical=index==1
+			won=false
+			restored=0
+			station=0
+		map_view=historical
+		message=""
+		refresh(true)
+		tabs[index].grab_focus()
+		return
 	station=index
+	map_view=false
 	message=""
 	refresh(true)
 	tabs[index].grab_focus()
 
 func walk_to_relay() -> void:
 	if not active or not visible: return
+	map_view=false
+	if historical and near():
+		message="You are already at this light kit. Choose a connector or another light."
+		refresh(true)
+		return
 	trip_goal=relay_goal(station)
 	close_story(false)
 	game.show_block_panel(false)
-	traveling=game.walk_to_point(trip_goal)
-	if traveling: game.announce_a11y_status("Walking to fictional relay %d, %s. Stop Walking cancels. Its repair view opens after arrival."%[station+1,NAMES[station]])
+	leg_goal=trip_goal
+	var use_via := false
+	if historical:
+		var p: Array=game.power_place.source.return_junction.xz
+		var via := Vector2(p[0],p[1])
+		# Resume directly along clear Eddy segments; keep each routed leg's own goal
+		# so a collision replan cannot discard the Taylor/Eddy approach.
+		use_via=(station==0 or game.player_xz().x<via.x) and not game.segment_walkable(game.player_xz(),trip_goal)
+		if use_via: leg_goal=via
+	traveling=game.walk_to_point(leg_goal)
+	via_pending=traveling and use_via
+	if traveling: game.announce_a11y_status("Walking to %s. Stop Walking cancels. Its %s opens after arrival."%[phase_name(station),"battery view" if historical else "repair view"])
 	else:
 		message="That route is not open. Try another relay, or return to the street and choose a different approach."
 		open_story()
 
 func rotate(index: int) -> void:
-	if not visible or not active or not connector_room or not near() or (restored & (1<<station))!=0: return
+	if not visible or not active or not connector_room or map_view or not near() or (restored & (1<<station))!=0: return
 	turns[station][index]=(int(turns[station][index])+1)%4
 	message="Connector %d now links %s to %s."%[index+1,DIRECTIONS[int(turns[station][index])],DIRECTIONS[(int(turns[station][index])+1)%4]]
 	refresh(true)
@@ -309,7 +385,7 @@ func connected() -> bool:
 	return false
 
 func check_path() -> void:
-	if not visible or not active or not connector_room or not near() or (restored & (1<<station))!=0: return
+	if not visible or not active or not connector_room or map_view or not near() or (restored & (1<<station))!=0: return
 	if not connected():
 		message="Not connected yet. Trace from the IN arrow through all four elbows to OUT. Every turn can be changed; there is no penalty."
 	else:
@@ -318,6 +394,9 @@ func check_path() -> void:
 		if restored==7:
 			won=true
 			message='Bea: "You brought our lights back! The whole crew is cheering for you. Our block is glowing again." Take a walk under the lights, or End story to return to your afternoon.'
+		if historical:
+			message=VOICES[station]+': "Our portable light is ready. Thanks for looking after your neighbors."'
+			if restored==7: message='Bea: "You kept our neighbors connected!" In the real April 21, 2017 outage, PG&E restored service by 4:46 p.m. This battery-light adventure and its residents are original fiction.'
 		game.apply_time_of_day()
 		update_world()
 	refresh(true)
@@ -326,6 +405,18 @@ func check_path() -> void:
 
 func apply_lighting() -> void:
 	if not active: return
+	if historical:
+		# The documented event lasted from morning to late afternoon, not a night blackout.
+		game.world_env.background_color=Color("a1b6be")
+		game.world_env.ambient_light_color=Color("e6ece8")
+		game.world_env.ambient_light_energy=0.8
+		game.sun_light.light_color=Color("ffe4be")
+		game.sun_light.light_energy=0.85
+		game.rim_light.light_energy=0.35
+		game.rim_light.light_color=Color("dce8f0")
+		game.light_pool_material.albedo_color=Color(1,1,1,0)
+		game.building_shader_material.set_shader_parameter("night_glow",0.0)
+		return
 	# A fictional after-dark scene override; evening_mode preference is never changed.
 	game.world_env.background_color=Color("101b2b")
 	game.world_env.ambient_light_color=Color("b9c2dc")
@@ -338,12 +429,15 @@ func apply_lighting() -> void:
 	game.building_shader_material.set_shader_parameter("night_glow",1.0 if restored==7 else 0.0)
 
 func update_world() -> void:
+	if site_kit != null:
+		site_kit.visible=active and historical
+		site_lamp.material_override=warm if (restored&1)!=0 else dark
 	for i in range(boxes.size()):
-		boxes[i].visible=active
+		boxes[i].visible=active and not (historical and i==0)
 		lamps[i].material_override=warm if (restored & (1<<i))!=0 else dark
 	if not active: return
 	for i in range(fixtures.size()):
-		var lit: bool=restored==7 or (i<3 and (restored & (1<<i))!=0) or (i>=7 and (restored & (1<<(i-7)))!=0)
+		var lit: bool=(historical and i<7) or restored==7 or (i<3 and (restored & (1<<i))!=0) or (i>=7 and (restored & (1<<(i-7)))!=0)
 		fixtures[i].material_override=originals[i] if lit else dark
 
 func diagram() -> String:
@@ -371,34 +465,55 @@ func diagram() -> String:
 	svg+='<path d="M 18 222 L 342 222" stroke="#78909a" stroke-width="2"/>'
 	return svg+'</svg>'
 
+func source_text() -> String:
+	return "REAL PLACE / HISTORY: Larkin Substation, 600 Larkin Street at Eddy. April 21, 2017: a circuit-breaker cabinet arc and fire interrupted service for about 88,000 customers, from about 9:06 a.m. to full restoration at 4:46 p.m. PG&E restored utility service. This was not a verified transformer explosion.\nORIGINAL FICTION: portable battery-light tasks, residents and dialogue; not actual utility repairs, equipment, entrances or an active fault.\nMAP: north up; scale bar 40 m. Gold dot: city Larkin/Eddy intersection. White dot: city address point, not an entrance. Plain exterior: OSM footprint and reported 9 m height, stylized color, not a surveyed current facade. Only the Eddy approach is added to walking coverage; Larkin Street beyond it is not modeled.\nSOURCES: Exponent report, September 15, 2017, commissioned by PG&E and hosted by CPUC, printed pages 1, 9, 34; PG&E April 21, 2017 restoration release. SF EAS 491045 and intersection CNN 25148000 (PDDL); OpenStreetMap way 71209428 and Eddy way 30832489 (ODbL). Geographic records retrieved October 22, 2026; address record updated August 16, 2018. These are historical sources, not current outage guidance."
+
 func refresh(announce: bool) -> void:
 	heading.text="Lights Back On | %d/3"%[int((restored&1)!=0)+int((restored&2)!=0)+int((restored&4)!=0)]
+	if historical: heading.text="Larkin 2017 | %d/3 neighbor lights"%[int((restored&1)!=0)+int((restored&2)!=0)+int((restored&4)!=0)]
+	credit.text="Real place / imagined support | SF/PDDL | OSM/ODbL" if historical else "Fictional event kit | City/PDDL | OSM/ODbL"
 	if won and not active: heading.text="Lights Back On | Story ended"
-	var text := "A fictional, untimed power-restoration adventure. Three portable transformer relays, three neighbors' clues, and you making the lights shine again. Follow the triangle inlet through all four elbows to the round lamp. Progress is for this visit only; reload starts fresh. Music is your independent soundtrack. This event kit is not a real utility map or electrical repair training."
+	var text := "A fictional, untimed power-restoration adventure. Three portable light relays, three neighbors' clues, and you making the lights shine again. Follow the triangle inlet through all four elbows to the round lamp. Progress is for this visit only; reload starts fresh. Music is your independent soundtrack. This event kit is not a real utility map or electrical repair training."
 	if active:
-		text="Relay %d: %s. %s: \"%s\"\nIN: %s of connector %d. OUT: %s of connector %d. Connect all four elbows.\n"%[station+1,NAMES[station],VOICES[station],CLUES[station],DIRECTIONS[SOURCES[station].y],SOURCES[station].x+1,DIRECTIONS[SINKS[station].y],SINKS[station].x+1]
+		text="Relay %d: %s. %s: \"%s\"\nIN: %s of connector %d. OUT: %s of connector %d. Connect all four elbows.\n"%[station+1,phase_name(station),VOICES[station],CLUES[station],DIRECTIONS[SOURCES[station].y],SOURCES[station].x+1,DIRECTIONS[SINKS[station].y],SINKS[station].x+1]
 		text+=("This relay is restored. Choose another relay or Back to see the lights." if (restored&(1<<station))!=0 else ("You are at the relay. Turn a connector, then Check path." if near() else "Choose Walk to relay. The repair surface opens when you arrive; Stop Walking cancels."))
 		text+="\nBack keeps this visit's progress. End story restores usual lighting. Reload starts this story fresh."
+	if historical:
+		if not active or map_view:
+			text=("Choose Battery view to continue your visit.\n" if active else "Choose Begin story to visit Larkin/Eddy, help with an imagined battery light, then bring two more lights back to the gathering on Turk near Taylor/Mason. The utility site is never entered.\n")+source_text()
+		else:
+			text="April 21, 2017 inspired fiction | "+phase_name(station)+".\n"+text
+			if station>0: text+="\nThis imagined gathering station is %.0f m from Larkin/Eddy in a straight line, on Turk near Taylor/Mason; it is not utility equipment."%relay_goal(station).distance_to(game.power_place.goal)
+			text+="\nPG&E restored real utility service. Your task is a fictional battery-light link. Case map has the dated sources."
+		if active: text=text.replace("repair surface", "battery view")
+		if not site_valid: text="The Larkin street approach is unavailable; Begin is disabled rather than moving the location.\n"+text
 	if not message.is_empty(): text=message+"\n"+text
 	if not connector_room: text="Make the window taller or wider to use all four connectors. Back and End story remain available.\n"+text
 	reader.text=text
 	for i in range(4):
 		var r := int(turns[station][i])
-		pads[i].disabled=not active or not connector_room or not near() or (restored&(1<<station))!=0
+		pads[i].disabled=not active or not connector_room or map_view or not near() or (restored&(1<<station))!=0
 		pads[i].accessibility_name="Turn connector %d: %s to %s"%[i+1,DIRECTIONS[r],DIRECTIONS[(r+1)%4]]
 		pads[i].tooltip_text=pads[i].accessibility_name
 	for i in range(3):
 		tabs[i].text="Relay %d%s"%[i+1," OK" if (restored&(1<<i))!=0 else ""]
-		tabs[i].accessibility_name="Relay %d: %s, %s"%[i+1,NAMES[i],"restored" if (restored&(1<<i))!=0 else "not yet restored"]
-	actions[0].disabled=active
-	actions[0].text="Replay\nstory" if won else "Begin\nstory"
+		tabs[i].accessibility_name="Relay %d: %s, %s"%[i+1,phase_name(i),"restored" if (restored&(1<<i))!=0 else "not yet restored"]
+	if not active:
+		for i in range(3):
+			tabs[i].text=["Festival", "Larkin\n2017", "Place\nmap"][i]
+			tabs[i].disabled=i==2 and not historical
+			tabs[i].accessibility_name=["Original fictional festival story", "Larkin, April 21, 2017 inspired story", "Larkin place map and complete sources"][i]
+	else:
+		for b in tabs: b.disabled=false
+	actions[0].disabled=(active and not historical) or (historical and not site_valid)
+	actions[0].text=("Battery\nview" if map_view else "Case\nmap") if active and historical else ("Replay\nstory" if won else "Begin\nstory")
 	actions[1].disabled=not active
-	actions[2].disabled=not active or not connector_room or not near() or (restored&(1<<station))!=0
+	actions[2].disabled=not active or not connector_room or map_view or not near() or (restored&(1<<station))!=0
 	actions[3].disabled=not active
 	actions[4].text="Music: On" if game.music_playing else "Music: Off"
 	for b in actions: b.accessibility_name=b.text.replace("\n"," ")
 	var image := Image.new()
-	if image.load_svg_from_string(diagram(),2.0)==OK:
+	if image.load_svg_from_string(game.power_place.map_svg() if historical and (not active or map_view) else diagram(),2.0)==OK:
 		image.generate_mipmaps()
 		picture.texture=ImageTexture.create_from_image(image)
 	queue_layout()
@@ -427,8 +542,16 @@ func fit_layout() -> void:
 	art_rect=Rect2(area.position+(area.size-Vector2(360,240)*scale)*0.5,Vector2(360,240)*scale)
 	picture.position=art_rect.position
 	picture.size=art_rect.size
+	for i in range(map_labels.size()):
+		var label := map_labels[i]
+		label.visible=historical and (not active or map_view) and game.power_place.loaded
+		label.add_theme_font_size_override("font_size",clampi(roundi(13*scale),12,18))
+		label.size=Vector2.ZERO
+		label.position=art_rect.position+[Vector2(18,184),Vector2(285,219),Vector2(323,1),Vector2(160,165)][i]*scale
+		label.position.x=minf(label.position.x,art_rect.end.x-label.get_combined_minimum_size().x-3)
+		label.position.y=minf(label.position.y,art_rect.end.y-label.get_combined_minimum_size().y-2)
 	for i in range(4):
-		pads[i].visible=88*scale>=44
+		pads[i].visible=88*scale>=44 and not (historical and (not active or map_view))
 		pads[i].position=art_rect.position+Vector2(82+(i%2)*96,20+(i/2)*96)*scale
 		pads[i].size=Vector2(88,88)*scale
 	if connector_room!=(88*scale>=44):
@@ -442,18 +565,19 @@ func snapshot() -> Dictionary:
 	for b in pads+tabs+actions: buttons.append(game.control_snapshot(b))
 	var world: Array[Dictionary]=[]
 	for i in range(3):
-		var p: Vector2=game.camera.unproject_position(fixtures[i].global_position)
+		var fixture: MeshInstance3D=(site_lamp if i==0 else lamps[i]) if historical else fixtures[i]
+		var p: Vector2=game.camera.unproject_position(fixture.global_position)
 		var corners: Array[Dictionary]=[]
 		for x in [-0.22,0.22]:
 			for y in [-0.22,0.22]:
 				for z in [-0.22,0.22]:
-					var point: Vector2=game.camera.unproject_position(fixtures[i].global_position+Vector3(x,y,z))
+					var point: Vector2=game.camera.unproject_position(fixture.global_position+Vector3(x,y,z))
 					corners.append({"x":point.x,"y":point.y})
-		world.append({"x":p.x,"y":p.y,"corners":corners,"lit":(restored&(1<<i))!=0,"goal_x":relay_goal(i).x,"goal_z":relay_goal(i).y,"box_visible":boxes[i].is_visible_in_tree()})
-	return {"visible":visible,"entry":game.control_snapshot(entry),"active":active,"won":won,"restored":restored,"station":station,"turns":turns.duplicate(true),"near":near(),"traveling":traveling,"connected":connected(),"buttons":buttons,"text":reader.text,"reader":game.control_snapshot(reader),"scroll":reader.get_v_scroll_bar().value,"scroll_max":maxf(0,reader.get_v_scroll_bar().max_value-reader.get_v_scroll_bar().page),"picture":game.rect_snapshot(art_rect),"world":world,"night_glow":game.building_shader_material.get_shader_parameter("night_glow"),"pool_alpha":game.light_pool_material.albedo_color.a,"layout_pending":layout_pending,"connector_room":connector_room}
+		world.append({"x":p.x,"y":p.y,"corners":corners,"lit":(restored&(1<<i))!=0,"goal_x":relay_goal(i).x,"goal_z":relay_goal(i).y,"box_visible":site_kit.is_visible_in_tree() if historical and i==0 else boxes[i].is_visible_in_tree()})
+	return {"historical":historical,"map_view":map_view or (historical and not active),"site_valid":site_valid,"map_labels":map_labels.map(func(label): return game.control_snapshot(label).merged({"text":label.text,"font_size":label.get_theme_font_size("font_size")})),"leg_goal":[leg_goal.x,leg_goal.y],"via_pending":via_pending,"site_source_xz":game.power_place.source.get("junction",{}).get("xz",[]),"address_xz":game.power_place.source.get("address_point",{}).get("xz",[]),"source_text":source_text(),"visible":visible,"entry":game.control_snapshot(entry),"active":active,"won":won,"restored":restored,"station":station,"turns":turns.duplicate(true),"near":near(),"traveling":traveling,"connected":connected(),"buttons":buttons,"text":reader.text,"reader":game.control_snapshot(reader),"scroll":reader.get_v_scroll_bar().value,"scroll_max":maxf(0,reader.get_v_scroll_bar().max_value-reader.get_v_scroll_bar().page),"picture":game.rect_snapshot(art_rect),"world":world,"night_glow":game.building_shader_material.get_shader_parameter("night_glow"),"pool_alpha":game.light_pool_material.albedo_color.a,"layout_pending":layout_pending,"connector_room":connector_room}
 
 func blocked_route() -> void:
-	traveling=false
+	cancel_intent()
 	message="The route to relay %d stopped. Choose Power Story to try again or choose another relay."%(station+1)
 	game.announce_a11y_status(message)
 
@@ -464,11 +588,20 @@ func _process(delta: float) -> void:
 		game.layout_walking_controls_and_hub()
 	if active and not available(): end_session(false)
 	if traveling:
-		if not game.current_path.is_empty() and game.current_path[-1].distance_to(trip_goal)>ARRIVAL_M: traveling=false
+		if not game.current_path.is_empty() and game.current_path[-1].distance_to(leg_goal)>ARRIVAL_M: cancel_intent()
 		elif game.current_path.is_empty():
-			traveling=false
-			if game.player_xz().distance_to(trip_goal)<=ARRIVAL_M: open_story()
-			else: blocked_route()
+			if game.player_xz().distance_to(leg_goal)>ARRIVAL_M:
+				blocked_route()
+			elif via_pending:
+				via_pending=false
+				leg_goal=trip_goal
+				game.current_path=game.find_path(game.player_xz(),trip_goal)
+				if game.current_path.size()>1 and game.current_path[0].distance_to(game.player_xz())<0.2: game.current_path.remove_at(0)
+				game.update_route_ribbon(true)
+				if game.current_path.is_empty(): blocked_route()
+			else:
+				traveling=false
+				open_story()
 	if not visible: return
 	for c in saved_visibility:
 		if is_instance_valid(c): c.visible=false

@@ -1,0 +1,176 @@
+{
+  "format": 1,
+  "id": "larkin-2017",
+  "name": "Larkin Substation",
+  "address": "600 Larkin Street at Eddy",
+  "date": "2017-04-21",
+  "source_precision": "City address point and street intersection; neither is an entrance or failed equipment position.",
+  "junction": {
+    "lonlat": [
+      -122.417528773,
+      37.78331089
+    ],
+    "xz": [
+      -593.4053562742787,
+      -10.084478799913654
+    ],
+    "source": "SF Street Intersections gmfx-8h6i, CNN 25148000, PDDL"
+  },
+  "return_junction": {
+    "lonlat": [
+      -122.4109719,
+      37.7841515
+    ],
+    "xz": [
+      -16.531448344396075,
+      -103.6611839996192
+    ],
+    "source": "Existing OSM Eddy way 277480424 endpoint at Taylor; use Eddy approach in both directions"
+  },
+  "address_point": {
+    "lonlat": [
+      -122.41741847018493,
+      37.78359857210517
+    ],
+    "xz": [
+      -583.700910879757,
+      -42.10925074712236
+    ],
+    "source": "SF Enterprise Addressing System 3mea-di5p, EAS 491045, PDDL"
+  },
+  "exterior": {
+    "id": "osm:way/71209428",
+    "name": "Larkin Substation",
+    "height_m": 9,
+    "height_source": "OSM contributor height tag; not LiDAR measured",
+    "polygons": [
+      {
+        "rings": [
+          [
+            [
+              -514.9647336302822,
+              -63.83088799925247
+            ],
+            [
+              -513.0907589110758,
+              -51.74153599955986
+            ],
+            [
+              -510.53053992923765,
+              -35.277307999364496
+            ],
+            [
+              -587.2403313679912,
+              -23.3549359992503
+            ],
+            [
+              -593.636479823035,
+              -64.53220399953835
+            ],
+            [
+              -510.92645008017894,
+              -77.37853199937632
+            ],
+            [
+              -508.96449532743,
+              -64.76597599989731
+            ]
+          ]
+        ],
+        "vertices": [
+          [
+            -514.9647336302822,
+            -63.83088799925247
+          ],
+          [
+            -513.0907589110758,
+            -51.74153599955986
+          ],
+          [
+            -510.53053992923765,
+            -35.277307999364496
+          ],
+          [
+            -587.2403313679912,
+            -23.3549359992503
+          ],
+          [
+            -593.636479823035,
+            -64.53220399953835
+          ],
+          [
+            -510.92645008017894,
+            -77.37853199937632
+          ],
+          [
+            -508.96449532743,
+            -64.76597599989731
+          ]
+        ],
+        "triangles": [
+          5,
+          6,
+          0,
+          1,
+          2,
+          3,
+          3,
+          4,
+          5,
+          0,
+          1,
+          3,
+          3,
+          5,
+          0
+        ]
+      }
+    ],
+    "source": "OpenStreetMap contributors, ODbL; retained 2026-10-20 extract"
+  },
+  "eddy": {
+    "id": 30832489,
+    "points": [
+      [
+        -595.0969483830913,
+        -10.553135999932692
+      ],
+      [
+        -585.4895286962443,
+        -11.98916399931278
+      ],
+      [
+        -566.1515172750908,
+        -15.206311999732804
+      ],
+      [
+        -494.83490190474566,
+        -26.67227199925918
+      ],
+      [
+        -458.0328537816451,
+        -32.60562799978203
+      ],
+      [
+        -450.3961868504012,
+        -33.84127999998441
+      ]
+    ]
+  },
+  "history": {
+    "cause": "Circuit-breaker cabinet arc and fire",
+    "start": "about 9:06 a.m.",
+    "restored": "4:46 p.m.",
+    "affected": "about 88,000 customers",
+    "report": "Exponent, Larkin Outage Investigation, September 15, 2017; commissioned by PG&E; CPUC-hosted. Printed pages 1, 9 and 34.",
+    "url": "https://www.cpuc.ca.gov/-/media/cpuc-website/files/uploadedfiles/cpuc_public_website/content/safety/electric_safety_and_reliability/attachment-3-exponent-report-larkin-outage-redacted-version.pdf",
+    "utility_url": "https://investor.pgecorp.com/news-events/press-releases/press-release-details/2017/PGE-Safely-Restores-Power-to-San-Francisco-Thanks-Customers-for-their-Patience-Substation-Scheduled-for-Modernization/default.aspx",
+    "fiction": "Original imagined community battery-light tasks. PG&E restored utility service. No real equipment layout, entrance, repair procedure, present fault or current facade is depicted."
+  },
+  "source_sha256": {
+    "godot/data/source/osm_buildings.json": "6b00db9038f08223d5966e85264ea16340a4be3fd8267a612ec9a25fad9fbf7b",
+    "public/data/streets.osm.json": "f3520882cc873788b8c34be031121128f303391d886bb9cadeb82b17b716ead8",
+    "godot/data/source/larkin/address.json": "703eac0174a434f40cfa753cc0132983ea129392a04579c325f0ec1fc4eab862",
+    "godot/data/source/larkin/intersection.json": "b3a465baa27dfc09b34d371db7529039b0a118659bc4474aa88cb54221c75cef"
+  }
+}

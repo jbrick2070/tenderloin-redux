@@ -5551,7 +5551,147 @@ func verify_power_story(study: Node, full_profile: String) -> void:
 	study.last_story_chapter=int(study.current_chapter().num)
 	require(not story.active and not story.visible and story.boxes.all(func(b): return not b.visible),"reload/import ends visit-only episode and restores ordinary world")
 	require(story.message.is_empty() and not story.won and story.restored==0,"reset clears stale outcome copy and visit-only progress")
+	await verify_larkin_story(study,full_profile)
 	print("POWER_STORY_PASS:2layouts x6sizes, all768topologies/actualui_accept/3lamps+lanterns/hero/routeStopArrival+5nearinterruptions/quiet/manual/no-save/reload/nav6/tiny2")
+
+
+func verify_larkin_story(study: Node, full_profile: String) -> void:
+	var story: Node=study.power_story
+	var place: Node=study.power_place
+	var source_goal := Vector2(-593.405, -10.084)
+	require(place.goal.distance_to(source_goal)<0.002 and story.site_valid,"city Larkin/Eddy coordinate reaches actual walkable junction without nearest-point relocation")
+	require(place.source.exterior.id=="osm:way/71209428" and place.record.height_m==9 and place.record.polygons[0].rings[0].size()==7,"separate full OSM exterior and reported9m tag retained")
+	require(study.all_buildings.size()==188 and study.lidar_additions.size()==8,"original188 measured records and8LiDAR additions remain separate")
+	require(study.building_containing_point(Vector2(-550,-50))=="osm:way/71209428" and not study.is_walkable_point(Vector2(-550,-50)),"actual complete exterior blocks walking through the substation")
+	require(place.loaded and not place.valid_source(null) and not place.valid_source({"junction":{}}),"missing or malformed place data cannot create a walkable substitute goal")
+	require(not study.is_walkable_point(Vector2(-570,91)),"Eddy extension does not open the unrelated western Turk corridor")
+	for pole in study.trolley_pole_points: require(pole.x>=place.legacy_bounds.position.x-1,"decorative trolley poles retain original west coverage")
+	var mesh_bounds: AABB=place.mesh.get_aabb()
+	require(absf(mesh_bounds.size.x-place.bounds.size.x)<0.001 and absf(mesh_bounds.size.z-place.bounds.size.y)<0.001,"rendered exterior uses actual complete OSM geometry")
+	for child in story.site_kit.get_children():
+		if child is MeshInstance3D:
+			var box: AABB=child.get_aabb()
+			for corner in range(8):
+				var point: Vector3=child.global_transform*box.get_endpoint(corner)
+				require(study.building_containing_point(Vector2(point.x,point.z)).is_empty() and study.min_wall_distance(Vector2(point.x,point.z),0.05)>=0.05,"actual battery stand mesh corners clear modeled walls by5cm")
+	var cutaways := 0
+	var original_pitch: float=study.camera_pitch_scale
+	for yaw in [0.0,PI*0.5,PI,PI*1.5]:
+		study.following_player=false
+		study.in_overview=false
+		study.in_wide_overview=false
+		study.selected=-1
+		study.target=Vector3(place.goal.x,1,place.goal.y)
+		study.camera_yaw=yaw
+		study.camera_pitch_scale=0.55
+		study.view_size=24
+		study.update_camera()
+		var expected: bool=study.building_record_occludes_point(place.record,place.bounds,place.goal,1.0)
+		place.cutaway([place.goal])
+		if expected: cutaways+=1
+		require(place.mesh.material_override==(study.cutaway_material if expected else place.base_material),"separate exterior follows common cutaway across rotated real corner views")
+	require(cutaways>0,"at least one real low-pitch rotated Larkin view exercises exterior cutaway")
+	study.camera_pitch_scale=original_pitch
+	study.update_camera()
+	var solutions := [[2,1,0,3],[0,2,1,3],[1,2,3,0]]
+	for size in [Vector2i(1100,760),Vector2i(390,667),Vector2i(320,667),Vector2i(520,360),Vector2i(559,360),Vector2i(640,360)]:
+		study.apply_save_envelope(full_profile)
+		study.hide_story_card()
+		study.last_story_chapter=int(study.current_chapter().num)
+		study.startup_story_pending=false
+		study.current_path.clear()
+		root.size=size
+		for f in range(6): await process_frame
+		var lighting := [study.world_env.background_color,study.world_env.ambient_light_color,study.world_env.ambient_light_energy,study.sun_light.light_color,study.sun_light.light_energy,study.rim_light.light_color,study.rim_light.light_energy,study.light_pool_material.albedo_color,study.building_shader_material.get_shader_parameter("night_glow")]
+		var saved := JSON.stringify(study.build_save_envelope())
+		var file := FileAccess.get_file_as_string(study.save_path)
+		var quiet := [study.music_playing,study.music_mode,study.music_volume,study.reward_sounds_enabled]
+		var pose: Array=study.panel_camera_pose()
+		require(story.open_story(),"historical case shares original Power entry")
+		story.tabs[1].grab_focus()
+		var down := InputEventAction.new()
+		down.action="ui_accept"
+		down.pressed=true
+		Input.parse_input_event(down)
+		await process_frame
+		down.pressed=false
+		Input.parse_input_event(down)
+		for f in range(6): await process_frame
+		require(story.historical and not story.active and story.reader.text.contains("April 21, 2017") and story.reader.text.contains("PG&E restored"),"actual keyboard selection exposes dated history and correct utility role")
+		require(story.pads.all(func(b): return not b.visible) and study.panel_camera_pose()==pose,"source map hides repair pads and owns no camera")
+		for label in story.map_labels: require(label.visible and label.get_theme_font_size("font_size")>=12 and story.art_rect.encloses(label.get_global_rect()),"real fallback-font map labels are readable and fit the paper")
+		for b in story.tabs+story.actions: require(b.size.x>=44 and b.size.y>=44 and Rect2(Vector2.ZERO,Vector2(size)).encloses(b.get_global_rect()),"source map reuses full44px controls at all6sizes")
+		story.begin()
+		require(story.active and not story.map_view and story.relay_goal(0).distance_to(source_goal)<0.002 and study.sun_light.light_energy>0.8 and study.light_pool_material.albedo_color.a==0,"2017 uses real junction and daytime community support")
+		for station in range(3):
+			story.choose(station)
+			var goal: Vector2=story.relay_goal(station)
+			study.player.position=Vector3(goal.x,0,goal.y)
+			study.following_player=false
+			study.update_camera()
+			pose=study.panel_camera_pose()
+			story.refresh(false)
+			story.walk_to_relay()
+			require(story.visible and study.current_path.is_empty() and not story.traveling,"Walk at the reached light stays put instead of detouring")
+			for f in range(6): await process_frame
+			for b in story.pads+story.tabs+story.actions: require(b.is_visible_in_tree() and b.size.x>=44 and b.size.y>=44 and Rect2(Vector2.ZERO,Vector2(size)).encloses(b.get_global_rect()),"historical repair has all13 actual44px controls")
+			story.check_path()
+			require(story.restored==(1<<station)-1,"wrong historical connection earns no progress")
+			for i in range(4):
+				for press in range((solutions[station][i]-int(story.turns[station][i])+4)%4): story.pads[i].pressed.emit()
+			story.actions[2].pressed.emit()
+			require(story.restored==(1<<(station+1))-1 and study.panel_camera_pose()==pose,"fictional battery tasks restore exact stage without camera takeover")
+			story.begin()
+			require(story.map_view and story.active and story.reader.text.contains("not an entrance"),"Case map is readable during the active visit")
+			var turns: Array=story.turns.duplicate(true)
+			story.rotate(0)
+			require(story.turns==turns,"map cannot turn an invisible connector")
+			story.begin()
+		require(story.won and story.reader.text.contains("kept our neighbors connected") and story.site_lamp.material_override==story.warm and study.building_shader_material.get_shader_parameter("night_glow")==0.0,"daylight payoff lights fictional battery stand without claiming player restored utility grid")
+		story.end_session(false)
+		require(lighting==[study.world_env.background_color,study.world_env.ambient_light_color,study.world_env.ambient_light_energy,study.sun_light.light_color,study.sun_light.light_energy,study.rim_light.light_color,study.rim_light.light_energy,study.light_pool_material.albedo_color,study.building_shader_material.get_shader_parameter("night_glow")],"every historical lighting override restores exactly")
+		require(not story.site_kit.visible and quiet==[study.music_playing,study.music_mode,study.music_volume,study.reward_sounds_enabled] and JSON.stringify(study.build_save_envelope())==saved and FileAccess.get_file_as_string(study.save_path)==file,"all historical choices preserve exact save/file/quiet and End hides stand")
+		story.close_story(false)
+	# Real movement from an existing street to the added corner, then back. No goal teleport.
+	study.apply_save_envelope(full_profile)
+	study.hide_story_card()
+	study.last_story_chapter=int(study.current_chapter().num)
+	root.size=Vector2i(1100,760)
+	story.open_story()
+	story.choose(1)
+	story.begin()
+	var via := Vector2(place.source.return_junction.xz[0],place.source.return_junction.xz[1])
+	for station in [0,1,0,2]:
+		story.choose(station)
+		story.walk_to_relay()
+		require(story.via_pending and story.leg_goal==via and study.current_path[-1].distance_to(via)<0.01,"each full crossing starts with an explicit source-backed Taylor/Eddy leg")
+		var steps := 0
+		var interrupted := false
+		var resume_x := INF
+		while (story.traveling or not study.current_path.is_empty()) and steps<5000:
+			study.advance_walk(0.1)
+			story._process(0)
+			steps+=1
+			var player: Vector2=study.player_xz()
+			if player.x<float(place.source.eddy.points[-1][0]): require(place.eddy_distance(player)<=study.MAX_STREET_CORRIDOR_M,"actual westward and return route samples stay on retained Eddy corridor")
+			if station==0 and not interrupted and player.x<-300:
+				study.stop_walking()
+				require(not story.traveling and not story.via_pending and not story.visible,"mid-Eddy Stop clears both arrival legs")
+				story.open_story()
+				resume_x=study.player_xz().x
+				story.walk_to_relay()
+				require(not story.via_pending,"mid-Eddy resume takes the clear direct segment instead of backtracking to Taylor")
+				interrupted=true
+			if station==0 and interrupted: require(study.player_xz().x<=resume_x+0.01,"resumed westbound journey never backtracks east")
+		for f in range(6): await process_frame
+		print("LARKIN_ROUTE ",station," steps=",steps," visible=",story.visible," near=",story.near()," player=",study.player_xz()," resumed=",interrupted)
+		require(steps>0 and steps<5000 and story.visible and story.near(),"actual route reaches real Larkin/Eddy and both Turk stations without fallback")
+
+	study.apply_save_envelope(full_profile)
+	study.hide_story_card()
+	study.last_story_chapter=int(study.current_chapter().num)
+	require(not story.historical and not story.active and not story.site_kit.visible,"reload resets selected historical visit without resuming")
+	print("LARKIN_STORY_PASS:real cityjunction/OSM exterior/daylight/6sizes/source map/actual ui_accept/route out+back/quiet/camera/zero file writes")
 
 func verify_loan_homecoming(study: Node, full_profile: String) -> void:
 	require(study.is_test_suite_mode(),"Loan Homecoming tests use the isolated formal suite")

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
+import { derivePowerPlace } from '../scripts/build-power-place.mjs';
 import {
   derive,
   deriveWiderBuildings,
@@ -18,6 +19,32 @@ import { deriveLidar2023, currentFootprints, rooferFootprints, rooferPass2Footpr
 
 const raw = await readFile(new URL('../godot/data/source/buildings.geojson', import.meta.url));
 const source = JSON.parse(raw);
+
+test('Larkin scenario preserves primary source coordinates and separate OSM exterior', async () => {
+  const runtime = JSON.parse(await readFile('godot/data/power_place.json','utf8'));
+  const paths = Object.keys(runtime.source_sha256), bytes = await Promise.all(paths.map(p=>readFile(p)));
+  for(let i=0;i<paths.length;i++) assert.equal(createHash('sha256').update(bytes[i]).digest('hex'),runtime.source_sha256[paths[i]]);
+  const derived = derivePowerPlace(...bytes.map(b=>JSON.parse(b)));
+  const {source_sha256,...content}=runtime;
+  assert.deepEqual(content,derived);
+  assert.deepEqual(runtime.junction.lonlat,[-122.417528773,37.78331089]);
+  assert.deepEqual(runtime.return_junction.lonlat,[-122.4109719,37.7841515]);
+  const geography=JSON.parse(await readFile('godot/data/buildings.json','utf8'));
+  assert.deepEqual(runtime.eddy.points,geography.wider_streets.find(w=>w.id===30832489).points);
+  assert.deepEqual(runtime.return_junction.xz,geography.wider_streets.find(w=>w.id===277480424).points.at(-1));
+  assert.deepEqual(runtime.address_point.lonlat,[-122.41741847018493,37.78359857210517]);
+  assert.deepEqual(runtime.junction.xz,project([-122.417528773,37.78331089]));
+  assert.ok(Math.hypot(...runtime.junction.xz.map((v,i)=>v-runtime.eddy.points[0][i]))<2);
+  assert.equal(runtime.exterior.polygons[0].rings[0].length,7);
+  assert.equal(runtime.exterior.height_m,9);
+  assert.match(runtime.exterior.height_source,/not LiDAR measured/);
+  assert.equal(runtime.date,'2017-04-21');
+  assert.equal(runtime.history.cause,'Circuit-breaker cabinet arc and fire');
+  assert.match(runtime.history.fiction,/PG&E restored utility service/);
+  assert.match(runtime.source_precision,/neither is an entrance/);
+  const receipt=JSON.parse(await readFile('godot/data/source/larkin/receipt.json','utf8'));
+  for(const src of receipt.sources) assert.equal(createHash('sha256').update(await readFile('godot/data/source/larkin/'+src.file)).digest('hex'),src.sha256);
+});
 const widerRaw = await readFile(new URL('../godot/data/source/buildings_tenderloin_west.geojson', import.meta.url));
 const widerSource = JSON.parse(widerRaw);
 const districtRaw = await readFile(new URL('../public/data/transgender-district.geojson', import.meta.url));
@@ -168,6 +195,9 @@ test('M6 release quality: docs/ASSETS.md, godot/data/SOURCES.md, export_presets.
     'godot/data/source/metadata.json',
     'godot/data/source/method.pdf',
     'godot/data/neighborhood_voices.json',
+    'godot/data/power_place.json',
+    'godot/power_place.gd',
+    'scripts/build-power-place.mjs',
     'scripts/vendor/earcut.js',
     'scripts/vendor/earcut.LICENSE',
     'godot/ENGINE_LICENSE.txt',
@@ -197,7 +227,7 @@ test('M6 release quality: docs/ASSETS.md, godot/data/SOURCES.md, export_presets.
   assert.ok(incMatch, 'export_presets.cfg must declare include_filter');
   assert.ok(excMatch, 'export_presets.cfg must declare exclude_filter');
   const includedFiles = incMatch[1].split(',').map(s => s.trim()).filter(Boolean);
-  assert.deepEqual(includedFiles, ['data/buildings.json', 'data/neighborhood_voices.json', 'data/street_trees.json', 'data/lidar_2023.json', 'ENGINE_LICENSE.txt']);
+  assert.deepEqual(includedFiles, ['data/buildings.json', 'data/neighborhood_voices.json', 'data/street_trees.json', 'data/lidar_2023.json', 'data/power_place.json', 'ENGINE_LICENSE.txt']);
   for (const relPath of includedFiles) {
     const buf = await readFile(new URL('../godot/' + relPath, import.meta.url));
     assert.ok(buf.byteLength > 0, `godot/${relPath} must exist and be non-empty`);

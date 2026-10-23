@@ -1,0 +1,290 @@
+{
+  "state": "SUPERSEDED by final.md and verification.json; retained candidate receipt",
+  "native_log": "artifacts/larkin-native-8.log",
+  "four_gate_receipt": "artifacts/larkin-gate-exits.json",
+  "targeted_current_pack_cases": [
+    {
+      "width": 1100,
+      "height": 760,
+      "touch": false,
+      "privateFixture": true,
+      "arrivals": [
+        [
+          -593.405334472656,
+          -10.0844783782959
+        ],
+        [
+          60.8282775878906,
+          -1.69354927539825
+        ],
+        [
+          93.9694595336914,
+          -7.0237078666687
+        ]
+      ],
+      "world": [
+        136
+      ],
+      "mapDot": [
+        255,
+        207,
+        119
+      ],
+      "mapLabelPixels": [
+        420,
+        162,
+        51,
+        391
+      ],
+      "sourceFingerprint": {
+        "sources": {
+          "godot/main.gd": "a8f97fb65370df92ea769a383fa8505cab679b12f0eb1f2cbd10db9870d76d00",
+          "godot/shared_panel.gd": "0cf289edc823919866c03e3687935d9b5c390058e1faa8051255a3fa9067833f",
+          "godot/loan_homecoming.gd": "0cac31652903848832ded6d2131c97e50e82a8c89f03e69c885aa543574472f9",
+          "godot/power_story.gd": "b5fac34164b28bc2cfa9c5b58e0348a8615dc557c6e4e67fffd7301387415e39",
+          "godot/power_place.gd": "f192f25dbe721d6a33c826046237cc41653bd473b50c8fed5c22bb94819309ed",
+          "godot/data/power_place.json": "5eac6de7921c9eb6afaa1752a9bfc6a693e63ca70a19ea3b6d82f268b2178f52",
+          "godot/tests/study_test.gd": "24d80b09af400ef6315a075efe319e4058b77de1bfccc193f7dd50e0672750a5"
+        },
+        "pack_sha256": "f996a35f553132b7012e25e1173ae525578b589bad4bb97b5b45620ca95d8b18"
+      }
+    },
+    {
+      "width": 390,
+      "height": 667,
+      "touch": true,
+      "privateFixture": true,
+      "arrivals": [
+        [
+          -593.405334472656,
+          -10.0844783782959
+        ],
+        [
+          60.8282775878906,
+          -1.69354927539825
+        ],
+        [
+          93.9694595336914,
+          -7.0237078666687
+        ]
+      ],
+      "world": [
+        112
+      ],
+      "mapDot": [
+        255,
+        207,
+        119
+      ],
+      "mapLabelPixels": [
+        213,
+        74,
+        33,
+        204
+      ],
+      "sourceFingerprint": {
+        "sources": {
+          "godot/main.gd": "a8f97fb65370df92ea769a383fa8505cab679b12f0eb1f2cbd10db9870d76d00",
+          "godot/shared_panel.gd": "0cf289edc823919866c03e3687935d9b5c390058e1faa8051255a3fa9067833f",
+          "godot/loan_homecoming.gd": "0cac31652903848832ded6d2131c97e50e82a8c89f03e69c885aa543574472f9",
+          "godot/power_story.gd": "b5fac34164b28bc2cfa9c5b58e0348a8615dc557c6e4e67fffd7301387415e39",
+          "godot/power_place.gd": "f192f25dbe721d6a33c826046237cc41653bd473b50c8fed5c22bb94819309ed",
+          "godot/data/power_place.json": "5eac6de7921c9eb6afaa1752a9bfc6a693e63ca70a19ea3b6d82f268b2178f52",
+          "godot/tests/study_test.gd": "24d80b09af400ef6315a075efe319e4058b77de1bfccc193f7dd50e0672750a5"
+        },
+        "pack_sha256": "f996a35f553132b7012e25e1173ae525578b589bad4bb97b5b45620ca95d8b18"
+      }
+    },
+    {
+      "width": 320,
+      "height": 667,
+      "touch": true,
+      "privateFixture": true,
+      "arrivals": [
+        [
+          -593.405334472656,
+          -10.0844783782959
+        ],
+        [
+          60.8282775878906,
+          -1.69354927539825
+        ],
+        [
+          93.9694595336914,
+          -7.0237078666687
+        ]
+      ],
+      "world": [
+        170
+      ],
+      "mapDot": [
+        255,
+        207,
+        119
+      ],
+      "mapLabelPixels": [
+        159,
+        59,
+        29,
+        163
+      ],
+      "sourceFingerprint": {
+        "sources": {
+          "godot/main.gd": "a8f97fb65370df92ea769a383fa8505cab679b12f0eb1f2cbd10db9870d76d00",
+          "godot/shared_panel.gd": "0cf289edc823919866c03e3687935d9b5c390058e1faa8051255a3fa9067833f",
+          "godot/loan_homecoming.gd": "0cac31652903848832ded6d2131c97e50e82a8c89f03e69c885aa543574472f9",
+          "godot/power_story.gd": "b5fac34164b28bc2cfa9c5b58e0348a8615dc557c6e4e67fffd7301387415e39",
+          "godot/power_place.gd": "f192f25dbe721d6a33c826046237cc41653bd473b50c8fed5c22bb94819309ed",
+          "godot/data/power_place.json": "5eac6de7921c9eb6afaa1752a9bfc6a693e63ca70a19ea3b6d82f268b2178f52",
+          "godot/tests/study_test.gd": "24d80b09af400ef6315a075efe319e4058b77de1bfccc193f7dd50e0672750a5"
+        },
+        "pack_sha256": "f996a35f553132b7012e25e1173ae525578b589bad4bb97b5b45620ca95d8b18"
+      }
+    },
+    {
+      "width": 520,
+      "height": 360,
+      "touch": true,
+      "privateFixture": true,
+      "arrivals": [
+        [
+          -593.405334472656,
+          -10.0844783782959
+        ],
+        [
+          60.8282775878906,
+          -1.69354927539825
+        ],
+        [
+          93.9694595336914,
+          -7.0237078666687
+        ]
+      ],
+      "world": [
+        30
+      ],
+      "mapDot": [
+        255,
+        207,
+        119
+      ],
+      "mapLabelPixels": [
+        159,
+        84,
+        33,
+        163
+      ],
+      "sourceFingerprint": {
+        "sources": {
+          "godot/main.gd": "a8f97fb65370df92ea769a383fa8505cab679b12f0eb1f2cbd10db9870d76d00",
+          "godot/shared_panel.gd": "0cf289edc823919866c03e3687935d9b5c390058e1faa8051255a3fa9067833f",
+          "godot/loan_homecoming.gd": "0cac31652903848832ded6d2131c97e50e82a8c89f03e69c885aa543574472f9",
+          "godot/power_story.gd": "b5fac34164b28bc2cfa9c5b58e0348a8615dc557c6e4e67fffd7301387415e39",
+          "godot/power_place.gd": "f192f25dbe721d6a33c826046237cc41653bd473b50c8fed5c22bb94819309ed",
+          "godot/data/power_place.json": "5eac6de7921c9eb6afaa1752a9bfc6a693e63ca70a19ea3b6d82f268b2178f52",
+          "godot/tests/study_test.gd": "24d80b09af400ef6315a075efe319e4058b77de1bfccc193f7dd50e0672750a5"
+        },
+        "pack_sha256": "f996a35f553132b7012e25e1173ae525578b589bad4bb97b5b45620ca95d8b18"
+      }
+    },
+    {
+      "width": 559,
+      "height": 360,
+      "touch": false,
+      "privateFixture": true,
+      "arrivals": [
+        [
+          -593.405334472656,
+          -10.0844783782959
+        ],
+        [
+          60.8282775878906,
+          -1.69354927539825
+        ],
+        [
+          93.9694595336914,
+          -7.0237078666687
+        ]
+      ],
+      "world": [
+        32
+      ],
+      "mapDot": [
+        255,
+        207,
+        119
+      ],
+      "mapLabelPixels": [
+        159,
+        81,
+        33,
+        163
+      ],
+      "sourceFingerprint": {
+        "sources": {
+          "godot/main.gd": "a8f97fb65370df92ea769a383fa8505cab679b12f0eb1f2cbd10db9870d76d00",
+          "godot/shared_panel.gd": "0cf289edc823919866c03e3687935d9b5c390058e1faa8051255a3fa9067833f",
+          "godot/loan_homecoming.gd": "0cac31652903848832ded6d2131c97e50e82a8c89f03e69c885aa543574472f9",
+          "godot/power_story.gd": "b5fac34164b28bc2cfa9c5b58e0348a8615dc557c6e4e67fffd7301387415e39",
+          "godot/power_place.gd": "f192f25dbe721d6a33c826046237cc41653bd473b50c8fed5c22bb94819309ed",
+          "godot/data/power_place.json": "5eac6de7921c9eb6afaa1752a9bfc6a693e63ca70a19ea3b6d82f268b2178f52",
+          "godot/tests/study_test.gd": "24d80b09af400ef6315a075efe319e4058b77de1bfccc193f7dd50e0672750a5"
+        },
+        "pack_sha256": "f996a35f553132b7012e25e1173ae525578b589bad4bb97b5b45620ca95d8b18"
+      }
+    },
+    {
+      "width": 640,
+      "height": 360,
+      "touch": true,
+      "privateFixture": true,
+      "arrivals": [
+        [
+          -593.405334472656,
+          -10.0844783782959
+        ],
+        [
+          60.8282775878906,
+          -1.69354927539825
+        ],
+        [
+          93.9694595336914,
+          -7.0237078666687
+        ]
+      ],
+      "world": [
+        31
+      ],
+      "mapDot": [
+        255,
+        207,
+        119
+      ],
+      "mapLabelPixels": [
+        159,
+        59,
+        28,
+        163
+      ],
+      "sourceFingerprint": {
+        "sources": {
+          "godot/main.gd": "a8f97fb65370df92ea769a383fa8505cab679b12f0eb1f2cbd10db9870d76d00",
+          "godot/shared_panel.gd": "0cf289edc823919866c03e3687935d9b5c390058e1faa8051255a3fa9067833f",
+          "godot/loan_homecoming.gd": "0cac31652903848832ded6d2131c97e50e82a8c89f03e69c885aa543574472f9",
+          "godot/power_story.gd": "b5fac34164b28bc2cfa9c5b58e0348a8615dc557c6e4e67fffd7301387415e39",
+          "godot/power_place.gd": "f192f25dbe721d6a33c826046237cc41653bd473b50c8fed5c22bb94819309ed",
+          "godot/data/power_place.json": "5eac6de7921c9eb6afaa1752a9bfc6a693e63ca70a19ea3b6d82f268b2178f52",
+          "godot/tests/study_test.gd": "24d80b09af400ef6315a075efe319e4058b77de1bfccc193f7dd50e0672750a5"
+        },
+        "pack_sha256": "f996a35f553132b7012e25e1173ae525578b589bad4bb97b5b45620ca95d8b18"
+      }
+    }
+  ],
+  "targeted_errors": [],
+  "targeted_external": [],
+  "targeted_limit": "PRIVATE historical completed-profile copies, not genuine new progression",
+  "full_gate_session": "2845",
+  "full_gate_receipt_when_complete": "artifacts/larkin-full1/execution.json",
+  "full1_execution": "artifacts/larkin-full1/execution.json",
+  "full_mural_helper": "artifacts/larkin-mural-full-helper-replay.json"
+}

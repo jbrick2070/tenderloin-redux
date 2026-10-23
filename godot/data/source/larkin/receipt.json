@@ -1,0 +1,29 @@
+{
+  "retrieved_utc": "2026-10-22T22:07:05.163399+00:00",
+  "sources": [
+    {
+      "file": "address.json",
+      "url": "https://data.sfgov.org/resource/3mea-di5p.json?%24where=street_name%3D%27LARKIN%27+AND+address_number%3D600",
+      "sha256": "703eac0174a434f40cfa753cc0132983ea129392a04579c325f0ec1fc4eab862",
+      "bytes": 665
+    },
+    {
+      "file": "3mea-di5p-metadata.json",
+      "url": "https://data.sfgov.org/api/views/3mea-di5p.json",
+      "sha256": "0c4e38f8d3c2f69150cd14c04254cd9e6c874e396b5934da9631e58929ea154a",
+      "bytes": 51887
+    },
+    {
+      "file": "intersection.json",
+      "url": "https://data.sfgov.org/resource/gmfx-8h6i.json?%24where=cnn%3D%2725148000%27",
+      "sha256": "b3a465baa27dfc09b34d371db7529039b0a118659bc4474aa88cb54221c75cef",
+      "bytes": 459
+    },
+    {
+      "file": "gmfx-8h6i-metadata.json",
+      "url": "https://data.sfgov.org/api/views/gmfx-8h6i.json",
+      "sha256": "865c26aeab7026f7bf734fce77fee8f9f22b4a7ba4ee2d94aac65e9adfa1e2a4",
+      "bytes": 18064
+    }
+  ]
+}

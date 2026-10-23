@@ -1,0 +1,703 @@
+{
+  "id" : "gmfx-8h6i",
+  "name" : "Street Intersections",
+  "assetType" : "dataset",
+  "attribution" : "City and County of San Francisco",
+  "averageRating" : 0,
+  "category" : "Geographic Locations and Boundaries",
+  "createdAt" : 1539204241,
+  "description" : "<strong>A. SUMMARY</strong>\nThis dataset contains all street intersections in the City of San Francisco. It includes the street names and types that intersect at each point. \n\nStreet nodes can have one or street names associated with it. This dataset contains one row for every street at each node.\n\n<strong>B. HOW THE DATASET IS CREATED</strong>\nThis dataset is created by extracting data from the City's geographic information system (SFGIS).\n\n<strong>C. UPDATE PROCESS</strong>\nThis dataset is updated daily to reflect changes to the City's street network.\n\n<strong>D. HOW TO USE THIS DATASET</strong>\nGroup on CNN to get a list of all distinct intersections in San Francisco.\n\n<strong>E. RELATED DATASETS</strong>\n<u><a href=\"https://data.sf.gov/d/3psu-pn9h\">Streets - Active and Retired</a></u><br><u><a href=\"https://data.sf.gov/d/vd6w-dq8r\">Street Nodes</a></u>",
+  "diciBackend" : false,
+  "displayType" : "table",
+  "domainCName" : "data.sf.gov",
+  "downloadCount" : 2081,
+  "hideFromCatalog" : false,
+  "hideFromDataJson" : false,
+  "licenseId" : "PDDL",
+  "locked" : false,
+  "newBackend" : true,
+  "numberOfComments" : 0,
+  "oid" : 40488914,
+  "provenance" : "official",
+  "publicationAppendEnabled" : false,
+  "publicationDate" : 1711050403,
+  "publicationGroup" : 15579151,
+  "publicationStage" : "published",
+  "rowsUpdatedAt" : 1792690531,
+  "rowsUpdatedBy" : "dbag-6qd9",
+  "tableId" : 19485248,
+  "totalTimesRated" : 0,
+  "viewCount" : 5799,
+  "viewLastModified" : 1792690525,
+  "viewType" : "tabular",
+  "approvals" : [ {
+    "reviewedAt" : 1609191600,
+    "reviewedAutomatically" : false,
+    "state" : "approved",
+    "submissionId" : 6228595,
+    "submissionObject" : "public_audience_request",
+    "submissionOutcome" : "change_audience",
+    "submittedAt" : 1608850856,
+    "targetAudience" : "public",
+    "workflowId" : 2546,
+    "reviewer" : {
+      "id" : "pns2-ri4x",
+      "displayName" : "DataSF"
+    },
+    "submissionDetails" : {
+      "permissionType" : "read"
+    },
+    "submissionOutcomeApplication" : {
+      "endedAt" : 1609191601,
+      "failureCount" : 0,
+      "startedAt" : 1609191600,
+      "status" : "success"
+    },
+    "submitter" : {
+      "id" : "dbag-6qd9",
+      "displayName" : "OpenData"
+    }
+  }, {
+    "message" : "The `strict_permissions` flag must be on to enable internal approvals.",
+    "state" : "unsubmittable",
+    "targetAudience" : "internal",
+    "workflowId" : 5264
+  } ],
+  "clientContext" : {
+    "clientContextVariables" : [ ],
+    "inheritedVariables" : { }
+  },
+  "columns" : [ {
+    "id" : 591077649,
+    "name" : "cnn",
+    "dataTypeName" : "number",
+    "description" : "Centerline Network Number",
+    "fieldName" : "cnn",
+    "position" : 1,
+    "renderTypeName" : "number",
+    "tableColumnId" : 70323553,
+    "cachedContents" : {
+      "non_null" : "18554",
+      "largest" : "54444000.0",
+      "null" : "0",
+      "top" : [ {
+        "item" : "22882000.0",
+        "count" : "5"
+      }, {
+        "item" : "50282000.0",
+        "count" : "5"
+      }, {
+        "item" : "34151000.0",
+        "count" : "5"
+      }, {
+        "item" : "23141000.0",
+        "count" : "5"
+      }, {
+        "item" : "33027000.0",
+        "count" : "5"
+      }, {
+        "item" : "33751000.0",
+        "count" : "5"
+      }, {
+        "item" : "34143000.0",
+        "count" : "5"
+      }, {
+        "item" : "22943000.0",
+        "count" : "4"
+      }, {
+        "item" : "22682000.0",
+        "count" : "4"
+      }, {
+        "item" : "23819000.0",
+        "count" : "4"
+      }, {
+        "item" : "22551000.0",
+        "count" : "4"
+      }, {
+        "item" : "22679000.0",
+        "count" : "4"
+      }, {
+        "item" : "22463000.0",
+        "count" : "4"
+      }, {
+        "item" : "22460000.0",
+        "count" : "4"
+      }, {
+        "item" : "22516000.0",
+        "count" : "4"
+      }, {
+        "item" : "21812000.0",
+        "count" : "4"
+      }, {
+        "item" : "20996000.0",
+        "count" : "4"
+      }, {
+        "item" : "21927000.0",
+        "count" : "4"
+      }, {
+        "item" : "22402000.0",
+        "count" : "4"
+      }, {
+        "item" : "20569000.0",
+        "count" : "4"
+      } ],
+      "smallest" : "20010000.0",
+      "count" : "18554",
+      "cardinality" : "18554"
+    },
+    "format" : {
+      "noCommas" : "true",
+      "align" : "right"
+    }
+  }, {
+    "id" : 591077650,
+    "name" : "st_name",
+    "dataTypeName" : "text",
+    "description" : "Street Name",
+    "fieldName" : "st_name",
+    "position" : 2,
+    "renderTypeName" : "text",
+    "tableColumnId" : 70323551,
+    "cachedContents" : {
+      "non_null" : "18554",
+      "largest" : "ZOO",
+      "null" : "0",
+      "top" : [ {
+        "item" : "MISSION",
+        "count" : "123"
+      }, {
+        "item" : "19TH",
+        "count" : "109"
+      }, {
+        "item" : "03RD",
+        "count" : "107"
+      }, {
+        "item" : "25TH",
+        "count" : "103"
+      }, {
+        "item" : "LINCOLN",
+        "count" : "98"
+      }, {
+        "item" : "GEARY",
+        "count" : "97"
+      }, {
+        "item" : "CALIFORNIA",
+        "count" : "96"
+      }, {
+        "item" : "23RD",
+        "count" : "91"
+      }, {
+        "item" : "22ND",
+        "count" : "90"
+      }, {
+        "item" : "20TH",
+        "count" : "85"
+      }, {
+        "item" : "24TH",
+        "count" : "85"
+      }, {
+        "item" : "16TH",
+        "count" : "84"
+      }, {
+        "item" : "18TH",
+        "count" : "81"
+      }, {
+        "item" : "FULTON",
+        "count" : "80"
+      }, {
+        "item" : "17TH",
+        "count" : "80"
+      }, {
+        "item" : "26TH",
+        "count" : "80"
+      }, {
+        "item" : "15TH",
+        "count" : "77"
+      }, {
+        "item" : "MARKET",
+        "count" : "77"
+      }, {
+        "item" : "OCEAN",
+        "count" : "74"
+      }, {
+        "item" : "21ST",
+        "count" : "72"
+      } ],
+      "smallest" : "01ST",
+      "count" : "18554",
+      "cardinality" : "18554"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077651,
+    "name" : "st_type",
+    "dataTypeName" : "text",
+    "description" : "Street Type (i.e., ST, BLVD, et al.)",
+    "fieldName" : "st_type",
+    "position" : 3,
+    "renderTypeName" : "text",
+    "tableColumnId" : 70323555,
+    "cachedContents" : {
+      "non_null" : "18059",
+      "largest" : "WAY",
+      "null" : "495",
+      "top" : [ {
+        "item" : "ST",
+        "count" : "9732"
+      }, {
+        "item" : "AVE",
+        "count" : "4476"
+      }, {
+        "item" : "DR",
+        "count" : "747"
+      }, {
+        "item" : "BLVD",
+        "count" : "705"
+      }, {
+        "item" : "WAY",
+        "count" : "601"
+      }, {
+        "item" : "CT",
+        "count" : "298"
+      }, {
+        "item" : "PL",
+        "count" : "272"
+      }, {
+        "item" : "RAMP",
+        "count" : "244"
+      }, {
+        "item" : "LN",
+        "count" : "236"
+      }, {
+        "item" : "RD",
+        "count" : "221"
+      }, {
+        "item" : "ALY",
+        "count" : "180"
+      }, {
+        "item" : "TER",
+        "count" : "177"
+      }, {
+        "item" : "CIR",
+        "count" : "62"
+      }, {
+        "item" : "HWY",
+        "count" : "27"
+      }, {
+        "item" : "LOOP",
+        "count" : "25"
+      }, {
+        "item" : "PARK",
+        "count" : "11"
+      }, {
+        "item" : "WALK",
+        "count" : "11"
+      }, {
+        "item" : "PATH",
+        "count" : "8"
+      }, {
+        "item" : "PLZ",
+        "count" : "7"
+      }, {
+        "item" : "STWY",
+        "count" : "4"
+      } ],
+      "smallest" : "ALY",
+      "count" : "18554",
+      "cardinality" : "18554"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077652,
+    "name" : "cnntext",
+    "dataTypeName" : "text",
+    "description" : "Centerline Network Number in Text format",
+    "fieldName" : "cnntext",
+    "position" : 4,
+    "renderTypeName" : "text",
+    "tableColumnId" : 70323554,
+    "cachedContents" : {
+      "non_null" : "18554",
+      "largest" : "54444000",
+      "null" : "0",
+      "top" : [ {
+        "item" : "22882000",
+        "count" : "5"
+      }, {
+        "item" : "50282000",
+        "count" : "5"
+      }, {
+        "item" : "34151000",
+        "count" : "5"
+      }, {
+        "item" : "23141000",
+        "count" : "5"
+      }, {
+        "item" : "33027000",
+        "count" : "5"
+      }, {
+        "item" : "33751000",
+        "count" : "5"
+      }, {
+        "item" : "34143000",
+        "count" : "5"
+      }, {
+        "item" : "22943000",
+        "count" : "4"
+      }, {
+        "item" : "22682000",
+        "count" : "4"
+      }, {
+        "item" : "23819000",
+        "count" : "4"
+      }, {
+        "item" : "22551000",
+        "count" : "4"
+      }, {
+        "item" : "22679000",
+        "count" : "4"
+      }, {
+        "item" : "22463000",
+        "count" : "4"
+      }, {
+        "item" : "22460000",
+        "count" : "4"
+      }, {
+        "item" : "22516000",
+        "count" : "4"
+      }, {
+        "item" : "21812000",
+        "count" : "4"
+      }, {
+        "item" : "20996000",
+        "count" : "4"
+      }, {
+        "item" : "21927000",
+        "count" : "4"
+      }, {
+        "item" : "22402000",
+        "count" : "4"
+      }, {
+        "item" : "20569000",
+        "count" : "4"
+      } ],
+      "smallest" : "20010000",
+      "count" : "18554",
+      "cardinality" : "18554"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077653,
+    "name" : "the_geom",
+    "dataTypeName" : "point",
+    "description" : "Geometry - well known text POINT",
+    "fieldName" : "the_geom",
+    "position" : 5,
+    "renderTypeName" : "point",
+    "tableColumnId" : 70323552,
+    "cachedContents" : {
+      "non_null" : "18554",
+      "null" : "0",
+      "top" : [ {
+        "item" : {
+          "coordinates" : [ -122.427139621, 37.805433102 ],
+          "type" : "Point"
+        },
+        "count" : "5"
+      }, {
+        "item" : {
+          "coordinates" : [ -122.420008321, 37.770111449 ],
+          "type" : "Point"
+        },
+        "count" : "5"
+      }, {
+        "item" : {
+          "coordinates" : [ -122.36754358, 37.810135955 ],
+          "type" : "Point"
+        },
+        "count" : "5"
+      }, {
+        "item" : {
+          "coordinates" : [ -122.363666188, 37.811714424 ],
+          "type" : "Point"
+        },
+        "count" : "5"
+      }, {
+        "item" : {
+          "coordinates" : [ -122.471569341, 37.734706811 ],
+          "type" : "Point"
+        },
+        "count" : "5"
+      }, {
+        "item" : {
+          "coordinates" : [ -122.463685996, 37.74374941 ],
+          "type" : "Point"
+        },
+        "count" : "5"
+      }, {
+        "item" : {
+          "coordinates" : [ -122.40356101, 37.747761922 ],
+          "type" : "Point"
+        },
+        "count" : "5"
+      }, {
+        "item" : {
+          "coordinates" : [ -122.47262579, 37.786314807 ],
+          "type" : "Point"
+        },
+        "count" : "4"
+      }, {
+        "item" : {
+          "coordinates" : [ -122.398991049, 37.71533879 ],
+          "type" : "Point"
+        },
+        "count" : "4"
+      }, {
+        "item" : {
+          "coordinates" : [ -122.47316322, 37.803239314 ],
+          "type" : "Point"
+        },
+        "count" : "4"
+      }, {
+        "item" : {
+          "coordinates" : [ -122.442209785, 37.805786275 ],
+          "type" : "Point"
+        },
+        "count" : "4"
+      }, {
+        "item" : {
+          "coordinates" : [ -122.448321162, 37.804993825 ],
+          "type" : "Point"
+        },
+        "count" : "4"
+      }, {
+        "item" : {
+          "coordinates" : [ -122.467027506, 37.71149497 ],
+          "type" : "Point"
+        },
+        "count" : "4"
+      }, {
+        "item" : {
+          "coordinates" : [ -122.466160695, 37.710682254 ],
+          "type" : "Point"
+        },
+        "count" : "4"
+      }, {
+        "item" : {
+          "coordinates" : [ -122.423396761, 37.771885644 ],
+          "type" : "Point"
+        },
+        "count" : "4"
+      }, {
+        "item" : {
+          "coordinates" : [ -122.410292027, 37.782230575 ],
+          "type" : "Point"
+        },
+        "count" : "4"
+      }, {
+        "item" : {
+          "coordinates" : [ -122.368989278, 37.727223984 ],
+          "type" : "Point"
+        },
+        "count" : "4"
+      }, {
+        "item" : {
+          "coordinates" : [ -122.468309609, 37.737417148 ],
+          "type" : "Point"
+        },
+        "count" : "4"
+      }, {
+        "item" : {
+          "coordinates" : [ -122.457068389, 37.710110915 ],
+          "type" : "Point"
+        },
+        "count" : "4"
+      }, {
+        "item" : {
+          "coordinates" : [ -122.418618216, 37.773053454 ],
+          "type" : "Point"
+        },
+        "count" : "4"
+      } ],
+      "count" : "18554",
+      "cardinality" : "18554"
+    },
+    "format" : { }
+  }, {
+    "id" : 591077659,
+    "name" : "data_as_of",
+    "dataTypeName" : "calendar_date",
+    "description" : "Timestamp when the record (row) was last updated in the source system.",
+    "fieldName" : "data_as_of",
+    "position" : 6,
+    "renderTypeName" : "calendar_date",
+    "tableColumnId" : 151987919,
+    "cachedContents" : {
+      "non_null" : "18554",
+      "largest" : "2026-10-22T03:52:00.000",
+      "null" : "0",
+      "top" : [ {
+        "item" : "2026-10-22T03:52:00.000",
+        "count" : "18554"
+      } ],
+      "smallest" : "2026-10-22T03:52:00.000",
+      "count" : "18554",
+      "cardinality" : "18554"
+    },
+    "format" : {
+      "view" : "date_ymd_time"
+    }
+  }, {
+    "id" : 591077658,
+    "name" : "data_loaded_at",
+    "dataTypeName" : "calendar_date",
+    "description" : "Timestamp the data was loaded to the open data portal",
+    "fieldName" : "data_loaded_at",
+    "position" : 7,
+    "renderTypeName" : "calendar_date",
+    "tableColumnId" : 151987918,
+    "cachedContents" : {
+      "non_null" : "18554",
+      "largest" : "2026-10-22T10:34:19.323",
+      "null" : "0",
+      "top" : [ {
+        "item" : "2026-10-22T10:34:19.323",
+        "count" : "18554"
+      } ],
+      "smallest" : "2026-10-22T10:34:19.323",
+      "count" : "18554",
+      "cardinality" : "18554"
+    },
+    "format" : {
+      "view" : "date_ymd_time"
+    }
+  }, {
+    "id" : 591077656,
+    "name" : "Current Supervisor Districts",
+    "dataTypeName" : "number",
+    "description" : "",
+    "fieldName" : ":@computed_region_26cr_cadq",
+    "position" : 8,
+    "renderTypeName" : "number",
+    "tableColumnId" : 70323558,
+    "computationStrategy" : {
+      "source_columns" : [ "the_geom" ],
+      "type" : "georegion_match_on_point",
+      "parameters" : {
+        "region" : "_26cr-cadq",
+        "primary_key" : "_feature_id"
+      }
+    },
+    "format" : { }
+  }, {
+    "id" : 591077657,
+    "name" : "Analysis Neighborhoods",
+    "dataTypeName" : "number",
+    "description" : "",
+    "fieldName" : ":@computed_region_ajp5_b2md",
+    "position" : 9,
+    "renderTypeName" : "number",
+    "tableColumnId" : 70323559,
+    "computationStrategy" : {
+      "source_columns" : [ "the_geom" ],
+      "type" : "georegion_match_on_point",
+      "parameters" : {
+        "region" : "_ajp5-b2md",
+        "primary_key" : "_feature_id"
+      }
+    },
+    "format" : { }
+  }, {
+    "id" : 591077654,
+    "name" : "SF Find Neighborhoods",
+    "dataTypeName" : "number",
+    "description" : "",
+    "fieldName" : ":@computed_region_6qbp_sg9q",
+    "position" : 10,
+    "renderTypeName" : "number",
+    "tableColumnId" : 70323556,
+    "computationStrategy" : {
+      "source_columns" : [ "the_geom" ],
+      "type" : "georegion_match_on_point",
+      "parameters" : {
+        "region" : "_6qbp-sg9q",
+        "primary_key" : "_feature_id"
+      }
+    },
+    "format" : { }
+  }, {
+    "id" : 591077655,
+    "name" : "Current Police Districts",
+    "dataTypeName" : "number",
+    "description" : "",
+    "fieldName" : ":@computed_region_qgnn_b9vv",
+    "position" : 11,
+    "renderTypeName" : "number",
+    "tableColumnId" : 70323557,
+    "computationStrategy" : {
+      "source_columns" : [ "the_geom" ],
+      "type" : "georegion_match_on_point",
+      "parameters" : {
+        "region" : "_qgnn-b9vv",
+        "primary_key" : "_feature_id"
+      }
+    },
+    "format" : { }
+  } ],
+  "grants" : [ {
+    "inherited" : false,
+    "type" : "viewer",
+    "flags" : [ "public" ]
+  } ],
+  "license" : {
+    "name" : "Open Data Commons Public Domain Dedication and License",
+    "termsLink" : "http://opendatacommons.org/licenses/pddl/1.0/"
+  },
+  "metadata" : {
+    "custom_fields" : {
+      "Geospatial API Pre-release" : {
+        "Enabled" : "true"
+      },
+      "Department Metrics" : {
+        "Publishing Department" : "Technology"
+      },
+      "Internal Management" : {
+        "Inventory ID" : "TIS-0069"
+      },
+      "Detailed Descriptive" : {
+        "Geographic unit" : "Intersection or street segment"
+      },
+      "Publishing Details" : {
+        "Data change frequency" : "Daily",
+        "Program link" : "",
+        "Publishing frequency" : "Daily",
+        "Geographic unit" : ""
+      }
+    },
+    "rowLabel" : "Intersecting Street",
+    "availableDisplayTypes" : [ "table", "fatrow", "page" ],
+    "renderTypeConfig" : {
+      "visible" : {
+        "table" : true
+      }
+    }
+  },
+  "owner" : {
+    "id" : "dbag-6qd9",
+    "displayName" : "OpenData",
+    "screenName" : "OpenData",
+    "type" : "interactive",
+    "flags" : [ "acceptedEula" ]
+  },
+  "query" : { },
+  "rights" : [ "read" ],
+  "tableAuthor" : {
+    "id" : "dbag-6qd9",
+    "displayName" : "OpenData",
+    "screenName" : "OpenData",
+    "type" : "interactive",
+    "flags" : [ "acceptedEula" ]
+  },
+  "tags" : [ "interesection", "node" ],
+  "flags" : [ "default", "federated", "internalToPublicFederatedView", "ownerMayBeContacted", "restorable", "restorePossibleForType" ]
+}

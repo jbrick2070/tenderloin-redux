@@ -1,0 +1,17 @@
+{
+  "utc": "2026-10-22T22:30:33.388108+00:00",
+  "sources": [
+    {
+      "url": "https://data.sfgov.org/resource/3mea-di5p.json?%24where=%28street_name%3D%27BRYANT%27+AND+address_number%3D1419%29+OR+%28street_name%3D%27FLORIDA%27+AND+address_number+in%28250%2C750%29%29+OR+%28street_name%3D%27ALABAMA%27+AND+address_number%3D201%29&%24limit=100",
+      "file": "animal-addresses.json",
+      "sha256": "b6ae0bc3497b036de1c9d2771ee77e6ecf6d219841207281e07697f4c03acaef",
+      "bytes": 1993
+    },
+    {
+      "url": "https://data.sfgov.org/resource/3mea-di5p.json?%24where=%28street_name%3D%27EDDY%27+AND+address_number+in%28246%2C380%2C650%29%29+OR+%28street_name%3D%27HYDE%27+AND+address_number%3D234%29+OR+%28street_name%3D%27ELLIS%27+AND+address_number+in%28330%2C666%29%29+OR+%28street_name%3D%27GOLDEN+GATE%27+AND+address_number%3D378%29&%24limit=100",
+      "file": "polling-addresses.json",
+      "sha256": "9d6b164ef9874f2ac4fae057bf7caeb9d38567b3bc9f3291cca3104135635e59",
+      "bytes": 4644
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "godot/main.gd": "6fb67dacc7e4e47d77f1c23b1ce8c15b8731c3da9fdcf3458d8e0317570c15ad",
+  "godot/power_story.gd": "13a4add4d42c6f7ef2203bbb113d635c43da1fdd95802307b5897d20f9d45918",
+  "godot/power_place.gd": "2172c2f12fd83bbc6a7318fd22564b1f748c8ec63b9fe6b4810e2ed330b4470d",
+  "godot/data/power_place.json": "887db732bcaa8de5009f39eff04b4256d598f94ade1e9eed3aabdf92a9c77e92",
+  "scripts/build-power-place.mjs": "acc3e85298ecb59ed6835fd5a2abb2491e237f877a07ce4a52a4f56dfc305f1d",
+  "godot/tests/study_test.gd": "8ef3978feafe9f4c75a6cc7deb76bf8aa8f1fa6bcc57ac86aa36e099e13402d1",
+  "tests/godot-browser.mjs": "942bfc1e2a3241a4575b86a360992c55d0479e2a995ac18a25f3f8a5e0035cee",
+  "tests/godot-data.test.mjs": "d4879c312819385f6fedca40290f7ab97b2be49edbfd4a2062560390649385e3",
+  "godot/export_presets.cfg": "48eefcc72abc4bb51ea67180a66c4c0f16b1d07a5b14a393d6506e5935e3c7b7",
+  "godot/data/source/larkin/address.json": "703eac0174a434f40cfa753cc0132983ea129392a04579c325f0ec1fc4eab862",
+  "godot/data/source/larkin/intersection.json": "b3a465baa27dfc09b34d371db7529039b0a118659bc4474aa88cb54221c75cef",
+  "docs/POWER_STORY_SOURCES.md": "824b4ee9bfd5fcbdeed49d9f809d2b4a3bdb0c3bfe2f84497b6ac4d8d1737f60",
+  "session_handoff.md": "53b92828e8fc6f7280bc4553f808567df259f18e6d389bf82544b74cdfcbbc06",
+  "docs/BUILD_STATUS.md": "d9078b424e404f956dd61b15aac209806eef4975ebb42504b61bf47348f0aad1",
+  "docs/ROADMAP.md": "e5b90ae0fdfdc613963970f71a1d9f2cd1f37f0a63710e0107ce0cd8861d75b2"
+}

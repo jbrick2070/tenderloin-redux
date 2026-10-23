@@ -1,0 +1,378 @@
+{
+  "verified_utc": "2026-10-23T00:53:53.792234+00:00",
+  "baseline": "c2ea49b275fff7a3dc8158b8c3aa18a99d117220",
+  "gates": {
+    "native": {
+      "rc": 0,
+      "log": "artifacts/larkin-verified-native.log",
+      "evidence": "artifacts/larkin-native-9.log"
+    },
+    "export": {
+      "rc": 0,
+      "log": "artifacts/larkin-verified-export.log"
+    },
+    "check": {
+      "rc": 0,
+      "log": "artifacts/larkin-verified-check.log"
+    },
+    "node": {
+      "rc": 0,
+      "log": "artifacts/larkin-verified-node.log"
+    },
+    "browser": {
+      "rc": 0,
+      "log": "artifacts/larkin-verified-browser.log",
+      "evidence": "artifacts/larkin-full2/execution.json"
+    }
+  },
+  "full_browser": {
+    "rc": 0,
+    "seconds": 3717.320380926132,
+    "sources_unchanged": true,
+    "files": 38,
+    "default_native_asfound_unchanged": true
+  },
+  "full_case_count": 3,
+  "private_preflight_cases": 6,
+  "errors": [],
+  "external": [],
+  "frozen_source_pack_count": 38,
+  "pack_bytes": 1873276,
+  "full_larkin_checks": [
+    {
+      "width": 1100,
+      "height": 760,
+      "touch": false,
+      "privateFixture": false,
+      "arrivals": [
+        [
+          -593.405334472656,
+          -10.0844783782959
+        ],
+        [
+          60.8282775878906,
+          -1.69354927539825
+        ],
+        [
+          93.9694595336914,
+          -7.0237078666687
+        ]
+      ],
+      "world": [
+        136
+      ],
+      "mapDot": [
+        255,
+        207,
+        119
+      ],
+      "mapLabelPixels": [
+        420,
+        162,
+        51,
+        391
+      ],
+      "sourceFingerprint": {
+        "sources": {
+          "godot/main.gd": "a8f97fb65370df92ea769a383fa8505cab679b12f0eb1f2cbd10db9870d76d00",
+          "godot/shared_panel.gd": "0cf289edc823919866c03e3687935d9b5c390058e1faa8051255a3fa9067833f",
+          "godot/loan_homecoming.gd": "0cac31652903848832ded6d2131c97e50e82a8c89f03e69c885aa543574472f9",
+          "godot/power_story.gd": "b5fac34164b28bc2cfa9c5b58e0348a8615dc557c6e4e67fffd7301387415e39",
+          "godot/power_place.gd": "f192f25dbe721d6a33c826046237cc41653bd473b50c8fed5c22bb94819309ed",
+          "godot/data/power_place.json": "5eac6de7921c9eb6afaa1752a9bfc6a693e63ca70a19ea3b6d82f268b2178f52",
+          "godot/tests/study_test.gd": "24d80b09af400ef6315a075efe319e4058b77de1bfccc193f7dd50e0672750a5"
+        },
+        "pack_sha256": "f996a35f553132b7012e25e1173ae525578b589bad4bb97b5b45620ca95d8b18"
+      }
+    },
+    {
+      "width": 390,
+      "height": 667,
+      "touch": true,
+      "privateFixture": false,
+      "arrivals": [
+        [
+          -593.405334472656,
+          -10.0844783782959
+        ],
+        [
+          60.8282775878906,
+          -1.69354927539825
+        ],
+        [
+          93.9694595336914,
+          -7.0237078666687
+        ]
+      ],
+      "world": [
+        112
+      ],
+      "mapDot": [
+        255,
+        207,
+        119
+      ],
+      "mapLabelPixels": [
+        213,
+        74,
+        33,
+        204
+      ],
+      "sourceFingerprint": {
+        "sources": {
+          "godot/main.gd": "a8f97fb65370df92ea769a383fa8505cab679b12f0eb1f2cbd10db9870d76d00",
+          "godot/shared_panel.gd": "0cf289edc823919866c03e3687935d9b5c390058e1faa8051255a3fa9067833f",
+          "godot/loan_homecoming.gd": "0cac31652903848832ded6d2131c97e50e82a8c89f03e69c885aa543574472f9",
+          "godot/power_story.gd": "b5fac34164b28bc2cfa9c5b58e0348a8615dc557c6e4e67fffd7301387415e39",
+          "godot/power_place.gd": "f192f25dbe721d6a33c826046237cc41653bd473b50c8fed5c22bb94819309ed",
+          "godot/data/power_place.json": "5eac6de7921c9eb6afaa1752a9bfc6a693e63ca70a19ea3b6d82f268b2178f52",
+          "godot/tests/study_test.gd": "24d80b09af400ef6315a075efe319e4058b77de1bfccc193f7dd50e0672750a5"
+        },
+        "pack_sha256": "f996a35f553132b7012e25e1173ae525578b589bad4bb97b5b45620ca95d8b18"
+      }
+    },
+    {
+      "width": 320,
+      "height": 667,
+      "touch": true,
+      "privateFixture": false,
+      "arrivals": [
+        [
+          -593.405334472656,
+          -10.0844783782959
+        ],
+        [
+          60.8282775878906,
+          -1.69354927539825
+        ],
+        [
+          93.9694595336914,
+          -7.0237078666687
+        ]
+      ],
+      "world": [
+        170
+      ],
+      "mapDot": [
+        255,
+        207,
+        119
+      ],
+      "mapLabelPixels": [
+        159,
+        59,
+        29,
+        163
+      ],
+      "sourceFingerprint": {
+        "sources": {
+          "godot/main.gd": "a8f97fb65370df92ea769a383fa8505cab679b12f0eb1f2cbd10db9870d76d00",
+          "godot/shared_panel.gd": "0cf289edc823919866c03e3687935d9b5c390058e1faa8051255a3fa9067833f",
+          "godot/loan_homecoming.gd": "0cac31652903848832ded6d2131c97e50e82a8c89f03e69c885aa543574472f9",
+          "godot/power_story.gd": "b5fac34164b28bc2cfa9c5b58e0348a8615dc557c6e4e67fffd7301387415e39",
+          "godot/power_place.gd": "f192f25dbe721d6a33c826046237cc41653bd473b50c8fed5c22bb94819309ed",
+          "godot/data/power_place.json": "5eac6de7921c9eb6afaa1752a9bfc6a693e63ca70a19ea3b6d82f268b2178f52",
+          "godot/tests/study_test.gd": "24d80b09af400ef6315a075efe319e4058b77de1bfccc193f7dd50e0672750a5"
+        },
+        "pack_sha256": "f996a35f553132b7012e25e1173ae525578b589bad4bb97b5b45620ca95d8b18"
+      }
+    }
+  ],
+  "old_matrix_counts": {
+    "runs": 3,
+    "larkinStoryChecks": 3,
+    "powerStoryChecks": 6,
+    "loanHomecomingChecks": 8,
+    "loanWorldChecks": 3,
+    "sharedPanelChecks": 9,
+    "programmeStudioChecks": 7,
+    "civicListeningChecks": 9,
+    "rhythmCircleChecks": 11,
+    "rhythmAuditionChecks": 11,
+    "livingMuralChecks": 8,
+    "muralWorkshopChecks": 8,
+    "shortStoryReadChecks": 11,
+    "shortHubChecks": 8,
+    "shortActivityChecks": 18,
+    "narrowActivityChecks": 39,
+    "passiveActivityChecks": 12,
+    "narrowHubChecks": 12,
+    "shortWalkingChecks": 10,
+    "errors": 0,
+    "external": 0
+  },
+  "sha256": {
+    "artifacts/godot-web/index.pck": "f996a35f553132b7012e25e1173ae525578b589bad4bb97b5b45620ca95d8b18",
+    "artifacts/larkin-finish-1100-mouse.png": "28a313c79b475ef609fa88d9911407973ff32404e36e76e51ec0578ec6881b5d",
+    "artifacts/larkin-finish-320-finger.png": "49d730957b59f84b4dcc76e3f55d22aca09b40cff03536f6847d0449b0e3603e",
+    "artifacts/larkin-finish-390-finger.png": "9a1dd9eb53ca32e7d556e9e144f2d1921e14b2b661156d44751c7ed684b4d578",
+    "artifacts/larkin-finish-520-finger.png": "97f4dc4747d6ee03e63b7fc7e9d619cee9f99821409d9ae6751aef32c1a99e20",
+    "artifacts/larkin-finish-559-mouse.png": "285db1ee7882ed2f47a5afc649f2a0bfc2aceb0b060576f38a43aa90cce91395",
+    "artifacts/larkin-finish-640-finger.png": "037bb78d477ccccb76b93cba724ffa214201531db22069fc967222ff720c9ef8",
+    "artifacts/larkin-full1/browser.log": "dc35d17232dff84f826e1d438c8d9a52e6f5eca21a04cde6aeb6eb23d1101788",
+    "artifacts/larkin-full1/execution.json": "97142e4bee78f72e61bbe04f8e9e5098e0ec59cfec13cb17cb15a9e72995b6d8",
+    "artifacts/larkin-full1/godot-browser-failure.json": "a9797d8f8de236d7ae78a6dd40359e885f667807d23e41e76fa861814efc0f9a",
+    "artifacts/larkin-full1/godot-browser-failure.png": "712df739e3655bc83710acdb4a054e14f76c779e7d89f7fb81b8710a16205bd1",
+    "artifacts/larkin-full1/living-mural-559x360-finger.json": "2d60340e2f7bcc798b16180181f771087d3e4d890847eb709520cf72b8aee156",
+    "artifacts/larkin-full1/mural-crop-diagnostic.png": "229350650588276f7ddf71c03f9a2c7b4e19c6095618c873a187c694c637b9f4",
+    "artifacts/larkin-full1/source-after.json": "2f655d485486f79bc98446b9746b518d8f34116032de7fe944e5c4382f6441db",
+    "artifacts/larkin-full1/source-before.json": "2f655d485486f79bc98446b9746b518d8f34116032de7fe944e5c4382f6441db",
+    "artifacts/larkin-full2/corrected-main-559x360-finger-living.png": "9e45c30363825b00fb07e8ef073818aff70e9bfc694e5bff677cce4a725cb962",
+    "artifacts/larkin-full2/execution.json": "0783074cd00a26625878823e1d0be4f82c15ce1b44b20c2ab2377c0183d51c58",
+    "artifacts/larkin-full2/godot-browser.json": "dcd4ed82e09d55086f91b5c3fddd0b8a6b88c4deba8281298260f08b4c226e9f",
+    "artifacts/larkin-full2/source-after.json": "5c628eb744bcc8cbb586aacc1138db0748217e93fc9d4811902b33f813396097",
+    "artifacts/larkin-full2/source-before.json": "5c628eb744bcc8cbb586aacc1138db0748217e93fc9d4811902b33f813396097",
+    "artifacts/larkin-gate-exits.json": "a51cb13bceba86f1deea66b227dd68f0424a37334acbaa60017398d012e7b6db",
+    "artifacts/larkin-map-1100-mouse.png": "d439a48a5cde2141f3d2af789a9a2bb4e305638fe37cf13160fdffdf66d15890",
+    "artifacts/larkin-map-320-finger.png": "fc2e9314150f91109109ee01e9e14bcbe7c9d141703e6148a3f3148df5590051",
+    "artifacts/larkin-map-390-finger.png": "06b014ba8761062ddcc22f8db10fbfe8760e831f09b384c7c93687f9cfe0ba1d",
+    "artifacts/larkin-map-520-finger.png": "02a2ecc40798d1bc55435d81cb60fd67802e3ec818408a885ff215df5541f397",
+    "artifacts/larkin-map-559-mouse.png": "d7e64a184a7b35a2007d367562f9631f804a278e500bbccba86ae3e024c463a0",
+    "artifacts/larkin-map-640-finger.png": "6243a37ca5d648ae7b3b8ebeea92e391b836dc8d7a0861ef49220eba5a13441c",
+    "artifacts/larkin-mural-full-helper-replay.json": "6ed6f21b35f308c45d383d542403affe796ab00cd48ecc86adb869e6c0bce8b2",
+    "artifacts/larkin-mural-full-helper-replay.log": "d9901df433f524c625adf552512f9f66f88fb9330c1e1ab6ac72e76e0816d08d",
+    "artifacts/larkin-mural-full-helper-replay.mjs": "ac4bbf2f967b9fa0072d486364caa4367fe80fed33642e0d660c1f49c3abe386",
+    "artifacts/larkin-mural-wire-diagnosis.log": "3fdf3316617b8488542ede2e96172f212171ea97858bae04a5919eec855f57f0",
+    "artifacts/larkin-mural-wire-diagnosis.mjs": "85e7ca0b2c046e1799f18e4b980661832b850c19852884eb7074aa35dd54a249",
+    "artifacts/larkin-preflight-3-archive/manifest.json": "d68b4061b7065c2afc506e7b9651290d140cb9098d622b5af2a22bd210c54eb4",
+    "artifacts/larkin-story-1100-mouse.json": "2fe11b79ebc79d7dfcc7de6f2343b9dcd73498054909b7ad9a198501615f34bd",
+    "artifacts/larkin-story-320-finger.json": "a3850d14903f5bef0d991fc9b43bb2971a90296a1a896f18e549ee8494d3fd99",
+    "artifacts/larkin-story-390-finger.json": "8044bf5916a9e67e4955c0c246b2a3cf3be56fa7b1e96438834a35b1540495fa",
+    "artifacts/larkin-story-520-finger.json": "b860ec8f9d4a97e956b33b65b9e7a953dbaa878e08dfbdda5ab6d3839e62f274",
+    "artifacts/larkin-story-559-mouse.json": "b4ff602a6e114d9f577e82b33e711374b2c907fc94e20b6a371f81d45b449d33",
+    "artifacts/larkin-story-640-finger.json": "13873536f4b4eeed618e0874d54136fc55f58222c4cb103acda097317abc6a9d",
+    "artifacts/larkin-verified-browser.log": "5f7218491bd89148f4f64cf0fa68eeb68a3df610eebca358bc1df0427e666d2a",
+    "artifacts/larkin-verified-check.log": "9fc22c0ab37adad967e81573bf9f79e85f8d171f6e1a084d3b9e5bd230e30bd0",
+    "artifacts/larkin-verified-export.log": "512ffc58202076550a6180274a532137bd8ddc2c6c25315f6cd424d62150f9cd",
+    "artifacts/larkin-verified-native.log": "97cf3c0541d5f4d3dc002922acdba55613fd4c776b0f91da142f75e9ebcada6a",
+    "artifacts/larkin-verified-node.log": "d37e81ac8713833afaa148f7d05f6126ab0908e00f82281e91f8aea99d425cbd",
+    "artifacts/larkin-world-1100-mouse-after.png": "214aa326f5e4d99c8794a8164f5797753f9d926590f4cf6417bd2447538a509c",
+    "artifacts/larkin-world-1100-mouse-before.png": "9241ad21c29614c4ab8ac3e9b352811a6955c071c966985c7769c896d2754d25",
+    "artifacts/larkin-world-320-finger-after.png": "11ba38ace71613e593984b908c258e08f0d095a747975c6f89f62302067bc27d",
+    "artifacts/larkin-world-320-finger-before.png": "9c06d6ee1583c5eee3f794598ce32ec5cef0168eacf74c286a3b478f8258a245",
+    "artifacts/larkin-world-390-finger-after.png": "7db09a76299eb0951935007bb7506e432fe38655713976fc5b072f6f5cefb2b4",
+    "artifacts/larkin-world-390-finger-before.png": "ae4a647e3a7c7d3710bda890b3b5e321b091b7ccf081a496efda33afabf8a8e6",
+    "artifacts/larkin-world-520-finger-after.png": "b3bad15b8e35ff3e47057a00825f9d2e8a06efc76515eda1b34613c4c8cca6cc",
+    "artifacts/larkin-world-520-finger-before.png": "19d35476fc113be1d1aaa03feeaa1513ac30fbf872a86781cf1583c2b76e061e",
+    "artifacts/larkin-world-559-mouse-after.png": "2c59af60fb2fc22c9d8cc38dff433b77c21d83acbeebc56654eded833c4e31a2",
+    "artifacts/larkin-world-559-mouse-before.png": "fae8c7cbf58b4fb58a90e74af0db280245376f6d921d8afa53a0d531325d1837",
+    "artifacts/larkin-world-640-finger-after.png": "e41c58fdc2428511134bbb1865d1307932bf52709ad478c419c572087db37061",
+    "artifacts/larkin-world-640-finger-before.png": "3133b192725174f79ccdcfb0345e6f11a12560410056d676fa9600b080bba206",
+    "docs/ASSETS.md": "98d8d385f235e57d124f7eddbae01ad4899916e01f481485f9432c4bb7cc2827",
+    "docs/BUILD_STATUS.md": "7b7a55396d3ed2e68cd84598b2c4a715fd4ad5c2a049582528f5b974a4acdf97",
+    "docs/EPISODE_LOCATION_RESEARCH.md": "83f31c1a7e6baaa63cd9cfe9b2d7912f80d6b7014d389812336759c0fd7ef8ad",
+    "docs/POWER_STORY_SOURCES.md": "c2fd4491304b676c0b565df06107752a6ed1a80e9b5d28ef5d25ae0157e213d4",
+    "docs/ROADMAP.md": "c8a42c61df43d140d9a0ba2d7d58ffde8ef97c45ff0138bcb2052626845d468a",
+    "docs/research/2026-10-22-episode-locations/animal-addresses.json": "b6ae0bc3497b036de1c9d2771ee77e6ecf6d219841207281e07697f4c03acaef",
+    "docs/research/2026-10-22-episode-locations/geography-receipt.json": "7af0fbdd34a377c14aa907e5f705d56faa6a93b731c148774e494d1367a19a58",
+    "docs/research/2026-10-22-episode-locations/polling-2024-official-selected-rows.tsv": "71689d465d8ac6e9272ff7c625ab3c887c60f55bcb95ef9355aac1195fab5d48",
+    "docs/research/2026-10-22-episode-locations/polling-addresses.json": "9d6b164ef9874f2ac4fae057bf7caeb9d38567b3bc9f3291cca3104135635e59",
+    "docs/research/2026-10-22-episode-locations/polling-browser-source.txt": "d5219a661a99cf856cfa2e15cee28ef0b23ccb71eaca1c712a8896758ac56570",
+    "docs/research/2026-10-22-episode-locations/receipt.json": "7352d3ee0bd55f2c3ee118a778601a22fb10c3e7fc03d5f47aeebb0d7e04ff3c",
+    "godot/bea_invitation.gd": "4ad40453704987fc9c29c34425b8be66c5fb8057874ab21fdd9cb89ab259b51f",
+    "godot/civic_listening.gd": "2eca8cffc35ed2753544e137515fdd6e67b1d6933fb60717763e4c540061c7e7",
+    "godot/data/SOURCES.md": "50a0e26cb85a44e8ea15d2b3ea03bfce93573c5faae104090682e801446fb287",
+    "godot/data/buildings.json": "8b3afd7a6ec3d00ac22fb77347caeafa262be2f55ad1ddbf0a9dd296afd332d2",
+    "godot/data/lidar_2023.json": "b59ba7348bdc2c78c867993cef230353708163d1d0caa50602668f73323cdc93",
+    "godot/data/neighborhood_voices.json": "662571e5de9eb0cc9f10e25146b8da08a302758009159462b6f2a460889d0271",
+    "godot/data/power_place.json": "5eac6de7921c9eb6afaa1752a9bfc6a693e63ca70a19ea3b6d82f268b2178f52",
+    "godot/data/source/boeddeker_park.osm.json": "96f0c7dadc0bb43f703fbf7a72d9fc3d37f5b1075f3d4e3e4aac280e0af55c7c",
+    "godot/data/source/larkin/3mea-di5p-metadata.json": "0c4e38f8d3c2f69150cd14c04254cd9e6c874e396b5934da9631e58929ea154a",
+    "godot/data/source/larkin/address.json": "703eac0174a434f40cfa753cc0132983ea129392a04579c325f0ec1fc4eab862",
+    "godot/data/source/larkin/gmfx-8h6i-metadata.json": "865c26aeab7026f7bf734fce77fee8f9f22b4a7ba4ee2d94aac65e9adfa1e2a4",
+    "godot/data/source/larkin/intersection.json": "b3a465baa27dfc09b34d371db7529039b0a118659bc4474aa88cb54221c75cef",
+    "godot/data/source/larkin/receipt.json": "c20abc4e7ead499b1ccc88915321b3d06ec4cdfa1563a74324b835917d260559",
+    "godot/data/source/lidar_ept_manifest.json": "99d6fb66c87994e077a0005ae646a91063cd0364ff3a59e434c1a5f3b9bea9b5",
+    "godot/data/source/metadata.json": "93407284a55c676b96d941042dcdd6223e5e5338f3b33a0faa639b56dd2309e6",
+    "godot/data/source/osm_buildings.json": "6b00db9038f08223d5966e85264ea16340a4be3fd8267a612ec9a25fad9fbf7b",
+    "godot/data/source/street_trees_tkzw-k3nq.json": "270f370a13a9a76b72e0bc2c42dc1760cfdd0fda129fb29b3e3283003875847d",
+    "godot/data/source_receipt.json": "4ee6ed720f64c2c4417f9607446916fd610f57dadb04ddeab66a8dbeb789c3b7",
+    "godot/data/street_trees.json": "4623f1ae6744d321967aa06250ca936267a5edac0b51aec21cc00927397dbdad",
+    "godot/export_presets.cfg": "48eefcc72abc4bb51ea67180a66c4c0f16b1d07a5b14a393d6506e5935e3c7b7",
+    "godot/film_screening.gd": "20a8015f821333f337158d5eb1ab820240db9999413f339451afb6a4923271dd",
+    "godot/loan_homecoming.gd": "0cac31652903848832ded6d2131c97e50e82a8c89f03e69c885aa543574472f9",
+    "godot/main.gd": "a8f97fb65370df92ea769a383fa8505cab679b12f0eb1f2cbd10db9870d76d00",
+    "godot/mural_signature.gd": "a8b25e10edef62c77fb4ccb6e98c08972c579e61659ac80386a04a03bc851da2",
+    "godot/mural_stories.gd": "4dc1f266b997f8210871b4d863c19b43aeeb901beb60c822b6a92de9e48766c2",
+    "godot/mural_workshop.gd": "d44323fee68af2ac907ebba3e59aab32ffa7e08e716016b926a86acc2a20e0c8",
+    "godot/power_place.gd": "f192f25dbe721d6a33c826046237cc41653bd473b50c8fed5c22bb94819309ed",
+    "godot/power_place.gd.uid": "d99322c532b694f4005897c8a23d6138882e6671009e05d532eaab0ba350e935",
+    "godot/power_story.gd": "b5fac34164b28bc2cfa9c5b58e0348a8615dc557c6e4e67fffd7301387415e39",
+    "godot/programme_studio.gd": "b9e2200905730fee77e785946e45f05555bd1becd8de76ade20a37ecd6667e1e",
+    "godot/project.godot": "17b7d3433d8317601597ea14d319816873d64a3fac5e2315f04212c983292a14",
+    "godot/quiet_seats.gd": "211c67f25397305c0cefd5c2c5f0bc558296ab82848c09b67cf032f0b9fc5cef",
+    "godot/rhythm_bar.gd": "4a3bfb3383156ee76a3b39d7b13a1cf84854299d76765227748398ba7f6587d0",
+    "godot/rhythm_circle.gd": "5391f7f4a7b5715c187f9cdc25f761c7a45e50c083904f671d43e57b45a27aa7",
+    "godot/shared_panel.gd": "0cf289edc823919866c03e3687935d9b5c390058e1faa8051255a3fa9067833f",
+    "godot/tests/study_test.gd": "24d80b09af400ef6315a075efe319e4058b77de1bfccc193f7dd50e0672750a5",
+    "kibitz-runs/2026-10-22-codex-larkin-outage-ideas/r1/claude.log": "66e6974283763eba7aa5107040b1faa1f9f724ad95b60e35fac740156c3fb724",
+    "kibitz-runs/2026-10-22-codex-larkin-outage-ideas/r1/claude.md": "3136cf0d6fcc5895b6a6a5198ad97d9eb0bcb0272448683f66dd4a311caa2aee",
+    "kibitz-runs/2026-10-22-codex-larkin-outage-ideas/r1/claude_budget_selected.txt": "b80401b5bdee9b92d2114d1dcae19e4929eefb76987dd1911802478ede026cf0",
+    "kibitz-runs/2026-10-22-codex-larkin-outage-ideas/r1/claude_effort_selected.txt": "6ef7c9b15ecdd69083724b84cfdc2100351963488b51b4ea2fcbddf493fbec94",
+    "kibitz-runs/2026-10-22-codex-larkin-outage-ideas/r1/claude_model_selected.txt": "005912bee6ee4543cec4404b5a02b9bcb11a6f1dcc134b6693c7ccde5fdd2f69",
+    "kibitz-runs/2026-10-22-codex-larkin-outage-ideas/r1/claude_quota_status.txt": "8837273a61838ba8faef568a69dfead62d1566b2be47f9636a4097bdcbf7023c",
+    "kibitz-runs/2026-10-22-codex-larkin-outage-ideas/r1/driver_anchor.md": "b0d2afc0c891a5d334ed54c3fa75353a8e581967d481ea8a4ef0c8847515908c",
+    "kibitz-runs/2026-10-22-codex-larkin-outage-ideas/r1/execution-receipt.json": "13c398bb107f670a2c9535c0ce7ba8672b7584a8018f1312377078661d0dc90f",
+    "kibitz-runs/2026-10-22-codex-larkin-outage-ideas/r1/final.md": "ccb184eb604212f4f7d9ef3bfae43698650b33447ef14881abd94f0243e0ccd6",
+    "kibitz-runs/2026-10-22-codex-larkin-outage-ideas/r1/input-digest.json": "d5da25c47f6595a89e77c3863275a6d0a1a10d65fdda0f7e58b74bd6be1a9d35",
+    "kibitz-runs/2026-10-22-codex-larkin-outage-ideas/r1/input.md": "743b6c6dc9ea0b1a2fd4f08e4b07441871e3a8d87985f47daefab4acabc57c4c",
+    "kibitz-runs/2026-10-22-codex-larkin-outage-ideas/r1/judgment.md": "d09c67f1442384b3aec2773103c97638509defff636ac71ea4ab976e702afb53",
+    "kibitz-runs/2026-10-22-codex-larkin-outage-ideas/r1/pin-check.txt": "dbecc237012900f4f0c5dd71a4bdd3a1e00e65253d1f37cb8b6835fe2c7ce128",
+    "kibitz-runs/2026-10-22-codex-larkin-outage-ideas/r1/profiles_used.txt": "a9a11813438ba2fc0c6efd97f13b88bf41af82044d04182d865bdd38eaa32423",
+    "kibitz-runs/2026-10-22-codex-larkin-outage-ideas/r1/scope_receipt.md": "c9ce8ea5f23689aae8e6cebabd78a7e06d519b5af835d9e37cb1ef552c0b6c2c",
+    "kibitz-runs/2026-10-22-codex-larkin-outage-ideas/r1/selection-receipt.json": "999b1cc5f37df46e916736da8b1dffdfe522cba6b566beb874972083c785385e",
+    "kibitz-runs/2026-10-22-codex-larkin-outage-ideas/r1/selection.md": "d09c67f1442384b3aec2773103c97638509defff636ac71ea4ab976e702afb53",
+    "kibitz-runs/2026-10-22-codex-larkin-outage-ideas/r1/source-after.json": "befa056fa63b87465e6ab232653aaaac427d369da417cd15b97a6cdd9f28d711",
+    "kibitz-runs/2026-10-22-codex-larkin-outage-ideas/r1/source-before.json": "befa056fa63b87465e6ab232653aaaac427d369da417cd15b97a6cdd9f28d711",
+    "kibitz-runs/2026-10-22-codex-larkin-outage-ideas/r1/source-comparison.json": "f98b3fdae5c3b0fadf7bc35d3a9eb85839200f47945b2ba037de2b56991b7511",
+    "kibitz-runs/2026-10-22-codex-larkin-outage/r3/candidate-verification.json": "37a58347165e35598c98480c42b89595143784b8f317e02e95b238dd85142f2e",
+    "kibitz-runs/2026-10-22-codex-larkin-outage/r3/claude.log": "13ab2ef8ed1123f271fe6704e4381f7f454f73f58cfdeaa9be8722d2c404dd66",
+    "kibitz-runs/2026-10-22-codex-larkin-outage/r3/claude.md": "56ae9db8ee10b26f6f2511355bc98ee75a7f2874b06caedd545bde2e5f843437",
+    "kibitz-runs/2026-10-22-codex-larkin-outage/r3/claude_budget_selected.txt": "b80401b5bdee9b92d2114d1dcae19e4929eefb76987dd1911802478ede026cf0",
+    "kibitz-runs/2026-10-22-codex-larkin-outage/r3/claude_effort_selected.txt": "6ef7c9b15ecdd69083724b84cfdc2100351963488b51b4ea2fcbddf493fbec94",
+    "kibitz-runs/2026-10-22-codex-larkin-outage/r3/claude_model_selected.txt": "005912bee6ee4543cec4404b5a02b9bcb11a6f1dcc134b6693c7ccde5fdd2f69",
+    "kibitz-runs/2026-10-22-codex-larkin-outage/r3/claude_quota_status.txt": "8837273a61838ba8faef568a69dfead62d1566b2be47f9636a4097bdcbf7023c",
+    "kibitz-runs/2026-10-22-codex-larkin-outage/r3/driver_anchor.md": "67eb2fd967d75ebc81a01176cf85a7598cbaa9243405fefc5991cc3ff1f26deb",
+    "kibitz-runs/2026-10-22-codex-larkin-outage/r3/execution-receipt.json": "13c398bb107f670a2c9535c0ce7ba8672b7584a8018f1312377078661d0dc90f",
+    "kibitz-runs/2026-10-22-codex-larkin-outage/r3/final.md": "5904865b4434a90835b16439af0913025d2bc9074ab8e5bbaf78f93905a72e7a",
+    "kibitz-runs/2026-10-22-codex-larkin-outage/r3/input-digest.json": "8ed4b9f52218d3b8838a6ef54b6ab59e7e49c2c9dcb72bec8f8e60c41a752c5d",
+    "kibitz-runs/2026-10-22-codex-larkin-outage/r3/input.md": "649ec218930773d96dcc6cd80dfeb3ea25004c88ec92be5d7b915840f3e68352",
+    "kibitz-runs/2026-10-22-codex-larkin-outage/r3/judgment.md": "34d2a07756d2ef64a42db7daca8156f6d0ec604d2eae4cb6bc15d18bf45757f1",
+    "kibitz-runs/2026-10-22-codex-larkin-outage/r3/pin-check.txt": "dbecc237012900f4f0c5dd71a4bdd3a1e00e65253d1f37cb8b6835fe2c7ce128",
+    "kibitz-runs/2026-10-22-codex-larkin-outage/r3/profiles_used.txt": "a9a11813438ba2fc0c6efd97f13b88bf41af82044d04182d865bdd38eaa32423",
+    "kibitz-runs/2026-10-22-codex-larkin-outage/r3/scope_receipt.md": "34713b34aa9daef01938a35b93b28c5ca7fb3a7e1764f68da214d67aadf20e1d",
+    "kibitz-runs/2026-10-22-codex-larkin-outage/r3/source-after.json": "98c8f3ea41c4daa99e2906c6e7dcd41c1bc13013d333bf052276cef00191baa6",
+    "kibitz-runs/2026-10-22-codex-larkin-outage/r3/source-before.json": "98c8f3ea41c4daa99e2906c6e7dcd41c1bc13013d333bf052276cef00191baa6",
+    "kibitz-runs/2026-10-22-codex-larkin-outage/r3/source-comparison.json": "be9dab43a15db948f8fe0741a874cdd7259008ea2189ba2cae964a5c24adf82a",
+    "scripts/build-power-place.mjs": "dc474ebc01bd1702fe36f7282a6574e404e4f71fba1d7ff9d8bb8088357181de",
+    "session_handoff.md": "11749265b6da8ac5d1b596c08c2cb9fdf62795522428d9ed56d544b23c9346dc",
+    "tests/godot-browser.mjs": "43df2e2b2328ca9518b9e7db7db0066cdef23aecb35d24a692436ea13c8a4384",
+    "tests/godot-data.test.mjs": "bad18b559c50ba43e3606e0fd84b41b7f7906e279fdca9e76884e8c3bd8b5bfd",
+    "kibitz-runs/2026-10-22-codex-larkin-outage/r3/automation-receipt.json": "13435badabc499748d402aa62f94c907db8e5a6272b316d4c4522ce1f5cde68d"
+  },
+  "limits": [
+    "driver fixes after r3 not independently re-reviewed",
+    "private historical-profile preflight is not fresh progression",
+    "dated map geometry is not 2017 streetscape or surveyed entrance reconstruction",
+    "human physical/aesthetic/listening/full-screen-reader acceptance absent",
+    "prior native-userdata incident: no verified preincident backup; ASFOUND unchanged",
+    "no deployment/public release; commit must skip ci"
+  ],
+  "preserved_public": {
+    "version": "0.12.0",
+    "fingerprint": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567"
+  },
+  "preflight_same_pack_and_larkin_helper": true,
+  "automation": {
+    "id": "build-tenderloin-redux",
+    "kind": "heartbeat",
+    "status": "ACTIVE",
+    "rrule": "FREQ=MINUTELY;INTERVAL=30",
+    "target_thread_id": "01a159d6-60a3-78e1-92ae-4018509d2539",
+    "prompt_sha256": "6a453336990cc5cb829d59fccae8663aede60a3b94be0e4aa21f795c2ab949f7",
+    "checkpoint": "Larkin 2017 and episode location research",
+    "verified_exact_prompt": true,
+    "notification_intent": "preserved: quiet unless meaningful milestone/failure/action",
+    "no_cutoff": true
+  }
+}

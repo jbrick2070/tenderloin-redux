@@ -1,0 +1,28 @@
+STDOUT:
+I wrote the review to `kibitz-runs/2026-10-22-codex-larkin-outage-ideas/r1/claude.md`. The tool check passed, and I didn't change anything else, run any tests or touch git.
+
+**Verdict: build-ready with fixes.** The research is honest, but the brief never says what makes the episode "real" beyond copy.
+
+The six must-fix points:
+1. **Wrong time of day:** the episode forces a night scene and makes returning night glow the reward (`godot/power_story.gd:327-338`). The 2017 Larkin outage ran in daylight, from about 9:06 a.m. to 4:46 p.m.
+2. **Wrong win text:** "You brought our lights back!" and "portable transformer relays" tell players they restored grid power. PG&E restored it, and the 2014 record is about blown transformers. The puzzle should be recast as something the community does while the grid is down.
+3. **Option (a) isn't a bounded slice.**
+   - The data has no Larkin Street, and the modelled part of Eddy Street ends about 47–59 m short of the substation.
+   - The western map bound feeds the LiDAR build (`scripts/build-lidar-2023.mjs:40`). Widening it breaks the "all 188 footprints have a LiDAR roof record" test (`tests/godot-data.test.mjs:275`) and needs new source downloads at build time.
+4. **The fallback problem is worse than the brief says:**
+   - If a goal has no walkable point within 28 m, `nearest_walkable_point` returns the player's spawn point (`main.gd:7860`).
+   - Power Story caches its goals without a distance check (`power_story.gd:144`).
+   - So a goal placed at Larkin would silently become the spawn, and the repair view would open there as if the player had arrived.
+5. **Ambiguous wording:** "Retain no savedkey/version/award/timer, original three-stage…" can be read either way on keeping the three-relay puzzle.
+6. **The 2014 case is too thin:** it rests on one line in a fire department report. Running it at the same corner as 2017 invites the mix-up the research warns against.
+
+Among the should-fix points, I proposed a stronger option (c), an "edge vantage":
+- The player walks to the real western end of the modelled Eddy Street.
+- From there they see the OpenStreetMap outline of the substation, labelled as half a block west and outside the walkable map.
+- The recovery tasks happen on blocks that actually exist in the game.
+
+The review also flags two things the scenario picker would break: browser tests tap Power Story buttons by position, and the narrowest layout has no spare room for another row.
+
+Suggested cuts: Mission/8th, Grant/Sutter, the prior-art requirement, full acceptance testing for every alternative, and option (a) for this cycle.
+
+The plugin and claude.ai connectors (GitHub, Slack, Linear, Box and others) still need authorizing. Do that in claude.ai connector settings or with `/mcp` in an interactive session; they weren't needed for this review.

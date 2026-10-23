@@ -1,5 +1,17 @@
 # Building geography provenance
 
+## Separate Larkin 2017 extension
+
+`power_place.json` is reproducibly derived by `scripts/build-power-place.mjs` and loaded by `godot/power_place.gd`. It does not change the measured188 records or8 LiDAR additions below. Retained raw source and metadata retrieval hashes live in `source/larkin/receipt.json`.
+
+- SF Enterprise Addressing System [3mea-di5p](https://data.sfgov.org/d/3mea-di5p), EAS491045, 600 Larkin: address point37.78359857210517/-122.41741847018493. Row updated2018-08-16; not an entrance.
+- SF Street Intersections [gmfx-8h6i](https://data.sfgov.org/d/gmfx-8h6i), CNN25148000: Larkin/Eddy junction37.78331089/-122.417528773. Both datasets explicitly **PDDL 1.0**, metadata retrieved2026-10-22.
+- Retained `source/osm_buildings.json`, way71209428: complete exterior and contributor height9m, separate plain mass rather than newly measured LiDAR. Existing readonly `public/data/streets.osm.json` way30832489 reaches Larkin/Eddy; way277480424 supplies the Taylor/Eddy routing endpoint. **© OpenStreetMap contributors, ODbL 1.0**. The same uniform local-metre projection is used throughout.
+- Only the sourced Eddy corridor is newly admitted west of the original walk rectangle. Original decorative trolley coverage stays bounded as before. Surrounding lots/sidewalk access are not newly surveyed; Larkin Street beyond this junction is not modeled.
+- Historical basis: [Exponent report, September15,2017, commissioned by PG&E and hosted by CPUC](https://www.cpuc.ca.gov/-/media/cpuc-website/files/uploadedfiles/cpuc_public_website/content/safety/electric_safety_and_reliability/attachment-3-exponent-report-larkin-outage-redacted-version.pdf), printed1/9/34, and [PG&E April21,2017 restoration release](https://investor.pgecorp.com/news-events/press-releases/press-release-details/2017/PGE-Safely-Restores-Power-to-San-Francisco-Thanks-Customers-for-their-Patience-Substation-Scheduled-for-Modernization/default.aspx). Original summarized facts only; no report imagery/text assets. PG&E restored utility service; the player's daytime battery-light tasks/dialogue are fiction. Full precision/fiction limits: `docs/POWER_STORY_SOURCES.md`.
+
+## Original measured set and earlier sources
+
 City and County of San Francisco, Department of Technology, **Building Footprints**, **ynuv-fyni**. Raw GeoJSON, original metadata and attached method PDF are retained in `source/`.
 
 - Catalog: https://data.sfgov.org/Geographic-Locations-and-Boundaries/Building-Footprints/ynuv-fyni

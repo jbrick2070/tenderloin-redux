@@ -802,6 +802,7 @@ var civic_listening
 var programme_studio
 var shared_panel
 var loan_homecoming
+var power_place: Node
 var power_story
 var mural_workshop
 var mural_workshop_selected := "sun"
@@ -1987,6 +1988,9 @@ func _ready() -> void:
 		for br in all_building_rects:
 			b_union = b_union.merge(br)
 		walk_bounds = b_union.grow(14.0)
+	power_place=load("res://power_place.gd").new()
+	add_child(power_place)
+	power_place.setup(self)
 	build_west_intersections()
 	build_history_stops()
 	surprise_keepsake_nodes.clear()
@@ -4259,7 +4263,7 @@ func build_muni_overhead_lines() -> void:
 	wire_st.set_smooth_group(-1)
 	var pole_col := Color("3b4744")
 	var wire_col := Color("1f2427")
-	var area := walk_bounds.grow(-6.0)
+	var area: Rect2=(power_place.legacy_bounds if power_place != null else walk_bounds).grow(-6.0)
 	for street in street_ways:
 		if not TROLLEY_STREET_NAMES.has(String(street.get("name", ""))):
 			continue
@@ -4901,7 +4905,7 @@ func apply_time_of_day() -> void:
 
 func toggle_evening_lights() -> bool:
 	if power_story != null and power_story.active:
-		announce_a11y_status("Power Story has its own after-dark lighting. End story restores your usual day/evening choice.")
+		announce_a11y_status("Power Story has its own %s lighting. End story restores your usual day/evening choice." % ("daytime" if power_story.historical else "after-dark"))
 		return evening_mode
 	evening_mode = not evening_mode
 	apply_time_of_day()
@@ -7805,6 +7809,8 @@ func nearest_street_tangent(pt: Vector2) -> Vector2:
 
 func is_walkable_point(pt: Vector2, clearance: float = WALK_CLEARANCE_M) -> bool:
 	if not walk_bounds.has_point(pt):
+		return false
+	if power_place != null and not power_place.admits(pt):
 		return false
 	if min_street_distance(pt, MAX_STREET_CORRIDOR_M) > MAX_STREET_CORRIDOR_M:
 		return false
@@ -13592,6 +13598,7 @@ func follow_player() -> void:
 	update_walking_status()
 
 func clear_occlusion() -> void:
+	if power_place != null and power_place.mesh != null: power_place.mesh.material_override=power_place.base_material
 	for idx in occluded_buildings:
 		if idx >= 0 and idx < meshes.size():
 			meshes[idx].material_override = chosen_material if idx == selected else building_materials[idx]
@@ -13729,6 +13736,7 @@ func update_occlusion(force: bool = true) -> void:
 				addition_meshes[a_idx].material_override = cutaway_material
 				set_rooftop_details_visible(addition_meshes[a_idx], false)
 				break
+	if power_place != null: power_place.cutaway(focus_points)
 
 func scene_caption_priority(label: Label3D) -> int:
 	if label.has_meta("eatery_index"):
