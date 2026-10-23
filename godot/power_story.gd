@@ -13,6 +13,7 @@ const DIRECTIONS := ["North", "East", "South", "West"]
 const ARRIVAL_M := 2.0
 var game: Node
 var entry: Button
+var dogs_entry: Button
 var top: PanelContainer
 var tray: PanelContainer
 var heading: Label
@@ -124,9 +125,14 @@ func setup(owner_game: Node) -> void:
 	actions.append(button(grid,"End\nstory",end_session))
 	actions.append(button(grid,"Music: Off",func(): game.toggle_music_playback(); refresh(false)))
 	actions.append(button(grid,"Back",close_story))
-	entry=button(game.block_page_nav,"Power",open_story)
+	dogs_entry=button(tabs[0].get_parent(),"Missing\ndogs",func():
+		if active: return
+		close_story(false)
+		game.dog_story.open_story()
+	)
+	entry=button(game.block_page_nav,"Story",open_story)
 	entry.size_flags_horizontal=Control.SIZE_SHRINK_END
-	entry.tooltip_text="Lights Back On: optional power story (F8)"
+	entry.tooltip_text="Neighborhood Stories: power cases and Two Dogs Home (F8)"
 	entry.accessibility_name=entry.tooltip_text
 	game.block_page_nav.move_child(entry,game.block_page_nav.get_child_count()-2)
 	entry.hide()
@@ -230,6 +236,7 @@ func objective() -> Dictionary:
 	return {"id":"power_story","has_target":restored!=7,"target":Vector3(goal.x,0,goal.y),"target_name":phase_name(next),"text":"Power Story: %s (%d/3 lights restored)"%[phase_name(next) if restored!=7 else ("Neighbors connected!" if historical else "You brought the lights back!"),count],"hint":"Choose Power Story to walk to and connect the next fictional light kit. " + ("End story returns to your usual afternoon." if restored==7 else VOICES[next]+" has a clue for "+phase_name(next)+".")}
 
 func open_story() -> bool:
+	if game.dog_story != null and game.dog_story.active: return game.dog_story.open_story()
 	if visible: return true
 	if not available() or game.startup_story_pending or game.is_story_card_visible() or game.is_focused_activity_visible() or not game.current_path.is_empty():
 		game.announce_a11y_status("Open the gathering, finish arriving and close any chapter or activity before Power Story.")
@@ -469,10 +476,15 @@ func source_text() -> String:
 	return "REAL PLACE / HISTORY: Larkin Substation, 600 Larkin Street at Eddy. April 21, 2017: a circuit-breaker cabinet arc and fire interrupted service for about 88,000 customers, from about 9:06 a.m. to full restoration at 4:46 p.m. PG&E restored utility service. This was not a verified transformer explosion.\nORIGINAL FICTION: portable battery-light tasks, residents and dialogue; not actual utility repairs, equipment, entrances or an active fault.\nMAP: north up; scale bar 40 m. Gold dot: city Larkin/Eddy intersection. White dot: city address point, not an entrance. Plain exterior: OSM footprint and reported 9 m height, stylized color, not a surveyed current facade. Only the Eddy approach is added to walking coverage; Larkin Street beyond it is not modeled.\nSOURCES: Exponent report, September 15, 2017, commissioned by PG&E and hosted by CPUC, printed pages 1, 9, 34; PG&E April 21, 2017 restoration release. SF EAS 491045 and intersection CNN 25148000 (PDDL); OpenStreetMap way 71209428 and Eddy way 30832489 (ODbL). Geographic records retrieved October 22, 2026; address record updated August 16, 2018. These are historical sources, not current outage guidance."
 
 func refresh(announce: bool) -> void:
+	dogs_entry.disabled=active
+	dogs_entry.accessibility_name="Two Dogs Home: original missing-dogs search and reunion"
 	heading.text="Lights Back On | %d/3"%[int((restored&1)!=0)+int((restored&2)!=0)+int((restored&4)!=0)]
 	if historical: heading.text="Larkin 2017 | %d/3 neighbor lights"%[int((restored&1)!=0)+int((restored&2)!=0)+int((restored&4)!=0)]
 	credit.text="Real place / imagined support | SF/PDDL | OSM/ODbL" if historical else "Fictional event kit | City/PDDL | OSM/ODbL"
 	if won and not active: heading.text="Lights Back On | Story ended"
+	if not active and not historical and not won:
+		heading.text="Neighborhood Stories"
+		credit.text="Original stories | City/PDDL | OSM/ODbL"
 	var text := "A fictional, untimed power-restoration adventure. Three portable light relays, three neighbors' clues, and you making the lights shine again. Follow the triangle inlet through all four elbows to the round lamp. Progress is for this visit only; reload starts fresh. Music is your independent soundtrack. This event kit is not a real utility map or electrical repair training."
 	if active:
 		text="Relay %d: %s. %s: \"%s\"\nIN: %s of connector %d. OUT: %s of connector %d. Connect all four elbows.\n"%[station+1,phase_name(station),VOICES[station],CLUES[station],DIRECTIONS[SOURCES[station].y],SOURCES[station].x+1,DIRECTIONS[SINKS[station].y],SINKS[station].x+1]
@@ -574,7 +586,7 @@ func snapshot() -> Dictionary:
 					var point: Vector2=game.camera.unproject_position(fixture.global_position+Vector3(x,y,z))
 					corners.append({"x":point.x,"y":point.y})
 		world.append({"x":p.x,"y":p.y,"corners":corners,"lit":(restored&(1<<i))!=0,"goal_x":relay_goal(i).x,"goal_z":relay_goal(i).y,"box_visible":site_kit.is_visible_in_tree() if historical and i==0 else boxes[i].is_visible_in_tree()})
-	return {"historical":historical,"map_view":map_view or (historical and not active),"site_valid":site_valid,"map_labels":map_labels.map(func(label): return game.control_snapshot(label).merged({"text":label.text,"font_size":label.get_theme_font_size("font_size")})),"leg_goal":[leg_goal.x,leg_goal.y],"via_pending":via_pending,"site_source_xz":game.power_place.source.get("junction",{}).get("xz",[]),"address_xz":game.power_place.source.get("address_point",{}).get("xz",[]),"source_text":source_text(),"visible":visible,"entry":game.control_snapshot(entry),"active":active,"won":won,"restored":restored,"station":station,"turns":turns.duplicate(true),"near":near(),"traveling":traveling,"connected":connected(),"buttons":buttons,"text":reader.text,"reader":game.control_snapshot(reader),"scroll":reader.get_v_scroll_bar().value,"scroll_max":maxf(0,reader.get_v_scroll_bar().max_value-reader.get_v_scroll_bar().page),"picture":game.rect_snapshot(art_rect),"world":world,"night_glow":game.building_shader_material.get_shader_parameter("night_glow"),"pool_alpha":game.light_pool_material.albedo_color.a,"layout_pending":layout_pending,"connector_room":connector_room}
+	return {"historical":historical,"map_view":map_view or (historical and not active),"site_valid":site_valid,"map_labels":map_labels.map(func(label): return game.control_snapshot(label).merged({"text":label.text,"font_size":label.get_theme_font_size("font_size")})),"leg_goal":[leg_goal.x,leg_goal.y],"via_pending":via_pending,"site_source_xz":game.power_place.source.get("junction",{}).get("xz",[]),"address_xz":game.power_place.source.get("address_point",{}).get("xz",[]),"source_text":source_text(),"visible":visible,"entry":game.control_snapshot(entry),"active":active,"won":won,"restored":restored,"station":station,"turns":turns.duplicate(true),"near":near(),"traveling":traveling,"connected":connected(),"buttons":buttons,"text":reader.text,"reader":game.control_snapshot(reader),"scroll":reader.get_v_scroll_bar().value,"scroll_max":maxf(0,reader.get_v_scroll_bar().max_value-reader.get_v_scroll_bar().page),"picture":game.rect_snapshot(art_rect),"world":world,"night_glow":game.building_shader_material.get_shader_parameter("night_glow"),"pool_alpha":game.light_pool_material.albedo_color.a,"layout_pending":layout_pending,"connector_room":connector_room,"dogs_entry":game.control_snapshot(dogs_entry)}
 
 func blocked_route() -> void:
 	cancel_intent()

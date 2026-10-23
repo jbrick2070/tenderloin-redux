@@ -1,0 +1,39 @@
+{
+  "full1": {
+    "rc": 1,
+    "seconds": 3104.4542615413666,
+    "sources_unchanged": true,
+    "files": 39,
+    "default_native_asfound_unchanged": true
+  },
+  "failure": "artifacts/dogs-full1/godot-browser-failure.json",
+  "diagnostic": "artifacts/dogs-mural-diagnostic-1-archive/dogs-mural-diagnostic-1.json",
+  "fresh_four_gates": {
+    "native": {
+      "rc": 0,
+      "log": "artifacts/dogs-verified-native.log",
+      "evidence": "artifacts/dogs-native-final.log"
+    },
+    "export": {
+      "rc": 0,
+      "log": "artifacts/dogs-verified-export.log"
+    },
+    "check": {
+      "rc": 0,
+      "log": "artifacts/dogs-verified-check.log"
+    },
+    "node": {
+      "rc": 0,
+      "log": "artifacts/dogs-verified-node.log"
+    }
+  },
+  "full2": {
+    "rc": 0,
+    "seconds": 3976.7200927734375,
+    "sources_unchanged": true,
+    "files": 39,
+    "default_native_asfound_unchanged": true
+  },
+  "capture_limits": "full1 dog1100/390 genuine; other copied320/short images preliminaryPRIVATE; per-filemtime retained",
+  "status": "all5freshPASS"
+}

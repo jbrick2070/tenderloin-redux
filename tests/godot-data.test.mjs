@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { derivePowerPlace } from '../scripts/build-power-place.mjs';
 import {
@@ -234,10 +234,13 @@ test('M6 release quality: docs/ASSETS.md, godot/data/SOURCES.md, export_presets.
   }
   assert.ok(excMatch[1].includes('data/source/*') && excMatch[1].includes('tests/*'), 'export_presets.cfg must exclude raw source and test files from runtime Web export');
 
+  for (const file of (await readdir(new URL('../godot/', import.meta.url))).filter(f=>f.endsWith('.gd'))) {
+  const runtimeGd=await readFile(new URL('../godot/'+file,import.meta.url),'utf8');
   assert.ok(
-    !/HTTPRequest|HTTPClient|WebSocketPeer|StreamPeerTCP|PacketPeerUDP|ENetMultiplayerPeer|WebRTCPeerConnection|OS\.shell_open|fetch\s*\(|XMLHttpRequest|sendBeacon|new\s+WebSocket|EventSource/.test(mainGd),
-    'godot/main.gd must not use runtime network client classes or browser network calls'
+    !/HTTPRequest|HTTPClient|WebSocketPeer|StreamPeerTCP|PacketPeerUDP|ENetMultiplayerPeer|WebRTCPeerConnection|OS\.shell_open|fetch\s*\(|XMLHttpRequest|sendBeacon|new\s+WebSocket|EventSource/.test(runtimeGd),
+    `godot/${file} must not use runtime network client classes or browser network calls`
   );
+  }
   assert.ok(!/TenderVoice/i.test(mainGd), 'godot/main.gd must not reference legacy TenderVoice');
 });
 

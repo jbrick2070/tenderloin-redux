@@ -1,0 +1,8 @@
+# Driver anchor — scoped implementation r3
+Codex sole writer/judge. Baseline75b511a. Pre-code r1 missing-dogs-ideas/r1 completed and timestamped choice before implementation. This is ONE separate exact sole-Claude Opus5.5/high implementation review, not another ideation campaign/full four rounds.
+
+VERDICT: candidate implemented; native3 DOG_STORY_PASS and export candidates pass; full browser/all5 final gates still pending. main.gd owns focused modal/Stop/reset/cutaway hooks; dog_story.gd implements visit-only two dogs/three leads/non-color matching/either-order reunion and dated remote SFACC reference. power_story.gd uses original sixth Story sibling and separate appended dogs_entry, keeps original13 snapshot indices. Existing save/geography/named anchors/music are unchanged by design. Source-reading review must verify, not assume these invariants.
+
+MUST VERIFY: modal exclusivity/peer restore/focus; input release generation/Stop ownership and real path intent; imports/reset/reload; before/after active dog world models and actual closure/building clearance; two-profile shape clues and original geometry; no save writes/new keys/utility or shelter fabrication; controls/readers at1100/390/320 and520/559/640 short sizes; native meaningful assertions, actual browser input/pixel tests vs metadata-only evidence. Wrong matches harmless, decoy meaningful; no automatic correct-lead route.
+
+Driver acceptance: all five fresh gates after fixes, actual mouse/finger/keyboard, source/pack frozen, failures retained. Human recognition/aesthetic/device/AT acceptance remains unknown. Native default save incident boundary: DO NOT run Godot or commands; read files only.

@@ -3263,6 +3263,7 @@ func run() -> void:
 	await verify_shared_panel(study,saved_m4_json)
 	await verify_loan_homecoming(study,saved_m4_json)
 	await verify_power_story(study,saved_m4_json)
+	await verify_dog_story(study,saved_m4_json)
 	study.clear_godot_save()
 	study.clear_godot_settings()
 	var legacy_settings := FileAccess.open(study.settings_path, FileAccess.WRITE)
@@ -5860,3 +5861,128 @@ func verify_loan_homecoming(study: Node, full_profile: String) -> void:
 	study.last_story_chapter=int(study.current_chapter().num)
 	root.size=Vector2i(1100,760)
 	print("LOAN_HOMECOMING_PASS:2layouts x7sizes x3owners/6orders/trueui_accept/grounded kits/canonical reload/exact4096and4097")
+
+func verify_dog_story(study: Node, full_profile: String) -> void:
+	require(study.is_test_suite_mode(),"dog tests only run in isolated formal profile")
+	if not study.is_test_suite_mode(): return
+	var story: Node=study.dog_story
+	var original: Dictionary=JSON.parse_string(full_profile)
+	for layout in ["table","floor"]:
+		for size in [Vector2i(1100,760),Vector2i(390,667),Vector2i(320,667),Vector2i(520,360),Vector2i(559,360),Vector2i(640,360)]:
+			original.gathering_layout=layout
+			study.apply_save_envelope(JSON.stringify(original))
+			study.hide_story_card()
+			study.last_story_chapter=int(study.current_chapter().num)
+			study.startup_story_pending=false
+			root.size=size
+			for f in range(6): await process_frame
+			var saved := JSON.stringify(study.build_save_envelope())
+			var file: String=FileAccess.get_file_as_string(study.save_path)
+			var quiet: Array=[study.music_playing,study.music_mode,study.music_volume,study.reward_sounds_enabled]
+			study.following_player=false
+			var pose: Array=study.panel_camera_pose()
+			require(story.open_story(),"original dogs can open after gathering")
+			story.buttons[6].grab_focus()
+			var down := InputEventAction.new()
+			down.action="ui_accept"
+			down.pressed=true
+			Input.parse_input_event(down)
+			await process_frame
+			var up := InputEventAction.new()
+			up.action="ui_accept"
+			up.pressed=false
+			Input.parse_input_event(up)
+			for f in range(6): await process_frame
+			require(story.active and story.lead==-1 and not story.objective().has_target,"true ui_accept begins without revealing or auto-routing a hidden dog")
+			require(study.panel_camera_pose()==pose,"dog reader preserves exact manual pose")
+			require(story.buttons[3].has_focus(),"Begin moves keyboard focus to enabled lead choice")
+			for dog in story.dogs:
+				for mesh in dog.find_children("*","MeshInstance3D",true,false):
+					for corner in range(8):
+						var point: Vector3=mesh.global_transform*mesh.get_aabb().get_endpoint(corner)
+						require(study.building_containing_point(Vector2(point.x,point.z)).is_empty(),"actual search dog mesh corners stay outside measured footprints")
+			for button in story.buttons:
+				var rect: Rect2=button.get_global_rect()
+				require(button.is_visible_in_tree() and rect.size.x>=44 and rect.size.y>=44 and Rect2(Vector2.ZERO,Vector2(size)).encloses(rect),"all12 dog controls are44px and completely on screen")
+			require(story.reader.get_theme_font_size("normal_font_size")==16 and story.reader.scroll_active,"complete dog clue reader is16px and scrollable")
+			story.choose_lead(2)
+			study.player.position=Vector3(story.goals[2].x,0,story.goals[2].y)
+			story.match_dog()
+			require(story.found==0 and story.reader.text.contains("No missing dog"),"wrong decoy lead has no penalty or fabricated dog")
+			var order: Array=[1,0] if layout=="floor" else [0,1]
+			for dog_id in order:
+				story.choose_lead(dog_id)
+				study.player.position=Vector3(story.goals[dog_id].x,0,story.goals[dog_id].y)
+				story.choose_profile(1-dog_id)
+				var before: int=story.found
+				story.match_dog()
+				require(story.found==before and story.reader.text.contains("differs"),"wrong profile compares non-color descriptors without penalty")
+				story.choose_profile(dog_id)
+				story.match_dog()
+				require((story.found&(1<<dog_id))!=0,"either-order correct ear/tag match succeeds")
+			require(story.found==3 and not story.won and not story.reunion.visible,"two matches require deliberate gathering reunion")
+			story.choose_lead(2)
+			study.player.position=Vector3(story.goals[2].x,0,story.goals[2].y)
+			story.match_dog()
+			require(story.won and story.reunion.visible and story.reader.text.begins_with("Two dogs home!"),"visible owner reunion has complete leading thank-you copy")
+			for node in story.dogs+story.reunion.get_children():
+				require(node.is_visible_in_tree(),"both actual dogs and original visiting owners are visible at reunion")
+				require(study.building_containing_point(Vector2(node.global_position.x,node.global_position.z)).is_empty(),"reunion models are outside measured footprints")
+				for mesh in node.find_children("*","MeshInstance3D",true,false):
+					var box: AABB=mesh.get_aabb()
+					for corner in range(8):
+						var point: Vector3=mesh.global_transform*box.get_endpoint(corner)
+						require(study.building_containing_point(Vector2(point.x,point.z)).is_empty(),"actual reunion dog/owner mesh corners stay outside footprints")
+						var local: Vector3=study.gathering_layouts_node.to_local(point)
+						require(absf(local.x)>6.6 and absf(local.x)<8.3 and absf(local.z)<1.55,"actual reunion parts stand clear beside barricade end, not across its rail/legs")
+						for pole_x in [-5.9,5.9]:
+							for pole_z in [-1.25,1.25]: require(Vector2(local.x,local.z).distance_to(Vector2(pole_x,pole_z))>0.10,"actual reunion mesh corners clear existing light poles")
+			require(story.dogs[0].has_node("FloppyEar") and story.dogs[0].get_node("RoundTag").mesh is SphereMesh and story.dogs[1].has_node("UprightEar") and story.dogs[1].get_node("TriangleTag").mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX].size()==3,"ears and genuinely round/triangular world tags provide non-color differences")
+			story.info_view=true
+			story.refresh(false)
+			require(story.reader.text.contains("1419 Bryant") and story.reader.text.contains("OUTSIDE") and story.reader.text.contains("No report is sent"),"real service reference stays separate and remote")
+			story.end_session()
+			require(not story.active and not story.reunion.visible,"End hides visit-only reunion")
+			require(saved==JSON.stringify(study.build_save_envelope()) and file==FileAccess.get_file_as_string(study.save_path) and quiet==[study.music_playing,study.music_mode,study.music_volume,study.reward_sounds_enabled],"all dog play is zero-save/file/settings/photo/award and quiet-safe")
+			story.close_story(false)
+	# Actual source route, real Stop and generation-owned arrival; no teleport for this proof.
+	study.apply_save_envelope(full_profile)
+	study.hide_story_card()
+	study.last_story_chapter=int(study.current_chapter().num)
+	story.open_story()
+	story.begin()
+	for target in [0,1,2]:
+		story.choose_lead(target)
+		story.walk_to_lead()
+		var steps := 0
+		while not study.current_path.is_empty() and steps<5000:
+			study.advance_walk(0.1)
+			story._process(0)
+			steps+=1
+			if steps==4:
+				study.stop_walking()
+				require(not story.traveling and not story.visible,"Stop clears dog arrival intent before opening")
+				story.open_story()
+				story.walk_to_lead()
+		for f in range(8): await process_frame
+		require(steps>4 and steps<5000 and story.visible and story.near(),"actual dog route reaches selected source lead with Stop/resume")
+		if target<2:
+			story.choose_profile(target)
+			story.match_dog()
+		else: story.match_dog()
+	require(story.won,"actual three walks complete reunion")
+	story.close_story(false)
+	require(study.power_story.open_story() and story.visible and not study.power_story.visible,"F8 gateway resumes active dog rather than overlapping Power")
+	story.end_session()
+	story.close_story(false)
+	study.power_story.open_story()
+	study.power_story.begin()
+	require(not story.open_story(),"active but closed or visible Power refuses dog overlap")
+	study.power_story.end_session(false)
+	study.power_story.close_story(false)
+	study.apply_save_envelope(full_profile)
+	study.hide_story_card()
+	study.last_story_chapter=int(study.current_chapter().num)
+	require(not story.active and not story.visible and not story.reunion.visible,"reload resets visit completely")
+	root.size=Vector2i(1100,760)
+	print("DOG_STORY_PASS:2layouts x6sizes/trueui_accept/clue-led choices/decoy/wrongmatch/bothorders/3realwalksStop/reunion/remoteSFACC/no-save/quiet/manual/reload")

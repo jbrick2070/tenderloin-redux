@@ -804,6 +804,7 @@ var shared_panel
 var loan_homecoming
 var power_place: Node
 var power_story
+var dog_story
 var mural_workshop
 var mural_workshop_selected := "sun"
 var mural_workshop_message := ""
@@ -6059,6 +6060,7 @@ func update_landmark_tour_completion() -> void:
 	announce_a11y_status("Neighborhood Tour Complete! All %d stops visited this session. Your 10 keepsakes stay saved; the optional tour starts fresh next session." % int(tour.total))
 
 func current_objective() -> Dictionary:
+	if dog_story != null and dog_story.active: return dog_story.objective()
 	if power_story != null and power_story.active: return power_story.objective()
 	var p := player_xz() if player != null else Vector2(PLAYER_START.x, PLAYER_START.z)
 	var met := visited_neighbors.size()
@@ -6413,6 +6415,7 @@ func ask_whats_next() -> String:
 
 func end_conversation() -> void:
 	if power_story != null: power_story.cancel_intent()
+	if dog_story != null: dog_story.cancel_intent()
 	var partner := -1
 	if mural_panel != null and mural_panel.visible:
 		partner = celeste_index
@@ -7477,7 +7480,7 @@ func set_header_details(expanded: bool, refit_map := true) -> void:
 
 func update_conversation_ui(delta: float) -> void:
 	ui_clock = wrapf(ui_clock + delta, 0.0, 3600.0)
-	if is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible() or is_power_story_visible():
+	if is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible() or is_power_story_visible() or is_dog_story_visible():
 		return
 	var chapter := current_chapter()
 	# Deliver any pending chapter card after the focused workshop closes,
@@ -8032,6 +8035,7 @@ func resume_walking_view() -> void:
 
 func walk_step(input_dir: Vector2, delta: float) -> bool:
 	if power_story != null: power_story.cancel_intent()
+	if dog_story != null: dog_story.cancel_intent()
 	if input_dir.length_squared() < 1e-6 or delta <= 0.0:
 		return false
 	current_path.clear()
@@ -8130,6 +8134,7 @@ func choose_next_neighbor(direction: int = 1) -> bool:
 
 func walk_to_neighbor(index: int) -> bool:
 	if power_story != null: power_story.cancel_intent()
+	if dog_story != null: dog_story.cancel_intent()
 	if index < 0 or index >= neighbors.size():
 		return false
 	var n: Dictionary = neighbors[index]
@@ -8182,6 +8187,7 @@ func walk_to_neighbor(index: int) -> bool:
 
 func walk_to_mural() -> bool:
 	if power_story != null: power_story.cancel_intent()
+	if dog_story != null: dog_story.cancel_intent()
 	selected_neighbor = -1
 	arrived_neighbor = -1
 	walking_to_mural = true
@@ -8224,6 +8230,7 @@ func walk_to_mural() -> bool:
 
 func walk_to_speaker() -> bool:
 	if power_story != null: power_story.cancel_intent()
+	if dog_story != null: dog_story.cancel_intent()
 	selected_neighbor = -1
 	arrived_neighbor = -1
 	walking_to_mural = false
@@ -8266,6 +8273,7 @@ func walk_to_speaker() -> bool:
 
 func walk_to_history_stop(stop_id: String) -> bool:
 	if power_story != null: power_story.cancel_intent()
+	if dog_story != null: dog_story.cancel_intent()
 	if not (stop_id in HISTORY_STOP_IDS):
 		return false
 	var rec := get_history_stop_record(stop_id)
@@ -8513,6 +8521,7 @@ func toggle_district_boundary() -> bool:
 
 func walk_to_point(goal_xz: Vector2) -> bool:
 	if power_story != null: power_story.cancel_intent()
+	if dog_story != null: dog_story.cancel_intent()
 	var safe_goal := nearest_walkable_point(goal_xz, WALK_CLEARANCE_M)
 	if goal_xz.distance_to(safe_goal) > 28.5 or not is_walkable_point(safe_goal, WALK_CLEARANCE_M):
 		current_path.clear()
@@ -11582,6 +11591,7 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"block_detail_scroll_page": block_detail_label.get_v_scroll_bar().page if block_detail_label != null else 0.0,
 		"block_hub_actions": block_action_snapshots(),
 		"power_story": power_story.snapshot() if power_story != null else {},
+		"dog_story": dog_story.snapshot() if dog_story != null else {},
 		"loan_homecoming": loan_homecoming.snapshot() if loan_homecoming != null else {},
 		"shared_panel": shared_panel.snapshot() if shared_panel != null else {"visible":false},
 		"programme_studio": programme_studio.snapshot() if programme_studio != null else {"visible":false},
@@ -11761,11 +11771,14 @@ func is_shared_panel_visible() -> bool:
 func is_programme_studio_visible() -> bool:
 	return programme_studio != null and programme_studio.visible
 
+func is_dog_story_visible() -> bool:
+	return dog_story != null and dog_story.visible
+
 func is_power_story_visible() -> bool:
 	return power_story != null and power_story.visible
 
 func is_focused_activity_visible() -> bool:
-	return is_power_story_visible() or is_mural_workshop_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible()
+	return is_dog_story_visible() or is_power_story_visible() or is_mural_workshop_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible()
 
 func is_civic_listening_visible() -> bool:
 	return civic_listening != null and civic_listening.visible
@@ -11844,7 +11857,7 @@ func edit_mural_scene(id: String, slot: String) -> bool:
 	return true
 
 func open_mural_workshop() -> bool:
-	if is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible() or is_power_story_visible():
+	if is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible() or is_power_story_visible() or is_dog_story_visible():
 		return false
 	if startup_story_pending or is_story_card_visible():
 		announce_a11y_status("Continue the chapter card before composing the mural.")
@@ -12186,6 +12199,9 @@ func reset_mural_state_to_defaults(status_label: String) -> void:
 	if power_story != null:
 		power_story.close_story(false)
 		power_story.reset_session()
+	if dog_story != null:
+		dog_story.close_story(false)
+		dog_story.reset_session()
 	if loan_homecoming != null:
 		loan_homecoming.chapter_completion_notice=""
 		loan_homecoming.confirmed_owner=""
@@ -12672,6 +12688,9 @@ func apply_save_envelope(raw_json: String) -> bool:
 	if power_story != null:
 		power_story.close_story(false)
 		power_story.reset_session()
+	if dog_story != null:
+		dog_story.close_story(false)
+		dog_story.reset_session()
 	if loan_homecoming != null:
 		loan_homecoming.chapter_completion_notice=""
 		loan_homecoming.confirmed_owner=""
@@ -13233,6 +13252,9 @@ func import_browser_save_json(raw_json: String) -> bool:
 	if power_story != null:
 		power_story.close_story(false)
 		power_story.reset_session()
+	if dog_story != null:
+		dog_story.close_story(false)
+		dog_story.reset_session()
 	if loan_homecoming != null:
 		loan_homecoming.chapter_completion_notice=""
 		loan_homecoming.confirmed_owner=""
@@ -13470,6 +13492,7 @@ func advance_walk(delta: float) -> bool:
 					current_path.remove_at(0)
 				if not current_path.is_empty():
 					continue
+			if dog_story != null and dog_story.traveling: dog_story.blocked_route()
 			if power_story != null and power_story.traveling: power_story.blocked_route()
 			current_path.clear()
 			break
@@ -13541,6 +13564,7 @@ func advance_walk(delta: float) -> bool:
 
 func stop_walking() -> void:
 	if power_story != null: power_story.cancel_intent()
+	if dog_story != null: dog_story.cancel_intent()
 	var was_walking := not current_path.is_empty()
 	current_path.clear()
 	walking_to_mural = false
@@ -13567,9 +13591,15 @@ func update_walk_control() -> void:
 		walk_control.text="Power Story"
 		walk_control.tooltip_text="Resume the relay adventure or End story to return to your afternoon."
 
+	if not walking and dog_story != null and dog_story.active:
+		walk_control.text="Dog search"
+		walk_control.tooltip_text="Resume owner notes and your chosen lead. End search returns to your afternoon."
+
 func activate_walk_control() -> void:
 	if not current_path.is_empty():
 		stop_walking()
+	elif dog_story != null and dog_story.active:
+		dog_story.open_from_walking()
 	elif power_story != null and power_story.active:
 		power_story.open_from_walking()
 	else:
@@ -13687,6 +13717,10 @@ func update_occlusion(force: bool = true) -> void:
 		focus_points.append_array(loan_homecoming.cutaway_points())
 	if shared_panel != null:
 		focus_points.append_array(shared_panel.cutaway_points())
+	if dog_story != null and dog_story.active:
+		for dog in dog_story.dogs:
+			if dog.visible and target.distance_to(dog.global_position)<24.0: focus_points.append(Vector2(dog.global_position.x,dog.global_position.z))
+
 	if not following_player:
 		var framed_xz := Vector2(target.x, target.z)
 		if eatery_guide_idx >= 0 and eatery_guide_idx < eatery_counter_points.size() and framed_xz.distance_to(eatery_counter_points[eatery_guide_idx]) < 16.0:
@@ -14094,6 +14128,10 @@ func _input(event: InputEvent) -> void:
 		continue_story()
 
 func _unhandled_input(event: InputEvent) -> void:
+	if is_dog_story_visible():
+		if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE: dog_story.close_story()
+		get_viewport().set_input_as_handled()
+		return
 	if is_power_story_visible():
 		if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
 			power_story.close_story()
@@ -14394,6 +14432,7 @@ func update_camera() -> void:
 
 func choose_next(direction: int) -> void:
 	if power_story != null: power_story.cancel_intent()
+	if dog_story != null: dog_story.cancel_intent()
 	in_overview = false
 	in_wide_overview = false
 	following_player = false
@@ -14456,6 +14495,7 @@ func lidar_summary_line(b_id: String, city_h: float) -> String:
 
 func overview(announce_view := true) -> void:
 	if power_story != null: power_story.cancel_intent()
+	if dog_story != null: dog_story.cancel_intent()
 	in_overview = true
 	hide_speech_bubble()
 	hide_story_card()
@@ -14514,6 +14554,7 @@ func overview(announce_view := true) -> void:
 
 func wide_overview(announce_view := true) -> void:
 	if power_story != null: power_story.cancel_intent()
+	if dog_story != null: dog_story.cancel_intent()
 	in_overview = false
 	in_wide_overview = true
 	hide_speech_bubble()
@@ -15377,6 +15418,9 @@ func make_ui() -> void:
 	power_story = preload("res://power_story.gd").new()
 	layer.add_child(power_story)
 	power_story.setup(self)
+	dog_story = preload("res://dog_story.gd").new()
+	layer.add_child(dog_story)
+	dog_story.setup(self)
 	shared_panel.update_world()
 	rhythm_circle = preload("res://rhythm_circle.gd").new()
 	layer.add_child(rhythm_circle)

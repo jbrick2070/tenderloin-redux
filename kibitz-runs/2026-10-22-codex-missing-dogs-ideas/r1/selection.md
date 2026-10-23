@@ -1,0 +1,5 @@
+# Selected slice BEFORE code
+
+Codex chooses **Two Dogs Home**: two fictional visiting owners, two original static dogs, text/non-color clue matching among three real existing leads (Turk/Taylor, Turk/Hyde, original gathering), wrong-lead feedback without penalty, real walking, any-order finds, deliberate return and visible gathering reunion. Visit-only, no save/schema/award/timer/audio. Full original illustrated reader plus world models. Dated remote SFACC information card only; no invented local shelter or real report. No rooftop access.
+
+Access: existing nav sibling becomes Story gateway; existing F8/Power inactive picker appends Missing Dogs without shifting old13snapshot indices or repurposing End. Separate dog module; active episodes exclude each other, resume via permanent walking control, explicit End restores ordinary objective. Hooks/acceptance and rejected alternatives in judgment.md. This exact choice follows the completed required pre-code r1; no implementation exists when this file is written. Timestamp/hash receipt follows immediately.

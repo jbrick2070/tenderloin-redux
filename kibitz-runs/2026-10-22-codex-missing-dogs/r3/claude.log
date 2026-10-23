@@ -1,0 +1,36 @@
+STDOUT:
+I wrote the review to `kibitz-runs/2026-10-22-codex-missing-dogs/r3/claude.md`. I only read files and ran no Godot commands or gates, so the pass results the driver reports are still unconfirmed by me.
+
+**Verdict: yes-with-fixes.** Most of the dog-story wiring traces correctly in the source:
+- setup order
+- blocking other screens while the dog screen is open
+- Stop and arrival handling
+- reset, import and reload clean-up
+- no save writes
+
+**Must fix (2):**
+1. **The reunion figures stand on or past the barricades, not inside the closure.**
+   - The owners and dogs are placed at x=±6.5. The sawhorse rails sit at x=±6.3, so the figures overlap or stand past them.
+   - `docs/ASSETS.md:101` says the owners stand "inside the existing temporary curb-lane closure".
+   - The native test (`study_test.gd:5931`) only checks |x|<7.4, so it can't catch this.
+   - There is no free spot inside the closure in the floor layout.
+   - Fix: move them outward to about |x|≥7.0, turn Junebug to face inward, correct the doc wording, and test real clearance from the rails and light poles.
+   - I didn't see a render, so the exact visual overlap is unconfirmed; the coordinates are checkable in the source.
+2. **The keyboard path has focus problems and no test covers it.**
+   - After Begin, focus stays on the now-disabled Begin button.
+   - Reopening the screen focuses "Walk to lead" even when it's disabled, or when "Match dog" is the action the player needs.
+   - Back has no fallback focus target; Power Story has one at `power_story.gd:283`.
+   - The browser test presses every dog button by mouse or touch, but the driver's acceptance requires real keyboard input.
+
+**Should fix (6):**
+- **Asserts stripped in the web build:** the dog-placement checks are asserts, which `--export-release` removes, so a geometry drift would silently put a dog at (0,0).
+- **Stale cutaways:** building cutaways aren't refreshed when dogs appear, move to the reunion, or are removed on End.
+- **Blocked route at start:** "Walk to lead" closes the screen before it knows a route exists, leaving the player on the block with only an announcement.
+- **Thin world checks:**
+  - Footprint and mesh-corner checks cover the reunion pose only, not the street-corner search positions.
+  - The pixel check samples only Pippin, only at the reunion.
+  - The orange barricade stripe can satisfy its warm-colour test.
+- **No-network scan:** the check in `tests/godot-data.test.mjs` scans only `main.gd`.
+- **Hidden test-order dependency:** the browser dog test assumes the earlier Power Story test left it inactive.
+
+The full file also lists what I traced and found sound, some optional tidy-ups, and the acceptance limits. Human, device and assistive-technology acceptance remain unknown.

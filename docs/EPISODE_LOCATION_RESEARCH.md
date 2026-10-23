@@ -1,12 +1,12 @@
 # Real locations for the next neighborhood episodes
 
-Researched October 22, 2026, following the creator's requests for missing dogs, a cooking contest, a mayoral-election episode and a Halloween parade. These are research and design leads, not implemented episodes or completed pre-coding CLI idea passes. Finish the in-flight Larkin outage checkpoint before choosing the next feature.
+Researched October 22, 2026, following the creator's requests for missing dogs, a cooking contest, a mayoral-election episode and a Halloween parade. Larkin's outage checkpoint is verified at75b511a. The missing-dogs round has a separate completed pre-coding CLI idea receipt; its implementation and acceptance are tracked in the current handoff. Location research alone is neither implementation nor a CLI idea pass.
 
 ## Missing dogs: real animal-service anchors
 
 | Place | Verified address and role | Possible game use |
 | --- | --- | --- |
-| San Francisco Animal Care & Control | **1419 Bryant Street at Alameda**. The agency's own lost-pet page directs owners to the shelter and describes filing a missing-pet report. | Strongest real reference for the fictional search/reunion story. A clearly simulated report or referral can connect neighborhood clues with the real service. |
+| San Francisco Animal Care & Control | **1419 Bryant Street at Alameda**. The agency's own lost-pet page directs owners to the shelter and describes filing a missing-pet report. | A separately dated, remote information reference for the fictional search/reunion story. No simulated intake, report, referral agreement or partnership. |
 | SF SPCA Adoption Center | **250 Florida Street**. The organization's own locations page distinguishes the adoption center from its veterinary hospital at **201 Alabama Street**. | A separately identified adoption/rescue reference; do not call it the municipal stray-intake shelter. |
 | Muttville Senior Dog Rescue | **750 Florida Street**, confirmed on the organization's own event/contact page. | A senior-dog rescue reference and a documented link to a past pet costume parade. |
 
@@ -54,4 +54,4 @@ The first three are promising nearby geography candidates; each still needs actu
 
 Compact source evidence is retained under `docs/research/2026-10-22-episode-locations/`: city API raw responses/retrieval hashes, a four-row official polling excerpt, a browser-reading provenance note and SHA-256 receipt. Additional fetch diagnostics remain ignored under `artifacts/episode-location-research-2026-10-22/`. The excerpt is not represented as the complete downloaded file; ordinary fetches returned HTTP403 while the browser rendered the official text successfully. The SFUSD staff notice required employee login for its detailed list and was not used to claim any school polling location. An unrelated ArcGIS polling layer lacked a verified San Francisco/November2024 basis and was excluded.
 
-No dog, contest, election or parade code was added by this research. Each future code-changing round still requires its own source-grounded exact Claude Opus5.5/high pre-coding idea pass, separate implementation QA, all five local gates, save/geography invariants and a reviewed local commit with `[skip ci]`. Keep one writer and finish the current outage checkpoint first.
+No dog, contest, election or parade code was added by this research. Two Dogs Home has since completed its separate pre-code ideas, implementation review and all five local gates; see BUILD_STATUS for exact evidence and limits. Cooking, election and parade remain future work, each requiring its own source-grounded exact Claude Opus5.5/high pre-coding idea pass, separate implementation QA, all five local gates, save/geography invariants and a reviewed local commit with `[skip ci]`. Keep one writer and finish any in-flight checkpoint first.

@@ -1,0 +1,28 @@
+STDOUT:
+I wrote the review to `kibitz-runs/2026-10-22-codex-missing-dogs-ideas/r1/claude.md`. The tool check passed, and I changed no other files.
+
+**Verdict:** the plan is buildable once a few fixes are made. Its constraints match the real code, but two central choices don't hold up yet.
+
+**Must-fix before build:**
+1. **Don't reuse the inactive End button as the dog entry.**
+   - Ending the power story re-enables that button under the same pointer. A double-click or double-tap on "End story" would end Power and immediately open the dog story.
+   - It also hides a dog episode behind a button labelled "Power".
+   - It only works once, and the roadmap queues three more episodes after this one.
+   - Fix: turn the existing Power entry into a shared story gateway, and use the Power tray's case tabs as the episode chooser. That tray isn't in the 264px nav row, so adding a tab there doesn't touch the six-button limit.
+2. **Option (a) is a reskin of Lights Back On.** As written, the walk button already knows where each dog is, so there's no actual search. The clues must decide which existing stand the player walks to, with decoy stands and gentle feedback on a wrong pick.
+3. **Nobody owns the dogs.** If they belong to existing residents, that rewrites who those characters are, since none has ever mentioned a dog. If they belong to new neighbors, those owners need budgeting.
+4. **The cost of a second episode is hidden.** Power is wired into `main.gd` at about 25 places (Stop handling, reset, objective, Escape, the walk control). My recommendation is a separate `dog_story.gd` module that duplicates those hooks explicitly, rather than folding dogs into `power_story.gd`.
+5. **The two stories can't be active at once.** The driver anchor says so, but the document under review doesn't. It needs to cover Power being active but closed, not just visible.
+6. **The research doc's "simulated report or referral" to SFACC contradicts the brief's "no outbound reports" rule.** Replace it with a dated information card that says to check the official page.
+7. **Clues can't rely on colour alone.** Each one needs text plus a non-colour trait, and the story must be completable from the reader text alone.
+
+**Should-fix:** the main ones are:
+- Tell the creator plainly that the "real animal-service locations" part of the request isn't met.
+- Keep dogs away from the existing rooftop dog park at 145 Leavenworth, which is a private residential roof.
+- Measure on-screen dog size, because there is no dog model builder yet.
+- Account for browser tests that tap Power controls by position: adding a tab shifts every index.
+
+**Cut:**
+- The clue-board option (b): the creator already ruled out another worksheet.
+- The F9 shortcut.
+- The SPCA and Muttville references: they're adoption and rescue groups, not lost-pet intake.

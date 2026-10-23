@@ -1,0 +1,12 @@
+{
+  "godot/main.gd": "a8f97fb65370df92ea769a383fa8505cab679b12f0eb1f2cbd10db9870d76d00",
+  "godot/power_story.gd": "b5fac34164b28bc2cfa9c5b58e0348a8615dc557c6e4e67fffd7301387415e39",
+  "godot/power_place.gd": "f192f25dbe721d6a33c826046237cc41653bd473b50c8fed5c22bb94819309ed",
+  "godot/tests/study_test.gd": "24d80b09af400ef6315a075efe319e4058b77de1bfccc193f7dd50e0672750a5",
+  "tests/godot-browser.mjs": "43df2e2b2328ca9518b9e7db7db0066cdef23aecb35d24a692436ea13c8a4384",
+  "tests/godot-data.test.mjs": "bad18b559c50ba43e3606e0fd84b41b7f7906e279fdca9e76884e8c3bd8b5bfd",
+  "docs/ROADMAP.md": "c8a42c61df43d140d9a0ba2d7d58ffde8ef97c45ff0138bcb2052626845d468a",
+  "session_handoff.md": "11749265b6da8ac5d1b596c08c2cb9fdf62795522428d9ed56d544b23c9346dc",
+  "docs/BUILD_STATUS.md": "7b7a55396d3ed2e68cd84598b2c4a715fd4ad5c2a049582528f5b974a4acdf97",
+  "docs/EPISODE_LOCATION_RESEARCH.md": "83f31c1a7e6baaa63cd9cfe9b2d7912f80d6b7014d389812336759c0fd7ef8ad"
+}

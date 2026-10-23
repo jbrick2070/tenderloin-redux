@@ -1,0 +1,9 @@
+{
+  "id": "build-tenderloin-redux",
+  "status": "ACTIVE",
+  "interval_minutes": 30,
+  "target_thread_id": "01a159d6-60a3-78e1-92ae-4018509d2539",
+  "prompt_sha256": "77087a47e437d12fd60a76e4120a937f9882f73a7ac341501b4cc48aba76a3d6",
+  "next": "cooking, election, Halloween; fresh requiredr1 for each",
+  "no_cutoff": true
+}

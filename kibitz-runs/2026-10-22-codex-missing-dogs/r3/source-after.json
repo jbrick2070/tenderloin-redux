@@ -1,0 +1,10 @@
+{
+  "godot/main.gd": "838517cbbf44be57ffdb5c8daf0ecf7d89f7b6fdd7420c53756a49136bf077a1",
+  "godot/dog_story.gd": "c6322e04afaf269c2420ce62884e3f2ec3086664c719fa3c844a26024f9c7850",
+  "godot/power_story.gd": "b1dc0f97296e0b4a3e631b406a80016d2acad2c3c78082ffcfd65dc4b2b9a127",
+  "godot/tests/study_test.gd": "645419c2b118c54ac13e340032992ecdd9a46c7379ee3ee412c4a8a5b8a082c4",
+  "tests/godot-browser.mjs": "344439607ce0103c78e81f0237d3f143e97674c8f0d990bccd77c2b4b4f31a30",
+  "tests/godot-data.test.mjs": "bad18b559c50ba43e3606e0fd84b41b7f7906e279fdca9e76884e8c3bd8b5bfd",
+  "docs/ASSETS.md": "c24e76035139adaae42dae3c4e1f38fb5fb7875088e3d58d3e6f69f8139aaa0d",
+  "docs/EPISODE_LOCATION_RESEARCH.md": "db3974a159280e41317ee51f2842e21be2782c84c403b1f66f690faac34280ab"
+}

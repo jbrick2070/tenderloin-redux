@@ -1,0 +1,1 @@
+Scoped r3 ONLY, driver codex, sole claude, requested claude-opus-5-5/high. Read source and write report only. No edits, git mutations, tests, browser, native probes, other agents or paid media. Prior pre-code r1 is separate. Codex grounds findings and runs gates afterward. Provider identity/quota percent unknown; retain harness receipts.

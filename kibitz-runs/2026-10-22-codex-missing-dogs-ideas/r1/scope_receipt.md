@@ -1,0 +1,3 @@
+# Explicit partial campaign receipt
+
+Creator explicitly requires one sole-Claude pre-coding ideas pass before each NEW round. This is ONLY r1 pre-coding ideation for missing dogs, not a complete four-round campaign and not implementation QA. Driver Codex; sole lane Claude, exact claude-opus-5-5/high. r2/r4 omitted by creator scope; a separate exactr3 is required after implementation. Input artifacts/missing-dogs-ideas-input.md. Pre-fanout input digest and source snapshots are recorded by the launcher. CLI reads source and writes only its assigned report; no implementation/testing/native commands or extra agents. Stop on quota/auth/model mismatch; no substitution, larger panel, credits or blind retry.
