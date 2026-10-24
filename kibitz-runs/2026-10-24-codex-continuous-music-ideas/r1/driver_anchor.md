@@ -1,0 +1,5 @@
+# Driver anchor before scoped pre-code fanout
+VERDICT: CONFIRMED current baseline has observable background silence in two fresh emulated contexts; source makes frame-bound refill and note discontinuity plausible separate mechanisms. No implementation selected yet.
+MUST-FIX: source-ground alternatives against complete audio transport, finite rhythm ducking and local-audition semantics; preserve actual mute and progress masks; no source/geometry/save changes during ideas. Current destination evidence is independent of reported music_sample_rms.
+SHOULD-FIX: include smooth note/stem seams, bounded allocations and meaningful actual output continuity under walking input. Prior-art comparison should acknowledge standard sample-loop/crossfade methods, not claim invented synthesis. Keep richer composition/human taste acceptance separate.
+UNVERIFIABLE: exact creator iPhone root cause, acoustic speaker response, subjective chippiness, every current zero's engine-internal cause. These remain limits.

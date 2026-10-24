@@ -1,0 +1,86 @@
+{
+  "decided_utc": "2026-10-24T17:39:54.813159+00:00",
+  "scope": "Close bounded read-only music/playability diagnosis after system restart; no implementation selected",
+  "head": "c53d987390608e67f8c8d86aa655e5079b448487",
+  "post_restart": {
+    "observed_exit": 0,
+    "session": 89287,
+    "errors": [],
+    "consoleErrors": [],
+    "external": [],
+    "changed": [],
+    "cases": [
+      {
+        "name": "desktop",
+        "max_zero_ms": {
+          "idle": 0.020833333333333332,
+          "earned": 0.020833333333333332,
+          "resumed": 9.8125
+        },
+        "quiet_peak": 0,
+        "save_bytes": 917,
+        "timing": [
+          {
+            "label": "bass-idle",
+            "long_tasks": 0,
+            "max_long_task_ms": 0,
+            "max_raf_ms": 17
+          },
+          {
+            "label": "earned-idle",
+            "long_tasks": 0,
+            "max_long_task_ms": 0,
+            "max_raf_ms": 17
+          },
+          {
+            "label": "music-resumed",
+            "long_tasks": 0,
+            "max_long_task_ms": 0,
+            "max_raf_ms": 17
+          }
+        ]
+      },
+      {
+        "name": "android",
+        "max_zero_ms": {
+          "idle": 0.020833333333333332,
+          "earned": 0.020833333333333332,
+          "resumed": 0.020833333333333332
+        },
+        "quiet_peak": 0,
+        "save_bytes": 917,
+        "timing": [
+          {
+            "label": "bass-idle",
+            "long_tasks": 0,
+            "max_long_task_ms": 0,
+            "max_raf_ms": 17.100000000000364
+          },
+          {
+            "label": "earned-idle",
+            "long_tasks": 0,
+            "max_long_task_ms": 0,
+            "max_raf_ms": 17
+          },
+          {
+            "label": "music-resumed",
+            "long_tasks": 0,
+            "max_long_task_ms": 0,
+            "max_raf_ms": 17
+          }
+        ]
+      }
+    ]
+  },
+  "chosen": "Preserve evidence and defer transport rewrite; advance next substantive quest-freedom slice under a fresh r1/new lock.",
+  "rejected": [
+    "Treating Windows update as proven music fix",
+    "Assuming native Godot sample loops are audio-thread loops",
+    "Blind buffer increase",
+    "Claiming human timbre acceptance from waveform measurements"
+  ],
+  "remaining": "Creator phone choppiness/timbre open; source note-boundary discontinuities retained for bounded later refinement. Exact reason for changed post-restart stalls not isolated.",
+  "new_production_changes": false,
+  "new_r3_or_all_five_gates": false,
+  "last_journey4_exit": "unknown after host restart; saved final result complete"
+}

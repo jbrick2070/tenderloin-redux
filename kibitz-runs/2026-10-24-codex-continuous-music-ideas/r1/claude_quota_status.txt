@@ -1,0 +1,9 @@
+agent=claude
+quota_check=enabled
+requested_model=claude-opus-5-5
+requested_effort=high
+usage_percent=unknown
+preflight_auth_rc=0; provider auth metadata redacted
+harness_rc=0; ToolCheck=PASS
+raw_private_sha256=8837273a61838ba8faef568a69dfead62d1566b2be47f9636a4097bdcbf7023c
+Runtime provider identity and remaining quota percentage are not established by alias selection.

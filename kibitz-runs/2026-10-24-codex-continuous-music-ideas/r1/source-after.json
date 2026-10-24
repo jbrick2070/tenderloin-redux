@@ -1,0 +1,14 @@
+{
+  "session_handoff.md": "d0a1fb3cf29cc9ed6adfec50aaa626c27b3715022c89820377b6fab433e9836a",
+  "docs/BUILD_STATUS.md": "72a84f190cc436b96e76fa430ae40f6ae985233fbcd2cf8eb7bf7263c8a16220",
+  "docs/GODOT_APPROACH.md": "4fe7787b8c921187fb7e71ca649790281b5f33768b644f6510bb86ce839e40a4",
+  "docs/ROADMAP.md": "a03a38442d6ae60fb50547bdc18cc2abf4ea399a8613b8977bb93b91ad4423f1",
+  "docs/MOBILE_CHROME_DIAGNOSIS.md": "a5e0ace45a1e33fd7b740564ac0b02cf254ea6d0d17e826be11a00dd70b710db",
+  "docs/QUEST_FREEDOM_IMPLEMENTATION_BRIEF.md": "a014510c456e5a567efe53c8806c618ed91671b6c472b97c13562a39081350b3",
+  "godot/main.gd": "05fb624ca134d1f7b161ab4446786ed6a8ef2ad56d5fae197294a45bb383659f",
+  "godot/rhythm_bar.gd": "cb26254359014631c7a6f58b9ab574a33fe5e10a5ea315b0b91556fe7378fcab",
+  "godot/tests/study_test.gd": "29140ba8dd05e643cf4477ef43d8b19ac2bc62772d75db6b8e20ff7dcd59a6b2",
+  "tests/godot-browser.mjs": "7880b8b09eaa869bfb11dba1f066ea12493ce8dc29ee69b8313d9f213add51c2",
+  "tests/godot-data.test.mjs": "932dfa259e008cd99650462570d6147aabcdd7d2d04fa85b20884ee518239329",
+  "godot/export_presets.cfg": "c48690c627327b17003865086e89eed43e143d1e391174551a54b702ed4f7c85"
+}

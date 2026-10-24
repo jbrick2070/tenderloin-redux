@@ -1,0 +1,743 @@
+{
+  "recorded_utc": "2026-10-24T17:39:54.813159+00:00",
+  "scope": "Read-only diagnosis and interruption recovery; not an implementation gate",
+  "baseline_head": "c53d987390608e67f8c8d86aa655e5079b448487",
+  "observed_post_restart_exit": 0,
+  "unchanged_runtime_inputs": {
+    ".github/workflows/deploy-pages.yml": "18285f0d7f5f5144be996bcddc07120801b8f7c7c596181f8aa214a9f8e6e2ff",
+    "godot/ENGINE_LICENSE.txt": "b0435e3b3e4e55238f05f4b306f30524a1b2e20147810d436eaa554fa6855c80",
+    "godot/bea_invitation.gd": "4ad40453704987fc9c29c34425b8be66c5fb8057874ab21fdd9cb89ab259b51f",
+    "godot/bea_invitation.gd.uid": "ffee64b02910f5353784988a4511c1aa630dcba5f2d2c545c6ec812de883e64e",
+    "godot/civic_listening.gd": "2eca8cffc35ed2753544e137515fdd6e67b1d6933fb60717763e4c540061c7e7",
+    "godot/civic_listening.gd.uid": "3dc303bef24ace0b7afca48a382776f7858f6bd6a0e7efc866bed853bb4e57df",
+    "godot/data/SOURCES.md": "50a0e26cb85a44e8ea15d2b3ea03bfce93573c5faae104090682e801446fb287",
+    "godot/data/buildings.json": "8b3afd7a6ec3d00ac22fb77347caeafa262be2f55ad1ddbf0a9dd296afd332d2",
+    "godot/data/lidar_2023.json": "b59ba7348bdc2c78c867993cef230353708163d1d0caa50602668f73323cdc93",
+    "godot/data/neighborhood_voices.json": "662571e5de9eb0cc9f10e25146b8da08a302758009159462b6f2a460889d0271",
+    "godot/data/power_place.json": "5eac6de7921c9eb6afaa1752a9bfc6a693e63ca70a19ea3b6d82f268b2178f52",
+    "godot/data/source/boeddeker_park.osm.json": "96f0c7dadc0bb43f703fbf7a72d9fc3d37f5b1075f3d4e3e4aac280e0af55c7c",
+    "godot/data/source/buildings.geojson": "393472ecd7fda3503e581fa49e2899f2e50d5f3307f055d26b23bea0a3665701",
+    "godot/data/source/buildings_tenderloin_west.geojson": "9439ff555fc43206d1d24f29af7e0c6384c0ef3403d7fcfbfb37564231b64737",
+    "godot/data/source/larkin/3mea-di5p-metadata.json": "0c4e38f8d3c2f69150cd14c04254cd9e6c874e396b5934da9631e58929ea154a",
+    "godot/data/source/larkin/address.json": "703eac0174a434f40cfa753cc0132983ea129392a04579c325f0ec1fc4eab862",
+    "godot/data/source/larkin/gmfx-8h6i-metadata.json": "865c26aeab7026f7bf734fce77fee8f9f22b4a7ba4ee2d94aac65e9adfa1e2a4",
+    "godot/data/source/larkin/intersection.json": "b3a465baa27dfc09b34d371db7529039b0a118659bc4474aa88cb54221c75cef",
+    "godot/data/source/larkin/receipt.json": "c20abc4e7ead499b1ccc88915321b3d06ec4cdfa1563a74324b835917d260559",
+    "godot/data/source/lidar_ept_manifest.json": "99d6fb66c87994e077a0005ae646a91063cd0364ff3a59e434c1a5f3b9bea9b5",
+    "godot/data/source/metadata.json": "93407284a55c676b96d941042dcdd6223e5e5338f3b33a0faa639b56dd2309e6",
+    "godot/data/source/method.pdf": "1fa6af3167ac0935883bff2b3e79fefb8118827e158289f3cbf458769bdf6ad2",
+    "godot/data/source/osm_buildings.json": "6b00db9038f08223d5966e85264ea16340a4be3fd8267a612ec9a25fad9fbf7b",
+    "godot/data/source/roofer_lod13.city.jsonl": "6462810cbd3b001d0ffa6c03de05d434f3debb8a1974b7b3806fae802700773f",
+    "godot/data/source/roofer_lod13_pass2.city.jsonl": "5f052b26eceeae3b2dec8bcf82ddc528b9d1f0f90a0fd6e1436fcbf747fafc70",
+    "godot/data/source/street_trees_tkzw-k3nq.json": "270f370a13a9a76b72e0bc2c42dc1760cfdd0fda129fb29b3e3283003875847d",
+    "godot/data/source_receipt.json": "4ee6ed720f64c2c4417f9607446916fd610f57dadb04ddeab66a8dbeb789c3b7",
+    "godot/data/street_trees.json": "4623f1ae6744d321967aa06250ca936267a5edac0b51aec21cc00927397dbdad",
+    "godot/data/voting_places.json": "dce6122946d5e29fe22c522c66b9437a1a1c5427535f1ad28af1ae884b307fe3",
+    "godot/dog_story.gd": "7ce9d5e459c772c6a2824b5af88cb7a26405a34718768b5a10b60510fd2e6db2",
+    "godot/dog_story.gd.uid": "e4c4865af01388945eee93fd162c5c5d79e2aabfc3122c642b3c9fc4c38c616b",
+    "godot/export_presets.cfg": "c48690c627327b17003865086e89eed43e143d1e391174551a54b702ed4f7c85",
+    "godot/film_screening.gd": "20a8015f821333f337158d5eb1ab820240db9999413f339451afb6a4923271dd",
+    "godot/film_screening.gd.uid": "853f18e65266a6f3f20d182b18a0595c8a25bc5676c9da3446efca6c6b0c3a32",
+    "godot/lantern_procession.gd": "3d067733a757e580794dc3dbefd2d8331c328cdb79dd2481e52d7f6d00f20138",
+    "godot/lantern_procession.gd.uid": "e66bc5b73a138724f8b81c0a054a93f2bec0868e4e64b301cd7c661f15ce8323",
+    "godot/loan_homecoming.gd": "0cac31652903848832ded6d2131c97e50e82a8c89f03e69c885aa543574472f9",
+    "godot/loan_homecoming.gd.uid": "a34f1792beeb72439a5367a9a2db2f8d8c881f2cf7479c51a5f08492cd37de25",
+    "godot/main.gd": "05fb624ca134d1f7b161ab4446786ed6a8ef2ad56d5fae197294a45bb383659f",
+    "godot/main.gd.uid": "fb97ba0a3d31f9b884b8a5d1be601685a370fe913c1c7c2e756bb70fdf413608",
+    "godot/main.tscn": "4ab415614d976aa070ccf83cd51bfcfd36f15bcd1e9b69aa1dafa3104b348fea",
+    "godot/mural_signature.gd": "a8b25e10edef62c77fb4ccb6e98c08972c579e61659ac80386a04a03bc851da2",
+    "godot/mural_signature.gd.uid": "d716bb9dcb0d03e7013bbb1caae705bfd8f87d9825ce851bf08a39933c8214c3",
+    "godot/mural_stories.gd": "4dc1f266b997f8210871b4d863c19b43aeeb901beb60c822b6a92de9e48766c2",
+    "godot/mural_stories.gd.uid": "c64c01b1996e1d8d1e74418cd6d8fcbf6945bd01d4671c089367b6725a774fc7",
+    "godot/mural_workshop.gd": "d44323fee68af2ac907ebba3e59aab32ffa7e08e716016b926a86acc2a20e0c8",
+    "godot/mural_workshop.gd.uid": "81344249d37c4834b4906ea3a80de15dbb8b5ae9993b619ccddf4a90ddfd7b00",
+    "godot/power_place.gd": "f192f25dbe721d6a33c826046237cc41653bd473b50c8fed5c22bb94819309ed",
+    "godot/power_place.gd.uid": "d99322c532b694f4005897c8a23d6138882e6671009e05d532eaab0ba350e935",
+    "godot/power_story.gd": "0f1e77801efdc979146321df9edb9ca17076004fed37e7d61c4ebd8ae3798e51",
+    "godot/power_story.gd.uid": "faa188932ba17aa9a75109b579dbc935d21c60734a2840df1d01313b6001c627",
+    "godot/programme_studio.gd": "b9e2200905730fee77e785946e45f05555bd1becd8de76ade20a37ecd6667e1e",
+    "godot/programme_studio.gd.uid": "9a98fcc7685f57917524909954c8885e558cb0c7fcd342224338290e2117a779",
+    "godot/project.godot": "f8dfcb563b703005fdf185f9a49faaf4aba153322b4da9270af099970c7fccdf",
+    "godot/quiet_seats.gd": "211c67f25397305c0cefd5c2c5f0bc558296ab82848c09b67cf032f0b9fc5cef",
+    "godot/quiet_seats.gd.uid": "b60d513358206ef91af6d7328923fc3e2fd3e3dc6d717781c735c8a35ff7241d",
+    "godot/rhythm_bar.gd": "cb26254359014631c7a6f58b9ab574a33fe5e10a5ea315b0b91556fe7378fcab",
+    "godot/rhythm_bar.gd.uid": "104fd19f28439a425e3ebc0056ae8642dc63c28ef4d7f49e9e9d621e611f79c5",
+    "godot/rhythm_circle.gd": "3cdda6f228db7ebb8efcc0f397cfa425a8ce9affef934f54ef0189b2f41d62f1",
+    "godot/rhythm_circle.gd.uid": "5c28ed6232ad7ec3c5d9af5c19e9983fac95883a9c53aea932c5fb9045fcd0d9",
+    "godot/shared_panel.gd": "0cf289edc823919866c03e3687935d9b5c390058e1faa8051255a3fa9067833f",
+    "godot/shared_panel.gd.uid": "7d968c1c405c55e0dff1d07d47d529f991cfec4b738f1a769799e6d26d7a258a",
+    "godot/story_picker.gd": "2f81c7e049be5ef27f3f818015b5438aadb72799ce2abc136a27427e6832c3fa",
+    "godot/story_picker.gd.uid": "aa840a1bd54e7e1d751c6631256ad12819527f4ee0dfffff74c42a2ebccc24b6",
+    "godot/tests/study_test.gd": "29140ba8dd05e643cf4477ef43d8b19ac2bc62772d75db6b8e20ff7dcd59a6b2",
+    "godot/tests/study_test.gd.uid": "0e4705b18490e381291a70ce118cd7768309633571f174016ff46cefe7057615",
+    "godot/voting_story.gd": "32a9a7975f7a1837ec1de5742ff1477370e9c4b87fbef39d0fb4ed08b9ab2522",
+    "godot/voting_story.gd.uid": "b4b8946e1691002525914e6c0aba075cf3ff540286eace225213826c04552c5e",
+    "public/audio.js": "5ac28c9eedbc9458a8e1b46f04e79a7ea5e5d8e4121fa8dc92f9159338cf740f",
+    "public/camera.js": "1f826d03503499a3a85543e3ffefe7c24c8a2deb06c87d54d3b518f1c43afda4",
+    "public/civic.js": "85cf245d0d7b15365edf35c9a7b3b8642fe17a325d5b5a600a92cc93697cf6d8",
+    "public/core.js": "5bc6a2938983ed064d84a3cbc804728a960fb1e5bd678dcc8a8aa347f19028e8",
+    "public/data/cultural-district-source.json": "4b2b5f6391e0955974437bc059179457189474819d32a8062778c0a347a9476e",
+    "public/data/source-turk-west.osm.xml": "272f4d027c212859eb6d6cc9859ce39106a9b445cd613e429cbdb66b6a1d7e41",
+    "public/data/source.osm.xml": "9a987cec02ce967566cd5a13a799d96fb96dd8301e06b4f9d0ffb4cf140ea458",
+    "public/data/streets.osm.json": "f3520882cc873788b8c34be031121128f303391d886bb9cadeb82b17b716ead8",
+    "public/data/transgender-district.geojson": "af2b1bd6dbcf7c00a4021cfaf07e45bce80bd299194114a8ef1781b589ac8d5c",
+    "public/district.js": "6a6f9f57b2823f63e72a2ee7ce97f15149ee5fa85667b7edc272888103d96a5a",
+    "public/experimental-host.js": "c5374029364d6dadc9db4c00360b6f1fcfd6b0c4dfcf12082465a5da5b9f9a6e",
+    "public/experiments/neighborhood-voices.js": "1cdd13ccf7dbf81c89da91173c23e14523f1f052b12df50055e8f4fba2eea84c",
+    "public/experiments/neighborhood-voices.json": "662571e5de9eb0cc9f10e25146b8da08a302758009159462b6f2a460889d0271",
+    "public/film.js": "4ec3e2c68dbf9e7aef1cdaa925ac1670e4ce56bafbcd9912338f7e927e4ed2d0",
+    "public/game.js": "9395bebadb20eab4c74d8f8fd2634f4705f94e3399a010eecf86f63603b7d54d",
+    "public/gathering.js": "55c87533e849ab4b847ce6df52d6bc035f361025648dc0541ccfafcbda1d1978",
+    "public/history.js": "67667bbfb83a3155bad203ba8f560cb84e11060647010d673814aef6a0ab5984",
+    "public/hosting.js": "2155f76740dfe1cc91aa258462cc135aac0cc5da7a15bc981f5031ad8ddebf19",
+    "public/icon.svg": "6a8c27a1e133c1cf0b150c904acc544f9b53ba444e0425e200b51dca6b33a000",
+    "public/index.html": "2a1b95fbf423a0c70ff696f67fb300123373ee16cea83bd94d0490125e96a718",
+    "public/keepsake.js": "fb72bf4b444a720e2fb8c1d880b0567e99ea7b017572e4fee3c4747dbfb604b2",
+    "public/programme.js": "2051dcab8e9d4e835690cc4d07726dbebce12980c27b648e5549016fa0a5a1d5",
+    "public/soundtrack.js": "aa946b92042f148700b0b66659fc5414e82931ecdcdbeee0c7adba32cfe44910",
+    "public/style.css": "7a82b90031d5321e27d8872014d294c13a9282b2d827a7f74cbb7b396484bc61",
+    "public/world.js": "84563e2478b0ead508c2b134482b6ec204595c3dcbf16022588a29ecd4a09511",
+    "scripts/apply-field-survey.mjs": "e13cf24a191ee1a824dcb5f514cdfdf8a17dcd70978b95c04de48bce0c622afa",
+    "scripts/build-fingerprint.mjs": "80bbfbcc67455c81102b20ca3d7413c906f9692a4758f5826c4ae4af239ae3af",
+    "scripts/build-godot-data.mjs": "131cf33c03dadef027ed2e9edd83edd4366c1b9aa33551bb96ba85fd4b1579b8",
+    "scripts/build-lidar-2023.mjs": "ee4f0731196340372c1b8c1a5f34c83782b2421863ccb364a108c421e7867e53",
+    "scripts/build-power-place.mjs": "dc474ebc01bd1702fe36f7282a6574e404e4f71fba1d7ff9d8bb8088357181de",
+    "scripts/build-street-trees.mjs": "86dba464bbf9257be0b052a41184c2742b7543b08f41db7f01eef3f967da4903",
+    "scripts/build-voting-places.mjs": "5f29de5c7764ee352212c08ea715eb7050060e2871b8d3ad6463f0a21b84e3dc",
+    "scripts/lidar/crop_points.py": "a4f87ef274c5383cb5d15fe209d727e4e47f031b8e6127b7137129837546fcf9",
+    "scripts/lidar/fetch_ept.py": "327bd7cac62779c31dbc6252241f797ccca0aa436494a9bbbfd060729b6b419d",
+    "scripts/run-godot.mjs": "4b03b63f1762db8294ea6bba67dddf0026287acb57888a0f43f7a1fa7ae1dacb",
+    "scripts/serve-godot.mjs": "9c1aa83ac02695500f828a07235ca692ac3108f1777cbb1a5681b2dab462d5f4",
+    "scripts/serve.mjs": "5bb81a88b5c04567ea7eebdbdf7f1de4d9a2acaca577c9a6b756f6b7dec8dc6d",
+    "scripts/vendor/earcut.LICENSE": "324139c19d87af03fda38afea1590e00ca354c4159bdb2ae9e9cec070cfa46a8",
+    "scripts/vendor/earcut.js": "83d5b59bc520601bb2dd7401a2f8382a008d8d95e0e6e0fe45759ae4fda1aa56",
+    "tests/apply-field-survey.test.mjs": "869a4cd77dd637b4b5d5d7e3c095446c1f8377097a3b64983130da271114c72a",
+    "tests/audio.test.mjs": "dd05725ef31faa7f41d23c04f821bd878079d7b72c7c8c1e41f78c122afa8349",
+    "tests/browser-smoke.mjs": "89a0180fe72be918b3323549fbb6506249618acca97e6ec4385124b19c493a68",
+    "tests/camera.test.mjs": "46c6837b092593ce604ab6e7d42ec51bc5ea70666a8fadb022b1100e6305f7c1",
+    "tests/civic-browser.mjs": "7fa7a66cf0229f7cae4f8adedde5d43269378c4c68a33a6b3d3e9197404ffc92",
+    "tests/civic-fixture.mjs": "17d954f7aa108e6b85867b3b3aab71404bd09f344fe8f97951cd9d5670f7f352",
+    "tests/civic.test.mjs": "a9584d452a5d43556d3e49fe4b1b58e621db42469fa9a796725c98f011b10d40",
+    "tests/core.test.mjs": "a30f1c544ec960289ffd03936f145354b2e0652d64d6944bae1adfae7f401653",
+    "tests/district.test.mjs": "7295f08882eeab238bc1ea6019091c319908166fb7bad1ac52bf32da0c18a08a",
+    "tests/epilogue.test.mjs": "9f30d9bc8a28e7b7a22c45014da6ac1e27f9d580b9a27441c4fbfc6597a66e1c",
+    "tests/experimental-host.test.mjs": "1f98c7a5fc43d8f59b241d789d21f7a9831cae2288c6f8751ea44f28373e2aee",
+    "tests/film-browser.mjs": "ee1c1940732d6f2113b37cdf9d1bcb3a6600894f4eaa1ff35046b29bf292e7e7",
+    "tests/film-fixture.mjs": "cdda2b825e6f7062976672c23a7ce6056b6d6d8b4b0743277237be305deb9099",
+    "tests/film.test.mjs": "8438bbdb57846db94bfef14899a146f1d30289fbed5064788faf1d1d29556f01",
+    "tests/gathering.test.mjs": "46ca8c551d025f7746f596a84c1e19805a328882f987e3728e1e1cb39e370095",
+    "tests/godot-browser.mjs": "7880b8b09eaa869bfb11dba1f066ea12493ce8dc29ee69b8313d9f213add51c2",
+    "tests/godot-data.test.mjs": "932dfa259e008cd99650462570d6147aabcdd7d2d04fa85b20884ee518239329",
+    "tests/history.test.mjs": "6f6c485a98c916f9098671a048d795c39d71747069f1a0b2b5849c6c113fd1f3",
+    "tests/hosting.test.mjs": "6bb99f19e67b3d42b89e621c4ce95ff8bc86117232e3c16c855749967244f4cf",
+    "tests/programme.test.mjs": "711a471bce6139db29adace9e45bc22bad592383dd9a4a18b1a9f13bd96dc8b8",
+    "tests/soundtrack.test.mjs": "b5e42eb31dbba86ccd116a8b0a58d54204c64bb6d8a975b320302139da163bce",
+    "tests/voices-browser.mjs": "dd231e29bdb010b5e64bfb9ec751e42d736d84acf5dae5c5e0aee2e74261f949",
+    "artifacts/godot-web/index.pck": "b587003807adc4e48fd409925dbcda3878cc58fda89259389a82d54d5b1276af"
+  },
+  "retained_evidence": {
+    "artifacts/music-playability-20261024/android-bass-idle.f32": {
+      "bytes": 2359296,
+      "sha256": "494f391dc38d412d0ae99b3ae12071637bd5c9fbe7e172cf25524236aa2f9808"
+    },
+    "artifacts/music-playability-20261024/android-bass-idle.json": {
+      "bytes": 172842,
+      "sha256": "d26f30563fe7fb41814ce54008e95172bfda9d018383ef9e2ea67924a0c8c933"
+    },
+    "artifacts/music-playability-20261024/android-bea-snapshot.json": {
+      "bytes": 54855,
+      "sha256": "8309b8aa2083bfbfa67dda85d3a9748d5b68d21fc290e8414236557e1c3ba40f"
+    },
+    "artifacts/music-playability-20261024/android-bea.png": {
+      "bytes": 440958,
+      "sha256": "67f68ba6b4a31006e31065e281e79e54a54a0391dd2e4cba975d736aa0979a31"
+    },
+    "artifacts/music-playability-20261024/android-earned-idle.f32": {
+      "bytes": 2310144,
+      "sha256": "dc6b16917d1831124206bfa30f07e07f469cc48a437d1d95b80e5da21c97153f"
+    },
+    "artifacts/music-playability-20261024/android-earned-idle.json": {
+      "bytes": 212663,
+      "sha256": "a730aece034106fd91e3bb3d5a3ba59b838ab9ac43fbf5e5430ec9bf4de0715a"
+    },
+    "artifacts/music-playability-20261024/android-music-off.f32": {
+      "bytes": 278528,
+      "sha256": "79095a8a9c81e1d95e90442adcddeae93061fac4611d4c1f768850eaf6787c69"
+    },
+    "artifacts/music-playability-20261024/android-music-off.json": {
+      "bytes": 199597,
+      "sha256": "cf59fba111f0a9f0189555c3f1fd016e965b710f2a33589afdd34bcb1ec1aeca"
+    },
+    "artifacts/music-playability-20261024/android-music-resumed.f32": {
+      "bytes": 1261568,
+      "sha256": "2d8c6ef1bf37b731d66384e2ea4e700e08f0f7ac7ace88d37aef4e328a3b6492"
+    },
+    "artifacts/music-playability-20261024/android-music-resumed.json": {
+      "bytes": 231146,
+      "sha256": "c926c43aaa3a6ea336e2a0b7b088d03130089c0b03c094a4fabb3b967b6e0b87"
+    },
+    "artifacts/music-playability-20261024/desktop-bass-idle.f32": {
+      "bytes": 2392064,
+      "sha256": "552538220c22205d3d5aa715c9645bcd5cbd118a3d3031171a2e43753ee7ae49"
+    },
+    "artifacts/music-playability-20261024/desktop-bass-idle.json": {
+      "bytes": 175263,
+      "sha256": "edcd4682525a3bdb7d593c51665d186dac230c279a68dcef38c4c2ccb41d4c8b"
+    },
+    "artifacts/music-playability-20261024/desktop-bea-snapshot.json": {
+      "bytes": 54920,
+      "sha256": "3c5a8b23259b6b1a4374d7877c2c08e974690ec65b1c1c5a7b51b2bd866615ce"
+    },
+    "artifacts/music-playability-20261024/desktop-bea.png": {
+      "bytes": 226181,
+      "sha256": "b16c8aa2650c3cfbba46b7d901734581fb5da331b4a396c225c2c11223ea630c"
+    },
+    "artifacts/music-playability-20261024/desktop-earned-idle.f32": {
+      "bytes": 2310144,
+      "sha256": "5d6350c8595f768fc445c67688f8713ddcdfbb3f518aa00bf24f70104d0c7ec9"
+    },
+    "artifacts/music-playability-20261024/desktop-earned-idle.json": {
+      "bytes": 215570,
+      "sha256": "eb302398a068df2e69335e425290a4c4dd77ef1600d7b168905c21b717a97e60"
+    },
+    "artifacts/music-playability-20261024/desktop-music-off.f32": {
+      "bytes": 245760,
+      "sha256": "9eb8fa54d87a9b9775dd55c07b3d164453884695bd1ed83fe2f63259ee9e6afc"
+    },
+    "artifacts/music-playability-20261024/desktop-music-off.json": {
+      "bytes": 204555,
+      "sha256": "6234f64768f7259136d7cd8161d71299d46f8c3ece1328c0779a6bb814560276"
+    },
+    "artifacts/music-playability-20261024/desktop-music-resumed.f32": {
+      "bytes": 1327104,
+      "sha256": "8382a2c31d0c2c3f981bb24b4e2abc5571d47c1ba5fdd6593e46781a32cd0ca1"
+    },
+    "artifacts/music-playability-20261024/desktop-music-resumed.json": {
+      "bytes": 231609,
+      "sha256": "b5f0336712e3c2127bde8cc322d8999f807853943f203f5c7c4d6f01068c449f"
+    },
+    "artifacts/music-playability-20261024/ideas-cli.log": {
+      "bytes": 881,
+      "sha256": "10e33839a19a563ba7391ec6a52aa7466a2979796ac6e1af1300fe6a23119729"
+    },
+    "artifacts/music-playability-20261024/ideas-input.md": {
+      "bytes": 4490,
+      "sha256": "6d0d976370c6364bcee75b06eb8bd54571008ceb246d4a815fecc804b226b354"
+    },
+    "artifacts/music-playability-20261024/ideas-run.py": {
+      "bytes": 2049,
+      "sha256": "8bdc751ff0f823a1f959e9259da781cf605078961cc74f820752a75ff09f8521"
+    },
+    "artifacts/music-playability-20261024/lock-before-windows-restart.json": {
+      "bytes": 316,
+      "sha256": "4c8ca3d25e368c1353f0aa5f2b96680959dabcd0365bdab7952dad4373cddcae"
+    },
+    "artifacts/music-playability-20261024/lock.json": {
+      "bytes": 316,
+      "sha256": "4c8ca3d25e368c1353f0aa5f2b96680959dabcd0365bdab7952dad4373cddcae"
+    },
+    "artifacts/music-playability-20261024/preview-recovery-error.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "artifacts/music-playability-20261024/preview-recovery.log": {
+      "bytes": 35,
+      "sha256": "51b376f3c0659e5e015f973278710cb457b3a1e8f9d3dd4a432b3b1971e4a160"
+    },
+    "artifacts/music-playability-20261024/probe1-execution.json": {
+      "bytes": 402,
+      "sha256": "e9da05519c086282ecd528fff92f7f9aa031c02048ba0cc9cecfe029fc0075f4"
+    },
+    "artifacts/music-playability-20261024/probe1-result.json": {
+      "bytes": 2803,
+      "sha256": "218c1a08cc52c8cc77f89cba3ec028cca9ac1b483a0be044a646701ae834af3a"
+    },
+    "artifacts/music-playability-20261024/probe1.log": {
+      "bytes": 1584,
+      "sha256": "5560a08530da74f7ccc9fd42251ca014be3bd63c870e7d49a178b555a6d4fd9e"
+    },
+    "artifacts/music-playability-20261024/probe1.mjs": {
+      "bytes": 8350,
+      "sha256": "4034bfeda961300ec4a3322ba3e4d00c806776974c21ad9a2ba30976c72666de"
+    },
+    "artifacts/music-playability-20261024/recovery-checkpoint-20261024.json": {
+      "bytes": 1174,
+      "sha256": "ab3ad1885ef25d154bcdd50d00f3ff665954554eab003c4a0bac3d6ebedb0518"
+    },
+    "artifacts/music-playability-20261024/source-before.json": {
+      "bytes": 12993,
+      "sha256": "71cd056985e0e2e35902c5f1c9fe0f911a21dee54664cd60ba2a7a1dc9227ad6"
+    },
+    "artifacts/music-playability-20261024/windows-recovery-boot-20261024.json": {
+      "bytes": 139,
+      "sha256": "b8994e7224026bad577d9c8a17055fab61d7870cfda958f0245199d8afed5400"
+    },
+    "artifacts/music-playability-20261024/windows-recovery-events-20261024.json": {
+      "bytes": 4940,
+      "sha256": "1661ddabc1b80474d37524bcbe71ac8972af1b2639a132676744bfd080626773"
+    },
+    "artifacts/music-playability-20261024/headed-control1/cpu.json": {
+      "bytes": 217515,
+      "sha256": "02461575ceff7f9463668f19b119a089d77cdb9163ccd3a10ad29b1ece863b1c"
+    },
+    "artifacts/music-playability-20261024/headed-control1/probe.log": {
+      "bytes": 40,
+      "sha256": "56d30df1d70dad9a052702079e8105350f52e8033585f2a24c945fe0b6b4b451"
+    },
+    "artifacts/music-playability-20261024/headed-control1/probe.mjs": {
+      "bytes": 2403,
+      "sha256": "64d0cc32d6b7276ed0bc57dd217d18c1313678bb0c8f9cb723b7f4594005d41a"
+    },
+    "artifacts/music-playability-20261024/headed-control1/result.json": {
+      "bytes": 29012,
+      "sha256": "650611fe57cbd3cae87cbffa827fe64c776d8cac7443d4f44a8ced623688bb4b"
+    },
+    "artifacts/music-playability-20261024/headed1/bass-idle-cpu.json": {
+      "bytes": 223693,
+      "sha256": "bf132aacc1f29796d50cd690a838be60c6e9c5c593962914ffbad779fc3abe13"
+    },
+    "artifacts/music-playability-20261024/headed1/desktop-bass-idle.f32": {
+      "bytes": 2310144,
+      "sha256": "dae4c7191b77a46f87966d72d889d2d8ecabedabf24b3a687fe81fcb9dd915ed"
+    },
+    "artifacts/music-playability-20261024/headed1/desktop-bass-idle.json": {
+      "bytes": 176967,
+      "sha256": "eae5b28e0682c20680e2e37cb14bbb2bad26eb2ef4501ec093b4e3cbb8fadb4b"
+    },
+    "artifacts/music-playability-20261024/headed1/desktop-bea-snapshot.json": {
+      "bytes": 54918,
+      "sha256": "a642e1b69a002d6709017cb63f458e5a58251832a499d45764f4beaf730fd94f"
+    },
+    "artifacts/music-playability-20261024/headed1/desktop-bea.png": {
+      "bytes": 330314,
+      "sha256": "a7f79176ea23d037cae9b8c6cd34b4c069326506c07a848737b533d8b8205672"
+    },
+    "artifacts/music-playability-20261024/headed1/desktop-earned-idle.f32": {
+      "bytes": 770048,
+      "sha256": "ffdcbcb6aa1af9d35978b443b77f664da988fff23f6bf621db035b82d14858bf"
+    },
+    "artifacts/music-playability-20261024/headed1/desktop-earned-idle.json": {
+      "bytes": 184146,
+      "sha256": "3553b081bb41bcaa244d527e1e01279b6d379d96a2b250f7f4e67fe586445001"
+    },
+    "artifacts/music-playability-20261024/headed1/desktop-music-off.f32": {
+      "bytes": 278528,
+      "sha256": "79095a8a9c81e1d95e90442adcddeae93061fac4611d4c1f768850eaf6787c69"
+    },
+    "artifacts/music-playability-20261024/headed1/desktop-music-off.json": {
+      "bytes": 184941,
+      "sha256": "3027d95d3fa112d668ea38c1d8684889fd7392b88141f97bc3ad3ebb835a30c7"
+    },
+    "artifacts/music-playability-20261024/headed1/desktop-music-resumed.f32": {
+      "bytes": 688128,
+      "sha256": "6cdc177183b215e6251c4dbf755da8dc11fa61a37eed52bbfd937d65a44ea002"
+    },
+    "artifacts/music-playability-20261024/headed1/desktop-music-resumed.json": {
+      "bytes": 198118,
+      "sha256": "55bdce7598d597bef4606ba68eb7919ade6a9be0be835fb92acf71c4494536bb"
+    },
+    "artifacts/music-playability-20261024/headed1/earned-idle-cpu.json": {
+      "bytes": 92766,
+      "sha256": "8dab8d5b4cb29e61b1096327e76aaf94bfb8b6f9f9bd7c04bdefb4073e78214d"
+    },
+    "artifacts/music-playability-20261024/headed1/music-off-cpu.json": {
+      "bytes": 60468,
+      "sha256": "25d45e7580f7564976145c80e3bc766d0fd8a40a1b559c6f445b79b6da754649"
+    },
+    "artifacts/music-playability-20261024/headed1/music-resumed-cpu.json": {
+      "bytes": 87433,
+      "sha256": "9768896680ed298b53a3ce030263806fbac8b98bc87a03bbf3e5033afc42b5aa"
+    },
+    "artifacts/music-playability-20261024/headed1/probe.log": {
+      "bytes": 802,
+      "sha256": "049358c88346539557fbd289780ee1241931e3d140a93ba845bd3d6ba417d034"
+    },
+    "artifacts/music-playability-20261024/headed1/probe.mjs": {
+      "bytes": 8762,
+      "sha256": "924a017640ac26e172979a1583e647fb2319c708ae63f666c2ad6b2ac0b8759f"
+    },
+    "artifacts/music-playability-20261024/headed1/probe1-result.json": {
+      "bytes": 1460,
+      "sha256": "2a186938da5112ae47bef2f3cc3f64a1a9310dfd00dc615edf510b5ca6cbf463"
+    },
+    "artifacts/music-playability-20261024/headed1/system-info.json": {
+      "bytes": 9993,
+      "sha256": "06d59d0d9e3f1c675c0e1233d45b5ff7c7bff4f8b4a7c5ba9b6efcbf8d0ecfc5"
+    },
+    "artifacts/music-playability-20261024/journey1/desktop-bass-idle.f32": {
+      "bytes": 360448,
+      "sha256": "b6346156d1739c2afc25ee8f8bb410cf346f9e7840371422944cc0a3f03b905c"
+    },
+    "artifacts/music-playability-20261024/journey1/desktop-bass-idle.json": {
+      "bytes": 130498,
+      "sha256": "184cf417182c11ced5d571c5903436572f15884cc8f4ffef113c150e142230d4"
+    },
+    "artifacts/music-playability-20261024/journey1/desktop-bea-snapshot.json": {
+      "bytes": 54918,
+      "sha256": "8e40751dcb6d89899f923881f2df55014115bafbc877dffe8216b61378307fa7"
+    },
+    "artifacts/music-playability-20261024/journey1/desktop-bea.png": {
+      "bytes": 226312,
+      "sha256": "ee20151d557fef4b776efe6842e43ee0f1ff43a597d83de8c4ec8b87c5902d1a"
+    },
+    "artifacts/music-playability-20261024/journey1/desktop-earned-idle.f32": {
+      "bytes": 393216,
+      "sha256": "3e21dafe4de4ff12646ea73a7ddd15295da35a9e97485ff2bcefae5d7244d7da"
+    },
+    "artifacts/music-playability-20261024/journey1/desktop-earned-idle.json": {
+      "bytes": 143561,
+      "sha256": "e7d357069614a10a174e4a41b04c759b61099bbd1b3aadb1db76ea3534ebff21"
+    },
+    "artifacts/music-playability-20261024/journey1/diagnosis.json": {
+      "bytes": 435,
+      "sha256": "04b1f38404c1fb4aac89c47392150da80ea0c0af400ab442d4e42119d08f7590"
+    },
+    "artifacts/music-playability-20261024/journey1/probe.log": {
+      "bytes": 908,
+      "sha256": "2a51ecbed8317dd705fc48d8f0d8c7d6060f8907d3b2c1e6b49ef8bb5c409b59"
+    },
+    "artifacts/music-playability-20261024/journey1/probe.mjs": {
+      "bytes": 10814,
+      "sha256": "773ebca9ac47b542c30426d20e29646e40d54017a2476cc2a34aad84afd367b4"
+    },
+    "artifacts/music-playability-20261024/journey1/probe1-failure-snapshot.json": {
+      "bytes": 55075,
+      "sha256": "55801c5aa2ab5bd300d6296cb9eb374878c7e0c562bf7806bf0cd1fdcca95ffd"
+    },
+    "artifacts/music-playability-20261024/journey1/probe1-failure.png": {
+      "bytes": 206242,
+      "sha256": "8d4f9b565a6ea00a802c9b713733ad2dd517e9a51c3271d45ea682d1d838ac4a"
+    },
+    "artifacts/music-playability-20261024/journey1/probe1-result.json": {
+      "bytes": 93,
+      "sha256": "7db45433b1a91300f533ce0e70396b08a3a79eb053e743435e708dcace187a53"
+    },
+    "artifacts/music-playability-20261024/journey2/desktop-bass-idle.f32": {
+      "bytes": 393216,
+      "sha256": "4cf8adcfa20515773e4f6837ea90fbde4bc2ea978dcdfdffd80a64174bfbed02"
+    },
+    "artifacts/music-playability-20261024/journey2/desktop-bass-idle.json": {
+      "bytes": 129857,
+      "sha256": "221ebf61977df21ca0d8a0774cbffeca0978abe27121c584efb7efc7b16fc651"
+    },
+    "artifacts/music-playability-20261024/journey2/desktop-bea-snapshot.json": {
+      "bytes": 54918,
+      "sha256": "d8a709b9dafef14c7a260024c8da5bba79520f842bb312cb115dc81bd69ddacc"
+    },
+    "artifacts/music-playability-20261024/journey2/desktop-bea.png": {
+      "bytes": 226608,
+      "sha256": "e906becca06eb08511dfbca2df9fc65dc379ea9e1e8297db268782e9dbc21034"
+    },
+    "artifacts/music-playability-20261024/journey2/desktop-earned-idle.f32": {
+      "bytes": 360448,
+      "sha256": "cbb19842b8ef5abf5570129cf7467a60e4d8198c851b4d0f24937f06ebb8a7ff"
+    },
+    "artifacts/music-playability-20261024/journey2/desktop-earned-idle.json": {
+      "bytes": 139490,
+      "sha256": "8ebd2253ba078e7a7379ca3b6c10ff731f6f54c5f3919cabd16a0d3a5843e356"
+    },
+    "artifacts/music-playability-20261024/journey2/desktop-walk-stop-resume.f32": {
+      "bytes": 933888,
+      "sha256": "58d156903fe52db09a709acd26fc1548a6b8e484b339ef8188933decf6a5a2a2"
+    },
+    "artifacts/music-playability-20261024/journey2/desktop-walk-stop-resume.json": {
+      "bytes": 160795,
+      "sha256": "e7144fff77deac1bf7416ccd9eeb11c328c8b0b63cca7b7673a8ea9674e90e73"
+    },
+    "artifacts/music-playability-20261024/journey2/diagnosis.json": {
+      "bytes": 372,
+      "sha256": "c9f2c59fcd7c28429b28edd1b2f392c22b6dadcc2a22bedd9e0f876d7072b152"
+    },
+    "artifacts/music-playability-20261024/journey2/probe.log": {
+      "bytes": 1088,
+      "sha256": "cb4bbce40831e8ce7d2da80205503722e7a63f2f48c781ec20ef2936467f5cf4"
+    },
+    "artifacts/music-playability-20261024/journey2/probe.mjs": {
+      "bytes": 11382,
+      "sha256": "e787ca9a08835c01027eceb97ad8a680b28720dac12870a3989227cdf7145dc4"
+    },
+    "artifacts/music-playability-20261024/journey2/probe1-failure-snapshot.json": {
+      "bytes": 52869,
+      "sha256": "2ebc0b08fa1db78d85a91d53a76755af6f93731fcc97de48f9a9864af8c56a25"
+    },
+    "artifacts/music-playability-20261024/journey2/probe1-failure.png": {
+      "bytes": 248676,
+      "sha256": "4d1019347ae1817dcccb15222766a23226a01baf46b1ee672f06f0333c1d964b"
+    },
+    "artifacts/music-playability-20261024/journey2/probe1-result.json": {
+      "bytes": 93,
+      "sha256": "7db45433b1a91300f533ce0e70396b08a3a79eb053e743435e708dcace187a53"
+    },
+    "artifacts/music-playability-20261024/journey3/android-bass-idle.f32": {
+      "bytes": 360448,
+      "sha256": "0a250c81ee0f268f661927e8379e12a6a95c02bf29be4d382e93c881ef354184"
+    },
+    "artifacts/music-playability-20261024/journey3/android-bass-idle.json": {
+      "bytes": 130108,
+      "sha256": "80b127312c8ff2ce4fda05d2af0ae256a58bf0ac29d09ce412d048dd1ca4f004"
+    },
+    "artifacts/music-playability-20261024/journey3/android-bea-snapshot.json": {
+      "bytes": 54855,
+      "sha256": "9dfe7f61af28e5d12e13e63efd7dc6fe1e15c583fbf96eb4d6148040540cc77c"
+    },
+    "artifacts/music-playability-20261024/journey3/android-bea.png": {
+      "bytes": 440764,
+      "sha256": "18f91737f47688fb30550c9351e01c4650838ba33e01df3584b6bef80de01b63"
+    },
+    "artifacts/music-playability-20261024/journey3/android-earned-idle.f32": {
+      "bytes": 393216,
+      "sha256": "f87c186ad496d0ee6d81e3830c15336883bbd194b2ad88a6977dc98afdf340ed"
+    },
+    "artifacts/music-playability-20261024/journey3/android-earned-idle.json": {
+      "bytes": 143718,
+      "sha256": "e3bb5447ab37b529cabdcf67b58621512ecfd750051bcb005c867b6e5ed6fae5"
+    },
+    "artifacts/music-playability-20261024/journey3/desktop-activity-before.json": {
+      "bytes": 54871,
+      "sha256": "ecbe2d2d4fcc35fdc0e04be3f55bbeeb1c6779c7cf31df275bf93b1deee390fb"
+    },
+    "artifacts/music-playability-20261024/journey3/desktop-bass-idle.f32": {
+      "bytes": 360448,
+      "sha256": "01a4c0f0a7d2ba295a1ad8ccc67ee3137c8732cdd6ea877af449d44f2b7f6cc7"
+    },
+    "artifacts/music-playability-20261024/journey3/desktop-bass-idle.json": {
+      "bytes": 132426,
+      "sha256": "e1dc3220888f379e0f6ec03a323a4bf1e4484afdfcab23a5478b3409da5caf1b"
+    },
+    "artifacts/music-playability-20261024/journey3/desktop-bea-snapshot.json": {
+      "bytes": 54919,
+      "sha256": "f9beae451d1c7d74e4efef858385f2b15272cff78f248bd989af4e767e08c0f4"
+    },
+    "artifacts/music-playability-20261024/journey3/desktop-bea.png": {
+      "bytes": 226309,
+      "sha256": "4f49b74e84e23f215dac738beaf361f0b2bc914077806cc6925a7e8ea05c4d09"
+    },
+    "artifacts/music-playability-20261024/journey3/desktop-earned-idle.f32": {
+      "bytes": 360448,
+      "sha256": "7e7e99600b685605d22ae1258cf6025290a5abc4030fd700b7ffb0de08f52730"
+    },
+    "artifacts/music-playability-20261024/journey3/desktop-earned-idle.json": {
+      "bytes": 146635,
+      "sha256": "159a9fbaa204c1791568ca69ee29b68e9989a0fbb849fd5fb0a9164a2cb3a477"
+    },
+    "artifacts/music-playability-20261024/journey3/desktop-music-off.f32": {
+      "bytes": 262144,
+      "sha256": "8a39d2abd3999ab73c34db2476849cddf303ce389b35826850f9a700589b4a90"
+    },
+    "artifacts/music-playability-20261024/journey3/desktop-music-off.json": {
+      "bytes": 227996,
+      "sha256": "88b1c8efbcf7a00b6981b0c5525459e5cf64abc47d657bfdd945bc403be1dd2f"
+    },
+    "artifacts/music-playability-20261024/journey3/desktop-music-resumed.f32": {
+      "bytes": 1327104,
+      "sha256": "a895229f75b4c08f95bbdbdad12f2e96c450900f8a086e9ba51c94d683a7a449"
+    },
+    "artifacts/music-playability-20261024/journey3/desktop-music-resumed.json": {
+      "bytes": 260012,
+      "sha256": "51fd526232923cbcef421256be9f696f6d16e5c80e265fc677cbae0137ae9156"
+    },
+    "artifacts/music-playability-20261024/journey3/desktop-soundcheck.png": {
+      "bytes": 184462,
+      "sha256": "9c9e926af7603022c751648b6302f3171e11ceb0caca4d716b2d66481d9c2b30"
+    },
+    "artifacts/music-playability-20261024/journey3/desktop-walk-stop-resume.f32": {
+      "bytes": 999424,
+      "sha256": "13fa6f61099062aeef5356aaa7af006da790c653444413fbde7cd689305122f7"
+    },
+    "artifacts/music-playability-20261024/journey3/desktop-walk-stop-resume.json": {
+      "bytes": 169684,
+      "sha256": "470c5ba95252e6bc460ccf1e04e30b56e23b53994336eff7e1d71ad961f3b442"
+    },
+    "artifacts/music-playability-20261024/journey3/diagnosis.json": {
+      "bytes": 486,
+      "sha256": "4b0bff9fc46f25f503e5f1db464cee6244b4019756fcb1087be702f3357d406e"
+    },
+    "artifacts/music-playability-20261024/journey3/probe.log": {
+      "bytes": 2174,
+      "sha256": "4ac3a7ae0f93ecfb75c9fa4fb492ec0206b5fdcb0d762f50ea5cd959ecb19510"
+    },
+    "artifacts/music-playability-20261024/journey3/probe.mjs": {
+      "bytes": 11387,
+      "sha256": "4fffe787536e036ba8cf44af89a0524da09b0b78c45b4b9f0b8ec76e0479ac23"
+    },
+    "artifacts/music-playability-20261024/journey3/probe1-failure-snapshot.json": {
+      "bytes": 54958,
+      "sha256": "8083807dd4c2ec5f38ed47fcab18894568e3759233a36b6a38ecdbb92783ef19"
+    },
+    "artifacts/music-playability-20261024/journey3/probe1-failure.png": {
+      "bytes": 456829,
+      "sha256": "07e2156ba96d1a0bea63d92e3278dd24e840e762e831295b88ef87a7202353c0"
+    },
+    "artifacts/music-playability-20261024/journey3/probe1-result.json": {
+      "bytes": 1805,
+      "sha256": "7150f1fa1deddbbecc4025e06708cb982c22f59db4c106ddd745d7c8147d21a1"
+    },
+    "artifacts/music-playability-20261024/journey4-phone/android-activity-before.json": {
+      "bytes": 55555,
+      "sha256": "34aed1d1bec278dff79ae85c107b63d2cfd8ade987e4b9f31e2675f3f86d94db"
+    },
+    "artifacts/music-playability-20261024/journey4-phone/android-bass-idle.f32": {
+      "bytes": 442368,
+      "sha256": "5cdb24b18252d50540a2c2a3ab98f4134780c45e0c576f2643b8770a2455b9b5"
+    },
+    "artifacts/music-playability-20261024/journey4-phone/android-bass-idle.json": {
+      "bytes": 129564,
+      "sha256": "cf03167cf15e44553a55e0f131e72ef721b04a6df2a25bcd7525e72560170215"
+    },
+    "artifacts/music-playability-20261024/journey4-phone/android-bea-snapshot.json": {
+      "bytes": 54855,
+      "sha256": "3cc34e37ce64539d3a27459e5d7d0db07e6713554497a8b6655dfe0d2ed7269f"
+    },
+    "artifacts/music-playability-20261024/journey4-phone/android-bea.png": {
+      "bytes": 440630,
+      "sha256": "dbef0c32e87e41d245d35f1c31a08aaf93a0dc5ffcc3a75e4bc3eca1fcbce2b9"
+    },
+    "artifacts/music-playability-20261024/journey4-phone/android-earned-idle.f32": {
+      "bytes": 360448,
+      "sha256": "f4ddcf2374b19a32a341e69c92f9d82e4a2bae9e6969d9d2f140151274f581fe"
+    },
+    "artifacts/music-playability-20261024/journey4-phone/android-earned-idle.json": {
+      "bytes": 139758,
+      "sha256": "8782ffe37f36e11d070e39e4f881253e7174164c6df1fecec295f72951088d35"
+    },
+    "artifacts/music-playability-20261024/journey4-phone/android-music-off.f32": {
+      "bytes": 278528,
+      "sha256": "79095a8a9c81e1d95e90442adcddeae93061fac4611d4c1f768850eaf6787c69"
+    },
+    "artifacts/music-playability-20261024/journey4-phone/android-music-off.json": {
+      "bytes": 226365,
+      "sha256": "cda7f6f837c2a2ea43800328f66a34096acc07010fa9a068b8c52602315cd3cc"
+    },
+    "artifacts/music-playability-20261024/journey4-phone/android-music-resumed.f32": {
+      "bytes": 1261568,
+      "sha256": "87ec39484bcbdd398be1490a5884d40823004df5361349dd4e207f4c33e30d6b"
+    },
+    "artifacts/music-playability-20261024/journey4-phone/android-music-resumed.json": {
+      "bytes": 254614,
+      "sha256": "76f3222c68a9bc8ad9d1d6c3b9a5a0017b0d17f7f8def405f6103dad860d8e58"
+    },
+    "artifacts/music-playability-20261024/journey4-phone/android-soundcheck.png": {
+      "bytes": 399072,
+      "sha256": "70ec5d798252128b6b366d0559a1572b0474a8a69c93acc21e0de71e3e20db30"
+    },
+    "artifacts/music-playability-20261024/journey4-phone/android-walk-stop-resume.f32": {
+      "bytes": 1359872,
+      "sha256": "6bc2207a229f1c26a62bc25abfc8ba33c89d9dedbc454311ebfd5a2252c6456f"
+    },
+    "artifacts/music-playability-20261024/journey4-phone/android-walk-stop-resume.json": {
+      "bytes": 169774,
+      "sha256": "63700c2761d6cbe050714d7060aa21e685e1bed8b9690399634fcfd67b9d6b8e"
+    },
+    "artifacts/music-playability-20261024/journey4-phone/probe.log": {
+      "bytes": 1030,
+      "sha256": "b42bd855ac97eb33e5459e9efb6ab1dcd985ab13b96aa6a97d7ef22f612510a4"
+    },
+    "artifacts/music-playability-20261024/journey4-phone/probe.mjs": {
+      "bytes": 11799,
+      "sha256": "391664f103c7157e4c5464d4b05d57e72b22bc92fdf8622c65dec8a24737fb0d"
+    },
+    "artifacts/music-playability-20261024/journey4-phone/probe1-result.json": {
+      "bytes": 1798,
+      "sha256": "59ac34220a9299f7fade5db22f0de4ac502af81a04921bd343fa215f93255738"
+    },
+    "artifacts/music-playability-20261024/post-restart1/android-bass-idle.f32": {
+      "bytes": 2310144,
+      "sha256": "563d5c85037b98910e6f01ec26fe684e0bd558e5f8b56e8a266a82e0ee6ebca2"
+    },
+    "artifacts/music-playability-20261024/post-restart1/android-bass-idle.json": {
+      "bytes": 196315,
+      "sha256": "95747c4179c90562ffb0efcc148d78c793a47b10c9e51744243728c0f96e5d95"
+    },
+    "artifacts/music-playability-20261024/post-restart1/android-bea-snapshot.json": {
+      "bytes": 54855,
+      "sha256": "9d6224f3ab366ab1df7b288d3a48df8b8d6fbbe0d0296aa8daec46d998a4c0da"
+    },
+    "artifacts/music-playability-20261024/post-restart1/android-bea.png": {
+      "bytes": 439884,
+      "sha256": "4ef0f183bf45a3686d6ea64c9aa570e88f8c0496d33ba88ba1469d254fdda48e"
+    },
+    "artifacts/music-playability-20261024/post-restart1/android-earned-idle.f32": {
+      "bytes": 2310144,
+      "sha256": "096313dce38e2436a892a32cfdff7a75de7d596702e5aba8239490825534b269"
+    },
+    "artifacts/music-playability-20261024/post-restart1/android-earned-idle.json": {
+      "bytes": 266777,
+      "sha256": "7db76c626a6b4ac43f93344871b593444bf95d831f2b4c4e7eb5a4b272d16bd6"
+    },
+    "artifacts/music-playability-20261024/post-restart1/android-music-off.f32": {
+      "bytes": 245760,
+      "sha256": "9eb8fa54d87a9b9775dd55c07b3d164453884695bd1ed83fe2f63259ee9e6afc"
+    },
+    "artifacts/music-playability-20261024/post-restart1/android-music-off.json": {
+      "bytes": 264744,
+      "sha256": "c373bdade215dbfa9c8c2566991f576fda15336be7e4697be42474cc2d9508a2"
+    },
+    "artifacts/music-playability-20261024/post-restart1/android-music-resumed.f32": {
+      "bytes": 1261568,
+      "sha256": "01ba23c4d60f86a9e8b726e0db218aa9aa6c2e31739aab5af1375f3239b0641c"
+    },
+    "artifacts/music-playability-20261024/post-restart1/android-music-resumed.json": {
+      "bytes": 304343,
+      "sha256": "3da6281b766ad65ea9aa6572ef1f90ffccce99a03542e6d503d2c17205c77d88"
+    },
+    "artifacts/music-playability-20261024/post-restart1/desktop-bass-idle.f32": {
+      "bytes": 2310144,
+      "sha256": "1ae0fb79e0a191126df43f75abc150a69fe7b7afd79104c11e55b70d44868cbd"
+    },
+    "artifacts/music-playability-20261024/post-restart1/desktop-bass-idle.json": {
+      "bytes": 199258,
+      "sha256": "ed2878eec8a616472cde3dc1369c0091f1ce000bd2acca58562ac16928516966"
+    },
+    "artifacts/music-playability-20261024/post-restart1/desktop-bea-snapshot.json": {
+      "bytes": 54919,
+      "sha256": "de63b2c68559145b88cafc1a759923af07da984c8bc8c6a4b29558423feb884d"
+    },
+    "artifacts/music-playability-20261024/post-restart1/desktop-bea.png": {
+      "bytes": 226349,
+      "sha256": "aa05ae434ec317b583d5ba86da76db78697fb5da4fa3ebfb6f83184abe75f88a"
+    },
+    "artifacts/music-playability-20261024/post-restart1/desktop-earned-idle.f32": {
+      "bytes": 2310144,
+      "sha256": "d6715d7828bff4dc4e35e892af5bc86e230b137eb6b7d360f8767ab4e58941a3"
+    },
+    "artifacts/music-playability-20261024/post-restart1/desktop-earned-idle.json": {
+      "bytes": 270052,
+      "sha256": "9b4fdbd293b31df69f3c1951eeb7a4ad1ebc4bd956e874f7d3665ac88d411eaf"
+    },
+    "artifacts/music-playability-20261024/post-restart1/desktop-music-off.f32": {
+      "bytes": 245760,
+      "sha256": "9eb8fa54d87a9b9775dd55c07b3d164453884695bd1ed83fe2f63259ee9e6afc"
+    },
+    "artifacts/music-playability-20261024/post-restart1/desktop-music-off.json": {
+      "bytes": 265658,
+      "sha256": "d848c515d7d2a65fd4792e945cde9a6690619e6a955af12e472f88afab19552a"
+    },
+    "artifacts/music-playability-20261024/post-restart1/desktop-music-resumed.f32": {
+      "bytes": 1261568,
+      "sha256": "6e7f09eaad24da3681571c770a3d74e68aeb332e1892ca366c9b5da49edfdb70"
+    },
+    "artifacts/music-playability-20261024/post-restart1/desktop-music-resumed.json": {
+      "bytes": 305239,
+      "sha256": "b6f7b485710d0ae6c800d06b5544cd5146f51e4afc6908aadb6979098e24f06b"
+    },
+    "artifacts/music-playability-20261024/post-restart1/execution.json": {
+      "bytes": 222,
+      "sha256": "7e021738fe01ac11e565550335243ad1bc1e6af19be3453e2f155c3342766a17"
+    },
+    "artifacts/music-playability-20261024/post-restart1/probe.log": {
+      "bytes": 1546,
+      "sha256": "3dbbcee9ff699ed2e4cac87170a5f1ee5700972aa89d63fe25348baf2486180d"
+    },
+    "artifacts/music-playability-20261024/post-restart1/probe.mjs": {
+      "bytes": 8396,
+      "sha256": "4a769d64c9ef432d24b07fc0ac353cec00c8cfcc68596b0781511534020186c7"
+    },
+    "artifacts/music-playability-20261024/post-restart1/probe1-result.json": {
+      "bytes": 2765,
+      "sha256": "e578d1cf5a258ca950a536bf803954ef790df7fa757f59534c7df05605aac418"
+    }
+  },
+  "no_production_changes": true,
+  "independent_review": "required exact pre-code r1 only; no implementation exists",
+  "limits": "Creator phone choppiness/timbre open; source note-boundary discontinuities retained for bounded later refinement. Exact reason for changed post-restart stalls not isolated."
+}
