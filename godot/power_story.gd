@@ -131,14 +131,10 @@ func setup(owner_game: Node) -> void:
 		close_story(false)
 		game.dog_story.open_story()
 	)
-	more_entry=button(tabs[0].get_parent(),"More\nstories",func():
-		if active: return
-		close_story(false)
-		game.story_picker.open_picker()
-	)
+	more_entry=button(tabs[0].get_parent(),"More\nstories",func(): game.story_picker.open_picker())
 	entry=button(game.block_page_nav,"Story",open_story)
 	entry.size_flags_horizontal=Control.SIZE_SHRINK_END
-	entry.tooltip_text="Neighborhood Stories: power, missing dogs, Halloween and election (F8)"
+	entry.tooltip_text="Neighborhood Stories: resume F8; switch story visits Shift F8"
 	entry.accessibility_name=entry.tooltip_text
 	game.block_page_nav.move_child(entry,game.block_page_nav.get_child_count()-2)
 	entry.hide()
@@ -248,6 +244,7 @@ func open_story() -> bool:
 	if not available() or game.startup_story_pending or game.is_story_card_visible() or game.is_focused_activity_visible() or not game.current_path.is_empty():
 		game.announce_a11y_status("Open the gathering, finish arriving and close any chapter or activity before Power Story.")
 		return false
+	game.story_picker.resume_existing(self)
 	return_focus=get_viewport().gui_get_focus_owner()
 	saved_visibility.clear()
 	for c in get_parent().get_children():
@@ -311,6 +308,9 @@ func begin() -> void:
 	actions[1].grab_focus()
 
 func end_session(announce: bool=true) -> void:
+	if game.story_picker!=null:
+		if announce: game.story_picker.remember_completed()
+		game.story_picker.suspended.erase(self)
 	cancel_intent()
 	active=false
 	for i in range(fixtures.size()): fixtures[i].material_override=originals[i]
@@ -483,7 +483,7 @@ func source_text() -> String:
 	return "REAL PLACE / HISTORY: Larkin Substation, 600 Larkin Street at Eddy. April 21, 2017: a circuit-breaker cabinet arc and fire interrupted service for about 88,000 customers, from about 9:06 a.m. to full restoration at 4:46 p.m. PG&E restored utility service. This was not a verified transformer explosion.\nORIGINAL FICTION: portable battery-light tasks, residents and dialogue; not actual utility repairs, equipment, entrances or an active fault.\nMAP: north up; scale bar 40 m. Gold dot: city Larkin/Eddy intersection. White dot: city address point, not an entrance. Plain exterior: OSM footprint and reported 9 m height, stylized color, not a surveyed current facade. Only the Eddy approach is added to walking coverage; Larkin Street beyond it is not modeled.\nSOURCES: Exponent report, September 15, 2017, commissioned by PG&E and hosted by CPUC, printed pages 1, 9, 34; PG&E April 21, 2017 restoration release. SF EAS 491045 and intersection CNN 25148000 (PDDL); OpenStreetMap way 71209428 and Eddy way 30832489 (ODbL). Geographic records retrieved October 22, 2026; address record updated August 16, 2018. These are historical sources, not current outage guidance."
 
 func refresh(announce: bool) -> void:
-	more_entry.disabled=active
+	more_entry.disabled=false
 	more_entry.accessibility_name="More neighborhood stories"
 	dogs_entry.disabled=active
 	dogs_entry.accessibility_name="Two Dogs Home: original missing-dogs search and reunion"

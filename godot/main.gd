@@ -12423,6 +12423,7 @@ func save_godot_state() -> bool:
 	return wrote
 
 func reset_mural_state_to_defaults(status_label: String) -> void:
+	if story_picker != null: story_picker.reset_visit()
 	if power_story != null:
 		power_story.close_story(false)
 		power_story.reset_session()
@@ -12435,7 +12436,6 @@ func reset_mural_state_to_defaults(status_label: String) -> void:
 	if voting_story != null:
 		voting_story.close_story(false)
 		voting_story.reset_session()
-	if story_picker != null: story_picker.close_picker()
 	if loan_homecoming != null:
 		loan_homecoming.chapter_completion_notice=""
 		loan_homecoming.confirmed_owner=""
@@ -12919,6 +12919,7 @@ func validate_godot_optional(raw_opt: Variant) -> Dictionary:
 	return {"ok": true, "optional": (raw_opt as Dictionary).duplicate(true)}
 
 func apply_save_envelope(raw_json: String) -> bool:
+	if story_picker != null: story_picker.reset_visit()
 	if power_story != null:
 		power_story.close_story(false)
 		power_story.reset_session()
@@ -12931,7 +12932,6 @@ func apply_save_envelope(raw_json: String) -> bool:
 	if voting_story != null:
 		voting_story.close_story(false)
 		voting_story.reset_session()
-	if story_picker != null: story_picker.close_picker()
 	if loan_homecoming != null:
 		loan_homecoming.chapter_completion_notice=""
 		loan_homecoming.confirmed_owner=""
@@ -13490,6 +13490,7 @@ func import_browser_save_json(raw_json: String) -> bool:
 		info.text = "%s\nBrowser save ('%s') is read-only and never overwritten by Godot\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [browser_import_message, BROWSER_WEB_STORAGE_KEY]
 		announce_a11y_status(browser_import_message)
 		return false
+	if story_picker != null: story_picker.reset_visit()
 	if power_story != null:
 		power_story.close_story(false)
 		power_story.reset_session()
@@ -13502,7 +13503,6 @@ func import_browser_save_json(raw_json: String) -> bool:
 	if voting_story != null:
 		voting_story.close_story(false)
 		voting_story.reset_session()
-	if story_picker != null: story_picker.close_picker()
 	if loan_homecoming != null:
 		loan_homecoming.chapter_completion_notice=""
 		loan_homecoming.confirmed_owner=""
@@ -14501,6 +14501,10 @@ func _input(event: InputEvent) -> void:
 		continue_story()
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode==KEY_F8 and event.shift_pressed:
+		story_picker.open_picker()
+		get_viewport().set_input_as_handled()
+		return
 	if story_picker!=null and story_picker.visible:
 		if event is InputEventKey and event.pressed and not event.echo and event.keycode==KEY_ESCAPE: story_picker.back_to_stories()
 		get_viewport().set_input_as_handled()
@@ -15834,6 +15838,8 @@ func make_ui() -> void:
 	story_picker = preload("res://story_picker.gd").new()
 	layer.add_child(story_picker)
 	story_picker.setup(self)
+	for episode in [dog_story,lantern_procession,voting_story]:
+		episode.stories_entry=story_picker.add_reader_entry(episode)
 	shared_panel.update_world()
 	rhythm_circle = preload("res://rhythm_circle.gd").new()
 	layer.add_child(rhythm_circle)

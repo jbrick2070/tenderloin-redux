@@ -1,0 +1,32 @@
+STDOUT:
+I've written the review to `kibitz-runs/2026-10-24-codex-open-invitations-ideas/r1/claude.md`; my verdict is **no** for Option A as framed. The tool check passed. I didn't edit any source, run tests or launch a browser.
+
+**Main problems:**
+- **The film invitation isn't new.** By the time civic completes, the player has already been told about the film many times:
+  - The title "The Open Seat" is in the chapter list (`main.gd:74`) and in neighbor dialogue before the block party opens.
+  - The hosting-complete reward banner already says the film is unlocked (`main.gd:10970`).
+  - The hub's film button is always visible, just dimmed (`main.gd:7240-7261`).
+  - At civic completion the game already shows a reward banner, Bea's line, the screen-reader announcement, a beacon color change, the new objective, the gold "suggested" button, and an automatic chapter-5 card (`main.gd:7280`, `7681-7683`).
+
+  A new invitation would be a ninth signal on the same moment.
+- **"Keep exploring" would do nothing today.** After civic, the objective, the HUD, the gold highlight and the phone's main button all keep pointing at the film. "Follow this invitation" isn't defined at all: it could mean walking to Dez, opening the film activity, or just setting the objective.
+- **The creator's roadmap rule is missing.** `ROADMAP.md:125` says "Avoid forced linear chapter order". The brief leaves it out, and none of options A, B or C address it.
+- **Pausing stories conflicts with how the code works.** The `active` flag drives the objective, the walk button, the evening-lights refusal and Power's lighting (15 places in `main.gd`, about 101 more in the four story files). Power's screen is also the Story menu itself. Existing tests assert that only one story runs at a time (`study_test.gd:6084-6085`, `6138`), so P5's promise to keep all current tests contradicts Option A.
+- **Story completions don't survive reload.** All four story files clear their "won" state on End or reload. An accomplishments list that mixes saved and visit-only rows would silently lose rows.
+
+**Recommended smaller slice:**
+1. On a live chapter change only (never on reload), the existing chapter card offers two buttons:
+   - **Follow:** opens the film activity where the player stands, with no walk and no camera change.
+   - **Keep exploring:** sets a session-only flag that takes the film out of the objective and the gold highlight until the player picks it.
+2. Story switching becomes a confirmed "End this story and open that one", with honest copy that the ended story's progress is lost.
+3. No new saved fields.
+
+**Cut:** the four-story pause/resume adapters, a separate journal screen, story accomplishment rows, and the film "no spoilers" test, which current content would always fail.
+
+**Smaller corrections:**
+- Power's availability needs only the block opened, and Voting also depends on Power's map loading.
+- Power has two variants, so there are five storylines, not four.
+- Only Voting and Lantern keep a manual camera while walking; Dog doesn't, and I didn't find camera handling in Power.
+- "Invitation" already names Bea's Illustrated Invitation (`bea_invitation.gd`).
+
+One assumption is unchecked: that the chapter card has room for two more 44px buttons at 320 and 390 widths.

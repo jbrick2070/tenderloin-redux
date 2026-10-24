@@ -1682,6 +1682,8 @@ func run() -> void:
 			steam_node = part.node
 			break
 	require(steam_node != null and study.eatery_counter_nodes[0].visible, "the visited pho counter has steam puffs")
+	# Absolute-clock animation needs a current pose before measuring a delta.
+	study.update_eatery_animation(0.0)
 	var steam_before: Vector3 = steam_node.position
 	study.update_eatery_animation(0.4)
 	require(not steam_node.position.is_equal_approx(steam_before), "steam rises from the pho bowl on a visited counter")
@@ -3284,6 +3286,7 @@ func run() -> void:
 	await verify_dog_story(study,saved_m4_json)
 	await verify_lantern_procession(study,saved_m4_json)
 	await verify_voting_story(study,saved_m4_json)
+	await verify_story_visits(study,saved_m4_json)
 	await verify_map_pinch(study,saved_m4_json)
 	await verify_phone_disclosure(study,initial_start_save,saved_m4_json)
 	study.clear_godot_save()
@@ -6135,7 +6138,7 @@ func verify_voting_story(study: Node, full_profile: String) -> void:
 			study.following_player=false; var pose: Array=study.panel_camera_pose()
 			study.story_picker.open_picker()
 			for f in range(6): await process_frame
-			require(study.story_picker.entries.size()==2 and Rect2(Vector2.ZERO,Vector2(size)).encloses(study.story_picker.panel.get_global_rect()),"two full story entries fit")
+			require(study.story_picker.entries.size()==4 and Rect2(Vector2.ZERO,Vector2(size)).encloses(study.story_picker.panel.get_global_rect()),"four visits, two full entries per page fit")
 			study.story_picker.close_picker(); require(story.open_story(),"historical map reader opens")
 			story.buttons[4].grab_focus()
 			var down := InputEventAction.new(); down.action="ui_accept"; down.pressed=true; Input.parse_input_event(down); await process_frame
@@ -6428,3 +6431,104 @@ func verify_phone_disclosure(study: Node, startup_snapshot: String, full: String
 		require(not study.uses_phone_disclosure() and study.controls.get_child_count()==6 and not study.phone_explore_control.is_visible_in_tree(),"legacy landscape/desktop restore all original control parents")
 	for btn in study.phone_original_walk_buttons: require(btn.get_theme_font_size("font_size")==19,"first completed desktop layout restores canonical original font")
 	print("PHONE_DISCLOSURE_PASS:inlineLayoutOwner/AllActionsEsc/10portraitsizes/16px96pxreader/realui_accept/talkchoicesEsc/3primaries/Explore/Zoom/Map/BackToMe/save/legacy")
+
+
+func story_visit_press(button: Button) -> void:
+	require(button.is_visible_in_tree() and not button.disabled,"visit action actually visible and enabled")
+	button.grab_focus()
+	var down := InputEventAction.new(); down.action="ui_accept"; down.pressed=true
+	Input.parse_input_event(down)
+	await process_frame
+	var up := InputEventAction.new(); up.action="ui_accept"; up.pressed=false
+	Input.parse_input_event(up)
+	for frame in range(8): await process_frame
+
+func verify_story_visits(study: Node, full_profile: String) -> void:
+	require(study.is_test_suite_mode(),"story visit tests use formal isolated saves")
+	if not study.is_test_suite_mode(): return
+	var picker: Node=study.story_picker
+	var dog: Node=study.dog_story
+	var lantern: Node=study.lantern_procession
+	var power: Node=study.power_story
+	var voting: Node=study.voting_story
+	for layout in ["table","floor"]:
+		for size in [Vector2i(1100,760),Vector2i(390,667),Vector2i(320,667),Vector2i(390,568),Vector2i(520,360),Vector2i(599,360)]:
+			var profile: Dictionary=JSON.parse_string(full_profile); profile.gathering_layout=layout
+			study.apply_save_envelope(JSON.stringify(profile)); study.hide_story_card()
+			study.startup_story_pending=false; study.last_story_chapter=int(study.current_chapter().num)
+			root.size=size
+			for f in range(8): await process_frame
+			var saved := JSON.stringify(study.build_save_envelope())
+			var file: String=FileAccess.get_file_as_string(study.save_path)
+			var quiet: Array=[study.music_playing,study.music_volume,study.reward_sounds_enabled,study.music_mode]
+			study.following_player=false
+			var pose: Array=study.panel_camera_pose()
+			dog.open_story(); await story_visit_press(dog.buttons[6])
+			# Component fixture: genuine match/real-walk browser coverage separately proves acquisition.
+			dog.found=1; dog.profile=1; dog.lead=1
+			dog.traveling=true; dog.trip_goal=Vector2(1,1); study.current_path.clear(); study.current_path.append(Vector2(1,1))
+			var old_generation: int=dog.generation
+			await story_visit_press(dog.stories_entry)
+			require(picker.visible and not dog.visible and not dog.traveling and study.current_path.is_empty() and dog.generation>old_generation,"switch cancels pending route/generation before new modal")
+			await story_visit_press(picker.entries[0])
+			require(not dog.active and not dog.dogs[0].visible and dog.found==1 and picker.suspended.has(dog),"paused dog state retained while world ownership removed")
+			await story_visit_press(lantern.buttons[1]); await story_visit_press(lantern.buttons[3]); await story_visit_press(lantern.buttons[4])
+			lantern.phase=1; lantern.progress=17; lantern.update_world()
+			await story_visit_press(lantern.stories_entry)
+			await story_visit_press(picker.later); await story_visit_press(picker.entries[3])
+			require(dog.active and dog.found==1 and dog.profile==1 and dog.lead==1 and not lantern.active and not lantern.crew[0].visible,"actual choice resumes dog fields and suspends parade")
+			require(lantern.costume==1 and lantern.lantern==1 and lantern.progress==17,"parade choices and progress retained")
+			dog.found=3; dog.lead=2; study.player.position=Vector3(dog.goals[2].x,0,dog.goals[2].y); dog.refresh(false)
+			await story_visit_press(dog.buttons[8])
+			require(dog.won and dog.reunion.visible and picker.lantern_invited and picker.completed.has(3),"deliberate reunion earns recognition, visible owners and personal invitation")
+			await story_visit_press(dog.stories_entry)
+			for f in range(8): await process_frame
+			require(Rect2(Vector2.ZERO,Vector2(size)).encloses(picker.panel.get_global_rect()),"invitation and choices fit supported viewport")
+			require(picker.reader.get_theme_font_size("normal_font_size")==16 and picker.reader.size.y>=64,"visit invitation has full 16px scrollable reader")
+			for b in picker.entries+[picker.follow,picker.explore,picker.back,picker.earlier,picker.later]:
+				if b.is_visible_in_tree(): require(b.size.x>=44 and b.size.y>=44 and Rect2(Vector2.ZERO,Vector2(size)).encloses(b.get_global_rect()),"visit choice 44px and on screen")
+			await story_visit_press(picker.explore)
+			require(study.active_story_episode()==null and not picker.visible and not dog.reunion.visible and picker.lantern_invited,"Keep exploring releases ownership and retains invitation")
+			var key := InputEventKey.new(); key.keycode=KEY_F8; key.shift_pressed=true; key.pressed=true
+			Input.parse_input_event(key)
+			await process_frame
+			key.pressed=false; Input.parse_input_event(key)
+			for f in range(8): await process_frame
+			await story_visit_press(picker.follow)
+			require(lantern.active and lantern.progress==17 and lantern.costume==1 and lantern.visible and not lantern.traveling and study.current_path.is_empty(),"Follow resumes retained parade without automatic walking")
+			await story_visit_press(lantern.stories_entry)
+			if picker.page==0: await story_visit_press(picker.later)
+			await story_visit_press(picker.entries[2])
+			power.choose(1 if layout=="floor" else 0); power.begin(); power.restored=1; power.turns[1]=[1,2,3,0]; power.station=1; power.update_world(); study.apply_time_of_day()
+			var light: Color=study.world_env.background_color
+			await story_visit_press(power.more_entry)
+			await story_visit_press(picker.earlier); await story_visit_press(picker.entries[1])
+			voting.begin(); voting.observed=1; voting.palette=1; voting.selected=1; voting.via_pending=true; voting.traveling=true
+			require(not power.active and power.fixtures[0].material_override==power.originals[0],"Power suspension restores shared materials")
+			await story_visit_press(voting.stories_entry)
+			require(not voting.via_pending and not voting.traveling,"Election second leg cancelled by switch")
+			await story_visit_press(picker.later); await story_visit_press(picker.entries[2])
+			require(power.active and power.restored==1 and power.turns[1]==[1,2,3,0] and power.historical==(layout=="floor") and study.world_env.background_color==light,"Power mode, puzzle and lighting resume exactly")
+			await story_visit_press(power.more_entry); await story_visit_press(picker.earlier); await story_visit_press(picker.entries[1])
+			require(voting.active and voting.observed==1 and voting.palette==1 and voting.selected==1 and not voting.via_pending,"Election observations and choices retained without stale route")
+			await story_visit_press(voting.stories_entry); await story_visit_press(picker.explore)
+			var base_light: Color=study.world_env.background_color
+			var cancel_key := InputEventKey.new(); cancel_key.keycode=KEY_F8; cancel_key.shift_pressed=true; cancel_key.pressed=true
+			Input.parse_input_event(cancel_key); await process_frame; cancel_key.pressed=false; Input.parse_input_event(cancel_key)
+			for f in range(8): await process_frame
+			await story_visit_press(picker.back)
+			require(not picker.visible and study.active_story_episode()==null and study.world_env.background_color==base_light,"Back from world selector never resumes paused Power")
+			cancel_key.pressed=true; Input.parse_input_event(cancel_key); await process_frame; cancel_key.pressed=false; Input.parse_input_event(cancel_key)
+			for f in range(8): await process_frame
+			var escape := InputEventKey.new(); escape.keycode=KEY_ESCAPE; escape.pressed=true
+			Input.parse_input_event(escape); await process_frame; escape.pressed=false; Input.parse_input_event(escape)
+			for f in range(8): await process_frame
+			require(not picker.visible and study.active_story_episode()==null and study.world_env.background_color==base_light,"Escape from world selector never resumes paused Power")
+			require(study.panel_camera_pose()==pose,"story switches preserve exact manual camera")
+			require(saved==JSON.stringify(study.build_save_envelope()) and file==FileAccess.get_file_as_string(study.save_path),"story switching and invitation write no saves")
+			require(quiet==[study.music_playing,study.music_volume,study.reward_sounds_enabled,study.music_mode],"story choices retain quiet preferences")
+			study.apply_save_envelope(JSON.stringify(profile))
+			require(picker.suspended.is_empty() and picker.completed.is_empty() and not picker.lantern_invited and study.active_story_episode()==null,"load clears all transient visits and invitations")
+	study.apply_save_envelope(full_profile); study.hide_story_card(); study.last_story_chapter=int(study.current_chapter().num)
+	root.size=Vector2i(1100,760)
+	print("STORY_VISITS_PASS:2layouts x6sizes/realui_accept/4controllers/Power2modes/routecancel/manual/visitinvitation/nosave/reload")

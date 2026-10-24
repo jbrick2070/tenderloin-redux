@@ -1,0 +1,14 @@
+{
+  "godot/main.gd": "54d1f59cffc82288c906a2ea90d0de9d2bccd14dcec112d58cc33b28087ab334",
+  "godot/story_picker.gd": "dff2aa453b5181de08896d5ee02c17af57c223f4524ffb4b405cccdce2599a2f",
+  "godot/power_story.gd": "dcd589446fa18918bdeefcafcceac9ec8a9972f23efc2adf8bb76bf1a19dc5eb",
+  "godot/dog_story.gd": "e61a1a42d66d772712868185d14710efc2386b8e5c6ded9747d21752bf93a352",
+  "godot/lantern_procession.gd": "145c0274aa119fc2d038c9c3883a69197e5beb09a34bdf4c5904481c2bf1bc1e",
+  "godot/voting_story.gd": "49a9061a887dbd43fda6cd6e4cf11e5653ec31bde68e05df4ae9dd864f3bf376",
+  "godot/tests/study_test.gd": "f8a612c2adebead20d1c4382db47cf58bfde43773ec42f7eba18e2706ebf7263",
+  "tests/godot-browser.mjs": "d3435707cc0f0d743d2c44d4bf69790c09e6084488ae38ee5e57d0c91d78b1d8",
+  "tests/godot-data.test.mjs": "932dfa259e008cd99650462570d6147aabcdd7d2d04fa85b20884ee518239329",
+  "docs/QUEST_FREEDOM_IMPLEMENTATION_BRIEF.md": "a014510c456e5a567efe53c8806c618ed91671b6c472b97c13562a39081350b3",
+  "kibitz-runs/2026-10-24-codex-open-invitations-ideas/r1/final.md": "39f493fca6e2578e864a9d253cc4ef87fbb5bae110c72adf3f61aa054e1b50fa",
+  "kibitz-runs/2026-10-24-codex-open-invitations-ideas/r1/judgment.md": "2ecc581ff81e06e004aa9ef040f5735d4a85f3a9c130577d1bd0f8db7ae2d83b"
+}

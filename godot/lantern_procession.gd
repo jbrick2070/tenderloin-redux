@@ -9,6 +9,7 @@ var picture: TextureRect
 var buttons: Array[Button] = []
 var saved_visibility: Dictionary = {}
 var return_focus: Control
+var stories_entry: Button
 var art_rect := Rect2()
 var layout_pending := false
 var snapshot_clock := 0.0
@@ -237,6 +238,7 @@ func open_story() -> bool:
 	if not available() or (other!=null and other!=self) or game.startup_story_pending or game.is_story_card_visible() or game.is_focused_activity_visible() or not game.current_path.is_empty():
 		game.announce_a11y_status("Open the gathering, finish arriving and End the other story before the Lantern Procession.")
 		return false
+	game.story_picker.resume_existing(self)
 	return_focus=get_viewport().gui_get_focus_owner()
 	saved_visibility.clear()
 	for c in get_parent().get_children():
@@ -269,12 +271,14 @@ func cancel_intent() -> void:
 	traveling=false; returning=false; generation+=1
 
 func reset_session() -> void:
+	if game.story_picker!=null: game.story_picker.suspended.erase(self)
 	cancel_intent(); active=false; won=false; phase=0; progress=8.0; message=""
 	costume=0; lantern=0; build_costumes()
 	update_world()
 
 func end_session() -> void:
 	if not visible: return
+	game.story_picker.remember_completed()
 	reset_session(); message="Parade ended. Your ordinary afternoon continues."
 	refresh(true); game.update_walking_status()
 
@@ -378,7 +382,7 @@ func person_snapshot(person: Node3D) -> Dictionary:
 	return {"visible":person.visible,"position":[person.position.x,person.position.z],"corners":points}
 
 func snapshot() -> Dictionary:
-	return {"visible":visible,"active":active,"won":won,"phase":phase,"costume":costume,"lantern":lantern,"sites_valid":sites_valid,"progress":progress,"traveling":traveling,"returning":returning,"near":near(),"text":reader.text,"reader":game.control_snapshot(reader),"buttons":buttons.map(func(b): return game.control_snapshot(b).merged({"text":b.text,"focused":b.has_focus(),"accessible_name":b.accessibility_name})),"route":route.map(func(p): return [p.x,p.y]),"goal":[goal().x,goal().y],"picture":game.rect_snapshot(art_rect),"cache":textures.size(),"crew":crew.map(person_snapshot),"player_costume":player_costume.visible}
+	return {"stories_entry":game.control_snapshot(stories_entry),"visible":visible,"active":active,"won":won,"phase":phase,"costume":costume,"lantern":lantern,"sites_valid":sites_valid,"layout_pending":layout_pending,"progress":progress,"traveling":traveling,"returning":returning,"near":near(),"text":reader.text,"reader":game.control_snapshot(reader),"buttons":buttons.map(func(b): return game.control_snapshot(b).merged({"text":b.text,"focused":b.has_focus(),"accessible_name":b.accessibility_name})),"route":route.map(func(p): return [p.x,p.y]),"goal":[goal().x,goal().y],"picture":game.rect_snapshot(art_rect),"cache":textures.size(),"crew":crew.map(person_snapshot),"player_costume":player_costume.visible}
 
 func _process(delta: float) -> void:
 	if active and not available(): reset_session(); close_story(false)

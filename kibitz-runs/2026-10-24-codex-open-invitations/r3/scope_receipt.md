@@ -1,0 +1,1 @@
+Explicit separate implementation r3 only. Driver codex, only claude, requested claude-opus-5-5/high. Distinct pre-code r1 completed with timestamped selection. Not a four-round campaign. Read files and write only claude.md; no source edits/tests/browser/other paid calls. Codex sole writer/judge. Native1 is running with sources frozen; no candidate gate pass claimed.

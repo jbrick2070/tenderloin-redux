@@ -1,0 +1,23 @@
+STDOUT:
+The review is in `kibitz-runs/2026-10-24-codex-open-invitations/r3/claude.md`. It is based only on reading the code: I ran no tests or browser, and without a shell I reviewed the current source rather than the actual git diff.
+
+**Verdict: yes, with fixes.** Switching ownership, resuming, the reset/load/import ordering and keeping picker state out of saves all trace correctly through the code. Two things should be fixed before building:
+
+1. **Escape resumes Power by accident.** Start Power, choose More stories, then Keep exploring, then open the picker from the world with Shift+F8 and press Escape (or Back to stories). The picker has no reader to return to, so it opens Power's reader, which resumes the paused Power with its lighting, world kit and objective (`story_picker.gd:105-111`, `power_story.gd:247`). A cancel key ends up taking over the world. Smallest fix: with no reader to return to, just close the picker.
+2. **The invitation is hard to read on short screens.** The picker's text box doesn't use the project's helper for activity text (`make_activity_detail`, `main.gd:15309`). That helper is what adds touch-drag scrolling and a visible keyboard focus outline. At 520x360 and 599x360 the box is only 64px tall, and Imani's invitation comes after the general paragraph. I estimated rather than measured that it lands below the fold. Fix: use the helper and put the invitation first.
+
+**Should-fix:**
+- If the chosen story fails to open, the previous story stays paused with nothing restored. This is unlikely given the checks that run first.
+- Escape from a picker opened in the world (for example mid-walk) opens the current story's reader instead of returning to the street.
+- Once Power is paused, the old Story button and F8 resume it, and the Power reader's "Missing dogs" button becomes disabled. This is a reasonable tradeoff, but it should be documented.
+- The browser test at `godot-browser.mjs:1651` taps a button using a stale snapshot.
+
+**Acceptance gaps:**
+- Escape/Back out of the picker is never tested.
+- Nothing checks that "Completed this visit" survives an explicit End.
+- Power and Election Walk switching is only tested with fixture values set directly in the native suite, never in real browser gameplay.
+- The native Shift+F8 test calls the input handler directly instead of sending a real key event.
+
+**Suggested cut:** the `invitation_followed` flag, which only adds one sentence of text.
+
+Separately, several connectors (GitHub, Slack, Linear and others) need authorization before they can be used. Authorize them through your claude.ai connector settings, or with `/mcp` in an interactive session. I didn't need them for this review.

@@ -1,0 +1,8 @@
+  [PIN] configured antigravity lane: 'Gemini 3.8 Flash (High)'
+  [PIN] antigravity pin is current.
+  [PIN] configured cursor lane: 'cursor-grok-4.6-high'
+  [PIN] cursor pin is current.
+  [PIN] codex preference order: gpt-6.1-sol, gpt-6-astra, gpt-6-sol, gpt-5.6-sol, gpt-5.6-terra, gpt-5.5, gpt-5-codex, gpt-5
+  [PIN] codex executable: C:\Users\jeffr\AppData\Local\OpenAI\Codex\bin\2993767bd1dfb009\codex.exe
+  [PIN] codex selected: gpt-6.1-sol
+  [PIN] claude lane uses ALIASES (haiku/sonnet/opus), which do not rot -- nothing to refresh.

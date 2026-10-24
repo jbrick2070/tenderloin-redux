@@ -13,6 +13,7 @@ var picture: TextureRect
 var buttons: Array[Button] = []
 var saved_visibility: Dictionary = {}
 var return_focus: Control
+var stories_entry: Button
 var art_rect := Rect2()
 var goals: Array[Vector2] = []
 var dogs: Array[Node3D] = []
@@ -208,6 +209,7 @@ func open_story() -> bool:
 	if not available() or (game.active_story_episode()!=null and game.active_story_episode()!=self) or game.startup_story_pending or game.is_story_card_visible() or game.is_focused_activity_visible() or not game.current_path.is_empty():
 		game.announce_a11y_status("Finish arriving and close other activities. End an active power story before Two Dogs Home.")
 		return false
+	game.story_picker.resume_existing(self)
 	return_focus=get_viewport().gui_get_focus_owner()
 	saved_visibility.clear()
 	for c in get_parent().get_children():
@@ -249,6 +251,7 @@ func cancel_intent() -> void:
 	generation+=1
 
 func reset_session() -> void:
+	if game.story_picker!=null: game.story_picker.suspended.erase(self)
 	cancel_intent()
 	active=false
 	won=false
@@ -261,6 +264,7 @@ func reset_session() -> void:
 
 func end_session() -> void:
 	if not visible: return
+	game.story_picker.remember_completed()
 	reset_session()
 	message="Search ended. Ordinary chapter progress and your saved keepsake are unchanged."
 	refresh(true)
@@ -296,7 +300,8 @@ func match_dog() -> void:
 		if found!=3: message="No missing dog is at the gathering. Compare the owners' street-corner notes."
 		else:
 			won=true
-			message='Two dogs home! Mara: "Those floppy ears! Welcome back, Pippin." Imani: "Junebug, there is your triangle tag. Thank you for bringing us together." Original fictional reunion.'
+			game.story_picker.offer_lantern()
+			message='Two dogs home! Mara: "Those floppy ears! Welcome back, Pippin." Imani: "Junebug, there is your triangle tag. Thank you for bringing us together." Original fictional reunion. Imani: "Come make a lantern with us whenever you are ready." Other stories keeps this personal invitation.'
 	elif lead!=profile: message="This is "+DESCRIPTIONS[lead]+". That differs from "+NAMES[profile]+"'s note. Try the other profile; there is no penalty."
 	elif (found&(1<<profile))!=0: message=NAMES[profile]+" is already matched. Find the other dog, then meet both owners at the gathering."
 	else:
@@ -390,7 +395,7 @@ func snapshot() -> Dictionary:
 				var p: Vector2=game.camera.unproject_position(dog.to_global(Vector3(x,(0.38 if i==0 else 0.58)+y,0.2)))
 				body_points.append({"x":p.x,"y":p.y})
 		world.append({"visible":dog.visible,"position":[dog.global_position.x,dog.global_position.z],"corners":corners,"body_points":body_points})
-	return {"visible":visible,"sites_valid":sites_valid,"active":active,"won":won,"found":found,"profile":profile,"lead":lead,"near":near(),"traveling":traveling,"text":reader.text,"reader":game.control_snapshot(reader),"scroll":reader.get_v_scroll_bar().value,"buttons":buttons.map(func(b): return game.control_snapshot(b).merged({"text":b.text,"focused":b.has_focus(),"accessible_name":b.accessibility_name})),"picture":game.rect_snapshot(art_rect),"layout_pending":layout_pending,"world":world,"owners_visible":reunion.visible,"goals":goals.map(func(p): return [p.x,p.y])}
+	return {"stories_entry":game.control_snapshot(stories_entry),"visible":visible,"sites_valid":sites_valid,"active":active,"won":won,"found":found,"profile":profile,"lead":lead,"near":near(),"traveling":traveling,"text":reader.text,"reader":game.control_snapshot(reader),"scroll":reader.get_v_scroll_bar().value,"buttons":buttons.map(func(b): return game.control_snapshot(b).merged({"text":b.text,"focused":b.has_focus(),"accessible_name":b.accessibility_name})),"picture":game.rect_snapshot(art_rect),"layout_pending":layout_pending,"world":world,"owners_visible":reunion.visible,"goals":goals.map(func(p): return [p.x,p.y])}
 
 func _process(delta: float) -> void:
 	if active and not available(): reset_session()

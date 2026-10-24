@@ -11,6 +11,7 @@ var pads: Array[Button]=[]
 var map_labels: Array[Label]=[]
 var saved_visibility: Dictionary={}
 var return_focus: Control
+var stories_entry: Button
 var art_rect := Rect2()
 var layout_pending := false
 var snapshot_clock := 0.0
@@ -154,6 +155,7 @@ func open_story() -> bool:
 	if not available() or (other!=null and other!=self) or game.startup_story_pending or game.is_story_card_visible() or game.is_focused_activity_visible() or not game.current_path.is_empty():
 		game.announce_a11y_status("Open the gathering, finish arriving and End the other story before this historical map walk.")
 		return false
+	game.story_picker.resume_existing(self)
 	return_focus=get_viewport().gui_get_focus_owner(); saved_visibility.clear()
 	for c in get_parent().get_children():
 		if c is Control and c!=self: saved_visibility[c]=c.visible
@@ -214,9 +216,11 @@ func share_map() -> void:
 
 func cancel_intent() -> void: traveling=false; via_pending=false; generation+=1
 func reset_session() -> void:
+	if game.story_picker!=null: game.story_picker.suspended.erase(self)
 	cancel_intent(); active=false; won=false; observed=0; placed=0; phase=0; selected=0; palette=0; message=""; update_art()
 func end_session() -> void:
 	if not visible: return
+	game.story_picker.remember_completed()
 	reset_session(); message="Historical walk ended. Your afternoon continues."; refresh(true); game.update_walking_status(); buttons[4].grab_focus()
 
 func walk_route() -> void:
@@ -302,7 +306,7 @@ func objective() -> Dictionary:
 	return {"id":"election_walk","has_target":not won and phase!=2,"target":Vector3(p.x,0,p.y),"target_name":"Bea's gathering" if phase>=3 else str(source.sites[selected].address),"text":"Election Walk: "+("Map shared!" if won else ("Place two labels on your paper map" if phase==2 else ("Return and share your map" if phase>=3 else "Observe "+str(source.sites[selected].address)))),"hint":"Election map resumes this historical visit. Back keeps it; End clears it."}
 
 func snapshot() -> Dictionary:
-	return {"visible":visible,"active":active,"won":won,"sites_valid":sites_valid,"phase":phase,"observed":observed,"placed":placed,"selected":selected,"palette":palette,"traveling":traveling,"via_pending":via_pending,"near":near(),"goal":[goal().x,goal().y],"goals":goals.map(func(p):return [p.x,p.y]),"text":reader.text,"reader":game.control_snapshot(reader),"scroll":reader.get_v_scroll_bar().value,"buttons":buttons.map(func(b):return game.control_snapshot(b).merged({"text":b.text,"focused":b.has_focus(),"accessible_name":b.accessibility_name})),"pads":pads.map(func(b):return game.control_snapshot(b)),"map_labels":map_labels.map(func(label):return game.control_snapshot(label).merged({"text":label.text})),"picture":game.rect_snapshot(art_rect),"layout_pending":layout_pending,"paper_visible":paper.visible,"paper_corners":[Vector2(-0.16,0.115),Vector2(0.16,0.115),Vector2(-0.16,-0.115),Vector2(0.16,-0.115)].map(func(p): var q:Vector2=game.camera.unproject_position(paper.to_global(Vector3(p.x,p.y,0))); return {"x":q.x,"y":q.y}),"cache":textures.size()}
+	return {"stories_entry":game.control_snapshot(stories_entry),"visible":visible,"active":active,"won":won,"sites_valid":sites_valid,"phase":phase,"observed":observed,"placed":placed,"selected":selected,"palette":palette,"traveling":traveling,"via_pending":via_pending,"near":near(),"goal":[goal().x,goal().y],"goals":goals.map(func(p):return [p.x,p.y]),"text":reader.text,"reader":game.control_snapshot(reader),"scroll":reader.get_v_scroll_bar().value,"buttons":buttons.map(func(b):return game.control_snapshot(b).merged({"text":b.text,"focused":b.has_focus(),"accessible_name":b.accessibility_name})),"pads":pads.map(func(b):return game.control_snapshot(b)),"map_labels":map_labels.map(func(label):return game.control_snapshot(label).merged({"text":label.text})),"picture":game.rect_snapshot(art_rect),"layout_pending":layout_pending,"paper_visible":paper.visible,"paper_corners":[Vector2(-0.16,0.115),Vector2(0.16,0.115),Vector2(-0.16,-0.115),Vector2(0.16,-0.115)].map(func(p): var q:Vector2=game.camera.unproject_position(paper.to_global(Vector3(p.x,p.y,0))); return {"x":q.x,"y":q.y}),"cache":textures.size()}
 
 func _process(delta: float) -> void:
 	if active and not available(): reset_session(); close_story(false)
