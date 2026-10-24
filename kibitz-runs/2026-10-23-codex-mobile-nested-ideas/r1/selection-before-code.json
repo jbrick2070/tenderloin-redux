@@ -1,0 +1,14 @@
+{
+  "selected_at_utc": "2026-10-23T22:51:40.725092+00:00",
+  "baseline": "416b0a2286ce8f6fbe7d175f1579731f08b79125",
+  "phase": "before implementation edits",
+  "selected": "portrait phone nested controls plus content-fit16px talk",
+  "deferred": [
+    "header settings",
+    "new Talk picker",
+    "audio quality",
+    ">=520 layout changes",
+    "quest/episodes"
+  ],
+  "final_sha256": "2081aa0bd880490438b79538dfc167cf938782c21843969da8f563a30a09c585"
+}

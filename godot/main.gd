@@ -475,6 +475,20 @@ var zoom_in_control: Button
 var zoom_out_control: Button
 var walk_control_press_handled := false
 var walk_control: Button
+var phone_tray: PanelContainer
+var phone_tray_grid: GridContainer
+var phone_explore_control: Button
+var phone_primary_transition := false
+var phone_all_actions_control: Button
+var phone_tray_close: Button
+var phone_find_control: Button
+var phone_original_walk_buttons: Array[Button] = []
+var phone_controls_mounted := false
+var phone_tray_open := false
+var phone_actions_open := false
+var phone_talk_owner := -1
+var phone_hid_walking := false
+var phone_ui_signature: Array = []
 var header_panel: PanelContainer
 var overview_size := 400.0
 var in_overview := true
@@ -6726,6 +6740,156 @@ func has_side_panel_dock() -> bool:
 			return true
 	return false
 
+func uses_phone_disclosure() -> bool:
+	var vp := bubble_viewport_size()
+	return vp.x < SMALL_SIDE_HUB_MIN_WIDTH and vp.y > vp.x and vp.y >= 520.0
+
+func phone_talking() -> bool:
+	return uses_phone_disclosure() and block_panel != null and block_panel.visible and block_panel_mode == "talk" and talk_partner >= 0
+
+func phone_map_return() -> bool:
+	return uses_phone_disclosure() and not following_player and not any_side_panel_visible() and not is_focused_activity_visible()
+
+func close_phone_disclosure(restore_focus := false) -> void:
+	phone_tray_open = false
+	phone_actions_open = false
+	if phone_tray != null: phone_tray.visible = false
+	if restore_focus and phone_explore_control != null and phone_explore_control.is_visible_in_tree(): phone_explore_control.grab_focus()
+	phone_ui_signature.clear()
+
+func press_phone_explore() -> void:
+	phone_tray_open = not phone_tray_open
+	phone_actions_open = false
+	cancel_map_pinch()
+	layout_walking_controls_and_hub()
+	if phone_tray_open: map_control.grab_focus()
+	else: phone_explore_control.grab_focus()
+	announce_a11y_status("Explore: Map, Find Me, Zoom and All Actions. Close returns to the street." if phone_tray_open else "Explore closed.")
+
+func press_next_hint() -> void:
+	if phone_map_return():
+		close_phone_disclosure()
+		frame_player_for_walking()
+	else: ask_whats_next()
+
+func press_conversation_next() -> void:
+	if phone_primary_transition: return
+	if not phone_talking():
+		ask_whats_next()
+		return
+	var opening := not phone_actions_open
+	if opening: ask_whats_next()
+	phone_actions_open = opening
+	apply_block_panel_mode()
+	if opening:
+		for btn in conv_action_btns:
+			if btn.is_visible_in_tree():
+				btn.grab_focus()
+				break
+	else: conv_next_btn.grab_focus()
+
+func refresh_phone_disclosure() -> void:
+	if phone_tray == null: return
+	var signature: Array = [bubble_viewport_size(),uses_phone_disclosure(),phone_talking(),talk_partner,following_player,any_side_panel_visible(),is_focused_activity_visible(),is_story_card_visible(),current_path.is_empty(),phone_tray_open,phone_actions_open]
+	if signature == phone_ui_signature: return
+	phone_ui_signature = signature
+	layout_walking_controls_and_hub()
+
+func configure_phone_disclosure() -> void:
+	if phone_tray == null: return
+	var enabled := uses_phone_disclosure()
+	if enabled != phone_controls_mounted:
+		close_phone_disclosure()
+		if enabled:
+			for btn in [map_control,phone_find_control,zoom_in_control,zoom_out_control]: btn.reparent(phone_tray_grid)
+			var secondary: Array[Button] = [map_control,phone_find_control,zoom_in_control,zoom_out_control]
+			for i in range(secondary.size()): phone_tray_grid.move_child(secondary[i],i)
+			phone_explore_control.reparent(controls)
+		else:
+			for btn in phone_original_walk_buttons:
+				if btn.get_parent() != controls: btn.reparent(controls)
+			for i in range(phone_original_walk_buttons.size()): controls.move_child(phone_original_walk_buttons[i],i)
+			phone_explore_control.reparent(phone_tray.get_parent())
+		phone_controls_mounted = enabled
+	var talking := phone_talking()
+	if phone_talk_owner != talk_partner:
+		phone_talk_owner = talk_partner
+		phone_actions_open = false
+	var blocked := is_focused_activity_visible() or is_story_card_visible()
+	if not talking or blocked: phone_actions_open = false
+	var panel_open := any_side_panel_visible()
+	if not enabled or blocked or panel_open: phone_tray_open = false
+	phone_tray.visible = enabled and phone_tray_open and controls.visible and not talking and not blocked
+	phone_explore_control.visible = enabled and not panel_open and not blocked
+	if talking and current_path.is_empty():
+		if controls.visible: phone_hid_walking = true
+		controls.visible = false
+	elif phone_hid_walking and not blocked:
+		controls.visible = true
+		phone_hid_walking = false
+	if enabled:
+		controls.columns = 3
+		phone_explore_control.text = "Explore"
+		next_hint_control.text = "Back to Me" if phone_map_return() else "Next Step"
+		next_hint_control.tooltip_text = "Return to the player" if phone_map_return() else "What's Next?"
+		for btn in [next_hint_control,walk_control,phone_explore_control]:
+			btn.custom_minimum_size.y = 50
+			btn.add_theme_font_size_override("font_size",14)
+			btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			btn.clip_text = false
+		for btn in [map_control,phone_find_control,zoom_in_control,zoom_out_control]:
+			btn.custom_minimum_size.y = 50
+			btn.add_theme_font_size_override("font_size",14)
+		controls.offset_top = -maxf(50.0,controls.get_combined_minimum_size().y)-12.0
+		phone_tray.offset_bottom = controls.offset_top-8.0
+		phone_tray.offset_top = phone_tray.offset_bottom-phone_tray.get_combined_minimum_size().y
+	else:
+		for btn in [next_hint_control,walk_control]:
+			btn.autowrap_mode = TextServer.AUTOWRAP_OFF
+			btn.clip_text = true
+	if talking:
+		var acts := conversation_actions()
+		var choices := false
+		for i in range(conv_action_btns.size()):
+			var required: bool = i < acts.size() and (String(acts[i].id) in ["layout_table","layout_floor"] or String(acts[i].id).begins_with("return_owner:"))
+			conv_action_btns[i].visible = i < acts.size() and (phone_actions_open or required)
+			choices = choices or conv_action_btns[i].visible
+		conv_rows[1].visible = choices
+		conv_next_btn.text = "Hide Steps" if phone_actions_open else "Next Step"
+		block_detail_label.add_theme_font_size_override("normal_font_size",16)
+		block_detail_label.custom_minimum_size.y = 96
+		block_detail_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	else:
+		block_detail_label.size_flags_vertical = Control.SIZE_FILL
+	var focused := get_viewport().gui_get_focus_owner()
+	if talking and focused != null and not focused.is_visible_in_tree(): conv_next_btn.grab_focus()
+
+func make_phone_disclosure(layer: CanvasLayer) -> void:
+	for child in controls.get_children(): phone_original_walk_buttons.append(child as Button)
+	phone_find_control = phone_original_walk_buttons[2]
+	phone_tray = PanelContainer.new()
+	phone_tray.name = "PhoneExplore"
+	phone_tray.add_theme_stylebox_override("panel",header_panel.get_theme_stylebox("panel"))
+	phone_tray.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	phone_tray.offset_left=12; phone_tray.offset_right=-12
+	phone_tray.visible=false
+	layer.add_child(phone_tray)
+	phone_tray_grid = GridContainer.new()
+	phone_tray_grid.columns=2
+	phone_tray_grid.add_theme_constant_override("h_separation",4)
+	phone_tray_grid.add_theme_constant_override("v_separation",4)
+	phone_tray.add_child(phone_tray_grid)
+	phone_explore_control=button(layer,"Explore",press_phone_explore)
+	phone_explore_control.visible=false
+	phone_all_actions_control=button(phone_tray_grid,"All Actions",func():
+		close_phone_disclosure()
+		run_conversation_action_id("hub")
+	)
+	phone_tray_close=button(phone_tray_grid,"Close",func(): close_phone_disclosure(true))
+	# Keep all original map/zoom callbacks and original route Stop control.
+	for btn in [map_control,phone_find_control]: btn.pressed.connect(func(): close_phone_disclosure(true))
+	configure_phone_disclosure()
+
 func layout_walking_controls_and_hub() -> void:
 	if controls == null or block_panel == null:
 		return
@@ -6742,7 +6906,9 @@ func layout_walking_controls_and_hub() -> void:
 	controls.columns = 3 if compact or short_walking else (2 if narrow else 3)
 	# Two50px rows,4px separation and12px bottom margin in short phone walking.
 	controls.offset_top = -104.0 if compact else (-116.0 if short_walking else (-174.0 if narrow else -124.0))
-	for child in controls.get_children():
+	var walking_buttons: Array = phone_original_walk_buttons.duplicate() if not phone_original_walk_buttons.is_empty() else controls.get_children()
+	if phone_explore_control != null: walking_buttons.append(phone_explore_control)
+	for child in walking_buttons:
 		if child is Button:
 			child.custom_minimum_size.y = 44.0 if compact else 50.0
 			child.add_theme_font_size_override("font_size", 12 if compact else (14 if narrow else 19))
@@ -6780,6 +6946,7 @@ func layout_walking_controls_and_hub() -> void:
 			# One complete Info line; full dialogue has its own two-line panel reader.
 			info.custom_minimum_size.y = ceilf(info.get_theme_font("normal_font").get_height(info.get_theme_font_size("normal_font_size")))
 		header_panel.offset_bottom = header_panel.offset_top + header_panel.get_combined_minimum_size().y
+	configure_phone_disclosure()
 	for panel in [block_panel, mural_panel, music_panel]:
 		if panel == null:
 			continue
@@ -6793,6 +6960,12 @@ func layout_walking_controls_and_hub() -> void:
 		panel.anchor_left = 1.0 if dock else 0.0
 		panel.offset_left = -(dock_width + 12.0) if dock else 12.0
 		panel.offset_right = -12.0
+		if panel == block_panel and phone_talking():
+			panel.size = Vector2(vp.x-24.0,0)
+			panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+			panel.offset_bottom = -12.0 if current_path.is_empty() else controls.offset_top-8.0
+			panel.offset_top = panel.offset_bottom-panel.get_combined_minimum_size().y
+			continue
 		var hosting_choices: bool = panel == block_panel and hosting_choice_row_visible() and not dock
 		panel.grow_vertical = Control.GROW_DIRECTION_BEGIN if short_phone or hosting_choices else Control.GROW_DIRECTION_END
 		if hosting_choices and not short_phone:
@@ -6952,8 +7125,9 @@ func play_area_rect() -> Rect2:
 	if header_panel != null:
 		top = header_panel.get_global_rect().end.y + 8.0
 	var bottom := vp.y - 8.0
-	if controls != null:
+	if controls != null and not phone_talking():
 		bottom = controls.get_global_rect().position.y - 8.0
+	if phone_tray != null and phone_tray.is_visible_in_tree(): bottom = minf(bottom,phone_tray.get_global_rect().position.y-8.0)
 	var right := vp.x - 8.0
 	for p in [block_panel, mural_panel, music_panel]:
 		if p != null and p.visible:
@@ -10659,6 +10833,9 @@ func resume_voices() -> bool:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_WINDOW_FOCUS_OUT or what == NOTIFICATION_APPLICATION_FOCUS_OUT:
 		cancel_map_pinch()
+		close_phone_disclosure()
+		phone_primary_transition = false
+		walk_control_press_handled = false
 		suspend_voices()
 		if rhythm_circle != null: rhythm_circle.stop_audition()
 	elif what == NOTIFICATION_APPLICATION_RESUMED or what == NOTIFICATION_WM_WINDOW_FOCUS_IN or what == NOTIFICATION_APPLICATION_FOCUS_IN:
@@ -11449,7 +11626,8 @@ func walking_control_snapshots() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	if controls == null:
 		return result
-	for child in controls.get_children():
+	var canonical: Array = phone_original_walk_buttons if not phone_original_walk_buttons.is_empty() else controls.get_children()
+	for child in canonical:
 		var btn := child as Button
 		var entry := control_snapshot(btn)
 		entry["text"] = btn.text
@@ -11485,7 +11663,7 @@ func activity_detail_snapshot(detail: RichTextLabel, panel: Control, buttons: Ar
 		entry["text_fits"] = measured.x <= box.x + 1.0 and measured.y <= box.y + 1.0
 		actions.append(entry)
 	var bar := detail.get_v_scroll_bar()
-	return {"control": control_snapshot(detail), "panel": control_snapshot(panel), "text": detail.text, "min_height": detail.custom_minimum_size.y, "scroll_value": bar.value, "scroll_max": bar.max_value, "scroll_page": bar.page, "buttons": actions}
+	return {"font_size":detail.get_theme_font_size("normal_font_size"),"control": control_snapshot(detail), "panel": control_snapshot(panel), "text": detail.text, "min_height": detail.custom_minimum_size.y, "scroll_value": bar.value, "scroll_max": bar.max_value, "scroll_page": bar.page, "buttons": actions}
 
 func rect_snapshot(rect: Rect2) -> Dictionary:
 	return {"x": rect.position.x, "y": rect.position.y, "width": rect.size.x, "height": rect.size.y}
@@ -11612,6 +11790,7 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"panel_subject_screen": rect_snapshot(Rect2(camera.unproject_position(panel_frame_subject), Vector2.ZERO)) if panel_frame_control != null and panel_frame_control.visible else {},
 		"panel_subject_points": panel_subject_snapshots(),
 		"walking_controls": walking_control_snapshots(),
+		"phone_disclosure": {"enabled":uses_phone_disclosure(),"transition":phone_primary_transition,"all_actions":control_snapshot(phone_all_actions_control),"tray":control_snapshot(phone_tray),"explore":control_snapshot(phone_explore_control),"close":control_snapshot(phone_tray_close),"actions_open":phone_actions_open},
 		"info_reader": activity_detail_snapshot(info, header_panel, []),
 		"block_page_previous": control_snapshot(block_page_prev),
 		"block_page_next": control_snapshot(block_page_next),
@@ -13696,7 +13875,13 @@ func press_walk_control() -> void:
 	if walk_control_press_handled:
 		return
 	walk_control_press_handled = true
+	if uses_phone_disclosure():
+		phone_primary_transition = true
 	activate_walk_control()
+
+func finish_phone_primary_transition() -> void:
+	phone_primary_transition = false
+	walk_control_press_handled = false
 
 func follow_player() -> void:
 	in_overview = false
@@ -13939,6 +14124,7 @@ func update_readable_scene_labels() -> void:
 func _process(delta: float) -> void:
 	poll_web_audio()
 	apply_map_pinch()
+	refresh_phone_disclosure()
 	if player_nameplate != null and camera != null:
 		player_nameplate.pixel_size = screen_constant_scale(1.0) / player_visual.scale.y
 		player_nameplate.visible = not in_overview and not in_wide_overview
@@ -14017,6 +14203,7 @@ func _physics_process(delta: float) -> void:
 		advance_walk(delta * (2.2 if OS.has_feature("web") else 1.0))
 
 func is_screen_point_in_ui(screen_pos: Vector2) -> bool:
+	if phone_tray != null and phone_tray.is_visible_in_tree() and phone_tray.get_global_rect().has_point(screen_pos): return true
 	if is_focused_activity_visible() or (mural_compose_btn != null and mural_compose_btn.is_visible_in_tree() and mural_compose_btn.get_global_rect().has_point(screen_pos)):
 		return true
 	if reward_banner != null and reward_banner.is_visible_in_tree() and reward_banner.get_global_rect().has_point(screen_pos):
@@ -14275,6 +14462,20 @@ func _input(event: InputEvent) -> void:
 	var mouse_activation: bool = event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_MIDDLE]
 	if key_activation or mouse_activation or (event is InputEventScreenTouch and not event.pressed):
 		reward_audio_unlocked = true
+	# A press-mode control can reveal a talk button beneath the held contact.
+	# Leave releases available to GUI state, but guard callbacks through dispatch.
+	if phone_primary_transition:
+		if (event is InputEventScreenTouch and not event.pressed) or (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed) or event.is_action_released("ui_accept"):
+			finish_phone_primary_transition.call_deferred()
+		elif event is InputEventMouse and event.device == InputEvent.DEVICE_ID_EMULATION:
+			get_viewport().set_input_as_handled()
+			return
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE and uses_phone_disclosure() and (phone_tray_open or phone_actions_open) and not is_focused_activity_visible() and not is_story_card_visible():
+		close_phone_disclosure(true)
+		layout_walking_controls_and_hub()
+		if phone_talking(): conv_next_btn.grab_focus()
+		get_viewport().set_input_as_handled()
+		return
 	if map_pinch_input(event):
 		get_viewport().set_input_as_handled()
 		return
@@ -15488,16 +15689,22 @@ func make_ui() -> void:
 	c_row1.name = "ConversationChoices"
 	c_row1.add_theme_constant_override("separation", 4)
 	block_vbox.add_child(c_row1)
-	conv_chat_btn = conv_button(c_row1, "Keep Chatting (T)", func(): keep_chatting())
-	conv_next_btn = conv_button(c_row1, "What's Next?", func(): ask_whats_next())
-	conv_bye_btn = conv_button(c_row1, "Goodbye (Esc)", func(): end_conversation())
+	conv_chat_btn = conv_button(c_row1, "Keep Chatting (T)", func():
+		if not phone_primary_transition: keep_chatting()
+	)
+	conv_next_btn = conv_button(c_row1, "What's Next?", press_conversation_next)
+	conv_bye_btn = conv_button(c_row1, "Goodbye (Esc)", func():
+		if not phone_primary_transition: end_conversation()
+	)
 	var c_row2 := HBoxContainer.new()
 	c_row2.name = "ConversationActions"
 	c_row2.add_theme_constant_override("separation", 4)
 	block_vbox.add_child(c_row2)
 	for slot in range(3):
 		var slot_i := slot
-		conv_action_btns.append(conv_button(c_row2, "...", func(): run_conversation_action(slot_i)))
+		conv_action_btns.append(conv_button(c_row2, "...", func():
+			if not phone_primary_transition: run_conversation_action(slot_i)
+		))
 	conv_rows.append(c_row1)
 	conv_rows.append(c_row2)
 	block_actions_grid = GridContainer.new()
@@ -15541,7 +15748,7 @@ func make_ui() -> void:
 	controls.offset_top = -124
 	controls.offset_bottom = -12
 	layer.add_child(controls)
-	next_hint_control = button(controls, "What's Next?", func(): ask_whats_next())
+	next_hint_control = button(controls, "What's Next?", press_next_hint)
 	map_control = button(controls, "Tenderloin Map", wide_overview)
 	button(controls, "Find Me", frame_player_for_walking)
 	zoom_in_control = button(controls, "Zoom In (+)", func(): zoom(0.8))
@@ -15551,6 +15758,7 @@ func make_ui() -> void:
 	walk_control.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
 	walk_control.button_up.connect(func(): walk_control_press_handled = false)
 	update_walk_control()
+	make_phone_disclosure(layer)
 	guide_arrow = Control.new()
 	guide_arrow.name = "GuideArrow"
 	guide_arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -15642,6 +15850,7 @@ func make_ui() -> void:
 	var vp := get_viewport()
 	var resize_controls := func():
 		cancel_map_pinch()
+		close_phone_disclosure()
 		if not is_instance_valid(controls) or not is_inside_tree():
 			return
 		if mural_workshop != null:

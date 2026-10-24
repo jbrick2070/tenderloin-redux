@@ -1,0 +1,1 @@
+Explicit separate implementation r3 only; drivercodex/onlyclaude/modelclaude-opus-5-5/efforthigh. Prior ideas r1 distinct, no r2/r4/panel substitution. Read-only source except report; Codex sole writer. No gates or deployment by reviewer.

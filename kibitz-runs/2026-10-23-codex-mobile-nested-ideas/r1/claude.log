@@ -1,0 +1,17 @@
+STDOUT:
+I wrote the review to `kibitz-runs/2026-10-23-codex-mobile-nested-ideas/r1/claude.md`. My verdict is **no, not build-ready**: the nested-button plan doesn't target what's actually wrong in the creator's screenshot.
+
+The screenshot shows a canvas of about 390x660, which I worked out from the image scale. That is at or above the 640px height threshold (`main.gd:833`), so the talk panel uses a fixed-size box. Inside it the dialogue is stuck at a 30px minimum in a 12px font, and the leftover space sits empty under the buttons. Meanwhile all six walking buttons stay on screen, so 12 buttons show at once, and two of them repeat other buttons. Fitting the panel to its content and hiding the walking buttons during talk, on portrait phones only, would fix most of what the creator saw, before any nested menus.
+
+Two of the proposed new labels clash with what those buttons do now:
+- **"Talk" in the walking row:** the existing walk button is also Stop and the resume button for four active stories. All four story scripts check whether that button is held down. It should stay in the row unchanged.
+- **"Reply" hiding the conversation choices:** those slots hold the next-objective action, the Long Table / Open Floor story choice, and loan returns. Hiding them would hide the objective, which the plan's own acceptance rules forbid.
+
+Other must-fix items in the file:
+- The plan lists 559 and 599 by 360 as acceptance sizes, but existing native and browser tests assert all six original walking labels at those sizes. The plan should say whether landscape gets the new row.
+- Putting Find Me inside the Explore tray buries the only way back from the map to the street.
+- Any new tray must be registered for touch hit-testing, or taps and pinches go through it to the street. It also can't be placed inside the existing button grid, because the test snapshot reads every child of that grid as a button and would fail on a tray.
+
+Should-fix items and the cuts are in the file too, along with my recommended smaller slice. One cut is the header settings menu: Music, Sounds and Info already share one row, so grouping them saves no space. One of the should-fix items is the test list: the 568px heights test a different layout branch than the creator's phone, and the deployed build still doesn't pinch-zoom, so the zoom buttons can't be treated as optional yet.
+
+To get the screen size, I opened the creator's private screenshot from `artifacts/mobile-chrome-20261023/`; nothing was copied anywhere.

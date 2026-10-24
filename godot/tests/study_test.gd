@@ -2364,19 +2364,25 @@ func run() -> void:
 	require(study.speech_bubble_in_info and study.header_details_expanded and study.info.text.begins_with(study.speech_bubble_text), "dialogue too tall for the scene remains complete in scrollable Info")
 	require(study.last_a11y_announcement.contains("Keepsake:") and study.last_a11y_announcement.ends_with("Full dialogue in Info."), "Info fallback retains the earned-progress live announcement alongside the dialogue location")
 	study.trigger_feel_good_burst("Progress while reading", "Saved progress stays visible above.", study.target)
+	require(study.reward_banner.visible and study.play_area_rect().encloses(study.reward_banner.get_global_rect()),"reduced phone chrome leaves usable room for a normal short reward")
+	await constrain_reward_headroom_fixture(study)
 	await process_frame
 	await process_frame
 	study.update_celebration_burst(0.0)
 	var queued_reward_time: float = study.reward_banner_timer
+	print("PHONE_REWARD_DIAG queued area=",study.play_area_rect()," header=",study.header_panel.get_global_rect()," panel=",study.block_panel.get_global_rect()," controls_visible=",study.controls.is_visible_in_tree()," banner=",study.reward_banner.get_global_rect()," visible=",study.reward_banner.visible," speech_owns=",study.speech_opened_info," info=",study.header_details_expanded)
 	require(not study.reward_banner.visible and queued_reward_time > 0.0, "reward queues when expanded Info leaves insufficient room")
 	study.update_celebration_burst(1.0)
 	require(is_equal_approx(queued_reward_time, study.reward_banner_timer), "queued reward retains its display time")
 	study.update_speech_bubble(30.0)
+	print("PHONE_REWARD_DIAG expired anchor=",study.speech_bubble_anchor," age=",study.speech_bubble_age," timer=",study.speech_bubble_timer," speech_owns=",study.speech_opened_info," info=",study.header_details_expanded)
 	require(not study.header_details_expanded, "speech expiry automatically releases only its owned Info")
 	await process_frame
 	await process_frame
 	study.update_celebration_burst(0.0)
 	require(study.reward_banner.visible and study.play_area_rect().encloses(study.reward_banner.get_global_rect()), "queued reward appears fully after Info closes")
+	root.size=Vector2i(320,667)
+	for f in range(4): await process_frame
 	study.update_celebration_burst(4.0)
 	study.show_speech_bubble("long-replacement-fixture", study.target, "A line kept in Info for replacement. ".repeat(25), 20.0)
 	study.update_speech_bubble(0.1)
@@ -2397,6 +2403,8 @@ func run() -> void:
 	study.hide_speech_bubble()
 	require(study.header_details_expanded, "explicit Info request survives speech cleanup")
 	study.trigger_feel_good_burst("Progress in Info", "One more friendly stop.", study.target)
+	await constrain_reward_headroom_fixture(study)
+	print("PHONE_REWARD_DIAG explicit area=",study.play_area_rect()," header=",study.header_panel.get_global_rect()," panel=",study.block_panel.get_global_rect()," banner=",study.reward_banner.get_global_rect()," visible=",study.reward_banner.visible," speech_owns=",study.speech_opened_info)
 	study.update_celebration_burst(0.1)
 	require(not study.reward_banner.visible and study.info.text.contains("Progress in Info") and study.info.text.contains("One more friendly stop."), "deliberately expanded Info displays the full reward without covering controls")
 	study.show_speech_bubble("shared-info-fixture", study.target, "Full host words sharing Info with a reward. ".repeat(25), 20.0)
@@ -2411,6 +2419,8 @@ func run() -> void:
 	study.update_speech_bubble(0.1)
 	require(study.speech_bubble_anchor.is_empty(), "closing Info explicitly dismisses its oversized speech")
 	study.end_conversation()
+	root.size=Vector2i(320,667)
+	for f in range(4): await process_frame
 	var reset_overlay_save: String = JSON.stringify(study.build_save_envelope())
 	study.show_eatery_host_speech(0, "A pending host line.")
 	require(study.apply_save_envelope(reset_overlay_save) and study.speech_bubble_anchor.is_empty() and not study.speech_bubble_deferred, "save restore clears pending speech along with session rewards")
@@ -2465,7 +2475,10 @@ func run() -> void:
 		require(study.view_size > fitted, "Zoom out from mobile overview must zoom out")
 		study.zoom(0.8)
 		require(is_equal_approx(study.view_size, fitted), "paired zoom restores fitted size")
-		var next: Button = study.controls.get_child(2)
+		if study.uses_phone_disclosure():
+			await phone_accept(study.phone_explore_control)
+			verify_phone_tray_targets(study, size)
+		var next: Button = study.phone_find_control
 		next.grab_focus()
 		require(next.has_focus(), "keyboard focus available")
 		var accept := InputEventAction.new()
@@ -2753,6 +2766,10 @@ func run() -> void:
 		study.header_details_expanded = false
 		study.update_conversation_ui(0.0)
 		if size.x < 600:
+			if study.is_story_card_visible(): await phone_accept(study.story_continue_btn)
+			if study.phone_talking() and not study.phone_actions_open: await phone_accept(study.conv_next_btn)
+			print("PHONE_CHOICE_DIAG ",size," talk=",study.phone_talking()," actions=",study.phone_actions_open," transition=",study.phone_primary_transition," modal=",study.is_story_card_visible()," row=",study.conv_rows[1].visible," ids=",study.conv_action_ids)
+			require(study.conv_action_btns[0].is_visible_in_tree(), "conversation width measurements target a disclosed action")
 			require(study.conv_chat_btn.text == "Chat More" and study.conv_bye_btn.text == "Goodbye" and study.conv_action_btns[2].text == "All Actions", "phone layout uses short conversation labels at %s" % str(size))
 			var find_w: float = ThemeDB.fallback_font.get_string_size("Find 9/10", HORIZONTAL_ALIGNMENT_CENTER, -1, 13).x
 			require(find_w + 16.0 <= study.conv_action_btns[0].size.x, "narrow phone Find 9/10 surprise label fits inside conversation action button width at %s" % str(size))
@@ -2769,7 +2786,7 @@ func run() -> void:
 		var bea_screen: Vector2 = study.camera.unproject_position(study.neighbors[0].pos + Vector3(0.0, 2.2, 0.0))
 		require(study.play_area_rect().has_point(bea_screen), "the conversation camera keeps Bea in the visible 3D area above the panel at %s" % str(size))
 		var conv_rect: Rect2 = study.block_panel.get_global_rect()
-		require(study.header_panel.get_global_rect().end.y <= conv_rect.position.y and conv_rect.end.y <= study.controls.get_global_rect().position.y, "header, conversation panel, and bottom controls do not overlap at %s" % str(size))
+		require(study.header_panel.get_global_rect().end.y <= conv_rect.position.y and panel_clears_walking(study, study.block_panel), "header, conversation panel, and bottom controls do not overlap at %s" % str(size))
 		for c_btn in study.conv_buttons:
 			if c_btn.visible:
 				var cbr: Rect2 = c_btn.get_global_rect()
@@ -3268,6 +3285,7 @@ func run() -> void:
 	await verify_lantern_procession(study,saved_m4_json)
 	await verify_voting_story(study,saved_m4_json)
 	await verify_map_pinch(study,saved_m4_json)
+	await verify_phone_disclosure(study,initial_start_save,saved_m4_json)
 	study.clear_godot_save()
 	study.clear_godot_settings()
 	var legacy_settings := FileAccess.open(study.settings_path, FileAccess.WRITE)
@@ -3335,6 +3353,7 @@ func verify_narrow_hub(study: Node) -> void:
 			for nav in [study.block_page_prev, study.block_page_next, study.block_close_btn]:
 				require(panel.encloses(nav.get_global_rect()) and nav.size.x >= 44 and nav.size.y >= 44, "narrow hub page and Close controls remain reachable")
 			for walking in study.walking_control_snapshots():
+				if not walking.visible: continue
 				require(walking.text_fits and walking.width >= 44 and walking.height >= 44, "narrow hub walking labels fit44px targets")
 			if page < 2:
 				study.change_block_action_page(1)
@@ -3375,7 +3394,10 @@ func verify_narrow_hub(study: Node) -> void:
 		for frame in range(3):
 			await process_frame
 		var short_walk: bool = hub_size.x >= study.SMALL_SIDE_HUB_MIN_WIDTH and hub_size.y < study.SIDE_HUB_MAX_HEIGHT
-		require(study.controls.columns == (3 if short_walk else 2) and study.controls.offset_top == (-116 if short_walk else -174) and study.controls.offset_right == -12 and study.map_control.text == "Tenderloin Map", "Close restores the full narrow walking grid with two rows in short landscape")
+		if study.uses_phone_disclosure():
+			await verify_phone_walking_restored(study,hub_size)
+		else:
+			require(study.controls.columns == (3 if short_walk else 2) and study.controls.offset_top == (-116 if short_walk else -174) and study.controls.offset_right == -12 and study.map_control.text == "Tenderloin Map", "Close restores the full narrow walking grid with two rows in short landscape")
 		require(JSON.stringify(study.build_save_envelope()) == save and study.view_size == zoom, "narrow hub paging reading and Info preserve progression and zoom")
 		study.show_conversation(0)
 		for frame in range(3):
@@ -3478,7 +3500,7 @@ func verify_short_narrow_walking(study: Node) -> void:
 		study.frame_player_for_walking()
 		for frame in range(4):
 			await process_frame
-		require(not study.uses_short_narrow_walking() and study.controls.columns == (2 if boundary.x < 600 else 3), "existing taller phone and wider layouts restore their original walking grid")
+		require(not study.uses_short_narrow_walking() and study.controls.columns == (3 if study.uses_phone_disclosure() else (2 if boundary.x < 600 else 3)), "taller layouts restore their designated phone or original walking grid")
 	root.size = Vector2i(599, 360)
 	study.frame_player_for_walking()
 	for frame in range(4):
@@ -3618,7 +3640,7 @@ func verify_short_activity_panels(study: Node, narrow_small := false) -> void:
 			require(dock.position.y >= study.header_panel.get_global_rect().end.y and dock.end.x <= short_size.x and dock.end.y <= short_size.y - 12, "short activity dock clears header and stays on-screen")
 			require(scene.size.x >= (200 if narrow_small else 250) and scene.size.y >= 100 and not dock.intersects(scene), "short activities leave useful scene space clear of the panel")
 			if study.uses_compact_narrow_activities():
-				require(study.controls.get_global_rect().position.y >= dock.end.y + 7, "compact activity stays above walking controls")
+				require(panel_clears_walking(study,panel), "compact activity stays above visible walking controls or the phone talk viewport edge")
 			require(scene.has_point(study.camera.unproject_position(subject)), "real conversation/activity subject is visible beside the dock")
 			require(study.player_overlay_rect().has_area() and scene.grow(1.0).encloses(study.player_overlay_rect()), "short arrival keeps the full enlarged player and YOU clear of controls under a two-line objective")
 			for point in study.panel_subject_snapshots():
@@ -3660,7 +3682,7 @@ func verify_short_activity_panels(study: Node, narrow_small := false) -> void:
 				for frame in range(6):
 					await process_frame
 				print("SMALL_ACTIVITY_GROW ",short_size," ",kind," original=",original_height," current=",panel.get_global_rect()," text=",changing_button.text)
-				require(panel.size.y > original_height and (panel.get_global_rect().end.y <= short_size.y - 12 if study.has_side_panel_dock() else study.controls.get_global_rect().position.y >= panel.get_global_rect().end.y + 7), "deferred content growth keeps the complete panel reachable")
+				require(panel.size.y > original_height and (panel.get_global_rect().end.y <= short_size.y - 12 if study.has_side_panel_dock() else panel_clears_walking(study,panel)), "deferred content growth keeps the complete panel reachable")
 				changing_button.text = original_caption
 				for frame in range(6):
 					await process_frame
@@ -3685,7 +3707,7 @@ func verify_short_activity_panels(study: Node, narrow_small := false) -> void:
 				await process_frame
 				await process_frame
 				require(is_equal_approx(panel.anchor_left, 1.0 if boundary.x >= study.SIDE_ACTIVITY_MIN_WIDTH and boundary.y < study.SIDE_HUB_MAX_HEIGHT else 0.0) and study.play_area_rect().has_point(study.camera.unproject_position(subject)), "open activity crosses width/height dock boundaries with its real subject")
-				require(panel.get_global_rect().position.y >= study.header_panel.get_global_rect().end.y and (study.controls.get_global_rect().end.x <= panel.get_global_rect().position.x if study.has_side_panel_dock() else study.controls.get_global_rect().position.y >= panel.get_global_rect().end.y), "open boundary keeps panel clear of header and walking controls")
+				require(panel.get_global_rect().position.y >= study.header_panel.get_global_rect().end.y and (study.controls.get_global_rect().end.x <= panel.get_global_rect().position.x if study.has_side_panel_dock() else panel_clears_walking(study,panel)), "open boundary keeps panel clear of header and walking controls")
 				if kind == "conversation":
 					require(is_equal_approx(study.panel_frame_subject.y, 1.0 if study.uses_compact_activity_controls() else 2.2), "rotation uses the same conversation body focus as a fresh open")
 			root.size = Vector2i(360, 640)
@@ -3711,11 +3733,14 @@ func verify_short_activity_panels(study: Node, narrow_small := false) -> void:
 			await process_frame
 			require(study.controls.offset_right == -12 and study.map_control.text == "Tenderloin Map", "closing short activity restores normal walking controls")
 			var tall_phone: bool = short_size.x < 600 and (short_size.x < 520 or short_size.y >= 560)
-			require(study.controls.columns == (2 if tall_phone else 3) and study.controls.offset_top == (-174 if tall_phone else (-116 if short_size.x < 600 else -124)), "real Close restores walking grid and vertical offsets")
-			var normal_labels: Array = ["What's Next?", "Tenderloin Map", "Find Me", "Zoom In (+)", "Zoom Out (−)", "Walk & Talk (Next)"]
-			for i in range(study.controls.get_child_count()):
-				var control: Button = study.controls.get_child(i)
-				require(control.text == normal_labels[i] and control.custom_minimum_size.y == 50, "real Close restores every walking caption and target size")
+			if study.uses_phone_disclosure():
+				await verify_phone_walking_restored(study,short_size)
+			else:
+				require(study.controls.columns == (2 if tall_phone else 3) and study.controls.offset_top == (-174 if tall_phone else (-116 if short_size.x < 600 else -124)), "real Close restores walking grid and vertical offsets")
+				var normal_labels: Array = ["What's Next?", "Tenderloin Map", "Find Me", "Zoom In (+)", "Zoom Out (−)", "Walk & Talk (Next)"]
+				for i in range(study.controls.get_child_count()):
+					var control: Button = study.controls.get_child(i)
+					require(control.text == normal_labels[i] and control.custom_minimum_size.y == 50, "real Close restores every walking caption and target size")
 			for restored_panel in [study.block_panel, study.mural_panel, study.music_panel]:
 				require(restored_panel.grow_vertical == Control.GROW_DIRECTION_END, "real Close restores panel grow direction")
 	study.last_panel_dialogue = ""
@@ -6269,3 +6294,137 @@ func verify_map_pinch(study: Node, profile: String) -> void:
 	root.size=Vector2i(1100,760)
 	require(study.overview_text().contains("WASD/arrows walk · drag pans · right-drag rotates · scroll zooms"),"desktop overview guidance retained")
 	print("MAP_PINCH_PASS:5sizes/actualtouch/spread/pinch/clamps/manualanchor/follow/bothreleaseorders/extra/cancel/notificationfocus/UI/readerGUI/rhythmGUI/recovery/save")
+
+# Adversarial queue-component fixture only, NOT an accepted gameplay viewport.
+# Measure actual headroom in the existing side dock, then reduce height just enough
+# to force queuing. Keep original text/timers/ownership and all normal-size tests.
+func constrain_reward_headroom_fixture(study: Node) -> void:
+	root.size=Vector2i(520,360)
+	for f in range(4): await process_frame
+	var reduction: int=maxi(0,ceili(study.play_area_rect().size.y-study.reward_banner.size.y+8.0))
+	root.size=Vector2i(520,360-reduction)
+	for f in range(4): await process_frame
+	study.layout_reward_banner()
+	require(study.play_area_rect().size.y<study.reward_banner.size.y,"queue-component fixture proves genuinely insufficient headroom")
+	print("PHONE_REWARD_FIXTURE viewport=",root.size," banner_height=",study.reward_banner.size.y," area_height=",study.play_area_rect().size.y)
+
+func panel_clears_walking(study: Node, panel: Control) -> bool:
+	if study.phone_talking() and not study.controls.is_visible_in_tree():
+		return panel == study.block_panel and panel.get_global_rect().end.y <= root.size.y - 11 and study.conv_rows[0].is_visible_in_tree()
+	return panel.get_global_rect().end.y <= study.controls.get_global_rect().position.y
+
+func verify_phone_tray_targets(study: Node, size: Vector2i) -> void:
+	require(study.phone_tray.is_visible_in_tree(),"tray target checks require a real disclosed native tray")
+	for b in [study.map_control,study.phone_find_control,study.zoom_in_control,study.zoom_out_control,study.phone_all_actions_control,study.phone_tray_close]:
+		require(b.is_visible_in_tree() and b.get_global_rect().size.x>=44 and b.get_global_rect().size.y>=44 and Rect2(Vector2.ZERO,Vector2(size)).encloses(b.get_global_rect()),"all six disclosed secondary targets are44px and on-screen")
+		require(b.focus_mode==Control.FOCUS_ALL and b.has_theme_stylebox_override("focus"),"all disclosed secondary targets retain native focus rings")
+
+func verify_phone_walking_restored(study: Node, size: Vector2i) -> void:
+	require(study.controls.is_visible_in_tree() and study.controls.columns==3 and study.controls.get_child_count()==3 and study.phone_explore_control.is_visible_in_tree(),"phone Close restores three named native primaries")
+	require(study.controls.offset_top == -maxf(50,study.controls.get_combined_minimum_size().y)-12 and study.controls.offset_right==-12,"phone primary band fits its actual native minimum")
+	require(study.next_hint_control.text in ["Next Step","Back to Me"] and study.walk_control.text=="Walk & Talk (Next)" and study.phone_explore_control.text=="Explore","phone Close restores objective/walking/Explore labels")
+	await phone_accept(study.phone_explore_control)
+	verify_phone_tray_targets(study,size)
+	var labels: Array = ["Tenderloin Map","Find Me","Zoom In (+)","Zoom Out (−)"]
+	for i in range(4): require(study.phone_original_walk_buttons[i+1].text==labels[i],"disclosed original secondary captions retained")
+	await phone_accept(study.phone_tray_close)
+	require(not study.phone_tray.visible and study.phone_explore_control.has_focus(),"real tray Close restores Explore focus")
+
+func phone_escape() -> void:
+	for pressed in [true,false]:
+		var esc:=InputEventKey.new(); esc.keycode=KEY_ESCAPE; esc.pressed=pressed; Input.parse_input_event(esc)
+		await process_frame
+	for f in range(5): await process_frame
+
+func phone_accept(control: Button) -> void:
+	require(control.is_visible_in_tree(),"phone acceptance targets a visible native button")
+	control.grab_focus()
+	var down := InputEventAction.new(); down.action="ui_accept"; down.pressed=true; Input.parse_input_event(down)
+	await process_frame
+	var up := InputEventAction.new(); up.action="ui_accept"; up.pressed=false; Input.parse_input_event(up)
+	for f in range(6): await process_frame
+
+func verify_phone_disclosure(study: Node, startup_snapshot: String, full: String) -> void:
+	require(study.is_test_suite_mode(),"phone UI checks require isolated formal profile")
+	var startup: Dictionary=JSON.parse_string(startup_snapshot)
+	print("PHONE_STARTUP_FIXTURE block_opened=",startup.get("block_opened")," visited=",startup.get("visited_neighbors")," layout=",startup.get("gathering_layout"))
+	# The separate native test save can contain prior test progress at startup.
+	# Explicitly create a fresh isolated fixture; never infer freshness from its name.
+	study.reset_mural_state_to_defaults("fresh")
+	var fresh: String=JSON.stringify(study.build_save_envelope())
+	require(study.visited_neighbors.is_empty() and not study.block_opened and String(study.current_objective().id)=="meet","phone fixture starts with no earned visits or opened block")
+	for width in [320,390]:
+		for height in [568,639,640,664,667]:
+			study.apply_save_envelope(fresh); study.hide_story_card(); study.startup_story_pending=false; study.last_story_chapter=int(study.current_chapter().num)
+			study.end_conversation(); root.size=Vector2i(width,height)
+			for f in range(8): await process_frame
+			study.talk_with_neighbor(0)
+			for f in range(8): await process_frame
+			require(study.phone_talking() and not study.controls.is_visible_in_tree(),"phone talk hides duplicate walking grid")
+			require(study.block_detail_label.get_theme_font_size("normal_font_size")==16 and study.block_detail_label.size.y>=96,"phone talk gives16px text at least96px reader")
+			require(not study.phone_actions_open and study.conv_rows[0].visible,"talk starts with three original primary callbacks")
+			var save: String=JSON.stringify(study.build_save_envelope())
+			await phone_accept(study.conv_next_btn)
+			require(study.phone_actions_open and study.conv_rows[1].visible,"real Next Step discloses relevant actions")
+			var esc := InputEventKey.new(); esc.keycode=KEY_ESCAPE; esc.pressed=true; Input.parse_input_event(esc)
+			for f in range(6): await process_frame
+			require(not study.phone_actions_open and study.phone_talking() and study.conv_next_btn.has_focus(),"first Escape dismisses choices and restores focus without Goodbye")
+			await phone_accept(study.conv_next_btn)
+			require(study.conv_action_ids[2]=="hub" and study.conv_action_btns[2].is_visible_in_tree(),"fresh Bea discloses original All Actions")
+			await phone_accept(study.conv_action_btns[2])
+			require(study.block_panel_mode=="hub" and not study.phone_actions_open and not study.phone_explore_control.is_visible_in_tree(),"talk-to-hub clears disclosure and prevents covering tray")
+			await phone_escape()
+			require(not study.block_panel.visible,"single Escape reaches original hub Goodbye after talk disclosure")
+			study.show_conversation(0)
+			for f in range(6): await process_frame
+			await phone_accept(study.conv_bye_btn)
+			require(study.controls.is_visible_in_tree() and study.controls.get_child_count()==3 and not study.phone_tray.visible,"Goodbye returns to three walking primaries")
+			for b in study.controls.get_children():
+				require(b.get_global_rect().size.x>=44 and b.get_global_rect().size.y>=44 and Rect2(Vector2.ZERO,Vector2(width,height)).encloses(b.get_global_rect()),"all phone primaries44px and fully visible")
+			await phone_accept(study.phone_explore_control)
+			require(study.phone_tray.visible and study.map_control.is_visible_in_tree(),"real Explore opens original map controls")
+			require(study.is_screen_point_in_ui(study.phone_tray.get_global_rect().get_center()) and study.play_area_rect().end.y<=study.phone_tray.get_global_rect().position.y,"tray owns hit-testing and scene clearance")
+			study.frame_player_for_walking(); var z: float=study.view_size
+			await phone_accept(study.zoom_in_control)
+			require(study.view_size<z and study.phone_tray.visible,"original Zoom remains usable through Explore")
+			await phone_accept(study.map_control)
+			require(not study.phone_tray.visible and study.next_hint_control.text=="Back to Me","overview offers direct primary return while keeping Explore")
+			await phone_accept(study.next_hint_control)
+			require(study.following_player and not study.in_overview and not study.in_wide_overview,"Back to Me returns through original framing")
+			require(JSON.stringify(study.build_save_envelope())==save,"phone disclosure and framing do not alter saved accomplishment")
+			await phone_accept(study.phone_explore_control)
+			verify_phone_tray_targets(study,Vector2i(width,height))
+			await phone_accept(study.phone_all_actions_control)
+			require(study.block_panel_mode=="hub" and study.block_panel.visible and not study.phone_tray.visible,"real tray All Actions opens original hub")
+			await phone_escape()
+			require(not study.block_panel.visible,"one Escape closes hub entered from Explore")
+
+	# Isolated valid saved-state fixtures exercise required choices without a disclosure tap.
+	for size in [Vector2i(320,568),Vector2i(320,667),Vector2i(390,568),Vector2i(390,667)]:
+		root.size=size
+		var layout: Dictionary=JSON.parse_string(fresh)
+		layout.visited_neighbors=[]
+		for n in study.neighbors: layout.visited_neighbors.append(String(n.id))
+		layout.gathering_layout=""
+		require(study.apply_save_envelope(JSON.stringify(layout)),"derived layout fixture is a valid actual save envelope"); study.hide_story_card(); study.last_story_chapter=int(study.current_chapter().num)
+		study.show_conversation(0)
+		for f in range(8): await process_frame
+		print("PHONE_LAYOUT_FIXTURE ",size," objective=",study.current_objective().id," met=",study.visited_neighbors.size()," opened=",study.block_opened," layout=",study.gathering_layout," ids=",study.conv_action_ids)
+		require(not study.phone_actions_open and study.conv_action_ids[0]=="layout_table" and study.conv_action_ids[1]=="layout_floor" and study.conv_action_btns[0].is_visible_in_tree() and study.conv_action_btns[1].is_visible_in_tree(),"both required layout choices stay inline before NextStep")
+		require(study.block_panel.get_global_rect().position.y>=study.header_panel.get_global_rect().end.y and panel_clears_walking(study,study.block_panel),"inline layout reader clears header and viewport edge")
+		await phone_accept(study.conv_action_btns[0])
+		require(study.gathering_layout=="table","actual inline Long Table retains its original progress action")
+		var loans: Dictionary=JSON.parse_string(full)
+		loans.epilogue.packing=true; loans.epilogue.returned=[]
+		study.apply_save_envelope(JSON.stringify(loans)); study.hide_story_card(); study.last_story_chapter=int(study.current_chapter().num)
+		study.show_conversation(study.neighbor_index_for_id("thanh"))
+		for f in range(8): await process_frame
+		require(not study.phone_actions_open and String(study.conv_action_ids[0]).begins_with("return_owner:") and study.conv_action_btns[0].is_visible_in_tree(),"required owner return stays inline before NextStep")
+		require(study.block_panel.get_global_rect().position.y>=study.header_panel.get_global_rect().end.y and panel_clears_walking(study,study.block_panel),"owner-return reader and action clear header and viewport edge")
+	study.end_conversation(); study.apply_save_envelope(full); study.hide_story_card(); study.last_story_chapter=int(study.current_chapter().num)
+	for size in [Vector2i(559,360),Vector2i(599,360),Vector2i(1100,760)]:
+		root.size=size
+		for f in range(8): await process_frame
+		require(not study.uses_phone_disclosure() and study.controls.get_child_count()==6 and not study.phone_explore_control.is_visible_in_tree(),"legacy landscape/desktop restore all original control parents")
+	for btn in study.phone_original_walk_buttons: require(btn.get_theme_font_size("font_size")==19,"first completed desktop layout restores canonical original font")
+	print("PHONE_DISCLOSURE_PASS:inlineLayoutOwner/AllActionsEsc/10portraitsizes/16px96pxreader/realui_accept/talkchoicesEsc/3primaries/Explore/Zoom/Map/BackToMe/save/legacy")

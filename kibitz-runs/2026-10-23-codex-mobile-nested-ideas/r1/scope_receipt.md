@@ -1,0 +1,1 @@
+Creator explicitly requires PRE-CODE r1 only for this new nested-controls episode. driver=codex; only=claude; requested model=claude-opus-5-5; effort=high. r2/r3/r4 not run in this IDEAS scope. Separate implementation r3/all5 required after code. CLI reads source and writes only its report; Codex alone edits/judges. No deployment.

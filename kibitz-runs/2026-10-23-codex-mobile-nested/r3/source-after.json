@@ -1,0 +1,12 @@
+{
+  "godot/main.gd": "ef4ebca094b3bd278af80099d90e8a598e162f713a73925a1d6c7477f9cb89ba",
+  "godot/tests/study_test.gd": "48daf9149f2a8c5eb7048890a38ac50add9d1f9f23505e5716bfc07dd017fdae",
+  "tests/godot-browser.mjs": "0e6af308232964f4b20ff186e5f3ea9dcde35456957b4c9c6a601531efd8bfe3",
+  "tests/godot-data.test.mjs": "932dfa259e008cd99650462570d6147aabcdd7d2d04fa85b20884ee518239329",
+  "godot/rhythm_circle.gd": "3cdda6f228db7ebb8efcc0f397cfa425a8ce9affef934f54ef0189b2f41d62f1",
+  "godot/power_story.gd": "0f1e77801efdc979146321df9edb9ca17076004fed37e7d61c4ebd8ae3798e51",
+  "godot/dog_story.gd": "7ce9d5e459c772c6a2824b5af88cb7a26405a34718768b5a10b60510fd2e6db2",
+  "godot/lantern_procession.gd": "3d067733a757e580794dc3dbefd2d8331c328cdb79dd2481e52d7f6d00f20138",
+  "godot/voting_story.gd": "32a9a7975f7a1837ec1de5742ff1477370e9c4b87fbef39d0fb4ed08b9ab2522",
+  "docs/MOBILE_UI_BRIEF.md": "e79c51fbc7d79cb1e9c6223b572c4b98b8ca2b546fe7ed812d5ce30992720444"
+}

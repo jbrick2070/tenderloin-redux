@@ -1,0 +1,21 @@
+agent=claude
+quota_check=enabled
+thresholds=50,70,90
+usage_percent=unknown
+
+[status commands]
+$ claude.EXE auth status
+rc=0
+STDOUT:
+{
+  "loggedIn": true,
+  "authMethod": "claude.ai",
+  "apiProvider": "firstParty",
+  "analyticsDisabled": false,
+  "projectsDirectory": "C:\\Users\\jeffr\\.claude\\projects",
+  "configDirectory": "C:\\Users\\jeffr\\.claude",
+[account identity redacted]
+[account identity redacted]
+[account identity redacted]
+  "subscriptionType": "max"
+}

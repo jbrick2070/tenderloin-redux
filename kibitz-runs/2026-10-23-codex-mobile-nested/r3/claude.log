@@ -1,0 +1,12 @@
+STDOUT:
+I wrote the review to `kibitz-runs/2026-10-23-codex-mobile-nested/r3/claude.md`. My verdict is **no, not build-ready yet**: the existing native test suite will fail on this candidate, and three runtime defects need fixing first. Each fix is small. Everything came from reading the source; I ran no tests or browser, as instructed.
+
+**Runtime defects:**
+- **Escape gets swallowed after leaving talk mode.** Opening the steps and then choosing the "All Actions" conversation action switches to the hub, but `phone_actions_open` stays true. The first Escape then just moves focus to Explore instead of closing the hub. The same stale flag can beat a story card's Escape (`main.gd:14465`, `6648-6652`, `6814-6818`).
+- **The Explore tray can open over the hub, Celeste's mural panel or Rook's music panel.** Those panels are positioned against the controls row, not the tray, so the tray covers their bottom edge and takes their taps (`main.gd:6819`, `6973`, `6982`).
+- **The tap-through guard doesn't consume what it claims to.** Its release branch clears the latch and lets the event through, so the emulated mouse release always reaches the UI. In practice it only eats mouse-motion events during the hold. A passing browser check at line 1396 therefore doesn't show the guard works. I recommended a consumed-event counter and one run with the guard disabled as a negative control (`main.gd:14458-14464`).
+- **A layout ordering issue on rotating back to desktop.** Map, Find Me and Zoom come back with the phone font size (14 instead of 19). They only correct themselves on the next frame, as a side effect of clearing the layout signature (`main.gd:6905` vs `6943`).
+
+**Native test adaptations needed:** existing checks in `study_test.gd` at 2468-2481, 2457, 2772/3689, 2756-2760, 3379, 3714-3719 and 3338 will fail or silently measure hidden buttons at portrait sizes under 520. Each has a concrete adaptation in the review that keeps the check at full strength and only taps visible controls. A further group of play-area checks is at risk and needs an actual run to confirm.
+
+The review also has eight should-fix items, a few optional ones, and three cut candidates. One example is "Hide Steps" re-triggering the What's Next hint.
