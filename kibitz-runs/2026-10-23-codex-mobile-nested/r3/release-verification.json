@@ -1,0 +1,329 @@
+{
+  "status": "published_and_live_android_emulation_verified",
+  "recorded_utc": "2026-10-24T05:07:01.771916+00:00",
+  "release_head": "cfc56caaa0a1fef807b99181b5092efb30d2d7e8",
+  "url": "https://jbrick2070.github.io/tenderloin-redux/",
+  "workflow": {
+    "id": 40064471210,
+    "head_sha": "cfc56caaa0a1fef807b99181b5092efb30d2d7e8",
+    "status": "completed",
+    "conclusion": "success",
+    "html_url": "https://github.com/jbrick2070/tenderloin-redux/actions/runs/40064471210",
+    "created_at": "2026-10-24T04:59:09Z",
+    "updated_at": "2026-10-24T05:03:03Z",
+    "jobs": [
+      {
+        "id": 120784710776,
+        "name": "build",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 40064471210,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Checkout repository",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Setup Node.js",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "Cache Godot 4.7.2 Linux & Web export templates",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Install Godot 4.7.2 & Web export templates",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 5
+          },
+          {
+            "name": "Verify syntax and run unit/data tests",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Export Godot 4.7.2 3D WebAssembly build",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 7
+          },
+          {
+            "name": "Assemble GitHub Pages site (_site)",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 8
+          },
+          {
+            "name": "Configure GitHub Pages",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Upload GitHub Pages artifact",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 10
+          },
+          {
+            "name": "Post Cache Godot 4.7.2 Linux & Web export templates",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18
+          },
+          {
+            "name": "Post Setup Node.js",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19
+          },
+          {
+            "name": "Post Checkout repository",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 20
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 21
+          }
+        ]
+      },
+      {
+        "id": 120785402608,
+        "name": "deploy",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 40064471210,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Deploy to GitHub Pages",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          }
+        ]
+      }
+    ]
+  },
+  "execution": {
+    "rc": 0,
+    "started_utc": "2026-10-24T05:04:22.935783+00:00",
+    "completed_utc": "2026-10-24T05:05:40.206893+00:00",
+    "seconds": 77.28099999995902,
+    "source_and_local_pack_unchanged": true,
+    "script_sha256": "c5c49a515f80982f3476495610c2839ff0c434990c3b1875b0942663794f8525"
+  },
+  "live": {
+    "status": "live_android_smoke_pass",
+    "url": "https://jbrick2070.github.io/tenderloin-redux/",
+    "releaseHead": "cfc56caaa0a1fef807b99181b5092efb30d2d7e8",
+    "workflowRun": 40064471210,
+    "recorded_utc": "2026-10-24T05:05:39.961Z",
+    "scope": "Desktop Chrome Pixel7 Android emulation; three fresh real-touch Start/Bea/control journeys and two fresh actual two-contact pinch journeys. Not physical Android or full live progression.",
+    "androidIdentities": [
+      {
+        "size": {
+          "width": 412,
+          "height": 839
+        },
+        "ua": "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.7922.34 Mobile Safari/537.36",
+        "touches": 1,
+        "dpr": 2.625
+      },
+      {
+        "size": {
+          "width": 390,
+          "height": 667
+        },
+        "ua": "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.7922.34 Mobile Safari/537.36",
+        "touches": 1,
+        "dpr": 2.625
+      },
+      {
+        "size": {
+          "width": 320,
+          "height": 667
+        },
+        "ua": "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.7922.34 Mobile Safari/537.36",
+        "touches": 1,
+        "dpr": 2.625
+      }
+    ],
+    "phoneDisclosureChecks": [
+      {
+        "size": {
+          "width": 412,
+          "height": 839
+        },
+        "actualTouchStart": true,
+        "actualTouchBea": true,
+        "freshBea": true,
+        "readerHeight": 96,
+        "actualFingerControls": true,
+        "legacyUnchanged": true
+      },
+      {
+        "size": {
+          "width": 390,
+          "height": 667
+        },
+        "actualTouchStart": true,
+        "actualTouchBea": true,
+        "freshBea": true,
+        "readerHeight": 96,
+        "actualFingerControls": true,
+        "legacyUnchanged": true
+      },
+      {
+        "size": {
+          "width": 320,
+          "height": 667
+        },
+        "actualTouchStart": true,
+        "actualTouchBea": true,
+        "freshBea": true,
+        "readerHeight": 96,
+        "actualFingerControls": true,
+        "legacyUnchanged": true
+      }
+    ],
+    "pinchChecks": [
+      {
+        "size": {
+          "width": 390,
+          "height": 667
+        },
+        "actualTouchStart": true,
+        "actualTwoTouch": true,
+        "before": 45,
+        "spread": 24,
+        "closed": 96,
+        "manual": 48,
+        "playerDelta": 0,
+        "backToMe": 45,
+        "musicToggleRestored": true,
+        "saveUnchanged": true,
+        "legacyUnchanged": true
+      },
+      {
+        "size": {
+          "width": 320,
+          "height": 667
+        },
+        "actualTouchStart": true,
+        "actualTwoTouch": true,
+        "before": 45,
+        "spread": 24,
+        "closed": 96,
+        "manual": 48,
+        "playerDelta": 0,
+        "backToMe": 45,
+        "musicToggleRestored": true,
+        "saveUnchanged": true,
+        "legacyUnchanged": true
+      }
+    ],
+    "loadedAssets": [
+      {
+        "url": "https://jbrick2070.github.io/tenderloin-redux/index.pck",
+        "status": 200,
+        "bytes": 1959092,
+        "sha256": "f4cbbc90fbea57fde5d1119deb103e6026a0f6be6c7e320e690f30dd67ff8dd9",
+        "lastModified": "Sat, 24 Oct 2026 05:02:59 GMT"
+      },
+      {
+        "url": "https://jbrick2070.github.io/tenderloin-redux/index.pck",
+        "status": 200,
+        "bytes": 1959092,
+        "sha256": "f4cbbc90fbea57fde5d1119deb103e6026a0f6be6c7e320e690f30dd67ff8dd9",
+        "lastModified": "Sat, 24 Oct 2026 05:02:59 GMT"
+      },
+      {
+        "url": "https://jbrick2070.github.io/tenderloin-redux/index.pck",
+        "status": 200,
+        "bytes": 1959092,
+        "sha256": "f4cbbc90fbea57fde5d1119deb103e6026a0f6be6c7e320e690f30dd67ff8dd9",
+        "lastModified": "Sat, 24 Oct 2026 05:02:59 GMT"
+      },
+      {
+        "url": "https://jbrick2070.github.io/tenderloin-redux/index.pck",
+        "status": 200,
+        "bytes": 1959092,
+        "sha256": "f4cbbc90fbea57fde5d1119deb103e6026a0f6be6c7e320e690f30dd67ff8dd9",
+        "lastModified": "Sat, 24 Oct 2026 05:02:59 GMT"
+      },
+      {
+        "url": "https://jbrick2070.github.io/tenderloin-redux/index.pck",
+        "status": 200,
+        "bytes": 1959092,
+        "sha256": "f4cbbc90fbea57fde5d1119deb103e6026a0f6be6c7e320e690f30dd67ff8dd9",
+        "lastModified": "Sat, 24 Oct 2026 05:02:59 GMT"
+      }
+    ],
+    "errors": [],
+    "consoleErrors": [],
+    "external": []
+  },
+  "local_checkpoint_manifest": "kibitz-runs/2026-10-23-codex-mobile-nested/r3/verification.json",
+  "local_checkpoint_manifest_sha256": "58c553c5f37dea7e7d8b0bc46164f1cd2330d14770f7ba9bf2e2f3a8e6dcd1d9",
+  "files_sha256": {
+    "artifacts/mobile-nested-live1/browser.log": "c14f1fd62ebef2d389155bdcfeb281e167b55f17f690b7a1fc6c42370b6e741a",
+    "artifacts/mobile-nested-live1/deployment.json": "8ef306d917bbb9ae9debf19664972ac7f3680fd541c2ade2e9220846ffe1fb16",
+    "artifacts/mobile-nested-live1/execution.json": "a35fc17fb5eeb02d43bf761821331d099765169d77da8ec68f1bce04a25fe78d",
+    "artifacts/mobile-nested-live1/phone-disclosure-320x667.json": "d050b5378208b9d40c1a3ae76ceaf3cac7c1e4d9d18454b9bd1f2ef1ee5ae86b",
+    "artifacts/mobile-nested-live1/phone-disclosure-390x667.json": "27538c304906c12b1f463d02163f40366a47c90d4bb6afb720ad1af7e039164c",
+    "artifacts/mobile-nested-live1/phone-disclosure-412x839.json": "a0e67c0c5654da6ac824bb6e14799811ac5ba6898e85c8519e1fd0079e386b0d",
+    "artifacts/mobile-nested-live1/phone-talk-320x667.png": "92d6fd8e7a420ec0fc9756c94a2b9bb5e72b40315a6bccac5c081ac1bbd71616",
+    "artifacts/mobile-nested-live1/phone-talk-390x667.png": "16534268bbc22e1464cecc866b65069aaee2b2f7d3e20139b27f7264e94f1da7",
+    "artifacts/mobile-nested-live1/phone-talk-412x839.png": "c5559587496f4173bce656341b8b1fe1c74582ae9817d6b85df5b2f6b0e1425a",
+    "artifacts/mobile-nested-live1/pinch-320-before.png": "405f96170680f6465fdfc3f4840996fd3e9b3c37f8c7c825db0c42d1f0b31a2d",
+    "artifacts/mobile-nested-live1/pinch-320-returned.png": "1713a26fb7182bf637ee7a59071d690068c2f4fc5cab3e04176850c6b44ebc59",
+    "artifacts/mobile-nested-live1/pinch-390-before.png": "edb6882d8448d27e44bdd96f854af980171e11b70e4f59f1a2d96da98fd1f152",
+    "artifacts/mobile-nested-live1/pinch-390-returned.png": "7e14e7b761b067130d4c3f90fe29b3268683269868c490f248652c36133d89a9",
+    "artifacts/mobile-nested-live1/result.json": "89d922a3a5017907850d34e0876dc52b870382e493ea627c1442e799956d2273",
+    "artifacts/mobile-nested-live1.mjs": "c5c49a515f80982f3476495610c2839ff0c434990c3b1875b0942663794f8525",
+    "artifacts/mobile-nested-live1-run.py": "39a8a4fae374e4149ff55ee787d042285d0c3c35fe66003cb9883c94bbf6cb94",
+    "session_handoff.md": "d0a1fb3cf29cc9ed6adfec50aaa626c27b3715022c89820377b6fab433e9836a",
+    "docs/BUILD_STATUS.md": "72a84f190cc436b96e76fa430ae40f6ae985233fbcd2cf8eb7bf7263c8a16220",
+    "docs/PHONE_UI_RELEASE.md": "b13719bf88e8b4ba57b5cc629d97cc6b53601910ebce5e0067bac26a1d96d37e",
+    "kibitz-runs/2026-10-23-codex-mobile-nested/r3/final.md": "ced19737573c5478665998711237db88913cb900abe0f2110f47e9ed4e80d870"
+  },
+  "limits": [
+    "Desktop Chrome Android emulation, not physical Android/iPhone",
+    "Focused live smoke, not full live progression",
+    "No human music-quality/full screen-reader/field acceptance",
+    "Original exact r1/r3 complete; later fixes not independently re-reviewed by that reviewer",
+    "No native preincident save recovery"
+  ]
+}
