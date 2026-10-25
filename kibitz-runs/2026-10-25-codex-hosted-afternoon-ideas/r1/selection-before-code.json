@@ -1,0 +1,20 @@
+{
+  "utc": "2026-10-25T17:22:24.461729+00:00",
+  "before_implementation": true,
+  "baseline": "8f6a73d0874f108dd95bde9fca188b68388deb25",
+  "selected": "MergedA/C: read-only Hosted results on existing ProgrammeStudio via completed hub/conversation; F6 future Draft preserved; phase-derived Bea->Listening entry focus only",
+  "rejected": [
+    "B duplicate resident-response walk",
+    "C separate panel",
+    "new saved flags/rehosting/resetting copies",
+    "automatic civic progression or stacked done Follow"
+  ],
+  "judgment_sha256": "e6fd167ca36e4f7f352c76ef001e2ce7d54e235695ba1c92778a1c877f1dbb10",
+  "prior_art_sha256": "50447767957f615f5639fd6f60740b95eda1425f68f2afcfe7d2fcbf56df3cb5",
+  "source_before_code": {
+    "godot/main.gd": "837fc1b840d2966182ec2929bd95f51a5f244878ba9b06087bfd240439662b45",
+    "godot/programme_studio.gd": "b9e2200905730fee77e785946e45f05555bd1becd8de76ade20a37ecd6667e1e",
+    "godot/tests/study_test.gd": "87e1edab6b64ad5432eead874dbb334a464145daff516e27f1ceb6af215e9059",
+    "tests/godot-browser.mjs": "d371a2b6e21b959a5f3a27461ef64e784562eed77affbf8a1aa753663b07e9c1"
+  }
+}

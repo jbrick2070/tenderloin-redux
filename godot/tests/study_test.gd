@@ -3,8 +3,18 @@ var failed := false
 var pinch_test_contacts: Dictionary = {}
 
 func _initialize() -> void:
-	if not OS.get_cmdline_user_args().has("--test-suite"):
-		push_error("study_test.gd requires --test-suite BEFORE game instantiation; use the isolated npm godot:test launcher")
+	var args := OS.get_cmdline_user_args()
+	var save_arg := ""
+	var settings_arg := ""
+	for arg in args:
+		if arg.begins_with("--godot-save-path="): save_arg=arg.trim_prefix("--godot-save-path=")
+		if arg.begins_with("--godot-settings-path="): settings_arg=arg.trim_prefix("--godot-settings-path=")
+	var save_prefix := "user://godot_block_save_test_"
+	var settings_prefix := "user://godot_block_settings_test_"
+	var nonce := save_arg.trim_prefix(save_prefix).trim_suffix(".json")
+	var safe: bool=save_arg.begins_with(save_prefix) and settings_arg==settings_prefix+nonce+".json" and save_arg.ends_with(".json") and nonce.split("_").size()==2 and nonce.replace("_","").is_valid_int()
+	if not args.has("--test-suite") or not safe or args.find("--godot-save-path="+save_arg)>args.find("--test-suite") or args.find("--godot-settings-path="+settings_arg)>args.find("--test-suite"):
+		push_error("study_test.gd requires unique explicit save/settings overrides AND --test-suite BEFORE scene creation; use npm godot:test")
 		quit(1)
 		return
 	call_deferred("run")
@@ -47,6 +57,14 @@ func run() -> void:
 		quit(1)
 		return
 	root.add_child(study)
+	var expected_save := ""
+	var expected_settings := ""
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--godot-save-path="): expected_save=arg.trim_prefix("--godot-save-path=")
+		if arg.begins_with("--godot-settings-path="): expected_settings=arg.trim_prefix("--godot-settings-path=")
+	require(study.save_path==expected_save and study.settings_path==expected_settings,"formal suite uses exact explicit unique test save AND settings paths before test mutations")
+	if failed: quit(1); return
+	print("GODOT_NATIVE_ISOLATION_PASS:",study.save_path," ",study.settings_path)
 	await process_frame
 	await process_frame
 	await process_frame
@@ -356,7 +374,6 @@ func run() -> void:
 		require(study.building_containing_point(n_xz) == "", "neighbor %s outside all building footprints" % study.neighbors[i].name)
 		require(study.min_wall_distance(n_xz) >= 2.35, "neighbor %s has sidewalk clearance >= 2.35m" % study.neighbors[i].name)
 		require(study.is_walkable_point(n_xz), "neighbor %s position is walkable" % study.neighbors[i].name)
-	require(study.save_path == study.GODOT_TEST_SAVE_PATH, "study_test uses isolated test save path")
 	var m_xz: Vector2 = study.mural_xz()
 	require(study.mural_node != null and study.mural_canvas_mesh != null, "3D Portable Mural Board node and canvas mesh exist")
 	require(study.mural_node.get_node_or_null("StaticBody3D") != null, "Portable Mural Board has StaticBody3D collision")
@@ -3285,6 +3302,7 @@ func run() -> void:
 	await verify_bea_invitation(study,saved_m4_json)
 	await verify_civic_listening(study,saved_m4_json)
 	await verify_programme_studio(study,saved_m4_json)
+	await preload("res://tests/hosted_afternoon_checks.gd").verify(self,study,saved_m4_json,true)
 	await verify_shared_panel(study,saved_m4_json)
 	await verify_loan_homecoming(study,saved_m4_json)
 	await verify_power_story(study,saved_m4_json)

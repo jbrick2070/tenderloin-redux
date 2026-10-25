@@ -1,0 +1,89 @@
+{
+  "utc": "2026-10-25T18:49:01.527995+00:00",
+  "short_gates": {
+    "native": {
+      "rc": 0,
+      "seconds": 254.3791859149933,
+      "finished_utc": "2026-10-25T18:40:42.188020+00:00",
+      "sources_unchanged": true,
+      "native_asfound_unchanged": true,
+      "tokens": {
+        "BEA_INVITATION_PASS": true,
+        "CIVIC_LISTENING_PASS": true,
+        "COMMUNITY_INVITATION_PASS": true,
+        "DOG_STORY_PASS": true,
+        "GODOT_NATIVE_ISOLATION_PASS": true,
+        "GODOT_STUDY_PASS": true,
+        "GUIDED_WALK_PASS": true,
+        "HOSTED_AFTERNOON_PASS:FORMAL": true,
+        "LANTERN_PROCESSION_PASS": true,
+        "LARKIN_STORY_PASS": true,
+        "LOAN_HOMECOMING_PASS": true,
+        "MAP_PINCH_PASS": true,
+        "PHONE_DISCLOSURE_PASS": true,
+        "POWER_STORY_PASS": true,
+        "PROGRAMME_STUDIO_PASS": true,
+        "QUIET_SEATS_PASS": true,
+        "SHARED_MEAL_PASS": true,
+        "SHARED_PANEL_PASS": true,
+        "SMALL_PASS": true,
+        "STORY_VISITS_PASS": true,
+        "VOTING_STORY_PASS": true
+      },
+      "clean": true,
+      "native_isolation": {
+        "runId": "1792953388147_23936",
+        "save": "user://godot_block_save_test_1792953388147_23936.json",
+        "settings": "user://godot_block_settings_test_1792953388147_23936.json",
+        "args": [
+          "--headless",
+          "--path",
+          "godot",
+          "--script",
+          "res://tests/study_test.gd",
+          "--",
+          "--godot-save-path=user://godot_block_save_test_1792953388147_23936.json",
+          "--godot-settings-path=user://godot_block_settings_test_1792953388147_23936.json",
+          "--test-suite"
+        ]
+      }
+    },
+    "export": {
+      "rc": 0,
+      "seconds": 3.1523215770721436,
+      "finished_utc": "2026-10-25T18:40:45.382499+00:00",
+      "sources_unchanged": true,
+      "native_asfound_unchanged": true
+    },
+    "check": {
+      "rc": 0,
+      "seconds": 2.0039279460906982,
+      "finished_utc": "2026-10-25T18:40:47.436531+00:00",
+      "sources_unchanged": true,
+      "native_asfound_unchanged": true
+    },
+    "node": {
+      "rc": 0,
+      "seconds": 6.024251699447632,
+      "finished_utc": "2026-10-25T18:40:53.505288+00:00",
+      "sources_unchanged": true,
+      "native_asfound_unchanged": true,
+      "tests": 106
+    }
+  },
+  "acceptance": "CURRENT four short gates only; full browser pending, not complete all-five",
+  "frozen_sources_plus_pck": 144,
+  "inputs_unchanged": true,
+  "logs": {
+    "native": "0c0e3f52510f1c85b0321cdb6181185d0f7135e1e016caad5d0a59184b6e00c6",
+    "export": "682cd106209ce6e297dc3330077c52f641e850bd24df095b74753f5a55565281",
+    "check": "6d58c157214fca32ad559caabf062a06cbf33e88e4e7bfe683933332c3b5bc5d",
+    "node": "c5e73132d6e96c2a38fd2348b62304177950e26c055683dcaf262cd8a3dad6fd"
+  },
+  "native_asfound": {
+    "bytes": 1272,
+    "sha256": "2b7d1e849b4820a1d6c49602930ac3e0b104a8aa132375837038bfef80f2e0e1",
+    "verified_unchanged": true
+  },
+  "later_driver_fixes_independently_rereviewed": false
+}

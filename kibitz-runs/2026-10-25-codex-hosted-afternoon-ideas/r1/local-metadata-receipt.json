@@ -1,0 +1,12 @@
+{
+  "claude.log": {
+    "sha256": "a10a93c65f50153e0ca3962d3e02f1ad274f966a586c47d686163c75dfe4934e",
+    "bytes": 2174,
+    "retained_local": "artifacts\\hosted-afternoon-20261025\\retained-local-review-metadata\\r1-claude.log"
+  },
+  "profiles_used.txt": {
+    "sha256": "a9a11813438ba2fc0c6efd97f13b88bf41af82044d04182d865bdd38eaa32423",
+    "bytes": 8,
+    "retained_local": "artifacts\\hosted-afternoon-20261025\\retained-local-review-metadata\\r1-profiles_used.txt"
+  }
+}

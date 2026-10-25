@@ -1,0 +1,1 @@
+Preflight executed by installed harness. Original retained locally by SHA/size receipt; raw account/quota metadata excluded from staged reports. Requested/selected Claude Opus5.5/high verified; exact allowance percentage/provider runtime identity unknown. No credit purchase or auth/quota retry.

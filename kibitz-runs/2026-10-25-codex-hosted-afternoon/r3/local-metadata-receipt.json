@@ -1,0 +1,17 @@
+{
+  "claude.log": {
+    "sha256": "dc4e186b3d8cc5b068e5d5569cc8e0dc4f4ae0f283fc12c19dbb9561736e4a77",
+    "bytes": 2677,
+    "retained_local": "artifacts\\hosted-afternoon-20261025\\retained-local-review-metadata\\r3-claude.log"
+  },
+  "profiles_used.txt": {
+    "sha256": "a9a11813438ba2fc0c6efd97f13b88bf41af82044d04182d865bdd38eaa32423",
+    "bytes": 8,
+    "retained_local": "artifacts\\hosted-afternoon-20261025\\retained-local-review-metadata\\r3-profiles_used.txt"
+  },
+  "claude_quota_status.txt": {
+    "sha256": "8837273a61838ba8faef568a69dfead62d1566b2be47f9636a4097bdcbf7023c",
+    "bytes": 519,
+    "retained_local": "artifacts\\hosted-afternoon-20261025\\retained-local-review-metadata\\r3-claude_quota_status.txt"
+  }
+}

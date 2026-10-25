@@ -10002,7 +10002,8 @@ func cycle_programme_or_hosting_choice() -> String:
 	return "noop"
 
 func open_programme_or_host() -> void:
-	if hosting_order.is_empty() or is_hosting_done(): programme_studio.open_studio(is_hosting_ready_to_start())
+	if is_hosting_done(): programme_studio.open_studio(false,true)
+	elif hosting_order.is_empty(): programme_studio.open_studio(is_hosting_ready_to_start())
 	elif current_hosting_activity()=="art": shared_panel.open_panel()
 	else: advance_programme_and_hosting_step()
 

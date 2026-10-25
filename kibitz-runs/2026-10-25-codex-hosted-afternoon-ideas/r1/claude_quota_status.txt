@@ -1,0 +1,1 @@
+Required harness auth preflight completed. Exact requested/selected claude-opus-5-5/high verified from parameter receipts. Original private status retained in ignored artifacts. Backend runtime identity and allowance percentage unknown; no substitute/purchase/retry.

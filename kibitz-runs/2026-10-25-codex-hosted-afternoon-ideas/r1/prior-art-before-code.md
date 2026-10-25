@@ -1,0 +1,3 @@
+# Prior art checked before design selection
+
+Read October25,2026: Thunder Lotus official support, Spiritfarer, https://thunderlotus.zendesk.com/hc/en-us/articles/28692897576468-I-can-t-find-a-resource-that-I-need-to-advance . The creator describes exploring and fulfilling residents' requests as a way to reach later areas/resources. This supports familiar earned progression and optional exploration as prior art, not novelty. It does not establish a hosted-results scrapbook or exact interface mechanics. No claim that this bounded Tenderloin slice is unique, no copied prose/art/audio and no endorsement. Exact new mechanics remain for scoped r1 and driver selection. This check reuses a relevant primary source and makes no unsupported market-wide originality assertion.

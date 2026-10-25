@@ -1,6 +1,7 @@
 extends Control
 ## Optional, project-native programme editor. Draft, posted and hosted copies stay separate.
 const IDS := ["stories","beats","art","pause"]
+const Hosted := preload("res://hosted_afternoon.gd")
 const OWNERS := ["Bea","Dez","Celeste","Thanh"]
 const PITCHES := [
 	'“A story can take its time. If we follow the rhythm workshop, leave a quiet interval between it and the circle so we can settle in.”',
@@ -12,8 +13,10 @@ var game: Node
 var top: PanelContainer
 var tray: PanelContainer
 var heading: Label
+var credit: Label
 var reader: RichTextLabel
 var picture: TextureRect
+var actions: GridContainer
 var cards: Array[Button] = []
 var edits: Array[Button] = []
 var primary: Button
@@ -22,6 +25,7 @@ var music: Button
 var back: Button
 var selected := "stories"
 var posted := false
+var hosted_view := false
 var saved_visibility: Dictionary = {}
 var return_focus: Control
 var textures: Dictionary = {}
@@ -47,7 +51,7 @@ func setup(owner_game: Node) -> void:
 	heading.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	heading.add_theme_font_size_override("font_size",18)
 	head.add_child(heading)
-	var credit := Label.new()
+	credit=Label.new()
 	credit.text="Fictional future plan | City/PDDL | OSM/ODbL"
 	credit.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	credit.add_theme_font_size_override("font_size",10)
@@ -79,10 +83,11 @@ func setup(owner_game: Node) -> void:
 	edits.append(button(edit_row,"Add",toggle_card))
 	edits.append(button(edit_row,"Earlier",func(): move_card(-1)))
 	edits.append(button(edit_row,"Later",func(): move_card(1)))
-	var actions := HBoxContainer.new()
+	actions=GridContainer.new()
+	actions.columns=4
 	box.add_child(actions)
 	primary=button(actions,"Post",advance)
-	view=button(actions,"Posted",func(): posted=not posted; refresh(true))
+	view=button(actions,"Posted",toggle_view)
 	music=button(actions,"Music: Off",func(): game.toggle_music_playback(); refresh(false))
 	back=button(actions,"Back",close_studio)
 	top.minimum_size_changed.connect(queue_layout)
@@ -108,7 +113,7 @@ func button(parent: Node, text: String, action: Callable) -> Button:
 	parent.add_child(b)
 	return b
 
-func open_studio(prefer_posted: bool=false) -> bool:
+func open_studio(prefer_posted: bool=false,prefer_hosted: bool=false) -> bool:
 	if visible: return true
 	if not game.block_opened or game.startup_story_pending or game.is_story_card_visible() or not game.current_path.is_empty() or game.is_focused_activity_visible():
 		return refuse("Open the block, finish walking or use Stop Walking, and close any chapter or activity before planning.")
@@ -119,6 +124,7 @@ func open_studio(prefer_posted: bool=false) -> bool:
 	for c in get_parent().get_children():
 		if c is Control and c!=self: saved_visibility[c]=c.visible
 	selected="stories"
+	hosted_view=prefer_hosted and game.is_hosting_done()
 	posted=prefer_posted and game.programme_issue(game.programme_published)==""
 	budget_notice=""
 	show()
@@ -140,7 +146,9 @@ func refuse(message: String) -> bool:
 
 func close_studio(announce: bool=true) -> void:
 	if not visible: return
+	var closing_hosted := hosted_view
 	hide()
+	hosted_view=false
 	for c in saved_visibility:
 		if is_instance_valid(c): c.visible=saved_visibility[c]
 	if not budget_notice.is_empty():
@@ -150,7 +158,10 @@ func close_studio(announce: bool=true) -> void:
 	game.layout_walking_controls_and_hub()
 	if is_instance_valid(return_focus) and return_focus.is_visible_in_tree(): return_focus.grab_focus()
 	elif game.block_programme_btn.is_visible_in_tree(): game.block_programme_btn.grab_focus()
-	if announce: game.announce_a11y_status("Back to the block. "+(budget_notice if not budget_notice.is_empty() else "Draft, posted future plan and running gathering stay separate. Z keeps the quick path."))
+	if announce:
+		var message := "Draft, posted future plan and running gathering stay separate. Z keeps the quick path."
+		if closing_hosted: message="Bea's offer stays with your completed gathering." if Hosted.invitation_available(game) else "Your completed gathering and Listening Hour remain available."
+		game.announce_a11y_status("Back to the block. "+(budget_notice if not budget_notice.is_empty() else message))
 
 func allow_envelope(next: Dictionary) -> bool:
 	# The existing import contract permits oversized optional metadata in memory.
@@ -178,7 +189,7 @@ func allow_draft(order: Array, publishing: bool=false) -> bool:
 	return allow_envelope(next)
 
 func toggle_card() -> void:
-	if not visible or posted: return
+	if not visible or posted or hosted_view: return
 	var next: Array=game.programme_order.duplicate()
 	if next.has(selected): next.erase(selected)
 	else: next.append(selected)
@@ -189,7 +200,7 @@ func toggle_card() -> void:
 	edits[0].grab_focus()
 
 func move_card(direction: int) -> void:
-	if not visible or posted: return
+	if not visible or posted or hosted_view: return
 	var next: Array=game.programme_order.duplicate()
 	var index := next.find(selected)
 	var to := index+(-1 if direction<0 else 1)
@@ -205,6 +216,9 @@ func move_card(direction: int) -> void:
 
 func advance() -> void:
 	if not visible or primary.disabled: return
+	if hosted_view:
+		follow_hosted_invitation()
+		return
 	if game.is_hosting_ready_to_start() and (posted or game.programme_order==game.programme_published):
 		var next: Dictionary=game.build_save_envelope()
 		next.hosting={"order":game.programme_published.duplicate(),"results":[],"draft":game.default_hosting_draft()}
@@ -221,6 +235,32 @@ func advance() -> void:
 		refresh(false)
 		view.grab_focus()
 
+func toggle_view() -> void:
+	if hosted_view:
+		hosted_view=false
+		posted=false
+	else: posted=not posted
+	refresh(true)
+	view.grab_focus()
+
+func follow_hosted_invitation() -> bool:
+	if not visible or not hosted_view or not Hosted.invitation_available(game): return false
+	var chapter: Dictionary=game.current_chapter()
+	var chapter_text: String=game.consume_chapter_announcement(chapter)+" " if int(chapter.num)!=game.last_story_chapter else ""
+	game.last_story_chapter=int(chapter.num)
+	var response: String=Hosted.invitation(game)
+	close_studio(false)
+	game.talk_partner=-1
+	game.hide_speech_bubble()
+	game.show_block_panel(true,true)
+	game.last_panel_dialogue=response
+	game.update_block_ui()
+	game.civic_listening.refresh_entry()
+	game.layout_walking_controls_and_hub()
+	game.civic_listening.entry.grab_focus()
+	game.announce_a11y_status(chapter_text+response+" Listening Hour is focused. Open that button when you are ready; your plan and conversation are unchanged.")
+	return true
+
 func replies(order: Array) -> Array[String]:
 	if game.programme_issue(order)!="": return []
 	var stories_first: bool=order.find("stories")<order.find("beats")
@@ -229,6 +269,11 @@ func replies(order: Array) -> Array[String]:
 	return [bea,dez,'“Our panel is %s. I’ll bring shapes people can arrange together. The programme is something we made together too.”'%["first","second","third","fourth"][order.find("art")],'“The quiet interval is %s. I like seeing a pause treated as part of the afternoon.”'%["first","second","third","fourth"][order.find("pause")]]
 
 func description() -> String:
+	if hosted_view:
+		var text: String=Hosted.detail(game,selected)+"\n"+Hosted.invitation(game)+"\nCopied order: "+order_text(game.hosting_order)+"."
+		if Hosted.invitation_available(game): text+="\nFollow takes you to the Listening Hour button; open it when ready. Keep exploring leaves this offer with your completed gathering."
+		text+="\nPicture: "+hosted_picture_description()+". Draft and Posted remain a pinboard for imagining another afternoon. They do not start a second gathering or change the one you hosted."
+		return text
 	var order: Array=game.programme_published if posted else game.programme_order
 	var lines: Array[String]=[]
 	if not budget_notice.is_empty(): lines.append(budget_notice)
@@ -243,10 +288,24 @@ func description() -> String:
 		var issue: String=game.programme_issue(order)
 		lines.append(issue if issue!="" else "All four proposals have room. Post this draft when you are ready.")
 		lines.append("Draft differs from the posted plan." if order!=game.programme_published else "Draft matches the posted plan.")
-	if not game.hosting_order.is_empty(): lines.append("This is a future plan. Revisions do not rewrite the gathering already started: "+order_text(game.hosting_order)+".")
+	if not game.hosting_order.is_empty():
+		lines.append("This is a future plan. Revisions do not rewrite the gathering already "+("hosted: " if game.is_hosting_done() else "started: ")+order_text(game.hosting_order)+".")
+		if game.is_hosting_done(): lines.append("This pinboard imagines another afternoon; it does not start a second gathering.")
 	else: lines.append("Posting copies the draft. Start Hosting copies that posted order; listening is welcome.")
 	lines.append("Pinboard order: "+order_text(order)+". Original imagined paper, not a real event poster.")
 	return "\n".join(lines)
+
+func hosted_picture_description() -> String:
+	var copy: Dictionary=Hosted.copied(game,selected)
+	if selected=="stories" and copy.valid: return "the copied invitation picture, not a personal story"
+	if selected=="art" and copy.valid: return "the six copied shapes and palette, unchanged by future revisions"
+	return "the copied hosted order"
+
+func hosted_picture() -> Texture2D:
+	var copy: Dictionary=Hosted.copied(game,selected)
+	if selected=="stories" and copy.valid: return game.bea_invitation.texture(String(copy.value))
+	if selected=="art" and copy.valid: return game.shared_panel.texture(copy.value,false)
+	return texture(game.hosting_order)
 
 func order_text(order: Array) -> String:
 	var names: Array[String]=[]
@@ -254,25 +313,32 @@ func order_text(order: Array) -> String:
 	return " -> ".join(names) if not names.is_empty() else "no cards yet"
 
 func refresh(announce: bool) -> void:
-	heading.text="Programme Studio | "+("Posted future plan" if posted else "Draft pinboard")
+	heading.text="Programme Studio | "+("Afternoon hosted" if hosted_view else ("Posted future plan" if posted else "Draft pinboard"))
+	credit.text="Fictional hosted gathering | City/PDDL | OSM/ODbL" if hosted_view else "Fictional future plan | City/PDDL | OSM/ODbL"
+	reader.custom_minimum_size.y=76 if hosted_view else 52
 	var text := description()
 	if reader.text!=text: reader.text=text; reader.get_v_scroll_bar().value=0
 	for i in range(4):
-		var at: int=(game.programme_published if posted else game.programme_order).find(IDS[i])
+		var at: int=(game.hosting_order if hosted_view else (game.programme_published if posted else game.programme_order)).find(IDS[i])
 		cards[i].text=(str(at+1)+". " if at>=0 else "+ ")+game.programme_title(IDS[i])+"\n"+OWNERS[i]
 		cards[i].set_pressed_no_signal(selected==IDS[i])
 		cards[i].accessibility_name=cards[i].text+(" selected" if selected==IDS[i] else "")
 	var index: int=game.programme_order.find(selected)
 	edits[0].text="Remove" if index>=0 else "Add"
-	edits[0].disabled=posted
-	edits[1].disabled=posted or index<=0
-	edits[2].disabled=posted or index<0 or index>=game.programme_order.size()-1
+	edits[0].disabled=posted or hosted_view
+	edits[1].disabled=posted or hosted_view or index<=0
+	edits[2].disabled=posted or hosted_view or index<0 or index>=game.programme_order.size()-1
 	var start: bool=game.is_hosting_ready_to_start() and (posted or game.programme_order==game.programme_published)
 	primary.text="Start hosting" if start else (("Post" if game.programme_published.is_empty() else "Post revision") if game.programme_order!=game.programme_published or game.programme_published.is_empty() else "Posted")
 	primary.disabled=not start and (game.programme_issue(game.programme_order)!="" or game.programme_order==game.programme_published)
 	view.text="Draft" if posted else "Posted"
+	if hosted_view:
+		primary.text="Follow this invitation" if Hosted.invitation_available(game) else "Listening complete"
+		primary.disabled=not Hosted.invitation_available(game)
+		view.text="Draft"
+	back.text="Keep exploring" if hosted_view and Hosted.invitation_available(game) else "Back"
 	music.text="Music: On" if game.music_playing else "Music: Off"
-	picture.texture=texture(game.programme_published if posted else game.programme_order)
+	picture.texture=hosted_picture() if hosted_view else texture(game.programme_published if posted else game.programme_order)
 	var ring: Array[Control]=[reader]
 	for b in cards+edits+[primary,view,music,back]:
 		if not b.disabled:
@@ -308,6 +374,7 @@ func fit_layout() -> void:
 	top.size=Vector2(width,0)
 	top.size.y=top.get_combined_minimum_size().y
 	var side: bool=vp.x>=game.SMALL_SIDE_HUB_MIN_WIDTH and vp.y<game.SIDE_HUB_MAX_HEIGHT
+	actions.columns=2 if hosted_view and (280 if side else width)<500 else 4
 	tray.size=Vector2(280 if side else width,0)
 	tray.size.y=tray.get_combined_minimum_size().y
 	tray.position=Vector2(vp.x-tray.size.x-6,vp.y-tray.size.y-6) if side else Vector2((vp.x-width)*0.5,vp.y-tray.size.y-6)
@@ -338,13 +405,19 @@ func texture(order: Array) -> Texture2D:
 	textures[key]=tex
 	return tex
 
+func button_words_fit(b: Button) -> bool:
+	var width: float=b.size.x-b.get_theme_stylebox("normal").get_minimum_size().x
+	for word in b.text.replace("\n"," ").split(" ",false):
+		if b.get_theme_font("font").get_string_size(word,HORIZONTAL_ALIGNMENT_LEFT,-1,b.get_theme_font_size("font_size")).x>width+1: return false
+	return true
+
 func snapshot() -> Dictionary:
-	if not visible: return {"visible":false,"cache":textures.size()}
+	if not visible: return {"visible":false,"cache":textures.size(),"hosted_view":false,"hosted_invitation":Hosted.invitation_available(game),"listening_entry_focused":game.civic_listening.entry.has_focus()}
 	var buttons: Array=[]
 	for b in cards+edits+[primary,view,music,back]:
 		var d: Dictionary=game.control_snapshot(b)
-		d.merge({"visible":b.is_visible_in_tree(),"disabled":b.disabled,"text":b.text,"focused":b.has_focus()})
+		d.merge({"visible":b.is_visible_in_tree(),"disabled":b.disabled,"text":b.text,"focused":b.has_focus(),"words_fit":button_words_fit(b)})
 		buttons.append(d)
 	var scroll := reader.get_v_scroll_bar()
 	var focus := get_viewport().gui_get_focus_owner()
-	return {"visible":visible,"selected":selected,"posted_view":posted,"draft":game.programme_order.duplicate(),"published":game.programme_published.duplicate(),"hosting":game.hosting_order.duplicate(),"issue":game.programme_issue(game.programme_order),"pitches":PITCHES,"replies":replies(game.programme_published),"text":reader.text,"buttons":buttons,"picture":game.control_snapshot(picture),"top":game.control_snapshot(top),"tray":game.control_snapshot(tray),"reader":game.control_snapshot(reader),"scroll":scroll.value,"scroll_max":maxf(0,scroll.max_value-scroll.page),"layout_pending":layout_pending,"cache":textures.size(),"focus_within":focus==self or (focus!=null and is_ancestor_of(focus))}
+	return {"visible":visible,"selected":selected,"posted_view":posted,"draft":game.programme_order.duplicate(),"published":game.programme_published.duplicate(),"hosting":game.hosting_order.duplicate(),"issue":game.programme_issue(game.programme_order),"pitches":PITCHES,"replies":replies(game.programme_published),"text":reader.text,"buttons":buttons,"picture":game.control_snapshot(picture),"top":game.control_snapshot(top),"tray":game.control_snapshot(tray),"reader":game.control_snapshot(reader),"scroll":scroll.value,"scroll_max":maxf(0,scroll.max_value-scroll.page),"layout_pending":layout_pending,"cache":textures.size(),"hosted_view":hosted_view,"hosted_order":game.hosting_order.duplicate(),"hosted_replies":Hosted.replies(game) if hosted_view else [],"hosted_invitation":Hosted.invitation_available(game),"hosted_picture":hosted_picture_description() if hosted_view else "","listening_entry_focused":game.civic_listening.entry.has_focus(),"focus_within":focus==self or (focus!=null and is_ancestor_of(focus))}
