@@ -108,6 +108,8 @@ func setup(owner_game: Node) -> void:
 	game.block_page_nav.minimum_size_changed.connect(queue_nav_refit)
 	game.block_page_nav.resized.connect(queue_nav_refit)
 	resized.connect(queue_layout)
+	tray.minimum_size_changed.connect(queue_layout)
+	top.minimum_size_changed.connect(queue_layout)
 	hide()
 	build_surfaces()
 
@@ -177,7 +179,30 @@ func close_hour(announce: bool = true) -> void:
 	game.layout_walking_controls_and_hub()
 	if is_instance_valid(return_focus) and return_focus.is_visible_in_tree(): return_focus.grab_focus()
 	elif entry.is_visible_in_tree(): entry.grab_focus()
-	if announce: game.announce_a11y_status("Back to the block. Listening is welcome; Q keeps the original quick path.")
+	if announce:
+		game.announce_a11y_status("Back to the block. Dez's offer stays in the Listening Hour with your completed progress." if invitation_available() else "Back to the block. Listening is welcome; Q keeps the original quick path.")
+
+func invitation_available() -> bool:
+	return game.civic_phase=="done" and game.is_valid_civic_plan(game.civic_result) and game.is_film_available()
+
+func follow_invitation() -> bool:
+	if not visible or not invitation_available(): return false
+	# Deliver the pending chapter and notices through the explicit handoff,
+	# without a deferred card stealing focus. Keep retains visual delivery.
+	var chapter: Dictionary=game.current_chapter()
+	var chapter_text: String=game.consume_chapter_announcement(chapter)+" " if int(chapter.num)!=game.last_story_chapter else ""
+	game.last_story_chapter=int(chapter.num)
+	close_hour(false)
+	game.talk_partner=-1
+	game.hide_speech_bubble()
+	game.show_block_panel(true,true)
+	game.last_panel_dialogue=game.civic_completion_acknowledgment()
+	game.update_block_ui()
+	if game.uses_paged_block_actions(): game.block_hub_page=game.block_buttons.find(game.block_film_btn)/game.BLOCK_ACTIONS_PER_PAGE
+	game.layout_block_action_pages()
+	game.block_film_btn.grab_focus()
+	game.announce_a11y_status(chapter_text+"Dez's invitation: "+game.block_film_btn.text+". Choose this film action when you are ready; your film is unchanged.")
+	return true
 
 func choose(index: int) -> void:
 	if not visible or game.civic_phase!="planning": return
@@ -191,6 +216,9 @@ func step() -> void:
 		"idle": game.civic_start()
 		"planning": game.civic_convene()
 		"meeting": game.civic_complete()
+		"done":
+			follow_invitation()
+			return
 		_: return
 	refresh(false) # The core callback already announces this state change once.
 	if game.civic_phase in ["meeting","done"]: voices[voice].grab_focus()
@@ -205,7 +233,13 @@ func refresh(announce: bool) -> void:
 	var summary := "%s | %s | %s"%[game.civic_topic_title(p.topic),game.civic_format_title(p.format),game.civic_notes_title(p.notes)]
 	var text: String = "Bea: Choose what we talk about, how people can join, and what we keep. A disagreement can belong here too. Start planning to change the invitation. Q still offers the quick path." if game.civic_phase=="idle" else ("Choose one of each. These are fictional plans, not completed repairs or a real event. Changes are saved; Convene copies this invitation." if planning else SPEAKERS[voice]+": "+dialogue(p)[voice]+"\nSpeak, pass or just listen. No timer; Close the hour whenever you are ready.")
 	text += "\n"+summary+"\n"+request_text(p)+"\nOne listening hour is a beginning, not a promise that housing problems are solved."
-	if game.civic_phase=="done": text=text.replace("No timer; Close the hour whenever you are ready.","This hour is complete. You can revisit any turn; the copied invitation stays unchanged.")
+	if game.civic_phase=="done":
+		text=text.replace("No timer; Close the hour whenever you are ready.","This hour is complete. You can revisit any turn; the copied invitation stays unchanged.")
+		if invitation_available():
+			var offer: String=game.civic_completion_acknowledgment()
+			offer+="\nThe film is ready to revisit." if game.film_phase=="done" else "\nDez's standing invitation: make The Open Seat together."
+			offer+=" Follow takes you to '"+game.block_film_btn.text+"'; choose that action when you are ready. Your film stays as you left it. Keep exploring retains this offer with your completed progress."
+			text=offer+"\nRemembered turn:\n"+text
 	game.set_activity_detail(reader,text)
 	for i in range(3): tabs[i].get_parent().visible=planning; tabs[i].set_pressed_no_signal(category==i)
 	for i in range(2):
@@ -217,8 +251,9 @@ func refresh(announce: bool) -> void:
 		choices[i].disabled=game.civic_phase!="planning"
 		choices[i].set_pressed_no_signal(p[KEYS[category]]==id)
 	for i in range(4): voices[i].get_parent().visible=not planning; voices[i].set_pressed_no_signal(voice==i)
-	advance.visible=game.civic_phase!="done"
-	advance.text={"idle":"Start planning","planning":"Convene","meeting":"Close the hour"}.get(game.civic_phase,"")
+	advance.visible=game.civic_phase!="done" or invitation_available()
+	advance.text=("Revisit the film" if game.film_phase=="done" else "Follow this invitation") if invitation_available() else {"idle":"Start planning","planning":"Convene","meeting":"Close the hour"}.get(game.civic_phase,"")
+	back.text="Keep exploring" if invitation_available() else "Back"
 	music.text="Music: On" if game.music_playing else "Music: Off"
 	var ring: Array[Control] = [reader]
 	for b in tabs+choices+voices+[advance,music,back]:
@@ -399,12 +434,12 @@ func update_world() -> void:
 	rendered=key
 
 func snapshot() -> Dictionary:
-	var result := {"visible":visible,"entry":game.control_snapshot(entry),"entry_inline":entry.get_parent()==game.block_page_nav,"entry_focused":entry.has_focus(),"cache":textures.size()}
+	var result := {"visible":visible,"entry":game.control_snapshot(entry),"entry_inline":entry.get_parent()==game.block_page_nav,"entry_focused":entry.has_focus(),"film_action_focused":game.block_film_btn.has_focus(),"invitation_available":invitation_available(),"acknowledgment":game.civic_completion_acknowledgment(),"cache":textures.size()}
 	if not visible: return result
 	var boxes: Array[Dictionary]=[]
 	for b in tabs+choices+voices+[advance,music,back]:
 		var item: Dictionary=game.control_snapshot(b)
 		item.merge({"text":b.text,"disabled":b.disabled,"selected":b.button_pressed,"accessible_name":b.accessibility_name})
 		boxes.append(item)
-	result.merge({"phase":game.civic_phase,"category":category,"voice":voice,"plan":plan().duplicate(),"text":reader.text,"dialogue":dialogue(plan()),"request":request_text(plan()),"description":art_description(plan()),"top":game.control_snapshot(top),"picture":game.control_snapshot(picture),"reader":game.control_snapshot(reader),"scroll":reader.get_v_scroll_bar().value,"scroll_max":reader.get_v_scroll_bar().max_value,"scroll_page":reader.get_v_scroll_bar().page,"buttons":boxes,"layout_pending":layout_pending,"focus_within":is_ancestor_of(get_viewport().gui_get_focus_owner()) if get_viewport().gui_get_focus_owner()!=null else false})
+	result.merge({"phase":game.civic_phase,"category":category,"voice":voice,"plan":plan().duplicate(),"text":reader.text,"dialogue":dialogue(plan()),"request":request_text(plan()),"description":art_description(plan()),"invitation_available":invitation_available(),"film_phase":game.film_phase,"top":game.control_snapshot(top),"picture":game.control_snapshot(picture),"reader":game.control_snapshot(reader),"scroll":reader.get_v_scroll_bar().value,"scroll_max":reader.get_v_scroll_bar().max_value,"scroll_page":reader.get_v_scroll_bar().page,"buttons":boxes,"layout_pending":layout_pending,"focus_within":is_ancestor_of(get_viewport().gui_get_focus_owner()) if get_viewport().gui_get_focus_owner()!=null else false})
 	return result

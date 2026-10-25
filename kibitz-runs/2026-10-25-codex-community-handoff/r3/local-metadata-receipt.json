@@ -1,0 +1,25 @@
+{
+  "utc": "2026-10-25T16:37:49.318363+00:00",
+  "not_staged_raw_harness_metadata": [
+    {
+      "original": "kibitz-runs/2026-10-25-codex-community-handoff-ideas/r1/claude.log",
+      "local": "artifacts/community-handoff-20261025/retained-local-review-metadata/2026-10-25-codex-community-handoff-ideas/r1/claude.log",
+      "sha256": "cf2c54f650b1694fbd46259850788bcf2d1ff2de1a85412c72e4468ec910b6e1"
+    },
+    {
+      "original": "kibitz-runs/2026-10-25-codex-community-handoff-ideas/r1/profiles_used.txt",
+      "local": "artifacts/community-handoff-20261025/retained-local-review-metadata/2026-10-25-codex-community-handoff-ideas/r1/profiles_used.txt",
+      "sha256": "a9a11813438ba2fc0c6efd97f13b88bf41af82044d04182d865bdd38eaa32423"
+    },
+    {
+      "original": "kibitz-runs/2026-10-25-codex-community-handoff/r3/claude.log",
+      "local": "artifacts/community-handoff-20261025/retained-local-review-metadata/2026-10-25-codex-community-handoff/r3/claude.log",
+      "sha256": "28fe7b89bed6700eedc0b3269638dd766bbcdcb94f30dcb5e56e5005330e766d"
+    },
+    {
+      "original": "kibitz-runs/2026-10-25-codex-community-handoff/r3/profiles_used.txt",
+      "local": "artifacts/community-handoff-20261025/retained-local-review-metadata/2026-10-25-codex-community-handoff/r3/profiles_used.txt",
+      "sha256": "a9a11813438ba2fc0c6efd97f13b88bf41af82044d04182d865bdd38eaa32423"
+    }
+  ]
+}

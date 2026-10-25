@@ -3294,6 +3294,7 @@ func run() -> void:
 	await verify_story_visits(study,saved_m4_json)
 	await verify_guided_walk(study,saved_m4_json)
 	await preload("res://tests/shared_meal_checks.gd").verify(self,study,saved_m4_json)
+	await preload("res://tests/community_invitation_checks.gd").verify(self,study,saved_m4_json)
 	await verify_map_pinch(study,saved_m4_json)
 	await verify_phone_disclosure(study,initial_start_save,saved_m4_json)
 	study.clear_godot_save()
@@ -5036,7 +5037,7 @@ func verify_civic_listening(study: Node, full_profile: String) -> void:
 			study.update_block_3d()
 			require(hour.surfaces[0].material_override==original_material,"same copied notice reuses material rather than reallocating")
 			hour.advance.emit_signal("pressed")
-			require(study.civic_phase=="done" and not hour.advance.visible and hour.voices[3].has_focus(),"existing civic completion no timer/no required turn count")
+			require(study.civic_phase=="done" and hour.advance.visible and hour.advance.text=="Follow this invitation" and hour.voices[3].has_focus(),"civic completion retains speaker focus and offers deliberate film handoff without a timer/required turn count")
 			study.film_result=JSON.parse_string(full_profile).film.result.duplicate(true)
 			study.film_phase="done"
 			study.last_story_chapter=int(study.current_chapter().num)

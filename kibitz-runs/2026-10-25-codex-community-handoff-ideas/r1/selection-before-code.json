@@ -1,0 +1,21 @@
+{
+  "utc": "2026-10-25T11:31:58.406580+00:00",
+  "before_implementation": true,
+  "baseline": "8cf022f829dcfd532fbcca58d1a07fea94906979",
+  "selected": "OptionA: completed Listening Hour standing Dez invitation -> focus original film action, never press",
+  "rejected": [
+    "OptionB adjacenthostinghandoff",
+    "OptionC newgenericinvitationshelf",
+    "optionaldirectdone-screeningdispatch",
+    "newsaveflag/consumedinvitation",
+    "newhubpage/geometry/reward/audio/cameraowner"
+  ],
+  "judgment_sha256": "d5070f22ce52af14437a24784dfd178da1d39754d735bfd6dc8150ea19298099",
+  "prior_art_sha256": "3afd1f647acbbfba15e683a573abae3a645297b281785c6c61812e3ee5e0b91f",
+  "source_before_code": {
+    "godot/main.gd": "a56cce0e402d93fb916bc2d585b94063e8cb44ba9178491e2ca296bd94f263c9",
+    "godot/civic_listening.gd": "2eca8cffc35ed2753544e137515fdd6e67b1d6933fb60717763e4c540061c7e7",
+    "godot/tests/study_test.gd": "4453606b09a4122115dc6643b1593e9c0af0eb78e7b92d2e82f5ca81af13ef43",
+    "tests/godot-browser.mjs": "66cd0b182da97470e4c610769e7de380eebf785d13b9c796ca879848e290d8e2"
+  }
+}

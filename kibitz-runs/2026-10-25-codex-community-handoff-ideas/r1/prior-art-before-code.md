@@ -1,0 +1,5 @@
+# Prior art / originality check before code
+
+NPC requests and relationship-led next activities are established mechanics, not a first-of-kind claim. Official Thunder Lotus support explains that fulfilling spirits' requests and exploring lead to new areas/resources in Spiritfarer: https://thunderlotus.zendesk.com/hc/en-us/articles/28692897576468-I-can-t-find-a-resource-that-I-need-to-advance . Opened/read October25UTC; this is primary creator support, not a copied quest design. Proposed distinction here is existing Tenderloin source geography, original Dez/civic consent copy based on the player's already-copied notes/space, and a deliberately non-advancing retained handoff to existing film actions. No plot, dialogue, characters or art copied; no unprecedented-mechanic claim.
+
+An attempted Mutazione official URL https://www.mutazionegame.com/ was inaccessible via the web tool; no fetched evidence or specific mechanics from it are claimed. R1's genre-knowledge prior-art comment was explicitly unverified; Codex uses only the primary support fact above. No external outreach or assets purchased.

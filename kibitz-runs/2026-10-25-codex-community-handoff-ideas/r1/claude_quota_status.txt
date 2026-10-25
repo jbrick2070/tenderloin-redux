@@ -1,0 +1,1 @@
+Required harness auth preflight completed. Exact requested/selected claude-opus-5-5/high. Original private status retained outside compact review. Provider runtime identity and allowance percentage unknown; no substitution, purchase or retry.

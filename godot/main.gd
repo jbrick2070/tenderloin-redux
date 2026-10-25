@@ -809,6 +809,7 @@ var story_continue_btn: Button
 var startup_story_pending := false
 var last_story_chapter := -1
 var block_panel_mode := "hub"
+var block_hub_invitation := false # Presentation only; preserve stopped-neighbor navigation.
 var opening_conversation := false
 var talk_partner := -1
 var conv_rows: Array[HBoxContainer] = []
@@ -5652,6 +5653,7 @@ func visible_surprise_keepsake_count() -> int:
 	return count
 
 func block_panel_neighbor_idx() -> int:
+	if block_panel_mode=="hub" and block_hub_invitation: return -1
 	if block_panel_mode == "talk" and talk_partner >= 0 and talk_partner < neighbors.size():
 		return talk_partner
 	if arrived_neighbor >= 0 and arrived_neighbor < neighbors.size():
@@ -7400,6 +7402,9 @@ func show_story_card(chapter: Dictionary, startup := false) -> void:
 	update_music_ui()
 	layout_story_card()
 	story_continue_btn.call_deferred("grab_focus")
+	announce_a11y_status(consume_chapter_announcement(chapter,startup))
+
+func consume_chapter_announcement(chapter: Dictionary,startup := false) -> String:
 	var chapter_announcement := "Chapter %d: %s. %s" % [int(chapter.num), String(chapter.title), String(chapter.intro)]
 	if rhythm_circle != null and not rhythm_circle.chapter_completion_notice.is_empty():
 		chapter_announcement = rhythm_circle.chapter_completion_notice+chapter_announcement
@@ -7407,7 +7412,7 @@ func show_story_card(chapter: Dictionary, startup := false) -> void:
 	if loan_homecoming != null:
 		if not startup: chapter_announcement=loan_homecoming.chapter_completion_notice+chapter_announcement
 		loan_homecoming.chapter_completion_notice=""
-	announce_a11y_status(chapter_announcement)
+	return chapter_announcement
 
 func hide_story_card() -> void:
 	startup_story_pending = false
@@ -10146,19 +10151,25 @@ func civic_convene() -> bool:
 	announce_a11y_status(summary)
 	return true
 
+func civic_completion_acknowledgment() -> String:
+	if civic_phase != "done" or not is_valid_civic_plan(civic_result): return ""
+	var note_line := "You kept our shared request without names or testimony." if String(civic_result.notes)=="themes" else "You left the notebook closed; our conversation did not become a record of each other."
+	var film_line := "Thank you for making The Open Seat. We can watch it again whenever you like." if film_phase=="done" else "I would like to make The Open Seat with you, at your pace."
+	return 'Dez: "You made a %s for %s. %s %s"' % [civic_format_title(String(civic_result.format)).to_lower(),civic_topic_title(String(civic_result.topic)).to_lower(),note_line,film_line]
+
 func civic_complete() -> bool:
 	if not is_civic_available() or civic_phase != "meeting" or not is_valid_civic_plan(civic_result):
 		return false
 	civic_phase = "done"
 	browser_import_message = ""
-	last_panel_dialogue = "Bea: \"Tenant Listening Circle complete! Now we can shoot 'The Open Seat' short film ('Shoot Short Film').\""
+	last_panel_dialogue = civic_completion_acknowledgment()
 	update_block_3d()
 	save_godot_state()
 	trigger_progress_cue("civic_complete", "Listening hour complete")
 	update_block_ui()
 	var summary := "Completed Peaceful Tenant Listening Hour (%s · %s · %s) — The Open Seat film short ready!" % [civic_topic_title(String(civic_result.get("topic", "repairs"))), civic_format_title(String(civic_result.get("format", "circle"))), civic_notes_title(String(civic_result.get("notes", "themes")))]
-	info.text = "%s\nM4 Civic Listening Hour Complete · Press Period (.) to plan The Open Seat\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % summary
-	announce_a11y_status(summary)
+	info.text = "%s\n%s\nReopen Listening Hour (F5) for Dez's standing invitation, or use the existing film action.\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [summary,last_panel_dialogue]
+	announce_a11y_status(summary+" "+last_panel_dialogue)
 	return true
 
 func cycle_civic_choice() -> String:
@@ -10204,10 +10215,10 @@ func advance_civic_step() -> String:
 	if civic_phase == "meeting":
 		return "civic_done" if civic_complete() else "civic_blocked"
 	var done_msg := "Peaceful Tenant Listening Hour complete (%s · %s · %s)." % [civic_topic_title(String(civic_result.get("topic", "repairs"))), civic_format_title(String(civic_result.get("format", "circle"))), civic_notes_title(String(civic_result.get("notes", "themes")))]
-	last_panel_dialogue = "Bea: \"Our Tenant Listening Circle is complete (%s)! Tap 'Shoot Short Film' to film The Open Seat.\"" % civic_topic_title(String(civic_result.get("topic", "repairs")))
+	last_panel_dialogue = civic_completion_acknowledgment()
 	update_block_ui()
-	info.text = "%s\nPress Period (.) to plan & capture The Open Seat three-shot film short\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % done_msg
-	announce_a11y_status(done_msg)
+	info.text = "%s\n%s\nReopen Listening Hour (F5) for the standing invitation; Period (.) keeps its existing film quick path.\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [done_msg,last_panel_dialogue]
+	announce_a11y_status(done_msg+" "+last_panel_dialogue)
 	return "civic_complete"
 
 func default_film_draft() -> Dictionary:
@@ -15226,7 +15237,8 @@ func refresh_hub_camera() -> void:
 		update_camera()
 		update_occlusion(true)
 
-func show_block_panel(visible_flag: bool) -> void:
+func show_block_panel(visible_flag: bool, invitation_context := false) -> void:
+	block_hub_invitation=visible_flag and invitation_context
 	var owned_conversation := panel_frame_control == block_panel and panel_frame_pose == panel_camera_pose() and not in_overview and not in_wide_overview
 	if not visible_flag and panel_frame_control == block_panel:
 		panel_frame_control = null

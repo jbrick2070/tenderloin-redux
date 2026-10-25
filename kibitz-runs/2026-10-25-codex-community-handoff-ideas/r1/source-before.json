@@ -1,0 +1,17 @@
+{
+  "godot/main.gd": "a56cce0e402d93fb916bc2d585b94063e8cb44ba9178491e2ca296bd94f263c9",
+  "godot/civic_listening.gd": "2eca8cffc35ed2753544e137515fdd6e67b1d6933fb60717763e4c540061c7e7",
+  "godot/film_screening.gd": "20a8015f821333f337158d5eb1ab820240db9999413f339451afb6a4923271dd",
+  "godot/programme_studio.gd": "b9e2200905730fee77e785946e45f05555bd1becd8de76ade20a37ecd6667e1e",
+  "godot/shared_panel.gd": "0cf289edc823919866c03e3687935d9b5c390058e1faa8051255a3fa9067833f",
+  "godot/rhythm_circle.gd": "3cdda6f228db7ebb8efcc0f397cfa425a8ce9affef934f54ef0189b2f41d62f1",
+  "godot/story_picker.gd": "086a46fcee0e3c37c2dbdad3c495c84942d0fdfc695193f8afdc5a87d5fab463",
+  "godot/shared_meal.gd": "81573f271e6020300301c87f66963ca37e5daea2f02007c570845a67c0203305",
+  "godot/tests/study_test.gd": "4453606b09a4122115dc6643b1593e9c0af0eb78e7b92d2e82f5ca81af13ef43",
+  "tests/godot-browser.mjs": "66cd0b182da97470e4c610769e7de380eebf785d13b9c796ca879848e290d8e2",
+  "docs/QUEST_FREEDOM_IMPLEMENTATION_BRIEF.md": "a014510c456e5a567efe53c8806c618ed91671b6c472b97c13562a39081350b3",
+  "docs/ROADMAP.md": "0a252dce9ed1f8ee1431d5d499bc00b584659f0a561f0409c272e8c3ad0a3d61",
+  "docs/GODOT_APPROACH.md": "4fe7787b8c921187fb7e71ca649790281b5f33768b644f6510bb86ce839e40a4",
+  "session_handoff.md": "e66dd065e0643384d30296b4f2972cb024027fe51e21c3f29f223d411279647e",
+  "docs/BUILD_STATUS.md": "1559ac728ac8084bdbdfa2e514e366d32138c9ec3d69dbe20f743c184001713e"
+}

@@ -1,0 +1,19 @@
+{
+  "godot/main.gd": "f3f3283b74267eaa13e9c1ec570c8cce8c100c9d0a1fdcf0c9bb24a91fd35e2e",
+  "godot/civic_listening.gd": "b900895e05b0c13112dcae0f7c900821b3a04b3823cd9ad147d8a8461de49c99",
+  "godot/tests/community_invitation_checks.gd": "2385b6e570b14b5ea360a79e299b792516d17246eea9def6c580e8b73b4af6ce",
+  "godot/tests/community_invitation_checks.gd.uid": "3c3d0ae115de459fc6f05c5ab333c3096792993225618c5c26c30045f5d43c3e",
+  "godot/tests/study_test.gd": "87e1edab6b64ad5432eead874dbb334a464145daff516e27f1ceb6af215e9059",
+  "tests/godot-browser.mjs": "ae98b280047ba749e3be819e0fbad7fcc933d69dc6f79ee1bad4920519a24755",
+  "godot/film_screening.gd": "20a8015f821333f337158d5eb1ab820240db9999413f339451afb6a4923271dd",
+  "godot/story_picker.gd": "086a46fcee0e3c37c2dbdad3c495c84942d0fdfc695193f8afdc5a87d5fab463",
+  "godot/shared_meal.gd": "81573f271e6020300301c87f66963ca37e5daea2f02007c570845a67c0203305",
+  "godot/programme_studio.gd": "b9e2200905730fee77e785946e45f05555bd1becd8de76ade20a37ecd6667e1e",
+  "godot/bea_invitation.gd": "4ad40453704987fc9c29c34425b8be66c5fb8057874ab21fdd9cb89ab259b51f",
+  "package.json": "a4ac340702a433297659aeae662c9f8fb2f8f197bfb83e86cafac0e570be610f",
+  "session_handoff.md": "70c09adc4de66e81f264130204bfa73b2849974eec2e3a96bf439f4575bf1ffa",
+  "docs/BUILD_STATUS.md": "538b1fee814bdbce1ab0949cf7175fd8ca5a31d5146a86f238ca46b5207417f1",
+  "docs/QUEST_FREEDOM_IMPLEMENTATION_BRIEF.md": "a014510c456e5a567efe53c8806c618ed91671b6c472b97c13562a39081350b3",
+  "docs/ROADMAP.md": "0a252dce9ed1f8ee1431d5d499bc00b584659f0a561f0409c272e8c3ad0a3d61",
+  "artifacts/godot-web/index.pck": "46a231884250d6989c8e89fedd74e431ee473d99b9722732998f0b2505916885"
+}

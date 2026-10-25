@@ -1,0 +1,9 @@
+{
+  "utc": "2026-10-25T12:03:51.990544+00:00",
+  "harness_rc": 0,
+  "sources_unchanged": true,
+  "requested_model": "claude-opus-5-5",
+  "requested_effort": "high",
+  "selected_model": "claude-opus-5-5",
+  "selected_effort": "high"
+}
