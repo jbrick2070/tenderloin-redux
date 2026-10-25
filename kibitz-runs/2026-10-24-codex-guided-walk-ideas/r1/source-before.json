@@ -1,0 +1,14 @@
+{
+  "godot/main.gd": "54d1f59cffc82288c906a2ea90d0de9d2bccd14dcec112d58cc33b28087ab334",
+  "godot/tests/study_test.gd": "b5da154971488b99e299788772acfcb27aae161b3d8894c21fd2f5c42ac730e6",
+  "tests/godot-browser.mjs": "2ad202d1d0159d3c67d9cb6a03fdc54a4eb840977ea4a211e8e8f4f1e98d8449",
+  "godot/story_picker.gd": "086a46fcee0e3c37c2dbdad3c495c84942d0fdfc695193f8afdc5a87d5fab463",
+  "godot/dog_story.gd": "e61a1a42d66d772712868185d14710efc2386b8e5c6ded9747d21752bf93a352",
+  "godot/lantern_procession.gd": "5c5ead64f5bd57ca99b6827a718fc10d043a728adb0106f1c3418ebbc404f369",
+  "godot/voting_story.gd": "49a9061a887dbd43fda6cd6e4cf11e5653ec31bde68e05df4ae9dd864f3bf376",
+  "godot/power_story.gd": "dcd589446fa18918bdeefcafcceac9ec8a9972f23efc2adf8bb76bf1a19dc5eb",
+  "docs/ROADMAP.md": "a03a38442d6ae60fb50547bdc18cc2abf4ea399a8613b8977bb93b91ad4423f1",
+  "docs/PLAYTEST_POLISH_BRIEF.md": "89f4e3692e115fd2171fd45a65cadb8cc140140f3acf76f8d8667cb135f1b1a5",
+  "docs/BUILD_STATUS.md": "34e13758fef9bf00aff3e63fae38ab591c4ed9fba2f60d3c90d2f5b08cbe7a9e",
+  "session_handoff.md": "ec5a9eb9be65557dd943280ead9d899568b070b94a435d0a54b0767e3c6eb705"
+}

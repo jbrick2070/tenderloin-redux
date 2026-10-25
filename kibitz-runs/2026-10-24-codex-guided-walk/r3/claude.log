@@ -1,0 +1,15 @@
+STDOUT:
+My verdict is **yes-with-fixes**: the candidate is close to build-ready but needs two fixes first. I wrote the full review to `C:\tenderloin-redux\kibitz-runs\2026-10-24-codex-guided-walk\r3\claude.md`. The tool check passed, but the shell wasn't available, so I couldn't run git and can't always tell what's new versus what was already in ff8b195. I flagged those points "verify" in the file, and I ran no tests.
+
+**Must-fix before build:**
+1. **The named label is too long for narrow layouts with a side panel open.** `update_walk_control` (`godot/main.gd:13885-13889`) replaces the short "Walk" caption even at 520–599px wide with a panel docked. There the button is only about 64–73px. "Resume Celeste" won't fit (text width estimated, not rendered), so two existing fit checks would very likely fail: `godot/tests/study_test.gd:3571` and `tests/godot-browser.mjs:968`. Fix: keep the short caption in that layout and put the full name in the tooltip and accessibility name.
+2. **A failed or blocked route to a resident leaves a "Resume X" that can never succeed.** When no route exists (`main.gd:8371-8376`) or a route gets blocked mid-walk (`main.gd:13816-13833`), the chosen resident stays selected. The button then says "Resume Thanh" and every press repeats the same failed route search. The old behaviour moved on to the next resident. Fix: set `selected_neighbor = -1` in both failure branches, and add a native test using the existing isolated-route fixture at `study_test.gd:518-534`.
+
+**Should-fix:**
+- **Missing tests:** the plan says reset and import also clear the paused resident, but only save-apply is tested.
+- **Browser check proves nothing:** `namedWalkCaption` (`godot-browser.mjs:139`) builds the expected text from the same function that produced the label.
+- **Order of calls:** in reset, apply and import, `stop_walking()` runs before the selection is cleared. A reset mid-walk can leave a misleading "Walking stopped…" accessibility announcement.
+- **Tooltip copy:** it mentions the N/B keys on touch-only phone layouts.
+- **Label vs press timing:** the label can lag up to 0.5s behind what the press actually does; the story-close paths need checking.
+
+**Cut:** a duplicate `accessibility_name` assignment at `main.gd:13889`. Also the two-layout loop in `verify_guided_walk`: the gathering layout isn't used until all residents are met, so the second pass repeats the first.

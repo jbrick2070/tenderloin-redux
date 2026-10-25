@@ -6189,6 +6189,7 @@ func update_objective_ui() -> void:
 		objective_label.text = "Ch. %d · Next: %s" % [int(ch.num), next_text]
 	else:
 		objective_label.text = "Chapter %d: %s · Next: %s" % [int(ch.num), String(ch.title), next_text]
+	update_walk_control()
 
 func screen_constant_scale(px_per_unit: float) -> float:
 	if camera == null:
@@ -6844,9 +6845,11 @@ func configure_phone_disclosure() -> void:
 		phone_tray.offset_bottom = controls.offset_top-8.0
 		phone_tray.offset_top = phone_tray.offset_bottom-phone_tray.get_combined_minimum_size().y
 	else:
-		for btn in [next_hint_control,walk_control]:
+		for btn in [next_hint_control]:
 			btn.autowrap_mode = TextServer.AUTOWRAP_OFF
 			btn.clip_text = true
+	walk_control.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	walk_control.clip_text = false
 	if talking:
 		var acts := conversation_actions()
 		var choices := false
@@ -6929,8 +6932,9 @@ func layout_walking_controls_and_hub() -> void:
 	for b in conv_buttons:
 		b.add_theme_font_size_override("font_size", 13 if side or narrow else 15)
 		var owner_return := b in conv_action_btns and String(conv_action_ids[conv_action_btns.find(b)]).begins_with("return_owner:")
-		b.clip_text = not compact and not owner_return
-		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if compact or owner_return else TextServer.AUTOWRAP_OFF
+		var named_phone_choice := uses_phone_disclosure() and b in conv_action_btns
+		b.clip_text = not compact and not owner_return and not named_phone_choice
+		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if compact or owner_return or named_phone_choice else TextServer.AUTOWRAP_OFF
 	for label in [mural_label, music_label]:
 		if label != null:
 			label.add_theme_font_size_override("font_size", 13 if side or narrow else 16)
@@ -8368,6 +8372,7 @@ func walk_to_neighbor(index: int) -> bool:
 	if current_path.size() > 1 and current_path[0].distance_to(player_xz()) < 0.20:
 		current_path.remove_at(0)
 	if current_path.is_empty():
+		selected_neighbor = -1
 		update_route_ribbon(true)
 		info.text = "No walkable route to %s\nWASD/Arrows or tap street to walk\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % n.name
 		set_header_details(true, false)
@@ -9284,6 +9289,14 @@ func visit_next_unvisited_neighbor() -> bool:
 		if not visited_neighbors.has(nid):
 			return walk_to_neighbor(i)
 	return choose_next_neighbor(1)
+
+## The suggested hub action follows the same nearest unmet resident as the header.
+## Keep the original array-order helper and N/B quick paths for deliberate cycling.
+func visit_suggested_neighbor() -> bool:
+	var obj := current_objective()
+	if String(obj.get("id", "")) == "meet":
+		return walk_to_neighbor(int(obj.neighbor))
+	return visit_next_unvisited_neighbor()
 
 func open_mural_from_block_panel() -> void:
 	if arrived_neighbor == celeste_index or arrived_mural:
@@ -11631,7 +11644,9 @@ func walking_control_snapshots() -> Array[Dictionary]:
 		var btn := child as Button
 		var entry := control_snapshot(btn)
 		entry["text"] = btn.text
-		entry["text_fits"] = btn.get_theme_font("font").get_string_size(btn.text, HORIZONTAL_ALIGNMENT_LEFT, -1, btn.get_theme_font_size("font_size")).x + btn.get_theme_stylebox("normal").get_minimum_size().x <= btn.size.x + 1.0
+		var box := btn.size - btn.get_theme_stylebox("normal").get_minimum_size()
+		var measured := btn.get_theme_font("font").get_multiline_string_size(btn.text, HORIZONTAL_ALIGNMENT_CENTER, box.x if btn.autowrap_mode != TextServer.AUTOWRAP_OFF else -1.0, btn.get_theme_font_size("font_size"), -1, TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE)
+		entry["text_fits"] = measured.x <= box.x + 1.0 and measured.y <= box.y + 1.0
 		result.append(entry)
 	return result
 
@@ -11732,6 +11747,7 @@ func get_a11y_status_snapshot() -> Dictionary:
 	var tour := landmark_tour_state()
 	var obj := current_objective()
 	var action_controls: Array[Dictionary] = []
+	var primary := primary_walk_choice()
 	if block_panel != null and block_panel.visible and block_panel_mode == "talk":
 		for i in range(conv_action_btns.size()):
 			var btn: Button = conv_action_btns[i]
@@ -11771,6 +11787,9 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"header_control": control_snapshot(header_panel),
 		"walk_control": control_snapshot(walk_control),
 		"walk_control_text": walk_control.text if walk_control != null else "",
+		"walk_target_neighbor": int(primary.neighbor),
+		"walk_target_kind": String(primary.kind),
+		"walk_target_name": String(primary.name),
 		"header_details_expanded": header_details_expanded,
 		"objective_control_text": objective_label.text if objective_label != null else "",
 		"progress_text": progress_label.text if progress_label != null else "",
@@ -11880,6 +11899,8 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"keepsakes_visible": visible_surprise_keepsake_count(),
 		"objective_tour_id": String(obj.get("tour_id", "")),
 		"objective_text": String(obj.get("text", "")),
+		"objective_id": String(obj.get("id", "")),
+		"objective_neighbor": int(obj.get("neighbor", -1)),
 		"tour_count": int(tour.count),
 		"tour_total": int(tour.total),
 		"tour_celebrated": landmark_tour_celebrated,
@@ -12423,6 +12444,10 @@ func save_godot_state() -> bool:
 	return wrote
 
 func reset_mural_state_to_defaults(status_label: String) -> void:
+	selected_neighbor = -1
+	arrived_neighbor = -1
+	current_path.clear()
+	stop_walking()
 	if story_picker != null: story_picker.reset_visit()
 	if power_story != null:
 		power_story.close_story(false)
@@ -13141,6 +13166,10 @@ func apply_save_envelope(raw_json: String) -> bool:
 	if local_audio_player != null:
 		local_audio_player.stream = null
 	save_load_status = "restored"
+	selected_neighbor = -1
+	arrived_neighbor = -1
+	current_path.clear()
+	stop_walking()
 	update_mural_3d()
 	update_speaker_3d()
 	update_block_3d()
@@ -13617,6 +13646,10 @@ func import_browser_save_json(raw_json: String) -> bool:
 	update_block_3d()
 	update_history_stops_3d()
 	browser_import_status = "imported"
+	selected_neighbor = -1
+	arrived_neighbor = -1
+	current_path.clear()
+	stop_walking()
 	var state_tag := "Gathering Open" if block_opened else ("Ready" if is_block_ready() else "In progress")
 	browser_import_message = "Imported browser v1 save: %d/5 neighbors · %d/3 mural (%s) · %s" % [visited_neighbors.size(), mural_placements.size(), mural_palette.capitalize(), state_tag]
 	save_godot_state()
@@ -13798,6 +13831,7 @@ func advance_walk(delta: float) -> bool:
 					var stop_rec := get_history_stop_record(walking_to_history_stop)
 					dest_name = String(stop_rec.get("name", stop_rec.get("title", walking_to_history_stop)))
 				arrived_neighbor = -1
+				selected_neighbor = -1
 				walking_to_mural = false
 				walking_to_speaker = false
 				walking_to_history_stop = ""
@@ -13828,17 +13862,42 @@ func stop_walking() -> void:
 	update_walking_status()
 	if was_walking:
 		update_occlusion(true)
-		announce_a11y_status("Walking stopped. Tap a street to choose a route, or Walk & Talk for the next neighbor.")
+		announce_a11y_status("Walking stopped. Choose the named walking action when ready, or tap a street for a different route.")
+
+## Derive the primary action from existing visit-only navigation, never saved state.
+## A stopped resident choice outranks the suggestion; N/B still cycle deliberately.
+func primary_walk_choice() -> Dictionary:
+	if active_story_episode() != null:
+		return {"kind":"story", "neighbor":-1, "name":""}
+	if not current_path.is_empty():
+		return {"kind":"stop", "neighbor":selected_neighbor, "name":""}
+	var index := selected_neighbor
+	var kind := "resume"
+	if index < 0 or index >= neighbors.size() or arrived_neighbor == index:
+		var obj := current_objective()
+		if String(obj.get("id", "")) == "meet":
+			index = int(obj.neighbor)
+			kind = "meet"
+		else:
+			index = posmod(selected_neighbor + 1, neighbors.size())
+			kind = "visit"
+	return {"kind":kind, "neighbor":index, "name":String(neighbors[index].name)}
 
 ## One permanent control gives touch players the same route stop as Escape.
 func update_walk_control() -> void:
 	if walk_control == null:
 		return
+	walk_control.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	walk_control.clip_text = false
 	var walking := not current_path.is_empty()
 	walk_control.text = "Stop Walking" if walking else "Walk & Talk (Next)"
 	if uses_compact_activity_controls():
 		walk_control.text = ("Stop" if walking else "Walk") if bubble_viewport_size().x < SIDE_HUB_MIN_WIDTH and has_side_panel_dock() else ("Stop Walk" if walking else "Walk / Talk")
-	walk_control.tooltip_text = "Stop here without changing progress. Escape also stops." if walking else "Walk to the next neighbor and talk on arrival."
+	walk_control.tooltip_text = "Stop here without changing progress. Escape also stops."
+	if not walking and active_story_episode() == null:
+		var choice := primary_walk_choice()
+		walk_control.text = String(choice.kind).capitalize()+" "+String(choice.name)
+		walk_control.tooltip_text = walk_control.text+". Walk to this resident; arrival uses the existing greeting."+(" N/B still cycle residents." if not uses_phone_disclosure() else "")
 	if not walking and power_story != null and power_story.active:
 		walk_control.text="Power Story"
 		walk_control.tooltip_text="Resume the relay adventure or End story to return to your afternoon."
@@ -13854,6 +13913,7 @@ func update_walk_control() -> void:
 	if not walking and voting_story!=null and voting_story.active:
 		walk_control.text="Election map"
 		walk_control.tooltip_text="Resume your historical polling-list map walk."
+	walk_control.accessibility_name = walk_control.text
 
 func activate_walk_control() -> void:
 	if not current_path.is_empty():
@@ -13867,7 +13927,7 @@ func activate_walk_control() -> void:
 	elif power_story != null and power_story.active:
 		power_story.open_from_walking()
 	else:
-		choose_next_neighbor(1)
+		walk_to_neighbor(int(primary_walk_choice().neighbor))
 
 func press_walk_control() -> void:
 	# A touch press also emits an emulated mouse press. Keep its original intent
@@ -15716,7 +15776,7 @@ func make_ui() -> void:
 	block_actions_grid.add_theme_constant_override("v_separation", 4)
 	block_vbox.add_child(block_actions_grid)
 	block_open_btn = block_button(block_actions_grid, "Open Block Party", func(): open_block_gathering())
-	block_next_btn = block_button(block_actions_grid, "Meet Next (5 left)", func(): visit_next_unvisited_neighbor())
+	block_next_btn = block_button(block_actions_grid, "Meet Next (5 left)", func(): visit_suggested_neighbor())
 	block_epilogue_btn = block_button(block_actions_grid, "Take Group Photo", func(): advance_epilogue_step())
 	block_programme_btn = block_button(block_actions_grid, "Plan Party Schedule", open_programme_or_host)
 	block_mural_btn = block_button(block_actions_grid, "Paint w/ Celeste (0/3)", func(): open_mural_from_block_panel())

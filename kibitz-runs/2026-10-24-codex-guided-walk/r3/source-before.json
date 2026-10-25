@@ -1,0 +1,12 @@
+{
+  "godot/main.gd": "0e8e55c2e392ae4add4bf259a7f6b54b7041ea667c339d3aafa907fc9ee41846",
+  "godot/tests/study_test.gd": "4c484cc28c4fda309602c248b81998b150e28c189053210f9c91709a54875575",
+  "tests/godot-browser.mjs": "d36d5ba96d4bb63c382b9572480673c1db66e1ce325267d45ba4a6da5d3fdbf8",
+  "godot/story_picker.gd": "086a46fcee0e3c37c2dbdad3c495c84942d0fdfc695193f8afdc5a87d5fab463",
+  "godot/dog_story.gd": "e61a1a42d66d772712868185d14710efc2386b8e5c6ded9747d21752bf93a352",
+  "godot/lantern_procession.gd": "5c5ead64f5bd57ca99b6827a718fc10d043a728adb0106f1c3418ebbc404f369",
+  "godot/voting_story.gd": "49a9061a887dbd43fda6cd6e4cf11e5653ec31bde68e05df4ae9dd864f3bf376",
+  "godot/power_story.gd": "dcd589446fa18918bdeefcafcceac9ec8a9972f23efc2adf8bb76bf1a19dc5eb",
+  "scripts/run-godot.mjs": "4b03b63f1762db8294ea6bba67dddf0026287acb57888a0f43f7a1fa7ae1dacb",
+  "scripts/serve-godot.mjs": "9c1aa83ac02695500f828a07235ca692ac3108f1777cbb1a5681b2dab462d5f4"
+}

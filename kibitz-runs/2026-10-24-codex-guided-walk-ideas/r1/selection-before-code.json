@@ -1,0 +1,13 @@
+{
+  "selected_utc": "2026-10-25T01:11:23.359682+00:00",
+  "baseline": "ff8b195eaf3c4b8580dec060b79ebda1446db43c",
+  "sources_unchanged": true,
+  "chosen": "one existing primary Resume/Meet/Visit with derived transient target + aligned hub suggestion",
+  "rejected": [
+    "new resume button",
+    "new persisted route state",
+    "broad later-goal dispatcher",
+    "meal implementation before demonstrated blocker"
+  ],
+  "review_report_sha256": "96f2157208ec349889ec1fdb8d5e69fc356382a6da23d44d0ca659c685d210fc"
+}

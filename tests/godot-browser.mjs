@@ -136,8 +136,9 @@ async function revealPhoneControl(page,b,tap){
  }else throw new Error('Hidden target is not a canonical map secondary; explicitly disclose its own menu first');
  assert.ok(b?.visible,'disclosure must expose the actual native target');return b;
 }
+function namedWalkCaption(s){if(s.walk_target_kind!=='resume'&&s.objective_id==='meet')assert.equal(s.walk_target_neighbor,s.objective_neighbor,'walking suggestion agrees with independently computed objective');return ({resume:'Resume',meet:'Meet',visit:'Visit'}[s.walk_target_kind]||'')+' '+s.walk_target_name;}
 function assertWalkingCaptions(s){
- const expected=["What's Next?",'Tenderloin Map','Find Me','Zoom In (+)','Zoom Out (−)','Walk & Talk (Next)'];
+ const expected=["What's Next?",'Tenderloin Map','Find Me','Zoom In (+)','Zoom Out (−)',namedWalkCaption(s)];
  if(s.phone_disclosure?.enabled){assert.ok(['Next Step','Back to Me'].includes(s.walking_controls[0].text));assert.deepEqual(s.walking_controls.slice(1).map(b=>b.text),expected.slice(1));}
  else assert.deepEqual(s.walking_controls.map(b=>b.text),expected);
 }
@@ -754,7 +755,7 @@ async function verifyShortWalking(page,context,touch) {
     const g=moving.overlays.guide_label;if(g.visible){shortWalkingGuideChecks++;assert.ok(!overlaps({x:g.x-7,y:g.y-7,width:g.width+14,height:g.height+14},moving.overlays.player),'outlined objective leaves the moving player clear');}
     assert.ok(Math.hypot(moving.player_grounding.x+424.5,moving.player_grounding.z-62.5)>200,'Stop fixture remains over200m from the actual Black Hawk destination');
     const stopSave=await page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1'));await tap(moving.walk_control);await page.waitForFunction(()=>!window.__tenderloinGodotA11ySnapshot.player_grounding.path_active&&window.__tenderloinGodotA11ySnapshot.announcement.startsWith('Walking stopped.'));
-    const stopped=await snapshot();await settle();s=await snapshot();assert.ok(!s.player_grounding.path_active&&s.walk_control_text==='Walk & Talk (Next)');assert.equal(s.player_grounding.x,stopped.player_grounding.x);assert.equal(s.player_grounding.z,stopped.player_grounding.z);assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1')),stopSave);
+    const stopped=await snapshot();await settle();s=await snapshot();assert.ok(!s.player_grounding.path_active&&s.walk_control_text===namedWalkCaption(s));assert.equal(s.player_grounding.x,stopped.player_grounding.x);assert.equal(s.player_grounding.z,stopped.player_grounding.z);assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1')),stopSave);
     await page.screenshot({path:`artifacts/codex-small-hub-walking-${width}x${height}-${touch?'touch':'mouse'}.png`});await writeFile(`artifacts/codex-small-hub-walking-${width}x${height}-${touch?'touch':'mouse'}.json`,JSON.stringify(s,null,2));
     const a=s.play_area,c=await page.locator('#canvas').boundingBox(),x=c.x+(a.x+a.width/2)*c.width/width,y=c.y+(a.y+a.height/2)*c.height/height;
     if(touch){const finger=await context.newCDPSession(page);await finger.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y,id:1}]});await finger.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+12*c.width/width,y:y+4*c.height/height,id:1}]});await finger.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await finger.detach();}
@@ -1452,6 +1453,28 @@ async function verifyVotingStory(page,touch,size,privateFixture=false){
 }
 
 const phoneDisclosureChecks=[];
+const guidedWalkChecks=[];
+async function verifyGuidedWalk(browser,base){
+ for(const size of [{width:1100,height:760},{width:390,height:667},{width:320,height:667}]){
+  const touch=size.width<600,context=await browser.newContext({viewport:size,hasTouch:touch}),page=await context.newPage();latestPage=page;
+  page.on('pageerror',e=>errors.push(String(e)));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});page.on('request',r=>{if(![base,'blob:','data:'].some(p=>r.url().startsWith(p)))external.push(r.url());});
+  const snap=()=>page.evaluate(()=>window.__tenderloinGodotA11ySnapshot),settle=async()=>{const f=(await snap()).ui_frame;await page.waitForFunction(f=>{const s=window.__tenderloinGodotA11ySnapshot;return s.ui_frame>f+5&&!s.layout_refit_pending&&!s.compact_panel_layout_pending;},f);};
+  const tap=async b=>{assert.ok(b?.visible&&!b.disabled&&b.width>=44&&b.height>=44,'guided walk uses visible44px controls');const s=await snap(),c=await page.locator('#canvas').boundingBox(),x=c.x+(b.x+b.width/2)*c.width/s.viewport_width,y=c.y+(b.y+b.height/2)*c.height/s.viewport_height;if(touch)await page.touchscreen.tap(x,y);else await page.mouse.click(x,y);await settle();};
+  const save=()=>page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1'));
+  await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:90000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);assert.equal(await save(),null,'guided opening is a fresh profile');
+  await tap((await snap()).start_control);assert.equal((await snap()).walk_control_text,'Meet Bea');await tap((await snap()).walk_control);
+  await page.waitForFunction(()=>{const s=window.__tenderloinGodotA11ySnapshot;return s.block_panel_control.visible&&s.conversation_header.includes('Bea')&&!s.player_grounding.path_active;});await settle();
+  // Goodbye previously returned to Bea. This path now follows the visible goal.
+  await tap((await snap()).conversation_detail.buttons[2]);let s=await snap();assert.equal(s.objective_neighbor,4);assert.equal(s.walk_target_neighbor,4);assert.equal(s.walk_control_text,'Meet Thanh');await tap(s.walk_control);
+  await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.player_grounding.path_active);const before=await save();await tap((await snap()).walk_control);s=await snap();
+  assert.equal(s.walk_control_text,'Resume Thanh');assert.equal(s.walk_target_neighbor,4);assert.equal(s.walk_target_kind,'resume');assert.equal(s.player_grounding.path_active,false);const point={x:s.player_grounding.x,z:s.player_grounding.z},pose=s.camera_pose;
+  await page.waitForTimeout(400);s=await snap();assert.equal(s.player_grounding.x,point.x);assert.equal(s.player_grounding.z,point.z);assert.deepEqual(s.camera_pose,pose);assert.equal(await save(),before,'Stop creates no progress');
+  await page.screenshot({path:`artifacts/guided-walk-${size.width}-stopped.png`});await tap(s.walk_control);
+  await page.waitForFunction(()=>{const s=window.__tenderloinGodotA11ySnapshot;return s.block_panel_control.visible&&s.conversation_header.includes('Thanh')&&!s.player_grounding.path_active;},null,{timeout:90000});await settle();s=await snap();assert.equal(s.visited_count,2);assert.ok(JSON.parse(await save()).visited_neighbors.includes('thanh'),'actual arrival at intended resident earns original visit');
+  await page.screenshot({path:`artifacts/guided-walk-${size.width}-thanh.png`});assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1')),null);assert.ok(Buffer.byteLength(await save())<=4096);
+  guidedWalkChecks.push({size,touch,fresh:true,goodbyeGoal:'Thanh',stopResume:'Thanh',visited:2,saveBytes:Buffer.byteLength(await save())});await context.close();
+ }
+}
 async function verifyPhoneDisclosure(browser,base){
  for(const size of [{width:390,height:667},{width:320,height:667},{width:390,height:568},{width:320,height:639},{width:390,height:640},{width:390,height:664}]){
   const context=await browser.newContext({viewport:size,hasTouch:true}),page=await context.newPage();latestPage=page;
@@ -1473,7 +1496,7 @@ async function verifyPhoneDisclosure(browser,base){
 
   const saved=await page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1')),legacy=await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1'));
   assert.ok(saved&&JSON.parse(saved).visited_neighbors.includes('bea'),'actual first Bea greeting creates original earned visit save');assert.equal(legacy,null,'fresh context has no legacy save; remains absent');
-  await tap(s.conversation_detail.buttons[1]);s=await snap();assert.ok(s.phone_disclosure.actions_open&&s.conversation_actions.length>1);await page.keyboard.press('Escape');await settle();s=await snap();assert.ok(!s.phone_disclosure.actions_open&&s.block_panel_control.visible);
+  await tap(s.conversation_detail.buttons[1]);s=await snap();assert.ok(s.phone_disclosure.actions_open&&s.conversation_actions.length>1);for(const b of s.conversation_detail.buttons.filter(b=>b.visible))assert.ok(b.text_fits&&b.width>=44&&b.height>=44,'complete disclosed destination names fit actual phone button');await page.keyboard.press('Escape');await settle();s=await snap();assert.ok(!s.phone_disclosure.actions_open&&s.block_panel_control.visible);
   await tap(s.conversation_detail.buttons[2]);s=await snap();assert.ok(s.controls_control.visible&&!s.phone_disclosure.tray.visible);assert.equal(s.walking_controls.filter(b=>b.visible).length,2);assert.ok(s.phone_disclosure.explore.visible);
   await tap(s.phone_disclosure.explore);s=await snap();assert.ok(s.phone_disclosure.tray.visible);assert.ok(s.walking_controls[1].visible&&s.walking_controls[2].visible&&s.walking_controls[3].visible&&s.walking_controls[4].visible);
   const pose=s.camera_pose,player=s.player_grounding;const cd=await context.newCDPSession(page),tr=s.phone_disclosure.tray,canvas=await page.locator('#canvas').boundingBox(),pt=(x,y,id)=>({x:canvas.x+x*canvas.width/s.viewport_width,y:canvas.y+y*canvas.height/s.viewport_height,id});await cd.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[pt(tr.x+2,tr.y+10,1),pt(tr.x+tr.width-2,tr.y+10,2)]});await cd.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[pt(tr.x+3,tr.y+12,1),pt(tr.x+tr.width-3,tr.y+12,2)]});await cd.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await settle();assert.deepEqual((await snap()).camera_pose,pose);assert.deepEqual((await snap()).player_grounding,player);await cd.detach();
@@ -1483,11 +1506,15 @@ async function verifyPhoneDisclosure(browser,base){
   await tap((await snap()).phone_disclosure.explore);await tap((await snap()).phone_disclosure.all_actions);s=await snap();assert.ok(s.block_panel_control.visible&&s.block_hub_actions.length===4&&!s.phone_disclosure.explore.visible&&!s.phone_disclosure.tray.visible,'actual All Actions opens original hub with no covering tray');
   await page.keyboard.press('Escape');await settle();assert.ok(!(await snap()).block_panel_control.visible,'one Escape closes hub opened from Explore');
 
-  await tap((await snap()).walking_controls[5]);await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.block_panel_control.visible);await settle();s=await snap();assert.ok(!s.phone_disclosure.actions_open&&!s.phone_disclosure.transition,'Walk press/release cannot click through into the new talk row or leave a latched gesture');
+  s=await snap();assert.equal(s.objective_neighbor,4);assert.equal(s.walk_target_neighbor,4);assert.equal(s.walk_control_text,'Meet Thanh');
+  await tap(s.walking_controls[5]);await page.waitForFunction(()=>{const s=window.__tenderloinGodotA11ySnapshot;return s.block_panel_control.visible&&s.conversation_header.startsWith('Thanh')&&!s.player_grounding.path_active;},null,{timeout:90000});await settle();s=await snap();assert.ok(!s.phone_disclosure.actions_open&&!s.phone_disclosure.transition,'Walk press/release cannot click through into the new talk row or leave a latched gesture');
+  const afterThanh=await page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1'));assert.equal(s.visited_count,2);assert.deepEqual([...JSON.parse(afterThanh).visited_neighbors].sort(),['bea','thanh'],'the actual intended arrival earns Thanh, without visiting another resident');assert.ok(Buffer.byteLength(afterThanh)<=4096);
   await tap(s.conversation_detail.buttons[1]);s=await snap();assert.equal(s.conversation_detail.buttons[5].text,'All Actions');await tap(s.conversation_detail.buttons[5]);s=await snap();assert.ok(s.block_hub_actions.length===4&&!s.phone_disclosure.actions_open,'talk-to-hub clears action disclosure ownership');await page.keyboard.press('Escape');await settle();assert.ok(!(await snap()).block_panel_control.visible,'one Escape closes hub after disclosed talk All Actions');
-  await tap((await snap()).walking_controls[5]);await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.block_panel_control.visible);await settle();s=await snap();assert.ok(!s.phone_disclosure.actions_open&&!s.phone_disclosure.transition);await tap(s.conversation_detail.buttons[1]);s=await snap();assert.ok(s.conversation_detail.buttons[3].text.includes('Thanh'),'fresh Bea offers named Meet Thanh');await tap(s.conversation_detail.buttons[3]);await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.player_grounding.path_active);await tap((await snap()).walk_control);assert.ok(!(await snap()).player_grounding.path_active,'original primary Stop remains immediate after deliberate goal action');
-  assert.equal((await snap()).music_playing,firstMusic,'phone disclosures retain Music preference');assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1')),saved);assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1')),legacy);
-  const result={size,freshBea:true,readerHeight:firstReaderHeight,actualFingerControls:true,legacyUnchanged:true};phoneDisclosureChecks.push(result);await writeFile(`artifacts/phone-disclosure-${size.width}x${size.height}.json`,JSON.stringify(result,null,2));await context.close();
+  // Explicit original cycling chooses a repeat speaker; the named primary now follows unmet goals.
+  await page.keyboard.press('KeyN');await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.player_grounding.path_active);await settle();s=await snap();assert.equal(s.walk_target_neighbor,0,'original N deliberately chooses Bea');await tap(s.walk_control);s=await snap();assert.equal(s.walk_control_text,'Resume Bea');assert.ok(!s.player_grounding.path_active);assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1')),afterThanh,'selecting and stopping a repeat visit earns nothing');
+  await tap(s.walking_controls[5]);await page.waitForFunction(()=>{const s=window.__tenderloinGodotA11ySnapshot;return s.block_panel_control.visible&&s.conversation_header.startsWith('Bea')&&!s.player_grounding.path_active;},null,{timeout:90000});await settle();s=await snap();assert.ok(!s.phone_disclosure.actions_open&&!s.phone_disclosure.transition,'Resume press/release cannot click through into the returned talk row');await tap(s.conversation_detail.buttons[1]);s=await snap();assert.equal(s.objective_id,'meet');const goal=s.objective_text.match(/^Meet (.+) \(/)?.[1];assert.ok(goal&&s.conversation_detail.buttons[3].text===`Meet ${goal}`,'returned Bea offers the current named unmet-neighbor goal');assert.equal(s.walk_target_neighbor,s.objective_neighbor);await tap(s.conversation_detail.buttons[3]);await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.player_grounding.path_active);await tap((await snap()).walk_control);assert.ok(!(await snap()).player_grounding.path_active,'original primary Stop remains immediate after deliberate goal action');
+  assert.equal((await snap()).music_playing,firstMusic,'phone disclosures retain Music preference');assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1')),afterThanh,'disclosures, repeat Bea visit and stopped goal preserve the earned save');assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1')),legacy);
+  const result={size,freshBea:true,readerHeight:firstReaderHeight,actualFingerControls:true,earnedVisit:'Thanh',repeatPrimary:'Resume Bea',stoppedGoal:goal,saveBytes:Buffer.byteLength(afterThanh),legacyUnchanged:true};phoneDisclosureChecks.push(result);await writeFile(`artifacts/phone-disclosure-${size.width}x${size.height}.json`,JSON.stringify(result,null,2));await context.close();
  }
 }
 
@@ -2350,7 +2377,7 @@ try {
     await page.mouse.down();
     await page.waitForFunction(frame => {
       const s = window.__tenderloinGodotA11ySnapshot;
-      return s?.ui_frame > frame && !s.player_grounding.path_active && s.walk_control_text === 'Walk & Talk (Next)' && s.announcement.startsWith('Walking stopped.');
+      return s?.ui_frame > frame && !s.player_grounding.path_active && s.walk_control_text === 'Resume Thanh' && s.announcement.startsWith('Walking stopped.');
     }, activeWalk.ui_frame);
     const stoppedWalk = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
     // Hold through multiple updates, then release: a Stop press must not become Next.
@@ -2360,7 +2387,7 @@ try {
     const steadyWalk = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
     assert.ok(steadyWalk.ui_frame > stoppedWalk.ui_frame + 3 && steadyWalk.player_grounding.stride < 0.1, 'fresh stopped frames settle the walking animation');
     assert.equal(steadyWalk.player_grounding.path_active, false);
-    assert.equal(steadyWalk.walk_control_text, 'Walk & Talk (Next)');
+    assert.equal(steadyWalk.walk_control_text, 'Resume Thanh');
     assert.ok(Math.hypot(steadyWalk.player_grounding.x - stoppedWalk.player_grounding.x, steadyWalk.player_grounding.z - stoppedWalk.player_grounding.z) < 0.001, 'stopped player stays still after release');
     assert.equal(steadyWalk.visited_count, beforeThanh.visited_count, 'stopping does not mark the neighbor visited');
     assert.equal(steadyWalk.reward_sound_count, beforeThanh.reward_sound_count, 'stopping does not award or play a reward');
@@ -2414,7 +2441,7 @@ try {
       return p && !p.path_active && p.stride < 0.1;
     });
     assertGrounded(await page.evaluate(() => window.__tenderloinGodotA11ySnapshot), 'arrived');
-    assert.equal((await page.evaluate(() => window.__tenderloinGodotA11ySnapshot)).walk_control_text, 'Walk & Talk (Next)', 'arrival restores normal walking action');
+    {const arrived=await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);assert.equal(arrived.walk_control_text,namedWalkCaption(arrived),'arrival names the next actual resident action');}
     await page.keyboard.press('KeyF');
     await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.active_panel === 'none' && window.__tenderloinGodotA11ySnapshot?.overlays.speech.anchor === '');
     await page.screenshot({ path: `artifacts/godot-${size.width}-character-arrived.png` });
@@ -3635,10 +3662,12 @@ try {
   assert.equal(storyVisitChecks.length,12);assert.equal(dogStoryChecks.length,6);assert.equal(dogStoryChecks.filter(c=>!c.privateFixture).length,3);
   assert.equal(larkinStoryChecks.length,3);assert.equal(powerStoryChecks.length,6);assert.equal(powerStoryChecks.filter(c=>!c.privateFixture).length,3);
   await verifyLoanWorld(browser,rhythmFixtureSave,base);
+  await verifyGuidedWalk(browser,base);
+  assert.equal(guidedWalkChecks.length,3);
   await verifyPhoneDisclosure(browser,base);
   assert.equal(phoneDisclosureChecks.length,6);
   assert.equal(loanHomecomingChecks.length,8);assert.equal(loanWorldChecks.length,3);assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
-  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, sourceFingerprint, renderedPixelChecks, storyReturnChecks, storyVisitChecks, phoneDisclosureChecks, mapPinchChecks, votingStoryChecks, lanternProcessionChecks, dogStoryChecks, larkinStoryChecks, powerStoryChecks, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, beaInvitationChecks, quietSeatChecks, filmScreeningChecks, rhythmCircleChecks, rhythmAuditionChecks, muralStoryChecks, livingMuralChecks, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
+  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, sourceFingerprint, renderedPixelChecks, guidedWalkChecks, storyReturnChecks, storyVisitChecks, phoneDisclosureChecks, mapPinchChecks, votingStoryChecks, lanternProcessionChecks, dogStoryChecks, larkinStoryChecks, powerStoryChecks, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, beaInvitationChecks, quietSeatChecks, filmScreeningChecks, rhythmCircleChecks, rhythmAuditionChecks, muralStoryChecks, livingMuralChecks, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
   assert.ok(queuedActivityRewardChecks > 0, 'at least one actual crowded activity exercises queued reward timer and Close delivery');
   assert.ok(shortStartClicked && shortStartTouchClicked, 'real mouse and touch Start at640x360 were exercised');
   assert.equal(beaInvitationChecks.length,7,'three genuine current progression and four private post-quiet invitation cases');
@@ -3671,7 +3700,7 @@ try {
   assert.equal(muralWorkshopChecks.length,8,'seven late and one fresh actual workshop mouse/finger cases executed');
   assert.equal(muralWorkshopChecks.filter(c=>c.photoStatus==='taken').length,7,'all seven late cases preserve a saved taken keepsake');
   assert.equal(workshopAutoAdvanceChecks,3,'a fresh mural exercises all three automatically offered contributions');
-  console.log(JSON.stringify({ runs, sourceFingerprint, renderedPixelChecks, storyReturnChecks, storyVisitChecks, phoneDisclosureChecks, mapPinchChecks, votingStoryChecks, lanternProcessionChecks, dogStoryChecks, larkinStoryChecks, powerStoryChecks, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, rhythmCircleChecks, rhythmAuditionChecks, livingMuralChecks, muralWorkshopChecks, workshopAutoAdvanceChecks, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, narrowActivityChecks, passiveActivityChecks, narrowHubChecks, smallHubReaderChecks, shortWalkingChecks, shortWalkingCaptionChecks, shortWalkingGuideChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
+  console.log(JSON.stringify({ runs, sourceFingerprint, renderedPixelChecks, guidedWalkChecks, storyReturnChecks, storyVisitChecks, phoneDisclosureChecks, mapPinchChecks, votingStoryChecks, lanternProcessionChecks, dogStoryChecks, larkinStoryChecks, powerStoryChecks, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, rhythmCircleChecks, rhythmAuditionChecks, livingMuralChecks, muralWorkshopChecks, workshopAutoAdvanceChecks, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, narrowActivityChecks, passiveActivityChecks, narrowHubChecks, smallHubReaderChecks, shortWalkingChecks, shortWalkingCaptionChecks, shortWalkingGuideChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
 } catch (error) {
   if (latestPage && !latestPage.isClosed()) {
     await latestPage.screenshot({ path: 'artifacts/godot-browser-failure.png' });

@@ -1,0 +1,369 @@
+{
+  "outcome": "guided named walking verified; publication not authorized for this checkpoint",
+  "baseline": "ff8b195eaf3c4b8580dec060b79ebda1446db43c",
+  "gates": {
+    "native": {
+      "rc": 0,
+      "seconds": 153.31130528450012,
+      "finished_utc": "2026-10-25T03:24:11.655327+00:00",
+      "sources_unchanged": true,
+      "native_asfound_unchanged": true,
+      "tokens": true,
+      "clean": true
+    },
+    "export": {
+      "rc": 0,
+      "seconds": 3.1638236045837402,
+      "finished_utc": "2026-10-25T03:24:14.844656+00:00",
+      "sources_unchanged": true,
+      "native_asfound_unchanged": true
+    },
+    "check": {
+      "rc": 0,
+      "seconds": 2.090756416320801,
+      "finished_utc": "2026-10-25T03:24:16.943413+00:00",
+      "sources_unchanged": true,
+      "native_asfound_unchanged": true
+    },
+    "node": {
+      "rc": 0,
+      "seconds": 6.038938283920288,
+      "finished_utc": "2026-10-25T03:24:22.989677+00:00",
+      "sources_unchanged": true,
+      "native_asfound_unchanged": true
+    },
+    "browser": {
+      "rc": 0,
+      "evidence": "artifacts/guided-walk-20261025/full2/execution.json"
+    }
+  },
+  "browser_execution": {
+    "rc": 0,
+    "seconds": 4669.202946662903,
+    "sources_unchanged": true,
+    "files": 46,
+    "native_asfound_unchanged": true,
+    "finished_utc": "2026-10-25T04:42:12.333889+00:00"
+  },
+  "coverage_counts": {
+    "runs": 3,
+    "renderedPixelChecks": 284,
+    "guidedWalkChecks": 3,
+    "storyReturnChecks": 9,
+    "storyVisitChecks": 12,
+    "phoneDisclosureChecks": 6,
+    "mapPinchChecks": 4,
+    "votingStoryChecks": 3,
+    "lanternProcessionChecks": 3,
+    "dogStoryChecks": 6,
+    "larkinStoryChecks": 3,
+    "powerStoryChecks": 6,
+    "loanHomecomingChecks": 8,
+    "loanWorldChecks": 3,
+    "sharedPanelChecks": 9,
+    "programmeStudioChecks": 7,
+    "civicListeningChecks": 9,
+    "beaInvitationChecks": 7,
+    "quietSeatChecks": 9,
+    "filmScreeningChecks": 3,
+    "rhythmCircleChecks": 11,
+    "rhythmAuditionChecks": 11,
+    "muralStoryChecks": 8,
+    "livingMuralChecks": 8,
+    "errors": 0,
+    "external": 0
+  },
+  "guided_walk": [
+    {
+      "size": {
+        "width": 1100,
+        "height": 760
+      },
+      "touch": false,
+      "fresh": true,
+      "goodbyeGoal": "Thanh",
+      "stopResume": "Thanh",
+      "visited": 2,
+      "saveBytes": 925
+    },
+    {
+      "size": {
+        "width": 390,
+        "height": 667
+      },
+      "touch": true,
+      "fresh": true,
+      "goodbyeGoal": "Thanh",
+      "stopResume": "Thanh",
+      "visited": 2,
+      "saveBytes": 925
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 667
+      },
+      "touch": true,
+      "fresh": true,
+      "goodbyeGoal": "Thanh",
+      "stopResume": "Thanh",
+      "visited": 2,
+      "saveBytes": 925
+    }
+  ],
+  "phone_disclosures": [
+    {
+      "size": {
+        "width": 390,
+        "height": 667
+      },
+      "freshBea": true,
+      "readerHeight": 96,
+      "actualFingerControls": true,
+      "earnedVisit": "Thanh",
+      "repeatPrimary": "Resume Bea",
+      "stoppedGoal": "Celeste",
+      "saveBytes": 925,
+      "legacyUnchanged": true
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 667
+      },
+      "freshBea": true,
+      "readerHeight": 96,
+      "actualFingerControls": true,
+      "earnedVisit": "Thanh",
+      "repeatPrimary": "Resume Bea",
+      "stoppedGoal": "Celeste",
+      "saveBytes": 925,
+      "legacyUnchanged": true
+    },
+    {
+      "size": {
+        "width": 390,
+        "height": 568
+      },
+      "freshBea": true,
+      "readerHeight": 96,
+      "actualFingerControls": true,
+      "earnedVisit": "Thanh",
+      "repeatPrimary": "Resume Bea",
+      "stoppedGoal": "Celeste",
+      "saveBytes": 925,
+      "legacyUnchanged": true
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 639
+      },
+      "freshBea": true,
+      "readerHeight": 96,
+      "actualFingerControls": true,
+      "earnedVisit": "Thanh",
+      "repeatPrimary": "Resume Bea",
+      "stoppedGoal": "Celeste",
+      "saveBytes": 925,
+      "legacyUnchanged": true
+    },
+    {
+      "size": {
+        "width": 390,
+        "height": 640
+      },
+      "freshBea": true,
+      "readerHeight": 96,
+      "actualFingerControls": true,
+      "earnedVisit": "Thanh",
+      "repeatPrimary": "Resume Bea",
+      "stoppedGoal": "Celeste",
+      "saveBytes": 925,
+      "legacyUnchanged": true
+    },
+    {
+      "size": {
+        "width": 390,
+        "height": 664
+      },
+      "freshBea": true,
+      "readerHeight": 96,
+      "actualFingerControls": true,
+      "earnedVisit": "Thanh",
+      "repeatPrimary": "Resume Bea",
+      "stoppedGoal": "Celeste",
+      "saveBytes": 925,
+      "legacyUnchanged": true
+    }
+  ],
+  "main_save_bytes": [
+    1727,
+    1723,
+    1723
+  ],
+  "errors": [],
+  "external": [],
+  "final_source_hashes": {
+    "godot/bea_invitation.gd": "4ad40453704987fc9c29c34425b8be66c5fb8057874ab21fdd9cb89ab259b51f",
+    "godot/civic_listening.gd": "2eca8cffc35ed2753544e137515fdd6e67b1d6933fb60717763e4c540061c7e7",
+    "godot/dog_story.gd": "e61a1a42d66d772712868185d14710efc2386b8e5c6ded9747d21752bf93a352",
+    "godot/export_presets.cfg": "c48690c627327b17003865086e89eed43e143d1e391174551a54b702ed4f7c85",
+    "godot/film_screening.gd": "20a8015f821333f337158d5eb1ab820240db9999413f339451afb6a4923271dd",
+    "godot/lantern_procession.gd": "5c5ead64f5bd57ca99b6827a718fc10d043a728adb0106f1c3418ebbc404f369",
+    "godot/loan_homecoming.gd": "0cac31652903848832ded6d2131c97e50e82a8c89f03e69c885aa543574472f9",
+    "godot/main.gd": "eea68bbc34e008a72873ca26d957dc5e90c493b37d4813d6a86afb3e33b07ca1",
+    "godot/mural_signature.gd": "a8b25e10edef62c77fb4ccb6e98c08972c579e61659ac80386a04a03bc851da2",
+    "godot/mural_stories.gd": "4dc1f266b997f8210871b4d863c19b43aeeb901beb60c822b6a92de9e48766c2",
+    "godot/mural_workshop.gd": "d44323fee68af2ac907ebba3e59aab32ffa7e08e716016b926a86acc2a20e0c8",
+    "godot/power_place.gd": "f192f25dbe721d6a33c826046237cc41653bd473b50c8fed5c22bb94819309ed",
+    "godot/power_story.gd": "dcd589446fa18918bdeefcafcceac9ec8a9972f23efc2adf8bb76bf1a19dc5eb",
+    "godot/programme_studio.gd": "b9e2200905730fee77e785946e45f05555bd1becd8de76ade20a37ecd6667e1e",
+    "godot/project.godot": "f8dfcb563b703005fdf185f9a49faaf4aba153322b4da9270af099970c7fccdf",
+    "godot/quiet_seats.gd": "211c67f25397305c0cefd5c2c5f0bc558296ab82848c09b67cf032f0b9fc5cef",
+    "godot/rhythm_bar.gd": "cb26254359014631c7a6f58b9ab574a33fe5e10a5ea315b0b91556fe7378fcab",
+    "godot/rhythm_circle.gd": "3cdda6f228db7ebb8efcc0f397cfa425a8ce9affef934f54ef0189b2f41d62f1",
+    "godot/shared_panel.gd": "0cf289edc823919866c03e3687935d9b5c390058e1faa8051255a3fa9067833f",
+    "godot/story_picker.gd": "086a46fcee0e3c37c2dbdad3c495c84942d0fdfc695193f8afdc5a87d5fab463",
+    "godot/voting_story.gd": "49a9061a887dbd43fda6cd6e4cf11e5653ec31bde68e05df4ae9dd864f3bf376",
+    "godot/data/buildings.json": "8b3afd7a6ec3d00ac22fb77347caeafa262be2f55ad1ddbf0a9dd296afd332d2",
+    "godot/data/lidar_2023.json": "b59ba7348bdc2c78c867993cef230353708163d1d0caa50602668f73323cdc93",
+    "godot/data/neighborhood_voices.json": "662571e5de9eb0cc9f10e25146b8da08a302758009159462b6f2a460889d0271",
+    "godot/data/power_place.json": "5eac6de7921c9eb6afaa1752a9bfc6a693e63ca70a19ea3b6d82f268b2178f52",
+    "godot/data/source_receipt.json": "4ee6ed720f64c2c4417f9607446916fd610f57dadb04ddeab66a8dbeb789c3b7",
+    "godot/data/street_trees.json": "4623f1ae6744d321967aa06250ca936267a5edac0b51aec21cc00927397dbdad",
+    "godot/data/voting_places.json": "dce6122946d5e29fe22c522c66b9437a1a1c5427535f1ad28af1ae884b307fe3",
+    "godot/tests/study_test.gd": "56f5ebbfe1c06718e2f9e78720a6737f4631ac62e41e949c4eed5ae4be071a6d",
+    "godot/data/source/boeddeker_park.osm.json": "96f0c7dadc0bb43f703fbf7a72d9fc3d37f5b1075f3d4e3e4aac280e0af55c7c",
+    "godot/data/source/lidar_ept_manifest.json": "99d6fb66c87994e077a0005ae646a91063cd0364ff3a59e434c1a5f3b9bea9b5",
+    "godot/data/source/metadata.json": "93407284a55c676b96d941042dcdd6223e5e5338f3b33a0faa639b56dd2309e6",
+    "godot/data/source/osm_buildings.json": "6b00db9038f08223d5966e85264ea16340a4be3fd8267a612ec9a25fad9fbf7b",
+    "godot/data/source/street_trees_tkzw-k3nq.json": "270f370a13a9a76b72e0bc2c42dc1760cfdd0fda129fb29b3e3283003875847d",
+    "godot/data/source/larkin/3mea-di5p-metadata.json": "0c4e38f8d3c2f69150cd14c04254cd9e6c874e396b5934da9631e58929ea154a",
+    "godot/data/source/larkin/address.json": "703eac0174a434f40cfa753cc0132983ea129392a04579c325f0ec1fc4eab862",
+    "godot/data/source/larkin/gmfx-8h6i-metadata.json": "865c26aeab7026f7bf734fce77fee8f9f22b4a7ba4ee2d94aac65e9adfa1e2a4",
+    "godot/data/source/larkin/intersection.json": "b3a465baa27dfc09b34d371db7529039b0a118659bc4474aa88cb54221c75cef",
+    "godot/data/source/larkin/receipt.json": "c20abc4e7ead499b1ccc88915321b3d06ec4cdfa1563a74324b835917d260559",
+    "tests/godot-browser.mjs": "aa697407cae9c47a57690fea4aaf1c4eae37283d09fb48d64d785beaa31fafdc",
+    "tests/godot-data.test.mjs": "932dfa259e008cd99650462570d6147aabcdd7d2d04fa85b20884ee518239329",
+    "artifacts/godot-web/index.pck": "dba38d574f2beb7b13cf34a31bef0d143796bdef654cc859ab616604b740e60a",
+    "scripts/build-power-place.mjs": "dc474ebc01bd1702fe36f7282a6574e404e4f71fba1d7ff9d8bb8088357181de",
+    "scripts/build-voting-places.mjs": "5f29de5c7764ee352212c08ea715eb7050060e2871b8d3ad6463f0a21b84e3dc",
+    "docs/research/2026-10-22-episode-locations/polling-addresses.json": "9d6b164ef9874f2ac4fae057bf7caeb9d38567b3bc9f3291cca3104135635e59",
+    "docs/research/2026-10-22-episode-locations/polling-2024-official-selected-rows.tsv": "71689d465d8ac6e9272ff7c625ab3c887c60f55bcb95ef9355aac1195fab5d48"
+  },
+  "reviews": {
+    "ideas": {
+      "folder": "kibitz-runs/2026-10-24-codex-guided-walk-ideas/r1",
+      "receipt": {
+        "harness_rc": 0,
+        "sources_unchanged": true,
+        "requested_model": "claude-opus-5-5",
+        "requested_effort": "high"
+      },
+      "selected_model": "claude-opus-5-5",
+      "selected_effort": "high",
+      "runtime_identity": "not independently attested",
+      "quota": "redacted auth receipt retained; allowance percentage unknown",
+      "reviewer_ran_gates": false
+    },
+    "implementation": {
+      "folder": "kibitz-runs/2026-10-24-codex-guided-walk/r3",
+      "receipt": {
+        "harness_rc": 0,
+        "sources_unchanged": true,
+        "requested_model": "claude-opus-5-5",
+        "requested_effort": "high"
+      },
+      "selected_model": "claude-opus-5-5",
+      "selected_effort": "high",
+      "runtime_identity": "not independently attested",
+      "quota": "redacted auth receipt retained; allowance percentage unknown",
+      "reviewer_ran_gates": false
+    }
+  },
+  "later_driver_fixes_independently_rereviewed": false,
+  "screenshots": {
+    "inspected": true,
+    "utc": "2026-10-25T04:55:23.062190+00:00",
+    "images": {
+      "guided-walk-320-stopped.png": "333aa2f5111476d3fddcf37d82cb69f640f9da07b55e6dcde1c142668edff2e6",
+      "guided-walk-390-thanh.png": "e3f6b9537b9768fd0dff25cce8c8724d2bd1170c9111845a3f39dced25a08935",
+      "guided-walk-1100-stopped.png": "6b0e5f83800fe1751fa785c4aab15c62724b1f53a3508307c285c2703b99927f"
+    },
+    "findings": "Actual final320 Stop label wraps full Resume Thanh; desktop ResumeThanh agrees with header/distance;390 actual Thanh arrival shows next Celeste and original two earned visits. Original fictional venue label visible. No physical/human acceptance claim."
+  },
+  "preserved_evidence_trees": [
+    {
+      "folder": "artifacts/guided-walk-20261025/native1",
+      "files": 45,
+      "sorted_path_and_filehash_tree_sha256": "dca9c3c98e60d0c8c33a01a0de30c71ba7ad1a431cdbd39a92e00d17c235c4a4"
+    },
+    {
+      "folder": "artifacts/guided-walk-20261025/native2",
+      "files": 44,
+      "sorted_path_and_filehash_tree_sha256": "91241d74f96f61ce00bdbc4282cc71ce066429273b10935fa09268fa3bfb508a"
+    },
+    {
+      "folder": "artifacts/guided-walk-20261025/native3",
+      "files": 44,
+      "sorted_path_and_filehash_tree_sha256": "6af06ec8f21731a4b7d6c7d946326d7224085a2fd3962d201dc99c024396cd95"
+    },
+    {
+      "folder": "artifacts/guided-walk-20261025/private1",
+      "files": 63,
+      "sorted_path_and_filehash_tree_sha256": "f86882da99f8f069cb110f0ec44ca662037f0d421812ffb152acd78aeebd7b39"
+    },
+    {
+      "folder": "artifacts/guided-walk-20261025/private2",
+      "files": 48,
+      "sorted_path_and_filehash_tree_sha256": "750d03ac9d4bc9e3041ad2f8eb978a8877c5cf37c736356d7d87e9af5cecd27f"
+    },
+    {
+      "folder": "artifacts/guided-walk-20261025/private3",
+      "files": 76,
+      "sorted_path_and_filehash_tree_sha256": "a62289e0ed402005cce34b4db8efd406f96c7799c874be8bc1c497e2d90dbd5f"
+    },
+    {
+      "folder": "artifacts/guided-walk-20261025/private4",
+      "files": 57,
+      "sorted_path_and_filehash_tree_sha256": "e14faa716224cc061bec0b59728b611ec456010c1da87b3064ab19593ab844e2"
+    },
+    {
+      "folder": "artifacts/guided-walk-20261025/phone-fixture1",
+      "files": 65,
+      "sorted_path_and_filehash_tree_sha256": "1aff999eb341abf08648d85b51d1409712fc2045f2070fa23df195352cb355f2"
+    },
+    {
+      "folder": "artifacts/guided-walk-20261025/baseline-android",
+      "files": 16,
+      "sorted_path_and_filehash_tree_sha256": "ed63de91f94aa77daa77bd9689f41a263177bf6d41d287dc1626141e60520df0"
+    },
+    {
+      "folder": "artifacts/guided-walk-20261025/full1",
+      "files": 896,
+      "sorted_path_and_filehash_tree_sha256": "77adeb963f33c560e0754ffacd944b3e1d7220daac5e8765a6f3730fb7979809"
+    },
+    {
+      "folder": "artifacts/guided-walk-20261025/full2",
+      "files": 905,
+      "sorted_path_and_filehash_tree_sha256": "ef53e895f43af998b11a9b659c0897b40a22f3137206ddff33520851f41efe20"
+    }
+  ],
+  "native_asfound": {
+    "bytes": 1272,
+    "sha256": "2b7d1e849b4820a1d6c49602930ac3e0b104a8aa132375837038bfef80f2e0e1",
+    "unchanged": true
+  },
+  "public": {
+    "version": "0.12.0",
+    "fingerprint": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567"
+  },
+  "limits": [
+    "desktop Chrome touch/Pixel7 emulation, not physical phones",
+    "no full screen-reader or human comprehension/pacing/aesthetic/listening acceptance",
+    "music quality and laptop shutdown cause unresolved",
+    "imported optional8192 bags not universally4096 safe; original refusal preserved",
+    "historical/space/cooking/teaser are not implemented by this round"
+  ]
+}

@@ -1,5 +1,25 @@
 # Tenderloin Redux — build roadmap
 
+## Creator-directed implementation and test cadence
+
+October24Pacific: creator asked to complete related coding before waiting on expensive tests at each leg. Implement one coherent playable feature as a connected batch, potentially spanning wakeups: for cooking this means choices, preparation, resident response, visible result and retained invitation together. Keep mandatory fresh pre-code r1; use cheap parser/targeted checks only where useful during development; finish the feature, run its separate implementation r3, collect valid related fixes, then run one final full all-five sequence on frozen inputs. Do not launch full browser regression after every small edit. Preserve failed evidence and diagnose related assumptions together before another expensive run; valid later code changes still need all required gates. No review/gate/assertion bypass or unrelated mega-batch is authorized. Any active regression remains frozen; the latest evidence above governs whether a run is active. Scheduler standing cadence updated through automation_update and read back; self-refresh/open-only/no-end/30-minute policy preserved.
+
+
+## Current open gameplay queue and scheduler maintenance
+
+Creator requested only unfinished work and automatic scheduler upkeep on October24Pacific. The existing ACTIVE30-minute/no-end heartbeat now requires reconciling OPEN NOW and the gameplay queue at the end of every wakeup. Save material changes with automation_update; remove accepted/committed items, keep completed history/evidence in the repository, preserve standing safety/review/publication constraints, and stay quiet on unchanged state. This does not authorize new publication or bypass review/gates. Saved automation was read back and matched; current full regression inputs remain frozen.
+
+Guided-walking checkpoint now has allfive final local gates passed; accepted commit accompanies the current BUILD_STATUS/handoff. Next new gameplay is specific-dish cooking/shared meal with fresh exact pre-code r1; do not repeat the completed walking round. Detailed completed evidence remains in the repository, not the scheduler.
+
+Next NEW gameplay order after that checkpoint:
+1. Resident-led cooking/shared meal with hands-on choices, resident feedback, visible consequence and retained invitation. Follow docs/COOKING_FOODWAYS_BRIEF.md: specific Arab immigrant/refugee, Chinese, Thai AND African American dishes; no generic substitute dishes. Named regional/family versions, distinctive preparation and original food art/voices. Exact menu/mechanics need fresh scopedr1 after the guided-walking checkpoint; no cooking implemented.
+2. Remaining core-activity switching/revisit and earned-invitation gaps, identified from current source. Extend missing main-journey behavior without rebuilding existing facilities or assuming persistent suspension.
+3. Before These Streets: bounded playable historical opening, skippable/revisitable and primary-source-grounded; living Indigenous history is distinct from geology/prehistory.
+4. Tenderloin to the Stars: speculative helper-robot workshop, neighborhood-shaped habitat, cooperative departure and orbital return/exploration, implemented in separate bounded stages after prerequisites.
+
+Still-open fixes/delivery: consequential reproducible gameplay regressions and music quality; expanded agent playtest; local45-60second1080p teaser using actual verified gameplay/original-cleared media. Physical/human listening/comfort/AT acceptance remains separate. No automatic repeated audio/opening probes, unimplemented concept-as-gameplay or Copland rights claim. This queue supersedes older historical pending-episode descriptions below; live source/current evidence still governs actual status.
+
+
 ## Creator priority and completed Halloween (October 22, 2026)
 
 Halloween Lantern Procession is implemented, independently reviewed and all-five-gate verified: original costume/handheld-lantern choices, assembly, actual moving visitors and deliberate Welcome on existing Turk geography. The exact pre-code r1 selection precedes implementation; separate r3 findings were grounded and fixed, then native/export/check/105Node/full desktop-and-phone browser gates passed. Later driver fixes were not independently re-reviewed. This visit-only episode and Two Dogs Home are complete as tested features; human acceptance remains open. Historical November 5, 2024 mayoral voting is next before human playtesting; cooking follows. Neither future episode is implemented or pre-ideated. Each requires its own fresh exact scopedr1, grounded choice, separate exactr3 and all five gates. Read current handoff/BUILD_STATUS for evidence and limits.

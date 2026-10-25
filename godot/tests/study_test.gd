@@ -455,7 +455,7 @@ func run() -> void:
 		study.activate_walk_control()
 		require(study.current_path.is_empty() and study.route_mesh.mesh == null and not study.pending_celeste_talk and not study.pending_rook_talk and not study.walking_to_mural and not study.walking_to_speaker, "stop clears the route and deferred actions")
 		require(not study.advance_walk(2.0) and study.player.position.is_equal_approx(stop_position), "stopped route cannot keep moving or arrive later")
-		require(JSON.stringify(study.build_save_envelope()) == stop_save and study.walk_control.text == "Walk & Talk (Next)", "stopping preserves progress and restores the normal action")
+		require(JSON.stringify(study.build_save_envelope()) == stop_save and study.walk_control.text == guided_caption(study), "stopping preserves progress and restores the normal action")
 		if stop_case == "rook":
 			require(study.request_rook_soundcheck() and not study.current_path.is_empty() and study.pending_rook_talk, "soundcheck requested after Stop starts a fresh route")
 		elif stop_case in ["celeste", "celeste_t"]:
@@ -466,8 +466,13 @@ func run() -> void:
 			require(not study.current_path.is_empty() and study.pending_celeste_talk and study.selected_neighbor == study.celeste_index, "%s after stopping Celeste starts a fresh deferred route" % stop_case)
 		elif stop_case == "neighbor":
 			study.activate_walk_control()
-			require(study.selected_neighbor == 4 and not study.current_path.is_empty(), "Walk & Talk after Stop retains ordinary Next cycling")
+			require(study.selected_neighbor == 3 and not study.current_path.is_empty(), "primary after Stop resumes the deliberately chosen Dez route")
 		study.stop_walking()
+		if stop_case == "neighbor":
+			var cycle := InputEventKey.new(); cycle.keycode=KEY_N; cycle.pressed=true
+			study._unhandled_input(cycle)
+			require(study.selected_neighbor==4 and not study.current_path.is_empty(),"N retains deliberate next-resident cycling after Stop")
+			study.stop_walking()
 	study.overview()
 
 	# Detached landmark views return to the player only on a new walking intent.
@@ -552,7 +557,7 @@ func run() -> void:
 			guard += 1
 		require(guard < 400, "neighbor route finishes within bounded steps")
 		require(study.arrived_neighbor == i, "arrived at neighbor %s" % study.neighbors[i].name)
-		require(study.walk_control.text == "Walk & Talk (Next)", "arrival restores the ordinary walking action")
+		require(study.walk_control.text == guided_caption(study), "arrival restores the ordinary walking action")
 		var final_d: float = study.player_xz().distance_to(study.neighbor_xz(i))
 		require(final_d <= study.ARRIVAL_DISTANCE_M + 1e-3 and final_d >= 0.70, "arrival stops within <= 1.35m without overlapping neighbor")
 		require(study.info.text.contains(study.neighbors[i].name), "arrival updates info with neighbor name")
@@ -1011,7 +1016,7 @@ func run() -> void:
 	var wide_street_screen: Vector2 = study.camera.unproject_position(Vector3(45.0, 0.0, -7.2))
 	require(study.handle_scene_tap(wide_street_screen) and study.selected_neighbor == -1 and not study.current_path.is_empty(), "zoomed-out wide_overview tap ~23m from Bea routes to street point rather than selecting neighbor (world_d <= 8.5 bound)")
 	require(not study.walk_to_point(Vector2(-350.0, -350.0)) and study.current_path.is_empty(), "unreachable point far from any street is rejected without routing back to PLAYER_START")
-	require(study.walk_control.text == "Walk & Talk (Next)", "rejected route restores the normal walking action")
+	require(study.walk_control.text == guided_caption(study), "rejected route restores the normal walking action")
 	require(study.header_details_expanded and study.info.visible and study.info.text.begins_with("No walkable"), "blocked navigation reveals its explanation in the compact header")
 	study.set_header_details(false)
 	study.wide_overview()
@@ -2495,10 +2500,10 @@ func run() -> void:
 		await process_frame
 		require(next.text == "Find Me" and study.following_player and study.view_size == 45.0 and study.selected == -1, "ui_accept activates Find Me walking view")
 		var walk_btn: Button = study.walk_control
-		require(study.current_path.is_empty() and walk_btn.text == "Walk & Talk (Next)", "keyboard Next fixture begins without an active route")
+		require(study.current_path.is_empty() and walk_btn.text == guided_caption(study), "keyboard Next fixture begins without an active route")
 		walk_btn.grab_focus()
 		require(walk_btn.has_focus(), "Walk to neighbor button focus available")
-		var prev_neighbor: int = study.selected_neighbor
+		var expected_neighbor: int = int(study.primary_walk_choice().neighbor)
 		accept = InputEventAction.new()
 		accept.action = "ui_accept"
 		accept.pressed = true
@@ -2509,7 +2514,6 @@ func run() -> void:
 		accept.pressed = false
 		Input.parse_input_event(accept)
 		await process_frame
-		var expected_neighbor: int = 0 if prev_neighbor < 0 else (prev_neighbor + 1) % study.neighbors.size()
 		require(study.selected_neighbor == expected_neighbor and (not study.current_path.is_empty() or study.arrived_neighbor == expected_neighbor), "ui_accept on Walk to neighbor activates neighbor route")
 		# A held Stop gesture must not become a new walk when the label changes.
 		require(study.walk_to_black_hawk() and not study.current_path.is_empty(), "stop-control fixture starts a real distant route")
@@ -2538,7 +2542,7 @@ func run() -> void:
 		Input.parse_input_event(accept)
 		await process_frame
 		require(study.current_path.is_empty() and study.player.position.is_equal_approx(stopped_pos) and study.target.is_equal_approx(stopped_camera), "releasing Stop never starts a new route or reframes the camera")
-		require(walk_btn.text == "Walk & Talk (Next)" and study.last_a11y_announcement.begins_with("Walking stopped."), "stopping restores the action and announces confirmation")
+		require(walk_btn.text == guided_caption(study) and study.last_a11y_announcement.begins_with("Walking stopped."), "stopping restores the action and announces confirmation")
 		require(JSON.stringify(study.build_save_envelope()) == stopped_save, "stopping grants no progress and changes no save fields")
 		study.block_opened = false
 		study.clear_mural_board()
@@ -3287,6 +3291,7 @@ func run() -> void:
 	await verify_lantern_procession(study,saved_m4_json)
 	await verify_voting_story(study,saved_m4_json)
 	await verify_story_visits(study,saved_m4_json)
+	await verify_guided_walk(study,saved_m4_json)
 	await verify_map_pinch(study,saved_m4_json)
 	await verify_phone_disclosure(study,initial_start_save,saved_m4_json)
 	study.clear_godot_save()
@@ -3460,7 +3465,7 @@ func verify_short_narrow_walking(study: Node) -> void:
 		if study.guide_arrow_label.is_visible_in_tree():
 			guide_checks += 1
 			require(not study.guide_arrow_label.get_global_rect().grow(7).intersects(study.player_overlay_rect()), "short walking outlined objective leaves the player clear")
-		var captions: Array = ["What's Next?", "Tenderloin Map", "Find Me", "Zoom In (+)", "Zoom Out (−)", "Walk & Talk (Next)"]
+		var captions: Array = ["What's Next?", "Tenderloin Map", "Find Me", "Zoom In (+)", "Zoom Out (−)", guided_caption(study)]
 		for i in range(study.walking_control_snapshots().size()):
 			var b: Dictionary = study.walking_control_snapshots()[i]
 			require(b.text == captions[i] and b.text_fits and b.width >= 44 and b.height >= 50 and b.y + b.height <= size.y, "short walking preserves complete original labels and50px targets")
@@ -3740,7 +3745,7 @@ func verify_short_activity_panels(study: Node, narrow_small := false) -> void:
 				await verify_phone_walking_restored(study,short_size)
 			else:
 				require(study.controls.columns == (2 if tall_phone else 3) and study.controls.offset_top == (-174 if tall_phone else (-116 if short_size.x < 600 else -124)), "real Close restores walking grid and vertical offsets")
-				var normal_labels: Array = ["What's Next?", "Tenderloin Map", "Find Me", "Zoom In (+)", "Zoom Out (−)", "Walk & Talk (Next)"]
+				var normal_labels: Array = ["What's Next?", "Tenderloin Map", "Find Me", "Zoom In (+)", "Zoom Out (−)", guided_caption(study)]
 				for i in range(study.controls.get_child_count()):
 					var control: Button = study.controls.get_child(i)
 					require(control.text == normal_labels[i] and control.custom_minimum_size.y == 50, "real Close restores every walking caption and target size")
@@ -6325,7 +6330,7 @@ func verify_phone_tray_targets(study: Node, size: Vector2i) -> void:
 func verify_phone_walking_restored(study: Node, size: Vector2i) -> void:
 	require(study.controls.is_visible_in_tree() and study.controls.columns==3 and study.controls.get_child_count()==3 and study.phone_explore_control.is_visible_in_tree(),"phone Close restores three named native primaries")
 	require(study.controls.offset_top == -maxf(50,study.controls.get_combined_minimum_size().y)-12 and study.controls.offset_right==-12,"phone primary band fits its actual native minimum")
-	require(study.next_hint_control.text in ["Next Step","Back to Me"] and study.walk_control.text=="Walk & Talk (Next)" and study.phone_explore_control.text=="Explore","phone Close restores objective/walking/Explore labels")
+	require(study.next_hint_control.text in ["Next Step","Back to Me"] and study.walk_control.text==guided_caption(study) and study.phone_explore_control.text=="Explore","phone Close restores objective/walking/Explore labels")
 	await phone_accept(study.phone_explore_control)
 	verify_phone_tray_targets(study,size)
 	var labels: Array = ["Tenderloin Map","Find Me","Zoom In (+)","Zoom Out (−)"]
@@ -6369,6 +6374,8 @@ func verify_phone_disclosure(study: Node, startup_snapshot: String, full: String
 			var save: String=JSON.stringify(study.build_save_envelope())
 			await phone_accept(study.conv_next_btn)
 			require(study.phone_actions_open and study.conv_rows[1].visible,"real Next Step discloses relevant actions")
+			for b in study.activity_detail_snapshot(study.block_detail_label,study.block_panel,study.conv_buttons).buttons:
+				require(b.text_fits and b.width>=44 and b.height>=44,"disclosed named destination choices fit complete words at actual phone font")
 			var esc := InputEventKey.new(); esc.keycode=KEY_ESCAPE; esc.pressed=true; Input.parse_input_event(esc)
 			for f in range(6): await process_frame
 			require(not study.phone_actions_open and study.phone_talking() and study.conv_next_btn.has_focus(),"first Escape dismisses choices and restores focus without Goodbye")
@@ -6532,3 +6539,89 @@ func verify_story_visits(study: Node, full_profile: String) -> void:
 	study.apply_save_envelope(full_profile); study.hide_story_card(); study.last_story_chapter=int(study.current_chapter().num)
 	root.size=Vector2i(1100,760)
 	print("STORY_VISITS_PASS:2layouts x6sizes/realui_accept/4controllers/Power2modes/routecancel/manual/visitinvitation/nosave/reload")
+
+
+# Independent caption oracle: use actual resident indexes/objective, not the UI label.
+func guided_caption(study: Node) -> String:
+	if study.selected_neighbor>=0 and study.arrived_neighbor!=study.selected_neighbor:
+		return "Resume "+String(study.neighbors[study.selected_neighbor].name)
+	var obj: Dictionary=study.current_objective()
+	if obj.id=="meet": return "Meet "+String(study.neighbors[int(obj.neighbor)].name)
+	return "Visit "+String(study.neighbors[posmod(study.selected_neighbor+1,study.neighbors.size())].name)
+
+func verify_guided_walk(study: Node, full: String) -> void:
+	var original_size := root.size
+	for layout in ["table","floor"]:
+		for size in [Vector2i(1100,760),Vector2i(390,667),Vector2i(320,667)]:
+			study.apply_save_envelope(full);study.hide_story_card();study.startup_story_pending=false
+			study.end_conversation();study.show_mural_panel(false);study.show_music_panel(false)
+			study.block_opened=false;study.gathering_layout=layout
+			study.visited_neighbors={"bea":true};study.player.position=Vector3(21.18,0,-9.12)
+			study.selected_neighbor=-1;study.arrived_neighbor=-1;root.size=size
+			study.update_block_ui();study.update_walking_status()
+			for f in range(8): await process_frame
+			require(study.current_objective().id=="meet" and int(study.current_objective().neighbor)==4,"fresh Bea next marker names Thanh, not array-first Celeste")
+			require(study.walk_control.text=="Meet Thanh","primary names nearest unmet resident after Goodbye")
+			await phone_accept(study.walk_control)
+			require(study.selected_neighbor==4 and not study.current_path.is_empty(),"actual primary acceptance starts the named Thanh route")
+			var save: String=JSON.stringify(study.build_save_envelope())
+			await phone_accept(study.walk_control)
+			var point: Vector3=study.player.position
+			var pose: Vector3=study.target
+			require(study.current_path.is_empty() and study.walk_control.text=="Resume Thanh","Stop offers same named resident rather than wrapping to Bea")
+			require(not study.advance_walk(1.0) and study.player.position==point and study.target==pose,"Stop remains stationary and keeps camera intent")
+			require(JSON.stringify(study.build_save_envelope())==save,"Stop writes no progress")
+			require(study.walk_control.accessibility_name=="Resume Thanh","accessible Stop/Resume label follows current action")
+			await phone_accept(study.walk_control)
+			require(study.selected_neighbor==4 and not study.current_path.is_empty(),"real acceptance resumes Thanh rather than Bea")
+			study.stop_walking()
+			study.choose_next_neighbor(1)
+			require(study.selected_neighbor==0,"explicit Next still cycles Thanh to Bea")
+			study.choose_next_neighbor(-1)
+			require(study.selected_neighbor==4,"explicit Previous still cycles Bea to Thanh")
+			study.stop_walking();study.walk_step(Vector2.RIGHT,0.01)
+			require(study.selected_neighbor==-1 and study.primary_walk_choice().kind=="meet","manual walking discards stopped neighbor target")
+			study.walk_to_neighbor(4);study.stop_walking();study.overview(false)
+			require(study.selected_neighbor==-1 and study.primary_walk_choice().kind=="meet","map inspection discards old resident route without resuming it")
+			study.follow_player();study.walk_to_neighbor(3);study.stop_walking()
+			require(study.walk_control.text=="Resume Dez","explicit chosen resident outranks a different suggested goal")
+			study.end_conversation();study.player.position=Vector3(21.18,0,-9.12)
+			study.visit_suggested_neighbor()
+			require(study.selected_neighbor==4,"suggested hub action agrees with nearest unmet marker")
+			study.stop_walking();study.apply_save_envelope(full)
+			require(study.primary_walk_choice().kind!="resume","reload boundary clears transient resume target")
+	# Existing malformed-path fixture, adapted to an actual resident route.
+	study.apply_save_envelope(full);study.hide_story_card();study.startup_story_pending=false
+	study.stop_walking();study.player.position=Vector3(study.neighbor_xz(4).x,0,study.neighbor_xz(4).y)
+	var cache: Dictionary=study.cell_walkable_cache.duplicate()
+	var start: Vector2=study.nearest_walkable_point(study.player_xz())
+	var candidate := -1
+	for i in range(study.neighbors.size()):
+		if not study.segment_walkable(start,study.nearest_walkable_point(study.neighbor_xz(i))): candidate=i;break
+	require(candidate>=0,"resident refusal fixture requires actual A-star path, not direct visibility")
+	var cell := Vector2i(int(round(start.x/2)),int(round(start.y/2)))
+	for dx in range(-1,2):
+		for dy in range(-1,2): study.cell_walkable_cache[cell+Vector2i(dx,dy)]=false
+	var failed_save: String=JSON.stringify(study.build_save_envelope())
+	if candidate>=0:
+		require(not study.walk_to_neighbor(candidate) and study.last_astar_expanded_cells==1,"blocked resident route exhausts actual isolated A-star start")
+		require(study.primary_walk_choice().kind!="resume" and study.selected_neighbor==-1,"failed resident route never claims resumable travel")
+		require(JSON.stringify(study.build_save_envelope())==failed_save,"failed resident route leaves earned progress unchanged")
+	study.cell_walkable_cache=cache
+	for boundary in ["reset","import"]:
+		study.apply_save_envelope(full);study.player.position=study.PLAYER_START
+		study.walk_to_neighbor(4);study.stop_walking()
+		require(study.primary_walk_choice().kind=="resume","boundary fixture retains a real stopped resident")
+		if boundary=="reset": study.reset_mural_state_to_defaults("fresh")
+		else: require(study.import_browser_save_json('{"version":1,"core":{"greeted":true}}'),"existing valid legacy fixture imports normally")
+		require(study.primary_walk_choice().kind!="resume" and study.current_path.is_empty(),"profile replacement discards old paused resident target")
+	# The longest complete destination caption fits compact docks without clipping.
+	for size in [Vector2i(520,360),Vector2i(559,360),Vector2i(600,360)]:
+		root.size=size;study.apply_save_envelope(full);study.hide_story_card();study.startup_story_pending=false
+		study.player.position=study.PLAYER_START;study.walk_to_neighbor(study.celeste_index);study.stop_walking()
+		study.show_block_panel(true);study.update_block_ui()
+		for f in range(8): await process_frame
+		var button: Dictionary=study.walking_control_snapshots()[5]
+		require(button.text=="Resume Celeste" and button.text_fits and button.width>=44 and button.height>=44,"complete longest named action fits compact dock at actual font and height")
+	root.size=original_size;study.apply_save_envelope(full);study.hide_story_card();study.startup_story_pending=false
+	print("GUIDED_WALK_PASS:2layouts x3sizes/realui_accept/nearestgoal/StopResume/explicitcycle/manual/map/hub/reload/nosave")

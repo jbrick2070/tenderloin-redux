@@ -1,0 +1,23 @@
+STDOUT:
+I've written the review to `kibitz-runs/2026-10-24-codex-guided-walk-ideas/r1/claude.md`. I only read files and changed no source.
+
+**Verdict: not build-ready as written.** Option A has one control chasing two targets, and the plan rests on two premises the code contradicts. A smaller slice fixes it.
+
+**Why the player went back to Bea:** "Go Meet Thanh" sets `selected_neighbor=4`, and Stop never clears it. The primary button then cycles to the next index, `posmod(4+1, 5) = 0`, which is Bea (`main.gd:8325`, `main.gd:13870`). The header comes from a different calculation, the nearest unvisited resident, so it still says Thanh.
+
+**Main findings:**
+- **Premise wrong — snapshot fields:** the snapshot does not expose the objective ID, its neighbor index, or `selected_neighbor`. The browser check "primary matches actual goal" can't be proven from structured state without adding fields or matching on text.
+- **Premise wrong — Stop loses the target:** Stop actually keeps the target index, so Resume needs no new state. Most of the cancellation rules the plan asks for (Goodbye, WASD, map tap, mural, speaker, reset) already clear `selected_neighbor`.
+- **Two targets can disagree:** the header's "nearest unmet" is recomputed from the player's position, so after a Stop it can switch to someone else while a separate Resume button still points at Thanh. Instead: one rule, where the primary label always names its real destination. Order: resume a stopped route, else the header's resident during "meet", else the existing cycle, labelled with the name.
+- **Goodbye path, not covered:** Goodbye likely causes the same mismatch with no Stop at all, since a cleared selection jumps to index 0, Bea. I inferred this from code and haven't run it. If true, Option B on its own isn't enough.
+- **Third "next" behaviour:** the "Meet Next" hub button uses yet another rule (first unvisited in array order), so it can still disagree with the header.
+- **Acceptance contradiction:** "resume does not immediately award" conflicts with the existing immediate-arrival behaviour when the player stops within arrival range.
+- **Test replacement:** the test at `study_test.gd:469` needs an exact replacement: the primary control resumes Dez, and pressing N keeps the old cycling.
+
+**Recommended cuts:**
+- the separate Resume button
+- Option C
+- the originality/prior-art question
+- new acceptance items for Music, import profiles and the save boundary (the full regression gate stays)
+
+Several MCP connectors (Asana, Atlassian, Datadog, GitHub, Linear, Notion, PagerDuty, Slack, Box, Runway) need authorization through claude.ai connector settings or `/mcp` before they can be used. None were needed here.
