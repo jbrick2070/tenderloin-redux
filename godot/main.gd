@@ -826,6 +826,8 @@ var rhythm_circle
 var film_screening
 var civic_listening
 var programme_studio
+var shared_meal
+var block_meal_btn: Button
 var shared_panel
 var loan_homecoming
 var power_place: Node
@@ -847,7 +849,7 @@ const SMALL_SIDE_HUB_MIN_WIDTH := 520.0
 const COMPACT_ACTIVITY_MAX_HEIGHT := 640.0
 const SIDE_HUB_MAX_HEIGHT := 560.0
 const HUB_FULL_WIDTH := 1050.0
-const BLOCK_ACTION_COUNT := 12
+const BLOCK_ACTION_COUNT := 13
 var conv_buttons: Array[Button] = []
 var conv_chat_btn: Button
 var conv_next_btn: Button
@@ -3144,6 +3146,7 @@ func update_block_3d() -> void:
 	update_layout_3d()
 	if quiet_seats != null: quiet_seats.update_world()
 	if bea_invitation != null: bea_invitation.update_world()
+	if shared_meal != null: shared_meal.update_world()
 	if block_banner_node != null:
 		block_banner_node.visible = block_opened
 	if keepsake_frame_node != null:
@@ -7022,10 +7025,19 @@ func layout_block_action_pages() -> void:
 	var narrow := uses_paged_block_actions()
 	var count := block_action_page_count()
 	block_hub_page = clampi(block_hub_page, 0, count - 1)
+	var meal_had_focus := block_meal_btn != null and block_meal_btn.has_focus()
+	if block_meal_btn != null and block_page_nav != null:
+		# Wide hubs keep the original two grid rows and their useful street view.
+		# Phones/docks keep the meal on page4, never in their crowded nav row.
+		var meal_parent: Node = block_actions_grid if narrow else block_page_nav
+		if block_meal_btn.get_parent() != meal_parent:
+			block_meal_btn.reparent(meal_parent,false)
+			meal_parent.move_child(block_meal_btn,meal_parent.get_child_count()-1 if narrow else block_close_btn.get_index())
 	block_actions_grid.columns = 2 if narrow else 6
 	for i in range(mini(BLOCK_ACTION_COUNT, block_buttons.size())):
 		block_buttons[i].add_theme_font_size_override("font_size", 13 if narrow else 15)
 		block_buttons[i].visible = not narrow or i / BLOCK_ACTIONS_PER_PAGE == block_hub_page
+	if meal_had_focus and block_meal_btn.is_visible_in_tree(): block_meal_btn.grab_focus()
 	if not narrow and (block_page_prev.has_focus() or block_page_next.has_focus()):
 		block_buttons[block_hub_page * BLOCK_ACTIONS_PER_PAGE].grab_focus()
 	block_page_prev.visible = narrow
@@ -7239,6 +7251,8 @@ func hub_button_for_objective(obj_id: String) -> Button:
 			return block_film_btn
 		"blackhawk":
 			return block_west_btn
+	if obj_id=="explore" and shared_meal != null and shared_meal.available() and shared_meal.shared.size()<4:
+		return block_meal_btn
 	return null
 
 ## Full action list: the suggested next step gets a gold highlight; steps that unlock later are dimmed
@@ -7255,6 +7269,8 @@ func apply_hub_guidance() -> void:
 		locked.append(block_civic_btn)
 	if not is_film_available() and film_phase == "idle":
 		locked.append(block_film_btn)
+	if block_meal_btn != null and (not block_opened or (not hosting_order.is_empty() and not is_hosting_done())):
+		locked.append(block_meal_btn)
 	for b in block_buttons:
 		if b == null:
 			continue
@@ -7263,6 +7279,8 @@ func apply_hub_guidance() -> void:
 			b.add_theme_stylebox_override("normal", button_suggest_style if is_sug else button_normal_style)
 		b.modulate = Color(1.0, 1.0, 1.0, 0.55) if (locked.has(b) and not is_sug) else Color.WHITE
 		b.tooltip_text = "Suggested next step" if is_sug else ("Unlocks later" if locked.has(b) else "")
+		if b == block_meal_btn:
+			b.tooltip_text += (". " if not b.tooltip_text.is_empty() else "") + "Optional shared meal with fictional neighbors; preparation and invitations last for this visit."
 
 func is_narrow_layout() -> bool:
 	return bubble_viewport_size().x < SIDE_HUB_MIN_WIDTH
@@ -7677,7 +7695,7 @@ func set_header_details(expanded: bool, refit_map := true) -> void:
 
 func update_conversation_ui(delta: float) -> void:
 	ui_clock = wrapf(ui_clock + delta, 0.0, 3600.0)
-	if is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible() or is_power_story_visible() or is_dog_story_visible() or is_lantern_procession_visible() or is_voting_story_visible() or (story_picker!=null and story_picker.visible):
+	if is_shared_meal_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible() or is_power_story_visible() or is_dog_story_visible() or is_lantern_procession_visible() or is_voting_story_visible() or (story_picker!=null and story_picker.visible):
 		return
 	var chapter := current_chapter()
 	# Deliver any pending chapter card after the focused workshop closes,
@@ -11829,6 +11847,7 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"shared_panel": shared_panel.snapshot() if shared_panel != null else {"visible":false},
 		"programme_studio": programme_studio.snapshot() if programme_studio != null else {"visible":false},
 		"civic_listening": civic_listening.snapshot() if civic_listening != null else {"visible":false},
+		"shared_meal": shared_meal.snapshot() if shared_meal != null else {"visible":false},
 		"film_screening": film_screening.snapshot() if film_screening != null else {"visible":false},
 		"film_easel": film_easel_snapshot(),
 		"bea_invitation": bea_invitation.snapshot() if bea_invitation != null else {},
@@ -12008,6 +12027,9 @@ func is_shared_panel_visible() -> bool:
 func is_programme_studio_visible() -> bool:
 	return programme_studio != null and programme_studio.visible
 
+func is_shared_meal_visible() -> bool:
+	return shared_meal != null and shared_meal.visible
+
 func active_story_episode():
 	for episode in [voting_story,lantern_procession,dog_story,power_story]:
 		if episode!=null and episode.active: return episode
@@ -12026,7 +12048,7 @@ func is_power_story_visible() -> bool:
 	return power_story != null and power_story.visible
 
 func is_focused_activity_visible() -> bool:
-	return is_voting_story_visible() or is_lantern_procession_visible() or (story_picker!=null and story_picker.visible) or is_dog_story_visible() or is_power_story_visible() or is_mural_workshop_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible()
+	return is_shared_meal_visible() or is_voting_story_visible() or is_lantern_procession_visible() or (story_picker!=null and story_picker.visible) or is_dog_story_visible() or is_power_story_visible() or is_mural_workshop_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible()
 
 func is_civic_listening_visible() -> bool:
 	return civic_listening != null and civic_listening.visible
@@ -12105,7 +12127,7 @@ func edit_mural_scene(id: String, slot: String) -> bool:
 	return true
 
 func open_mural_workshop() -> bool:
-	if is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible() or is_power_story_visible() or is_dog_story_visible() or is_lantern_procession_visible() or is_voting_story_visible() or (story_picker!=null and story_picker.visible):
+	if is_shared_meal_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible() or is_power_story_visible() or is_dog_story_visible() or is_lantern_procession_visible() or is_voting_story_visible() or (story_picker!=null and story_picker.visible):
 		return false
 	if startup_story_pending or is_story_card_visible():
 		announce_a11y_status("Continue the chapter card before composing the mural.")
@@ -12444,6 +12466,7 @@ func save_godot_state() -> bool:
 	return wrote
 
 func reset_mural_state_to_defaults(status_label: String) -> void:
+	if shared_meal != null: shared_meal.reset_visit()
 	selected_neighbor = -1
 	arrived_neighbor = -1
 	current_path.clear()
@@ -12944,6 +12967,7 @@ func validate_godot_optional(raw_opt: Variant) -> Dictionary:
 	return {"ok": true, "optional": (raw_opt as Dictionary).duplicate(true)}
 
 func apply_save_envelope(raw_json: String) -> bool:
+	if shared_meal != null: shared_meal.reset_visit()
 	if story_picker != null: story_picker.reset_visit()
 	if power_story != null:
 		power_story.close_story(false)
@@ -13641,6 +13665,7 @@ func import_browser_save_json(raw_json: String) -> bool:
 			merged_opt[k] = imp_opt[k]
 		if JSON.stringify(merged_opt).length() <= OPTIONAL_SAVE_MAX_BYTES:
 			optional_save_data = merged_opt
+	if shared_meal != null: shared_meal.reset_visit()
 	update_mural_3d()
 	update_speaker_3d()
 	update_block_3d()
@@ -14043,6 +14068,8 @@ func update_occlusion(force: bool = true) -> void:
 		focus_points.append_array(quiet_seats.cutaway_points())
 	if bea_invitation != null:
 		focus_points.append_array(bea_invitation.cutaway_points())
+	if shared_meal != null:
+		focus_points.append_array(shared_meal.cutaway_points())
 	if loan_homecoming != null:
 		focus_points.append_array(loan_homecoming.cutaway_points())
 	if shared_panel != null:
@@ -14563,6 +14590,10 @@ func _input(event: InputEvent) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode==KEY_F8 and event.shift_pressed:
 		story_picker.open_picker()
+		get_viewport().set_input_as_handled()
+		return
+	if is_shared_meal_visible():
+		if event is InputEventKey and event.pressed and not event.echo and event.keycode==KEY_ESCAPE: shared_meal.close_meal()
 		get_viewport().set_input_as_handled()
 		return
 	if story_picker!=null and story_picker.visible:
@@ -15430,6 +15461,8 @@ func update_block_ui() -> void:
 			base_detail = quiet_seats.explanation()+" Choose the seats, then Host Activity (Z) when you are ready. Nothing is timed."
 		elif block_opened:
 			base_detail = "The Turk Street block party is open! Choose a conversation or neighborhood activity below:"
+			if shared_meal != null and (hosting_order.is_empty() or is_hosting_done()):
+				base_detail += " Cook & Share offers an optional meal with fictional neighbors, for this visit."
 		else:
 			base_detail = "Walk up to any neighbor (1–5) to talk! Still needed to open the block party: %s" % get_block_missing_summary()
 		var detail := base_detail if browser_import_message.is_empty() else ("%s · %s" % [base_detail, browser_import_message])
@@ -15790,6 +15823,7 @@ func make_ui() -> void:
 	block_voices_btn = block_button(block_actions_grid, "Read Local Stories", func(): toggle_voices_enabled())
 	block_district_btn = block_button(block_actions_grid, "District Border: On", func(): toggle_district_boundary())
 	block_import_btn = block_button(block_actions_grid, "Import Web Save", func(): import_browser_save_from_web_storage())
+	block_meal_btn = block_button(block_actions_grid, "Cook & Share", func(): shared_meal.open_meal())
 	block_page_nav = HBoxContainer.new()
 	block_page_nav.alignment = BoxContainer.ALIGNMENT_END
 	block_page_nav.add_theme_constant_override("separation", 4)
@@ -15913,6 +15947,9 @@ func make_ui() -> void:
 	bea_invitation = preload("res://bea_invitation.gd").new()
 	add_child(bea_invitation)
 	bea_invitation.setup(self)
+	shared_meal = preload("res://shared_meal.gd").new()
+	layer.add_child(shared_meal)
+	shared_meal.setup(self)
 	var vp := get_viewport()
 	var resize_controls := func():
 		cancel_map_pinch()

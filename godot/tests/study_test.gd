@@ -2617,7 +2617,8 @@ func run() -> void:
 		await process_frame
 		await process_frame
 		require(study.block_panel.visible and not study.mural_panel.visible and not study.music_panel.visible, "show_block_panel opens BlockPanel and hides MuralPanel/MusicPanel")
-		require(study.block_buttons.size() == 13, "BlockPanel has all 13 interactive buttons")
+		require(study.BLOCK_ACTION_COUNT==13 and study.block_buttons.size()==study.BLOCK_ACTION_COUNT+1, "BlockPanel retains twelve original actions, the appended meal, and Close")
+		require(study.block_buttons.slice(0,12)==[study.block_open_btn,study.block_next_btn,study.block_epilogue_btn,study.block_programme_btn,study.block_mural_btn,study.block_rook_btn,study.block_west_btn,study.block_civic_btn,study.block_film_btn,study.block_voices_btn,study.block_district_btn,study.block_import_btn] and study.block_buttons[12]==study.block_meal_btn,"original twelve callback indexes retained; meal appended")
 		var blk_rect: Rect2 = study.block_panel.get_global_rect()
 		var blk_header_end_y: float = study.header_panel.get_global_rect().end.y
 		var blk_controls_pos_y: float = study.controls.get_global_rect().position.y
@@ -2658,7 +2659,7 @@ func run() -> void:
 			blk_rect = study.block_panel.get_global_rect()
 			require(study.header_panel.get_global_rect().end.y <= blk_rect.position.y and blk_rect.end.y <= study.controls.get_global_rect().position.y, "each action page fits between header and walking controls")
 			var hub_actions: Array = study.block_action_snapshots()
-			require(hub_actions.size() == (4 if study.uses_paged_block_actions() else 12), "readable action page count at %s" % size)
+			require(hub_actions.size() == (mini(4,study.BLOCK_ACTION_COUNT-study.block_hub_page*4) if study.uses_paged_block_actions() else study.BLOCK_ACTION_COUNT), "readable action page count at %s" % size)
 			for item in hub_actions:
 				hub_seen.append(int(item.id))
 				require(bool(item.text_fits), "full action title fits the actual font and button box: %s at %s" % [item.text, size])
@@ -2670,7 +2671,7 @@ func run() -> void:
 				require(blk_rect.encloses(bkr), "visible action and Close buttons fit inside the bounded panel")
 				require(blk_btn.focus_mode == Control.FOCUS_ALL and blk_btn.has_theme_stylebox_override("focus"), "block buttons have keyboard focus ring stylebox")
 			require(study.block_close_btn.is_visible_in_tree(), "Close stays available on every action page")
-			if study.uses_paged_block_actions() and hub_page < 2:
+			if study.uses_paged_block_actions() and hub_page < study.block_action_page_count()-1:
 				study.block_page_next.grab_focus()
 				var page_accept := InputEventAction.new()
 				page_accept.action = "ui_accept"
@@ -2681,24 +2682,24 @@ func run() -> void:
 				Input.parse_input_event(page_accept)
 				await process_frame
 				require(study.block_hub_page == hub_page + 1 and study.block_buttons[(hub_page + 1) * 4].has_focus(), "keyboard page change focuses the first newly visible action")
-				require(study.last_a11y_announcement.begins_with("Block actions page %d of 3" % (hub_page + 2)), "keyboard paging announces the new page")
+				require(study.last_a11y_announcement.begins_with("Block actions page %d of %d" % [hub_page + 2,study.block_action_page_count()]), "keyboard paging announces the new page")
 		var expected_actions: Array[int] = []
-		for action_id in range(12):
+		for action_id in range(study.BLOCK_ACTION_COUNT):
 			expected_actions.append(action_id)
-		require(hub_seen == expected_actions and study.player.position == hub_position and JSON.stringify(study.build_save_envelope()) == hub_save, "all12 actions reachable once without changing player or save")
+		require(hub_seen == expected_actions and study.player.position == hub_position and JSON.stringify(study.build_save_envelope()) == hub_save, "all original actions plus meal reachable once without changing player or save")
 		study.change_block_action_page(1)
-		require(study.block_hub_page == (2 if study.uses_paged_block_actions() else 0), "last page clamps; desktop paging is a no-op")
+		require(study.block_hub_page == (study.block_action_page_count()-1 if study.uses_paged_block_actions() else 0), "last page clamps; desktop paging is a no-op")
 		study.block_hub_page = 0
 		study.layout_block_action_pages()
 		await process_frame
 		await process_frame
 		if size.x == 320:
 			var old_titles: Array[String] = []
-			var long_titles := ["Open Block Party!", "Visit Next Neighbor", "Gear Returned (3/3)", "Hosted All 4 Events", "Paint w/ Celeste (0/3)", "Soundcheck w/ Rook (OK)", "Black Hawk Site (OK)", "Tenant Circle (Done)", "Roll Camera (Clear)", "Local Stories: Err", "District Border: Off", "Web Save Loaded"]
-			for action_id in range(12):
+			var long_titles := ["Open Block Party!", "Visit Next Neighbor", "Gear Returned (3/3)", "Hosted All 4 Events", "Paint w/ Celeste (0/3)", "Soundcheck w/ Rook (OK)", "Black Hawk Site (OK)", "Tenant Circle (Done)", "Roll Camera (Clear)", "Local Stories: Err", "District Border: Off", "Web Save Loaded", "Cook & Share"]
+			for action_id in range(study.BLOCK_ACTION_COUNT):
 				old_titles.append(study.block_buttons[action_id].text)
 				study.block_buttons[action_id].text = long_titles[action_id]
-			for state_page in range(3):
+			for state_page in range(study.block_action_page_count()):
 				study.block_hub_page = state_page
 				study.layout_block_action_pages()
 				await process_frame
@@ -2707,7 +2708,7 @@ func run() -> void:
 				require(state_rect.end.y <= study.controls.get_global_rect().position.y, "long completed-state labels keep each page above walking controls")
 				for entry in study.block_action_snapshots():
 					require(bool(entry.text_fits), "long-state title is fully readable: %s" % entry.text)
-			for action_id in range(12):
+			for action_id in range(study.BLOCK_ACTION_COUNT):
 				study.block_buttons[action_id].text = old_titles[action_id]
 			study.block_hub_page = 0
 			study.layout_block_action_pages()
@@ -3068,7 +3069,7 @@ func run() -> void:
 		study.block_hub_page = 0
 		study.layout_block_action_pages()
 		var tablet_seen: Array[int] = []
-		for tablet_page in range(3 if paged else 1):
+		for tablet_page in range(study.block_action_page_count() if paged else 1):
 			await process_frame
 			await process_frame
 			var tablet_rect: Rect2 = study.block_panel.get_global_rect()
@@ -3077,18 +3078,18 @@ func run() -> void:
 			require(tablet_rect.position.y >= study.header_panel.get_global_rect().end.y and tablet_rect.end.y <= study.controls.get_global_rect().position.y, "intermediate hub never overlaps walking controls at %d" % tablet_width)
 			require(tablet_rect.position.y - study.header_panel.get_global_rect().end.y >= 180, "intermediate hub retains a useful scene area")
 			var tablet_actions: Array = study.block_action_snapshots()
-			require(tablet_actions.size() == (4 if paged else 12), "intermediate page has the expected action count")
+			require(tablet_actions.size() == (mini(4,study.BLOCK_ACTION_COUNT-study.block_hub_page*4) if paged else study.BLOCK_ACTION_COUNT), "intermediate page has the expected action count")
 			for tablet_action in tablet_actions:
 				tablet_seen.append(int(tablet_action.id))
 				require(bool(tablet_action.text_fits), "intermediate full title fits: %s at %d" % [tablet_action.text, tablet_width])
 			for tablet_button in [study.block_close_btn, study.block_page_prev, study.block_page_next]:
 				if tablet_button.is_visible_in_tree():
 					require(tablet_rect.encloses(tablet_button.get_global_rect()) and tablet_button.size.x >= 44 and tablet_button.size.y >= 44, "intermediate navigation remains enclosed and tappable")
-			if paged and tablet_page < 2:
+			if paged and tablet_page < study.block_action_page_count()-1:
 				study.change_block_action_page(1)
 				require(study.block_buttons[(tablet_page + 1) * 4].has_focus(), "intermediate paging retains keyboard focus")
 		var tablet_expected: Array[int] = []
-		for tablet_id in range(12):
+		for tablet_id in range(study.BLOCK_ACTION_COUNT):
 			tablet_expected.append(tablet_id)
 		require(tablet_seen == tablet_expected, "all intermediate-width actions remain reachable once")
 		if tablet_width in [600, 1050]:
@@ -3097,7 +3098,7 @@ func run() -> void:
 			for title_id in range(12):
 				tablet_titles.append(study.block_buttons[title_id].text)
 				study.block_buttons[title_id].text = tablet_long_titles[title_id]
-			for title_page in range(3 if paged else 1):
+			for title_page in range(study.block_action_page_count() if paged else 1):
 				study.block_hub_page = title_page
 				study.layout_block_action_pages()
 				await process_frame
@@ -3151,7 +3152,7 @@ func run() -> void:
 		await process_frame
 		require(study.uses_side_block_hub() and study.uses_paged_block_actions(), "short hub uses a paged side dock even at desktop widths")
 		var short_seen: Array[int] = []
-		for short_page in range(3):
+		for short_page in range(study.block_action_page_count()):
 			await process_frame
 			await process_frame
 			var dock: Rect2 = study.block_panel.get_global_rect()
@@ -3171,10 +3172,10 @@ func run() -> void:
 				require(dock.encloses(short_button.get_global_rect()) and short_button.size.x >= 44 and short_button.size.y >= 44, "short hub page/Close remain reachable44px targets")
 			for walking_button in study.walking_control_snapshots():
 				require(bool(walking_button.text_fits) and walking_button.width >= 44 and walking_button.height >= 44, "short walking target fits at %s: %s" % [short_hub_size, walking_button.text])
-			if short_page < 2:
+			if short_page < study.block_action_page_count()-1:
 				study.change_block_action_page(1)
 				require(study.block_buttons[(short_page + 1) * 4].has_focus(), "short paging keeps visible action focus")
-		require(short_seen == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], "every short hub action is reachable once")
+		require(short_seen == range(study.BLOCK_ACTION_COUNT), "every short hub action is reachable once")
 		var prior_objective: String = study.objective_label.text
 		var prior_refresh: float = study.objective_refresh_timer
 		study.objective_refresh_timer = 1000.0
@@ -3292,6 +3293,7 @@ func run() -> void:
 	await verify_voting_story(study,saved_m4_json)
 	await verify_story_visits(study,saved_m4_json)
 	await verify_guided_walk(study,saved_m4_json)
+	await preload("res://tests/shared_meal_checks.gd").verify(self,study,saved_m4_json)
 	await verify_map_pinch(study,saved_m4_json)
 	await verify_phone_disclosure(study,initial_start_save,saved_m4_json)
 	study.clear_godot_save()
@@ -3346,7 +3348,7 @@ func verify_narrow_hub(study: Node) -> void:
 			await process_frame
 		require(study.following_player and study.uses_compact_activity_controls(), "automatically framed conversation hands off to a compact followed-player hub")
 		var seen: Array[int] = []
-		for page in range(3):
+		for page in range(study.block_action_page_count()):
 			for frame in range(3):
 				await process_frame
 			var panel: Rect2 = study.block_panel.get_global_rect()
@@ -3363,10 +3365,10 @@ func verify_narrow_hub(study: Node) -> void:
 			for walking in study.walking_control_snapshots():
 				if not walking.visible: continue
 				require(walking.text_fits and walking.width >= 44 and walking.height >= 44, "narrow hub walking labels fit44px targets")
-			if page < 2:
+			if page < study.block_action_page_count()-1:
 				study.change_block_action_page(1)
 				require(study.block_buttons[(page + 1) * 4].has_focus(), "narrow hub paging focuses a newly visible action")
-		require(seen == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], "all twelve narrow hub actions remain reachable")
+		require(seen == range(study.BLOCK_ACTION_COUNT), "all original narrow hub actions plus meal remain reachable")
 		if hub_size == Vector2i(320, 568) or hub_size == Vector2i(520, 360):
 			var changing: Button = study.block_buttons[study.block_hub_page * 4]
 			var caption: String = changing.text
@@ -3381,6 +3383,9 @@ func verify_narrow_hub(study: Node) -> void:
 			for frame in range(6):
 				await process_frame
 			require(absf(study.block_panel.size.y - panel_height) < 1 and study.play_area_rect().grow(1).encloses(study.player_overlay_rect()) and not study.compact_panel_layout_pending, "deferred hub shrink restores size and followed player")
+		# The appended meal occupies page3; reveal the original voice page before
+		# asking for focus. Hidden Controls cannot acquire native keyboard focus.
+		while study.block_hub_page>2: await phone_accept(study.block_page_prev)
 		study.block_voices_btn.grab_focus()
 		for boundary in [Vector2i(520, 360), Vector2i(559, 360), Vector2i(560, 360), Vector2i(520, 559), Vector2i(520, 560), Vector2i(559, 568), Vector2i(560, 559), Vector2i(560, 568), Vector2i(599, 639), Vector2i(599, 640), Vector2i(600, 360), hub_size]:
 			root.size = boundary
@@ -4646,7 +4651,7 @@ func verify_quiet_seats(study: Node, full_profile: String) -> void:
 				for f in range(4): await process_frame
 				require(qs.choice()==id and qs.rendered==id,"quiet button changes actual world draft")
 				require(study.panel_camera_pose()==pose,"quiet choice never takes camera ownership")
-				require(study.block_action_page_count()==3,"quiet choices preserve all original3hub pages")
+				require(study.block_action_page_count()==ceili(float(study.BLOCK_ACTION_COUNT)/4),"quiet choices preserve every original action and appended cooking page")
 				var targets: Array = qs.choices.duplicate()
 				targets.append(study.block_close_btn)
 				for original in study.block_buttons:

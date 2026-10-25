@@ -1,0 +1,19 @@
+{
+  "utc": "2026-10-25T05:26:56.113216+00:00",
+  "results": [
+    {
+      "name": "thai",
+      "url": "https://hot-thai-kitchen.com/pad-kra-pao-beef/",
+      "status": 200,
+      "bytes": 542785,
+      "sha256": "a0e8b86718171a10db003549c955f541d44ac6c960f588d7e200f03846614a8c"
+    },
+    {
+      "name": "gullah",
+      "url": "https://kardeabrown.com/gullah-red-rice/",
+      "status": 200,
+      "bytes": 204902,
+      "sha256": "806382b8f24b18531ab7ecb55c65c48e921aae40db236e1d0d295ed8f88d5761"
+    }
+  ]
+}

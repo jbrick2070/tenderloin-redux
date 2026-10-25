@@ -9,9 +9,27 @@ import { programmeSVG, SEGMENTS, programmeResponse } from '../public/programme.j
 import { tilePanelSVG, QUIET_CHOICES, STORY_CHOICES } from '../public/hosting.js';
 import { civicPlanSVG, civicConversation } from '../public/civic.js';
 import { filmFrameSVG, filmCaption } from '../public/film.js';
+import { verifySharedMeal } from './shared-meal-browser.mjs';
+const HUB_ACTION_COUNT=13,HUB_ACTIONS_PER_PAGE=4;
+const hubActionCount=s=>s.block_hub_paged?Math.min(HUB_ACTIONS_PER_PAGE,HUB_ACTION_COUNT-s.block_hub_page*HUB_ACTIONS_PER_PAGE):HUB_ACTION_COUNT;
+async function waitForHub(page){await page.waitForFunction(({count,per})=>{const s=window.__tenderloinGodotA11ySnapshot;return s?.block_panel_control.visible&&!s.layout_refit_pending&&!s.compact_panel_layout_pending&&s.block_hub_actions.length===(s.block_hub_paged?Math.min(per,count-s.block_hub_page*per):count);},{count:HUB_ACTION_COUNT,per:HUB_ACTIONS_PER_PAGE});}
+async function findHubAction(page,tap,pattern){
+  await waitForHub(page);
+  while((await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot)).block_hub_page>0)await tap(await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot.block_page_previous));
+  for(let n=0;n<Math.ceil(HUB_ACTION_COUNT/HUB_ACTIONS_PER_PAGE);n++){
+    const s=await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot),b=s.block_hub_actions.find(b=>b.visible&&pattern.test(b.text));
+    if(b)return b;
+    if(!s.block_hub_paged||s.block_hub_page===s.block_hub_pages-1)break;
+    await tap(s.block_page_next);
+  }
+  assert.fail(`Missing retained hub action ${pattern}`);
+}
 const [pckStat, ...sourceStats] = await Promise.all([
   stat('artifacts/godot-web/index.pck'),
   stat('godot/main.gd'),
+  stat('godot/shared_meal.gd'),
+  stat('godot/shared_meal_data.gd'),
+  stat('godot/tests/shared_meal_checks.gd'),
   stat('godot/film_screening.gd'),
   stat('godot/civic_listening.gd'),
   stat('godot/programme_studio.gd'),
@@ -43,7 +61,7 @@ assert.ok(pckStat.size > 0 && pckStat.size <= 2 * 1024 * 1024, `artifacts/godot-
 const BROWSER_SAVE_SENTINEL = JSON.stringify({ schema: 'tenderloin-redux.save', version: 1, sentinel: 'preserve-browser-save-v1' });
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : 'playwright');
 const base = 'http://127.0.0.1:' + (process.env.GODOT_PORT || 4174) + '/';
-const sourceFingerprint={sources:Object.fromEntries(await Promise.all(['godot/main.gd','godot/shared_panel.gd','godot/loan_homecoming.gd','godot/power_story.gd','godot/dog_story.gd','godot/lantern_procession.gd','godot/story_picker.gd','godot/voting_story.gd','godot/data/voting_places.json','godot/power_place.gd','godot/data/power_place.json','godot/tests/study_test.gd'].map(async p=>[p,createHash('sha256').update(await readFile(p)).digest('hex')]))),pack_sha256:createHash('sha256').update(await readFile('artifacts/godot-web/index.pck')).digest('hex')};
+const sourceFingerprint={sources:Object.fromEntries(await Promise.all(['godot/main.gd','godot/shared_meal.gd','godot/shared_meal_data.gd','godot/tests/shared_meal_checks.gd','godot/shared_panel.gd','godot/loan_homecoming.gd','godot/power_story.gd','godot/dog_story.gd','godot/lantern_procession.gd','godot/story_picker.gd','godot/voting_story.gd','godot/data/voting_places.json','godot/power_place.gd','godot/data/power_place.json','godot/tests/study_test.gd'].map(async p=>[p,createHash('sha256').update(await readFile(p)).digest('hex')]))),pack_sha256:createHash('sha256').update(await readFile('artifacts/godot-web/index.pck')).digest('hex')};
 await mkdir('artifacts', { recursive: true });
 let queuedActivityRewardChecks = 0;
 const shortStoryReadChecks = [];
@@ -59,6 +77,39 @@ let rhythmFixtureSave;
 const rhythmCircleChecks = [];
 const filmScreeningChecks = [];
 const quietSeatChecks = [];
+const sharedMealChecks = [];
+
+// Keep exact isolated failure state and an action/DOM trace without recording
+// continuous rendered frames. Raw profiles/traces remain local QA artifacts.
+const browserTraceRun=Date.now().toString(),activeContextTraces=new Map(),traceReceipts=[];
+let contextTraceCounter=0;
+async function newTracedContext(browser,options){
+  const context=await browser.newContext(options);
+  const trace=`artifacts/godot-browser-trace-${browserTraceRun}-${String(++contextTraceCounter).padStart(3,'0')}.zip`;
+  await context.tracing.start({screenshots:false,snapshots:true,sources:false});
+  activeContextTraces.set(context,trace);
+  context.on('page',page=>{if(context.pages().length===1)latestPage=page;});
+  return context;
+}
+async function stopContextTrace(context){
+  const trace=activeContextTraces.get(context);if(!trace)return;
+  await context.tracing.stop({path:trace});activeContextTraces.delete(context);
+  const receipt={path:trace,bytes:(await stat(trace)).size,screenshots:false,snapshots:true,sources:false};
+  assert.ok(receipt.bytes>0,'actual context trace is retained');traceReceipts.push(receipt);
+}
+async function closeTracedContext(context){await stopContextTrace(context);await context.close();}
+async function retainBrowserFailure(page,error,prefix='artifacts/godot-browser-failure'){
+  await page.context().storageState({path:prefix+'-profile.json'});
+  await page.screenshot({path:prefix+'.png'});
+  await writeFile(prefix+'.json',JSON.stringify({
+    error:String(error),stack:String(error.stack||error),
+    viewport:page.viewportSize(),trace:activeContextTraces.get(page.context())||null,
+    profile:prefix+'-profile.json',
+    snapshot:await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot),
+    performance:await page.evaluate(()=>window.__tenderloinLastPerfSnapshot||null)
+  },null,2));
+}
+
 const beaInvitationChecks = [];
 const civicListeningChecks = [];
 const rhythmAuditionChecks = [];
@@ -741,7 +792,7 @@ async function verifyShortWalking(page,context,touch) {
       for(const caption of arrival.overlays.captions){shortWalkingCaptionChecks++;assert.ok(!overlaps(caption,arrival.overlays.player),'real arrival caption leaves the enlarged player clear');}
       await page.screenshot({path:'artifacts/codex-small-hub-walking-caption-599x480-mouse.png'});await writeFile('artifacts/codex-small-hub-walking-caption-599x480-mouse.json',JSON.stringify(arrival,null,2));
     }
-    await page.keyboard.press('KeyG');await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.block_panel_control.visible&&window.__tenderloinGodotA11ySnapshot.block_hub_actions.length===4);await settle();await tap((await snapshot()).block_close_control);
+    await page.keyboard.press('KeyG');await waitForHub(page);await settle();await tap((await snapshot()).block_close_control);
     await page.waitForFunction(()=>!window.__tenderloinGodotA11ySnapshot.block_panel_control.visible&&window.__tenderloinGodotA11ySnapshot.following_player);await settle();const closed=await snapshot();assert.ok(closed.short_narrow_walking&&encloses(closed.play_area,closed.overlays.player),'hub Close alone restores the followed short walking view before Find Me');
     await tap((await snapshot()).walking_controls[2]);let s=await snapshot();const save=await page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1'));
     assert.ok(s.short_narrow_walking&&s.following_player&&!s.block_panel_control.visible&&s.play_area.height>=100&&s.overlays.player.width>0&&encloses(s.play_area,s.overlays.player),'Close and Find Me retain the full enlarged player and YOU in short walking space');
@@ -790,11 +841,11 @@ async function verifyNarrowHub(page, context, touch) {
     let conversation = await snapshot(); const save = await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1'));
     if(conversation.phone_disclosure.enabled&&!conversation.phone_disclosure.actions_open){await tap(conversation.conversation_detail.buttons[1]);conversation=await snapshot();}
     await tap(conversation.conversation_detail.buttons.find(b => b.visible && b.text === 'All Actions'));
-    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.block_hub_actions.length === 4);
+    await waitForHub(page);
     let s = await snapshot();
     while (s.block_hub_page > 0) { await tap(s.block_page_previous); s = await snapshot(); }
     const seen = [], fullTitles=[];
-    for (let p=0;p<3;p++) {
+    for (let p=0;p<s.block_hub_pages;p++) {
       await settle(); s = await snapshot();
       const screen = {x:0,y:0,width,height}, panel = s.block_panel_control;
       assert.equal(s.block_hub_side, width >= 520 && height < 560);
@@ -811,13 +862,13 @@ async function verifyNarrowHub(page, context, touch) {
         await page.screenshot({path:`artifacts/codex-small-hub-${width}x${height}-${touch ? 'touch' : 'mouse'}-page${p+1}.png`});
         await writeFile(`artifacts/codex-small-hub-${width}x${height}-${touch ? 'touch' : 'mouse'}-page${p+1}.json`,JSON.stringify(s,null,2));
       }
-      if (p<2) { await tap(s.block_page_next); assert.equal((await snapshot()).block_hub_page,p+1); }
+      if (p<s.block_hub_pages-1) { await tap(s.block_page_next); assert.equal((await snapshot()).block_hub_page,p+1); }
     }
-    assert.deepEqual(seen,Array.from({length:12},(_,i)=>i));
+    assert.deepEqual(seen,Array.from({length:HUB_ACTION_COUNT},(_,i)=>i));
     if(width>=520&&width<560&&height<560){
       await page.setViewportSize({width:1100,height:760});await settle();
-      const desktopTitles=(await snapshot()).block_hub_actions.sort((a,b)=>a.id-b.id).map(b=>b.text);assert.equal(desktopTitles.length,12);
-      assert.deepEqual(fullTitles,desktopTitles,'small dock retains all twelve complete original desktop titles');await page.setViewportSize({width,height});await settle();s=await snapshot();while(s.block_hub_page<2){await tap(s.block_page_next);s=await snapshot();}
+      const desktopTitles=(await snapshot()).block_hub_actions.sort((a,b)=>a.id-b.id).map(b=>b.text);assert.equal(desktopTitles.length,HUB_ACTION_COUNT);
+      assert.deepEqual(fullTitles,desktopTitles,'small dock retains all original complete titles plus the appended meal');await page.setViewportSize({width,height});await settle();s=await snapshot();while(s.block_hub_page<s.block_hub_pages-1){await tap(s.block_page_next);s=await snapshot();}
     }
     const cv = await page.locator('#canvas').boundingBox(), d = s.block_detail_control;
     const x = cv.x+(d.x+d.width/2)*cv.width/width, y = cv.y+(d.y+d.height/2)*cv.height/height;
@@ -854,6 +905,14 @@ async function verifyNarrowHub(page, context, touch) {
       await tap((await snapshot()).block_close_control);assert.deepEqual((await snapshot()).camera_pose,manual.camera_pose,'small hub Close preserves manual camera');await page.keyboard.press('KeyF');await settle();await page.keyboard.press('KeyG');await settle();
     }
     if (width === 320) {
+      // Walking the complete action list now ends on the meal's fourth page.
+      // Reach the original Film page through actual paging before testing its
+      // existing focused rotation contract; Previous focuses its first action.
+      const filmPage=Math.floor(8/HUB_ACTIONS_PER_PAGE);
+      while((await snapshot()).block_hub_page!==filmPage){
+        const current=await snapshot();await tap(current.block_hub_page>filmPage?current.block_page_previous:current.block_page_next);
+      }
+      assert.ok((await snapshot()).block_hub_actions.some(b=>b.id===8),'original Film action is visible before rotating its focused page');
       for (const size of [{width:559,height:568},{width:560,height:559},{width:560,height:568},{width:599,height:639},{width:599,height:640},{width:600,height:360},{width,height}]) {
         await page.setViewportSize(size); await settle(); const r=await snapshot();
         assert.equal(r.block_hub_page,2,'open rotation retains the later hub page');
@@ -1142,7 +1201,7 @@ async function verifyLoanWorld(browser,completedSave,base) {
  const images={},poses={};
  for(const returned of [false,true]){
   const fixture=JSON.parse(completedSave);fixture.epilogue.returned=returned?['table','paint-case','speaker']:[];fixture.epilogue.packing=true;
-  const context=await browser.newContext({viewport:{width:1100,height:760}});await context.addInitScript(f=>localStorage.setItem('tenderloin-redux.godot.save.v1',JSON.stringify(f)),fixture);
+  const context=await newTracedContext(browser,{viewport:{width:1100,height:760}});await context.addInitScript(f=>localStorage.setItem('tenderloin-redux.godot.save.v1',JSON.stringify(f)),fixture);
   const page=await context.newPage();
   page.on('pageerror',e=>errors.push(String(e)));context.on('request',r=>{if(![base,'blob:','data:'].some(p=>r.url().startsWith(p)))external.push(r.url());});
   const snapshot=()=>page.evaluate(()=>window.__tenderloinGodotA11ySnapshot);
@@ -1177,7 +1236,7 @@ async function verifyLoanWorld(browser,completedSave,base) {
    images[id+returned]={pixels:screenshotPixels(png),region};poses[id+returned]=s.camera_pose;
    await writeFile(path.replace('.png','.json'),JSON.stringify({limit:'PRIVATE static before/after state render from THIS completed profile; not a live transition. Actual owner callback evidence is separate.',id,returned,snapshot:s},null,2));
   }
-  assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1')),stored,'manual kit inspection writes no save');await context.close();
+  assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1')),stored,'manual kit inspection writes no save');await closeTracedContext(context);
  }
  for(const id of ['table','paint-case','speaker']){
   assert.deepEqual(poses[id+'false'],poses[id+'true'],'paired static render uses exact same real-input manual camera');
@@ -1201,7 +1260,7 @@ async function verifySharedPanel(page,touch,size,active=false){
    if(touch){const cd=await page.context().newCDPSession(page);await cd.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y,id:1}]});for(let i=1;i<=6;i++)await cd.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+dx*i/6,y,id:1}]});await cd.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await cd.detach();}
    else{await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+dx,y,{steps:6});await page.mouse.up();}await settle();assert.equal((await snap()).following_player,false);}
   let entry;
-  if(active){for(let p=0;p<3;p++){entry=(await snap()).block_hub_actions.find(b=>b.visible&&b.text.includes('Host Activity'));if(entry)break;await tap((await snap()).block_page_next);}}
+  if(active)entry=await findHubAction(page,tap,/Host Activity/);
   else entry=(await snap()).conversation_actions.find(b=>b.id==='shared_panel');
   const before=await save(),initial=JSON.parse(before),photo=JSON.stringify(initial.epilogue.photo),pose=(await snap()).camera_pose,point=(await snap()).player_grounding,quiet=[(await snap()).music_playing,(await snap()).music_volume,(await snap()).music_mode,(await snap()).reward_sounds_enabled],legacy=await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1'));
   await tap(entry);let p=(await snap()).shared_panel;assert.ok(p.visible&&p.editing===active);assert.equal(await save(),before,'opening never changes any save bytes');
@@ -1456,7 +1515,7 @@ const phoneDisclosureChecks=[];
 const guidedWalkChecks=[];
 async function verifyGuidedWalk(browser,base){
  for(const size of [{width:1100,height:760},{width:390,height:667},{width:320,height:667}]){
-  const touch=size.width<600,context=await browser.newContext({viewport:size,hasTouch:touch}),page=await context.newPage();latestPage=page;
+  const touch=size.width<600,context=await newTracedContext(browser,{viewport:size,hasTouch:touch}),page=await context.newPage();latestPage=page;
   page.on('pageerror',e=>errors.push(String(e)));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});page.on('request',r=>{if(![base,'blob:','data:'].some(p=>r.url().startsWith(p)))external.push(r.url());});
   const snap=()=>page.evaluate(()=>window.__tenderloinGodotA11ySnapshot),settle=async()=>{const f=(await snap()).ui_frame;await page.waitForFunction(f=>{const s=window.__tenderloinGodotA11ySnapshot;return s.ui_frame>f+5&&!s.layout_refit_pending&&!s.compact_panel_layout_pending;},f);};
   const tap=async b=>{assert.ok(b?.visible&&!b.disabled&&b.width>=44&&b.height>=44,'guided walk uses visible44px controls');const s=await snap(),c=await page.locator('#canvas').boundingBox(),x=c.x+(b.x+b.width/2)*c.width/s.viewport_width,y=c.y+(b.y+b.height/2)*c.height/s.viewport_height;if(touch)await page.touchscreen.tap(x,y);else await page.mouse.click(x,y);await settle();};
@@ -1472,12 +1531,12 @@ async function verifyGuidedWalk(browser,base){
   await page.screenshot({path:`artifacts/guided-walk-${size.width}-stopped.png`});await tap(s.walk_control);
   await page.waitForFunction(()=>{const s=window.__tenderloinGodotA11ySnapshot;return s.block_panel_control.visible&&s.conversation_header.includes('Thanh')&&!s.player_grounding.path_active;},null,{timeout:90000});await settle();s=await snap();assert.equal(s.visited_count,2);assert.ok(JSON.parse(await save()).visited_neighbors.includes('thanh'),'actual arrival at intended resident earns original visit');
   await page.screenshot({path:`artifacts/guided-walk-${size.width}-thanh.png`});assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1')),null);assert.ok(Buffer.byteLength(await save())<=4096);
-  guidedWalkChecks.push({size,touch,fresh:true,goodbyeGoal:'Thanh',stopResume:'Thanh',visited:2,saveBytes:Buffer.byteLength(await save())});await context.close();
+  guidedWalkChecks.push({size,touch,fresh:true,goodbyeGoal:'Thanh',stopResume:'Thanh',visited:2,saveBytes:Buffer.byteLength(await save())});await closeTracedContext(context);
  }
 }
 async function verifyPhoneDisclosure(browser,base){
  for(const size of [{width:390,height:667},{width:320,height:667},{width:390,height:568},{width:320,height:639},{width:390,height:640},{width:390,height:664}]){
-  const context=await browser.newContext({viewport:size,hasTouch:true}),page=await context.newPage();latestPage=page;
+  const context=await newTracedContext(browser,{viewport:size,hasTouch:true}),page=await context.newPage();latestPage=page;
   page.on('pageerror',e=>errors.push(String(e)));page.on('request',r=>{if(![base,'blob:','data:'].some(p=>r.url().startsWith(p)))external.push(r.url());});
   const snap=()=>page.evaluate(()=>window.__tenderloinGodotA11ySnapshot),settle=async()=>{const f=(await snap()).ui_frame;await page.waitForFunction(f=>{const s=window.__tenderloinGodotA11ySnapshot;return s.ui_frame>f+4&&!s.layout_refit_pending&&!s.compact_panel_layout_pending;},f);};
   const tap=async b=>{assert.ok(b.visible,'phone UI tests never tap hidden rectangles');const s=await snap(),c=await page.locator('#canvas').boundingBox();await page.touchscreen.tap(c.x+(b.x+b.width/2)*c.width/s.viewport_width,c.y+(b.y+b.height/2)*c.height/s.viewport_height);await settle();};
@@ -1514,7 +1573,7 @@ async function verifyPhoneDisclosure(browser,base){
   await page.keyboard.press('KeyN');await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.player_grounding.path_active);await settle();s=await snap();assert.equal(s.walk_target_neighbor,0,'original N deliberately chooses Bea');await tap(s.walk_control);s=await snap();assert.equal(s.walk_control_text,'Resume Bea');assert.ok(!s.player_grounding.path_active);assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1')),afterThanh,'selecting and stopping a repeat visit earns nothing');
   await tap(s.walking_controls[5]);await page.waitForFunction(()=>{const s=window.__tenderloinGodotA11ySnapshot;return s.block_panel_control.visible&&s.conversation_header.startsWith('Bea')&&!s.player_grounding.path_active;},null,{timeout:90000});await settle();s=await snap();assert.ok(!s.phone_disclosure.actions_open&&!s.phone_disclosure.transition,'Resume press/release cannot click through into the returned talk row');await tap(s.conversation_detail.buttons[1]);s=await snap();assert.equal(s.objective_id,'meet');const goal=s.objective_text.match(/^Meet (.+) \(/)?.[1];assert.ok(goal&&s.conversation_detail.buttons[3].text===`Meet ${goal}`,'returned Bea offers the current named unmet-neighbor goal');assert.equal(s.walk_target_neighbor,s.objective_neighbor);await tap(s.conversation_detail.buttons[3]);await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.player_grounding.path_active);await tap((await snap()).walk_control);assert.ok(!(await snap()).player_grounding.path_active,'original primary Stop remains immediate after deliberate goal action');
   assert.equal((await snap()).music_playing,firstMusic,'phone disclosures retain Music preference');assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1')),afterThanh,'disclosures, repeat Bea visit and stopped goal preserve the earned save');assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1')),legacy);
-  const result={size,freshBea:true,readerHeight:firstReaderHeight,actualFingerControls:true,earnedVisit:'Thanh',repeatPrimary:'Resume Bea',stoppedGoal:goal,saveBytes:Buffer.byteLength(afterThanh),legacyUnchanged:true};phoneDisclosureChecks.push(result);await writeFile(`artifacts/phone-disclosure-${size.width}x${size.height}.json`,JSON.stringify(result,null,2));await context.close();
+  const result={size,freshBea:true,readerHeight:firstReaderHeight,actualFingerControls:true,earnedVisit:'Thanh',repeatPrimary:'Resume Bea',stoppedGoal:goal,saveBytes:Buffer.byteLength(afterThanh),legacyUnchanged:true};phoneDisclosureChecks.push(result);await writeFile(`artifacts/phone-disclosure-${size.width}x${size.height}.json`,JSON.stringify(result,null,2));await closeTracedContext(context);
  }
 }
 
@@ -1742,7 +1801,7 @@ async function verifyProgrammeStudio(page,touch,size,preHost=false){
    if(touch){const cd=await page.context().newCDPSession(page);await cd.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y,id:1}]});for(let i=1;i<=5;i++)await cd.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+dx*i/5,y,id:1}]});await cd.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await cd.detach();}
    else{await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+dx,y,{steps:5});await page.mouse.up();}await settle();assert.equal((await snap()).following_player,false,'real scene inspection owns programme pose');}
   await page.keyboard.press('KeyG');await settle();let entry;
-  for(let p=0;p<3;p++){entry=(await snap()).block_hub_actions.find(b=>b.visible&&/Plan .*Schedule|Start Hosting|Hosted All/.test(b.text));if(entry)break;await tap((await snap()).block_page_next);}
+  entry=await findHubAction(page,tap,/Plan .*Schedule|Start Hosting|Hosted All/);
   const initial=await snap(),pose=initial.camera_pose,quiet=[initial.music_playing,initial.music_volume,initial.music_mode,initial.reward_sounds_enabled],before=JSON.parse(await save()),photo=JSON.stringify(before.epilogue.photo),host=JSON.stringify(before.hosting),beforeRaw=await save();
   await tap(entry);assert.ok((await snap()).programme_studio.visible);assert.equal(await save(),beforeRaw,'opening never fills or writes draft');assert.deepEqual((await snap()).programme_studio.pitches,SEGMENTS.map(s=>s.pitch));
   if(before.programme.published.length===0){assert.equal((await snap()).programme_studio.buttons[7].text,'Post');assert.ok((await snap()).programme_studio.buttons[7].disabled,'partial first draft cannot post before all proposals fit');}
@@ -1954,7 +2013,7 @@ async function verifyQuietSeats(page,touch,size,complete=false,worldProof=false)
     await page.keyboard.press('KeyG');await settle();await tap((await snap()).quiet_seats.buttons[0]);await tap((await snap()).block_close_control);await settle();
   }
   const expected=await save();await page.reload();await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');await settle();assert.equal(await save(),expected,'loading active quiet seating writes nothing');assert.equal((await snap()).quiet_seats.choice,'arc');
-  if(complete){await page.keyboard.press('KeyG');await settle();for(let p=0;p<3&&!(await snap()).block_hub_actions.some(b=>b.text.includes('Host Activity'));p++)await tap((await snap()).block_page_next);await tap((await snap()).block_hub_actions.find(b=>b.text.includes('Host Activity')));await settle();assert.equal((await snap()).quiet_seats.copied,true);const saved=await save();await page.reload();await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');await settle();assert.equal(await save(),saved);assert.ok((await snap()).quiet_seats.copied&&!((await snap()).quiet_seats.row.visible));}
+  if(complete){await page.keyboard.press('KeyG');await settle();await tap(await findHubAction(page,tap,/Host Activity/));await settle();assert.equal((await snap()).quiet_seats.copied,true);const saved=await save();await page.reload();await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');await settle();assert.equal(await save(),saved);assert.ok((await snap()).quiet_seats.copied&&!((await snap()).quiet_seats.row.visible));}
   if((await snap()).music_playing!==music)await tap((await snap()).music_toggle_control);
   const result={worldChange,width:size.width,height:size.height,touch,layout:initial.gathering_layout,complete,positions,images,colored,total};quietSeatChecks.push(result);await writeFile(`artifacts/quiet-seats-result-${size.width}-${touch?'finger':'mouse'}-${initial.gathering_layout}.json`,JSON.stringify(result,null,2));return result;
 }
@@ -2022,7 +2081,7 @@ const errors = [], external = [], runs = [];
 let latestPage = null;
 try {
   for (const size of [{ width: 1100, height: 760 }, { width: 390, height: 667 }, { width: 320, height: 667 }]) {
-    const context = await browser.newContext({ viewport: size, hasTouch: size.width < 600 });
+    const context = await newTracedContext(browser,{ viewport: size, hasTouch: size.width < 600 });
     await context.addInitScript((sentinel) => {
       if (window.localStorage.getItem('tenderloin-redux.save.v1') === null) {
         window.localStorage.setItem('tenderloin-redux.save.v1', sentinel);
@@ -3274,7 +3333,7 @@ try {
       const fresh = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.ui_frame);
       await page.waitForFunction(frame => window.__tenderloinGodotA11ySnapshot?.ui_frame > frame, fresh);
       const hub = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
-      assert.equal(hub.block_hub_actions.length, openedHub.block_hub_paged ? 4 : 12);
+      assert.equal(hub.block_hub_actions.length, hubActionCount(hub));
       assert.ok(hub.block_close_control.visible, 'Close stays visible on every page');
       for (const action of [...hub.block_hub_actions, hub.block_close_control]) {
         assert.ok(action.width >= 44 && action.height >= 44, 'hub controls have 44px targets');
@@ -3288,14 +3347,13 @@ try {
       await page.screenshot({ path: `artifacts/godot-${size.width}-action-page-${hubPage + 1}.png` });
       if (openedHub.block_hub_paged && hubPage < openedHub.block_hub_pages - 1) await clickHeaderControl('block_page_next');
     }
-    assert.deepEqual(hubSeen, Array.from({ length: 12 }, (_, i) => i), 'every hub action remains reachable in order');
+    assert.deepEqual(hubSeen, Array.from({ length: HUB_ACTION_COUNT }, (_, i) => i), 'every hub action remains reachable in order');
     assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), hubSave, 'paging does not change progress');
     if (openedHub.block_hub_paged) {
       await clickHeaderControl('block_page_next');
       await page.waitForTimeout(100);
-      assert.equal((await page.evaluate(() => window.__tenderloinGodotA11ySnapshot)).block_hub_page, 2, 'Next clamps at the final page');
-      await clickHeaderControl('block_page_previous');
-      await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.block_hub_page === 1);
+      assert.equal((await page.evaluate(() => window.__tenderloinGodotA11ySnapshot)).block_hub_page, openedHub.block_hub_pages-1, 'Next clamps at the final page');
+      while((await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot)).block_hub_page>1){const p=(await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot)).block_hub_page;await clickHeaderControl('block_page_previous');await page.waitForFunction(p=>window.__tenderloinGodotA11ySnapshot.block_hub_page===p-1,p);}
       const longDetail = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
       assert.match(longDetail.block_detail_text, /Imported browser v1 save:/, 'the real imported-save fixture supplies a long description');
       assert.ok(longDetail.block_detail_scroll_max > longDetail.block_detail_scroll_page, 'long real hub details remain scrollable');
@@ -3312,21 +3370,16 @@ try {
     await clickHeaderControl('block_close_control');
     await page.waitForFunction(() => !window.__tenderloinGodotA11ySnapshot?.block_panel_control.visible);
     assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), hubSave, 'paging, reading and closing leave progress unchanged');
-    // Activate a real action from the final phone page, then restore its prior setting.
+    // The original district action retains index10, independent of the newly appended last page.
     await page.keyboard.press('KeyG');
-    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.block_panel_control.visible);
-    const reopenedHub = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
-    if (reopenedHub.block_hub_paged) {
-      for (let nextPage = reopenedHub.block_hub_page + 1; nextPage < reopenedHub.block_hub_pages; nextPage++) {
-        await clickHeaderControl('block_page_next');
-        await page.waitForFunction(expected => window.__tenderloinGodotA11ySnapshot?.block_hub_page === expected, nextPage);
-      }
-    }
+    await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.block_panel_control.visible);
+    const reopenedHub=await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot);
+    if(reopenedHub.block_hub_paged){const target=Math.floor(10/HUB_ACTIONS_PER_PAGE);let h=await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot);while(h.block_hub_page!==target){const step=h.block_hub_page<target?1:-1;await clickHeaderControl(step>0?'block_page_next':'block_page_previous');await page.waitForFunction(p=>window.__tenderloinGodotA11ySnapshot.block_hub_page===p,h.block_hub_page+step);h=await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot);}}
     const districtBeforeHub = await page.evaluate(() => JSON.parse(localStorage.getItem('tenderloin-redux.godot.save.v1')).district_boundary_visible);
     for (const districtWanted of [!districtBeforeHub, districtBeforeHub]) {
       const actionSnap = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
       const districtAction = actionSnap.block_hub_actions.find(a => a.id === 10);
-      assert.ok(districtAction?.visible, 'final-page district action remains visible');
+      assert.ok(districtAction?.visible, 'original district action remains visible on its unchanged page');
       const actionCanvas = await page.locator('#canvas').boundingBox();
       await page.mouse.click(actionCanvas.x + (districtAction.x + districtAction.width / 2) * actionCanvas.width / actionSnap.viewport_width, actionCanvas.y + (districtAction.y + districtAction.height / 2) * actionCanvas.height / actionSnap.viewport_height);
       await page.waitForFunction(value => JSON.parse(localStorage.getItem('tenderloin-redux.godot.save.v1')).district_boundary_visible === value, districtWanted);
@@ -3349,7 +3402,7 @@ try {
         await page.waitForFunction(f => window.__tenderloinGodotA11ySnapshot?.ui_frame > f + 2, resizeFrame);
         const resized = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
         assert.equal(resized.block_hub_paged, width < 1050, 'tablet paging is independent of the phone layout');
-        if (previousPaged && resized.block_hub_paged) assert.equal(resized.block_hub_page, 2, 'resize keeps the focused final page visible');
+        if (previousPaged && resized.block_hub_paged) assert.equal(resized.block_hub_page, resized.block_hub_pages-1, 'resize keeps the focused final page visible');
         previousPaged = resized.block_hub_paged;
         if (sweepPlayer === null) {
           sweepPlayer = resized.player_grounding;
@@ -3360,11 +3413,11 @@ try {
           await page.waitForFunction(p => window.__tenderloinGodotA11ySnapshot?.block_hub_page === p, previous - 1);
         }
         const seen = [];
-        for (let actionPage = 0; actionPage < (resized.block_hub_paged ? 3 : 1); actionPage++) {
+        for (let actionPage = 0; actionPage < (resized.block_hub_paged ? resized.block_hub_pages : 1); actionPage++) {
           const frame = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.ui_frame);
           await page.waitForFunction(f => window.__tenderloinGodotA11ySnapshot?.ui_frame > f + 2, frame);
           const s = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
-          assert.equal(s.block_hub_actions.length, s.block_hub_paged ? 4 : 12);
+          assert.equal(s.block_hub_actions.length, hubActionCount(s));
           assert.ok(s.block_panel_control.y >= s.header_control.y + s.header_control.height);
           assert.ok(s.block_panel_control.y + s.block_panel_control.height <= s.controls_control.y, `hub stays above walking controls at ${width}`);
           assert.ok(s.block_panel_control.y - s.header_control.y - s.header_control.height >= 180, 'hub leaves a useful scene area');
@@ -3381,12 +3434,12 @@ try {
             seen.push(a.id);
           }
           if (actionPage === 0 || width === 600) await page.screenshot({ path: `artifacts/godot-${width}-tablet-actions-${actionPage + 1}.png` });
-          if (s.block_hub_paged && actionPage < 2) {
+          if (s.block_hub_paged && actionPage < s.block_hub_pages-1) {
             await clickHeaderControl('block_page_next');
             await page.waitForFunction(p => window.__tenderloinGodotA11ySnapshot?.block_hub_page === p, actionPage + 1);
           }
         }
-        assert.deepEqual(seen, Array.from({ length: 12 }, (_, i) => i));
+        assert.deepEqual(seen, Array.from({ length: HUB_ACTION_COUNT }, (_, i) => i));
       }
       assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), sweepSave, 'tablet paging and resize preserve progress');
       await clickHeaderControl('block_close_control');
@@ -3420,12 +3473,12 @@ try {
           snap = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
         }
         const seen = [];
-        for (let actionPage = 0; actionPage < 3; actionPage++) {
+        for (let actionPage = 0; actionPage < snap.block_hub_pages; actionPage++) {
           const frame = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.ui_frame);
           await page.waitForFunction(f => window.__tenderloinGodotA11ySnapshot?.ui_frame > f + 2, frame);
           snap = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
           const screen = { x: 0, y: 0, ...shortSize };
-          assert.ok(snap.block_hub_side && snap.block_hub_paged && snap.block_hub_pages === 3);
+          assert.ok(snap.block_hub_side && snap.block_hub_paged && snap.block_hub_pages === Math.ceil(HUB_ACTION_COUNT/HUB_ACTIONS_PER_PAGE));
           assert.ok(encloses(screen, snap.block_panel_control) && snap.block_panel_control.y >= snap.header_control.y + snap.header_control.height + 7, 'short hub fits below header and inside viewport');
           assert.ok(!overlaps(snap.block_panel_control, snap.controls_control), 'side hub leaves walking controls separate');
           assert.ok(snap.play_area.width >= 240 && snap.play_area.height >= 100 && snap.overlays.player.height > 20 && encloses(snap.play_area, snap.overlays.player), 'full enlarged character and YOU retain useful scene space');
@@ -3443,12 +3496,11 @@ try {
             await page.screenshot({ path: `artifacts/codex-short-hub-${shortSize.width}x${shortSize.height}-${touchHub ? 'touch' : 'mouse'}.png` });
             await writeFile(`artifacts/codex-short-hub-${shortSize.width}x${shortSize.height}-${touchHub ? 'touch' : 'mouse'}.json`, JSON.stringify(snap, null, 2));
           }
-          if (actionPage < 2) { await shortTap(snap.block_page_next); await page.waitForFunction(p => window.__tenderloinGodotA11ySnapshot?.block_hub_page === p, actionPage + 1); }
+          if (actionPage < snap.block_hub_pages-1) { await shortTap(snap.block_page_next); await page.waitForFunction(p => window.__tenderloinGodotA11ySnapshot?.block_hub_page === p, actionPage + 1); }
         }
-        assert.deepEqual(seen, Array.from({ length: 12 }, (_, i) => i));
+        assert.deepEqual(seen, Array.from({ length: HUB_ACTION_COUNT }, (_, i) => i));
         // Read the actual full hub detail, then deliberately open/close Info.
-        await shortTap(snap.block_page_previous);
-        await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.block_hub_page === 1);
+        while((await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot)).block_hub_page>1){snap=await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot);await shortTap(snap.block_page_previous);await page.waitForFunction(p=>window.__tenderloinGodotA11ySnapshot.block_hub_page===p-1,snap.block_hub_page);}
         const detail = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
         assert.ok(detail.block_detail_scroll_max > detail.block_detail_scroll_page, 'real short hub description overflows');
         const canvas = await page.locator('#canvas').boundingBox();
@@ -3498,7 +3550,7 @@ try {
       await page.keyboard.press('KeyG');
       await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.block_hub_side);
       let rotating = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
-      while (rotating.block_hub_page < 2) {
+      while (rotating.block_hub_page !== Math.floor(8/HUB_ACTIONS_PER_PAGE)) {
         // Page state can publish before Godot containers finish rearranging the
         // shared Next/Listen row. Capture the real target after composed frames.
         const pagingFrame = rotating.ui_frame;
@@ -3507,9 +3559,10 @@ try {
           return s.ui_frame > f + 2 && s.block_panel_control.visible && s.block_hub_side && !s.layout_refit_pending && !s.compact_panel_layout_pending && !s.civic_listening?.layout_pending;
         }, pagingFrame);
         rotating = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
-        assert.ok(rotating.block_page_next.visible && !rotating.block_page_next.disabled);
-        await shortTap(rotating.block_page_next);
-        await page.waitForFunction(p => window.__tenderloinGodotA11ySnapshot.block_hub_page === p, rotating.block_hub_page + 1);
+        const direction=rotating.block_hub_page<Math.floor(8/HUB_ACTIONS_PER_PAGE)?1:-1,target=direction>0?rotating.block_page_next:rotating.block_page_previous;
+        assert.ok(target.visible&&!target.disabled);
+        await shortTap(target);
+        await page.waitForFunction(p => window.__tenderloinGodotA11ySnapshot.block_hub_page === p, rotating.block_hub_page + direction);
         rotating = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
       }
       for (const boundary of [{ width: 844, height: 600 }, { width: 800, height: 559 }, { width: 800, height: 560 }, { width: 599, height: 667 }, { width: 640, height: 360 }]) {
@@ -3560,38 +3613,39 @@ try {
     await verifyLanternProcession(page,size.width<600,size);
     await verifyVotingStory(page,size.width<600,size);
     if(size.width<600){for(const ps of size.width===390?[size,{width:559,height:360},{width:599,height:360}]:[size])await verifyMapPinch(page,context,ps);await page.setViewportSize(size);}
+    sharedMealChecks.push(await verifySharedMeal(page,{touch:size.width<600,size,revealPhoneControl,renderedPixels,privateFixture:false}));
     if(!rhythmFixtureSave)rhythmFixtureSave=await page.evaluate(()=>localStorage.getItem("tenderloin-redux.godot.save.v1"));
-    await context.close();
+    await closeTracedContext(context);
   }
   // PRIVATE earlier-state copies derive from THIS full run's actually completed save.
   for(const [width,height,touch,layout] of [[1100,760,false,'table'],[390,667,true,'floor'],[320,667,true,'table'],[520,360,true,'floor'],[559,360,false,'table'],[640,360,false,'floor']]){
     const fixture=JSON.parse(rhythmFixtureSave),order=width===640?['stories','pause','beats','art']:['stories','beats','pause','art'];assert.equal(fixture.epilogue.photo.status,'taken');
     fixture.gathering_layout=layout;fixture.programme.order=order;fixture.programme.published=order;fixture.hosting.order=order;fixture.hosting.results=order.slice(0,order.indexOf('pause')).map(id=>fixture.hosting.results.find(r=>r.id===id));fixture.hosting.draft.quiet='arc';
     fixture.civic={...fixture.civic,phase:'idle',result:null};fixture.film={...fixture.film,phase:'idle',result:null,captured:[]};
-    const size={width,height},context=await browser.newContext({viewport:size,hasTouch:touch}),page=await context.newPage();latestPage=page;
+    const size={width,height},context=await newTracedContext(browser,{viewport:size,hasTouch:touch}),page=await context.newPage();latestPage=page;
     await context.addInitScript(f=>{if(!localStorage.getItem('tenderloin-redux.godot.save.v1'))localStorage.setItem('tenderloin-redux.godot.save.v1',JSON.stringify(f));},fixture);
     context.on('request',r=>{if(!r.url().startsWith(base)&&!r.url().startsWith('data:')&&!r.url().startsWith('blob:'))external.push(r.url());});page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
     await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending&&!window.__tenderloinGodotA11ySnapshot.layout_refit_pending);await page.keyboard.press('Escape');
-    await verifyQuietSeats(page,touch,size,true,true);await context.close();
+    await verifyQuietSeats(page,touch,size,true,true);await closeTracedContext(context);
   }
   // PRIVATE listening invitations derive from THIS run's genuine completed profile.
   for(const [width,height,touch,layout] of [[520,360,true,'floor'],[559,360,false,'table'],[640,360,true,'table']]){
     const fixture=JSON.parse(rhythmFixtureSave);fixture.gathering_layout=layout;fixture.civic={phase:'idle',draft:{topic:'repairs',format:'circle',notes:'themes'},result:null};fixture.film={...fixture.film,phase:'idle',result:null,captured:[]};
-    const size={width,height},context=await browser.newContext({viewport:size,hasTouch:touch}),page=await context.newPage();latestPage=page;
+    const size={width,height},context=await newTracedContext(browser,{viewport:size,hasTouch:touch}),page=await context.newPage();latestPage=page;
     await context.addInitScript(f=>localStorage.setItem('tenderloin-redux.godot.save.v1',JSON.stringify(f)),fixture);
     context.on('request',r=>{if(!r.url().startsWith(base)&&!r.url().startsWith('data:')&&!r.url().startsWith('blob:'))external.push(r.url());});page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
     await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending&&!window.__tenderloinGodotA11ySnapshot.layout_refit_pending);await page.keyboard.press('Escape');
-    await verifyCivicListening(page,touch,size);await context.close();
+    await verifyCivicListening(page,touch,size);await closeTracedContext(context);
   }
   // PRIVATE current-run copied profiles, stories after quiet interval, real world ink in both layouts.
   for(const [width,height,touch,layout] of [[1100,760,false,'table'],[320,667,true,'floor'],[520,360,true,'table'],[559,360,false,'floor']]){
     const fixture=JSON.parse(rhythmFixtureSave),order=['pause','stories','beats','art'];fixture.gathering_layout=layout;fixture.programme.order=order;fixture.programme.published=order;fixture.hosting.order=order;fixture.hosting.results=[{id:'pause',value:'pairs'}];fixture.hosting.draft.story='memory';
     fixture.civic={phase:'idle',draft:{topic:'repairs',format:'circle',notes:'themes'},result:null};fixture.film={phase:'idle',draft:{framing:'close',plan:'quiet',order:['seat','paint','welcome']},result:null,captured:[]};
-    const size={width,height},context=await browser.newContext({viewport:size,hasTouch:touch}),page=await context.newPage();latestPage=page;
+    const size={width,height},context=await newTracedContext(browser,{viewport:size,hasTouch:touch}),page=await context.newPage();latestPage=page;
     await context.addInitScript(f=>{if(!localStorage.getItem('tenderloin-redux.godot.save.v1'))localStorage.setItem('tenderloin-redux.godot.save.v1',JSON.stringify(f));},fixture);
     context.on('request',r=>{if(!r.url().startsWith(base)&&!r.url().startsWith('data:')&&!r.url().startsWith('blob:'))external.push(r.url());});page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
     await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending&&!window.__tenderloinGodotA11ySnapshot.layout_refit_pending);await page.keyboard.press('Escape');
-    await verifyBeaInvitation(page,touch,size,true);await context.close();
+    await verifyBeaInvitation(page,touch,size,true);await closeTracedContext(context);
   }
   // A private fixture derived from actual progression covers legal beats-last/zero completion.
   {
@@ -3600,62 +3654,62 @@ try {
     // Civic/film completion requires finished hosting: this PRIVATE earlier-state copy must rewind those later arcs too.
     fixture.civic={...fixture.civic,phase:'idle',result:null};fixture.film={...fixture.film,phase:'idle',result:null,captured:[]};
     await writeFile('artifacts/rhythm-beats-last-private-fixture.json',JSON.stringify(fixture,null,2));
-    const size={width:390,height:667},context=await browser.newContext({viewport:size,hasTouch:true}),page=await context.newPage();latestPage=page;
+    const size={width:390,height:667},context=await newTracedContext(browser,{viewport:size,hasTouch:true}),page=await context.newPage();latestPage=page;
     await context.addInitScript(s=>{if(!localStorage.getItem('tenderloin-redux.godot.save.v1'))localStorage.setItem('tenderloin-redux.godot.save.v1',s);},JSON.stringify(fixture));
     await context.addInitScript(installRhythmAudioProbe);
     context.on('request',r=>{if(!r.url().startsWith(base)&&!r.url().startsWith('data:')&&!r.url().startsWith('blob:'))external.push(r.url());});page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
     await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending&&!window.__tenderloinGodotA11ySnapshot.layout_refit_pending);await page.keyboard.press('Escape');
     await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.hosting_completed_count===3&&window.__tenderloinGodotA11ySnapshot.hosting_current==='beats'&&!window.__tenderloinGodotA11ySnapshot.startup_pending);
-    await verifyRhythmCircle(page,true,size,true,true);await context.close();
+    await verifyRhythmCircle(page,true,size,true,true);await closeTracedContext(context);
   }
   // PRIVATE partial drafts derive from THIS full run's actually completed profile.
   for(const [width,height,touch] of [[520,360,true],[559,360,false],[640,360,true]]){
     const fixture=JSON.parse(rhythmFixtureSave);assert.equal(fixture.epilogue.photo.status,'taken');fixture.programme.order=['stories'];
     if(width===640){fixture.programme.published=[];fixture.hosting.order=[];fixture.hosting.results=[];fixture.civic.phase='idle';fixture.civic.result=null;fixture.film.phase='idle';fixture.film.result=null;fixture.film.captured=[];}
-    const size={width,height},context=await browser.newContext({viewport:size,hasTouch:touch}),page=await context.newPage();latestPage=page;
+    const size={width,height},context=await newTracedContext(browser,{viewport:size,hasTouch:touch}),page=await context.newPage();latestPage=page;
     context.on('request',r=>{if(!r.url().startsWith(base)&&!r.url().startsWith('data:')&&!r.url().startsWith('blob:'))external.push(r.url());});page.on('pageerror',e=>errors.push(e.message));
     await context.addInitScript(f=>{if(!localStorage.getItem('tenderloin-redux.godot.save.v1'))localStorage.setItem('tenderloin-redux.godot.save.v1',JSON.stringify(f));},fixture);
     await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending&&!window.__tenderloinGodotA11ySnapshot.layout_refit_pending);await page.keyboard.press('Escape');
     if(width===640){const partial=await page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1'));await page.reload();await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1')),partial,'partial draft before first posting reloads without a write');}
-    await verifyProgrammeStudio(page,touch,size);await context.close();
+    await verifyProgrammeStudio(page,touch,size);await closeTracedContext(context);
   }
   // A separate fresh profile proves first-time auto-advance; the seven late
   // cases above separately preserve actually taken keepsakes from progression.
   {
-    const freshSize={width:390,height:667},context=await browser.newContext({viewport:freshSize,hasTouch:true}),page=await context.newPage();latestPage=page;
+    const freshSize={width:390,height:667},context=await newTracedContext(browser,{viewport:freshSize,hasTouch:true}),page=await context.newPage();latestPage=page;
     context.on('request',r=>{if(!r.url().startsWith(base)&&!r.url().startsWith('data:')&&!r.url().startsWith('blob:'))external.push(r.url());});
     page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
     await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:60000});
     await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending&&!window.__tenderloinGodotA11ySnapshot.layout_refit_pending);
     const s=await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot),b=s.start_control,c=await page.locator('#canvas').boundingBox();
     await page.touchscreen.tap(c.x+(b.x+b.width/2)*c.width/s.viewport_width,c.y+(b.y+b.height/2)*c.height/s.viewport_height);
-    await verifyMuralStories(page,context,true,freshSize,false);await verifyMuralWorkshop(page,context,true,freshSize,false);await context.close();
+    await verifyMuralStories(page,context,true,freshSize,false);await verifyMuralWorkshop(page,context,true,freshSize,false);await closeTracedContext(context);
   }
   assert.deepEqual(external, []);
   assert.deepEqual(errors, []);
   // Explicit PRIVATE completed copies of THIS run's genuinely completed profile.
   for(const [width,height,touch,layout] of [[520,360,true,'table'],[559,360,false,'floor'],[640,360,true,'table']]){
     const fixture=JSON.parse(rhythmFixtureSave);fixture.gathering_layout=layout;assert.equal(fixture.epilogue.photo.status,'taken');assert.ok(fixture.hosting.results.some(r=>r.id==='art'));
-    const context=await browser.newContext({viewport:{width,height},hasTouch:touch});await context.addInitScript(({save,sentinel})=>{if(!localStorage.getItem('tenderloin-redux.godot.save.v1')){localStorage.setItem('tenderloin-redux.godot.save.v1',save);localStorage.setItem('tenderloin-redux.save.v1',sentinel);}}, {save:JSON.stringify(fixture),sentinel:BROWSER_SAVE_SENTINEL});
-    const page=await context.newPage();latestPage=page;page.on('pageerror',error=>errors.push(String(error)));page.on('request',request=>{if(![base,'blob:','data:'].some(p=>request.url().startsWith(p)))external.push(request.url());});await page.goto(base,{waitUntil:'domcontentloaded'});await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');await verifySharedPanel(page,touch,{width,height});await context.close();
+    const context=await newTracedContext(browser,{viewport:{width,height},hasTouch:touch});await context.addInitScript(({save,sentinel})=>{if(!localStorage.getItem('tenderloin-redux.godot.save.v1')){localStorage.setItem('tenderloin-redux.godot.save.v1',save);localStorage.setItem('tenderloin-redux.save.v1',sentinel);}}, {save:JSON.stringify(fixture),sentinel:BROWSER_SAVE_SENTINEL});
+    const page=await context.newPage();latestPage=page;page.on('pageerror',error=>errors.push(String(error)));page.on('request',request=>{if(![base,'blob:','data:'].some(p=>request.url().startsWith(p)))external.push(request.url());});await page.goto(base,{waitUntil:'domcontentloaded'});await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');await verifySharedPanel(page,touch,{width,height});await closeTracedContext(context);
   }
   // PRIVATE pending-return copies of THIS run's actually completed profile.
   for(const [width,height,touch,layout] of [[520,360,true,'table'],[559,360,false,'floor'],[640,360,true,'floor']]){
     const fixture=JSON.parse(rhythmFixtureSave);fixture.gathering_layout=layout;fixture.epilogue.packing=true;fixture.epilogue.returned=[];
-    const context=await browser.newContext({viewport:{width,height},hasTouch:touch});await context.addInitScript(f=>{if(!localStorage.getItem('tenderloin-redux.godot.save.v1'))localStorage.setItem('tenderloin-redux.godot.save.v1',JSON.stringify(f));},fixture);
-    const page=await context.newPage();latestPage=page;page.on('pageerror',e=>errors.push(String(e)));page.on('request',r=>{if(![base,'blob:','data:'].some(p=>r.url().startsWith(p)))external.push(r.url());});await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');await verifyLoanHomecoming(page,touch,{width,height},true);await context.close();
+    const context=await newTracedContext(browser,{viewport:{width,height},hasTouch:touch});await context.addInitScript(f=>{if(!localStorage.getItem('tenderloin-redux.godot.save.v1'))localStorage.setItem('tenderloin-redux.godot.save.v1',JSON.stringify(f));},fixture);
+    const page=await context.newPage();latestPage=page;page.on('pageerror',e=>errors.push(String(e)));page.on('request',r=>{if(![base,'blob:','data:'].some(p=>r.url().startsWith(p)))external.push(r.url());});await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');await verifyLoanHomecoming(page,touch,{width,height},true);await closeTracedContext(context);
   }
   // PRIVATE completed copies of THIS run exercise all short repair docks.
   for(const [width,height,touch,layout] of [[520,360,true,'floor'],[559,360,false,'table'],[640,360,true,'floor']]){
     const fixture=JSON.parse(rhythmFixtureSave);fixture.gathering_layout=layout;
-    const context=await browser.newContext({viewport:{width,height},hasTouch:touch});await context.addInitScript(f=>{if(!localStorage.getItem('tenderloin-redux.godot.save.v1'))localStorage.setItem('tenderloin-redux.godot.save.v1',JSON.stringify(f));},fixture);
-    const page=await context.newPage();latestPage=page;page.on('pageerror',e=>errors.push(String(e)));page.on('request',r=>{if(![base,'blob:','data:'].some(p=>r.url().startsWith(p)))external.push(r.url());});await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');await verifyPowerStory(page,touch,{width,height},true);await context.close();
+    const context=await newTracedContext(browser,{viewport:{width,height},hasTouch:touch});await context.addInitScript(f=>{if(!localStorage.getItem('tenderloin-redux.godot.save.v1'))localStorage.setItem('tenderloin-redux.godot.save.v1',JSON.stringify(f));},fixture);
+    const page=await context.newPage();latestPage=page;page.on('pageerror',e=>errors.push(String(e)));page.on('request',r=>{if(![base,'blob:','data:'].some(p=>r.url().startsWith(p)))external.push(r.url());});await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');await verifyPowerStory(page,touch,{width,height},true);await closeTracedContext(context);
   }
   // PRIVATE completed copies of THIS run verify the short dog reader with both inputs/layouts.
   for(const [width,height,touch,layout] of [[520,360,true,'table'],[559,360,false,'floor'],[640,360,true,'floor']]){
     const fixture=JSON.parse(rhythmFixtureSave);fixture.gathering_layout=layout;
-    const context=await browser.newContext({viewport:{width,height},hasTouch:touch});await context.addInitScript(f=>{if(!localStorage.getItem('tenderloin-redux.godot.save.v1'))localStorage.setItem('tenderloin-redux.godot.save.v1',JSON.stringify(f));},fixture);
-    const page=await context.newPage();latestPage=page;page.on('pageerror',e=>errors.push(String(e)));page.on('request',r=>{if(![base,'blob:','data:'].some(p=>r.url().startsWith(p)))external.push(r.url());});await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');await verifyDogStory(page,touch,{width,height},true);await context.close();
+    const context=await newTracedContext(browser,{viewport:{width,height},hasTouch:touch});await context.addInitScript(f=>{if(!localStorage.getItem('tenderloin-redux.godot.save.v1'))localStorage.setItem('tenderloin-redux.godot.save.v1',JSON.stringify(f));},fixture);
+    const page=await context.newPage();latestPage=page;page.on('pageerror',e=>errors.push(String(e)));page.on('request',r=>{if(![base,'blob:','data:'].some(p=>r.url().startsWith(p)))external.push(r.url());});await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');await verifyDogStory(page,touch,{width,height},true);await closeTracedContext(context);
   }
   assert.equal(mapPinchChecks.length,4);assert.equal(votingStoryChecks.length,3);assert.ok(votingStoryChecks.every(c=>!c.privateFixture));
   assert.equal(lanternProcessionChecks.length,3);assert.ok(lanternProcessionChecks.every(c=>!c.privateFixture));
@@ -3664,10 +3718,11 @@ try {
   await verifyLoanWorld(browser,rhythmFixtureSave,base);
   await verifyGuidedWalk(browser,base);
   assert.equal(guidedWalkChecks.length,3);
+  assert.equal(sharedMealChecks.length,3);assert.ok(sharedMealChecks.every(c=>!c.privateFixture));
   await verifyPhoneDisclosure(browser,base);
   assert.equal(phoneDisclosureChecks.length,6);
   assert.equal(loanHomecomingChecks.length,8);assert.equal(loanWorldChecks.length,3);assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
-  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, sourceFingerprint, renderedPixelChecks, guidedWalkChecks, storyReturnChecks, storyVisitChecks, phoneDisclosureChecks, mapPinchChecks, votingStoryChecks, lanternProcessionChecks, dogStoryChecks, larkinStoryChecks, powerStoryChecks, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, beaInvitationChecks, quietSeatChecks, filmScreeningChecks, rhythmCircleChecks, rhythmAuditionChecks, muralStoryChecks, livingMuralChecks, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
+  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, sourceFingerprint, renderedPixelChecks, traceReceipts, sharedMealChecks, guidedWalkChecks, storyReturnChecks, storyVisitChecks, phoneDisclosureChecks, mapPinchChecks, votingStoryChecks, lanternProcessionChecks, dogStoryChecks, larkinStoryChecks, powerStoryChecks, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, beaInvitationChecks, quietSeatChecks, filmScreeningChecks, rhythmCircleChecks, rhythmAuditionChecks, muralStoryChecks, livingMuralChecks, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
   assert.ok(queuedActivityRewardChecks > 0, 'at least one actual crowded activity exercises queued reward timer and Close delivery');
   assert.ok(shortStartClicked && shortStartTouchClicked, 'real mouse and touch Start at640x360 were exercised');
   assert.equal(beaInvitationChecks.length,7,'three genuine current progression and four private post-quiet invitation cases');
@@ -3700,16 +3755,15 @@ try {
   assert.equal(muralWorkshopChecks.length,8,'seven late and one fresh actual workshop mouse/finger cases executed');
   assert.equal(muralWorkshopChecks.filter(c=>c.photoStatus==='taken').length,7,'all seven late cases preserve a saved taken keepsake');
   assert.equal(workshopAutoAdvanceChecks,3,'a fresh mural exercises all three automatically offered contributions');
-  console.log(JSON.stringify({ runs, sourceFingerprint, renderedPixelChecks, guidedWalkChecks, storyReturnChecks, storyVisitChecks, phoneDisclosureChecks, mapPinchChecks, votingStoryChecks, lanternProcessionChecks, dogStoryChecks, larkinStoryChecks, powerStoryChecks, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, rhythmCircleChecks, rhythmAuditionChecks, livingMuralChecks, muralWorkshopChecks, workshopAutoAdvanceChecks, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, narrowActivityChecks, passiveActivityChecks, narrowHubChecks, smallHubReaderChecks, shortWalkingChecks, shortWalkingCaptionChecks, shortWalkingGuideChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
+  console.log(JSON.stringify({ runs, sourceFingerprint, renderedPixelChecks, traceReceipts, sharedMealChecks, guidedWalkChecks, storyReturnChecks, storyVisitChecks, phoneDisclosureChecks, mapPinchChecks, votingStoryChecks, lanternProcessionChecks, dogStoryChecks, larkinStoryChecks, powerStoryChecks, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, rhythmCircleChecks, rhythmAuditionChecks, livingMuralChecks, muralWorkshopChecks, workshopAutoAdvanceChecks, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, narrowActivityChecks, passiveActivityChecks, narrowHubChecks, smallHubReaderChecks, shortWalkingChecks, shortWalkingCaptionChecks, shortWalkingGuideChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
 } catch (error) {
   if (latestPage && !latestPage.isClosed()) {
-    await latestPage.screenshot({ path: 'artifacts/godot-browser-failure.png' });
-    await writeFile('artifacts/godot-browser-failure.json', JSON.stringify({
-      error: String(error),
-      viewport: latestPage.viewportSize(),
-      snapshot: await latestPage.evaluate(() => window.__tenderloinGodotA11ySnapshot),
-      performance: await latestPage.evaluate(() => window.__tenderloinLastPerfSnapshot || null)
-    }, null, 2));
+    await retainBrowserFailure(latestPage,error);
   }
   throw error;
-} finally { await browser.close(); }
+} finally {
+  // Stop open failure traces before closing their contexts; never invent a trace
+  // for a closed historical context that was not recorded.
+  try{for(const context of [...activeContextTraces.keys()])await stopContextTrace(context);}
+  finally{await browser.close();}
+}

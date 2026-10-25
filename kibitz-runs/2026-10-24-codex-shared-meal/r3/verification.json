@@ -1,0 +1,231 @@
+{
+  "utc": "2026-10-25T10:55:19.450552+00:00",
+  "all_five_pass": true,
+  "browser_finished_utc": "2026-10-25T10:28:24.367902+00:00",
+  "browser_seconds": 4801.373026847839,
+  "source_pck_count": 137,
+  "source_pck_native_unchanged": true,
+  "errors": [],
+  "external": [],
+  "main_save_bytes": [
+    1727,
+    1723,
+    1723
+  ],
+  "meal_checks": [
+    {
+      "size": {
+        "width": 1100,
+        "height": 760
+      },
+      "touch": false,
+      "privateFixture": false,
+      "layout": "table",
+      "steps": 20,
+      "save_bytes": 1584,
+      "unique_art": 4,
+      "copy_differences": [
+        63,
+        71,
+        56,
+        86
+      ],
+      "motion": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "size": {
+        "width": 390,
+        "height": 667
+      },
+      "touch": true,
+      "privateFixture": false,
+      "layout": "table",
+      "steps": 20,
+      "save_bytes": 1583,
+      "unique_art": 4,
+      "copy_differences": [
+        44,
+        55,
+        41,
+        66
+      ],
+      "motion": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 667
+      },
+      "touch": true,
+      "privateFixture": false,
+      "layout": "table",
+      "steps": 20,
+      "save_bytes": 1583,
+      "unique_art": 4,
+      "copy_differences": [
+        46,
+        56,
+        48,
+        66
+      ],
+      "motion": [
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "counts": {
+    "sharedMealChecks": 3,
+    "guidedWalkChecks": 3,
+    "storyReturnChecks": 9,
+    "storyVisitChecks": 12,
+    "phoneDisclosureChecks": 6,
+    "mapPinchChecks": 4,
+    "votingStoryChecks": 3,
+    "lanternProcessionChecks": 3,
+    "dogStoryChecks": 6,
+    "larkinStoryChecks": 3,
+    "powerStoryChecks": 6,
+    "loanHomecomingChecks": 8,
+    "loanWorldChecks": 3,
+    "sharedPanelChecks": 9,
+    "programmeStudioChecks": 7,
+    "civicListeningChecks": 9,
+    "rhythmCircleChecks": 11,
+    "rhythmAuditionChecks": 11,
+    "livingMuralChecks": 8,
+    "muralWorkshopChecks": 8,
+    "workshopAutoAdvanceChecks": 3,
+    "queuedActivityRewardChecks": 2,
+    "shortStoryReadChecks": 11,
+    "shortHubChecks": 8,
+    "shortActivityChecks": 18,
+    "narrowActivityChecks": 39,
+    "passiveActivityChecks": 12,
+    "narrowHubChecks": 12,
+    "smallHubReaderChecks": 4,
+    "shortWalkingChecks": 10,
+    "shortWalkingCaptionChecks": 1,
+    "shortWalkingGuideChecks": 1
+  },
+  "fresh_phone_cases": 6,
+  "actual_pinch_cases": 4,
+  "genuine_voting_cases": 3,
+  "trace_receipt_count": 44,
+  "node_tests": 106,
+  "gates": {
+    "native": {
+      "rc": 0,
+      "seconds": 184.83857369422913,
+      "finished_utc": "2026-10-25T09:08:10.982358+00:00",
+      "sources_unchanged": true,
+      "native_asfound_unchanged": true,
+      "tokens": {
+        "GODOT_STUDY_PASS": true,
+        "SHARED_MEAL_PASS": true,
+        "GUIDED_WALK_PASS": true,
+        "STORY_VISITS_PASS": true,
+        "PHONE_DISCLOSURE_PASS": true,
+        "MAP_PINCH_PASS": true
+      },
+      "clean": true
+    },
+    "export": {
+      "rc": 0,
+      "seconds": 2.991248607635498,
+      "finished_utc": "2026-10-25T09:08:14.013417+00:00",
+      "sources_unchanged": true,
+      "native_asfound_unchanged": true
+    },
+    "check": {
+      "rc": 0,
+      "seconds": 1.961731195449829,
+      "finished_utc": "2026-10-25T09:08:16.013851+00:00",
+      "sources_unchanged": true,
+      "native_asfound_unchanged": true
+    },
+    "node": {
+      "rc": 0,
+      "seconds": 6.893167018890381,
+      "finished_utc": "2026-10-25T09:08:22.955056+00:00",
+      "sources_unchanged": true,
+      "native_asfound_unchanged": true,
+      "tests": 106
+    },
+    "browser": {
+      "rc": 0,
+      "seconds": 4801.373026847839,
+      "finished_utc": "2026-10-25T10:28:24.367902+00:00",
+      "sources_unchanged": true,
+      "native_asfound_unchanged": true,
+      "pack_unchanged": true,
+      "result_exists": true,
+      "errors": [],
+      "external": [],
+      "shared_meal_cases": 3
+    }
+  },
+  "later_corrections_independently_rereviewed": false,
+  "limits": "Physical phone, full screen-reader, human cultural/taste/pacing/aesthetic/listening and laptop shutdown cause unverified; no deployment authorized",
+  "capture_inspection_pending": false,
+  "captures_inspected": [
+    {
+      "path": "artifacts/shared-meal-round-20261025/final5/browser-evidence/meal-1100x760-mouse-dish1.png",
+      "sha256": "490a380e0cb46d5de32124877aee966aa3dd2e973fa2482a2394df81abe84807"
+    },
+    {
+      "path": "artifacts/shared-meal-round-20261025/final5/browser-evidence/meal-390x667-finger-dish2.png",
+      "sha256": "250789017800378d71f88a92087fd0d6458a4024af87e56bd8ac787e93aef6a0"
+    },
+    {
+      "path": "artifacts/shared-meal-round-20261025/final5/browser-evidence/meal-320x667-finger-dish4.png",
+      "sha256": "398cee99ea07765c4a9a2446a666b0634da40afed3b372719b113e3825f5eab4"
+    },
+    {
+      "path": "artifacts/shared-meal-round-20261025/final5/browser-evidence/meal-390x667-finger-copy4.png",
+      "sha256": "0743541c573ddd7c0b2fbecf7eb770f8f5cab8a6b762ccddd1be0178c7b5d6ef"
+    }
+  ],
+  "public_identity": {
+    "version": "0.12.0",
+    "fingerprint": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567",
+    "verified_unchanged": true
+  },
+  "source_fingerprint": {
+    "sources": {
+      "godot/main.gd": "a56cce0e402d93fb916bc2d585b94063e8cb44ba9178491e2ca296bd94f263c9",
+      "godot/shared_meal.gd": "81573f271e6020300301c87f66963ca37e5daea2f02007c570845a67c0203305",
+      "godot/shared_meal_data.gd": "abc1b19186691b9a44797647be79c8e6805aea239e9f3cf05d83068595508100",
+      "godot/tests/shared_meal_checks.gd": "0c7c2d77ed24a01de74b700bd21a747fc16d3a76363a178a34da4df16b287428",
+      "godot/shared_panel.gd": "0cf289edc823919866c03e3687935d9b5c390058e1faa8051255a3fa9067833f",
+      "godot/loan_homecoming.gd": "0cac31652903848832ded6d2131c97e50e82a8c89f03e69c885aa543574472f9",
+      "godot/power_story.gd": "dcd589446fa18918bdeefcafcceac9ec8a9972f23efc2adf8bb76bf1a19dc5eb",
+      "godot/dog_story.gd": "e61a1a42d66d772712868185d14710efc2386b8e5c6ded9747d21752bf93a352",
+      "godot/lantern_procession.gd": "5c5ead64f5bd57ca99b6827a718fc10d043a728adb0106f1c3418ebbc404f369",
+      "godot/story_picker.gd": "086a46fcee0e3c37c2dbdad3c495c84942d0fdfc695193f8afdc5a87d5fab463",
+      "godot/voting_story.gd": "49a9061a887dbd43fda6cd6e4cf11e5653ec31bde68e05df4ae9dd864f3bf376",
+      "godot/data/voting_places.json": "dce6122946d5e29fe22c522c66b9437a1a1c5427535f1ad28af1ae884b307fe3",
+      "godot/power_place.gd": "f192f25dbe721d6a33c826046237cc41653bd473b50c8fed5c22bb94819309ed",
+      "godot/data/power_place.json": "5eac6de7921c9eb6afaa1752a9bfc6a693e63ca70a19ea3b6d82f268b2178f52",
+      "godot/tests/study_test.gd": "4453606b09a4122115dc6643b1593e9c0af0eb78e7b92d2e82f5ca81af13ef43"
+    },
+    "pack_sha256": "8243ef8f0bcdfe13eb5f5b162b83fb3ca91a73c849081d9fe21f521405166ead"
+  },
+  "exact_inputs": "artifacts/shared-meal-round-20261025/final5/inputs and input-index.pck;137hash freeze browser-source-before.json",
+  "full_log": "artifacts/shared-meal-round-20261025/final5/browser.log",
+  "rejected_evidence": "final1/final2 native and final3/final4 browser rejected; exact profile retention absent for original final3 and explicitly not invented. Later retained replay profiles are labelled private.",
+  "both_layouts": "Formal native2layouts x6sizes and earlier focused4 actual desktop/Android-emulated table/floor; final genuine main journeys use table. Private component evidence supplements full progression.",
+  "checkpoint": "Verified local checkpoint; commit containing this receipt; no deployment or human acceptance claim"
+}

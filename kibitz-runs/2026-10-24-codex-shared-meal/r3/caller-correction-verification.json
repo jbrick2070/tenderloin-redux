@@ -1,0 +1,98 @@
+{
+  "utc": "2026-10-25T09:06:05.562080+00:00",
+  "scope": "Affected meal replay on PRIVATE derivatives of the ACTUAL retained final4 failure storageState; not full progression/all-five acceptance",
+  "failure": "Driver ReferenceError: touch is not defined before meal entry; fixed caller derives size.width<600 like context.hasTouch",
+  "caller": "artifacts/shared-meal-round-20261025/caller-replay1/execution.json",
+  "trace": {
+    "path": "artifacts\\shared-meal-round-20261025\\final4\\browser-evidence\\godot-browser-trace-1792916151757-001.zip",
+    "bytes": 99843970,
+    "sha256": "8551a39f72e8b2ed5b06d8bc32f63822ecc4fa48623b6e8807fb7d96a4898442",
+    "actions": 17174,
+    "input_actions": 2644,
+    "dom_snapshots": 34336,
+    "last_actions": [
+      "waitForSelector",
+      "waitForFunction",
+      "keyboardPress",
+      "evaluateExpression",
+      "waitForFunction",
+      "evaluateExpression",
+      "evaluateExpression",
+      "evaluateExpression",
+      "storageState",
+      "screenshot",
+      "evaluateExpression",
+      "evaluateExpression"
+    ],
+    "reader_limit": "First reader used optional apiName rather than actual wire method; corrected inspection, no trace/test threshold change. Initial cp1252 decode corrected to explicit UTF-8 before reading data."
+  },
+  "profile_sha256": "530a7fcf81795d90ee11417362cc818697db25776b16b892ec4df139d0f9e2b0",
+  "save_bytes": 1584,
+  "results": [
+    {
+      "width": 1100,
+      "touch": false,
+      "steps": 20,
+      "unique_art": 4,
+      "world_copy_differences": [
+        63,
+        71,
+        56,
+        86
+      ],
+      "motion": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "width": 390,
+      "touch": true,
+      "steps": 20,
+      "unique_art": 4,
+      "world_copy_differences": [
+        57,
+        57,
+        50,
+        58
+      ],
+      "motion": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "width": 320,
+      "touch": true,
+      "steps": 20,
+      "unique_art": 4,
+      "world_copy_differences": [
+        49,
+        52,
+        45,
+        54
+      ],
+      "motion": [
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "errors": [],
+  "external": [],
+  "source_and_pck_unchanged": true,
+  "inspected_captures": [
+    "final4 actual failure scene",
+    "1100 kibbeh and red rice",
+    "390 Thai beef pad kra pao",
+    "320 red rice"
+  ],
+  "later_corrections_independently_rereviewed": false,
+  "next": "Existing final5 all-five controller, then inspect full evidence and accepted commit/push[skip ci]; no new feature/deployment"
+}

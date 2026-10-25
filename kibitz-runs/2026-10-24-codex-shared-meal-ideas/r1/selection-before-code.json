@@ -1,0 +1,38 @@
+{
+  "utc": "2026-10-25T05:35:03.679148+00:00",
+  "before_implementation": true,
+  "baseline": "eb028f4231219ed0fb9a91aa23a33569123853f1",
+  "selected": "A-prime: four distinctive dishes, grounded named preparation, copied visible meal, internal earned invitations, original focused module",
+  "variants": [
+    "Syrian kibbeh bil sanieh",
+    "Cantonese lo bak go",
+    "Thai beef pad kra pao",
+    "Gullah Geechee red rice"
+  ],
+  "rejected": [
+    "B separate seating",
+    "C one-dish placeholder",
+    "new hub navigation sibling",
+    "existing eatery integration",
+    "generic quiz/scoring/timers",
+    "general story selector rewrite"
+  ],
+  "judgment_sha256": "bc011a1daac0757305a4efe6ea47551538fc9377caeaa265b28ffb1d1a712f8d",
+  "research_sha256": "14042a4f62c85d590bb02f5fc9a4ee45dcda9aa670cf50cd5c4a42b1547f3459",
+  "source_hashes": {
+    "godot/main.gd": "eea68bbc34e008a72873ca26d957dc5e90c493b37d4813d6a86afb3e33b07ca1",
+    "godot/civic_listening.gd": "2eca8cffc35ed2753544e137515fdd6e67b1d6933fb60717763e4c540061c7e7",
+    "godot/programme_studio.gd": "b9e2200905730fee77e785946e45f05555bd1becd8de76ade20a37ecd6667e1e",
+    "godot/shared_panel.gd": "0cf289edc823919866c03e3687935d9b5c390058e1faa8051255a3fa9067833f",
+    "godot/story_picker.gd": "086a46fcee0e3c37c2dbdad3c495c84942d0fdfc695193f8afdc5a87d5fab463",
+    "godot/quiet_seats.gd": "211c67f25397305c0cefd5c2c5f0bc558296ab82848c09b67cf032f0b9fc5cef",
+    "godot/bea_invitation.gd": "4ad40453704987fc9c29c34425b8be66c5fb8057874ab21fdd9cb89ab259b51f",
+    "godot/tests/study_test.gd": "56f5ebbfe1c06718e2f9e78720a6737f4631ac62e41e949c4eed5ae4be071a6d",
+    "tests/godot-browser.mjs": "aa697407cae9c47a57690fea4aaf1c4eae37283d09fb48d64d785beaa31fafdc",
+    "tests/godot-data.test.mjs": "932dfa259e008cd99650462570d6147aabcdd7d2d04fa85b20884ee518239329",
+    "docs/COOKING_FOODWAYS_BRIEF.md": "ee8df91ee76b85e656495b7b6b2d1827c2668f43413f31593740f10e03cf3e99",
+    "docs/ROADMAP.md": "c9fee464d4067ee98a4979c61c288fb225da5f83a4b285fd9c6fcfe3ad01d1e1",
+    "docs/GODOT_APPROACH.md": "4fe7787b8c921187fb7e71ca649790281b5f33768b644f6510bb86ce839e40a4",
+    "docs/QUEST_FREEDOM_IMPLEMENTATION_BRIEF.md": "a014510c456e5a567efe53c8806c618ed91671b6c472b97c13562a39081350b3"
+  }
+}
