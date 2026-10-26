@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 
 // Inspect the actual raster at its drawn frame bounds. Sparse grids can miss
 // the original close-framed chair/ring strokes and alias two distinct pictures.
-function inspectFilmFrame(pixels,canvas,size,{x,y,width,height},shot,framing,view) {
+export function inspectFilmFrame(pixels,canvas,size,{x,y,width,height},shot,framing,view) {
   let paper=0,border=0,green=0,pink=0,ring=0,panel=0;const samples=[];
   const zoom=framing==='close'?1.2:1,tx=framing==='close'?-30:0,ty=framing==='close'?-8:0;
   for(let py=Math.round(y);py<Math.round(y+height);py++)for(let px=Math.round(x);px<Math.round(x+width);px++){

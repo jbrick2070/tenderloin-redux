@@ -1,0 +1,26 @@
+{
+  "utc": "2026-10-26T13:25:14.392791+00:00",
+  "harness_rc": 0,
+  "sources_unchanged": true,
+  "requested_model": "claude-opus-5-5",
+  "requested_effort": "high",
+  "selected_model": "claude-opus-5-5",
+  "selected_effort": "high",
+  "provider_runtime_identity": "unknown",
+  "numeric_allowance": "unknown",
+  "scope": "ONE pre-code r1 only; selected before code",
+  "all_findings_grounded": true,
+  "private_file_hashes": {
+    "claude.md": "a990fb7853b81f0b0963a39a538dd10f7d7ea667380178200f57ed47d9c74209",
+    "claude_budget_selected.txt": "b80401b5bdee9b92d2114d1dcae19e4929eefb76987dd1911802478ede026cf0",
+    "claude_effort_selected.txt": "6ef7c9b15ecdd69083724b84cfdc2100351963488b51b4ea2fcbddf493fbec94",
+    "claude_model_selected.txt": "005912bee6ee4543cec4404b5a02b9bcb11a6f1dcc134b6693c7ccde5fdd2f69",
+    "claude_quota_status.txt": "8837273a61838ba8faef568a69dfead62d1566b2be47f9636a4097bdcbf7023c",
+    "driver_anchor.md": "a54ca06693cafa5824bd3b8b80b7e2d6f63c52bed6de26a86e721229bf55bfc4",
+    "scope_receipt.md": "e65dc4effca791fe80b31a52c1ee36bade05af99e03d4fe77bdc07065a5eab73",
+    "source-after.json": "60b0f742a38a50dc0743f184c01b51ef11691096c6ec28eb1597835a45f708be",
+    "source-before.json": "60b0f742a38a50dc0743f184c01b51ef11691096c6ec28eb1597835a45f708be",
+    "source-comparison.json": "bbcd2f86abf1d4179e5ce6f4f64c9572f21972cc89b66dc143e60ed435c65399"
+  },
+  "quota_limit": "Numerical allowance unknown; raw quota/budget retained locally, excluded from commit"
+}

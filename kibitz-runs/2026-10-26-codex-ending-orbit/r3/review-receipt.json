@@ -1,0 +1,17 @@
+{
+  "exact_implementation_pass": {
+    "utc": "2026-10-26T14:35:23.875935+00:00",
+    "harness_rc": 0,
+    "sources_unchanged": true,
+    "requested_model": "claude-opus-5-5",
+    "requested_effort": "high",
+    "selected_model": "claude-opus-5-5",
+    "selected_effort": "high",
+    "provider_runtime_identity": "unknown",
+    "numeric_allowance": "unknown"
+  },
+  "grounded_every_finding": true,
+  "judgment_sha256": "6018ac02224cd5a4c3a44291385585f669a686d02942d0accf0aae71395c02a9",
+  "later_fixes_independently_reviewed": false,
+  "full_all_five_accepted": true
+}

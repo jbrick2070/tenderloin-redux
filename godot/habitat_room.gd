@@ -39,8 +39,10 @@ var relation := 0
 var departure_ready := false
 var panel := -1
 var notice := ""
+var orbital: Control
 
 func reset_departure() -> void:
+	if is_instance_valid(orbital): orbital.reset_visit()
 	mode="room"; links.clear(); relation=0; departure_ready=false; panel=-1; notice=""
 
 func invitation() -> Dictionary:
@@ -60,6 +62,7 @@ func prepare_together() -> void:
 	mode="links"; inspecting=false; notice=""; refresh(true); focus_step()
 
 func focus_step() -> void:
+	if is_instance_valid(orbital) and orbital.visible: orbital.reader.grab_focus(); return
 	if mode=="depart":
 		if panel<2: places[0].grab_focus()
 		else: detail.grab_focus()
@@ -93,7 +96,7 @@ func departure_text(c: Dictionary) -> String:
 	if departure_ready:
 		body='Bea: "Our invitation is %s. We leave space for someone new."\nCeleste: "Our six shapes keep their %s colors by %s."\nDez: "Our film ends on %s. %s"\nThanh: "We keep the %s and our %s Listening Hour. We are ready together."'%[title,c.art.palette,NAMES[place_of("art")].to_lower(),game.film_shot_title(String(c.film.order[2])).to_lower(),"Listening only, with no marked beats." if int(c.beats)==0 else "Our original eight rhythm slots travel silently.",game.quiet_seats.TITLES[c.pause],game.CIVIC_FORMAT_LABELS[c.civic.format]]
 	if mode=="depart":
-		body=["Bea: We have made a place for one more. In this speculative future chapter, our neighbors travel together with copies of what we made. The originals, borrowed things and our home block stay home.","Thanh: The neighborhood travels with us: a place to pause, our pictures, our film and room for someone new. We can take our time. This still image is fictional transport, not a real launch or technology claim.","Dez: Above Earth, we still have a neighborhood to make together. Celeste's shapes, our film and Thanh's seats have come with us. Bea keeps the open place for whoever arrives next. The walkable orbital neighborhood, its final gathering and the return journey are still to be built."][panel]+"\n"+body
+		body=["Bea: We have made a place for one more. In this speculative future chapter, our neighbors travel together with copies of what we made. The originals, borrowed things and our home block stay home.","Thanh: The neighborhood travels with us: a place to pause, our pictures, our film and room for someone new. We can take our time. This still image is fictional transport, not a real launch or technology claim.","Dez: Above Earth, we still have a neighborhood to make together. Celeste's shapes, our film and Thanh's seats have come with us. Bea keeps the open place for whoever arrives next. Choose Walk orbital to explore the commons and share a view with Thanh. The final gathering and authored return journey are still to be built."][panel]+"\n"+body
 	return body+"\n"+notice+"\nOpen place: "+NAMES[spare_place()]+". %d of 3 links fitted. "%links.size()+("Ready together. " if departure_ready else "")+"Bea's copied title: "+title+". No personal story or meeting notes are shown.\nThis is speculative fiction, not a certified access plan. All reveal panels are still and captioned; Next panel and Skip reveal reach the same final panel. Back to room keeps your arrangement. Moving a copy removes these links and readiness; selection alone does not. Keep/Escape returns to the block and retains this visit only. Reload or successful load/import starts fresh; your completed film keeps the invitation. Music and the street camera stay yours."
 
 
@@ -118,6 +121,7 @@ func setup(owner_game: Node) -> void:
 	row=HBoxContainer.new(); row.add_theme_constant_override("separation",4); box.add_child(row)
 	assist=button(row,"Ask helper",carry_or_welcome); detail=button(row,"View detail",toggle_detail)
 	back=button(box,"Keep exploring",close_room)
+	orbital=preload("res://orbital_commons.gd").new(); add_child(orbital); orbital.setup(self)
 	resized.connect(queue_layout); top.minimum_size_changed.connect(queue_layout); tray.minimum_size_changed.connect(queue_layout); hide()
 
 func frame() -> PanelContainer:
@@ -166,6 +170,8 @@ func open_room() -> bool:
 
 func close_room(announce: bool=true) -> void:
 	if not visible: return
+	var paused_orbit: bool=orbital.visible
+	orbital.halt(false)
 	held_on_exit.clear()
 	for key in [KEY_W,KEY_A,KEY_S,KEY_D,KEY_UP,KEY_DOWN,KEY_LEFT,KEY_RIGHT]:
 		if Input.is_key_pressed(key) or Input.is_physical_key_pressed(key): held_on_exit.append(key)
@@ -175,7 +181,7 @@ func close_room(announce: bool=true) -> void:
 	saved_visibility.clear(); game.update_block_ui(); game.layout_walking_controls_and_hub()
 	if is_instance_valid(return_focus) and return_focus.is_visible_in_tree(): return_focus.grab_focus()
 	elif game.block_film_btn.is_visible_in_tree(): game.block_film_btn.grab_focus()
-	if announce: game.announce_a11y_status("Back to the block. Your room arrangement and departure preparation stay this visit. Watch your film, then open the helper bench to revisit. Reload or successful import starts a fresh arrangement; your film keeps the invitation.")
+	if announce: game.announce_a11y_status(("Future chapter paused. Today's block is visible again; this is not the authored return-home journey. " if paused_orbit else "Back to the block. ")+"Your room arrangement, departure preparation and local walking stay this visit, with movement stopped. Watch your film, then open the helper bench to revisit. Reload or successful import starts a fresh arrangement; your film keeps the invitation.")
 
 func reset_visit() -> void:
 	close_room(false); reset_departure(); assigned.clear(); selected=0; destination=0; complete=false; inspecting=false; last_place=-1; textures.clear()
@@ -225,6 +231,9 @@ func can_carry() -> bool:
 
 func carry_or_welcome() -> void:
 	if not visible or not available(): return
+	if mode=="depart" and panel==2:
+		if not orbital.open_chapter(): notice="The copied pictures could not open. Your departure is kept; try Walk orbital again."; refresh(true)
+		return
 	if mode!="room": departure_action(); return
 	if complete and not can_carry(): prepare_together(); return
 	if can_carry():
@@ -260,6 +269,10 @@ func description() -> String:
 func refresh(announce: bool) -> void:
 	if not visible or not available(): return
 	if mode!="room" and (not complete or not invitation().valid): reset_departure()
+	for c in [top,tray,picture]: c.visible=not orbital.visible
+	if orbital.visible:
+		for label in labels: label.hide()
+		orbital.refresh(announce); return
 	credit.text=("Speculative future chapter" if mode=="depart" else "Speculative room model")+" | Copies | This visit only"
 	assist.show()
 	var c := copies(); var body := "Thanh: Let us arrange copies in a shared room we imagine visiting together. Choose Art, Film or Seats, choose an empty place, then ask our helper to carry. Leave a place open for someone else.\nSuggested arrangement, not a remembered choice: art by Entry, seats by Window, film at Far wall. You decide."
@@ -272,7 +285,7 @@ func refresh(announce: bool) -> void:
 		body='Thanh: "You left the %s open. Our %s has room to pause, and the middle stays clear."\nCeleste: "Our six shapes are by %s, in their original %s colors."\nDez: "Our film is by %s, ending on %s. The originals stay on the block."'%[spare,"open arc" if c.pause=="arc" else "pair and open seat",NAMES[place_of("art")].to_lower(),c.art.palette,NAMES[place_of("film")].to_lower(),game.film_shot_title(String(c.film.order[2])).to_lower()]
 	body+="\n"+description()+"\nSelected: "+TITLES[selected]+" for "+NAMES[destination]+". View detail enlarges the selected copy; it does not place it."
 	body+="\nCopied seats: %s. Listening Hour format: %s. Copied rhythm: %s. No personal stories or meeting notes are pictured."%[game.quiet_seats.TITLES[c.pause],game.CIVIC_FORMAT_LABELS[c.civic.format],"listening only, no marked beats" if int(c.beats)==0 else "the original marked slots, shown silently"]
-	body+="\nThis is a speculative room model, not a walkable habitat or certified access plan. Copies travel in our imagination; originals, borrowed things and home stay on the block. Welcome the room, then Prepare together to build the open-place frame and depart in a speculative future chapter. The walkable orbital neighborhood and return are still to come. Show room returns from a detail; Escape or Keep returns to the block from either view. This arrangement lasts this visit only; reload or successful load/import starts it fresh. Your completed film keeps this invitation. Quiet, saved work and the street camera stay yours."
+	body+="\nThis is a speculative room model, not a walkable habitat or certified access plan. Copies travel in our imagination; originals, borrowed things and home stay on the block. Welcome the room, then Prepare together to build the open-place frame and depart in a speculative future chapter. The final departure panel invites you to walk the orbital commons. The final gathering and authored return are still to come. Show room returns from a detail; Escape or Keep returns to the block from either view. This arrangement lasts this visit only; reload or successful load/import starts it fresh. Your completed film keeps this invitation. Quiet, saved work and the street camera stay yours."
 	if mode!="room": body=departure_text(c)
 	game.set_activity_detail(reader,body); picture.texture=texture(c); picture.accessibility_name=("Detail of "+TITLES[selected]+". " if inspecting else "Room model. ")+description()
 	for i in range(3):
@@ -289,9 +302,9 @@ func refresh(announce: bool) -> void:
 			places[i].text=RELATIONS[i] if mode=="links" else ["Next panel","Skip reveal","Still panels"][i]; places[i].accessibility_name=places[i].text
 			places[i].disabled=departure_ready if mode=="links" else (panel==2 or i==2); places[i].set_pressed_no_signal(mode=="links" and relation==i)
 		places[3].hide(); detail.text="Back to room"
-		if mode=="depart": places[2].hide(); assist.hide()
-		assist.text="Future chapter" if mode=="depart" else ("Depart" if departure_ready else ("Ready together" if links.size()==3 else "Fit link"))
-		assist.disabled=mode=="depart" or (links.size()<3 and selected in links)
+		if mode=="depart": places[2].hide(); assist.visible=panel==2
+		assist.text="Walk orbital" if mode=="depart" else ("Depart" if departure_ready else ("Ready together" if links.size()==3 else "Fit link"))
+		assist.disabled=(panel!=2 if mode=="depart" else (links.size()<3 and selected in links))
 		picture.accessibility_name="Open-place frame. "+description()+". "+("Departure panel %d of 3."%(panel+1) if mode=="depart" else "%d links fitted."%links.size())
 	var ring: Array[Control]=[reader]
 	for b in items+places+[assist,detail,back]:
@@ -372,6 +385,7 @@ func queue_layout() -> void:
 func fit_layout() -> void:
 	layout_pending=false
 	if not visible: return
+	if orbital.visible: orbital.fit_layout(); return
 	var vp: Vector2=game.bubble_viewport_size(); var side: bool=vp.x>=520 and vp.y<500; var width: float=minf(960,vp.x-12)
 	top.size=Vector2(vp.x-298 if side else width,0); top.size.y=top.get_combined_minimum_size().y; top.position=Vector2(6 if side else (vp.x-width)*0.5,6)
 	reader.custom_minimum_size.y=64 if side else 112
@@ -384,6 +398,7 @@ func fit_layout() -> void:
 
 func handle_input(event: InputEvent) -> void:
 	if not visible or not event is InputEventKey or not event.pressed: return
+	if orbital.visible: orbital.handle_input(event); return
 	var key: Key=event.keycode if event.keycode!=KEY_NONE else event.physical_keycode
 	if key==KEY_ESCAPE and not event.echo: close_room(); get_viewport().set_input_as_handled(); return
 	if key in [KEY_PAGEUP,KEY_PAGEDOWN,KEY_HOME,KEY_END] or (reader.has_focus() and key in [KEY_UP,KEY_DOWN,KEY_LEFT,KEY_RIGHT]):
@@ -402,10 +417,11 @@ func snapshot() -> Dictionary:
 	var focus: Control=get_viewport().gui_get_focus_owner()
 	result["focus_owner"]=str(focus.get_path()) if is_instance_valid(focus) and focus.is_visible_in_tree() else ""
 	result["film_focus"]=game.block_film_btn.has_focus()
+	result["orbital"]=orbital.snapshot()
 	if not visible: return result
 	var anchor := helper_anchor(); var scale := art_rect.size.x/720.0
 	result["helper_rect"]=game.rect_snapshot(Rect2(art_rect.position+(anchor+Vector2(-27,-18.5))*scale,Vector2(54,58.5)*scale))
-	result["helper_visible"]=not inspecting
+	result["helper_visible"]=not inspecting and not orbital.visible
 	var buttons: Array[Button]=[]; buttons.append_array(items); buttons.append_array(places); buttons.append_array([assist,detail,back])
 	result.merge({"buttons":game.activity_detail_snapshot(reader,tray,buttons).buttons,"top":game.control_snapshot(top),"tray":game.control_snapshot(tray),"picture":game.control_snapshot(picture),"art":game.rect_snapshot(art_rect),"reader":game.control_snapshot(reader),"text":reader.text,"description":description(),"copies":copies(),"scroll":reader.get_v_scroll_bar().value,"scroll_max":maxf(0,reader.get_v_scroll_bar().max_value-reader.get_v_scroll_bar().page),"phase_credit":credit.text,"reader_focus":reader.has_focus(),"focus_within":is_ancestor_of(get_viewport().gui_get_focus_owner()) if get_viewport().gui_get_focus_owner()!=null else false})
 	return result

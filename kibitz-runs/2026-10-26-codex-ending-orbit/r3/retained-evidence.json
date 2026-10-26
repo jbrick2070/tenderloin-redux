@@ -1,0 +1,22 @@
+{
+  "root": "artifacts/ending-orbit-20261026",
+  "accepted": "final1",
+  "accepted_execution_sha256": "1c8914c9d10f6c4c67637d575cb2640ae2caf93545381b40fc01de7edb96805b",
+  "earlier_evidence": [
+    "browser1",
+    "browser2",
+    "browser3",
+    "browser4",
+    "implementation-reviewed-inputs",
+    "native1",
+    "native2",
+    "native3",
+    "native4",
+    "native5",
+    "native6",
+    "reviewed-inputs"
+  ],
+  "review_limits": "Native5/browser4 precede near-arrival boundary fix; native6 targetedfixture; final1 covers finalbytes. Later corrections not independently re-reviewed.",
+  "profiles": "Available isolated profiles/actions/DOM/traces/screens/logs retained with their receipts. Native fixtures clean owned progress; post-run profiles are not earlier failure moments. Unsaved assembly rebuilt by input.",
+  "private_and_physical": "Private supplements only; native lifecycle injections/syntheticwindowblur notphysicalOSsuspension; actualDOMcanvasfocus proved; callbackintervals notGPU/FPS."
+}

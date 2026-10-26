@@ -1,8 +1,12 @@
+# Current orbital acceptance and finale continuation
+
+Orbital commons final1 allfive accepted2026-10-26T17:07:27UTC; finalcaptures/invariants inspected. See orbital r3/verification.json. Later fixes NOT independently re-reviewed. Normal[skip ci] checkpoint commit/push pending thisclosure; publication/humanacceptance separate. Creator authorizes oneconnected finalgathering+authoredreturn batch in attached ending-finale worktree, with exactnewr1grounded and candidatecode. Read its newesthandoff; older nextactions below arehistorical. No repeatedacceptedreviews/gates or per-legfullsuite.
+
 # Tenderloin Redux — build roadmap
 
 ## Creator priority update - October25,2026
 
-START and END take priority. Before These Streets, the first helper workshop and the illustrated habitat room are implemented and all-five verified. Habitat source commit/push follows current closure. Next is a NEW cooperative readiness/departure checkpoint grounded in actual copied contributions and visit-only room arrangement; no design is selected before fresh exact scoped r1. Orbital neighborhood and return remain later unfinished stages. Each coherent checkpoint requires separate r3/all-five verification. Other core refinements remain lower priority; keep closed features closed. Cultural/source/speculative limits and no-deployment boundary remain.
+START and END take priority. Opening, helper, habitat and cooperative departure are accepted and pushed (departure a808bce). The SAME walkable orbital commons has connected implementation, both exact reviews grounded and later driver corrections NOT independently re-reviewed; finish its fresh frozen all-five and commit before the next stage. Final gathering and return remain unfinished later stages. Every coherent checkpoint retains distinct r3/all-five verification. Keep closed features closed; core refinements remain lower priority. No deployment or human acceptance implied.
 
 Creator notification request: tell the creator when creative implementation of BOTH Before These Streets and the full planned Tenderloin to the Stars ending is complete, including the later habitat/cooperative departure/orbital neighborhood/return stages. The first helper workshop alone is not that milestone. Distinguish creative implementation from any pending final verification/commit and human acceptance. The creator will switch back to Sol manually; retain the currently selected model during this creative work and do not change it automatically.
 
@@ -17,10 +21,10 @@ Creator requested only unfinished work and automatic scheduler upkeep on October
 
 The four-dish shared meal, core-community Listening Hour -> Dez focus-only film handoff, and Hosted-afternoon copied-result review -> Bea focus-only Listening reader invitation are implemented, reviewed and all-five locally verified in accepted source checkpoints. No deployment or human cultural/taste/listening acceptance claimed. Completed story/cook switching and these recognition/revisit flows stay closed; do not rebuild them from stale selector briefs. Exact evidence remains in each r3/verification.json and current handoff/BUILD_STATUS.
 
-Next NEW gameplay order after the accepted opening, helper and habitat checkpoints:
-1. Cooperative readiness/departure: ground actual habitat/copies and honest entry/visit/save/Keep/Back/Skip boundaries, then fresh exact pre-code r1 with2-3 substantive cooperative options before selection. Preserve optional activities, original controls/results, quiet/reduced-motion intent and actual geography.
-2. Orbital neighborhood and return remain unfinished: a small walkable speculative habitat containing player contributions, resident acknowledgment and explicit return home. Require separate coherent review/build/verification checkpoints. Full creative completion includes these stages.
-3. Lower priority: actual remaining core quest-freedom gaps, including future revised-programme enactment. Current pinboard does not start another gathering. Never reset earned copies/civic/film progress to fake replay or rebuild closed features; fresh scoped r1 before extension.
+Next NEW gameplay order after accepted opening/helper/habitat/departure:
+1. Walkable orbital neighborhood: compare substantive options under fresh exact r1; ground current copied results, entry/movement/reading/Stop/Keep/Back/load/relocation boundaries before selection.
+2. Final orbital gathering and authored return home remain unfinished; require later coherent scoped review/build/verification. Full creative completion includes these stages.
+3. Lower priority: actual remaining core quest-freedom gaps, including future revised-programme enactment. Current pinboard does not start another gathering; never reset earned progress to fake replay.
 
 Still-open fixes/delivery: consequential reproducible gameplay regressions and music quality; expanded agent playtest; local45-60second1080p teaser using actual verified gameplay/original-cleared media. Physical/human listening/comfort/AT acceptance remains separate. No automatic repeated audio/opening probes, unimplemented concept-as-gameplay or Copland rights claim. This queue supersedes older historical pending-episode descriptions below; live source/current evidence still governs actual status.
 
