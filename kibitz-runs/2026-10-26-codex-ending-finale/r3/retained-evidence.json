@@ -1,0 +1,31 @@
+{
+  "root": "artifacts/ending-finale-20261026",
+  "accepted": "final1",
+  "execution_sha256": "251bb41509e7b484d5ea2e12c635a089b1ed2e8a83c1eca11faf283b9c3aa019",
+  "gate_exits_sha256": "99a53a7d9e18c8c7e7ff6391cb5b619f002425e61aad3eaa8ec79411c93942b0",
+  "browser_json_sha256": "355672b9b4aa75542382aa811c241408cb8caf4b9442a3c19919091f8ef5af15",
+  "earlier_evidence": [
+    "native1",
+    "native2",
+    "native3",
+    "browser1",
+    "browser2",
+    "browser3",
+    "browser4",
+    "r3-reviewed-inputs"
+  ],
+  "review_manifest_hashes": {
+    "kibitz-runs/2026-10-26-codex-ending-finale-ideas/r1/source-before.json": "6e0a3b5877f8cc14173dcd9f95766c95b7ca4769fc174ff31b4d5f3903379ff1",
+    "kibitz-runs/2026-10-26-codex-ending-finale-ideas/r1/source-after.json": "6e0a3b5877f8cc14173dcd9f95766c95b7ca4769fc174ff31b4d5f3903379ff1",
+    "kibitz-runs/2026-10-26-codex-ending-finale-ideas/r1/source-comparison.json": "d22f789373da382908e9c1684fd29bf943f8bf2f1d57700a28ccaf97c092b142",
+    "kibitz-runs/2026-10-26-codex-ending-finale-ideas/r1/execution-receipt.json": "dc0d3b486073f07be3d6d617bc27724f04a0cd3acf321998256a173f4b8b9288",
+    "kibitz-runs/2026-10-26-codex-ending-finale/r3/source-before.json": "10e49e7368a956ccd1b6cc68be23df588d183f93acaf5dc5870c5f24e50bd86d",
+    "kibitz-runs/2026-10-26-codex-ending-finale/r3/source-after.json": "10e49e7368a956ccd1b6cc68be23df588d183f93acaf5dc5870c5f24e50bd86d",
+    "kibitz-runs/2026-10-26-codex-ending-finale/r3/source-comparison.json": "defc4af395a7f0ad4335a6f0aaa0027cdb57fcb9b3de7bfa672a89150666426d",
+    "kibitz-runs/2026-10-26-codex-ending-finale/r3/execution-receipt.json": "6fe9f95e9d3d579494ba5a3883edad9b248af3825d3ab4cf4fb494a4d3932263"
+  },
+  "profiles": "Available isolated profiles, action/DOM traces, screenshots, logs and exit receipts retained. Native fixtures clean owned progress; post-run lifecycle profiles are not earlier failing moments. Unsaved arrangements are rebuilt through actual input. Never stage raw userdata.",
+  "rejections": "Native1 was a prelaunch encoding refusal. Browser3 Seats paper/face collision screenshot remains rejected evidence; final1 includes correction at all three choices. All private source/PCK limitations remain in judgment/private-evidence.",
+  "worktree": "Retained attached for verified local preview and evidence; do not archive until needed ignored evidence is preserved.",
+  "closure_changes": "Only documentation and compact redacted receipts changed after successful frozen gates; accepted product/test/script/PCK hashes checked again before commit."
+}

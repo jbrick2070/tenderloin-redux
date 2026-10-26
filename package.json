@@ -21,7 +21,7 @@
     "godot:export": "node scripts/run-godot.mjs --headless --path godot --export-release Web",
     "godot:serve": "node scripts/serve-godot.mjs",
     "godot:browser": "node tests/godot-browser.mjs",
-    "godot:check": "node --check scripts/build-godot-data.mjs && node --check scripts/run-godot.mjs && node --check scripts/serve-godot.mjs && node --check tests/godot-browser.mjs && node --check tests/habitat-room-browser.mjs && node --check tests/departure-browser.mjs && node --check tests/orbital-browser.mjs && node --check tests/shared-meal-browser.mjs && node --check tests/godot-data.test.mjs && node --check scripts/apply-field-survey.mjs && node --check scripts/build-street-trees.mjs && node --check scripts/build-lidar-2023.mjs",
+    "godot:check": "node --check scripts/build-godot-data.mjs && node --check scripts/run-godot.mjs && node --check scripts/serve-godot.mjs && node --check tests/godot-browser.mjs && node --check tests/habitat-room-browser.mjs && node --check tests/departure-browser.mjs && node --check tests/orbital-browser.mjs && node --check tests/finale-browser.mjs && node --check tests/shared-meal-browser.mjs && node --check tests/godot-data.test.mjs && node --check scripts/apply-field-survey.mjs && node --check scripts/build-street-trees.mjs && node --check scripts/build-lidar-2023.mjs",
     "field:apply": "node scripts/apply-field-survey.mjs"
   },
   "license": "MIT"

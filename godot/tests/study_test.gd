@@ -3303,6 +3303,7 @@ func run() -> void:
 	await preload("res://tests/habitat_room_checks.gd").verify(self,study,saved_m4_json,true)
 	await preload("res://tests/departure_checks.gd").verify(self,study,saved_m4_json,true)
 	await preload("res://tests/orbital_checks.gd").verify(self,study,saved_m4_json,true)
+	await preload("res://tests/finale_checks.gd").verify(self,study,saved_m4_json,true)
 	await verify_quiet_seats(study,saved_m4_json)
 	await verify_bea_invitation(study,saved_m4_json)
 	await verify_civic_listening(study,saved_m4_json)

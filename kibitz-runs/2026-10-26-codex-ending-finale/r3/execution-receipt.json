@@ -1,0 +1,11 @@
+{
+  "utc": "2026-10-26T17:41:37.722846+00:00",
+  "harness_rc": 0,
+  "sources_unchanged": true,
+  "requested_model": "claude-opus-5-5",
+  "requested_effort": "high",
+  "selected_model": "claude-opus-5-5",
+  "selected_effort": "high",
+  "provider_runtime_identity": "unknown",
+  "numeric_allowance": "unknown"
+}

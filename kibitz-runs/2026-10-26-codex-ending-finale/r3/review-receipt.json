@@ -1,0 +1,15 @@
+{
+  "completed": true,
+  "grounded_every_finding": true,
+  "requested_model": "claude-opus-5-5",
+  "selected_model": "claude-opus-5-5",
+  "requested_effort": "high",
+  "selected_effort": "high",
+  "harness_rc": 0,
+  "source_count": 241,
+  "sources_unchanged": true,
+  "provider_runtime_identity": "unknown",
+  "numeric_allowance": "unknown",
+  "later_corrections_independently_reviewed": false,
+  "no_duplicate_pass": true
+}

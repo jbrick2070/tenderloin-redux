@@ -1,0 +1,79 @@
+{
+  "scope": "SUPPLEMENTAL only; exact source/PCK limits in judgment.md",
+  "runs": {
+    "native2": {
+      "utc": "2026-10-26T17:20:26.302116+00:00",
+      "rc": 0,
+      "seconds": 155.64325952529907,
+      "source_unchanged": true,
+      "asfound_unchanged": true,
+      "clean": true,
+      "scope": "PRIVATE component fixture, not full native/genuine browser gate",
+      "receipt_sha256": "84aa9038c4859d705099bf67d31561c3b21c20914cfd95ec501dea0de5352ae7",
+      "cases": null
+    },
+    "native3": {
+      "utc": "2026-10-26T17:29:31.813480+00:00",
+      "rc": 0,
+      "seconds": 21.516486167907715,
+      "source_unchanged": true,
+      "asfound_unchanged": true,
+      "clean": true,
+      "scope": "PRIVATE component fixture, not full native/genuine browser gate",
+      "receipt_sha256": "620e68a3c95eb5a7d8da10925c663a7e68c122a264e6bf6e7e63be869ea3069f",
+      "cases": null
+    },
+    "browser1": {
+      "utc": "2026-10-26T17:26:49.274Z",
+      "failed": false,
+      "errors": [],
+      "external": [],
+      "unchanged": true,
+      "scope": "PRIVATE canonical component profile with explicit layout/framing selection, NOT genuine progression/full gate; actual desktop/Pixel7-emulated input",
+      "receipt_sha256": "1a4efdc70a5f5197699abc7def4362a74b62b4a7eb02f5dbc356482d959a01fc",
+      "cases": 6
+    },
+    "browser2": {
+      "utc": "2026-10-26T17:32:00.142Z",
+      "failed": false,
+      "errors": [],
+      "external": [],
+      "unchanged": true,
+      "scope": "PRIVATE canonical component profile with explicit layout/framing selection, NOT genuine progression/full gate; actual desktop/Pixel7-emulated input",
+      "receipt_sha256": "c18cefb1ba57c3406f0aa54013c00150dcf3a8bcfe15794c3f112bc33c79de9e",
+      "cases": 3
+    },
+    "browser3": {
+      "utc": "2026-10-26T17:48:45.348Z",
+      "failed": false,
+      "errors": [],
+      "external": [],
+      "unchanged": true,
+      "scope": "PRIVATE canonical component profile with explicit layout/framing selection, NOT genuine progression/full gate; actual desktop/Pixel7-emulated input",
+      "receipt_sha256": "c1cdd9b6b9783eeca3988b6b88f86d7017d26ce52901482989877061c8fe2364",
+      "cases": 3
+    },
+    "browser4": {
+      "utc": "2026-10-26T17:50:54.460Z",
+      "failed": false,
+      "errors": [],
+      "external": [],
+      "unchanged": true,
+      "scope": "PRIVATE canonical component profile with explicit layout/framing selection, NOT genuine progression/full gate; actual desktop/Pixel7-emulated input",
+      "receipt_sha256": "29c799ed81c3561cc68e2811e2917bfcd848f9171cc6c28e0935eecb3f31dd45",
+      "cases": 1
+    }
+  },
+  "current_export": {
+    "rc": 0,
+    "clean": true,
+    "seconds": 3.2758915424346924,
+    "bytes": 2082400,
+    "growth": 7792,
+    "sha256": "73f2e09bcd61a11d6b45c0ee17774875dd57f32a81c3f9785c0df1cbcd18915b",
+    "utc": "2026-10-26T17:50:08.804054+00:00",
+    "scope": "PRIVATE export after observed Seats invitation/face collision correction"
+  },
+  "reviewed_sources_retained": "artifacts/ending-finale-20261026/r3-reviewed-inputs",
+  "formal_accepted": false
+}

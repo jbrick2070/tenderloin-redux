@@ -1,0 +1,838 @@
+{
+  "accepted_utc": "2026-10-26T20:02:38.354737+00:00",
+  "baseline_head": "97d8ba335dc0790e61d6fbe0de3e7fe3daf94264",
+  "formal_execution": {
+    "rc": 0,
+    "seconds": 6282.13631272316,
+    "utc": "2026-10-26T19:38:10.698637+00:00",
+    "gates": {
+      "native": {
+        "rc": 0,
+        "seconds": 857.604825258255,
+        "finished_utc": "2026-10-26T18:07:46.194540+00:00",
+        "sources_unchanged": true,
+        "native_asfound_unchanged": true,
+        "tokens": {
+          "BEA_INVITATION_PASS": true,
+          "CIVIC_LISTENING_PASS": true,
+          "COMMUNITY_INVITATION_PASS": true,
+          "DOG_STORY_PASS": true,
+          "GODOT_NATIVE_ISOLATION_PASS": true,
+          "GODOT_STUDY_PASS": true,
+          "GUIDED_WALK_PASS": true,
+          "HOSTED_AFTERNOON_PASS:FORMAL": true,
+          "LANTERN_PROCESSION_PASS": true,
+          "LARKIN_STORY_PASS": true,
+          "LOAN_HOMECOMING_PASS": true,
+          "MAP_PINCH_PASS": true,
+          "PHONE_DISCLOSURE_PASS": true,
+          "POWER_STORY_PASS": true,
+          "PROGRAMME_STUDIO_PASS": true,
+          "QUIET_SEATS_PASS": true,
+          "SHARED_MEAL_PASS": true,
+          "SHARED_PANEL_PASS": true,
+          "SMALL_PASS": true,
+          "STORY_VISITS_PASS": true,
+          "VOTING_STORY_PASS": true,
+          "BEFORE_STREETS_PASS:FORMAL": true,
+          "HELPER_BENCH_PASS:FORMAL": true,
+          "HABITAT_ROOM_PASS:FORMAL": true,
+          "DEPARTURE_PASS:FORMAL": true,
+          "ORBITAL_COMMONS_PASS:FORMAL": true,
+          "ENDING_FINALE_PASS:FORMAL": true
+        },
+        "clean": true,
+        "native_isolation": {
+          "runId": "1793037208919_26576",
+          "save": "user://godot_block_save_test_1793037208919_26576.json",
+          "settings": "user://godot_block_settings_test_1793037208919_26576.json",
+          "args": [
+            "--headless",
+            "--path",
+            "godot",
+            "--script",
+            "res://tests/study_test.gd",
+            "--",
+            "--godot-save-path=user://godot_block_save_test_1793037208919_26576.json",
+            "--godot-settings-path=user://godot_block_settings_test_1793037208919_26576.json",
+            "--test-suite"
+          ]
+        },
+        "no_unaddressed_exceptions": true
+      },
+      "export": {
+        "rc": 0,
+        "seconds": 3.054955244064331,
+        "finished_utc": "2026-10-26T18:07:49.309114+00:00",
+        "sources_unchanged": true,
+        "native_asfound_unchanged": true,
+        "no_unaddressed_exceptions": true
+      },
+      "check": {
+        "rc": 0,
+        "seconds": 2.0684814453125,
+        "finished_utc": "2026-10-26T18:07:51.439907+00:00",
+        "sources_unchanged": true,
+        "native_asfound_unchanged": true,
+        "no_unaddressed_exceptions": true
+      },
+      "node": {
+        "rc": 0,
+        "seconds": 5.98511528968811,
+        "finished_utc": "2026-10-26T18:07:57.487623+00:00",
+        "sources_unchanged": true,
+        "native_asfound_unchanged": true,
+        "tests": 106,
+        "no_unaddressed_exceptions": true
+      },
+      "browser": {
+        "rc": 0,
+        "seconds": 5411.950809717178,
+        "finished_utc": "2026-10-26T19:38:09.500070+00:00",
+        "sources_unchanged": true,
+        "native_asfound_unchanged": true,
+        "pack_unchanged": true,
+        "result_exists": true,
+        "departure_cases": 3,
+        "genuine_departure_cases": 3,
+        "departure_widths": [
+          320,
+          390,
+          1100
+        ],
+        "departure_spares": 3,
+        "habitat_cases": 3,
+        "genuine_habitat_cases": 3,
+        "habitat_widths": [
+          320,
+          390,
+          1100
+        ],
+        "browser_fingerprint_matches": true,
+        "helper_cases": 3,
+        "genuine_helper_cases": 3,
+        "opening_cases": 6,
+        "genuine_opening_startups": 3,
+        "genuine_opening_revisits": 3,
+        "errors": [],
+        "external": [],
+        "hosted_cases": 4,
+        "genuine_hosted_earned": 3,
+        "genuine_hosted_done": 1,
+        "shared_meal_cases": 3,
+        "community_invitation_cases": 9,
+        "genuine_earned_invitations": 3,
+        "fresh_phone_cases": 6,
+        "actual_pinch_cases": 4,
+        "expanded_info_pinch_cases": 4,
+        "genuine_voting_cases": 3,
+        "orbital_cases": 3,
+        "orbital_widths": [
+          320,
+          390,
+          1100
+        ],
+        "orbital_views": 3,
+        "genuine_orbital_cases": 3,
+        "finale_cases": 3,
+        "finale_widths": [
+          320,
+          390,
+          1100
+        ],
+        "finale_choices": 3,
+        "genuine_finale_cases": 3,
+        "no_unaddressed_exceptions": true
+      }
+    },
+    "review_note": "Later driver corrections are documented, no duplicate paid r3"
+  },
+  "source_freeze": {
+    "count": 247,
+    "all_matched_before_closure_docs": true,
+    "browser_count": 248,
+    "browser_fingerprints": 38,
+    "source_manifest_sha256": "9de41c3e7e7f721663a3fc7b437cdaf127ddc3293b7013fdcf42a447335a96b3",
+    "browser_manifest_sha256": "0b80c08a9097558d803f4c62c0cccec304083608076fc65d6624c0bd48a9ecfc"
+  },
+  "product_hashes": {
+    ".gitattributes": "9780f8a1beefd95f2319d1cd23607efba38f1756f5f56bfeeb4f468e9c838fa7",
+    ".github/workflows/deploy-pages.yml": "18285f0d7f5f5144be996bcddc07120801b8f7c7c596181f8aa214a9f8e6e2ff",
+    "godot/ENGINE_LICENSE.txt": "b0435e3b3e4e55238f05f4b306f30524a1b2e20147810d436eaa554fa6855c80",
+    "godot/bea_invitation.gd": "4ad40453704987fc9c29c34425b8be66c5fb8057874ab21fdd9cb89ab259b51f",
+    "godot/bea_invitation.gd.uid": "ffee64b02910f5353784988a4511c1aa630dcba5f2d2c545c6ec812de883e64e",
+    "godot/before_streets.gd": "a880cc15fe65178c35f8b6252254923240627a866c9eaba0651a6bccbf153c89",
+    "godot/before_streets.gd.uid": "89f845a4343906ae41b5b7693ef243102976641f2efff93d814a0f03b18eca72",
+    "godot/civic_listening.gd": "014fad8de0dce29a2c9b819e5fa6622483c122d598aeca90b726447c5c92b566",
+    "godot/civic_listening.gd.uid": "3dc303bef24ace0b7afca48a382776f7858f6bd6a0e7efc866bed853bb4e57df",
+    "godot/data/SOURCES.md": "50a0e26cb85a44e8ea15d2b3ea03bfce93573c5faae104090682e801446fb287",
+    "godot/data/buildings.json": "8b3afd7a6ec3d00ac22fb77347caeafa262be2f55ad1ddbf0a9dd296afd332d2",
+    "godot/data/lidar_2023.json": "b59ba7348bdc2c78c867993cef230353708163d1d0caa50602668f73323cdc93",
+    "godot/data/neighborhood_voices.json": "662571e5de9eb0cc9f10e25146b8da08a302758009159462b6f2a460889d0271",
+    "godot/data/power_place.json": "5eac6de7921c9eb6afaa1752a9bfc6a693e63ca70a19ea3b6d82f268b2178f52",
+    "godot/data/source/boeddeker_park.osm.json": "96f0c7dadc0bb43f703fbf7a72d9fc3d37f5b1075f3d4e3e4aac280e0af55c7c",
+    "godot/data/source/buildings.geojson": "393472ecd7fda3503e581fa49e2899f2e50d5f3307f055d26b23bea0a3665701",
+    "godot/data/source/buildings_tenderloin_west.geojson": "9439ff555fc43206d1d24f29af7e0c6384c0ef3403d7fcfbfb37564231b64737",
+    "godot/data/source/larkin/3mea-di5p-metadata.json": "0c4e38f8d3c2f69150cd14c04254cd9e6c874e396b5934da9631e58929ea154a",
+    "godot/data/source/larkin/address.json": "703eac0174a434f40cfa753cc0132983ea129392a04579c325f0ec1fc4eab862",
+    "godot/data/source/larkin/gmfx-8h6i-metadata.json": "865c26aeab7026f7bf734fce77fee8f9f22b4a7ba4ee2d94aac65e9adfa1e2a4",
+    "godot/data/source/larkin/intersection.json": "b3a465baa27dfc09b34d371db7529039b0a118659bc4474aa88cb54221c75cef",
+    "godot/data/source/larkin/receipt.json": "c20abc4e7ead499b1ccc88915321b3d06ec4cdfa1563a74324b835917d260559",
+    "godot/data/source/lidar_ept_manifest.json": "99d6fb66c87994e077a0005ae646a91063cd0364ff3a59e434c1a5f3b9bea9b5",
+    "godot/data/source/metadata.json": "93407284a55c676b96d941042dcdd6223e5e5338f3b33a0faa639b56dd2309e6",
+    "godot/data/source/method.pdf": "1fa6af3167ac0935883bff2b3e79fefb8118827e158289f3cbf458769bdf6ad2",
+    "godot/data/source/osm_buildings.json": "6b00db9038f08223d5966e85264ea16340a4be3fd8267a612ec9a25fad9fbf7b",
+    "godot/data/source/roofer_lod13.city.jsonl": "6462810cbd3b001d0ffa6c03de05d434f3debb8a1974b7b3806fae802700773f",
+    "godot/data/source/roofer_lod13_pass2.city.jsonl": "5f052b26eceeae3b2dec8bcf82ddc528b9d1f0f90a0fd6e1436fcbf747fafc70",
+    "godot/data/source/street_trees_tkzw-k3nq.json": "270f370a13a9a76b72e0bc2c42dc1760cfdd0fda129fb29b3e3283003875847d",
+    "godot/data/source_receipt.json": "4ee6ed720f64c2c4417f9607446916fd610f57dadb04ddeab66a8dbeb789c3b7",
+    "godot/data/street_trees.json": "4623f1ae6744d321967aa06250ca936267a5edac0b51aec21cc00927397dbdad",
+    "godot/data/voting_places.json": "dce6122946d5e29fe22c522c66b9437a1a1c5427535f1ad28af1ae884b307fe3",
+    "godot/dog_story.gd": "e61a1a42d66d772712868185d14710efc2386b8e5c6ded9747d21752bf93a352",
+    "godot/dog_story.gd.uid": "e4c4865af01388945eee93fd162c5c5d79e2aabfc3122c642b3c9fc4c38c616b",
+    "godot/export_presets.cfg": "c48690c627327b17003865086e89eed43e143d1e391174551a54b702ed4f7c85",
+    "godot/film_screening.gd": "76e67a6ba39d4e5882015abdd908ff3c0a01f0840f8237d507a89bd13d2e0c1f",
+    "godot/film_screening.gd.uid": "853f18e65266a6f3f20d182b18a0595c8a25bc5676c9da3446efca6c6b0c3a32",
+    "godot/habitat_room.gd": "20c26c73f9728dede6ff50c84c4d110a0125ad78cf874a84fce25128672f8d61",
+    "godot/habitat_room.gd.uid": "0cc8b4b991a631b07defe8f09427cfc8ce37cb6010cea72c1cd4d6c77edc879b",
+    "godot/helper_bench.gd": "9c826f8a4b4ccd2001867e5b98aab3f77a24d68134d2185658e00fc67c05b22a",
+    "godot/helper_bench.gd.uid": "99671740a36d58a755c0af2ed8c323243d76805854655cce071ea65e74c22d2a",
+    "godot/hosted_afternoon.gd": "2051a8a9d14544dadd1cfd331c0d5740a35e9ceece6ba8448e357d4fb8cf2408",
+    "godot/hosted_afternoon.gd.uid": "46ae059d7ef5d7f7f52ba1157464683ce4463089aff84b60c30c9fde0f2fc0a8",
+    "godot/lantern_procession.gd": "5c5ead64f5bd57ca99b6827a718fc10d043a728adb0106f1c3418ebbc404f369",
+    "godot/lantern_procession.gd.uid": "e66bc5b73a138724f8b81c0a054a93f2bec0868e4e64b301cd7c661f15ce8323",
+    "godot/loan_homecoming.gd": "0cac31652903848832ded6d2131c97e50e82a8c89f03e69c885aa543574472f9",
+    "godot/loan_homecoming.gd.uid": "a34f1792beeb72439a5367a9a2db2f8d8c881f2cf7479c51a5f08492cd37de25",
+    "godot/main.gd": "1b5bb23c4e925c64bd001ced280847fc91ced13bf3716456039324f99b01db59",
+    "godot/main.gd.uid": "fb97ba0a3d31f9b884b8a5d1be601685a370fe913c1c7c2e756bb70fdf413608",
+    "godot/main.tscn": "4ab415614d976aa070ccf83cd51bfcfd36f15bcd1e9b69aa1dafa3104b348fea",
+    "godot/mural_signature.gd": "a8b25e10edef62c77fb4ccb6e98c08972c579e61659ac80386a04a03bc851da2",
+    "godot/mural_signature.gd.uid": "d716bb9dcb0d03e7013bbb1caae705bfd8f87d9825ce851bf08a39933c8214c3",
+    "godot/mural_stories.gd": "4dc1f266b997f8210871b4d863c19b43aeeb901beb60c822b6a92de9e48766c2",
+    "godot/mural_stories.gd.uid": "c64c01b1996e1d8d1e74418cd6d8fcbf6945bd01d4671c089367b6725a774fc7",
+    "godot/mural_workshop.gd": "d44323fee68af2ac907ebba3e59aab32ffa7e08e716016b926a86acc2a20e0c8",
+    "godot/mural_workshop.gd.uid": "81344249d37c4834b4906ea3a80de15dbb8b5ae9993b619ccddf4a90ddfd7b00",
+    "godot/orbital_commons.gd": "4df75ce8004701e27d0da6babe6c6fa27f2d0f65ae3db91fda7c04238154f005",
+    "godot/orbital_commons.gd.uid": "01d96dea141e630592c4a8288a52e50bd8b6c72cea2599d2252be61a4214b05d",
+    "godot/power_place.gd": "f192f25dbe721d6a33c826046237cc41653bd473b50c8fed5c22bb94819309ed",
+    "godot/power_place.gd.uid": "d99322c532b694f4005897c8a23d6138882e6671009e05d532eaab0ba350e935",
+    "godot/power_story.gd": "dcd589446fa18918bdeefcafcceac9ec8a9972f23efc2adf8bb76bf1a19dc5eb",
+    "godot/power_story.gd.uid": "faa188932ba17aa9a75109b579dbc935d21c60734a2840df1d01313b6001c627",
+    "godot/programme_studio.gd": "6f5649e44ee52b7f05c7409843043c8c95aa863e8c23d8ef9b1bd83a3b9a0348",
+    "godot/programme_studio.gd.uid": "9a98fcc7685f57917524909954c8885e558cb0c7fcd342224338290e2117a779",
+    "godot/project.godot": "f8dfcb563b703005fdf185f9a49faaf4aba153322b4da9270af099970c7fccdf",
+    "godot/quiet_seats.gd": "211c67f25397305c0cefd5c2c5f0bc558296ab82848c09b67cf032f0b9fc5cef",
+    "godot/quiet_seats.gd.uid": "b60d513358206ef91af6d7328923fc3e2fd3e3dc6d717781c735c8a35ff7241d",
+    "godot/rhythm_bar.gd": "cb26254359014631c7a6f58b9ab574a33fe5e10a5ea315b0b91556fe7378fcab",
+    "godot/rhythm_bar.gd.uid": "104fd19f28439a425e3ebc0056ae8642dc63c28ef4d7f49e9e9d621e611f79c5",
+    "godot/rhythm_circle.gd": "3cdda6f228db7ebb8efcc0f397cfa425a8ce9affef934f54ef0189b2f41d62f1",
+    "godot/rhythm_circle.gd.uid": "5c28ed6232ad7ec3c5d9af5c19e9983fac95883a9c53aea932c5fb9045fcd0d9",
+    "godot/shared_meal.gd": "81573f271e6020300301c87f66963ca37e5daea2f02007c570845a67c0203305",
+    "godot/shared_meal.gd.uid": "2ec830b1795d0b9eb601a977d99135ff703a07815dc07a22d73ed7c3249ce5dd",
+    "godot/shared_meal_data.gd": "abc1b19186691b9a44797647be79c8e6805aea239e9f3cf05d83068595508100",
+    "godot/shared_meal_data.gd.uid": "4f8e188e66152cde4ff29c0b26b17e9c4e9007e52aeea64248bee834f474e792",
+    "godot/shared_panel.gd": "0cf289edc823919866c03e3687935d9b5c390058e1faa8051255a3fa9067833f",
+    "godot/shared_panel.gd.uid": "7d968c1c405c55e0dff1d07d47d529f991cfec4b738f1a769799e6d26d7a258a",
+    "godot/story_picker.gd": "086a46fcee0e3c37c2dbdad3c495c84942d0fdfc695193f8afdc5a87d5fab463",
+    "godot/story_picker.gd.uid": "aa840a1bd54e7e1d751c6631256ad12819527f4ee0dfffff74c42a2ebccc24b6",
+    "godot/tests/before_streets_checks.gd": "c5ab6f436efd9b1bc89e13c2be83df592e98cc0ece6cc05eed58b4e09bbea01c",
+    "godot/tests/before_streets_checks.gd.uid": "a9b6daa87c652a6f0e8eed52f3dc48316f1a00315c94cf6deb561dce24fa90a9",
+    "godot/tests/community_invitation_checks.gd": "32eb0d2835ea5f1ff32fdc263d47cbb89f230f5699b7749e3b4df31ce8c04ce0",
+    "godot/tests/community_invitation_checks.gd.uid": "3c3d0ae115de459fc6f05c5ab333c3096792993225618c5c26c30045f5d43c3e",
+    "godot/tests/departure_checks.gd": "2aec7a463e9fbef2277233f41f71d6d6c3cc4c9e13cd91fa22485ad1c5eb5c31",
+    "godot/tests/departure_checks.gd.uid": "239fdba90aff8b5e98befac4d8e8c703667e49917e58964fd456af5d8413051c",
+    "godot/tests/finale_checks.gd": "b00c9d229e19752c301e0a955cc546d98f2093c5986e8ebeac9bb0bfeccaa864",
+    "godot/tests/finale_checks.gd.uid": "5adb3c9dc668201797e558cba83f7ebe0e749ce3cfbb5c09baaa0bb8d00770ab",
+    "godot/tests/habitat_room_checks.gd": "fcac34b756885df0ecf1a6f846539707739d3bcd4d09f512942c5dafe08aa06a",
+    "godot/tests/habitat_room_checks.gd.uid": "b2cb5f7e60066b939c9c3247ab27a9fc921710ab74540f30418f39966725f026",
+    "godot/tests/helper_bench_checks.gd": "4ccc70d3c0491a47fc9f04cf1324624a34af28eaf7f0ace78742dc3d79ea2c2c",
+    "godot/tests/helper_bench_checks.gd.uid": "25f8d1245291960e0e8af375090183f53a84e146f7918eb2b2788848753ad018",
+    "godot/tests/hosted_afternoon_checks.gd": "e3296f96ba2dcf566e9c7bbeeef7679b06cd92df0a1950a39e8d66bb53001e13",
+    "godot/tests/hosted_afternoon_checks.gd.uid": "7f6c953ecce3e42290cf80e349d3df9364ff1e4b6c88028f14b024763510389f",
+    "godot/tests/orbital_checks.gd": "c47b766ac382f4be040fe29bb610c0dd951ed4b43e2cfcdd6d7d29e500642b04",
+    "godot/tests/orbital_checks.gd.uid": "8cfa457a8b801d035557b09af1447bb7b0440ec0897d39d98f7f3c288e8fb156",
+    "godot/tests/shared_meal_checks.gd": "0c7c2d77ed24a01de74b700bd21a747fc16d3a76363a178a34da4df16b287428",
+    "godot/tests/shared_meal_checks.gd.uid": "d635295f71d1bce0ac0cff49eab351e838880158e8703061ca99b61494847ead",
+    "godot/tests/study_test.gd": "5a39cad57dc967f2e40ee480e9c82835ddfe2dfae8cdb4fde86ec14549117d09",
+    "godot/tests/study_test.gd.uid": "0e4705b18490e381291a70ce118cd7768309633571f174016ff46cefe7057615",
+    "godot/voting_story.gd": "49a9061a887dbd43fda6cd6e4cf11e5653ec31bde68e05df4ae9dd864f3bf376",
+    "godot/voting_story.gd.uid": "b4b8946e1691002525914e6c0aba075cf3ff540286eace225213826c04552c5e",
+    "package.json": "cca1dad50c992ceffde54f39476f605705c819624536e09bf09e2baa1a50fef1",
+    "public/audio.js": "5ac28c9eedbc9458a8e1b46f04e79a7ea5e5d8e4121fa8dc92f9159338cf740f",
+    "public/camera.js": "1f826d03503499a3a85543e3ffefe7c24c8a2deb06c87d54d3b518f1c43afda4",
+    "public/civic.js": "85cf245d0d7b15365edf35c9a7b3b8642fe17a325d5b5a600a92cc93697cf6d8",
+    "public/core.js": "5bc6a2938983ed064d84a3cbc804728a960fb1e5bd678dcc8a8aa347f19028e8",
+    "public/data/cultural-district-source.json": "4b2b5f6391e0955974437bc059179457189474819d32a8062778c0a347a9476e",
+    "public/data/source-turk-west.osm.xml": "272f4d027c212859eb6d6cc9859ce39106a9b445cd613e429cbdb66b6a1d7e41",
+    "public/data/source.osm.xml": "9a987cec02ce967566cd5a13a799d96fb96dd8301e06b4f9d0ffb4cf140ea458",
+    "public/data/streets.osm.json": "f3520882cc873788b8c34be031121128f303391d886bb9cadeb82b17b716ead8",
+    "public/data/transgender-district.geojson": "af2b1bd6dbcf7c00a4021cfaf07e45bce80bd299194114a8ef1781b589ac8d5c",
+    "public/district.js": "6a6f9f57b2823f63e72a2ee7ce97f15149ee5fa85667b7edc272888103d96a5a",
+    "public/experimental-host.js": "c5374029364d6dadc9db4c00360b6f1fcfd6b0c4dfcf12082465a5da5b9f9a6e",
+    "public/experiments/neighborhood-voices.js": "1cdd13ccf7dbf81c89da91173c23e14523f1f052b12df50055e8f4fba2eea84c",
+    "public/experiments/neighborhood-voices.json": "662571e5de9eb0cc9f10e25146b8da08a302758009159462b6f2a460889d0271",
+    "public/film.js": "4ec3e2c68dbf9e7aef1cdaa925ac1670e4ce56bafbcd9912338f7e927e4ed2d0",
+    "public/game.js": "9395bebadb20eab4c74d8f8fd2634f4705f94e3399a010eecf86f63603b7d54d",
+    "public/gathering.js": "55c87533e849ab4b847ce6df52d6bc035f361025648dc0541ccfafcbda1d1978",
+    "public/history.js": "67667bbfb83a3155bad203ba8f560cb84e11060647010d673814aef6a0ab5984",
+    "public/hosting.js": "2155f76740dfe1cc91aa258462cc135aac0cc5da7a15bc981f5031ad8ddebf19",
+    "public/icon.svg": "6a8c27a1e133c1cf0b150c904acc544f9b53ba444e0425e200b51dca6b33a000",
+    "public/index.html": "2a1b95fbf423a0c70ff696f67fb300123373ee16cea83bd94d0490125e96a718",
+    "public/keepsake.js": "fb72bf4b444a720e2fb8c1d880b0567e99ea7b017572e4fee3c4747dbfb604b2",
+    "public/programme.js": "2051dcab8e9d4e835690cc4d07726dbebce12980c27b648e5549016fa0a5a1d5",
+    "public/soundtrack.js": "aa946b92042f148700b0b66659fc5414e82931ecdcdbeee0c7adba32cfe44910",
+    "public/style.css": "7a82b90031d5321e27d8872014d294c13a9282b2d827a7f74cbb7b396484bc61",
+    "public/world.js": "84563e2478b0ead508c2b134482b6ec204595c3dcbf16022588a29ecd4a09511",
+    "scripts/apply-field-survey.mjs": "e13cf24a191ee1a824dcb5f514cdfdf8a17dcd70978b95c04de48bce0c622afa",
+    "scripts/build-fingerprint.mjs": "80bbfbcc67455c81102b20ca3d7413c906f9692a4758f5826c4ae4af239ae3af",
+    "scripts/build-godot-data.mjs": "131cf33c03dadef027ed2e9edd83edd4366c1b9aa33551bb96ba85fd4b1579b8",
+    "scripts/build-lidar-2023.mjs": "ee4f0731196340372c1b8c1a5f34c83782b2421863ccb364a108c421e7867e53",
+    "scripts/build-power-place.mjs": "dc474ebc01bd1702fe36f7282a6574e404e4f71fba1d7ff9d8bb8088357181de",
+    "scripts/build-street-trees.mjs": "86dba464bbf9257be0b052a41184c2742b7543b08f41db7f01eef3f967da4903",
+    "scripts/build-voting-places.mjs": "5f29de5c7764ee352212c08ea715eb7050060e2871b8d3ad6463f0a21b84e3dc",
+    "scripts/lidar/crop_points.py": "a4f87ef274c5383cb5d15fe209d727e4e47f031b8e6127b7137129837546fcf9",
+    "scripts/lidar/fetch_ept.py": "327bd7cac62779c31dbc6252241f797ccca0aa436494a9bbbfd060729b6b419d",
+    "scripts/run-godot.mjs": "fdf1442ca3585eda33b02c5be627aea45a4b9c26369d5f4baf67dcd3ee4c863c",
+    "scripts/serve-godot.mjs": "9c1aa83ac02695500f828a07235ca692ac3108f1777cbb1a5681b2dab462d5f4",
+    "scripts/serve.mjs": "5bb81a88b5c04567ea7eebdbdf7f1de4d9a2acaca577c9a6b756f6b7dec8dc6d",
+    "scripts/vendor/earcut.LICENSE": "324139c19d87af03fda38afea1590e00ca354c4159bdb2ae9e9cec070cfa46a8",
+    "scripts/vendor/earcut.js": "83d5b59bc520601bb2dd7401a2f8382a008d8d95e0e6e0fe45759ae4fda1aa56",
+    "tests/apply-field-survey.test.mjs": "869a4cd77dd637b4b5d5d7e3c095446c1f8377097a3b64983130da271114c72a",
+    "tests/audio.test.mjs": "dd05725ef31faa7f41d23c04f821bd878079d7b72c7c8c1e41f78c122afa8349",
+    "tests/before-streets-browser.mjs": "3e6715a6613f6a4e8451307e848b21df215dd2f8ac46ad33cd09aeda5d26856d",
+    "tests/browser-smoke.mjs": "89a0180fe72be918b3323549fbb6506249618acca97e6ec4385124b19c493a68",
+    "tests/camera.test.mjs": "46c6837b092593ce604ab6e7d42ec51bc5ea70666a8fadb022b1100e6305f7c1",
+    "tests/civic-browser.mjs": "7fa7a66cf0229f7cae4f8adedde5d43269378c4c68a33a6b3d3e9197404ffc92",
+    "tests/civic-fixture.mjs": "17d954f7aa108e6b85867b3b3aab71404bd09f344fe8f97951cd9d5670f7f352",
+    "tests/civic.test.mjs": "a9584d452a5d43556d3e49fe4b1b58e621db42469fa9a796725c98f011b10d40",
+    "tests/core.test.mjs": "a30f1c544ec960289ffd03936f145354b2e0652d64d6944bae1adfae7f401653",
+    "tests/departure-browser.mjs": "c33b6f8290ce5f30710153ffedcfbbd10fdf09f080122165f7f4464ed45fc709",
+    "tests/district.test.mjs": "7295f08882eeab238bc1ea6019091c319908166fb7bad1ac52bf32da0c18a08a",
+    "tests/epilogue.test.mjs": "9f30d9bc8a28e7b7a22c45014da6ac1e27f9d580b9a27441c4fbfc6597a66e1c",
+    "tests/experimental-host.test.mjs": "1f98c7a5fc43d8f59b241d789d21f7a9831cae2288c6f8751ea44f28373e2aee",
+    "tests/film-browser.mjs": "ee1c1940732d6f2113b37cdf9d1bcb3a6600894f4eaa1ff35046b29bf292e7e7",
+    "tests/film-fixture.mjs": "cdda2b825e6f7062976672c23a7ce6056b6d6d8b4b0743277237be305deb9099",
+    "tests/film.test.mjs": "8438bbdb57846db94bfef14899a146f1d30289fbed5064788faf1d1d29556f01",
+    "tests/finale-browser.mjs": "9b8bcb217b1fd9891548f5ae91e7d758195a1aba6c9954b3d339fa11a25ab31a",
+    "tests/gathering.test.mjs": "46ca8c551d025f7746f596a84c1e19805a328882f987e3728e1e1cb39e370095",
+    "tests/godot-browser.mjs": "b566c88244d8e0b4b4a91fe179a37e5c82a67cc93f65562174ccd1b7788898cb",
+    "tests/godot-data.test.mjs": "932dfa259e008cd99650462570d6147aabcdd7d2d04fa85b20884ee518239329",
+    "tests/habitat-room-browser.mjs": "ba34146ef357938326e96405462a3c8d747bb4949a15b46fc5d9c2c4a7670227",
+    "tests/helper-bench-browser.mjs": "3a0958f3dff026f196feb80c5fbde690c685a8ac67d41572221305345521af69",
+    "tests/history.test.mjs": "6f6c485a98c916f9098671a048d795c39d71747069f1a0b2b5849c6c113fd1f3",
+    "tests/hosted-afternoon-browser.mjs": "359ec526e6a2e13ac1b7a64eb7e1106372daf505478e82d63a01100832286f80",
+    "tests/hosting.test.mjs": "6bb99f19e67b3d42b89e621c4ce95ff8bc86117232e3c16c855749967244f4cf",
+    "tests/orbital-browser.mjs": "d79a2a4b0f2c47fc446e5bacdee20e0274dbbbd767c1c02108878fad584b3a15",
+    "tests/programme.test.mjs": "711a471bce6139db29adace9e45bc22bad592383dd9a4a18b1a9f13bd96dc8b8",
+    "tests/shared-meal-browser.mjs": "b70b714dbeb72be78f1811f965005adf2da741efe50774a0ff4f025e09250f34",
+    "tests/soundtrack.test.mjs": "b5e42eb31dbba86ccd116a8b0a58d54204c64bb6d8a975b320302139da163bce",
+    "tests/voices-browser.mjs": "dd231e29bdb010b5e64bfb9ec751e42d736d84acf5dae5c5e0aee2e74261f949"
+  },
+  "pack": {
+    "bytes": 2082400,
+    "sha256": "73f2e09bcd61a11d6b45c0ee17774875dd57f32a81c3f9785c0df1cbcd18915b",
+    "growth_bytes": 7792,
+    "selected_growth_cap": 12000,
+    "global_cap": 2097152,
+    "headroom": 14752
+  },
+  "browser": {
+    "result_sha256": "355672b9b4aa75542382aa811c241408cb8caf4b9442a3c19919091f8ef5af15",
+    "rendered_checks": 442,
+    "retained_traces": 44,
+    "full_save_bytes": [
+      1727,
+      1723,
+      1723
+    ],
+    "performance_save_bytes": [
+      1534,
+      1530,
+      1530
+    ],
+    "finale": [
+      {
+        "width": 1100,
+        "height": 760,
+        "privateFixture": false,
+        "chosen": 0,
+        "gatheringPixels": 122129,
+        "faceEvidence": [
+          {
+            "actor": 0,
+            "x": 154,
+            "y": 276,
+            "actual": [
+              231,
+              195,
+              155
+            ]
+          },
+          {
+            "actor": 1,
+            "x": 196,
+            "y": 286,
+            "actual": [
+              195,
+              140,
+              101
+            ]
+          },
+          {
+            "actor": 2,
+            "x": 100,
+            "y": 376,
+            "actual": [
+              150,
+              99,
+              69
+            ]
+          },
+          {
+            "actor": 3,
+            "x": 260,
+            "y": 331,
+            "actual": [
+              139,
+              91,
+              63
+            ]
+          },
+          {
+            "actor": 4,
+            "x": 300,
+            "y": 392,
+            "actual": [
+              112,
+              75,
+              55
+            ]
+          }
+        ],
+        "memories": [
+          {
+            "index": 0,
+            "text": "Memories of this visit | Art\nCeleste's six original shapes keep their cool palette. The room's open place was Side nook.\nA little later, everyone has gathered by Art. We made time for one another.\nCeleste: Our cool shapes belong to all of us. You left the side nook open in our room, so the picture never has to be the whole story.\nDez: We framed objects in close-up. Our plan was: a quiet prop take. We brought the way we looked, not just the things we saw. Our rhythm stays pictured; no sound is required.\nThanh: Our An open arc of seats and Drop-in notice table make room for a neighbor to pause and be heard.\nBea: This A small moment you want to keep invitation was never a finish line. You brought us together around Art. Leave a place open for the next person.\nSpeculative future, shared imagination. No personal story or meeting notes are shown. The copied rhythm stays silent. Recognition, gathering and memories last this visit only. Reload, successful load/import or moving a room copy clears them; failed browser import preserves them. Your completed film keeps access, but room and departure are prepared again. Pause/Escape stops this chapter without finishing a gathering or return."
+          },
+          {
+            "index": 1,
+            "text": "Memories of this visit | Film\nDez's three pictures remain in order: An empty seat, A shared motif, Room for one more. Objects in close-up.\nA little later, everyone has gathered by Art. We made time for one another.\nCeleste: Our cool shapes belong to all of us. You left the side nook open in our room, so the picture never has to be the whole story.\nDez: We framed objects in close-up. Our plan was: a quiet prop take. We brought the way we looked, not just the things we saw. Our rhythm stays pictured; no sound is required.\nThanh: Our An open arc of seats and Drop-in notice table make room for a neighbor to pause and be heard.\nBea: This A small moment you want to keep invitation was never a finish line. You brought us together around Art. Leave a place open for the next person.\nSpeculative future, shared imagination. No personal story or meeting notes are shown. The copied rhythm stays silent. Recognition, gathering and memories last this visit only. Reload, successful load/import or moving a room copy clears them; failed browser import preserves them. Your completed film keeps access, but room and departure are prepared again. Pause/Escape stops this chapter without finishing a gathering or return."
+          },
+          {
+            "index": 2,
+            "text": "Memories of this visit | Seats\nThanh's copied seats: An open arc of seats. Listening Hour: Drop-in notice table.\nA little later, everyone has gathered by Art. We made time for one another.\nCeleste: Our cool shapes belong to all of us. You left the side nook open in our room, so the picture never has to be the whole story.\nDez: We framed objects in close-up. Our plan was: a quiet prop take. We brought the way we looked, not just the things we saw. Our rhythm stays pictured; no sound is required.\nThanh: Our An open arc of seats and Drop-in notice table make room for a neighbor to pause and be heard.\nBea: This A small moment you want to keep invitation was never a finish line. You brought us together around Art. Leave a place open for the next person.\nSpeculative future, shared imagination. No personal story or meeting notes are shown. The copied rhythm stays silent. Recognition, gathering and memories last this visit only. Reload, successful load/import or moving a room copy clears them; failed browser import preserves them. Your completed film keeps access, but room and departure are prepared again. Pause/Escape stops this chapter without finishing a gathering or return."
+          }
+        ],
+        "panels": [
+          "Return home | Still panel 1 of 3\nBea folds our A small moment you want to keep paper after the gathering by Art. Celeste, Dez and Thanh leave an open place aboard the imagined neighborhood. We are taking the welcome home, not packing away that new home.\nPrevious reviews these still panels; Skip reaches this same final invitation. Only Home now completes the return.\nSpeculative future, shared imagination. No personal story or meeting notes are shown. The copied rhythm stays silent. Recognition, gathering and memories last this visit only. Reload, successful load/import or moving a room copy clears them; failed browser import preserves them. Your completed film keeps access, but room and departure are prepared again. Pause/Escape stops this chapter without finishing a gathering or return.",
+          "Return home | Still panel 2 of 3\nThe imagined view of Earth becomes the colors on our paper. Celeste: Our originals are waiting on the block. Dez: The last picture can also be a doorway. Thanh: We know how to make a place for someone now. The same copies stay with this visit's memories.\nPrevious reviews these still panels; Skip reaches this same final invitation. Only Home now completes the return.\nSpeculative future, shared imagination. No personal story or meeting notes are shown. The copied rhythm stays silent. Recognition, gathering and memories last this visit only. Reload, successful load/import or moving a room copy clears them; failed browser import preserves them. Your completed film keeps access, but room and departure are prepared again. Pause/Escape stops this chapter without finishing a gathering or return.",
+          "Return home | Still panel 3 of 3\nToday is on the other side of this open invitation. Bea: The future we imagined belongs beside the work we can do here. Choose Home now to finish the return and see your actual block again. Your street position, camera and earlier work are waiting exactly where you left them.\nPrevious reviews these still panels; Skip reaches this same final invitation. Only Home now completes the return.\nSpeculative future, shared imagination. No personal story or meeting notes are shown. The copied rhythm stays silent. Recognition, gathering and memories last this visit only. Reload, successful load/import or moving a room copy clears them; failed browser import preserves them. Your completed film keeps access, but room and departure are prepared again. Pause/Escape stops this chapter without finishing a gathering or return."
+        ],
+        "returns": [
+          "partial gathering Pause/reentry never completes",
+          "Explore actually walks and Stop cancels",
+          "mid-return Escape retains panel without completing",
+          "Home now explicit restoration with held-key guard",
+          "returned visit has visible helper acknowledgment and revisits menu",
+          "actual room relocation clears finale"
+        ],
+        "returnVisual": [
+          {
+            "kind": "former head",
+            "x": 154,
+            "y": 276,
+            "actual": [
+              213,
+              213,
+              187
+            ]
+          },
+          {
+            "kind": "former head",
+            "x": 196,
+            "y": 286,
+            "actual": [
+              213,
+              213,
+              187
+            ]
+          },
+          {
+            "kind": "former head",
+            "x": 100,
+            "y": 376,
+            "actual": [
+              244,
+              235,
+              206
+            ]
+          },
+          {
+            "kind": "former head",
+            "x": 260,
+            "y": 331,
+            "actual": [
+              244,
+              235,
+              206
+            ]
+          },
+          {
+            "kind": "former head",
+            "x": 300,
+            "y": 392,
+            "actual": [
+              244,
+              235,
+              206
+            ]
+          },
+          {
+            "kind": "old Seats label",
+            "samples": 496
+          }
+        ],
+        "phaseBoundaries": true,
+        "skipParity": true,
+        "actualReload": true,
+        "retainedInvitation": true,
+        "relocationInvalidates": true,
+        "noWrites": true,
+        "quiet": true,
+        "authoredReturn": true
+      },
+      {
+        "width": 390,
+        "height": 667,
+        "privateFixture": false,
+        "chosen": 1,
+        "gatheringPixels": 44654,
+        "faceEvidence": [
+          {
+            "actor": 0,
+            "x": 562,
+            "y": 296,
+            "actual": [
+              231,
+              195,
+              155
+            ]
+          },
+          {
+            "actor": 1,
+            "x": 604,
+            "y": 306,
+            "actual": [
+              195,
+              140,
+              101
+            ]
+          },
+          {
+            "actor": 2,
+            "x": 450,
+            "y": 376,
+            "actual": [
+              150,
+              99,
+              69
+            ]
+          },
+          {
+            "actor": 3,
+            "x": 638,
+            "y": 382,
+            "actual": [
+              139,
+              91,
+              63
+            ]
+          },
+          {
+            "actor": 4,
+            "x": 500,
+            "y": 281,
+            "actual": [
+              112,
+              75,
+              55
+            ]
+          }
+        ],
+        "memories": [
+          {
+            "index": 0,
+            "text": "Memories of this visit | Art\nCeleste's six original shapes keep their cool palette. The room's open place was Entry.\nA little later, everyone has gathered by Film. We made time for one another.\nCeleste: Our cool shapes belong to all of us. You left the entry open in our room, so the picture never has to be the whole story.\nDez: We framed objects in close-up. Our plan was: a quiet prop take. We brought the way we looked, not just the things we saw. Our rhythm stays pictured; no sound is required.\nThanh: Our An open arc of seats and Drop-in notice table make room for a neighbor to pause and be heard.\nBea: This A small moment you want to keep invitation was never a finish line. You brought us together around Film. Leave a place open for the next person.\nSpeculative future, shared imagination. No personal story or meeting notes are shown. The copied rhythm stays silent. Recognition, gathering and memories last this visit only. Reload, successful load/import or moving a room copy clears them; failed browser import preserves them. Your completed film keeps access, but room and departure are prepared again. Pause/Escape stops this chapter without finishing a gathering or return."
+          },
+          {
+            "index": 1,
+            "text": "Memories of this visit | Film\nDez's three pictures remain in order: An empty seat, A shared motif, Room for one more. Objects in close-up.\nA little later, everyone has gathered by Film. We made time for one another.\nCeleste: Our cool shapes belong to all of us. You left the entry open in our room, so the picture never has to be the whole story.\nDez: We framed objects in close-up. Our plan was: a quiet prop take. We brought the way we looked, not just the things we saw. Our rhythm stays pictured; no sound is required.\nThanh: Our An open arc of seats and Drop-in notice table make room for a neighbor to pause and be heard.\nBea: This A small moment you want to keep invitation was never a finish line. You brought us together around Film. Leave a place open for the next person.\nSpeculative future, shared imagination. No personal story or meeting notes are shown. The copied rhythm stays silent. Recognition, gathering and memories last this visit only. Reload, successful load/import or moving a room copy clears them; failed browser import preserves them. Your completed film keeps access, but room and departure are prepared again. Pause/Escape stops this chapter without finishing a gathering or return."
+          },
+          {
+            "index": 2,
+            "text": "Memories of this visit | Seats\nThanh's copied seats: An open arc of seats. Listening Hour: Drop-in notice table.\nA little later, everyone has gathered by Film. We made time for one another.\nCeleste: Our cool shapes belong to all of us. You left the entry open in our room, so the picture never has to be the whole story.\nDez: We framed objects in close-up. Our plan was: a quiet prop take. We brought the way we looked, not just the things we saw. Our rhythm stays pictured; no sound is required.\nThanh: Our An open arc of seats and Drop-in notice table make room for a neighbor to pause and be heard.\nBea: This A small moment you want to keep invitation was never a finish line. You brought us together around Film. Leave a place open for the next person.\nSpeculative future, shared imagination. No personal story or meeting notes are shown. The copied rhythm stays silent. Recognition, gathering and memories last this visit only. Reload, successful load/import or moving a room copy clears them; failed browser import preserves them. Your completed film keeps access, but room and departure are prepared again. Pause/Escape stops this chapter without finishing a gathering or return."
+          }
+        ],
+        "panels": [
+          "Return home | Still panel 1 of 3\nBea folds our A small moment you want to keep paper after the gathering by Film. Celeste, Dez and Thanh leave an open place aboard the imagined neighborhood. We are taking the welcome home, not packing away that new home.\nPrevious reviews these still panels; Skip reaches this same final invitation. Only Home now completes the return.\nSpeculative future, shared imagination. No personal story or meeting notes are shown. The copied rhythm stays silent. Recognition, gathering and memories last this visit only. Reload, successful load/import or moving a room copy clears them; failed browser import preserves them. Your completed film keeps access, but room and departure are prepared again. Pause/Escape stops this chapter without finishing a gathering or return.",
+          "Return home | Still panel 2 of 3\nThe imagined view of Earth becomes the colors on our paper. Celeste: Our originals are waiting on the block. Dez: The last picture can also be a doorway. Thanh: We know how to make a place for someone now. The same copies stay with this visit's memories.\nPrevious reviews these still panels; Skip reaches this same final invitation. Only Home now completes the return.\nSpeculative future, shared imagination. No personal story or meeting notes are shown. The copied rhythm stays silent. Recognition, gathering and memories last this visit only. Reload, successful load/import or moving a room copy clears them; failed browser import preserves them. Your completed film keeps access, but room and departure are prepared again. Pause/Escape stops this chapter without finishing a gathering or return.",
+          "Return home | Still panel 3 of 3\nToday is on the other side of this open invitation. Bea: The future we imagined belongs beside the work we can do here. Choose Home now to finish the return and see your actual block again. Your street position, camera and earlier work are waiting exactly where you left them.\nPrevious reviews these still panels; Skip reaches this same final invitation. Only Home now completes the return.\nSpeculative future, shared imagination. No personal story or meeting notes are shown. The copied rhythm stays silent. Recognition, gathering and memories last this visit only. Reload, successful load/import or moving a room copy clears them; failed browser import preserves them. Your completed film keeps access, but room and departure are prepared again. Pause/Escape stops this chapter without finishing a gathering or return."
+        ],
+        "returns": [
+          "partial gathering Pause/reentry never completes",
+          "Explore actually walks and Stop cancels",
+          "mid-return Escape retains panel without completing",
+          "Home now explicit restoration with held-key guard",
+          "returned visit has visible helper acknowledgment and revisits menu",
+          "actual room relocation clears finale"
+        ],
+        "returnVisual": [
+          {
+            "kind": "former head",
+            "x": 562,
+            "y": 296,
+            "actual": [
+              244,
+              235,
+              206
+            ]
+          },
+          {
+            "kind": "former head",
+            "x": 604,
+            "y": 306,
+            "actual": [
+              244,
+              235,
+              206
+            ]
+          },
+          {
+            "kind": "former head",
+            "x": 450,
+            "y": 376,
+            "actual": [
+              244,
+              235,
+              206
+            ]
+          },
+          {
+            "kind": "former head",
+            "x": 638,
+            "y": 382,
+            "actual": [
+              244,
+              235,
+              206
+            ]
+          },
+          {
+            "kind": "former head",
+            "x": 500,
+            "y": 281,
+            "actual": [
+              213,
+              213,
+              187
+            ]
+          },
+          {
+            "kind": "old Seats label",
+            "samples": 496
+          }
+        ],
+        "phaseBoundaries": true,
+        "skipParity": true,
+        "actualReload": true,
+        "retainedInvitation": true,
+        "relocationInvalidates": true,
+        "noWrites": true,
+        "quiet": true,
+        "authoredReturn": true
+      },
+      {
+        "width": 320,
+        "height": 667,
+        "privateFixture": false,
+        "chosen": 2,
+        "gatheringPixels": 32072,
+        "faceEvidence": [
+          {
+            "actor": 0,
+            "x": 360,
+            "y": 356,
+            "actual": [
+              231,
+              195,
+              155
+            ]
+          },
+          {
+            "actor": 1,
+            "x": 402,
+            "y": 366,
+            "actual": [
+              195,
+              140,
+              101
+            ]
+          },
+          {
+            "actor": 2,
+            "x": 256,
+            "y": 380,
+            "actual": [
+              150,
+              99,
+              69
+            ]
+          },
+          {
+            "actor": 3,
+            "x": 360,
+            "y": 268,
+            "actual": [
+              139,
+              91,
+              63
+            ]
+          },
+          {
+            "actor": 4,
+            "x": 478,
+            "y": 386,
+            "actual": [
+              112,
+              75,
+              55
+            ]
+          }
+        ],
+        "memories": [
+          {
+            "index": 0,
+            "text": "Memories of this visit | Art\nCeleste's six original shapes keep their cool palette. The room's open place was Window.\nA little later, everyone has gathered by Seats. We made time for one another.\nCeleste: Our cool shapes belong to all of us. You left the window open in our room, so the picture never has to be the whole story.\nDez: We framed objects in close-up. Our plan was: a quiet prop take. We brought the way we looked, not just the things we saw. Our rhythm stays pictured; no sound is required.\nThanh: Our An open arc of seats and Drop-in notice table make room for a neighbor to pause and be heard.\nBea: This A small moment you want to keep invitation was never a finish line. You brought us together around Seats. Leave a place open for the next person.\nSpeculative future, shared imagination. No personal story or meeting notes are shown. The copied rhythm stays silent. Recognition, gathering and memories last this visit only. Reload, successful load/import or moving a room copy clears them; failed browser import preserves them. Your completed film keeps access, but room and departure are prepared again. Pause/Escape stops this chapter without finishing a gathering or return."
+          },
+          {
+            "index": 1,
+            "text": "Memories of this visit | Film\nDez's three pictures remain in order: An empty seat, A shared motif, Room for one more. Objects in close-up.\nA little later, everyone has gathered by Seats. We made time for one another.\nCeleste: Our cool shapes belong to all of us. You left the window open in our room, so the picture never has to be the whole story.\nDez: We framed objects in close-up. Our plan was: a quiet prop take. We brought the way we looked, not just the things we saw. Our rhythm stays pictured; no sound is required.\nThanh: Our An open arc of seats and Drop-in notice table make room for a neighbor to pause and be heard.\nBea: This A small moment you want to keep invitation was never a finish line. You brought us together around Seats. Leave a place open for the next person.\nSpeculative future, shared imagination. No personal story or meeting notes are shown. The copied rhythm stays silent. Recognition, gathering and memories last this visit only. Reload, successful load/import or moving a room copy clears them; failed browser import preserves them. Your completed film keeps access, but room and departure are prepared again. Pause/Escape stops this chapter without finishing a gathering or return."
+          },
+          {
+            "index": 2,
+            "text": "Memories of this visit | Seats\nThanh's copied seats: An open arc of seats. Listening Hour: Drop-in notice table.\nA little later, everyone has gathered by Seats. We made time for one another.\nCeleste: Our cool shapes belong to all of us. You left the window open in our room, so the picture never has to be the whole story.\nDez: We framed objects in close-up. Our plan was: a quiet prop take. We brought the way we looked, not just the things we saw. Our rhythm stays pictured; no sound is required.\nThanh: Our An open arc of seats and Drop-in notice table make room for a neighbor to pause and be heard.\nBea: This A small moment you want to keep invitation was never a finish line. You brought us together around Seats. Leave a place open for the next person.\nSpeculative future, shared imagination. No personal story or meeting notes are shown. The copied rhythm stays silent. Recognition, gathering and memories last this visit only. Reload, successful load/import or moving a room copy clears them; failed browser import preserves them. Your completed film keeps access, but room and departure are prepared again. Pause/Escape stops this chapter without finishing a gathering or return."
+          }
+        ],
+        "panels": [
+          "Return home | Still panel 1 of 3\nBea folds our A small moment you want to keep paper after the gathering by Seats. Celeste, Dez and Thanh leave an open place aboard the imagined neighborhood. We are taking the welcome home, not packing away that new home.\nPrevious reviews these still panels; Skip reaches this same final invitation. Only Home now completes the return.\nSpeculative future, shared imagination. No personal story or meeting notes are shown. The copied rhythm stays silent. Recognition, gathering and memories last this visit only. Reload, successful load/import or moving a room copy clears them; failed browser import preserves them. Your completed film keeps access, but room and departure are prepared again. Pause/Escape stops this chapter without finishing a gathering or return.",
+          "Return home | Still panel 2 of 3\nThe imagined view of Earth becomes the colors on our paper. Celeste: Our originals are waiting on the block. Dez: The last picture can also be a doorway. Thanh: We know how to make a place for someone now. The same copies stay with this visit's memories.\nPrevious reviews these still panels; Skip reaches this same final invitation. Only Home now completes the return.\nSpeculative future, shared imagination. No personal story or meeting notes are shown. The copied rhythm stays silent. Recognition, gathering and memories last this visit only. Reload, successful load/import or moving a room copy clears them; failed browser import preserves them. Your completed film keeps access, but room and departure are prepared again. Pause/Escape stops this chapter without finishing a gathering or return.",
+          "Return home | Still panel 3 of 3\nToday is on the other side of this open invitation. Bea: The future we imagined belongs beside the work we can do here. Choose Home now to finish the return and see your actual block again. Your street position, camera and earlier work are waiting exactly where you left them.\nPrevious reviews these still panels; Skip reaches this same final invitation. Only Home now completes the return.\nSpeculative future, shared imagination. No personal story or meeting notes are shown. The copied rhythm stays silent. Recognition, gathering and memories last this visit only. Reload, successful load/import or moving a room copy clears them; failed browser import preserves them. Your completed film keeps access, but room and departure are prepared again. Pause/Escape stops this chapter without finishing a gathering or return."
+        ],
+        "returns": [
+          "partial gathering Pause/reentry never completes",
+          "Explore actually walks and Stop cancels",
+          "mid-return Escape retains panel without completing",
+          "Home now explicit restoration with held-key guard",
+          "returned visit has visible helper acknowledgment and revisits menu",
+          "actual room relocation clears finale"
+        ],
+        "returnVisual": [
+          {
+            "kind": "former head",
+            "x": 360,
+            "y": 356,
+            "actual": [
+              244,
+              235,
+              206
+            ]
+          },
+          {
+            "kind": "former head",
+            "x": 402,
+            "y": 366,
+            "actual": [
+              244,
+              235,
+              206
+            ]
+          },
+          {
+            "kind": "former head",
+            "x": 256,
+            "y": 380,
+            "actual": [
+              244,
+              235,
+              206
+            ]
+          },
+          {
+            "kind": "former head",
+            "x": 360,
+            "y": 268,
+            "actual": [
+              213,
+              213,
+              187
+            ]
+          },
+          {
+            "kind": "former head",
+            "x": 478,
+            "y": 386,
+            "actual": [
+              244,
+              235,
+              206
+            ]
+          },
+          {
+            "kind": "old Seats label",
+            "samples": 496
+          }
+        ],
+        "phaseBoundaries": true,
+        "skipParity": true,
+        "actualReload": true,
+        "retainedInvitation": true,
+        "relocationInvalidates": true,
+        "noWrites": true,
+        "quiet": true,
+        "authoredReturn": true
+      }
+    ],
+    "errors": [],
+    "external": []
+  },
+  "capture_inspection": {
+    "inspector": "Codex driver",
+    "captures": {
+      "finale-1100-gathered.png": "c16dad5a024cb63211f8091a5b0bf08abed0686ae750e955676dd7e5df40f710",
+      "finale-390-gathered.png": "8063425560fed862e0c4ab2bdff845a246b99226068d2bbc99d6f87c49232a83",
+      "finale-320-gathered.png": "dcaa85cd28693eceaf74e5ddaa8bb3ed9a7372ac47c68ecc0cd8d885878d753c",
+      "finale-1100-return-0.png": "e4aba065b0dbc90b1fdbcd2b3ab3fd493ca551318df442a4d3bd84e9c9bcb7b8",
+      "finale-320-return-2.png": "663947b3611b3b0b717c15933a2d373553eb46cfb16a568c40b9c9ff1f790b1c",
+      "finale-390-memories.png": "bb0bb77db4dcef97e0fc3bd9f24f186aa4ef6c680e35e8c38f33469998e67534"
+    },
+    "observed": "All three chosen gatherings show five unobstructed people, original copied Art/Film/Seats, invitation, distinct composition, visible heading and enabled controls. Narrow layouts use an actually tested scrollable reader. Return panels show authored Earth/doorway and invitation without stale floor labels/people. Memories highlights the selected original copy. This is bounded visual inspection, not human aesthetic or comprehension acceptance."
+  },
+  "preservation": {
+    "public_workflow_main_geography_diff_empty": true,
+    "public_0120_fingerprint": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567",
+    "protected_asfound_bytes": 1272,
+    "protected_asfound_sha256": "2b7d1e849b4820a1d6c49602930ac3e0b104a8aa132375837038bfef80f2e0e1",
+    "legacy_save_read_only": "Unchanged source and original browser sentinel/import assertions passed",
+    "glyph_and_import_budget": "Original native assertions retained and passed",
+    "public_fingerprint_method": "Read-only buildInfo() in scripts/build-fingerprint.mjs; sorted normalized relative public paths plus NUL and exact bytes, independently recomputed in closure audit."
+  },
+  "review": "Exact separate sole-Claude pre-code r1 and implementation r3 complete; every finding grounded. Later driver corrections NOT independently re-reviewed.",
+  "limits": [
+    "Private checks supplement formal acceptance and retain their exact source/PCK limitations.",
+    "Physical phones, physical OS/tab suspension, full screen-reader use, human comprehension/pacing/aesthetics/listening and field acceptance remain unverified.",
+    "Callback intervals do not establish GPU time or physical-phone FPS.",
+    "Music/shutdown reports, expanded playtesting, teaser and lower-priority quest freedom remain open.",
+    "No deployment or publication acceptance. No whole-roadmap production-readiness claim."
+  ],
+  "delivery": "Accepted for this checkpoint commit; actual commit/integration/push recorded separately in artifacts/ending-finale-20261026/checkpoint-push.json."
+}

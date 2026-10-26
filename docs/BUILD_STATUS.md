@@ -1,5 +1,29 @@
 # Build status
 
+## Full ending accepted after final verification - October 26, 2026 UTC
+
+The connected final gathering, memories, continued exploration and authored return home have passed all five formal gates on the final frozen inputs. The selected opening and full-ending plan is creatively implemented and now verified; the earlier creative-completion notification is already delivered. Human acceptance and publication remain separate. Models remain the creator's manual choice. No deployment.
+
+This finale checkpoint extends accepted orbital97d8ba335dc0790e61d6fbe0de3e7fe3daf94264 in C:/Users/jeffr/.codex/worktrees/ending-finale/tenderloin-redux. Exact pre-code r1 and independent implementation r3 used sole-Claude claude-opus-5-5/high, with every finding grounded. Later driver corrections are NOT independently re-reviewed. Gathering and return were coded as one connected batch before expensive testing, as requested. Opening/helper/habitat/departure/orbital remain closed; do not rebuild them or repeat accepted unchanged reviews/gates.
+
+Final1 completed2026-10-26T19:38:10.698637Z rc0: native857.60s with all27 unique tokens including ENDING_FINALE_PASS:FORMAL; export3.05s/check2.07s/106Node5.99s; full browser5411.95s. Genuine1100/390/320 progression includes3 distinct finale choices, all original matrices and opening6/Hosted4/Dez9/cooking3/helper3/habitat3/departure3/orbital3/freshphone6/actualpinch4/genuinevoting3/audio/save coverage, errors[]external[]. All247 source inputs and248 browser inputs/PCK stayed unchanged;38 browser fingerprints agree. There are442 rendered checks and44 retained traces. All three gathered captures plus return1100/320 and memories390 were inspected: five unobstructed people, original copies, invitation and readable controls; the reader scroll is tested. Evidence: finale r3/verification.json, retained-evidence.json and judgment.md.
+
+Only deliberate Home now completes the authored return after three universally still panels; Next/Skip parity holds. Separate Gather/final response, Explore/Stop/Memories, partial/completed/returned reentry, Back/Previous/reading/scrollbar/focus/lifecycle/held-key behavior and unchanged world/save/quiet passed. Actual room relocation clears visit state; selection/detail preserve. Native apply resets before validation, invalid native uses recovered defaults; failed browser import preserves, successful apply/import/reload clears. Earned film access remains without reconstruction or optional prerequisites. No new saved flag or durable completion claim, no city route/camera/audio owner, no real launch/access/technology claim.
+
+PCK2082400B SHA73f2e09bcd61a11d6b45c0ee17774875dd57f32a81c3f9785c0df1cbcd18915b; growth7792<=12000,14752B below unchanged2MiB. Saves1727/1723/1723 and performance1534/1530/1530B<=4096. Native used explicit unique paired save/settings paths before --test-suite; protected ASFOUND1272B/requiredhash unchanged. Public/workflows/main.gd/geography unchanged; legacy save read-only and glyph/import-refusal rules remain. All rejected visuals, exact source/PCK/available profiles/action-DOM traces/logs/exits remain retained. Native1 prelaunch refusal and private earlier-byte limits are not hidden; final1 covers the corrected final bytes.
+
+Delivery: this accepted checkpoint is ready for normal[skip ci] commit/integration/push. Read current HEAD/origin and artifacts/ending-finale-20261026/checkpoint-push.json for the exact resulting delivery state; no further ending feature or repeated gate is needed. Closure documentation/receipts are post-gate changes only, with product/test/script/PCK hashes rechecked. Remove only the owned finale lock before commit. Keep the managed worktree for its verified preview/evidence until needed ignored artifacts are preserved before archiving.
+
+| Outcome | Evidence | Blocker or limit | Next action |
+|---|---|---|---|
+| Before These Streets and all planned ending gameplay | Implemented; both exact reviews grounded; full all-five and final captures/invariants accepted | Human acceptance and publication separate | Keep feature scope closed; delivery receipt records commit/integration/push |
+| Music/shutdown reports | Prior evidence retained; no newly demonstrated defect from this gate | Composition/listening and physical-device acceptance unresolved | Investigate only reproducible defects with actual output |
+| Expanded playtesting and teaser | PLAYTEST_POLISH_BRIEF and TEASER_PLAN | Human/device acceptance and45-60s1080p capture still open | Playtest completed chapters; fix consequential demonstrated blockers before capture |
+| Remaining core-activity quest freedom | Revised programme pinboard does not enact a second gathering | Unimplemented lower-priority work | Fresh source-grounded r1 before a coherent new batch; preserve earned progress |
+
+Historical entries below preserve exact prior evidence; this current acceptance supersedes their pending-stage statements.
+
+
 ## Accepted orbital commons and connected finale batch - October26,2026 UTC
 
 Orbital commons is IMPLEMENTED and all five formal gates ACCEPTED on unchanged final inputs at17:07:27UTC. Exact sole-Claude pre-code r1 and implementation r3 are complete and every finding grounded; later corrections NOT independently re-reviewed. Opening/helper/habitat/departure remain accepted/pushed. This closure is ready for normal[skip ci] commit/push; exact receipt belongs in artifacts/ending-orbit-20261026/checkpoint-push.json. No deployment or human acceptance.

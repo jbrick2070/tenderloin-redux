@@ -1,0 +1,3 @@
+# Scope receipt
+
+ONE pre-code ideas r1 only. Driver codex, only claude, requested claude-opus-5-5/high, installed kibitz.py. No design/code selected. Reviewer reads worktree source and writes only claude.md; no source/docs/tests edits, engine/browser/render jobs, extra passes/models, blind quota retry, purchases or publication. Separate implementation r3 and fresh all-five remain mandatory. Primary orbital frozen inputs/controller are outside this write scope. Actual process/source/model/effort/execution receipts retained. Provider runtime identity and numeric allowance unknown until evidenced; no assertion from requested flags alone.
