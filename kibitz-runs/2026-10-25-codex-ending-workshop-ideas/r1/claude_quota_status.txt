@@ -1,0 +1,1 @@
+Requested/selected claude-opus-5-5; effort high; budget medium. Harness completed rc0. Numeric allowance and provider runtime identity unknown. Raw local quota/account output retained privately, not staged.

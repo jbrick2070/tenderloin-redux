@@ -1,0 +1,63 @@
+{
+  "utc": "2026-10-26T02:33:13.316252+00:00",
+  "classification": "new native component fixture leaked transient player/camera-follow state into downstream civic checks",
+  "final1": {
+    "accepted": false,
+    "native_rc": 1,
+    "seconds": 288.8026912212372,
+    "errors": 4,
+    "assertion": "Back and real Escape preserve camera and position",
+    "source_files_unchanged": 209,
+    "remaining_gates": "not run",
+    "retained": "exact209 source copies, development PCK, native log, isolation args and exit",
+    "missing": "live failing native save/settings were cleaned by original suite; no retained profile claimed"
+  },
+  "diagnostic1": {
+    "accepted": false,
+    "profile": "prior canonical component profile, not exact full failure save",
+    "camera_failures": 4,
+    "cases": [
+      "table520x360",
+      "table640x360",
+      "floor520x360",
+      "floor640x360"
+    ],
+    "position_changed_during_civic": false,
+    "pressed_W_at_failure": false,
+    "other_fixture_errors": 26,
+    "other_error_cause": "canonical quiet=pairs; original Quiet Seats/Bea fixtures require arc"
+  },
+  "diagnostic2": {
+    "accepted": false,
+    "sole_intervention": "following_player=false after helper",
+    "camera_failures": 0,
+    "other_fixture_errors": 26
+  },
+  "correction": "restore per-case and caller position/velocity/visual heading, camera pose and follow/overview policy; caller viewport/visibility/focus/save metadata and owned test bytes. Preserve original civic assertion and add failure-only case/value diagnostics. No product camera change.",
+  "diagnostic3": {
+    "utc": "2026-10-26T02:31:46.935816+00:00",
+    "rc": 0,
+    "seconds": 35.185617446899414,
+    "source_unchanged": true,
+    "native_asfound_unchanged": true,
+    "clean": true,
+    "component_token": true,
+    "scope": "PRIVATE fresh isolated native component profile, not full gate/genuine browser progression",
+    "args": [
+      "C:/Users/jeffr/.cache/tenderloin-tools/godot-4.7.2/Godot_v4.7.2-stable_win64_console.exe",
+      "--headless",
+      "--path",
+      "C:\\tenderloin-redux\\godot",
+      "--script",
+      "C:\\tenderloin-redux\\artifacts\\ending-workshop-20261025\\civic-diagnostic3.gd",
+      "--",
+      "--godot-save-path=user://godot_block_save_test_1792982200002_6396.json",
+      "--godot-settings-path=user://godot_block_settings_test_1792982200002_6396.json",
+      "--test-suite"
+    ],
+    "profile_variant": "explicit canonical hosting.draft.quiet=arc, correct1100 viewport and manual45m initial framing; not recovered full failure profile",
+    "result": "22helper cases plus original Quiet Seats/Bea/Civic sequence clean; caller pose/position/follow exact before/after"
+  },
+  "later_fixes_independently_rereviewed": false,
+  "acceptance": "PRIVATE diagnostic proof only; fresh all-five required"
+}

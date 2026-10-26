@@ -3299,6 +3299,7 @@ func run() -> void:
 	await verify_rhythm_circle(study)
 	await verify_mural_stories(study,saved_m4_json)
 	await verify_film_screening(study,saved_m4_json)
+	await preload("res://tests/helper_bench_checks.gd").verify(self,study,saved_m4_json,true)
 	await verify_quiet_seats(study,saved_m4_json)
 	await verify_bea_invitation(study,saved_m4_json)
 	await verify_civic_listening(study,saved_m4_json)
@@ -5073,6 +5074,8 @@ func verify_civic_listening(study: Node, full_profile: String) -> void:
 			escape.pressed=true
 			study._unhandled_input(escape)
 			for f in range(3): await process_frame
+			if hour.visible or study.panel_camera_pose()!=pose or study.player.position!=position:
+				print("CIVIC_CAMERA_FAILURE "+JSON.stringify({"layout":layout,"size":str(size),"visible":hour.visible,"pose_before":str(pose),"pose_after":str(study.panel_camera_pose()),"position_before":str(position),"position_after":str(study.player.position),"following":study.following_player,"logicalW":Input.is_key_pressed(KEY_W),"physicalW":Input.is_physical_key_pressed(KEY_W)}))
 			require(not hour.visible and study.panel_camera_pose()==pose and study.player.position==position,"Back and real Escape preserve camera and position")
 			require(hour.entry.has_focus(),"Escape restores entry focus without waiting for a later visibility frame")
 			require(music==[study.music_playing,study.music_volume,study.music_mode,study.reward_sounds_enabled],"quiet/music/preferences not changed by viewing")

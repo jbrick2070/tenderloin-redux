@@ -9,6 +9,7 @@ var picture: TextureRect
 var shots: Array[Button] = []
 var music: Button
 var back: Button
+var helper_entry: Button
 var saved_visibility: Dictionary = {}
 var return_focus: Control
 var layout_pending := false
@@ -33,10 +34,12 @@ func setup(owner_game: Node) -> void:
 	var heading := VBoxContainer.new()
 	top.add_child(heading)
 	title = Label.new()
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	title.add_theme_font_size_override("font_size", 18)
 	heading.add_child(title)
 	var credit := Label.new()
 	credit.text = "Original illustrated short | DataSF/PDDL | OSM/ODbL"
+	credit.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	credit.add_theme_font_size_override("font_size", 10)
 	heading.add_child(credit)
 	picture = TextureRect.new()
@@ -64,6 +67,7 @@ func setup(owner_game: Node) -> void:
 	box.add_child(actions)
 	music = button(actions, "Music: Off", func(): game.toggle_music_playback(); refresh(false))
 	back = button(actions, "Back to the block", close_screening)
+	helper_entry = button(box, "Helper workshop", open_helper)
 	resized.connect(queue_layout)
 	hide()
 
@@ -102,7 +106,7 @@ func available() -> bool:
 
 func open_screening() -> bool:
 	if visible: return true
-	if not available() or game.startup_story_pending or game.is_story_card_visible() or not game.current_path.is_empty() or game.is_mural_workshop_visible() or game.is_rhythm_circle_visible() or game.is_civic_listening_visible() or game.is_programme_studio_visible() or game.is_shared_panel_visible():
+	if not available() or game.startup_story_pending or game.is_story_card_visible() or not game.current_path.is_empty() or game.active_story_episode()!=null or game.is_focused_activity_visible():
 		game.announce_a11y_status("Finish the three-shot film, arriving and any chapter card before watching The Open Seat.")
 		return false
 	return_focus = get_viewport().gui_get_focus_owner()
@@ -117,6 +121,11 @@ func open_screening() -> bool:
 	fit_layout()
 	shots[game.film_screen_frame].grab_focus()
 	return true
+
+func open_helper() -> void:
+	if not visible or not available() or game.helper_bench==null: return
+	close_screening(false)
+	if not game.helper_bench.open_bench(): open_screening()
 
 func close_screening(announce: bool = true) -> void:
 	if not visible: return
@@ -153,13 +162,14 @@ func refresh(announce: bool) -> void:
 	picture.accessibility_name = description()
 	var ending: String = game.film_shot_title(String(game.film_result.order[2])).to_lower()
 	var text := "%s\n%s\n%s | %s\nYour ending is %s. The copied order, framing and production choice are remembered.\nSilent illustrated sequence, not a recorded movie. Music stays yours to choose. No real camera, microphone, permit or recording.\nDez: We ended on %s. A different order would tell a different little story." % [caption(), description(), game.FILM_FRAMING_LABELS[game.film_result.framing], game.FILM_PLAN_LABELS[game.film_result.plan], ending, ending]
+	text += "\nDez: Want to imagine a helper for a future neighborhood? Choose Helper workshop to build a stand for our three pictures. Or keep exploring; this invitation stays with your finished film."
 	game.set_activity_detail(reader, text)
 	for i in range(3):
 		shots[i].text = game.film_shot_title(String(game.film_result.order[i]))
 		shots[i].set_pressed_no_signal(i == index)
 		shots[i].accessibility_name = "Frame %d of 3: %s%s" % [i+1, shots[i].text, ", selected" if i == index else ""]
 	music.text = "Music: On" if game.music_playing else "Music: Off"
-	var ring: Array[Control] = [reader, shots[0], shots[1], shots[2], music, back]
+	var ring: Array[Control] = [reader, shots[0], shots[1], shots[2], music, back, helper_entry]
 	for i in range(ring.size()):
 		ring[i].focus_next = ring[i].get_path_to(ring[(i+1)%ring.size()])
 		ring[i].focus_previous = ring[i].get_path_to(ring[posmod(i-1,ring.size())])
@@ -175,14 +185,15 @@ func fit_layout() -> void:
 	layout_pending = false
 	if not visible: return
 	var vp: Vector2 = game.bubble_viewport_size()
+	var side: bool = vp.x >= 520 and vp.y < 500
 	var width := minf(900,vp.x-12)
-	top.position = Vector2((vp.x-width)*0.5,6)
-	top.size = Vector2(width,0)
+	top.position = Vector2(6 if side else (vp.x-width)*0.5,6)
+	top.size = Vector2(vp.x-338 if side else width,0)
 	top.size.y = top.get_combined_minimum_size().y
-	tray.size = Vector2(width,0)
+	tray.size = Vector2(320 if side else width,0)
 	tray.size.y = tray.get_combined_minimum_size().y
-	tray.position = Vector2((vp.x-width)*0.5,vp.y-tray.size.y-6)
-	var available_rect := Rect2(top.position.x,top.position.y+top.size.y+6,width,tray.position.y-top.position.y-top.size.y-12)
+	tray.position = Vector2(vp.x-tray.size.x-6 if side else (vp.x-width)*0.5,vp.y-tray.size.y-6)
+	var available_rect := Rect2(top.position.x,top.position.y+top.size.y+6,top.size.x,(vp.y-6 if side else tray.position.y-6)-top.position.y-top.size.y-6)
 	var size_fit := Vector2(minf(available_rect.size.x,maxf(1,available_rect.size.y)*420.0/236.0),maxf(1,available_rect.size.y))
 	size_fit.y = size_fit.x*236.0/420.0
 	art_rect = Rect2(available_rect.get_center()-size_fit*0.5,size_fit)
@@ -210,7 +221,7 @@ func snapshot() -> Dictionary:
 	var result := {"visible":visible,"world_cache":world_textures.size(),"reader_cache":textures.size()}
 	if not visible: return result
 	var buttons: Array[Dictionary] = []
-	for b in shots+[music,back]:
+	for b in shots+[music,back,helper_entry]:
 		var data: Dictionary = game.control_snapshot(b)
 		data["text"] = b.text
 		data["pressed"] = b.button_pressed

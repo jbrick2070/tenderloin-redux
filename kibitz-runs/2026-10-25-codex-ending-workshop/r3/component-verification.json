@@ -1,0 +1,448 @@
+{
+  "native": {
+    "utc": "2026-10-26T02:03:08.831632+00:00",
+    "rc": 0,
+    "seconds": 26.111183166503906,
+    "source_unchanged": true,
+    "native_asfound_unchanged": true,
+    "clean": true,
+    "component_token": true,
+    "scope": "PRIVATE fresh isolated native component profile, not full gate/genuine browser progression",
+    "args": [
+      "C:/Users/jeffr/.cache/tenderloin-tools/godot-4.7.2/Godot_v4.7.2-stable_win64_console.exe",
+      "--headless",
+      "--path",
+      "C:\\tenderloin-redux\\godot",
+      "--script",
+      "C:\\tenderloin-redux\\artifacts\\ending-workshop-20261025\\runtime10.gd",
+      "--",
+      "--godot-save-path=user://ending_workshop_runtime10_save.json",
+      "--godot-settings-path=user://ending_workshop_runtime10_settings.json",
+      "--test-suite"
+    ]
+  },
+  "browser": {
+    "utc": "2026-10-26T02:05:31.303Z",
+    "failed": false,
+    "errors": [],
+    "external": [],
+    "unchanged": true,
+    "canonicalPath": "artifacts/shared-meal-round-20261025/native-component-profile.json",
+    "canonicalSHA": "27efa5d84296cc1c8a869baa678905f4eb11c08abe57cf2c0cec01eb7eb2ec74",
+    "scope": "PRIVATE canonical component profile with explicit layout/framing selection, NOT genuine progression/full gate; actual desktop/Pixel7-emulated input"
+  },
+  "cases": [
+    {
+      "width": 1100,
+      "height": 760,
+      "touch": false,
+      "privateFixture": true,
+      "changed": 3356,
+      "inspectionPose": {
+        "pitch": 1.65,
+        "target_x": 32.6408920288086,
+        "target_y": -5.24744176864624,
+        "target_z": -12.8698072433472,
+        "yaw": -0.824999999999999
+      },
+      "copiedOrder": [
+        "welcome",
+        "seat",
+        "paint"
+      ],
+      "retainedInvitation": true,
+      "actualReload": true,
+      "noWrites": true,
+      "quiet": true,
+      "worldInk": [
+        {
+          "shot": "welcome",
+          "copiedKey": "wide:welcome",
+          "paper": 274,
+          "ink": 21,
+          "borderInk": 36,
+          "pinkMotif": 0,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        },
+        {
+          "shot": "seat",
+          "copiedKey": "wide:seat",
+          "paper": 276,
+          "ink": 17,
+          "borderInk": 38,
+          "pinkMotif": 0,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        },
+        {
+          "shot": "paint",
+          "copiedKey": "wide:paint",
+          "paper": 319,
+          "ink": 8,
+          "borderInk": 41,
+          "pinkMotif": 21,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "height": 667,
+      "touch": true,
+      "privateFixture": true,
+      "changed": 1441,
+      "inspectionPose": {
+        "pitch": 1.65,
+        "target_x": 40.8620071411133,
+        "target_y": -6.2497615814209,
+        "target_z": -17.0405578613281,
+        "yaw": -0.824999999999999
+      },
+      "copiedOrder": [
+        "welcome",
+        "seat",
+        "paint"
+      ],
+      "retainedInvitation": true,
+      "actualReload": true,
+      "noWrites": true,
+      "quiet": true,
+      "worldInk": [
+        {
+          "shot": "welcome",
+          "copiedKey": "wide:welcome",
+          "paper": 305,
+          "ink": 13,
+          "borderInk": 25,
+          "pinkMotif": 0,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        },
+        {
+          "shot": "seat",
+          "copiedKey": "wide:seat",
+          "paper": 317,
+          "ink": 17,
+          "borderInk": 37,
+          "pinkMotif": 0,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        },
+        {
+          "shot": "paint",
+          "copiedKey": "wide:paint",
+          "paper": 315,
+          "ink": 11,
+          "borderInk": 42,
+          "pinkMotif": 25,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        }
+      ]
+    },
+    {
+      "width": 320,
+      "height": 667,
+      "touch": true,
+      "privateFixture": true,
+      "changed": 899,
+      "inspectionPose": {
+        "pitch": 1.65,
+        "target_x": 32.4151153564453,
+        "target_y": -3.960857629776,
+        "target_z": -13.5907373428345,
+        "yaw": -0.824999999999999
+      },
+      "copiedOrder": [
+        "welcome",
+        "seat",
+        "paint"
+      ],
+      "retainedInvitation": true,
+      "actualReload": true,
+      "noWrites": true,
+      "quiet": true,
+      "worldInk": [
+        {
+          "shot": "welcome",
+          "copiedKey": "wide:welcome",
+          "paper": 274,
+          "ink": 11,
+          "borderInk": 36,
+          "pinkMotif": 0,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        },
+        {
+          "shot": "seat",
+          "copiedKey": "wide:seat",
+          "paper": 280,
+          "ink": 13,
+          "borderInk": 39,
+          "pinkMotif": 0,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        },
+        {
+          "shot": "paint",
+          "copiedKey": "wide:paint",
+          "paper": 306,
+          "ink": 7,
+          "borderInk": 41,
+          "pinkMotif": 20,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        }
+      ]
+    },
+    {
+      "width": 1100,
+      "height": 760,
+      "touch": false,
+      "privateFixture": true,
+      "changed": 3192,
+      "inspectionPose": {
+        "pitch": 1.65,
+        "target_x": 40.8492393493652,
+        "target_y": -7.50467014312744,
+        "target_z": -16.2616767883301,
+        "yaw": -0.824999999999999
+      },
+      "copiedOrder": [
+        "welcome",
+        "seat",
+        "paint"
+      ],
+      "retainedInvitation": true,
+      "actualReload": true,
+      "noWrites": true,
+      "quiet": true,
+      "worldInk": [
+        {
+          "shot": "welcome",
+          "copiedKey": "close:welcome",
+          "paper": 337,
+          "ink": 21,
+          "borderInk": 23,
+          "pinkMotif": 0,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        },
+        {
+          "shot": "seat",
+          "copiedKey": "close:seat",
+          "paper": 334,
+          "ink": 25,
+          "borderInk": 38,
+          "pinkMotif": 0,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        },
+        {
+          "shot": "paint",
+          "copiedKey": "close:paint",
+          "paper": 343,
+          "ink": 11,
+          "borderInk": 42,
+          "pinkMotif": 19,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "height": 667,
+      "touch": true,
+      "privateFixture": true,
+      "changed": 1395,
+      "inspectionPose": {
+        "pitch": 1.65,
+        "target_x": 32.4897804260254,
+        "target_y": -3.89819860458374,
+        "target_z": -13.5340070724487,
+        "yaw": -0.824999999999999
+      },
+      "copiedOrder": [
+        "welcome",
+        "seat",
+        "paint"
+      ],
+      "retainedInvitation": true,
+      "actualReload": true,
+      "noWrites": true,
+      "quiet": true,
+      "worldInk": [
+        {
+          "shot": "welcome",
+          "copiedKey": "close:welcome",
+          "paper": 288,
+          "ink": 15,
+          "borderInk": 37,
+          "pinkMotif": 0,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        },
+        {
+          "shot": "seat",
+          "copiedKey": "close:seat",
+          "paper": 95,
+          "ink": 174,
+          "borderInk": 35,
+          "pinkMotif": 0,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        },
+        {
+          "shot": "paint",
+          "copiedKey": "close:paint",
+          "paper": 308,
+          "ink": 35,
+          "borderInk": 35,
+          "pinkMotif": 25,
+          "blank": [
+            222,
+            221,
+            208
+          ],
+          "cutawayAdditions": 1
+        }
+      ]
+    },
+    {
+      "width": 320,
+      "height": 667,
+      "touch": true,
+      "privateFixture": true,
+      "changed": 883,
+      "inspectionPose": {
+        "pitch": 1.65,
+        "target_x": 40.648323059082,
+        "target_y": -6.27336072921753,
+        "target_z": -17.0347461700439,
+        "yaw": -0.824999999999999
+      },
+      "copiedOrder": [
+        "welcome",
+        "seat",
+        "paint"
+      ],
+      "retainedInvitation": true,
+      "actualReload": true,
+      "noWrites": true,
+      "quiet": true,
+      "worldInk": [
+        {
+          "shot": "welcome",
+          "copiedKey": "close:welcome",
+          "paper": 338,
+          "ink": 26,
+          "borderInk": 25,
+          "pinkMotif": 0,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        },
+        {
+          "shot": "seat",
+          "copiedKey": "close:seat",
+          "paper": 344,
+          "ink": 17,
+          "borderInk": 38,
+          "pinkMotif": 0,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        },
+        {
+          "shot": "paint",
+          "copiedKey": "close:paint",
+          "paper": 340,
+          "ink": 11,
+          "borderInk": 40,
+          "pinkMotif": 25,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        }
+      ]
+    }
+  ],
+  "capture_inspection": {
+    "paths": [
+      "focused8/320-floor-close/helper-320-upright.png",
+      "focused8/390-floor-wide/helper-390-world.png",
+      "focused8/1100-table-wide/helper-1100-world.png"
+    ],
+    "judgment": "Whole-word controls, specific response scroll access and original copied pictures visible. Actual manual inspection; no default/every-angle or physical/human acceptance claim."
+  },
+  "later_fixes_independently_reviewed": false,
+  "full_gate_acceptance": false
+}

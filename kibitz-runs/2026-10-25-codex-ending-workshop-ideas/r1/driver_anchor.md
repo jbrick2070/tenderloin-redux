@@ -1,0 +1,9 @@
+VERDICT: yes-with-fixes for a bounded, earned helper workshop; no mechanics selected before r1.
+CONFIRMED: film_screening.available uses durable done+valid copied film and existing main genuine progression reaches that state. Hosting/civic/film and optional-story boundaries must remain.
+CONFIRMED: hosted_afternoon.copied validates original art; build_tile_panel_svg(empty) can fall back to current draft. Explicit validated copy is mandatory, and future Draft/Posted edits are a regression case.
+CONFIRMED: main focused activity, input, delayed chapter, native apply/reset and successful/failed browser import are separate ownership paths. Reuse patterns only after checking each; quiet/manual/save intent must survive exit/revisit/load.
+CONFIRMED: world gathering layouts already contain food, art, letters and seating. No empty spot may be assumed from one layout. Candidate pockets require actual bounds/visual verification before use.
+UNVERIFIABLE UNTIL BUILD: separate3Dbench vs illustrated jig quality,320px task clarity, actual robot motion/parking, replacement behavior and combined world footprint. Require meaningful visible actions and equivalent controls/still presentation.
+MUST-FIX BEFORE BUILD: locate discoverable retained earned entry without global menu growth or film-control displacement; choose one readable construction sequence with specific feedback and visible world result; explicit visit-local persistence and all exit states.
+SHOULD-FIX: prefer compact geometry and bounded motion over autonomy; recognize final copied film shot and original art; model a helper without claiming real robotics/launch feasibility.
+CUT: free-roaming delivery, combat/enemies, resource grind, current real-world building changes, auto camera/audio, new saved progress, whole ending in one round, opening prerequisite and copied third-party assets. Full ending remains multiple separate unfinished stages.

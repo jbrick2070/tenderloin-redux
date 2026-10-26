@@ -1,0 +1,18 @@
+{
+  "utc": "2026-10-26T00:45:47.972643+00:00",
+  "baseline": "8d12f34ae6cf7fdea98faaa0976a9fb657fab8fb",
+  "inputs_verified": 203,
+  "selected": "Illustrated jig and new copied-film triptych",
+  "ending_code_present": false,
+  "r1": {
+    "utc": "2026-10-26T00:22:10.162523+00:00",
+    "harness_rc": 0,
+    "sources_unchanged": true,
+    "requested_model": "claude-opus-5-5",
+    "requested_effort": "high",
+    "selected_model": "claude-opus-5-5",
+    "selected_effort": "high",
+    "provider_runtime_identity": "unknown",
+    "numeric_allowance": "unknown"
+  }
+}
