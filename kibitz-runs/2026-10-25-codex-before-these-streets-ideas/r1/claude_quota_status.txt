@@ -1,0 +1,1 @@
+Selected-lane auth preflight completed; provider runtime identity and numeric allowance unknown. Raw private status retained under ignored artifacts; SHA256 8837273a61838ba8faef568a69dfead62d1566b2be47f9636a4097bdcbf7023c. Exact requested/selected Opus5.5/high and successful execution receipt retained.

@@ -1,0 +1,1 @@
+Raw private preflight retained locally by SHA256 8837273a61838ba8faef568a69dfead62d1566b2be47f9636a4097bdcbf7023c. Requested/selected claude-opus-5-5/high; harness budget=medium. Reviewer rc0/TOOL CHECK PASS. Provider runtime identity and numeric allowance UNKNOWN. No retry/substitute/purchase.

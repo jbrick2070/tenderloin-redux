@@ -1,0 +1,456 @@
+{
+  "status": "All five gates accepted; root inspected meaningful final captures. Commit/push follows final intended-diff check.",
+  "completed_utc": "2026-10-26T00:01:12.624633+00:00",
+  "baseline": "e26dfaec7c8e568964bbc0e89326937caea37b97",
+  "gates": {
+    "native": {
+      "rc": 0,
+      "seconds": 266.1000258922577,
+      "finished_utc": "2026-10-25T22:37:14.729390+00:00",
+      "sources_unchanged": true,
+      "native_asfound_unchanged": true,
+      "tokens": {
+        "BEA_INVITATION_PASS": true,
+        "CIVIC_LISTENING_PASS": true,
+        "COMMUNITY_INVITATION_PASS": true,
+        "DOG_STORY_PASS": true,
+        "GODOT_NATIVE_ISOLATION_PASS": true,
+        "GODOT_STUDY_PASS": true,
+        "GUIDED_WALK_PASS": true,
+        "HOSTED_AFTERNOON_PASS:FORMAL": true,
+        "LANTERN_PROCESSION_PASS": true,
+        "LARKIN_STORY_PASS": true,
+        "LOAN_HOMECOMING_PASS": true,
+        "MAP_PINCH_PASS": true,
+        "PHONE_DISCLOSURE_PASS": true,
+        "POWER_STORY_PASS": true,
+        "PROGRAMME_STUDIO_PASS": true,
+        "QUIET_SEATS_PASS": true,
+        "SHARED_MEAL_PASS": true,
+        "SHARED_PANEL_PASS": true,
+        "SMALL_PASS": true,
+        "STORY_VISITS_PASS": true,
+        "VOTING_STORY_PASS": true,
+        "BEFORE_STREETS_PASS:FORMAL": true
+      },
+      "clean": true,
+      "native_isolation": {
+        "runId": "1792967568995_25900",
+        "save": "user://godot_block_save_test_1792967568995_25900.json",
+        "settings": "user://godot_block_settings_test_1792967568995_25900.json",
+        "args": [
+          "--headless",
+          "--path",
+          "godot",
+          "--script",
+          "res://tests/study_test.gd",
+          "--",
+          "--godot-save-path=user://godot_block_save_test_1792967568995_25900.json",
+          "--godot-settings-path=user://godot_block_settings_test_1792967568995_25900.json",
+          "--test-suite"
+        ]
+      }
+    },
+    "export": {
+      "rc": 0,
+      "seconds": 3.532700538635254,
+      "finished_utc": "2026-10-25T22:37:18.310043+00:00",
+      "sources_unchanged": true,
+      "native_asfound_unchanged": true
+    },
+    "check": {
+      "rc": 0,
+      "seconds": 2.589022159576416,
+      "finished_utc": "2026-10-25T22:37:20.954588+00:00",
+      "sources_unchanged": true,
+      "native_asfound_unchanged": true
+    },
+    "node": {
+      "rc": 0,
+      "seconds": 9.086440801620483,
+      "finished_utc": "2026-10-25T22:37:30.103049+00:00",
+      "sources_unchanged": true,
+      "native_asfound_unchanged": true,
+      "tests": 106
+    },
+    "browser": {
+      "rc": 0,
+      "seconds": 5021.548577785492,
+      "finished_utc": "2026-10-26T00:01:11.715815+00:00",
+      "sources_unchanged": true,
+      "native_asfound_unchanged": true,
+      "pack_unchanged": true,
+      "result_exists": true,
+      "opening_cases": 6,
+      "genuine_opening_startups": 3,
+      "genuine_opening_revisits": 3,
+      "errors": [],
+      "external": [],
+      "hosted_cases": 4,
+      "genuine_hosted_earned": 3,
+      "genuine_hosted_done": 1,
+      "shared_meal_cases": 3,
+      "community_invitation_cases": 9,
+      "genuine_earned_invitations": 3,
+      "fresh_phone_cases": 6,
+      "actual_pinch_cases": 4,
+      "expanded_info_pinch_cases": 4,
+      "genuine_voting_cases": 3
+    }
+  },
+  "source_count": 149,
+  "source_freeze_sha256": "d9d65b86933436577deef80ae3e0279d654ba2bf5d8363bcdfe986b516241c0c",
+  "pack_sha256": "58d50a351c83266ff162be197331d668e8fbad5a4c6f6905976b9fca8293b4af",
+  "browser_result_sha256": "b03d8cd528adbcfc26e10fb1649daa5cdf10f1392415650e4639a6e87dd3047f",
+  "execution_sha256": "aa974b038d8a571bb735b6fa435db9a02fcf5c1c13797a925030e64b4227a82a",
+  "coverage_counts": {
+    "runs": 3,
+    "renderedPixelChecks": 358,
+    "traceReceipts": 44,
+    "beforeStreetsChecks": 6,
+    "hostedAfternoonChecks": 4,
+    "sharedMealChecks": 3,
+    "guidedWalkChecks": 3,
+    "storyReturnChecks": 9,
+    "storyVisitChecks": 12,
+    "phoneDisclosureChecks": 6,
+    "mapPinchChecks": 4,
+    "votingStoryChecks": 3,
+    "lanternProcessionChecks": 3,
+    "dogStoryChecks": 6,
+    "larkinStoryChecks": 3,
+    "powerStoryChecks": 6,
+    "loanHomecomingChecks": 8,
+    "loanWorldChecks": 3,
+    "sharedPanelChecks": 9,
+    "programmeStudioChecks": 7,
+    "civicListeningChecks": 9,
+    "communityInvitationChecks": 9,
+    "beaInvitationChecks": 7,
+    "quietSeatChecks": 9,
+    "filmScreeningChecks": 3,
+    "rhythmCircleChecks": 11,
+    "rhythmAuditionChecks": 11,
+    "muralStoryChecks": 8,
+    "livingMuralChecks": 8,
+    "errors": 0,
+    "external": 0
+  },
+  "main_runs": [
+    {
+      "viewport": {
+        "width": 1100,
+        "height": 760
+      },
+      "save_bytes": 1727,
+      "performance": {
+        "astar_expanded_cells": 2222,
+        "astar_used": true,
+        "district_boundary_present": true,
+        "object_node_count": 2998,
+        "opening_buildings_count": 58,
+        "pathfind_blackhawk_usec": 86500,
+        "pathfind_blackhawk_waypoints": 3,
+        "pathfind_budget_max_usec": 250000,
+        "pathfind_cold_cache": true,
+        "save_budget_max_bytes": 4096,
+        "save_budget_max_usec": 50000,
+        "save_bytes": 1534,
+        "save_roundtrip_usec": 200,
+        "street_ways_count": 20,
+        "total_buildings_count": 188,
+        "voices_teardown_budget_max_usec": 50000,
+        "voices_teardown_measured": true,
+        "voices_teardown_usec": 1,
+        "wider_buildings_count": 130,
+        "wider_street_ways_count": 41,
+        "within_budget": true
+      }
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 667
+      },
+      "save_bytes": 1723,
+      "performance": {
+        "astar_expanded_cells": 2222,
+        "astar_used": true,
+        "district_boundary_present": true,
+        "object_node_count": 2998,
+        "opening_buildings_count": 58,
+        "pathfind_blackhawk_usec": 90400,
+        "pathfind_blackhawk_waypoints": 3,
+        "pathfind_budget_max_usec": 250000,
+        "pathfind_cold_cache": true,
+        "save_budget_max_bytes": 4096,
+        "save_budget_max_usec": 50000,
+        "save_bytes": 1530,
+        "save_roundtrip_usec": 200,
+        "street_ways_count": 20,
+        "total_buildings_count": 188,
+        "voices_teardown_budget_max_usec": 50000,
+        "voices_teardown_measured": true,
+        "voices_teardown_usec": 1,
+        "wider_buildings_count": 130,
+        "wider_street_ways_count": 41,
+        "within_budget": true
+      }
+    },
+    {
+      "viewport": {
+        "width": 320,
+        "height": 667
+      },
+      "save_bytes": 1723,
+      "performance": {
+        "astar_expanded_cells": 2222,
+        "astar_used": true,
+        "district_boundary_present": true,
+        "object_node_count": 2998,
+        "opening_buildings_count": 58,
+        "pathfind_blackhawk_usec": 98200,
+        "pathfind_blackhawk_waypoints": 3,
+        "pathfind_budget_max_usec": 250000,
+        "pathfind_cold_cache": true,
+        "save_budget_max_bytes": 4096,
+        "save_budget_max_usec": 50000,
+        "save_bytes": 1530,
+        "save_roundtrip_usec": 100,
+        "street_ways_count": 20,
+        "total_buildings_count": 188,
+        "voices_teardown_budget_max_usec": 50000,
+        "voices_teardown_measured": true,
+        "voices_teardown_usec": 1,
+        "wider_buildings_count": 130,
+        "wider_street_ways_count": 41,
+        "within_budget": true
+      }
+    }
+  ],
+  "opening_cases": [
+    {
+      "width": 1100,
+      "height": 760,
+      "touch": false,
+      "mode": "startup",
+      "privateFixture": false,
+      "changed": 1202,
+      "responsePixels": 379,
+      "sourceReader": true,
+      "actualShiftF8": true,
+      "heldSkip": true,
+      "rotatedReturn": true,
+      "originalStartupPreserved": true,
+      "noWrites": true
+    },
+    {
+      "width": 1100,
+      "height": 760,
+      "touch": false,
+      "mode": "revisit",
+      "privateFixture": false,
+      "changed": 1202,
+      "responsePixels": 379,
+      "sourceReader": true,
+      "actualShiftF8": true,
+      "heldSkip": false,
+      "rotatedReturn": false,
+      "originalStartupPreserved": false,
+      "noWrites": true
+    },
+    {
+      "width": 390,
+      "height": 667,
+      "touch": true,
+      "mode": "startup",
+      "privateFixture": false,
+      "changed": 440,
+      "responsePixels": 137,
+      "sourceReader": true,
+      "actualShiftF8": true,
+      "heldSkip": true,
+      "rotatedReturn": true,
+      "originalStartupPreserved": true,
+      "noWrites": true
+    },
+    {
+      "width": 390,
+      "height": 667,
+      "touch": true,
+      "mode": "revisit",
+      "privateFixture": false,
+      "changed": 440,
+      "responsePixels": 137,
+      "sourceReader": true,
+      "actualShiftF8": true,
+      "heldSkip": false,
+      "rotatedReturn": false,
+      "originalStartupPreserved": false,
+      "noWrites": true
+    },
+    {
+      "width": 320,
+      "height": 667,
+      "touch": true,
+      "mode": "startup",
+      "privateFixture": false,
+      "changed": 270,
+      "responsePixels": 87,
+      "sourceReader": true,
+      "actualShiftF8": true,
+      "heldSkip": true,
+      "rotatedReturn": true,
+      "originalStartupPreserved": true,
+      "noWrites": true
+    },
+    {
+      "width": 320,
+      "height": 667,
+      "touch": true,
+      "mode": "revisit",
+      "privateFixture": false,
+      "changed": 270,
+      "responsePixels": 87,
+      "sourceReader": true,
+      "actualShiftF8": true,
+      "heldSkip": false,
+      "rotatedReturn": false,
+      "originalStartupPreserved": false,
+      "noWrites": true
+    }
+  ],
+  "pinch_cases": [
+    {
+      "size": {
+        "width": 390,
+        "height": 667
+      },
+      "actualTwoTouch": true,
+      "expandedInfoMap": true,
+      "actualInfoEnd": true,
+      "mixedUiMap": true,
+      "before": 45,
+      "spread": 24,
+      "closed": 96,
+      "manual": 48,
+      "playerDelta": 0,
+      "legacyUnchanged": true,
+      "manualAnchor": {
+        "x": 195,
+        "y": 485.400238037109
+      },
+      "maxObserved": 1764.4590492457
+    },
+    {
+      "size": {
+        "width": 559,
+        "height": 360
+      },
+      "actualTwoTouch": true,
+      "expandedInfoMap": true,
+      "actualInfoEnd": true,
+      "mixedUiMap": true,
+      "before": 45,
+      "spread": 24,
+      "closed": 96,
+      "manual": 48,
+      "playerDelta": 0,
+      "legacyUnchanged": true,
+      "manualAnchor": {
+        "x": 279.5,
+        "y": 218.000106811523
+      },
+      "maxObserved": 1764.4590492457
+    },
+    {
+      "size": {
+        "width": 599,
+        "height": 360
+      },
+      "actualTwoTouch": true,
+      "expandedInfoMap": true,
+      "actualInfoEnd": true,
+      "mixedUiMap": true,
+      "before": 45,
+      "spread": 24,
+      "closed": 96,
+      "manual": 48,
+      "playerDelta": 0,
+      "legacyUnchanged": true,
+      "manualAnchor": {
+        "x": 299.5,
+        "y": 218.000228881836
+      },
+      "maxObserved": 1764.4590492457
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 667
+      },
+      "actualTwoTouch": true,
+      "expandedInfoMap": true,
+      "actualInfoEnd": true,
+      "mixedUiMap": true,
+      "before": 45,
+      "spread": 24,
+      "closed": 96,
+      "manual": 48,
+      "playerDelta": 0,
+      "legacyUnchanged": true,
+      "manualAnchor": {
+        "x": 160,
+        "y": 485.400238037109
+      },
+      "maxObserved": 2181.7299069585
+    }
+  ],
+  "inspected_captures": [
+    {
+      "path": "artifacts/before-these-streets-20261025/final3/browser-evidence/opening-1100-startup-response.png",
+      "sha256": "8be081cf54d8201dffc155fe7a105939007ea1c73f35ba46190fd5396a585c25"
+    },
+    {
+      "path": "artifacts/before-these-streets-20261025/final3/browser-evidence/opening-320-startup-response.png",
+      "sha256": "9aa68a8ba5d371f1dc2aa3ff1cc6bdedce045d67a6a0d3cd5d55db26115108bf"
+    },
+    {
+      "path": "artifacts/before-these-streets-20261025/final3/browser-evidence/opening-390-revisit-response.png",
+      "sha256": "c4fea777d1904e37fb6286eb67efa192d1fb9d96f8e5894ae21ed751e0f78deb"
+    },
+    {
+      "path": "artifacts/before-these-streets-20261025/final3/browser-evidence/map-pinch-559-before.png",
+      "sha256": "10c23c798036290bd4f86a91f556006b0058f81409315d4509cadd5489a458d0"
+    }
+  ],
+  "visual_judgment": "Desktop and narrow-phone opening show distinct landscape/Bea artwork, complete action words, visible focus and scrollable response; revisit says Back to block. Short landscape retains opening entry, scrollable Info and exposed map above controls.",
+  "public_identity": {
+    "version": "0.12.0",
+    "fingerprint": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567"
+  },
+  "native_asfound": {
+    "bytes": 1272,
+    "sha256": "2b7d1e849b4820a1d6c49602930ac3e0b104a8aa132375837038bfef80f2e0e1",
+    "preincident_recovery_verified": false
+  },
+  "reviews": {
+    "precode": "kibitz-runs/2026-10-25-codex-before-these-streets-ideas/r1",
+    "implementation": "kibitz-runs/2026-10-25-codex-before-these-streets/r3",
+    "requested_selected_model": "claude-opus-5-5",
+    "effort": "high",
+    "later_fixes_independently_rereviewed": false
+  },
+  "rejected_evidence": {
+    "final1": "Exact sources/PCK/log/exit retained; suite cleaned native test save, so exact live failing profile is unavailable. Identified earlier component profile reproduced the defect.",
+    "final2": "Exact sources/PCK/isolated browser storage/action-DOM trace/snapshot/screen/log/exit retained; original header limit reproduced and corrected."
+  },
+  "limits": [
+    "No deployment",
+    "No physical-phone/full screen-reader/human comprehension, pacing, aesthetic, listening, cultural or field acceptance",
+    "Opening observation is visit-local and never an ending prerequisite",
+    "Full ending not implemented; workshop, habitat, departure, orbital neighborhood and return remain open",
+    "Later driver fixes were NOT independently re-reviewed"
+  ],
+  "evidence_root": "artifacts/before-these-streets-20261025/final3"
+}

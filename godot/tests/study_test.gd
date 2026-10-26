@@ -69,6 +69,7 @@ func run() -> void:
 	await process_frame
 	await process_frame
 	await process_frame
+	await preload("res://tests/before_streets_checks.gd").verify(self,study,true)
 	# Compare indexed queries to the original linear geometry across actual bounds and bucket edges.
 	require(not study.walk_building_bins.is_empty(), "conservative building lookup is ready before walking")
 	require(study.WALK_CLEARANCE_M + study.WALK_CELL_EXTRA_CLEARANCE_M <= study.WALK_BUILDING_INDEX_CLEARANCE_M, "A* clearance uses the indexed broad phase")

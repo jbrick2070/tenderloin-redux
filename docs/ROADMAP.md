@@ -1,5 +1,11 @@
 # Tenderloin Redux — build roadmap
 
+## Creator priority update - October25,2026
+
+START and END take priority. Before These Streets is implemented, reviewed and all-five locally verified; next is the first helper-robot workshop and earned invitation in Tenderloin to the Stars. Each remains its own coherent exact-r1/implementation/r3/all-five checkpoint. Other core refinements remain open but follow these arcs; do not rebuild completed features. Primary source/cultural collaboration limits and later speculative habitat/departure/orbit stages remain explicit. No deployment authorization.
+
+Creator notification request: tell the creator when creative implementation of BOTH Before These Streets and the full planned Tenderloin to the Stars ending is complete, including the later habitat/cooperative departure/orbital neighborhood/return stages. The first helper workshop alone is not that milestone. Distinguish creative implementation from any pending final verification/commit and human acceptance. The creator will switch back to Sol manually; retain the currently selected model during this creative work and do not change it automatically.
+
 ## Creator-directed implementation and test cadence
 
 October24Pacific: creator asked to complete related coding before waiting on expensive tests at each leg. Implement one coherent playable feature as a connected batch, potentially spanning wakeups: for cooking this means choices, preparation, resident response, visible result and retained invitation together. Keep mandatory fresh pre-code r1; use cheap parser/targeted checks only where useful during development; finish the feature, run its separate implementation r3, collect valid related fixes, then run one final full all-five sequence on frozen inputs. Do not launch full browser regression after every small edit. Preserve failed evidence and diagnose related assumptions together before another expensive run; valid later code changes still need all required gates. No review/gate/assertion bypass or unrelated mega-batch is authorized. Any active regression remains frozen; the latest evidence above governs whether a run is active. Scheduler standing cadence updated through automation_update and read back; self-refresh/open-only/no-end/30-minute policy preserved.
@@ -11,10 +17,10 @@ Creator requested only unfinished work and automatic scheduler upkeep on October
 
 The four-dish shared meal, core-community Listening Hour -> Dez focus-only film handoff, and Hosted-afternoon copied-result review -> Bea focus-only Listening reader invitation are implemented, reviewed and all-five locally verified in accepted source checkpoints. No deployment or human cultural/taste/listening acceptance claimed. Completed story/cook switching and these recognition/revisit flows stay closed; do not rebuild them from stale selector briefs. Exact evidence remains in each r3/verification.json and current handoff/BUILD_STATUS.
 
-Next NEW gameplay order after these accepted checkpoints:
-1. Re-ground any actual remaining core-activity switching/revisit/progression gap against current source. Future revised-programme enactment remains an open arc question: the current pinboard imagines another afternoon and does not start a second gathering. Never clear earned hosting/civic/film copies to fake replay. Choose one worthwhile bounded missing behavior under a NEW lock/fresh exact pre-code r1, or document no-build; no filler or unsupported persistent suspension.
-2. Before These Streets: bounded playable historical opening, skippable/revisitable and primary-source-grounded; living Yelamu/Ramaytush history is distinct from geology/prehistory. If no substantive core gap remains, advance this slice under its own fresh review/source requirements.
-3. Tenderloin to the Stars: explicitly speculative helper-robot workshop, neighborhood-shaped habitat, cooperative departure and orbital return/exploration, in separate bounded stages. Start with one readable helper task and earned invitation.
+Next NEW gameplay order after the accepted opening checkpoint:
+1. Tenderloin to the Stars: fresh scoped r1 for a resident-led helper workshop, one readable untimed task, copied-art consequence and earned retained invitation. Preserve optional activities and existing results.
+2. Later ending stages remain unfinished: habitat shaped by neighborhood choices, cooperative readiness/departure, a small orbital neighborhood and return home. Clearly speculative; no current launch/technology claim. The full creative milestone includes all these stages.
+3. Lower priority: actual remaining core quest-freedom gaps, including future revised-programme enactment. The current pinboard does not start another gathering. Never reset earned copies/civic/film progress to fake replay or rebuild closed features; fresh scoped r1 before any extension.
 
 Still-open fixes/delivery: consequential reproducible gameplay regressions and music quality; expanded agent playtest; local45-60second1080p teaser using actual verified gameplay/original-cleared media. Physical/human listening/comfort/AT acceptance remains separate. No automatic repeated audio/opening probes, unimplemented concept-as-gameplay or Copland rights claim. This queue supersedes older historical pending-episode descriptions below; live source/current evidence still governs actual status.
 

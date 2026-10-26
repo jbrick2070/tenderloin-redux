@@ -11,6 +11,8 @@ import { civicPlanSVG, civicConversation } from '../public/civic.js';
 import { filmFrameSVG, filmCaption } from '../public/film.js';
 import { verifySharedMeal } from './shared-meal-browser.mjs';
 import { verifyHostedAfternoon } from './hosted-afternoon-browser.mjs';
+import { verifyBeforeStreets } from './before-streets-browser.mjs';
+const beforeStreetsChecks=[];
 const hostedAfternoonChecks=[];
 const HUB_ACTION_COUNT=13,HUB_ACTIONS_PER_PAGE=4;
 const hubActionCount=s=>s.block_hub_paged?Math.min(HUB_ACTIONS_PER_PAGE,HUB_ACTION_COUNT-s.block_hub_page*HUB_ACTIONS_PER_PAGE):HUB_ACTION_COUNT;
@@ -29,6 +31,8 @@ async function findHubAction(page,tap,pattern){
 const [pckStat, ...sourceStats] = await Promise.all([
   stat('artifacts/godot-web/index.pck'),
   stat('godot/main.gd'),
+  stat('godot/before_streets.gd'),
+  stat('godot/tests/before_streets_checks.gd'),
   stat('godot/shared_meal.gd'),
   stat('godot/shared_meal_data.gd'),
   stat('godot/tests/shared_meal_checks.gd'),
@@ -70,7 +74,7 @@ assert.ok(pckStat.size > 0 && pckStat.size <= 2 * 1024 * 1024, `artifacts/godot-
 const BROWSER_SAVE_SENTINEL = JSON.stringify({ schema: 'tenderloin-redux.save', version: 1, sentinel: 'preserve-browser-save-v1' });
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : 'playwright');
 const base = 'http://127.0.0.1:' + (process.env.GODOT_PORT || 4174) + '/';
-const sourceFingerprint={sources:Object.fromEntries(await Promise.all(['godot/hosted_afternoon.gd','godot/programme_studio.gd','godot/tests/hosted_afternoon_checks.gd','tests/hosted-afternoon-browser.mjs','godot/main.gd','godot/civic_listening.gd','godot/tests/community_invitation_checks.gd','godot/shared_meal.gd','godot/shared_meal_data.gd','godot/tests/shared_meal_checks.gd','godot/shared_panel.gd','godot/loan_homecoming.gd','godot/power_story.gd','godot/dog_story.gd','godot/lantern_procession.gd','godot/story_picker.gd','godot/voting_story.gd','godot/data/voting_places.json','godot/power_place.gd','godot/data/power_place.json','godot/tests/study_test.gd'].map(async p=>[p,createHash('sha256').update(await readFile(p)).digest('hex')]))),pack_sha256:createHash('sha256').update(await readFile('artifacts/godot-web/index.pck')).digest('hex')};
+const sourceFingerprint={sources:Object.fromEntries(await Promise.all(['godot/before_streets.gd','godot/tests/before_streets_checks.gd','tests/before-streets-browser.mjs','godot/hosted_afternoon.gd','godot/programme_studio.gd','godot/tests/hosted_afternoon_checks.gd','tests/hosted-afternoon-browser.mjs','godot/main.gd','godot/civic_listening.gd','godot/tests/community_invitation_checks.gd','godot/shared_meal.gd','godot/shared_meal_data.gd','godot/tests/shared_meal_checks.gd','godot/shared_panel.gd','godot/loan_homecoming.gd','godot/power_story.gd','godot/dog_story.gd','godot/lantern_procession.gd','godot/story_picker.gd','godot/voting_story.gd','godot/data/voting_places.json','godot/power_place.gd','godot/data/power_place.json','godot/tests/study_test.gd'].map(async p=>[p,createHash('sha256').update(await readFile(p)).digest('hex')]))),pack_sha256:createHash('sha256').update(await readFile('artifacts/godot-web/index.pck')).digest('hex')};
 await mkdir('artifacts', { recursive: true });
 let queuedActivityRewardChecks = 0;
 const shortStoryReadChecks = [];
@@ -1601,6 +1605,17 @@ async function verifyMapPinch(page,context,size){
   const snap=()=>page.evaluate(()=>window.__tenderloinGodotA11ySnapshot);
   const settle=async()=>{const f=(await snap()).ui_frame;await page.waitForFunction(f=>{const s=window.__tenderloinGodotA11ySnapshot;return s.ui_frame>f+3&&!s.layout_refit_pending;},f);};
   await page.keyboard.press('Escape');await page.keyboard.press('KeyF');await settle();
+  const originalInfo=(await snap()).header_details_expanded;
+  async function toggleInfo(){const h=await snap(),b=h.info_control,c=await page.locator('#canvas').boundingBox();await page.touchscreen.tap(c.x+(b.x+b.width/2)*c.width/h.viewport_width,c.y+(b.y+b.height/2)*c.height/h.viewport_height);await settle();}
+  if(!originalInfo)await toggleInfo();
+  const expanded=await snap();assert.ok(expanded.header_details_expanded&&expanded.before_streets.entry.visible,'real Info keeps opening revisit available');
+  assert.ok(expanded.play_area.height>=44&&expanded.play_area.y>=expanded.header_control.y+expanded.header_control.height&&expanded.play_area.y+expanded.play_area.height<=expanded.controls_control.y,'expanded opening Info leaves real map space above walking targets');
+  const infoBox=expanded.info_reader.control,infoCanvas=await page.locator('#canvas').boundingBox();
+  await page.touchscreen.tap(infoCanvas.x+(infoBox.x+infoBox.width/2)*infoCanvas.width/expanded.viewport_width,infoCanvas.y+(infoBox.y+infoBox.height/2)*infoCanvas.height/expanded.viewport_height);
+  await page.keyboard.press('End');await settle();const readInfo=(await snap()).info_reader;
+  assert.ok(Math.abs(readInfo.scroll_value-Math.max(0,readInfo.scroll_max-readInfo.scroll_page))<1,'actual End reaches full short Info text');
+  if(size.height<560)assert.ok(readInfo.scroll_max>readInfo.scroll_page,'short Info actually scrolls its complete walking hint');
+  await page.keyboard.press('Home');await settle();
   const save=await page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1')),legacy=await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1'));
   const cdp=await context.newCDPSession(page),canvas=await page.locator('#canvas').boundingBox();
   let s=await snap();const rect=s.play_area,center={x:rect.x+rect.width*.5,y:rect.y+rect.height*.7};
@@ -1652,16 +1667,26 @@ async function verifyMapPinch(page,context,size){
   await page.touchscreen.tap(canvas.x+(zoom.x+zoom.width/2)*canvas.width/s.viewport_width,canvas.y+(zoom.y+zoom.height/2)*canvas.height/s.viewport_height);await settle();assert.ok((await snap()).camera_view_size<z0,'existing Zoom + remains a working fallback');
   const ui=(await snap()).walking_controls.find(b=>b.visible&&b.text.includes('Zoom')&&b.text.includes('+'));
   const ux=ui.x+ui.width/2,uy=ui.y+ui.height/2,uiSize=(await snap()).camera_view_size;
-  await send('touchStart',[point(ux,1,uy)]);await send('touchStart',[point(ux,1,uy),point(center.x,2)]);await send('touchMove',[point(ux,1,uy),point(center.x+20,2)]);await settle();assert.equal((await snap()).camera_view_size,uiSize,'UI-origin contacts do not become map pinch');await send('touchEnd',[]);await settle();
+  const mixed=await snap(),ma=mixed.play_area,mp={x:ma.x+ma.width*.5,y:ma.y+ma.height*.5};
+  const inside=(p,b)=>b.visible&&p.x>=b.x&&p.x<b.x+b.width&&p.y>=b.y&&p.y<b.y+b.height;
+  assert.ok(ma.height>=44&&![mixed.header_control,mixed.controls_control,mixed.phone_disclosure.tray].some(b=>inside(mp,b)),'UI refusal second contact really starts on the exposed map');
+  await send('touchStart',[point(ux,1,uy)]);await send('touchStart',[point(ux,1,uy),point(mp.x,2,mp.y)]);await send('touchMove',[point(ux,1,uy),point(mp.x+20,2,mp.y)]);await settle();assert.equal((await snap()).camera_view_size,uiSize,'UI-origin contacts do not become map pinch');await send('touchEnd',[]);await settle();
   assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1')),save);assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1')),legacy);
+  // Finish the actual Explore fallback interaction before returning contacts to the map.
+  // Expanded Info places the original map centroid beneath that disclosed tray.
+  const trayState=await snap();
+  if(trayState.phone_disclosure.tray.visible){const b=trayState.phone_disclosure.close;assert.ok(b.visible);await page.touchscreen.tap(canvas.x+(b.x+b.width/2)*canvas.width/trayState.viewport_width,canvas.y+(b.y+b.height/2)*canvas.height/trayState.viewport_height);await settle();assert.ok(!(await snap()).phone_disclosure.tray.visible);}
+  const clampArea=(await snap()).play_area;center.x=clampArea.x+clampArea.width*.5;center.y=clampArea.y+clampArea.height*.7;
+  assert.ok(clampArea.height>=44,'clamp gestures begin in the current unobstructed map');
   // Repeated real pinches reach a stable upper clamp; another gesture cannot exceed it.
   let previous=(await snap()).camera_view_size,maxObserved=previous,atMaximum=false;
   for(let i=0;i<7;i++){await begin(25,25);await move(25,10);await send('touchEnd',[]);await settle();maxObserved=(await snap()).camera_view_size;if(maxObserved===previous){atMaximum=true;break;}previous=maxObserved;}
   assert.ok(atMaximum&&maxObserved>=900,'actual repeated gestures reach the bounded maximum');
   await page.screenshot({path:`artifacts/map-pinch-${size.width}-after.png`});
-  const result={size,actualTwoTouch:true,before:before.camera_view_size,spread:spread.camera_view_size,closed:closed.camera_view_size,manual:manualZoom.camera_view_size,playerDelta:Math.hypot(manualZoom.player_grounding.x-before.player_grounding.x,manualZoom.player_grounding.z-before.player_grounding.z),legacyUnchanged:(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1')))===legacy,manualAnchor:manualZoom.map_pinch.anchor_screen,maxObserved};mapPinchChecks.push(result);await writeFile(`artifacts/map-pinch-${size.width}.json`,JSON.stringify(result,null,2));
+  const result={size,actualTwoTouch:true,expandedInfoMap:true,actualInfoEnd:true,mixedUiMap:true,before:before.camera_view_size,spread:spread.camera_view_size,closed:closed.camera_view_size,manual:manualZoom.camera_view_size,playerDelta:Math.hypot(manualZoom.player_grounding.x-before.player_grounding.x,manualZoom.player_grounding.z-before.player_grounding.z),legacyUnchanged:(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1')))===legacy,manualAnchor:manualZoom.map_pinch.anchor_screen,maxObserved};mapPinchChecks.push(result);await writeFile(`artifacts/map-pinch-${size.width}.json`,JSON.stringify(result,null,2));
   await page.keyboard.press('KeyF');await settle();s=await snap();const pa=s.play_area;const tx=Math.max(pa.x+10,s.player_screen.x-pa.width*.2),ty=Math.min(pa.y+pa.height-10,s.player_screen.y+pa.height*.2);
   await page.touchscreen.tap(canvas.x+tx*canvas.width/s.viewport_width,canvas.y+ty*canvas.height/s.viewport_height);await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.player_grounding.path_active,null,{timeout:4000});await page.keyboard.press('Escape');await settle();assert.equal((await snap()).player_grounding.path_active,false,'one-finger map tap starts a real route and Escape stops it after pinch/UI release');await cdp.detach();
+  if((await snap()).header_details_expanded!==originalInfo)await toggleInfo();
 }
 
 const lanternProcessionChecks=[];
@@ -2367,6 +2392,7 @@ try {
         await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.story_start_focus);
       }
     }
+    beforeStreetsChecks.push(await verifyBeforeStreets(page,{touch:size.width<600,size,renderedPixels,mode:'startup'}));
     if (size.width === 320) await page.keyboard.press('Enter');
     else await clickHeaderControl('start_control');
     await page.waitForFunction(() => !window.__tenderloinGodotA11ySnapshot?.in_overview && window.__tenderloinGodotA11ySnapshot?.camera_view_size <= 58);
@@ -2780,6 +2806,7 @@ try {
       return Array.isArray(parsed.programme?.published) && parsed.programme.published.length === 4 && Array.isArray(parsed.hosting?.results) && parsed.hosting.results.length === 4;
     }, null, { timeout: 10000 });
     hostedAfternoonChecks.push(await verifyHostedAfternoon(page,{touch:size.width<600,size,revealPhoneControl,renderedPixels,findHubAction,privateFixture:false}));
+    beforeStreetsChecks.push(await verifyBeforeStreets(page,{touch:size.width<600,size,renderedPixels,mode:'revisit'}));
     // Round 8: Verify M5 Neighborhood Voices starts default-off before any toggle
     const initialVoicesState = await page.evaluate(() => ({
       settingsRaw: window.localStorage.getItem('tenderloin-redux.godot.settings.v1'),
@@ -3771,12 +3798,13 @@ try {
   await verifyLoanWorld(browser,rhythmFixtureSave,base);
   await verifyGuidedWalk(browser,base);
   assert.equal(guidedWalkChecks.length,3);
+  assert.equal(beforeStreetsChecks.length,6);assert.equal(beforeStreetsChecks.filter(c=>c.mode==='startup'&&!c.privateFixture).length,3);assert.equal(beforeStreetsChecks.filter(c=>c.mode==='revisit'&&!c.privateFixture).length,3);
   assert.equal(hostedAfternoonChecks.length,4);assert.equal(hostedAfternoonChecks.filter(c=>!c.privateFixture&&c.focusOnly).length,3,'three genuine earned Hosted reviews and focus-only invitations');assert.equal(hostedAfternoonChecks.filter(c=>!c.privateFixture&&c.phase==='done').length,1,'one genuine completed Listening revisit retains original access without duplicate Follow');
   assert.equal(sharedMealChecks.length,3);assert.ok(sharedMealChecks.every(c=>!c.privateFixture));
   await verifyPhoneDisclosure(browser,base);
   assert.equal(phoneDisclosureChecks.length,6);
   assert.equal(loanHomecomingChecks.length,8);assert.equal(loanWorldChecks.length,3);assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
-  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, sourceFingerprint, renderedPixelChecks, traceReceipts, hostedAfternoonChecks, sharedMealChecks, guidedWalkChecks, storyReturnChecks, storyVisitChecks, phoneDisclosureChecks, mapPinchChecks, votingStoryChecks, lanternProcessionChecks, dogStoryChecks, larkinStoryChecks, powerStoryChecks, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, communityInvitationChecks, beaInvitationChecks, quietSeatChecks, filmScreeningChecks, rhythmCircleChecks, rhythmAuditionChecks, muralStoryChecks, livingMuralChecks, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
+  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, sourceFingerprint, renderedPixelChecks, traceReceipts, beforeStreetsChecks, hostedAfternoonChecks, sharedMealChecks, guidedWalkChecks, storyReturnChecks, storyVisitChecks, phoneDisclosureChecks, mapPinchChecks, votingStoryChecks, lanternProcessionChecks, dogStoryChecks, larkinStoryChecks, powerStoryChecks, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, communityInvitationChecks, beaInvitationChecks, quietSeatChecks, filmScreeningChecks, rhythmCircleChecks, rhythmAuditionChecks, muralStoryChecks, livingMuralChecks, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
   assert.ok(queuedActivityRewardChecks > 0, 'at least one actual crowded activity exercises queued reward timer and Close delivery');
   assert.ok(shortStartClicked && shortStartTouchClicked, 'real mouse and touch Start at640x360 were exercised');
   assert.equal(beaInvitationChecks.length,7,'three genuine current progression and four private post-quiet invitation cases');
@@ -3810,7 +3838,7 @@ try {
   assert.equal(muralWorkshopChecks.length,8,'seven late and one fresh actual workshop mouse/finger cases executed');
   assert.equal(muralWorkshopChecks.filter(c=>c.photoStatus==='taken').length,7,'all seven late cases preserve a saved taken keepsake');
   assert.equal(workshopAutoAdvanceChecks,3,'a fresh mural exercises all three automatically offered contributions');
-  console.log(JSON.stringify({ runs, sourceFingerprint, renderedPixelChecks, traceReceipts, hostedAfternoonChecks, sharedMealChecks, guidedWalkChecks, storyReturnChecks, storyVisitChecks, phoneDisclosureChecks, mapPinchChecks, votingStoryChecks, lanternProcessionChecks, dogStoryChecks, larkinStoryChecks, powerStoryChecks, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, communityInvitationChecks, rhythmCircleChecks, rhythmAuditionChecks, livingMuralChecks, muralWorkshopChecks, workshopAutoAdvanceChecks, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, narrowActivityChecks, passiveActivityChecks, narrowHubChecks, smallHubReaderChecks, shortWalkingChecks, shortWalkingCaptionChecks, shortWalkingGuideChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
+  console.log(JSON.stringify({ runs, sourceFingerprint, renderedPixelChecks, traceReceipts, beforeStreetsChecks, hostedAfternoonChecks, sharedMealChecks, guidedWalkChecks, storyReturnChecks, storyVisitChecks, phoneDisclosureChecks, mapPinchChecks, votingStoryChecks, lanternProcessionChecks, dogStoryChecks, larkinStoryChecks, powerStoryChecks, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, communityInvitationChecks, rhythmCircleChecks, rhythmAuditionChecks, livingMuralChecks, muralWorkshopChecks, workshopAutoAdvanceChecks, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, narrowActivityChecks, passiveActivityChecks, narrowHubChecks, smallHubReaderChecks, shortWalkingChecks, shortWalkingCaptionChecks, shortWalkingGuideChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
 } catch (error) {
   if (latestPage && !latestPage.isClosed()) {
     await retainBrowserFailure(latestPage,error);

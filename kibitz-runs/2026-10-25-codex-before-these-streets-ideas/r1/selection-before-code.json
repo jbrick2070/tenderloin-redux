@@ -1,0 +1,23 @@
+{
+  "utc": "2026-10-25T20:53:39.558626+00:00",
+  "baseline": "e26dfaec7c8e568964bbc0e89326937caea37b97",
+  "chosen": "A: discrete regional process illustration with optional entry, living context frame, two process observations, fictional Bea response and exact origin return",
+  "rejected": [
+    "B foldout",
+    "C viewpoints",
+    "permanent narrow header button",
+    "new saved flag",
+    "Indigenous dialogue"
+  ],
+  "review_sha256": "35df8e19e2dee8b75724960b31b4edc16fae92244d198c556485d09f4dd6af24",
+  "review_execution": {
+    "utc": "2026-10-25T20:51:46.136288+00:00",
+    "harness_rc": 0,
+    "sources_unchanged": true,
+    "requested_model": "claude-opus-5-5",
+    "requested_effort": "high",
+    "selected_model": "claude-opus-5-5",
+    "selected_effort": "high"
+  },
+  "production_code_changed": false
+}

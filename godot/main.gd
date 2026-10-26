@@ -828,6 +828,9 @@ var film_screening
 var civic_listening
 var programme_studio
 var shared_meal
+var before_streets
+var story_before_btn: Button
+var story_action_rows: VBoxContainer
 var block_meal_btn: Button
 var shared_panel
 var loan_homecoming
@@ -6951,6 +6954,13 @@ func layout_walking_controls_and_hub() -> void:
 	# Info remains scrollable when deliberately opened beside a short-screen dock.
 	if info != null:
 		info.custom_minimum_size.y = 24.0 if compact else 90.0
+		# Share the original 90px Info budget with the optional opening entry.
+		# Short landscape keeps one full scrollable line and usable map space.
+		if before_streets != null and before_streets.entry != null and before_streets.entry.visible:
+			var line_height := ceilf(info.get_theme_font("normal_font").get_height(info.get_theme_font_size("normal_font_size")))
+			var entry_height: float = before_streets.entry.get_combined_minimum_size().y
+			var gap: float = before_streets.entry.get_parent().get_theme_constant("separation")
+			info.custom_minimum_size.y = line_height if vp.y < SIDE_HUB_MAX_HEIGHT else maxf(line_height, 90.0 - entry_height - gap)
 		if compact and not (uses_side_block_hub() or uses_compact_narrow_hub()):
 			# One complete Info line; full dialogue has its own two-line panel reader.
 			info.custom_minimum_size.y = ceilf(info.get_theme_font("normal_font").get_height(info.get_theme_font_size("normal_font_size")))
@@ -7335,9 +7345,20 @@ func build_story_card(layer: CanvasLayer) -> void:
 	story_body_label.add_theme_font_size_override("normal_font_size", 16)
 	story_body_label.add_theme_color_override("default_color", Color("fff8e8"))
 	col.add_child(story_body_label)
+	story_action_rows = VBoxContainer.new()
+	col.add_child(story_action_rows)
+	story_before_btn = Button.new()
+	story_before_btn.name = "BeforeTheseStreetsEntry"
+	story_before_btn.text = "Before These Streets"
+	story_before_btn.accessibility_name = "Optional opening: Before These Streets"
+	story_before_btn.custom_minimum_size = Vector2(44,44)
+	story_before_btn.add_theme_font_size_override("font_size",16)
+	style_game_button(story_before_btn)
+	story_before_btn.pressed.connect(func(): before_streets.open_opening())
+	story_action_rows.add_child(story_before_btn)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_END
-	col.add_child(row)
+	story_action_rows.add_child(row)
 	story_continue_btn = Button.new()
 	story_continue_btn.name = "StoryContinue"
 	story_continue_btn.text = "Continue"
@@ -7374,7 +7395,7 @@ func layout_story_card() -> void:
 	var body_measure := body_font.get_multiline_string_size(story_body_label.text, HORIZONTAL_ALIGNMENT_LEFT, body_width, body_size, -1, flags)
 	var body_lines := maxi(1, ceili(body_measure.y / body_font.get_height(body_size)))
 	var body_height := ceilf(body_measure.y + (body_lines - 1) * story_body_label.get_theme_constant("line_separation") + body_padding.y)
-	var chrome := style.get_minimum_size().y + title_height + story_continue_btn.get_combined_minimum_size().y + 12.0
+	var chrome := style.get_minimum_size().y + title_height + story_action_rows.get_combined_minimum_size().y + 12.0
 	var available := maxf(1.0, vp.y - 12.0 - top)
 	var above_controls := controls.get_global_rect().position.y - 8.0 - top if controls != null else available
 	# Prefer to leave walking controls visible. On a short screen this modal card
@@ -7398,6 +7419,7 @@ func show_story_card(chapter: Dictionary, startup := false) -> void:
 	story_body_label.scroll_to_line(0)
 	story_continue_btn.text = "Start Exploring" if startup else "Continue"
 	startup_story_pending = startup
+	story_before_btn.visible = startup
 	story_card.visible = true
 	update_music_ui()
 	layout_story_card()
@@ -7689,6 +7711,8 @@ func set_header_details(expanded: bool, refit_map := true) -> void:
 	var toggle := header_panel.find_child("HeaderInfoToggle", true, false) as Button
 	if toggle != null:
 		toggle.set_pressed_no_signal(expanded)
+	if before_streets != null and before_streets.entry != null:
+		before_streets.entry.visible = expanded and before_streets.idle_entry_available()
 	# Visibility updates minimum height immediately; retain width and apply that
 	# height before camera framing or overlay fitting reads the playable area.
 	header_panel.offset_bottom = header_panel.offset_top + header_panel.get_combined_minimum_size().y
@@ -7700,7 +7724,7 @@ func set_header_details(expanded: bool, refit_map := true) -> void:
 
 func update_conversation_ui(delta: float) -> void:
 	ui_clock = wrapf(ui_clock + delta, 0.0, 3600.0)
-	if is_shared_meal_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible() or is_power_story_visible() or is_dog_story_visible() or is_lantern_procession_visible() or is_voting_story_visible() or (story_picker!=null and story_picker.visible):
+	if is_before_streets_visible() or is_shared_meal_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible() or is_power_story_visible() or is_dog_story_visible() or is_lantern_procession_visible() or is_voting_story_visible() or (story_picker!=null and story_picker.visible):
 		return
 	var chapter := current_chapter()
 	# Deliver any pending chapter card after the focused workshop closes,
@@ -7715,6 +7739,12 @@ func update_conversation_ui(delta: float) -> void:
 		var show_info := header_details_expanded
 		if info.visible != show_info:
 			info.visible = show_info
+	if before_streets != null and before_streets.entry != null:
+		var show_opening: bool = header_details_expanded and before_streets.idle_entry_available()
+		if before_streets.entry.visible != show_opening:
+			before_streets.entry.visible = show_opening
+			header_panel.offset_bottom = header_panel.offset_top + header_panel.get_combined_minimum_size().y
+			layout_walking_controls_and_hub()
 	objective_refresh_timer -= delta
 	if objective_refresh_timer <= 0.0:
 		objective_refresh_timer = 0.5
@@ -11808,6 +11838,8 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"music_toggle_control": control_snapshot(music_toggle_btn),
 		"music_toggle_text": music_toggle_btn.text if music_toggle_btn != null else "",
 		"start_control": control_snapshot(story_continue_btn),
+		"opening_control": control_snapshot(story_before_btn),
+		"before_streets": before_streets.snapshot() if before_streets != null else {"visible":false},
 		"story_detail": activity_detail_snapshot(story_body_label, story_card, [story_continue_btn]),
 		"story_reading_focus": story_reader_has_focus(),
 		"story_start_focus": story_continue_btn != null and story_continue_btn.has_focus(),
@@ -12039,6 +12071,9 @@ func is_shared_panel_visible() -> bool:
 func is_programme_studio_visible() -> bool:
 	return programme_studio != null and programme_studio.visible
 
+func is_before_streets_visible() -> bool:
+	return before_streets != null and before_streets.visible
+
 func is_shared_meal_visible() -> bool:
 	return shared_meal != null and shared_meal.visible
 
@@ -12060,7 +12095,7 @@ func is_power_story_visible() -> bool:
 	return power_story != null and power_story.visible
 
 func is_focused_activity_visible() -> bool:
-	return is_shared_meal_visible() or is_voting_story_visible() or is_lantern_procession_visible() or (story_picker!=null and story_picker.visible) or is_dog_story_visible() or is_power_story_visible() or is_mural_workshop_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible()
+	return is_before_streets_visible() or is_shared_meal_visible() or is_voting_story_visible() or is_lantern_procession_visible() or (story_picker!=null and story_picker.visible) or is_dog_story_visible() or is_power_story_visible() or is_mural_workshop_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible()
 
 func is_civic_listening_visible() -> bool:
 	return civic_listening != null and civic_listening.visible
@@ -12139,7 +12174,7 @@ func edit_mural_scene(id: String, slot: String) -> bool:
 	return true
 
 func open_mural_workshop() -> bool:
-	if is_shared_meal_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible() or is_power_story_visible() or is_dog_story_visible() or is_lantern_procession_visible() or is_voting_story_visible() or (story_picker!=null and story_picker.visible):
+	if is_before_streets_visible() or is_shared_meal_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible() or is_power_story_visible() or is_dog_story_visible() or is_lantern_procession_visible() or is_voting_story_visible() or (story_picker!=null and story_picker.visible):
 		return false
 	if startup_story_pending or is_story_card_visible():
 		announce_a11y_status("Continue the chapter card before composing the mural.")
@@ -12478,6 +12513,7 @@ func save_godot_state() -> bool:
 	return wrote
 
 func reset_mural_state_to_defaults(status_label: String) -> void:
+	if before_streets != null: before_streets.reset_visit()
 	if shared_meal != null: shared_meal.reset_visit()
 	selected_neighbor = -1
 	arrived_neighbor = -1
@@ -12979,6 +13015,7 @@ func validate_godot_optional(raw_opt: Variant) -> Dictionary:
 	return {"ok": true, "optional": (raw_opt as Dictionary).duplicate(true)}
 
 func apply_save_envelope(raw_json: String) -> bool:
+	if before_streets != null: before_streets.reset_visit()
 	if shared_meal != null: shared_meal.reset_visit()
 	if story_picker != null: story_picker.reset_visit()
 	if power_story != null:
@@ -13677,6 +13714,7 @@ func import_browser_save_json(raw_json: String) -> bool:
 			merged_opt[k] = imp_opt[k]
 		if JSON.stringify(merged_opt).length() <= OPTIONAL_SAVE_MAX_BYTES:
 			optional_save_data = merged_opt
+	if before_streets != null: before_streets.reset_visit()
 	if shared_meal != null: shared_meal.reset_visit()
 	update_mural_3d()
 	update_speaker_3d()
@@ -14150,6 +14188,12 @@ func scene_caption_priority(label: Label3D) -> int:
 	return 4
 
 func update_readable_scene_labels() -> void:
+	if is_before_streets_visible():
+		visible_scene_captions.clear()
+		for label in readable_scene_labels:
+			if is_instance_valid(label): label.visible = false
+		if guide_arrow != null: guide_arrow.visible = false
+		return
 	var map_view := in_overview or in_wide_overview
 	var wrap_width := minf(320.0, bubble_viewport_size().x - 32.0)
 	visible_scene_captions.clear()
@@ -14245,7 +14289,7 @@ func _process(delta: float) -> void:
 	flush_web_a11y_status()
 
 func _physics_process(delta: float) -> void:
-	if is_focused_activity_visible():
+	if is_focused_activity_visible() or (startup_story_pending and is_story_card_visible()):
 		return
 	var shift_held := Input.is_key_pressed(KEY_SHIFT) or Input.is_physical_key_pressed(KEY_SHIFT)
 	if shift_held and get_viewport().gui_get_focus_owner() == null:
@@ -14556,6 +14600,9 @@ func apply_map_pinch() -> void:
 	update_occlusion(true)
 
 func _input(event: InputEvent) -> void:
+	if is_before_streets_visible():
+		before_streets.handle_input(event)
+		return
 	# Observe real input before Controls consume it; never replay cues from loading.
 	var key_activation: bool = event is InputEventKey and event.pressed and not event.echo and event.keycode not in [KEY_ESCAPE, KEY_SHIFT, KEY_CTRL, KEY_ALT, KEY_META]
 	var mouse_activation: bool = event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_MIDDLE]
@@ -14596,10 +14643,13 @@ func _input(event: InputEvent) -> void:
 				KEY_END: reading_scroll.value = reading_scroll.max_value
 			get_viewport().set_input_as_handled()
 			return
-	if event is InputEventKey and event.pressed and startup_story_pending and event.keycode in [KEY_W, KEY_A, KEY_S, KEY_D, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT] and not (story_reader_has_focus() and event.keycode in [KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT]):
+	if event is InputEventKey and event.pressed and not event.echo and startup_story_pending and event.keycode in [KEY_W, KEY_A, KEY_S, KEY_D, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT] and not (story_reader_has_focus() and event.keycode in [KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT]):
 		continue_story()
 
 func _unhandled_input(event: InputEvent) -> void:
+	if is_before_streets_visible():
+		get_viewport().set_input_as_handled()
+		return
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode==KEY_F8 and event.shift_pressed:
 		story_picker.open_picker()
 		get_viewport().set_input_as_handled()
@@ -15963,6 +16013,13 @@ func make_ui() -> void:
 	shared_meal = preload("res://shared_meal.gd").new()
 	layer.add_child(shared_meal)
 	shared_meal.setup(self)
+	before_streets = preload("res://before_streets.gd").new()
+	layer.add_child(before_streets)
+	before_streets.setup(self)
+	before_streets.entry = before_streets.button(column,"Before These Streets",func(): before_streets.open_opening())
+	before_streets.entry.name = "BeforeTheseStreetsRevisit"
+	before_streets.entry.hide()
+	column.move_child(before_streets.entry,info.get_index()+1)
 	var vp := get_viewport()
 	var resize_controls := func():
 		cancel_map_pinch()

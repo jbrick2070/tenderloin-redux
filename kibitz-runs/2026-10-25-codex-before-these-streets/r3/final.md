@@ -1,0 +1,7 @@
+# Final implementation receipt - all five gates accepted
+
+Before These Streets is implemented, independently reviewed and locally verified on frozen final3 inputs. Exact pre-code r1 and distinct sole-Claude Opus5.5/high r3 completed; findings grounded in judgment.md. Later driver corrections were NOT independently re-reviewed. No duplicate paid pass.
+
+Native266.10s clean with all22 tokens including BEFORE_STREETS_PASS:FORMAL/GODOT_NATIVE_ISOLATION_PASS/GODOT_STUDY_PASS; export3.53s/check2.59s/106Node9.09s; complete browser5021.55s on genuine1100/390/320 progression with6genuine opening cases and every prior matrix/phone/pinch/voting/audio/save/cooking/Hosted/Dez/story case, errors[]external[]. All149 sources/PCK and protected ASFOUND unchanged. Final desktop/phone opening/revisit and short-map captures inspected. Compact exact hashes, counts, save budgets and limits: verification.json.
+
+Earlier final1 native map-space and final2 browser header-budget failures are preserved, reproduced and corrected without weaker thresholds. Missing final1 live profile remains explicitly unavailable; component provenance is not substituted. Private checks are supplemental. Commit/push[skip ci] follows intended-diff inspection and owned-lock removal; no deployment. Human/physical/cultural/listening acceptance remains unverified. The full ending remains open and begins with a fresh scoped r1 after the opening source checkpoint closes.
