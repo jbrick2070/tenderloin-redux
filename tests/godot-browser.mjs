@@ -12,6 +12,8 @@ import { filmFrameSVG, filmCaption } from '../public/film.js';
 import { verifySharedMeal } from './shared-meal-browser.mjs';
 import { verifyHostedAfternoon } from './hosted-afternoon-browser.mjs';
 import { verifyBeforeStreets } from './before-streets-browser.mjs';
+import { verifyHabitatRoom } from './habitat-room-browser.mjs';
+const habitatRoomChecks=[];
 import { verifyHelperBench } from './helper-bench-browser.mjs';
 const helperBenchChecks=[];
 const beforeStreetsChecks=[];
@@ -33,6 +35,8 @@ async function findHubAction(page,tap,pattern){
 const [pckStat, ...sourceStats] = await Promise.all([
   stat('artifacts/godot-web/index.pck'),
   stat('godot/main.gd'),
+  stat('godot/habitat_room.gd'),
+  stat('godot/tests/habitat_room_checks.gd'),
   stat('godot/helper_bench.gd'),
   stat('godot/tests/helper_bench_checks.gd'),
   stat('godot/before_streets.gd'),
@@ -78,7 +82,7 @@ assert.ok(pckStat.size > 0 && pckStat.size <= 2 * 1024 * 1024, `artifacts/godot-
 const BROWSER_SAVE_SENTINEL = JSON.stringify({ schema: 'tenderloin-redux.save', version: 1, sentinel: 'preserve-browser-save-v1' });
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : 'playwright');
 const base = 'http://127.0.0.1:' + (process.env.GODOT_PORT || 4174) + '/';
-const sourceFingerprint={sources:Object.fromEntries(await Promise.all(['godot/helper_bench.gd','godot/tests/helper_bench_checks.gd','tests/helper-bench-browser.mjs','godot/film_screening.gd','godot/before_streets.gd','godot/tests/before_streets_checks.gd','tests/before-streets-browser.mjs','godot/hosted_afternoon.gd','godot/programme_studio.gd','godot/tests/hosted_afternoon_checks.gd','tests/hosted-afternoon-browser.mjs','godot/main.gd','godot/civic_listening.gd','godot/tests/community_invitation_checks.gd','godot/shared_meal.gd','godot/shared_meal_data.gd','godot/tests/shared_meal_checks.gd','godot/shared_panel.gd','godot/loan_homecoming.gd','godot/power_story.gd','godot/dog_story.gd','godot/lantern_procession.gd','godot/story_picker.gd','godot/voting_story.gd','godot/data/voting_places.json','godot/power_place.gd','godot/data/power_place.json','godot/tests/study_test.gd'].map(async p=>[p,createHash('sha256').update(await readFile(p)).digest('hex')]))),pack_sha256:createHash('sha256').update(await readFile('artifacts/godot-web/index.pck')).digest('hex')};
+const sourceFingerprint={sources:Object.fromEntries(await Promise.all(['godot/habitat_room.gd','godot/tests/habitat_room_checks.gd','tests/habitat-room-browser.mjs','godot/helper_bench.gd','godot/tests/helper_bench_checks.gd','tests/helper-bench-browser.mjs','godot/film_screening.gd','godot/before_streets.gd','godot/tests/before_streets_checks.gd','tests/before-streets-browser.mjs','godot/hosted_afternoon.gd','godot/programme_studio.gd','godot/tests/hosted_afternoon_checks.gd','tests/hosted-afternoon-browser.mjs','godot/main.gd','godot/civic_listening.gd','godot/tests/community_invitation_checks.gd','godot/shared_meal.gd','godot/shared_meal_data.gd','godot/tests/shared_meal_checks.gd','godot/shared_panel.gd','godot/loan_homecoming.gd','godot/power_story.gd','godot/dog_story.gd','godot/lantern_procession.gd','godot/story_picker.gd','godot/voting_story.gd','godot/data/voting_places.json','godot/power_place.gd','godot/data/power_place.json','godot/tests/study_test.gd'].map(async p=>[p,createHash('sha256').update(await readFile(p)).digest('hex')]))),pack_sha256:createHash('sha256').update(await readFile('artifacts/godot-web/index.pck')).digest('hex')};
 await mkdir('artifacts', { recursive: true });
 let queuedActivityRewardChecks = 0;
 const shortStoryReadChecks = [];
@@ -2842,6 +2846,7 @@ try {
     }, null, { timeout: 10000 });
     await verifyFilmScreening(page,context,size.width<600,size,size.width===1100);
     helperBenchChecks.push(await verifyHelperBench(page,{touch:size.width<600,size,renderedPixels}));
+    habitatRoomChecks.push(await verifyHabitatRoom(page,{touch:size.width<600,size,renderedPixels}));
     await verifyCivicListening(page,size.width<600,size,true);
     await verifySharedPanel(page,size.width<600,size);
     await verifyProgrammeStudio(page,size.width<600,size);
@@ -3805,12 +3810,13 @@ try {
   assert.equal(guidedWalkChecks.length,3);
   assert.equal(beforeStreetsChecks.length,6);assert.equal(beforeStreetsChecks.filter(c=>c.mode==='startup'&&!c.privateFixture).length,3);assert.equal(beforeStreetsChecks.filter(c=>c.mode==='revisit'&&!c.privateFixture).length,3);
   assert.equal(hostedAfternoonChecks.length,4);assert.equal(hostedAfternoonChecks.filter(c=>!c.privateFixture&&c.focusOnly).length,3,'three genuine earned Hosted reviews and focus-only invitations');assert.equal(hostedAfternoonChecks.filter(c=>!c.privateFixture&&c.phase==='done').length,1,'one genuine completed Listening revisit retains original access without duplicate Follow');
+  assert.equal(habitatRoomChecks.length,3);assert.ok(habitatRoomChecks.every(c=>!c.privateFixture&&c.actualReload&&c.retainedInvitation));
   assert.equal(helperBenchChecks.length,3);assert.ok(helperBenchChecks.every(c=>!c.privateFixture&&c.actualReload&&c.retainedInvitation));
   assert.equal(sharedMealChecks.length,3);assert.ok(sharedMealChecks.every(c=>!c.privateFixture));
   await verifyPhoneDisclosure(browser,base);
   assert.equal(phoneDisclosureChecks.length,6);
   assert.equal(loanHomecomingChecks.length,8);assert.equal(loanWorldChecks.length,3);assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
-  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, sourceFingerprint, renderedPixelChecks, traceReceipts, helperBenchChecks, beforeStreetsChecks, hostedAfternoonChecks, sharedMealChecks, guidedWalkChecks, storyReturnChecks, storyVisitChecks, phoneDisclosureChecks, mapPinchChecks, votingStoryChecks, lanternProcessionChecks, dogStoryChecks, larkinStoryChecks, powerStoryChecks, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, communityInvitationChecks, beaInvitationChecks, quietSeatChecks, filmScreeningChecks, rhythmCircleChecks, rhythmAuditionChecks, muralStoryChecks, livingMuralChecks, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
+  await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, sourceFingerprint, renderedPixelChecks, traceReceipts, habitatRoomChecks, helperBenchChecks, beforeStreetsChecks, hostedAfternoonChecks, sharedMealChecks, guidedWalkChecks, storyReturnChecks, storyVisitChecks, phoneDisclosureChecks, mapPinchChecks, votingStoryChecks, lanternProcessionChecks, dogStoryChecks, larkinStoryChecks, powerStoryChecks, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, communityInvitationChecks, beaInvitationChecks, quietSeatChecks, filmScreeningChecks, rhythmCircleChecks, rhythmAuditionChecks, muralStoryChecks, livingMuralChecks, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
   assert.ok(queuedActivityRewardChecks > 0, 'at least one actual crowded activity exercises queued reward timer and Close delivery');
   assert.ok(shortStartClicked && shortStartTouchClicked, 'real mouse and touch Start at640x360 were exercised');
   assert.equal(beaInvitationChecks.length,7,'three genuine current progression and four private post-quiet invitation cases');
@@ -3844,7 +3850,7 @@ try {
   assert.equal(muralWorkshopChecks.length,8,'seven late and one fresh actual workshop mouse/finger cases executed');
   assert.equal(muralWorkshopChecks.filter(c=>c.photoStatus==='taken').length,7,'all seven late cases preserve a saved taken keepsake');
   assert.equal(workshopAutoAdvanceChecks,3,'a fresh mural exercises all three automatically offered contributions');
-  console.log(JSON.stringify({ runs, sourceFingerprint, renderedPixelChecks, traceReceipts, helperBenchChecks, beforeStreetsChecks, hostedAfternoonChecks, sharedMealChecks, guidedWalkChecks, storyReturnChecks, storyVisitChecks, phoneDisclosureChecks, mapPinchChecks, votingStoryChecks, lanternProcessionChecks, dogStoryChecks, larkinStoryChecks, powerStoryChecks, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, communityInvitationChecks, rhythmCircleChecks, rhythmAuditionChecks, livingMuralChecks, muralWorkshopChecks, workshopAutoAdvanceChecks, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, narrowActivityChecks, passiveActivityChecks, narrowHubChecks, smallHubReaderChecks, shortWalkingChecks, shortWalkingCaptionChecks, shortWalkingGuideChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
+  console.log(JSON.stringify({ runs, sourceFingerprint, renderedPixelChecks, traceReceipts, habitatRoomChecks, helperBenchChecks, beforeStreetsChecks, hostedAfternoonChecks, sharedMealChecks, guidedWalkChecks, storyReturnChecks, storyVisitChecks, phoneDisclosureChecks, mapPinchChecks, votingStoryChecks, lanternProcessionChecks, dogStoryChecks, larkinStoryChecks, powerStoryChecks, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, communityInvitationChecks, rhythmCircleChecks, rhythmAuditionChecks, livingMuralChecks, muralWorkshopChecks, workshopAutoAdvanceChecks, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, narrowActivityChecks, passiveActivityChecks, narrowHubChecks, smallHubReaderChecks, shortWalkingChecks, shortWalkingCaptionChecks, shortWalkingGuideChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
 } catch (error) {
   if (latestPage && !latestPage.isClosed()) {
     await retainBrowserFailure(latestPage,error);

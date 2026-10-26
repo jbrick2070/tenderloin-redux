@@ -55,6 +55,13 @@ export async function verifyHelperBench(page,{touch,size,renderedPixels,outputDi
   await page.keyboard.down('KeyW');await tap(s.helper_bench.buttons[5]);await settle();s=await snap();assert.deepEqual([s.player_grounding.x,s.player_grounding.z],ground,'held movement through Keep waits for release');assert.ok(s.helper_bench.release_pending);await page.keyboard.up('KeyW');await settle();s=await snap();assert.ok(!s.helper_bench.release_pending,'real release clears the guard');
   assert.ok(!s.helper_bench.visible);assert.equal(s.helper_bench.world.filter(w=>w.visible).length,1);assert.deepEqual(await storage(),stable);assert.deepEqual([s.music_playing,s.music_volume,s.reward_sounds_enabled],quiet);
   const pix=await renderedPixels(page),world=s.helper_bench.world.find(w=>w.visible),canvas=await page.locator('#canvas').boundingBox(),worldInk=[];
+  function guideClear(state){
+    const guide=state.overlays.guide_label,points=state.helper_bench.world.find(w=>w.visible).frames.flatMap(f=>f.corners),art={left:Math.min(...points.map(p=>p.x))-4,right:Math.max(...points.map(p=>p.x))+4,top:Math.min(...points.map(p=>p.y))-4,bottom:Math.max(...points.map(p=>p.y))+4};
+    assert.ok(guide.visible,'nearby inspected art retains a visible objective label');
+    assert.ok(guide.x+guide.width+7<=art.left||guide.x-7>=art.right||guide.y+guide.height+7<=art.top||guide.y-7>=art.bottom,'outlined objective label clears all actual copied frames');
+    return {form:state.helper_bench.selected,guide,art};
+  }
+  const guideClearance=[guideClear(s)];
   for(const face of world.frames){let paper=0,ink=0,borderInk=0,pinkMotif=0;const q=face.corners,colors=[];
     const sample=(u,v)=>{const x=(q[0].x*(1-u)+q[1].x*u)*(1-v)+(q[2].x*(1-u)+q[3].x*u)*v,y=(q[0].y*(1-u)+q[1].y*u)*(1-v)+(q[2].y*(1-u)+q[3].y*u)*v;assert.ok(x>=0&&y>=0&&x<size.width&&y<size.height,'actual triptych inside framed viewport');return pix.pixel(canvas.x+x*canvas.width/s.viewport_width,canvas.y+y*canvas.height/s.viewport_height);};
     for(let u=.08;u<.92;u+=.04)for(let v=.14;v<.86;v+=.04){const rgb=sample(u,v);colors.push(rgb.join(','));if(rgb.every(v=>v>180))paper++;if(rgb[0]<120&&rgb[1]<170)ink++;}
@@ -73,6 +80,9 @@ export async function verifyHelperBench(page,{touch,size,renderedPixels,outputDi
   }
   assert.equal(new Set(worldInk.map(x=>x.fingerprint)).size,3,'three actual world drawings remain visually distinct');
   await page.screenshot({path:`${outputDir}/helper-${size.width}-world.png`});
+  await enter();await tap((await snap()).helper_bench.buttons[1]);await tap((await snap()).helper_bench.buttons[5]);await settle();
+  guideClearance.push(guideClear(await snap()));await page.screenshot({path:`${outputDir}/helper-${size.width}-upright-world.png`});
+  await enter();await tap((await snap()).helper_bench.buttons[0]);await tap((await snap()).helper_bench.buttons[5]);
   await enter();assert.ok((await snap()).helper_bench.complete);await tap((await snap()).helper_bench.buttons[5]);
   await page.keyboard.down('KeyW');await page.waitForTimeout(120);await page.keyboard.up('KeyW');await settle();s=await snap();assert.ok(Math.hypot(s.player_grounding.x-ground[0],s.player_grounding.z-ground[1])>.01,'new movement works after the held-exit key was released');
   // Genuine save/reload boundary, not a synthetic completion fixture.
@@ -82,5 +92,5 @@ export async function verifyHelperBench(page,{touch,size,renderedPixels,outputDi
   await enter();assert.ok(!(await snap()).helper_bench.complete);await tap((await snap()).helper_bench.buttons[5]);
   if((await snap()).music_playing!==quiet[0])await tap((await snap()).music_toggle_control);
   s=await snap();assert.deepEqual([s.music_playing,s.music_volume,s.reward_sounds_enabled],quiet,'test context restores original quiet/play intent after explicit reload');
-  return {...size,touch,privateFixture,changed,worldInk,inspectionPose:pose,copiedOrder:copied.order,retainedInvitation:true,actualReload:true,noWrites:true,quiet:true};
+  return {...size,touch,privateFixture,changed,worldInk,guideClearance,inspectionPose:pose,copiedOrder:copied.order,retainedInvitation:true,actualReload:true,noWrites:true,quiet:true};
 }

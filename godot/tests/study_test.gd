@@ -3300,6 +3300,7 @@ func run() -> void:
 	await verify_mural_stories(study,saved_m4_json)
 	await verify_film_screening(study,saved_m4_json)
 	await preload("res://tests/helper_bench_checks.gd").verify(self,study,saved_m4_json,true)
+	await preload("res://tests/habitat_room_checks.gd").verify(self,study,saved_m4_json,true)
 	await verify_quiet_seats(study,saved_m4_json)
 	await verify_bea_invitation(study,saved_m4_json)
 	await verify_civic_listening(study,saved_m4_json)

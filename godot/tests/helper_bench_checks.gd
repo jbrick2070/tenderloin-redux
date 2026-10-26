@@ -89,6 +89,7 @@ static func verify(suite: SceneTree,game: Node,full: String,formal := false) -> 
 				suite.require(not first_mesh and bounds.size.y>1.0,"measure actual entire helper mesh bounds in both forms")
 				if li==0: suite.require(bounds.position.x> -6.09 and bounds.end.x< -4.6 and bounds.position.z> -1.19 and bounds.end.z<1.19,"actual table helper mesh clears table/barricades/light poles")
 				else: suite.require(bounds.position.x>1.4 and bounds.end.x<3.9 and bounds.position.z> -1.15 and bounds.end.z<1.15,"actual floor helper mesh clears riser/meal/seats inside painted lane")
+				verify_inspection(suite,game,bench,li)
 			suite.require(JSON.stringify(game.build_save_envelope())==before and game.save_seq==seq,"helper actions do not save or change copied progress")
 			suite.require([game.music_playing,game.music_volume,game.reward_sounds_enabled,game.reward_sound_count]==quiet and game.panel_camera_pose()==pose,"quiet and manual camera intent unchanged")
 			for frame in range(3): await suite.physics_frame
@@ -133,6 +134,32 @@ static func verify(suite: SceneTree,game: Node,full: String,formal := false) -> 
 	suite.require(motion_state(game)==caller_motion and JSON.stringify(game.build_save_envelope())==original,"helper component restores caller transient framing/player and exact saved progress")
 	suite.require(cases==22,"all 22 helper layout-size cases ran")
 	if not suite.failed: print("HELPER_BENCH_PASS:"+("FORMAL" if formal else "PRIVATE")+"22layout-size/actualuiaccept/copiedtriptych/Keep/reload/input/quiet/manual/wholewords cases=",cases)
+
+static func verify_inspection(suite: SceneTree,game: Node,bench: Node,li: int) -> void:
+	var before := motion_state(game)
+	game.target=bench.worlds[li].global_position
+	game.view_size=24.0; game.camera_yaw=-0.7975; game.camera_pitch_scale=1.65
+	game.update_camera()
+	var reserved: Rect2=bench.inspection_rect()
+	suite.require(reserved.has_area(),"nearby manual helper inspection reserves actual transformed pictures in either form/layout")
+	for face in bench.snapshot().world[li].frames:
+		for p in face.corners: suite.require(reserved.has_point(Vector2(p.x,p.y)),"reservation contains every actual projected frame corner")
+	game.update_readable_scene_labels(); game.update_guide_arrow()
+	if game.guide_arrow_label.is_visible_in_tree(): suite.require(not reserved.intersects(game.guide_arrow_label.get_global_rect().grow(7.0)),"outlined guide label clears inspected helper pictures")
+	for flag in ["following_player","in_overview","in_wide_overview"]:
+		game.set(flag,true); suite.require(not bench.inspection_rect().has_area(),"ordinary following/overview leaves original label policy"); game.set(flag,false)
+	bench.complete=false; suite.require(not bench.inspection_rect().has_area(),"unfinished helper reserves no art"); bench.complete=true
+	bench.worlds[li].visible=false; suite.require(not bench.inspection_rect().has_area(),"inactive layout contributes no art reservation"); bench.worlds[li].visible=true
+	game.target+=Vector3(100,0,0); suite.require(not bench.inspection_rect().has_area(),"distant inspection reserves nothing")
+	game.target=bench.worlds[li].global_position
+	var transform: Transform3D=game.camera.global_transform
+	game.camera.global_position+=Vector3(1000,0,0); suite.require(not bench.inspection_rect().has_area(),"offscreen art reserves nothing")
+	game.camera.global_transform=transform
+	game.camera.rotate_object_local(Vector3.UP,PI); suite.require(not bench.inspection_rect().has_area(),"behind-camera art reserves nothing")
+	game.camera.global_transform=transform
+	restore_motion(game,before)
+	game.update_readable_scene_labels(); game.update_guide_arrow()
+	suite.require(motion_state(game)==before,"inspection proof restores caller camera and motion")
 
 static func motion_state(game: Node) -> Dictionary:
 	var state := {}

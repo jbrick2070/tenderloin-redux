@@ -1,0 +1,695 @@
+{
+  "utc": "2026-10-26T07:47:58.093498+00:00",
+  "status": "Rejected final1 full browser; diagnosed and corrected, fresh final2 required",
+  "first_four_formal_gates": {
+    "native": {
+      "rc": 0,
+      "seconds": 333.8151595592499,
+      "finished_utc": "2026-10-26T06:26:37.965157+00:00",
+      "sources_unchanged": true,
+      "native_asfound_unchanged": true,
+      "tokens": {
+        "BEA_INVITATION_PASS": true,
+        "CIVIC_LISTENING_PASS": true,
+        "COMMUNITY_INVITATION_PASS": true,
+        "DOG_STORY_PASS": true,
+        "GODOT_NATIVE_ISOLATION_PASS": true,
+        "GODOT_STUDY_PASS": true,
+        "GUIDED_WALK_PASS": true,
+        "HOSTED_AFTERNOON_PASS:FORMAL": true,
+        "LANTERN_PROCESSION_PASS": true,
+        "LARKIN_STORY_PASS": true,
+        "LOAN_HOMECOMING_PASS": true,
+        "MAP_PINCH_PASS": true,
+        "PHONE_DISCLOSURE_PASS": true,
+        "POWER_STORY_PASS": true,
+        "PROGRAMME_STUDIO_PASS": true,
+        "QUIET_SEATS_PASS": true,
+        "SHARED_MEAL_PASS": true,
+        "SHARED_PANEL_PASS": true,
+        "SMALL_PASS": true,
+        "STORY_VISITS_PASS": true,
+        "VOTING_STORY_PASS": true,
+        "BEFORE_STREETS_PASS:FORMAL": true,
+        "HELPER_BENCH_PASS:FORMAL": true,
+        "HABITAT_ROOM_PASS:FORMAL": true
+      },
+      "clean": true,
+      "native_isolation": {
+        "runId": "1792995664621_23184",
+        "save": "user://godot_block_save_test_1792995664621_23184.json",
+        "settings": "user://godot_block_settings_test_1792995664621_23184.json",
+        "args": [
+          "--headless",
+          "--path",
+          "godot",
+          "--script",
+          "res://tests/study_test.gd",
+          "--",
+          "--godot-save-path=user://godot_block_save_test_1792995664621_23184.json",
+          "--godot-settings-path=user://godot_block_settings_test_1792995664621_23184.json",
+          "--test-suite"
+        ]
+      }
+    },
+    "export": {
+      "rc": 0,
+      "seconds": 4.153412103652954,
+      "finished_utc": "2026-10-26T06:26:42.202148+00:00",
+      "sources_unchanged": true,
+      "native_asfound_unchanged": true
+    },
+    "check": {
+      "rc": 0,
+      "seconds": 2.828789234161377,
+      "finished_utc": "2026-10-26T06:26:45.124136+00:00",
+      "sources_unchanged": true,
+      "native_asfound_unchanged": true
+    },
+    "node": {
+      "rc": 0,
+      "seconds": 8.362677574157715,
+      "finished_utc": "2026-10-26T06:26:53.573631+00:00",
+      "sources_unchanged": true,
+      "native_asfound_unchanged": true,
+      "tests": 106
+    }
+  },
+  "browser": {
+    "rc": 1,
+    "seconds": 2177.8340871334076,
+    "finished_utc": "2026-10-26T07:03:11.479880+00:00",
+    "sources_unchanged": true,
+    "native_asfound_unchanged": true,
+    "pack_unchanged": true,
+    "result_exists": false
+  },
+  "failure": "AssertionError [ERR_ASSERTION]: actual copied world artwork: [{\"shot\":\"seat\",\"copiedKey\":\"close:seat\",\"paper\":288,\"ink\":30,\"borderInk\":38,\"pinkMotif\":0,\"blank\":[236,235,220],\"cutawayAdditions\":1},{\"shot\":\"paint\",\"copiedKey\":\"close:paint\",\"paper\":13,\"ink\":198,\"borderInk\":39,\"pinkMotif\":0,\"blank\":[255,228,143],\"cutawayAdditions\":1}]",
+  "failure_snapshot_sha256": "d622fcc1c7bec330d47244767bc93d3d0dde20aa8ab34b86f2a9c56b1e042309",
+  "retained_profile_sha256": "3eec8f5d76f5fb47a36806c78ef69e28abd6441eabe889b1018f05a8c3dc8023",
+  "diagnosis": {
+    "utc": "2026-10-26T07:41:36.209289+00:00",
+    "classification": "Product label overlap exposed by variable actual manual orbit endpoint; not corrupted copies or habitat geometry change",
+    "replay": "guide-diagnostic1/execution.json",
+    "original_failure": "final1/browser-evidence/godot-browser-failure.json",
+    "limits": "Storage retained exactly. Unsaved construction and manual pose were rebuilt through actual input, not restored. Replay is PRIVATE; first desktop habitat journey does not accept full browser.",
+    "correction": "Add projected current helper frame union to existing nearby manual guide/caption reservations. Both Low/Upright and selected layout visibility. No geometry/cutaway/depth/opacity/default-camera change.",
+    "review": "Later driver fix NOT independently re-reviewed; exact r1/r3 already complete, no duplicate pass.",
+    "requires": "Fresh all five on final corrected sources; earlier first four remain accepted only for final1 bytes."
+  },
+  "private_native": {
+    "utc": "2026-10-26T07:42:03.426283+00:00",
+    "rc": 0,
+    "seconds": 27.090354204177856,
+    "source_unchanged": true,
+    "asfound_unchanged": true,
+    "clean": true,
+    "token": true,
+    "retained_owned_profiles": [
+      "godot_block_settings_test_1793000496335_6396.json"
+    ],
+    "scope": "PRIVATE component fixture, not full native/genuine browser gate",
+    "args": [
+      "C:\\Users\\jeffr\\.cache\\tenderloin-tools\\godot-4.7.2\\Godot_v4.7.2-stable_win64_console.exe",
+      "--headless",
+      "--path",
+      "C:\\tenderloin-redux\\godot",
+      "--script",
+      "C:\\tenderloin-redux\\artifacts\\ending-habitat-20261025\\guide-native.gd",
+      "--",
+      "--godot-save-path=user://godot_block_save_test_1793000496335_6396.json",
+      "--godot-settings-path=user://godot_block_settings_test_1793000496335_6396.json",
+      "--test-suite"
+    ]
+  },
+  "replay": {
+    "utc": "2026-10-26T07:44:16.139Z",
+    "failed": false,
+    "errors": [],
+    "external": [],
+    "unchanged": true,
+    "canonicalPath": "artifacts/ending-habitat-20261025/final1/browser-evidence/godot-browser-failure-profile.json",
+    "canonicalSHA": "3eec8f5d76f5fb47a36806c78ef69e28abd6441eabe889b1018f05a8c3dc8023",
+    "scope": "PRIVATE exact retained final1 failure storage, helper assembly rebuilt through actual input; camera/startup transient state is not restored by storage. Not full gate."
+  },
+  "matrix": {
+    "utc": "2026-10-26T07:47:11.591Z",
+    "failed": false,
+    "errors": [],
+    "external": [],
+    "unchanged": true,
+    "canonicalPath": "artifacts/shared-meal-round-20261025/native-component-profile.json",
+    "canonicalSHA": "27efa5d84296cc1c8a869baa678905f4eb11c08abe57cf2c0cec01eb7eb2ec74",
+    "scope": "PRIVATE canonical component profile with explicit layout/framing selection, NOT genuine progression/full gate; actual desktop/Pixel7-emulated input"
+  },
+  "private_cases": [
+    {
+      "width": 1100,
+      "touch": false,
+      "copiedOrder": [
+        "welcome",
+        "seat",
+        "paint"
+      ],
+      "guideClearance": [
+        {
+          "form": 0,
+          "guide": {
+            "height": 22,
+            "visible": true,
+            "width": 242,
+            "x": 15,
+            "y": 473.327392578125
+          },
+          "art": {
+            "left": 530.1279296875,
+            "right": 569.873657226562,
+            "top": 325.477600097656,
+            "bottom": 385.488250732422
+          }
+        },
+        {
+          "form": 1,
+          "guide": {
+            "height": 22,
+            "visible": true,
+            "width": 242,
+            "x": 15,
+            "y": 473.327392578125
+          },
+          "art": {
+            "left": 532.510131835938,
+            "right": 567.491516113281,
+            "top": 323.414367675781,
+            "bottom": 377.247344970703
+          }
+        }
+      ],
+      "worldInk": [
+        {
+          "shot": "welcome",
+          "copiedKey": "wide:welcome",
+          "paper": 293,
+          "ink": 8,
+          "borderInk": 37,
+          "pinkMotif": 0,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        },
+        {
+          "shot": "seat",
+          "copiedKey": "wide:seat",
+          "paper": 280,
+          "ink": 18,
+          "borderInk": 38,
+          "pinkMotif": 0,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        },
+        {
+          "shot": "paint",
+          "copiedKey": "wide:paint",
+          "paper": 317,
+          "ink": 10,
+          "borderInk": 42,
+          "pinkMotif": 25,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "touch": true,
+      "copiedOrder": [
+        "paint",
+        "welcome",
+        "seat"
+      ],
+      "guideClearance": [
+        {
+          "form": 0,
+          "guide": {
+            "height": 22,
+            "visible": true,
+            "width": 213,
+            "x": 15,
+            "y": 415.119232177734
+          },
+          "art": {
+            "left": 177.434692382812,
+            "right": 213.281829833984,
+            "top": 324.125,
+            "bottom": 377.748779296875
+          }
+        },
+        {
+          "form": 1,
+          "guide": {
+            "height": 22,
+            "visible": true,
+            "width": 213,
+            "x": 15,
+            "y": 415.119232177734
+          },
+          "art": {
+            "left": 179.524322509766,
+            "right": 211.192199707031,
+            "top": 322.315155029297,
+            "bottom": 370.51953125
+          }
+        }
+      ],
+      "worldInk": [
+        {
+          "shot": "paint",
+          "copiedKey": "wide:paint",
+          "paper": 312,
+          "ink": 6,
+          "borderInk": 31,
+          "pinkMotif": 25,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        },
+        {
+          "shot": "welcome",
+          "copiedKey": "wide:welcome",
+          "paper": 298,
+          "ink": 15,
+          "borderInk": 38,
+          "pinkMotif": 0,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        },
+        {
+          "shot": "seat",
+          "copiedKey": "wide:seat",
+          "paper": 305,
+          "ink": 15,
+          "borderInk": 42,
+          "pinkMotif": 0,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        }
+      ]
+    },
+    {
+      "width": 320,
+      "touch": true,
+      "copiedOrder": [
+        "welcome",
+        "seat",
+        "paint"
+      ],
+      "guideClearance": [
+        {
+          "form": 0,
+          "guide": {
+            "height": 22,
+            "visible": true,
+            "width": 213,
+            "x": 15,
+            "y": 412.867126464844
+          },
+          "art": {
+            "left": 148.674453735352,
+            "right": 185.441696166992,
+            "top": 323.128540039062,
+            "bottom": 377.050689697266
+          }
+        },
+        {
+          "form": 1,
+          "guide": {
+            "height": 22,
+            "visible": true,
+            "width": 213,
+            "x": 15,
+            "y": 412.867126464844
+          },
+          "art": {
+            "left": 151.095245361328,
+            "right": 183.020874023438,
+            "top": 321.271179199219,
+            "bottom": 369.869323730469
+          }
+        }
+      ],
+      "worldInk": [
+        {
+          "shot": "welcome",
+          "copiedKey": "wide:welcome",
+          "paper": 274,
+          "ink": 11,
+          "borderInk": 36,
+          "pinkMotif": 0,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        },
+        {
+          "shot": "seat",
+          "copiedKey": "wide:seat",
+          "paper": 280,
+          "ink": 13,
+          "borderInk": 39,
+          "pinkMotif": 0,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        },
+        {
+          "shot": "paint",
+          "copiedKey": "wide:paint",
+          "paper": 306,
+          "ink": 7,
+          "borderInk": 41,
+          "pinkMotif": 20,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        }
+      ]
+    },
+    {
+      "width": 1100,
+      "touch": false,
+      "copiedOrder": [
+        "paint",
+        "welcome",
+        "seat"
+      ],
+      "guideClearance": [
+        {
+          "form": 0,
+          "guide": {
+            "height": 22,
+            "visible": true,
+            "width": 242,
+            "x": 15,
+            "y": 397.361175537109
+          },
+          "art": {
+            "left": 530.128845214844,
+            "right": 569.874572753906,
+            "top": 325.477600097656,
+            "bottom": 385.489685058594
+          }
+        },
+        {
+          "form": 1,
+          "guide": {
+            "height": 22,
+            "visible": true,
+            "width": 242,
+            "x": 15,
+            "y": 397.361175537109
+          },
+          "art": {
+            "left": 532.511047363281,
+            "right": 567.492431640625,
+            "top": 323.414855957031,
+            "bottom": 377.248321533203
+          }
+        }
+      ],
+      "worldInk": [
+        {
+          "shot": "paint",
+          "copiedKey": "close:paint",
+          "paper": 349,
+          "ink": 11,
+          "borderInk": 27,
+          "pinkMotif": 23,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        },
+        {
+          "shot": "welcome",
+          "copiedKey": "close:welcome",
+          "paper": 320,
+          "ink": 31,
+          "borderInk": 38,
+          "pinkMotif": 0,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        },
+        {
+          "shot": "seat",
+          "copiedKey": "close:seat",
+          "paper": 349,
+          "ink": 17,
+          "borderInk": 42,
+          "pinkMotif": 0,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "touch": true,
+      "copiedOrder": [
+        "welcome",
+        "seat",
+        "paint"
+      ],
+      "guideClearance": [
+        {
+          "form": 0,
+          "guide": {
+            "height": 22,
+            "visible": true,
+            "width": 213,
+            "x": 15,
+            "y": 415.105010986328
+          },
+          "art": {
+            "left": 181.380722045898,
+            "right": 217.227874755859,
+            "top": 323.277313232422,
+            "bottom": 376.901519775391
+          }
+        },
+        {
+          "form": 1,
+          "guide": {
+            "height": 22,
+            "visible": true,
+            "width": 213,
+            "x": 15,
+            "y": 415.105010986328
+          },
+          "art": {
+            "left": 183.470352172852,
+            "right": 215.138229370117,
+            "top": 321.467864990234,
+            "bottom": 369.672241210938
+          }
+        }
+      ],
+      "worldInk": [
+        {
+          "shot": "welcome",
+          "copiedKey": "close:welcome",
+          "paper": 290,
+          "ink": 12,
+          "borderInk": 36,
+          "pinkMotif": 0,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        },
+        {
+          "shot": "seat",
+          "copiedKey": "close:seat",
+          "paper": 299,
+          "ink": 21,
+          "borderInk": 38,
+          "pinkMotif": 0,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        },
+        {
+          "shot": "paint",
+          "copiedKey": "close:paint",
+          "paper": 340,
+          "ink": 10,
+          "borderInk": 42,
+          "pinkMotif": 23,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        }
+      ]
+    },
+    {
+      "width": 320,
+      "touch": true,
+      "copiedOrder": [
+        "paint",
+        "welcome",
+        "seat"
+      ],
+      "guideClearance": [
+        {
+          "form": 0,
+          "guide": {
+            "height": 22,
+            "visible": true,
+            "width": 213,
+            "x": 15,
+            "y": 412.875152587891
+          },
+          "art": {
+            "left": 148.041137695312,
+            "right": 184.808380126953,
+            "top": 323.248474121094,
+            "bottom": 377.171081542969
+          }
+        },
+        {
+          "form": 1,
+          "guide": {
+            "height": 22,
+            "visible": true,
+            "width": 213,
+            "x": 15,
+            "y": 412.875152587891
+          },
+          "art": {
+            "left": 150.4619140625,
+            "right": 182.387557983398,
+            "top": 321.391998291016,
+            "bottom": 369.989288330078
+          }
+        }
+      ],
+      "worldInk": [
+        {
+          "shot": "paint",
+          "copiedKey": "close:paint",
+          "paper": 341,
+          "ink": 15,
+          "borderInk": 25,
+          "pinkMotif": 25,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        },
+        {
+          "shot": "welcome",
+          "copiedKey": "close:welcome",
+          "paper": 338,
+          "ink": 17,
+          "borderInk": 38,
+          "pinkMotif": 0,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        },
+        {
+          "shot": "seat",
+          "copiedKey": "close:seat",
+          "paper": 335,
+          "ink": 27,
+          "borderInk": 40,
+          "pinkMotif": 0,
+          "blank": [
+            236,
+            235,
+            220
+          ],
+          "cutawayAdditions": 1
+        }
+      ]
+    }
+  ],
+  "inspection": {
+    "utc": "2026-10-26T07:47:58.090498+00:00",
+    "scope": "Driver visual inspection of PRIVATE actual-browser captures, not full gate or human acceptance",
+    "captures": [
+      {
+        "path": "artifacts/ending-habitat-20261025/guide-replay3/390-table-close/helper-390-world.png",
+        "sha256": "b06a2eedb807caa00dd18780ca445c64cbbd12d958f0d2170571c9fc09d46ed8",
+        "observation": "Retained-profile replay: three distinct copied Low frames visible; gold objective label relocated below the pictures, arrow and original phone controls visible. Manual world inspection only."
+      },
+      {
+        "path": "artifacts/ending-habitat-20261025/guide-matrix3/320-floor-close/helper-320-world.png",
+        "sha256": "d76bd5f7912687f2b460fe4edb9e1145511fb047ed782e0a751119b31acc3e9a",
+        "observation": "Narrow floor layout: original close film triptych retains visible motifs, guide label outside its bounds; original controls and city geometry retained."
+      },
+      {
+        "path": "artifacts/ending-habitat-20261025/guide-matrix3/1100-table-wide/helper-1100-upright-world.png",
+        "sha256": "71e3185272b18eef5b4644d326dddb32ac3373a5177bc870e714c3df53a731ce",
+        "observation": "Desktop Upright display: projected original frames, visible label outside their bounds; furniture and camera policy unchanged."
+      }
+    ]
+  },
+  "other_rejections": [
+    "guide-native preflight locale-corrupted path: engine never launched, actual ASFOUND unchanged",
+    "guide-replay2 observation used wrong snapshot nesting; aborted before pixel acceptance; schema corrected without product or threshold change"
+  ],
+  "limits": "Exact raw sources/PCK/available isolated profiles/action-DOM traces/screens/logs/exits remain ignored locally. Unsaved assembly and manual pose rebuilt by actual input, not recovered from storage. Runtime/human/physical acceptance not inferred. Later fixes NOT independently re-reviewed."
+}

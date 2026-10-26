@@ -12,6 +12,7 @@ var forms: Array[Button] = []
 var supports: Array[Button] = []
 var assist: Button
 var back: Button
+var habitat_entry: Button
 var selected := 0
 var fitted: Array[bool] = [false,false]
 var complete := false
@@ -51,7 +52,9 @@ func setup(owner_game: Node) -> void:
 		var index := i
 		supports.append(button(fits,"Fit left support" if i==0 else "Fit right support",func(): fit_support(index)))
 	assist=button(box,"Ask helper to lift",finish)
-	back=button(box,"Keep exploring",close_bench)
+	var exits := HBoxContainer.new(); exits.add_theme_constant_override("separation",4); box.add_child(exits)
+	back=button(exits,"Keep exploring",close_bench)
+	habitat_entry=button(exits,"Habitat room",open_habitat)
 	resized.connect(queue_layout); top.minimum_size_changed.connect(queue_layout); tray.minimum_size_changed.connect(queue_layout)
 	hide(); build_world()
 
@@ -82,6 +85,14 @@ func open_bench() -> bool:
 	elif fitted[0] and fitted[1]: assist.grab_focus()
 	else: supports[0 if not fitted[0] else 1].grab_focus()
 	return true
+
+func open_habitat() -> void:
+	if not visible or game.habitat_room==null: return
+	if not game.habitat_room.can_open(self):
+		game.announce_a11y_status("Finish arriving or the pending activity before arranging the habitat copies. The helper bench stays open.")
+		return
+	close_bench(false)
+	if not game.habitat_room.open_room(): open_bench()
 
 func close_bench(announce: bool=true) -> void:
 	if not visible: return
@@ -131,8 +142,10 @@ func refresh(announce: bool) -> void:
 	for shot in game.film_result.order: titles.append(game.film_shot_title(String(shot)))
 	var body := "Dez: Celeste and I imagine a little helper built by the neighbors. Let's give it a useful first job: lift our three film pictures onto a stand for a future neighborhood.\nChoose a display, then fit both supports in either order. Only you can ask the helper to lift. There is no timer."
 	if fitted[0] or fitted[1]: body="Dez: Good, the %s has %s. Fit the remaining support, then ask our helper to lift the pictures. It waits for you."%[FORMS[selected].to_lower(),"both supports" if fitted[0] and fitted[1] else "one support"]
-	if complete: body="Dez: Your %s holds all three pictures, ending on %s. You fitted the supports; our helper lifted the frames and parked. That is a small job we can share.\nWe can imagine a home around what our neighbors made. The habitat and journey are still to come. You can try the other display here, or keep exploring."%[FORMS[selected].to_lower(),ending]
+	if complete: body="Dez: Your %s holds all three pictures, ending on %s. You fitted the supports; our helper lifted the frames and parked. That is a small job we can share.\nWe can imagine a home around what our neighbors made. Our habitat room model is ready to arrange; the journey is still to come. You can try the other display here, or keep exploring."%[FORMS[selected].to_lower(),ending]
 	body+="\nCopied order: %s. %s; %s. These are the film's original illustrations, separate from Celeste's hosted tile panel.\nThis is speculative fiction, not a present-day robot or launch claim. Assembly and display last this visit only. Reload or a successful import keeps your earned invitation from the completed film, and starts this bench fresh. Music, saved work and the street camera stay yours."%[" / ".join(titles),game.FILM_FRAMING_LABELS[game.film_result.framing],game.FILM_PLAN_LABELS[game.film_result.plan]]
+	body+="\nHabitat room opens a separate room of copies from your completed film and hosted choices. You may arrange it now or after this bench; constructing the stand is optional. Its arrangement also lasts this visit only."
+	habitat_entry.disabled=game.habitat_room==null or not game.habitat_room.available()
 	game.set_activity_detail(reader,body); picture.texture=texture(); picture.accessibility_name=description()
 	for i in range(2):
 		forms[i].set_pressed_no_signal(selected==i); forms[i].disabled=not complete and (fitted[0] or fitted[1])
@@ -140,7 +153,7 @@ func refresh(announce: bool) -> void:
 	assist.disabled=complete or not fitted[0] or not fitted[1]
 	assist.text="Helper parked" if complete else "Ask helper to lift"
 	var ring: Array[Control]=[reader]
-	for b in forms+supports+[assist,back]:
+	for b in forms+supports+[assist,back,habitat_entry]:
 		if not b.disabled: ring.append(b)
 	for i in range(ring.size()):
 		ring[i].focus_next=ring[i].get_path_to(ring[(i+1)%ring.size()]); ring[i].focus_previous=ring[i].get_path_to(ring[posmod(i-1,ring.size())])
@@ -253,6 +266,22 @@ func cutaway_points() -> Array[Vector2]:
 		if root.is_visible_in_tree(): points.append(Vector2(root.global_position.x,root.global_position.z))
 	return points
 
+func inspection_rect() -> Rect2:
+	# Like the mural/Bea paper, reserve copied pictures during nearby manual inspection.
+	# This only places screen labels; it never changes depth, cutaways or the camera.
+	if not complete or not available() or game.following_player or game.in_overview or game.in_wide_overview: return Rect2()
+	var art := Rect2()
+	var half := FRAME_WIDTH*0.5
+	for li in range(worlds.size()):
+		if not worlds[li].is_visible_in_tree() or game.target.distance_to(worlds[li].global_position)>24.0: continue
+		for face: MeshInstance3D in panels[li]:
+			if not face.is_visible_in_tree() or game.camera.is_position_behind(face.global_position): continue
+			var frame := Rect2(game.camera.unproject_position(face.to_global(Vector3(-half,half*271.25/420.0,0))),Vector2.ZERO)
+			for local in [Vector3(half,half*271.25/420.0,0),Vector3(-half,-half*271.25/420.0,0),Vector3(half,-half*271.25/420.0,0)]:
+				frame=frame.expand(game.camera.unproject_position(face.to_global(local)))
+			if frame.has_area() and game.play_area_rect().intersects(frame): art=art.merge(frame) if art.has_area() else frame
+	return art.grow(4.0) if art.has_area() else Rect2()
+
 func handle_input(event: InputEvent) -> void:
 	if not visible or not event is InputEventKey or not event.pressed: return
 	var key: Key=event.keycode if event.keycode!=KEY_NONE else event.physical_keycode
@@ -270,7 +299,7 @@ func handle_input(event: InputEvent) -> void:
 
 func snapshot() -> Dictionary:
 	var all_buttons: Array[Button]=[]
-	all_buttons.append_array(forms); all_buttons.append_array(supports); all_buttons.append_array([assist,back])
+	all_buttons.append_array(forms); all_buttons.append_array(supports); all_buttons.append_array([assist,back,habitat_entry])
 	var controls: Array=game.activity_detail_snapshot(reader,tray,all_buttons).buttons
 	var world: Array=[]
 	for li in range(worlds.size()):

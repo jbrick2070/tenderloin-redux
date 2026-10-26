@@ -829,6 +829,7 @@ var civic_listening
 var programme_studio
 var shared_meal
 var before_streets
+var habitat_room
 var helper_bench
 var story_before_btn: Button
 var story_action_rows: VBoxContainer
@@ -7208,6 +7209,7 @@ func update_guide_arrow() -> void:
 	if bea_invitation != null and bea_invitation.inspection_rect().has_area():
 		occupied.append(bea_invitation.inspection_rect())
 	if mural_inspection_rect().has_area(): occupied.append(mural_inspection_rect())
+	if helper_bench != null and helper_bench.inspection_rect().has_area(): occupied.append(helper_bench.inspection_rect())
 	if uses_compact_activity_controls() or uses_short_narrow_walking():
 		occupied.append(player_overlay_rect().grow(4.0))
 	if reward_banner != null and reward_banner.is_visible_in_tree():
@@ -7726,7 +7728,7 @@ func set_header_details(expanded: bool, refit_map := true) -> void:
 
 func update_conversation_ui(delta: float) -> void:
 	ui_clock = wrapf(ui_clock + delta, 0.0, 3600.0)
-	if is_helper_bench_visible() or is_before_streets_visible() or is_shared_meal_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible() or is_power_story_visible() or is_dog_story_visible() or is_lantern_procession_visible() or is_voting_story_visible() or (story_picker!=null and story_picker.visible):
+	if is_habitat_room_visible() or is_helper_bench_visible() or is_before_streets_visible() or is_shared_meal_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible() or is_power_story_visible() or is_dog_story_visible() or is_lantern_procession_visible() or is_voting_story_visible() or (story_picker!=null and story_picker.visible):
 		return
 	var chapter := current_chapter()
 	# Deliver any pending chapter card after the focused workshop closes,
@@ -11897,6 +11899,7 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"shared_panel": shared_panel.snapshot() if shared_panel != null else {"visible":false},
 		"programme_studio": programme_studio.snapshot() if programme_studio != null else {"visible":false},
 		"civic_listening": civic_listening.snapshot() if civic_listening != null else {"visible":false},
+		"habitat_room": habitat_room.snapshot() if habitat_room != null else {"visible":false},
 		"helper_bench": helper_bench.snapshot() if helper_bench != null else {"visible":false},
 		"shared_meal": shared_meal.snapshot() if shared_meal != null else {"visible":false},
 		"film_screening": film_screening.snapshot() if film_screening != null else {"visible":false},
@@ -12078,6 +12081,9 @@ func is_shared_panel_visible() -> bool:
 func is_programme_studio_visible() -> bool:
 	return programme_studio != null and programme_studio.visible
 
+func is_habitat_room_visible() -> bool:
+	return habitat_room != null and habitat_room.visible
+
 func is_helper_bench_visible() -> bool:
 	return helper_bench != null and helper_bench.visible
 
@@ -12105,7 +12111,7 @@ func is_power_story_visible() -> bool:
 	return power_story != null and power_story.visible
 
 func is_focused_activity_visible() -> bool:
-	return is_helper_bench_visible() or is_before_streets_visible() or is_shared_meal_visible() or is_voting_story_visible() or is_lantern_procession_visible() or (story_picker!=null and story_picker.visible) or is_dog_story_visible() or is_power_story_visible() or is_mural_workshop_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible()
+	return is_habitat_room_visible() or is_helper_bench_visible() or is_before_streets_visible() or is_shared_meal_visible() or is_voting_story_visible() or is_lantern_procession_visible() or (story_picker!=null and story_picker.visible) or is_dog_story_visible() or is_power_story_visible() or is_mural_workshop_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible()
 
 func is_civic_listening_visible() -> bool:
 	return civic_listening != null and civic_listening.visible
@@ -12184,7 +12190,7 @@ func edit_mural_scene(id: String, slot: String) -> bool:
 	return true
 
 func open_mural_workshop() -> bool:
-	if is_helper_bench_visible() or is_before_streets_visible() or is_shared_meal_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible() or is_power_story_visible() or is_dog_story_visible() or is_lantern_procession_visible() or is_voting_story_visible() or (story_picker!=null and story_picker.visible):
+	if is_habitat_room_visible() or is_helper_bench_visible() or is_before_streets_visible() or is_shared_meal_visible() or is_rhythm_circle_visible() or is_film_screening_visible() or is_civic_listening_visible() or is_programme_studio_visible() or is_shared_panel_visible() or is_power_story_visible() or is_dog_story_visible() or is_lantern_procession_visible() or is_voting_story_visible() or (story_picker!=null and story_picker.visible):
 		return false
 	if startup_story_pending or is_story_card_visible():
 		announce_a11y_status("Continue the chapter card before composing the mural.")
@@ -12523,6 +12529,7 @@ func save_godot_state() -> bool:
 	return wrote
 
 func reset_mural_state_to_defaults(status_label: String) -> void:
+	if habitat_room != null: habitat_room.reset_visit()
 	if helper_bench != null: helper_bench.reset_visit()
 	if before_streets != null: before_streets.reset_visit()
 	if shared_meal != null: shared_meal.reset_visit()
@@ -13026,6 +13033,7 @@ func validate_godot_optional(raw_opt: Variant) -> Dictionary:
 	return {"ok": true, "optional": (raw_opt as Dictionary).duplicate(true)}
 
 func apply_save_envelope(raw_json: String) -> bool:
+	if habitat_room != null: habitat_room.reset_visit()
 	if helper_bench != null: helper_bench.reset_visit()
 	if before_streets != null: before_streets.reset_visit()
 	if shared_meal != null: shared_meal.reset_visit()
@@ -13726,6 +13734,7 @@ func import_browser_save_json(raw_json: String) -> bool:
 			merged_opt[k] = imp_opt[k]
 		if JSON.stringify(merged_opt).length() <= OPTIONAL_SAVE_MAX_BYTES:
 			optional_save_data = merged_opt
+	if habitat_room != null: habitat_room.reset_visit()
 	if helper_bench != null: helper_bench.reset_visit()
 	if before_streets != null: before_streets.reset_visit()
 	if shared_meal != null: shared_meal.reset_visit()
@@ -14216,6 +14225,7 @@ func update_readable_scene_labels() -> void:
 	if bea_invitation != null and bea_invitation.inspection_rect().has_area():
 		occupied.append(bea_invitation.inspection_rect())
 	if mural_inspection_rect().has_area(): occupied.append(mural_inspection_rect())
+	if helper_bench != null and helper_bench.inspection_rect().has_area(): occupied.append(helper_bench.inspection_rect())
 	if uses_compact_activity_controls() or uses_short_narrow_walking():
 		occupied.append(player_overlay_rect().grow(4.0))
 	if reward_banner != null and reward_banner.is_visible_in_tree():
@@ -14306,6 +14316,7 @@ func _process(delta: float) -> void:
 func _physics_process(delta: float) -> void:
 	if is_focused_activity_visible() or (startup_story_pending and is_story_card_visible()):
 		return
+	if habitat_room != null and habitat_room.release_pending(): return
 	if helper_bench != null and helper_bench.release_pending(): return
 	var shift_held := Input.is_key_pressed(KEY_SHIFT) or Input.is_physical_key_pressed(KEY_SHIFT)
 	if shift_held and get_viewport().gui_get_focus_owner() == null:
@@ -14616,6 +14627,9 @@ func apply_map_pinch() -> void:
 	update_occlusion(true)
 
 func _input(event: InputEvent) -> void:
+	if is_habitat_room_visible():
+		habitat_room.handle_input(event)
+		return
 	if is_helper_bench_visible():
 		helper_bench.handle_input(event)
 		return
@@ -14666,6 +14680,9 @@ func _input(event: InputEvent) -> void:
 		continue_story()
 
 func _unhandled_input(event: InputEvent) -> void:
+	if is_habitat_room_visible():
+		get_viewport().set_input_as_handled()
+		return
 	if is_helper_bench_visible():
 		get_viewport().set_input_as_handled()
 		return
@@ -16038,6 +16055,9 @@ func make_ui() -> void:
 	helper_bench = preload("res://helper_bench.gd").new()
 	layer.add_child(helper_bench)
 	helper_bench.setup(self)
+	habitat_room = preload("res://habitat_room.gd").new()
+	layer.add_child(habitat_room)
+	habitat_room.setup(self)
 	before_streets = preload("res://before_streets.gd").new()
 	layer.add_child(before_streets)
 	before_streets.setup(self)

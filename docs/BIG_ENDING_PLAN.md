@@ -1,6 +1,6 @@
 # Tenderloin to the Stars - proposed ending
 
-Creator-authorized planning, October 23, 2026; status refreshed October25Pacific/October26UTC. The first helper workshop is accepted and pushed in aed34b8 after all five gates; Before These Streets is also accepted. Habitat, cooperative readiness/departure, orbital neighborhood and return remain unimplemented. Begin the habitat with fresh scoped pre-code ideation/source review; the original staged vision below remains planning, not proof of completed gameplay. This does not claim a present-day Tenderloin launch facility or feasible robotics-based space transport.
+Creator-authorized planning, October23,2026; status refreshed October26UTC. Before These Streets, the first helper workshop and the illustrated habitat room are implemented and all-five verified; habitat source commit/push follows current closure. Cooperative readiness/departure, a small walkable orbital neighborhood and return remain unimplemented. The habitat arrangement is visit-only; valid completed film retains entry without helper reconstruction. Ground the next stage in these actual contracts under fresh scoped pre-code r1; no readiness mechanic, transition, entry or persistence model is selected yet. The original staged vision below is planning, not proof of completed gameplay or feasible present-day space transport.
 
 ## Emotional destination
 
