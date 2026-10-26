@@ -1,0 +1,28 @@
+{
+  "utc": "2026-10-26T10:42:36.735524+00:00",
+  "harness_rc": 0,
+  "sources_unchanged": true,
+  "requested_model": "claude-opus-5-5",
+  "requested_effort": "high",
+  "selected_model": "claude-opus-5-5",
+  "selected_effort": "high",
+  "provider_runtime_identity": "unknown",
+  "numeric_allowance": "unknown",
+  "scope": "ONE distinct implementation r3, not a repeat r1 or panel",
+  "all_findings_grounded": true,
+  "later_corrections_independently_rereviewed": false,
+  "private_file_hashes": {
+    "claude.md": "23a88e6c5ae94978c11aaa8af361a21e74c45f7ec13c9c3cc43fcdcf9544f295",
+    "driver_anchor.md": "6cb2599fa9ce757445be4f973993454474f368f4b6e7a9e8ffcc53d3cf31d2e9",
+    "scope_receipt.md": "f0aa184bb27fc53869a1eafe6652efbc385630e563e21a90882a55d5611b0049",
+    "source-before.json": "8800685c1d10e61515372bb50f4d65423da2bf2506836799276ad49e91b5a46d",
+    "source-after.json": "8800685c1d10e61515372bb50f4d65423da2bf2506836799276ad49e91b5a46d",
+    "source-comparison.json": "f8c3b893e75d06ae52f2726611587c53230428e9ebb676c9f43f5fdda3553256",
+    "claude_model_selected.txt": "005912bee6ee4543cec4404b5a02b9bcb11a6f1dcc134b6693c7ccde5fdd2f69",
+    "claude_effort_selected.txt": "6ef7c9b15ecdd69083724b84cfdc2100351963488b51b4ea2fcbddf493fbec94",
+    "claude_quota_status.txt": "8837273a61838ba8faef568a69dfead62d1566b2be47f9636a4097bdcbf7023c",
+    "claude_budget_selected.txt": "b80401b5bdee9b92d2114d1dcae19e4929eefb76987dd1911802478ede026cf0"
+  },
+  "quota_limit": "Numeric allowance unknown; raw provider quota/budget artifacts retained privately, excluded from commit",
+  "physical_or_human_acceptance": false
+}

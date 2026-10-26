@@ -1,0 +1,394 @@
+{
+  "accepted_utc": "2026-10-26T13:13:04.634098+00:00",
+  "outcome": "Cooperative readiness and still departure composition accepted; orbital neighborhood/final gathering/return remain unfinished",
+  "formal_execution": {
+    "rc": 0,
+    "seconds": 5701.758564949036,
+    "utc": "2026-10-26T12:57:12.441326+00:00",
+    "gates": {
+      "native": {
+        "rc": 0,
+        "seconds": 411.625506401062,
+        "finished_utc": "2026-10-26T11:29:02.351529+00:00",
+        "sources_unchanged": true,
+        "native_asfound_unchanged": true,
+        "tokens": {
+          "BEA_INVITATION_PASS": true,
+          "CIVIC_LISTENING_PASS": true,
+          "COMMUNITY_INVITATION_PASS": true,
+          "DOG_STORY_PASS": true,
+          "GODOT_NATIVE_ISOLATION_PASS": true,
+          "GODOT_STUDY_PASS": true,
+          "GUIDED_WALK_PASS": true,
+          "HOSTED_AFTERNOON_PASS:FORMAL": true,
+          "LANTERN_PROCESSION_PASS": true,
+          "LARKIN_STORY_PASS": true,
+          "LOAN_HOMECOMING_PASS": true,
+          "MAP_PINCH_PASS": true,
+          "PHONE_DISCLOSURE_PASS": true,
+          "POWER_STORY_PASS": true,
+          "PROGRAMME_STUDIO_PASS": true,
+          "QUIET_SEATS_PASS": true,
+          "SHARED_MEAL_PASS": true,
+          "SHARED_PANEL_PASS": true,
+          "SMALL_PASS": true,
+          "STORY_VISITS_PASS": true,
+          "VOTING_STORY_PASS": true,
+          "BEFORE_STREETS_PASS:FORMAL": true,
+          "HELPER_BENCH_PASS:FORMAL": true,
+          "HABITAT_ROOM_PASS:FORMAL": true,
+          "DEPARTURE_PASS:FORMAL": true
+        },
+        "clean": true,
+        "native_isolation": {
+          "runId": "1793013731177_5508",
+          "save": "user://godot_block_save_test_1793013731177_5508.json",
+          "settings": "user://godot_block_settings_test_1793013731177_5508.json",
+          "args": [
+            "--headless",
+            "--path",
+            "godot",
+            "--script",
+            "res://tests/study_test.gd",
+            "--",
+            "--godot-save-path=user://godot_block_save_test_1793013731177_5508.json",
+            "--godot-settings-path=user://godot_block_settings_test_1793013731177_5508.json",
+            "--test-suite"
+          ]
+        }
+      },
+      "export": {
+        "rc": 0,
+        "seconds": 3.1870315074920654,
+        "finished_utc": "2026-10-26T11:29:05.599221+00:00",
+        "sources_unchanged": true,
+        "native_asfound_unchanged": true
+      },
+      "check": {
+        "rc": 0,
+        "seconds": 2.3341727256774902,
+        "finished_utc": "2026-10-26T11:29:08.004263+00:00",
+        "sources_unchanged": true,
+        "native_asfound_unchanged": true
+      },
+      "node": {
+        "rc": 0,
+        "seconds": 7.406713247299194,
+        "finished_utc": "2026-10-26T11:29:15.488408+00:00",
+        "sources_unchanged": true,
+        "native_asfound_unchanged": true,
+        "tests": 106
+      },
+      "browser": {
+        "rc": 0,
+        "seconds": 5270.348345994949,
+        "finished_utc": "2026-10-26T12:57:05.901299+00:00",
+        "sources_unchanged": true,
+        "native_asfound_unchanged": true,
+        "pack_unchanged": true,
+        "result_exists": true,
+        "departure_cases": 3,
+        "genuine_departure_cases": 3,
+        "departure_widths": [
+          320,
+          390,
+          1100
+        ],
+        "departure_spares": 3,
+        "habitat_cases": 3,
+        "genuine_habitat_cases": 3,
+        "habitat_widths": [
+          320,
+          390,
+          1100
+        ],
+        "browser_fingerprint_matches": true,
+        "helper_cases": 3,
+        "genuine_helper_cases": 3,
+        "opening_cases": 6,
+        "genuine_opening_startups": 3,
+        "genuine_opening_revisits": 3,
+        "errors": [],
+        "external": [],
+        "hosted_cases": 4,
+        "genuine_hosted_earned": 3,
+        "genuine_hosted_done": 1,
+        "shared_meal_cases": 3,
+        "community_invitation_cases": 9,
+        "genuine_earned_invitations": 3,
+        "fresh_phone_cases": 6,
+        "actual_pinch_cases": 4,
+        "expanded_info_pinch_cases": 4,
+        "genuine_voting_cases": 3
+      }
+    },
+    "review_note": "Later driver corrections are documented, no duplicate paid r3"
+  },
+  "formal_receipt_path": "artifacts\\ending-departure-20261026\\final1",
+  "formal_receipt_sha256": "335e926fcafb82fc6fd1a6e12e94433512c07dbed873c868c2d94f44e85542c9",
+  "log_sha256": {
+    "native": "d2a195afa5ef481c3fbeac97c08e0dcde0445a0f08e6f97357e36cb20d5e1192",
+    "export": "fe32ac90fff540e888b845f48c6ae41bdd6425272b5d42a7a077f5ca3b1e9006",
+    "check": "de13e39a5fdf7710dfa108b6fbcdc452c898cfa45068c957abe51885d5504c7b",
+    "node": "deaf64b97ca85dec4e72e1006adabc81e8b6f3cbd74b074aaf3fcd9f6af35b5a",
+    "browser": "cb81c27a0761b2a9a3ada169729b86aea173292f4a43ef915df5fca4637d16a0"
+  },
+  "source_manifest_sha256": "8615f7cce73b8064d94bdb00012c10f1e93e69d9b2cadea2b07dba2f33aba458",
+  "all_238_frozen_inputs_match_before_closure_docs": true,
+  "product_test_data_pck_changed_after_gates": false,
+  "audit": {
+    "frozen_inputs": 238,
+    "mismatches": [],
+    "logs": {
+      "native": [],
+      "export": [],
+      "check": [],
+      "node": [],
+      "browser": []
+    },
+    "pck_bytes": 2057492,
+    "pck_sha256": "d02b83c6c0c835feea091c89038b2f39a5deed6290e0e909624e7258c2246fec",
+    "save_bytes": [
+      1727,
+      1723,
+      1723
+    ],
+    "perf_save_bytes": [
+      1534,
+      1530,
+      1530
+    ],
+    "viewports": [
+      {
+        "width": 1100,
+        "height": 760
+      },
+      {
+        "width": 390,
+        "height": 667
+      },
+      {
+        "width": 320,
+        "height": 667
+      }
+    ],
+    "departures": [
+      {
+        "width": 1100,
+        "height": 760,
+        "touch": false,
+        "privateFixture": false,
+        "spare": "side",
+        "arrangement": {
+          "entry": "art",
+          "wall": "seats",
+          "window": "film"
+        },
+        "linkEvidence": [
+          {
+            "owner": "Celeste",
+            "copy": "entry",
+            "relation": "Across"
+          },
+          {
+            "owner": "Dez",
+            "copy": "window",
+            "relation": "Along"
+          },
+          {
+            "owner": "Thanh",
+            "copy": "wall",
+            "relation": "Corner"
+          }
+        ],
+        "linkPixels": 3099,
+        "returnChecks": [
+          "partial Keep",
+          "assembled Keep",
+          "ready Keep",
+          "middle Escape",
+          "final held-key Keep",
+          "rearranged Keep"
+        ],
+        "stillPanels": 3,
+        "skipParity": true,
+        "relocationInvalidates": true,
+        "actualReload": true,
+        "retainedInvitation": true,
+        "noWrites": true,
+        "quiet": true
+      },
+      {
+        "width": 390,
+        "height": 667,
+        "touch": true,
+        "privateFixture": false,
+        "spare": "entry",
+        "arrangement": {
+          "side": "seats",
+          "wall": "film",
+          "window": "art"
+        },
+        "linkEvidence": [
+          {
+            "owner": "Celeste",
+            "copy": "window",
+            "relation": "Corner"
+          },
+          {
+            "owner": "Dez",
+            "copy": "wall",
+            "relation": "Along"
+          },
+          {
+            "owner": "Thanh",
+            "copy": "side",
+            "relation": "Across"
+          }
+        ],
+        "linkPixels": 1381,
+        "returnChecks": [
+          "partial Keep",
+          "assembled Keep",
+          "ready Keep",
+          "middle Escape",
+          "final held-key Keep",
+          "rearranged Keep"
+        ],
+        "stillPanels": 3,
+        "skipParity": true,
+        "relocationInvalidates": true,
+        "actualReload": true,
+        "retainedInvitation": true,
+        "noWrites": true,
+        "quiet": true
+      },
+      {
+        "width": 320,
+        "height": 667,
+        "touch": true,
+        "privateFixture": false,
+        "spare": "window",
+        "arrangement": {
+          "entry": "seats",
+          "side": "film",
+          "wall": "art"
+        },
+        "linkEvidence": [
+          {
+            "owner": "Celeste",
+            "copy": "wall",
+            "relation": "Across"
+          },
+          {
+            "owner": "Dez",
+            "copy": "side",
+            "relation": "Along"
+          },
+          {
+            "owner": "Thanh",
+            "copy": "entry",
+            "relation": "Corner"
+          }
+        ],
+        "linkPixels": 890,
+        "returnChecks": [
+          "partial Keep",
+          "assembled Keep",
+          "ready Keep",
+          "middle Escape",
+          "final held-key Keep",
+          "rearranged Keep"
+        ],
+        "stillPanels": 3,
+        "skipParity": true,
+        "relocationInvalidates": true,
+        "actualReload": true,
+        "retainedInvitation": true,
+        "noWrites": true,
+        "quiet": true
+      }
+    ],
+    "array_counts": {
+      "runs": 3,
+      "renderedPixelChecks": 424,
+      "traceReceipts": 44,
+      "departureChecks": 3,
+      "habitatRoomChecks": 3,
+      "helperBenchChecks": 3,
+      "beforeStreetsChecks": 6,
+      "hostedAfternoonChecks": 4,
+      "sharedMealChecks": 3,
+      "guidedWalkChecks": 3,
+      "storyReturnChecks": 9,
+      "storyVisitChecks": 12,
+      "phoneDisclosureChecks": 6,
+      "mapPinchChecks": 4,
+      "votingStoryChecks": 3,
+      "lanternProcessionChecks": 3,
+      "dogStoryChecks": 6,
+      "larkinStoryChecks": 3,
+      "powerStoryChecks": 6,
+      "loanHomecomingChecks": 8,
+      "loanWorldChecks": 3,
+      "sharedPanelChecks": 9,
+      "programmeStudioChecks": 7,
+      "civicListeningChecks": 9,
+      "communityInvitationChecks": 9,
+      "beaInvitationChecks": 7,
+      "quietSeatChecks": 9,
+      "filmScreeningChecks": 3,
+      "rhythmCircleChecks": 11,
+      "rhythmAuditionChecks": 11,
+      "muralStoryChecks": 8,
+      "livingMuralChecks": 8,
+      "errors": 0,
+      "external": 0
+    },
+    "protected_native_unchanged": true
+  },
+  "additional_full_log_matrices": {
+    "shortStoryReadChecks": 11,
+    "shortHubChecks": 8,
+    "shortActivityChecks": 18,
+    "narrowActivityChecks": 39,
+    "passiveActivityChecks": 12,
+    "narrowHubChecks": 12,
+    "shortWalkingChecks": 10,
+    "muralWorkshopChecks": 8,
+    "smallHubReaderChecks": 4,
+    "workshopAutoAdvanceChecks": 3,
+    "queuedActivityRewardChecks": 2,
+    "shortWalkingCaptionChecks": 1,
+    "shortWalkingGuideChecks": 1,
+    "shortStartClicked": true,
+    "shortStartTouchClicked": true
+  },
+  "capture_inspection": {
+    "files_sha256": {
+      "departure-1100-assembled.png": "707e6ef7342e4fe6f1d2516061bc34a69ce37ec2862bc0c8e8b2ce77d6905c1b",
+      "departure-1100-final.png": "af4675899bc179f18ddf8ee9498e2b340f2ec14369cf0a8b9560389607b72c7e",
+      "departure-320-assembled.png": "f5828b36372f62b4f008fce1f147ffc89694e6cce0e1f0a03bca5ada2c185dce",
+      "departure-320-final.png": "05efc0aaa3ba928fea92171d0debf3dbc200d0b3969b34bf209697ff27a3269e",
+      "departure-390-assembled.png": "a4eca51b24120737093a620c947d1051b9c433aea42fb583389fb10e412587f1",
+      "departure-390-final.png": "7dcecc79d21cf4b4cab76c4bae4afa422a587ea2ebb9ff54746def6efc33e0cf"
+    },
+    "observed": "All six actual assembled/final captures inspected. Three spare places, original copied shapes/ordered film/seats, contained links and paper, clear helper header, readable Ready/Back/Keep, truthful future label and scrollable reader. 320 final phase credit wraps without covering art or controls. Final still composition differs from assembly.",
+    "limits": "Native/browser automation and model visual inspection, not physical devices, full screen-reader, human comprehension/pacing/aesthetic/listening/cultural/field acceptance."
+  },
+  "public_fingerprint": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567",
+  "native_asfound_bytes": 1272,
+  "native_asfound_sha256": "2b7d1e849b4820a1d6c49602930ac3e0b104a8aa132375837038bfef80f2e0e1",
+  "public_workflow_main_geography_diff_empty": true,
+  "review": "Exact r1 and r3 complete, all findings grounded; later corrections NOT independently re-reviewed",
+  "evidence_limits": [
+    "Native loose-source proof differs from later exported browser PCK proof.",
+    "Quiet-idle caller restoration does not prove active audio/episode restoration.",
+    "Failed native departure reset source-grounded; no in-session native load UI or new failed-native execution claimed.",
+    "Unsaved assembly rebuilt with actual input, not restored from durable profiles.",
+    "Native fixtures cleaned owned progress; no retained live failing native save claimed.",
+    "Final audit first read used Windows default decoding and failed; explicit UTF-8 read succeeded without test/source changes."
+  ],
+  "deployment": false,
+  "full_ending_complete": false
+}

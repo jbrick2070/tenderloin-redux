@@ -1,0 +1,70 @@
+{
+  "paths_and_hashes": [
+    {
+      "folder": "artifacts\\ending-departure-20261026\\native1",
+      "receipts": {
+        "receipt.json": "d6244490f6bd15a1b478b85f677e6c727f4fc8e49f3c741da19f7faf49ce5200",
+        "source-before.json": "40ce63c8c7d270495575de5c59f0d4d3ca9019b6e21dd2b9b303f50312cd9907"
+      }
+    },
+    {
+      "folder": "artifacts\\ending-departure-20261026\\native2",
+      "receipts": {
+        "receipt.json": "a50fd3e58b1654ce9015f86a5508e536ead27e26e6490dbc64317db9f8cdc6a4",
+        "source-before.json": "5546b0b2544aebb6f1533629a431ef9ebc312c5b36866ce9735a1c26b4d63e8c"
+      }
+    },
+    {
+      "folder": "artifacts\\ending-departure-20261026\\native3",
+      "receipts": {
+        "receipt.json": "30a37222e5602ef20fe692e32d9e3b87291de669bca22c3946e7a2571020f7bd",
+        "source-before.json": "5546b0b2544aebb6f1533629a431ef9ebc312c5b36866ce9735a1c26b4d63e8c"
+      }
+    },
+    {
+      "folder": "artifacts\\ending-departure-20261026\\browser1",
+      "receipts": {
+        "execution.json": "927fc50182406ef564b388e3d0bcc5df1aa94fe784fded71c74345852e45c4ad",
+        "source-before.json": "efe5fe640924feb91333cbd1765ce45791c20e3197ae6b0dd88913d5de6f2864"
+      }
+    },
+    {
+      "folder": "artifacts\\ending-departure-20261026\\native5",
+      "receipts": {
+        "receipt.json": "2ca0ba6a8947859a33d16b4fd88cd54f7d5b7d048139e1b10b60d6b6bfecfd3a",
+        "source-before.json": "91e8529ecdc8edec3c21066b8e1edaf6aa02e85bc10de1298fe9127811568921"
+      }
+    },
+    {
+      "folder": "artifacts\\ending-departure-20261026\\native6",
+      "receipts": {
+        "receipt.json": "45624cdf04ea3050357472574450665e2e1d1ac30af027ab83b568978ede7062",
+        "source-before.json": "529e230691e6fc176b142f2ef7b442c145016d6452169aa4ee03140348489791"
+      }
+    },
+    {
+      "folder": "artifacts\\ending-departure-20261026\\native7",
+      "receipts": {
+        "receipt.json": "76d05d1465cab9fdbda316e57f55e24a8a1be109708c28a1c7cb3f758e85bf12",
+        "source-before.json": "2f923a8bb0ad6d0fa9fbd1f46d0646b226aa987e51fd4a2b0ddab60aed992138"
+      }
+    },
+    {
+      "folder": "artifacts\\ending-departure-20261026\\browser2",
+      "receipts": {
+        "execution.json": "c3ce37fb408cd12f152816f8617650175147641eaf2b3b4e4e9878a213098f15",
+        "source-before.json": "685d1cd707ad3e333c21307de0671c79d820b3df014c955f59dac697792f3477"
+      }
+    },
+    {
+      "folder": "artifacts\\ending-departure-20261026\\browser3",
+      "receipts": {
+        "execution.json": "ec33fd6bc61a25e842972f286c4a85355b3e5d9068fc8fbbe0b3dcde9c3e432f",
+        "source-before.json": "5ac4784539e15c10f54b002e751b8f4d00efe7c75b59b1f857ed5f7185ef43dc"
+      }
+    }
+  ],
+  "rejected_findings": "Inherited ready signal collision; fixture chapter-card takeover; browser snapshot text_fits observation assumption; stale notice on Back/replay. Corrected and separately verified with no original threshold reduction. See judgment/final and exact artifact folders.",
+  "private_checks_never_full_gate_substitute": true,
+  "raw_profiles_logs_captures_not_staged": true
+}

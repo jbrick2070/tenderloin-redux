@@ -54,7 +54,7 @@ export async function verifyHabitatRoom(page,{touch,size,renderedPixels,outputDi
     if(i===0){await page.keyboard.press('Escape');await settle();await returned('partial Escape');await enter();assert.deepEqual((await snap()).habitat_room.assigned,partial);}
   }
   h=(await snap()).habitat_room;assert.equal(h.buttons[7].text,'Welcome Thanh');await tap(h.buttons[7]);h=(await snap()).habitat_room;
-  assert.ok(h.complete&&h.buttons[7].disabled);assert.match(h.text,/^Thanh:.*left the/s);assert.match(h.text,/Celeste:/);assert.match(h.text,/Dez:/);assert.deepEqual(h.copies.film,saved.film.result);assert.deepEqual(h.copies.civic,saved.civic.result);
+  assert.ok(h.complete&&!h.buttons[7].disabled&&h.buttons[7].text==='Prepare together');assert.match(h.text,/^Thanh:.*left the/s);assert.match(h.text,/Celeste:/);assert.match(h.text,/Dez:/);assert.deepEqual(h.copies.film,saved.film.result);assert.deepEqual(h.copies.civic,saved.civic.result);
   const hosted=Object.fromEntries(saved.hosting.results.map(x=>[x.id,x.value]));assert.deepEqual(h.copies.art,hosted.art);assert.equal(h.copies.pause,hosted.pause);assert.equal(h.copies.beats,hosted.beats);
   const last=await renderedPixels(page),canvas=await page.locator('#canvas').boundingBox();let changed=0;
   for(let y=h.art.y+4;y<h.art.y+h.art.height-4;y+=4)for(let x=h.art.x+4;x<h.art.x+h.art.width-4;x+=4){const px=canvas.x+x*canvas.width/size.width,py=canvas.y+y*canvas.height/size.height;if(first.pixel(px,py).some((v,k)=>Math.abs(v-last.pixel(px,py)[k])>30))changed++;}
