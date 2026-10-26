@@ -1,0 +1,19 @@
+{
+  "all_reviewed_inputs_unchanged": true,
+  "count": 240,
+  "retained_exact_inputs": "C:\\tenderloin-redux\\artifacts\\programme-enactment-20261026\\reviewed-inputs",
+  "valid_orders": 16,
+  "pairs": [
+    "art>beats",
+    "art>pause",
+    "art>stories",
+    "beats>art",
+    "beats>pause",
+    "pause>art",
+    "pause>beats",
+    "pause>stories",
+    "stories>art",
+    "stories>beats",
+    "stories>pause"
+  ]
+}

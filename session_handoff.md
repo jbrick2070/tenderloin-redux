@@ -1,5 +1,66 @@
 # Session Handoff - Tenderloin Redux - October 24, 2026 UTC
 
+## Gather again accepted; Terra remediation next - October 26, 2026 UTC
+
+Gather again is implemented, verified and ready for the authorized commit/push. The same frozen final1 evidence chain completed clean at23:21:47Z: full native, export, check,106Node tests and full1100x760/390x667/320x667 browser regression. All277 bound inputs and the PCK stayed unchanged; errors[]external[]. Three genuine revised-programme journeys preserve original copies, explicit choices/completion, distinct restart/repeated-Finish safety, reader/scrollbar, held-key exits, reentry/reposting and import/reload boundaries. All prior matrices remain, including6freshphone,4actualpinch,3genuinevoting and all opening/helper/habitat/departure/orbital/finale journeys. Meaningful current programme/finale captures were inspected.
+
+Native acceptance is27 actual marker families plus all16 SMALL_PASSIVE_CHECK combinations and clean GODOT_STUDY_PASS/exit0, satisfying28 check families. The original final1 controller rejected established labels; its failed observer receipt/log remains intact. Source-grounded reassessment accepted that same complete native execution without rerun or product/test changes; only four previously unrun stages continued. Do not invent literal SMALL_PASS or a delimiter absent from established FORMAL emitters. Both exact Claude r1/r3 are complete and grounded; later driver corrections were not independently re-reviewed.
+
+Accepted PCK2096740B SHA791030025a7ad4a69cd7915c52403ba06074f87939bb23337ece75a298373163 leaves412B under unchanged2MiB. Initial10000B estimate failed; disclosed14500B allocation/actual14340B growth remain explicit. Public0.12.0 fingerprint and protected native ASFOUND1272B are unchanged. No publication or physical/human/listening acceptance is implied. Opening and complete selected ending stay closed. The accepted local programme preview is primary port4174; preserved ending-finale worktree port4175 retains its earlier accepted finale and ignored evidence.
+
+Evidence: kibitz-runs/2026-10-26-codex-programme-enactment/r3/verification.json and retained-evidence.json bind the actual chain. artifacts/programme-enactment-20261026/checkpoint-push.json records the subsequent exact delivery result; read it and live HEAD/status/lock before continuing. No live programme controller remains. Remove only its owned lock before commit, stage only intended source/docs/compact redacted receipts, and push normally with[skip ci]. No repeated unchanged gates or new deployment.
+
+The creator authorized useful fixes from the completed Terra code-and-document static review (artifacts/terra-review-20261026/REVIEW.md and coverage-manifest.json). Current driver model remains creator-selected; Terra is the reviewer identity, not an automatic model switch. First candidate is honest persistence: reproduce valid oversized imports/failed storage/stale settings/optional omission, then choose connected fixes under fresh exact r1 and distinct r3. Preserve applied-versus-saved return contracts and all input/stored data; no truncation/repair. Isolated diagnostic preparation is in artifacts/terra-remediation-20261026, not yet runtime evidence or product fixes. Unreachable single-candidate loader sorting is a related capacity candidate, with no measured saving claimed. Other input/tooling/audio/performance findings remain distinct; profile before optimization. Music/shutdown, expanded playtesting, teaser and physical/human acceptance stay open.
+
+| Outcome | Evidence | Blocker or limit | Next action |
+|---|---|---|---|
+| Gather again | Same full all-five chain, current captures/invariants accepted | Commit/push receipt follows; publication/human acceptance separate | Normal authorized delivery; keep closed afterward |
+| Terra useful recommendations | Complete static code/docs review and grounded persistence paths | Runtime reproduction and scoped reviews/implementation remain;412B headroom | New owned isolated persistence round after delivery |
+
+Older sections below are retained history; this section is current.
+
+## Gather again: reviewed candidate entering final verification - October26,2026 UTC
+
+Primary C:/tenderloin-redux owns this round under codex-programme-enactment-20261026, pid6396. Opening and the entire selected ending remain accepted/pushed at f3e31cb; the preserved ending-finale worktree retains its accepted preview/evidence. No repeated completion notification or deployment.
+
+Both distinct exact sole-Claude passes are COMPLETE: pre-code r1 selected the connected behavior before implementation; r3 completed21:15:22Z with245 frozen inputs unchanged. Every finding is grounded in programme r3/judgment.md. Requested/selected claude-opus-5-5/high; provider runtime identity/numeric allowance unknown. Later driver corrections are NOT independently re-reviewed. No additional paid pass.
+
+Gather again retains original copied Posted order/contributions, four openings and11pairs with three deliberate Invite/Make room choices, separate completion, review, retained partial/completed reentry and a deliberate new copied visit. Repeated Finish/Next cannot restart: completed Next stays disabled and replacement is a different row. Different order says New posted plan; same order says New visit. Invitation grammar and hidden refusal channel are corrected; no mixing with save-budget feedback. Browser320 now authors a genuinely changed order, and the aggregate expects the actual later posted revision. Existing downstream reload/audio assumptions were grounded; a new handoff assertion supplements the original checks.
+
+PRIVATE corrected native5 passes22layouts/all16orders/11pairs/four openings/both gestures, caller32/lifecycle/refusal/repeated-completion safety and cache/held-state restoration. PRIVATE corrected browser4 passes6actual desktop/Android-emulated cases with the formal predecessor's posted-order precondition, original copied pixels, separate restart, repeated actual pointer/touch Finish/Next, gesture differences, scrollbar, held keys, reentry/reposting/import/reload; errors[]external[]. Source/PCK are bound separately. These are NOT full gates or physical/human/file-picker proof. Prior rejected inputs/profiles/traces/screens/logs/exits remain preserved with diagnoses.
+
+Corrected export2096740B SHA791030025a7ad4a69cd7915c52403ba06074f87939bb23337ece75a298373163: growth14340B, initial10000B estimate failed, disclosed revised14500B allocation met,412B below unchanged2097152B cap. No unrelated deletion, export setting change or coverage reduction. New prose was tightened while retaining fictional/visit-only labels and all connected choices/copies.
+
+NEXT: the fresh frozen final1 ALL-FIVE controller is prepared at kibitz-runs/2026-10-26-codex-programme-enactment/r3/final-gates.py. Read actual lock/controller/stage/execution receipts before acting; never duplicate a live sequence or edit its frozen inputs. Require all28unique native tokens including PROGRAMME_GATHERING_PASS:FORMAL:22:orders=16:pairs=11, explicit paired native isolation/protectedASFOUND, export/check/106+Node and every original genuine browser matrix plus3programme journeys. Inspect final captures/source/save/geography/invariants/diff, compact receipts, remove owned lock and commit/push[skip ci] only after full acceptance. No formal acceptance/commit yet. Music/shutdown, expanded playtesting, teaser and human acceptance remain separate.
+
+| Outcome | Evidence | Blocker or limit | Next action |
+|---|---|---|---|
+| Selected opening/full ending | Accepted f3e31cb and push receipt | Publication/human acceptance separate | Keep closed |
+| Gather again connected visit | Exact r1/r3 grounded; corrected private native22 and browser6 | Fresh full all-five and accepted commit pending;412B hard-cap headroom | Finish the one frozen final1 sequence; inspect and deliver |
+
+Older sections below are history; this section is current.
+
+
+## Revised programme enactment: pre-code review - October 26, 2026 UTC
+
+The complete opening and selected ending are accepted, committed and pushed as f3e31cb7376ba39ca7f5331274a28b64e1adcfc4. Creative and verified-delivery notifications have been delivered; keep closed. No deployment or human acceptance claim. Final accepted preview/PCK and ignored evidence remain in the ending-finale worktree. No finale controller or owned lock remains.
+
+New sole-writer round uses PRIMARY C:/tenderloin-redux under owner codex-programme-enactment-20261026. Both checkouts were tracked clean at the accepted commit and no competing controller/reviewer/lock was found. This round re-grounded the remaining gap: posted revised programmes cannot be enacted because original hosting_order is retained. Do not reset that record: civic/film validation, original art/seat/rhythm/invitation and ending copies depend on it. Old selector/Hosted/cooking/Dez/opening/ending briefs are historical and closed.
+
+docs/PROGRAMME_ENACTMENT_BRIEF.md compares three options: enact the new order with original contributions; make a fully editable visit-only second programme; or enact one honestly narrower proposal. Architecture, contribution scope, identical-order eligibility, persistence and restart/reentry model are NOT selected. No new product code exists. Candidate growth<=10000B from accepted2082400B leaves4752B under unchanged2MiB, not a fit proof. Primary ignored2074608B export is older orbital content and is not current finale evidence.
+
+NEXT: finish the one exact sole-Claude pre-code r1 prepared/launched from artifacts/programme-enactment-20261026/run-r1.py. Read actual .build-round.lock, wrapper/reviewer process, execution/report/source comparison before resuming; never duplicate a live pass. Anchor/scope were written before fanout, exact requested claude-opus-5-5/high through installed Kibitz --driver codex --only claude --round r1. Freeze source/docs/tests/scripts/PCK while it runs. Ground EVERY claim and record selected/rejected scope BEFORE code. Then one connected implementation batch, distinct exact r3, grounded fixes, fresh all-five preserving all27 prior tokens/106+Node/every genuine browser matrix and final chapters. No private-pass substitute or repeated unchanged accepted gate.
+
+Retain original earned hosting/civic/film and all actual copied results, literal zero/no-notes, controls/both layouts, camera/quiet/phone/Stop/reader/focus/held-key and native/browser reset distinctions. No saved schema or persistent suspension selected. Save<=4096, legacy read-only, protectedASFOUND, public/workflow/real geography and unchanged2MiB cap remain. Reuse original art, no external outreach/purchases/paid media/rights claim. Music/shutdown, expanded playtesting, teaser and physical/human/listening acceptance remain open and separate.
+
+| Outcome | Evidence | Blocker or limit | Next action |
+|---|---|---|---|
+| Full opening and ending | Accepted full gates/captures/invariants; f3e31cb integrated/pushed | Human/publication separate | Keep closed; preserve verified worktree evidence |
+| Revised programme enactment | Actual source gap and three grounded candidate options | Exact pre-code r1 and design selection pending; no code | Finish same pass, ground every claim, select coherent scope before code |
+
+Older entries below retain history; this section is current.
+
+
 ## Full ending accepted after final verification - October 26, 2026 UTC
 
 The connected final gathering, memories, continued exploration and authored return home have passed all five formal gates on the final frozen inputs. The selected opening and full-ending plan is creatively implemented and now verified; the earlier creative-completion notification is already delivered. Human acceptance and publication remain separate. Models remain the creator's manual choice. No deployment.

@@ -59,7 +59,7 @@ export async function verifyHostedAfternoon(page,{touch=false,size,revealPhoneCo
     await page.keyboard.press('F5');await settle();assert.ok((await snap()).civic_listening.visible);assert.deepEqual(await storage(),initialStorage,'separate explicit reader open does not advance Listening');await page.keyboard.press('Escape');await settle();
   }else{assert.ok(h.buttons[7].disabled);assert.match(h.text,/Dez's offer/);await tap(h.buttons[10]);}
   await page.keyboard.press('F6');await settle();h=(await snap()).programme_studio;
-  assert.ok(!h.hosted_view&&!h.posted_view);assert.match(h.text,/does not start a second gathering/,'future planning boundary is explicit');
+  assert.ok(!h.hosted_view&&!h.posted_view);assert.match(h.text,/Posting alone does not start another gathering/,'future planning boundary is explicit');
   await page.keyboard.press('Escape');await settle();
   assert.deepEqual(await storage(),initialStorage);assert.equal(JSON.stringify(JSON.parse((await storage())['tenderloin-redux.godot.save.v1']).epilogue.photo),photo);
   // This deliberate player pan is part of the journey. Subsequent civic tests

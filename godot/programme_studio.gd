@@ -9,6 +9,7 @@ const PITCHES := [
 	'“Portable panels again. Everyone can add a shape, or help someone find a color. Put us wherever the afternoon needs a change.”',
 	'“An unhurried pause belongs on the programme too. No amplified sound, no activity to finish. A chance to sit or come and go.”'
 ]
+var gathering: Control
 var game: Node
 var top: PanelContainer
 var tray: PanelContainer
@@ -93,6 +94,7 @@ func setup(owner_game: Node) -> void:
 	top.minimum_size_changed.connect(queue_layout)
 	tray.minimum_size_changed.connect(queue_layout)
 	resized.connect(queue_layout)
+	gathering=preload("res://programme_gathering.gd").new(); add_child(gathering); gathering.setup(self)
 	hide()
 
 func frame() -> PanelContainer:
@@ -146,6 +148,7 @@ func refuse(message: String) -> bool:
 
 func close_studio(announce: bool=true) -> void:
 	if not visible: return
+	var closing_gathering: bool=gathering.pause_for_exit()
 	var closing_hosted := hosted_view
 	hide()
 	hosted_view=false
@@ -160,8 +163,19 @@ func close_studio(announce: bool=true) -> void:
 	elif game.block_programme_btn.is_visible_in_tree(): game.block_programme_btn.grab_focus()
 	if announce:
 		var message := "Draft, posted future plan and running gathering stay separate. Z keeps the quick path."
+		if closing_gathering: message="Your gathering stays this visit. Open Programme Studio, Posted, then "+gathering.title()+". Reload or successful import clears this visit, not the original afternoon."
 		if closing_hosted: message="Bea's offer stays with your completed gathering." if Hosted.invitation_available(game) else "Your completed gathering and Listening Hour remain available."
 		game.announce_a11y_status("Back to the block. "+(budget_notice if not budget_notice.is_empty() else message))
+
+func set_gathering_visible(active: bool) -> void:
+	top.visible=not active; tray.visible=not active; picture.visible=not active
+	if not active: queue_layout()
+
+func reset_visit() -> void:
+	close_studio(false); gathering.reset_visit()
+
+func release_pending() -> bool:
+	return gathering.release_pending()
 
 func allow_envelope(next: Dictionary) -> bool:
 	# The existing import contract permits oversized optional metadata in memory.
@@ -216,6 +230,8 @@ func move_card(direction: int) -> void:
 
 func advance() -> void:
 	if not visible or primary.disabled: return
+	if posted and not hosted_view and game.is_hosting_done():
+		gathering.open_gathering(); return
 	if hosted_view:
 		follow_hosted_invitation()
 		return
@@ -272,13 +288,14 @@ func description() -> String:
 	if hosted_view:
 		var text: String=Hosted.detail(game,selected)+"\n"+Hosted.invitation(game)+"\nCopied order: "+order_text(game.hosting_order)+"."
 		if Hosted.invitation_available(game): text+="\nFollow takes you to the Listening Hour button; open it when ready. Keep exploring leaves this offer with your completed gathering."
-		text+="\nPicture: "+hosted_picture_description()+". Draft and Posted remain a pinboard for imagining another afternoon. They do not start a second gathering or change the one you hosted."
+		text+="\nPicture: "+hosted_picture_description()+". Draft and Posted keep the first afternoon unchanged. Posting alone does not start another gathering. Posted offers Gather again for this visit."
 		return text
 	var order: Array=game.programme_published if posted else game.programme_order
 	var lines: Array[String]=[]
 	if not budget_notice.is_empty(): lines.append(budget_notice)
 	elif JSON.stringify(game.build_save_envelope()).to_utf8_buffer().size()>game.SAVE_BUDGET_MAX_BYTES: lines.append("This imported profile is too large to save. Non-growing edits are visit-only; the last stored save is kept.")
 	if posted:
+		if not gathering.notice.is_empty(): lines.append(gathering.notice)
 		lines.append("Posted future plan. "+game.programme_poster_heading(order)+". No date or real event is announced.")
 		var answers := replies(order)
 		for i in range(answers.size()): lines.append(OWNERS[i]+": "+answers[i])
@@ -290,7 +307,7 @@ func description() -> String:
 		lines.append("Draft differs from the posted plan." if order!=game.programme_published else "Draft matches the posted plan.")
 	if not game.hosting_order.is_empty():
 		lines.append("This is a future plan. Revisions do not rewrite the gathering already "+("hosted: " if game.is_hosting_done() else "started: ")+order_text(game.hosting_order)+".")
-		if game.is_hosting_done(): lines.append("This pinboard imagines another afternoon; it does not start a second gathering.")
+		if game.is_hosting_done(): lines.append("Posting alone does not start another gathering. Posted offers Gather again for this visit; the first afternoon stays unchanged.")
 	else: lines.append("Posting copies the draft. Start Hosting copies that posted order; listening is welcome.")
 	lines.append("Pinboard order: "+order_text(order)+". Original imagined paper, not a real event poster.")
 	return "\n".join(lines)
@@ -331,6 +348,8 @@ func refresh(announce: bool) -> void:
 	var start: bool=game.is_hosting_ready_to_start() and (posted or game.programme_order==game.programme_published)
 	primary.text="Start hosting" if start else (("Post" if game.programme_published.is_empty() else "Post revision") if game.programme_order!=game.programme_published or game.programme_published.is_empty() else "Posted")
 	primary.disabled=not start and (game.programme_issue(game.programme_order)!="" or game.programme_order==game.programme_published)
+	if posted and not hosted_view and game.is_hosting_done():
+		primary.text=gathering.title(); primary.disabled=game.programme_issue(game.programme_published)!="" and gathering.order.is_empty()
 	view.text="Draft" if posted else "Posted"
 	if hosted_view:
 		primary.text="Follow this invitation" if Hosted.invitation_available(game) else "Listening complete"
@@ -368,6 +387,7 @@ func queue_layout() -> void:
 func fit_layout() -> void:
 	layout_pending=false
 	if not visible: return
+	if gathering.visible: gathering.queue_layout(); return
 	var vp: Vector2=game.bubble_viewport_size()
 	var width := minf(940,vp.x-12)
 	top.position=Vector2((vp.x-width)*0.5,6)
@@ -412,7 +432,8 @@ func button_words_fit(b: Button) -> bool:
 	return true
 
 func snapshot() -> Dictionary:
-	if not visible: return {"visible":false,"cache":textures.size(),"hosted_view":false,"hosted_invitation":Hosted.invitation_available(game),"listening_entry_focused":game.civic_listening.entry.has_focus()}
+	if gathering.visible: return {"visible":visible,"gathering":gathering.snapshot(),"layout_pending":layout_pending or gathering.layout_pending,"hosted_view":false,"posted_view":posted}
+	if not visible: return {"visible":false,"gathering":gathering.snapshot(),"cache":textures.size(),"hosted_view":false,"hosted_invitation":Hosted.invitation_available(game),"listening_entry_focused":game.civic_listening.entry.has_focus()}
 	var buttons: Array=[]
 	for b in cards+edits+[primary,view,music,back]:
 		var d: Dictionary=game.control_snapshot(b)
@@ -420,4 +441,4 @@ func snapshot() -> Dictionary:
 		buttons.append(d)
 	var scroll := reader.get_v_scroll_bar()
 	var focus := get_viewport().gui_get_focus_owner()
-	return {"visible":visible,"selected":selected,"posted_view":posted,"draft":game.programme_order.duplicate(),"published":game.programme_published.duplicate(),"hosting":game.hosting_order.duplicate(),"issue":game.programme_issue(game.programme_order),"pitches":PITCHES,"replies":replies(game.programme_published),"text":reader.text,"buttons":buttons,"picture":game.control_snapshot(picture),"top":game.control_snapshot(top),"tray":game.control_snapshot(tray),"reader":game.control_snapshot(reader),"scroll":scroll.value,"scroll_max":maxf(0,scroll.max_value-scroll.page),"layout_pending":layout_pending,"cache":textures.size(),"hosted_view":hosted_view,"hosted_order":game.hosting_order.duplicate(),"hosted_replies":Hosted.replies(game) if hosted_view else [],"hosted_invitation":Hosted.invitation_available(game),"hosted_picture":hosted_picture_description() if hosted_view else "","listening_entry_focused":game.civic_listening.entry.has_focus(),"focus_within":focus==self or (focus!=null and is_ancestor_of(focus))}
+	return {"visible":visible,"gathering":gathering.snapshot(),"selected":selected,"posted_view":posted,"draft":game.programme_order.duplicate(),"published":game.programme_published.duplicate(),"hosting":game.hosting_order.duplicate(),"issue":game.programme_issue(game.programme_order),"pitches":PITCHES,"replies":replies(game.programme_published),"text":reader.text,"buttons":buttons,"picture":game.control_snapshot(picture),"top":game.control_snapshot(top),"tray":game.control_snapshot(tray),"reader":game.control_snapshot(reader),"scroll":scroll.value,"scroll_max":maxf(0,scroll.max_value-scroll.page),"layout_pending":layout_pending,"cache":textures.size(),"hosted_view":hosted_view,"hosted_order":game.hosting_order.duplicate(),"hosted_replies":Hosted.replies(game) if hosted_view else [],"hosted_invitation":Hosted.invitation_available(game),"hosted_picture":hosted_picture_description() if hosted_view else "","listening_entry_focused":game.civic_listening.entry.has_focus(),"focus_within":focus==self or (focus!=null and is_ancestor_of(focus))}

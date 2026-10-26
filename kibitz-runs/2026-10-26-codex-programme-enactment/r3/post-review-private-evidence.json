@@ -1,0 +1,110 @@
+{
+  "utc": "2026-10-26T21:26:19.344369+00:00",
+  "native": {
+    "utc": "2026-10-26T21:20:48.393521+00:00",
+    "rc": 0,
+    "seconds": 30.947484016418457,
+    "source_unchanged": true,
+    "asfound_unchanged": true,
+    "clean": true,
+    "token": true,
+    "scope": "PRIVATE component fixture, not full native/genuine browser gate"
+  },
+  "browser": {
+    "utc": "2026-10-26T21:24:17.457Z",
+    "failed": false,
+    "errors": [],
+    "external": [],
+    "unchanged": true,
+    "canonicalSHA": "27efa5d84296cc1c8a869baa678905f4eb11c08abe57cf2c0cec01eb7eb2ec74",
+    "scope": "PRIVATE canonical component profile with explicit layout/framing selection, NOT genuine progression/full gate; actual desktop/Pixel7-emulated input"
+  },
+  "browser_cases": [
+    {
+      "width": 1100,
+      "touch": false,
+      "proposed": [
+        "stories",
+        "art",
+        "beats",
+        "pause"
+      ],
+      "gesturePixels": 1119,
+      "repeatedFinishSafe": true,
+      "repeatedNextSafe": true
+    },
+    {
+      "width": 390,
+      "touch": true,
+      "proposed": [
+        "pause",
+        "stories",
+        "beats",
+        "art"
+      ],
+      "gesturePixels": 1007,
+      "repeatedFinishSafe": true,
+      "repeatedNextSafe": true
+    },
+    {
+      "width": 320,
+      "touch": true,
+      "proposed": [
+        "pause",
+        "art",
+        "stories",
+        "beats"
+      ],
+      "gesturePixels": 1004,
+      "repeatedFinishSafe": true,
+      "repeatedNextSafe": true
+    },
+    {
+      "width": 1100,
+      "touch": false,
+      "proposed": [
+        "stories",
+        "art",
+        "beats",
+        "pause"
+      ],
+      "gesturePixels": 1119,
+      "repeatedFinishSafe": true,
+      "repeatedNextSafe": true
+    },
+    {
+      "width": 390,
+      "touch": true,
+      "proposed": [
+        "pause",
+        "stories",
+        "beats",
+        "art"
+      ],
+      "gesturePixels": 1007,
+      "repeatedFinishSafe": true,
+      "repeatedNextSafe": true
+    },
+    {
+      "width": 320,
+      "touch": true,
+      "proposed": [
+        "pause",
+        "art",
+        "stories",
+        "beats"
+      ],
+      "gesturePixels": 1004,
+      "repeatedFinishSafe": true,
+      "repeatedNextSafe": true
+    }
+  ],
+  "pack_bytes": 2096740,
+  "pack_sha256": "791030025a7ad4a69cd7915c52403ba06074f87939bb23337ece75a298373163",
+  "native_input_hash": "d8d41c826fede2deaff9b58c9600ac72569d033856cb17b257badecaf917cff7",
+  "browser_input_hash": "28ab6f2c7144500a60cb4247cc66b57815ff7aa8b1271c65b082c6875aa91bec",
+  "native_scope": "loose source; development PCK before corrected export",
+  "browser_scope": "corrected export; all actual six-case component inputs retained; not formal genuine progression",
+  "later_fixes_independently_reviewed": false,
+  "formal_accepted": false
+}

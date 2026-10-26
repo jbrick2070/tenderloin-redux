@@ -1,0 +1,29 @@
+# Driver anchor before the ONE implementation r3
+
+Primary C:/tenderloin-redux; baseline f3e31cb7376ba39ca7f5331274a28b64e1adcfc4. Codex sole writer under codex-programme-enactment-20261026/pid6396. Closed full opening/ending are accepted/pushed. No new paid r1: exact r1 completed and every finding grounded under ../2026-10-26-codex-programme-enactment-ideas/r1/judgment.md, with scope selected in final.md before product code. This separate exact r3 reviews the completed connected candidate, not a second ideas pass or four-round panel.
+
+## Actual connected candidate
+
+programme_gathering.gd is a true Control descendant of ProgrammeStudio. Parent remains existing modal owner, hides only its three internal surfaces and delegates exits/reset/release. Studio captures/hides CanvasLayer siblings, not descendants; no fourth parent data mode, global activity owner or new main Escape branch. main.gd has only four small integration lines: defaults/native/successful-browser reset and held-key guard. Native resets before validation; failed browser import returns before resets and preserves visit. Existing exact budget/refusal/import/legacy behavior remains.
+
+Posted primary after original hosting offers Gather again / Resume / Revisit. Back/Escape declines; original Hosted Follow/Listening entry remains independent. prepare validates original hosting/posted order/all four Hosted.copied values and textures before replacing any retained visit. Any valid order including original is allowed. Native/canonical progress is never swapped, cleared or rewritten for replay. All contributions are explicitly original copies, including literal zero rhythm and no private notes.
+
+Four openings and11valid adjacent pairs with2gestures cover the16legal permutations. Three deliberate handoffs carry actual copied values and produce distinct marks. Separate Finish acknowledges completion. Previous/Next review, Back to Posted, Keep/Escape, partial/completed reentry and New posted plan are connected. Real edits/reposting retain copied order until deliberate new plan after completion. Completed civic/film/ending still refer to first afternoon; closure discloses it. No timer, walking scene, audio/camera/route/reward/save owner. Existing music/quiet/manual intent is preserved.
+
+Two old no-second-gathering Studio statements and their native/browser expectations were deliberately revised; posting itself still does not start the new visit. All old save/copy/camera/Follow checks retained. Actual original art and invitation textures are reused; small silent rhythm/seating primitives show actual copied values. No new assets, geography/current-place facts or rights claims.
+
+## Evidence and limits
+
+PRIVATE native4 clean22layout-size/all16orders11pairs4openings/bothgestures, ui_accept, partial/completed/repost/new-plan/refusal/default/native/import and32entry idle caller cue/history restoration. Token PROGRAMME_GATHERING_PASS:PRIVATE:22:orders=16:pairs=11, explicit unique paired paths before --test-suite, ASFOUND unchanged. Earlier native1 typed-array fixture exception/native2 encoding prelaunch refusal/native3 fixture arity exception retained and diagnosed. Do not conflate native loose-source with later PCK.
+
+PRIVATE browser2 clean6desktop/Pixel7-emulated cases; browser3 clean3targeted1100/390/320 with final controlled same-order/same-step gesture-pixel checks(1119/1009/1008changedpixels). Actual editing/reposting, copied six pigments/motifs/eight slots/seats/invitation, choice/canonical preservation, scrolling/actual scrollbar, held keys after Back-to-Posted and Keep, reentry, deliberate new plan, production bridge failed/successful imports and populated reload. Not physical phones or an actual file-picker test. Input profiles/traces/screens/source/PCK/logs/exits retained in artifacts/programme-enactment-20261026. Browser1 floor fixture had inconsistent completed civic draft/result; canonical load normalization is source-grounded at main12945; corrected fixture preserves exact progress assertion. No product regression was concealed.
+
+Desktop complete and320complete captures inspected. Current tests bind all27prior native tokens plus new28th,106+Node/all prior full-browser matrices and3genuine journeys after existing Programme Studio check. These formal gates have NOT run. Browser aggregate integration postdates earlier private cases; source/PCK boundaries are recorded. No commit/deployment/human acceptance.
+
+## Measured budget correction to challenge
+
+Pre-code estimate<=10000B was NOT met. Actual PCK2096516B versus2082400B baseline is+14116B,636B below unchanged2097152B cap. Actual .gdc sizes: new12857B; Studio+528B/main+517B. Source line counts are not byte savings. Driver explicitly revises measured feature allocation to<=14500B (252B allocation contingency; actual636B), retaining connected behavior rather than discarding review/resume/copied graphics. See budget-measurement.json. No cap raise/export-setting change/unrelated deletion. Required corrections must fit the hard cap; tighten only new presentation/prose if necessary and remeasure. Review this tradeoff honestly; do not silently label initial estimate passed or invent compressed savings.
+
+## Review focus
+
+Read actual source/diff/tests and r1 decisions. Find consequential contract defects: ownership/reset ordering/transactional refusal, real editable versus copied order, completion/retained access, keyboard/touch/held/focus/reading, original copies/literalzero/privacy, size, observability/fixture restoration and full-gate integration. Verify negative paths and related assumptions. Challenge actual player outcome rather than proposing unrelated polish. Distinguish source-proved defects, unexecuted risks, optional taste and measured evidence. Do not call private checks full acceptance or claim physical/human proof. Every finding will be grounded by Codex; later corrections will be labelled NOT independently re-reviewed.

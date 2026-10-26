@@ -114,7 +114,7 @@ static func verify(suite: SceneTree, study: Node, full: String, formal := false)
 						study.civic_listening.close_hour(false)
 				# Original keyboard surface remains a future Draft, with truthful limitation.
 				await Community.press_key(suite,KEY_F6)
-				suite.require(studio.visible and not studio.hosted_view and not studio.posted and studio.description().contains("does not start a second gathering"),"actual F6 keeps future Draft and discloses future enactment boundary")
+				suite.require(studio.visible and not studio.hosted_view and not studio.posted and studio.description().contains("Posting alone does not start another gathering"),"actual F6 keeps future Draft and discloses future enactment boundary")
 				studio.selected="art"; studio.move_card(-1)
 				suite.require(JSON.stringify(study.hosting_results)==copies and study.hosting_order==order,"future draft edit leaves copied result and hosted order intact")
 				studio.close_studio(false)

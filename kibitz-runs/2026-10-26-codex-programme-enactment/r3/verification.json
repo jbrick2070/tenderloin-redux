@@ -1,0 +1,337 @@
+{
+  "utc": "2026-10-26T23:22:17.139564+00:00",
+  "accepted": true,
+  "gates": {
+    "native": {
+      "rc": 0,
+      "seconds": 895.5210165977478,
+      "finished_utc": "2026-10-26T21:41:32.686254+00:00",
+      "sources_unchanged": true,
+      "native_asfound_unchanged": true,
+      "clean": true,
+      "native_isolation": {
+        "runId": "1793049997737_26640",
+        "save": "user://godot_block_save_test_1793049997737_26640.json",
+        "settings": "user://godot_block_settings_test_1793049997737_26640.json",
+        "args": [
+          "--headless",
+          "--path",
+          "godot",
+          "--script",
+          "res://tests/study_test.gd",
+          "--",
+          "--godot-save-path=user://godot_block_save_test_1793049997737_26640.json",
+          "--godot-settings-path=user://godot_block_settings_test_1793049997737_26640.json",
+          "--test-suite"
+        ]
+      },
+      "no_unaddressed_exceptions": true,
+      "accepted_after_observer_reassessment": true,
+      "pass_marker_families": {
+        "BEA_INVITATION_PASS": "BEA_INVITATION_PASS: 2layouts x6sizes, shared buttons, true ui_accept, original rasters/world, copied/no-write/camera/quiet",
+        "CIVIC_LISTENING_PASS": "CIVIC_LISTENING_PASS: 2layouts x10sizes, all8rasters, true input, copied re-read and exact quiet/camera/save",
+        "COMMUNITY_INVITATION_PASS": "COMMUNITY_INVITATION_PASS:actual earning/2notesbranches/2layouts x6sizes/all5filmphases/Keep-reopen/Follow focus-only/quiet-manual-save/reset-load-import 60",
+        "DOG_STORY_PASS": "DOG_STORY_PASS:2layouts x6sizes/trueui_accept/clue-led choices/decoy/wrongmatch/bothorders/3realwalksStop/reunion/remoteSFACC/no-save/quiet/manual/reload",
+        "GODOT_NATIVE_ISOLATION_PASS": "GODOT_NATIVE_ISOLATION_PASS:user://godot_block_save_test_1793049997737_26640.json user://godot_block_settings_test_1793049997737_26640.json",
+        "GODOT_STUDY_PASS": "GODOT_STUDY_PASS:188 meshes (58 opening + 130 wider), measured heights, collision/courtyards, walking/sliding, 5 neighbors, Celeste portable mural, Rook speaker/music/local-audition, opening-block readiness/banner, wider Tenderloin walk (Compton's Corner + Black Hawk at Turk & Hyde + Transgender Cultural District boundary), M1 keepsake photo & loan returns, M3 afternoon programme & hosting, M4 civic listening hour & three-shot film short (The Open Seat), M5 default-off neighborhood voices & isolated settings, M6 original SVG builders/export & measured local performance, browser-save adapter, save/reload, cutaway, focus-rings, 44px and ui_accept at 1100/390/320",
+        "GUIDED_WALK_PASS": "GUIDED_WALK_PASS:2layouts x3sizes/realui_accept/nearestgoal/StopResume/explicitcycle/manual/map/hub/reload/nosave",
+        "HOSTED_AFTERNOON_PASS:FORMAL": "HOSTED_AFTERNOON_PASS:FORMAL isolated-prefix/real-Z-or-Hang-fourth/2orders/2layouts x6sizes/4copies/read-only/Keep-reopen/4civicphases/focus-only/F6future/defensive-notices/malformed-reset/caller-restored 24",
+        "LANTERN_PROCESSION_PASS": "LANTERN_PROCESSION_PASS:2layouts x6sizes/actualui_accept/routes/Stop/movingmesh/costumes/gateway/quiet/manual/zero-save",
+        "LARKIN_STORY_PASS": "LARKIN_STORY_PASS:real cityjunction/OSM exterior/daylight/6sizes/source map/actual ui_accept/route out+back/quiet/camera/zero file writes",
+        "LOAN_HOMECOMING_PASS": "LOAN_HOMECOMING_PASS:2layouts x7sizes x3owners/6orders/trueui_accept/grounded kits/canonical reload/exact4096and4097",
+        "MAP_PINCH_PASS": "MAP_PINCH_PASS:5sizes/actualtouch/spread/pinch/clamps/manualanchor/follow/bothreleaseorders/extra/cancel/notificationfocus/UI/readerGUI/rhythmGUI/recovery/save",
+        "PHONE_DISCLOSURE_PASS": "PHONE_DISCLOSURE_PASS:inlineLayoutOwner/AllActionsEsc/10portraitsizes/16px96pxreader/realui_accept/talkchoicesEsc/3primaries/Explore/Zoom/Map/BackToMe/save/legacy",
+        "POWER_STORY_PASS": "POWER_STORY_PASS:2layouts x6sizes, all768topologies/actualui_accept/3lamps+lanterns/hero/routeStopArrival+5nearinterruptions/quiet/manual/no-save/reload/nav6/tiny2",
+        "PROGRAMME_STUDIO_PASS": "PROGRAMME_STUDIO_PASS: 2layouts x7sizes, route/midhost refusal, posted-vs-partial Start, stories-first wrapper, true input,24rasters/cache8",
+        "QUIET_SEATS_PASS": "QUIET_SEATS_PASS: 2 layouts x6sizes, real buttons/meshes/route/quiet/camera/copied result/reload",
+        "SHARED_MEAL_PASS": "SHARED_MEAL_PASS:4dishes/2layouts/6sizes/realui_accept/20namedsteps/openresize/copiedfood/invitations/revisit/manual/quiet/nosave/profileboundaries",
+        "SHARED_PANEL_PASS": "SHARED_PANEL_PASS:2layouts x7sizes, six real targets/two palettes/Hang/copies/24rasters/cache8and1/exact4096success4097refusal",
+        "STORY_VISITS_PASS": "STORY_VISITS_PASS:2layouts x6sizes/realui_accept/4controllers/Power2modes/routecancel/manual/visitinvitation/nosave/reload",
+        "VOTING_STORY_PASS": "VOTING_STORY_PASS:2layouts x6sizes/trueui_accept/2sourcegoals/bothorders/mapmismatch/threeactualwalksStop/exactquietmanual/zero-save",
+        "BEFORE_STREETS_PASS:FORMAL": "BEFORE_STREETS_PASS:FORMAL actual startup/held-Skip/gusts/choices/sources/revisit/ShiftF8/11sizes/import/load/rotation/header/deferred-chapter/caller-restored 11",
+        "HELPER_BENCH_PASS:FORMAL": "HELPER_BENCH_PASS:FORMAL22layout-size/actualuiaccept/copiedtriptych/Keep/reload/input/quiet/manual/wholewords cases=22",
+        "HABITAT_ROOM_PASS:FORMAL": "HABITAT_ROOM_PASS:FORMAL22layout-size/24maps/copied-art-film-seats/Keep/load/input/quiet",
+        "DEPARTURE_PASS:FORMAL": "DEPARTURE_PASS:FORMAL22layout-size/24maps/Ready/Depart/still/Skip/Keep/load/quiet",
+        "ORBITAL_COMMONS_PASS:FORMAL": "ORBITAL_COMMONS_PASS:FORMAL22layout-size/walk/invite/Stop/reader/Back/Pause/relocation/reset/quiet",
+        "ENDING_FINALE_PASS:FORMAL": "ENDING_FINALE_PASS:FORMAL22layout-size/gather/recognition/memories/explore/return/Skip/relocation/caller",
+        "PROGRAMME_GATHERING_PASS:FORMAL": "PROGRAMME_GATHERING_PASS:FORMAL:22:orders=16:pairs=11"
+      },
+      "small_layout_coverage": {
+        "historical_requirement_alias": "SMALL_PASS",
+        "actual_marker": "SMALL_PASSIVE_CHECK",
+        "combinations": [
+          [
+            "520",
+            "360",
+            "mural"
+          ],
+          [
+            "520",
+            "360",
+            "speaker"
+          ],
+          [
+            "520",
+            "360",
+            "celeste"
+          ],
+          [
+            "520",
+            "360",
+            "rook"
+          ],
+          [
+            "559",
+            "360",
+            "mural"
+          ],
+          [
+            "559",
+            "360",
+            "speaker"
+          ],
+          [
+            "559",
+            "360",
+            "celeste"
+          ],
+          [
+            "559",
+            "360",
+            "rook"
+          ],
+          [
+            "520",
+            "559",
+            "mural"
+          ],
+          [
+            "520",
+            "559",
+            "speaker"
+          ],
+          [
+            "520",
+            "559",
+            "celeste"
+          ],
+          [
+            "520",
+            "559",
+            "rook"
+          ],
+          [
+            "559",
+            "559",
+            "mural"
+          ],
+          [
+            "559",
+            "559",
+            "speaker"
+          ],
+          [
+            "559",
+            "559",
+            "celeste"
+          ],
+          [
+            "559",
+            "559",
+            "rook"
+          ]
+        ],
+        "count": 16,
+        "short_activity_rows": 54,
+        "requires_clean_full_suite_exit_and_final_pass": true,
+        "literal_SMALL_PASS_exists": false
+      },
+      "required_check_family_count": 28,
+      "original_native_log_sha256": "9f6c5a81cb0d8091f9fbf0dafc1a13fc1ddef401b56f9bce3b70f7a64493c1bf",
+      "rerun": false
+    },
+    "export": {
+      "rc": 0,
+      "seconds": 3.173506736755371,
+      "finished_utc": "2026-10-26T21:48:43.029500+00:00",
+      "sources_unchanged": true,
+      "native_asfound_unchanged": true,
+      "pack_bytes": 2096740,
+      "pack_sha256": "791030025a7ad4a69cd7915c52403ba06074f87939bb23337ece75a298373163",
+      "hard_cap": 2097152,
+      "selected_allocation_cap": 2096900,
+      "no_unaddressed_exceptions": true
+    },
+    "check": {
+      "rc": 0,
+      "seconds": 2.2770092487335205,
+      "finished_utc": "2026-10-26T21:48:45.387526+00:00",
+      "sources_unchanged": true,
+      "native_asfound_unchanged": true,
+      "no_unaddressed_exceptions": true
+    },
+    "node": {
+      "rc": 0,
+      "seconds": 7.3839569091796875,
+      "finished_utc": "2026-10-26T21:48:52.845397+00:00",
+      "sources_unchanged": true,
+      "native_asfound_unchanged": true,
+      "tests": 106,
+      "no_unaddressed_exceptions": true
+    },
+    "browser": {
+      "rc": 0,
+      "seconds": 5574.467933893204,
+      "finished_utc": "2026-10-26T23:21:47.375395+00:00",
+      "sources_unchanged": true,
+      "native_asfound_unchanged": true,
+      "pack_unchanged": true,
+      "result_exists": true,
+      "departure_cases": 3,
+      "genuine_departure_cases": 3,
+      "departure_widths": [
+        320,
+        390,
+        1100
+      ],
+      "departure_spares": 3,
+      "habitat_cases": 3,
+      "genuine_habitat_cases": 3,
+      "habitat_widths": [
+        320,
+        390,
+        1100
+      ],
+      "browser_fingerprint_matches": true,
+      "helper_cases": 3,
+      "genuine_helper_cases": 3,
+      "opening_cases": 6,
+      "genuine_opening_startups": 3,
+      "genuine_opening_revisits": 3,
+      "errors": [],
+      "external": [],
+      "hosted_cases": 4,
+      "genuine_hosted_earned": 3,
+      "genuine_hosted_done": 1,
+      "shared_meal_cases": 3,
+      "community_invitation_cases": 9,
+      "genuine_earned_invitations": 3,
+      "fresh_phone_cases": 6,
+      "actual_pinch_cases": 4,
+      "expanded_info_pinch_cases": 4,
+      "genuine_voting_cases": 3,
+      "orbital_cases": 3,
+      "orbital_widths": [
+        320,
+        390,
+        1100
+      ],
+      "orbital_views": 3,
+      "genuine_orbital_cases": 3,
+      "finale_cases": 3,
+      "finale_widths": [
+        320,
+        390,
+        1100
+      ],
+      "finale_choices": 3,
+      "genuine_finale_cases": 3,
+      "programme_cases": 3,
+      "programme_widths": [
+        320,
+        390,
+        1100
+      ],
+      "programme_orders": 3,
+      "genuine_programme_cases": 3,
+      "no_unaddressed_exceptions": true
+    }
+  },
+  "browser_counts": {
+    "runs": 3,
+    "renderedPixelChecks": 454,
+    "traceReceipts": 44,
+    "programmeGatheringChecks": 3,
+    "finaleChecks": 3,
+    "orbitalChecks": 3,
+    "departureChecks": 3,
+    "habitatRoomChecks": 3,
+    "helperBenchChecks": 3,
+    "beforeStreetsChecks": 6,
+    "hostedAfternoonChecks": 4,
+    "sharedMealChecks": 3,
+    "guidedWalkChecks": 3,
+    "storyReturnChecks": 9,
+    "storyVisitChecks": 12,
+    "phoneDisclosureChecks": 6,
+    "mapPinchChecks": 4,
+    "votingStoryChecks": 3,
+    "lanternProcessionChecks": 3,
+    "dogStoryChecks": 6,
+    "larkinStoryChecks": 3,
+    "powerStoryChecks": 6,
+    "loanHomecomingChecks": 8,
+    "loanWorldChecks": 3,
+    "sharedPanelChecks": 9,
+    "programmeStudioChecks": 7,
+    "civicListeningChecks": 9,
+    "communityInvitationChecks": 9,
+    "beaInvitationChecks": 7,
+    "quietSeatChecks": 9,
+    "filmScreeningChecks": 3,
+    "rhythmCircleChecks": 11,
+    "rhythmAuditionChecks": 11,
+    "muralStoryChecks": 8,
+    "livingMuralChecks": 8,
+    "errors": 0,
+    "external": 0
+  },
+  "public_fingerprint": {
+    "version": "0.12.0",
+    "fingerprint": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567"
+  },
+  "protected_native_unchanged": true,
+  "captures_inspected": {
+    "programme-1100-complete.png": "fca5bb9dcce93a879780ae9aba824a404fc0d3c615df7b73fdda50f71436a565",
+    "programme-390-complete.png": "0f8facb6ed7d9c197b92c9e58ba829190074c6bad7babdcd1b2dab8aa9702326",
+    "programme-320-complete.png": "21ed1ead9e65f74f05fdc8b2ecc2e1fb19945605377e889c9d8f1d8f12441480",
+    "finale-320-gathered.png": "dcaa85cd28693eceaf74e5ddaa8bb3ed9a7372ac47c68ecc0cd8d885878d753c",
+    "finale-320-return-2.png": "663947b3611b3b0b717c15933a2d373553eb46cfb16a568c40b9c9ff1f790b1c",
+    "programme-1100-held-handoffs.png": "6c17fd27b79ed3053ab0054acd2eb2213d56305902e2db1db154f32708b9ed51"
+  },
+  "capture_judgment": {
+    "utc": "2026-10-26T23:04:52.379992+00:00",
+    "status": "captures_inspected_while_full_gate_still_live_not_full_acceptance",
+    "files": [
+      {
+        "path": "artifacts/programme-1100-complete.png",
+        "sha256": "fca5bb9dcce93a879780ae9aba824a404fc0d3c615df7b73fdda50f71436a565"
+      },
+      {
+        "path": "artifacts/programme-390-complete.png",
+        "sha256": "0f8facb6ed7d9c197b92c9e58ba829190074c6bad7babdcd1b2dab8aa9702326"
+      },
+      {
+        "path": "artifacts/programme-320-complete.png",
+        "sha256": "21ed1ead9e65f74f05fdc8b2ecc2e1fb19945605377e889c9d8f1d8f12441480"
+      }
+    ],
+    "observations": [
+      "All three screenshots show original invitation art, six copied tiles, eight rhythm slots and copied seating.",
+      "Completed original Next/Complete remains disabled; New posted plan is a separate row.",
+      "Controls and captions fit the inspected widths; reader is scrolled near its bottom and clipping above the scroll viewport is expected, not missing text.",
+      "Programme orders differ visibly across widths. No screenshot alone proves the final full browser assertions or repeated input safety."
+    ],
+    "limits": "Full browser/controller rc and retained snapshots/traces still required; physical phones and human aesthetic/AT acceptance unverified.",
+    "additional_inspection": {
+      "utc": "2026-10-26T23:16:24.770283+00:00",
+      "files": {
+        "finale-320-gathered.png": "dcaa85cd28693eceaf74e5ddaa8bb3ed9a7372ac47c68ecc0cd8d885878d753c",
+        "finale-320-return-2.png": "663947b3611b3b0b717c15933a2d373553eb46cfb16a568c40b9c9ff1f790b1c",
+        "programme-1100-held-handoffs.png": "6c17fd27b79ed3053ab0054acd2eb2213d56305902e2db1db154f32708b9ed51"
+      },
+      "observations": "Actual pixels inspected. Narrow finale shows all five separate residents and copied Art/Film/Seats without the earlier invitation-marker face cover. Authored return panel3 has the distinct Home now action and explicit speculative/visit-only labels. Programme Make room marks, all four original copied pictures, separate New visit row and disabled Complete are visible. Reader text uses its actual scrollable region; controls stay visible. No human aesthetic or full-suite acceptance inferred."
+    }
+  },
+  "limits": "Automated/native/browser evidence and driver pixel inspection only. Physical-phone, full screen-reader, human comprehension/pacing/listening/aesthetic acceptance remain unverified. No deployment. Later driver corrections were not independently re-reviewed."
+}

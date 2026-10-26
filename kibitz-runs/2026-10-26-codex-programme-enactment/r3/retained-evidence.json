@@ -1,0 +1,24 @@
+{
+  "root": "C:\\tenderloin-redux\\artifacts\\programme-enactment-20261026",
+  "accepted_chain": "final1 full native plus evidence-bound continuation of four previously unrun gates",
+  "hashes": {
+    "final1/execution.json": "e02158087c0a9a6f0eb0cfbd295882b6f584b53e7f78c880fb4a836a12c499ff",
+    "final1/native.log": "9f6c5a81cb0d8091f9fbf0dafc1a13fc1ddef401b56f9bce3b70f7a64493c1bf",
+    "native-reassessment.json": "41dd958f0bdb42163065d054c91ac8ce87685c36c7d655ce3d6d406ab3236b3b",
+    "continuation-ready.json": "d17304743691cc82bc33f894df085567f9cb937a3a83d37e88f46ad4900b7c39",
+    "final1-continuation/execution.json": "7c032ae3025a0020694c2f64feb7e560ce581cc368dbeb1424b1f83a98d667fb",
+    "final1-continuation/gate-exits.json": "74434efa0f92df671100290f5ba93536bfc49ef38e365222aefc18ad3264da33",
+    "final1-continuation/source-before.json": "657f8e0ef95d6d95a55a6736df25bd0482e014481a23971e8b9dc1f1eab91d5b",
+    "final1-continuation/browser-source-before.json": "4ad74e7056e792c4d05de9452dda607240f8154836316452133620ab2ad574f7",
+    "final1-continuation/browser.log": "d7d8c42ad1fea6a9b2112e4d6c06ae01dce59ad96f5f49552d74fb18491fe450",
+    "final1-continuation/browser-evidence/godot-browser.json": "a70f3760cae323231cc7273bff2186fda2c922e28564f667df1e8e35c3981016"
+  },
+  "rejected_observation": "Original final1 observer rejected valid legacy output labels. No native rerun, product/test change, invented SMALL_PASS token or missing assertion; source-grounded reassessment retained27 marker families plus16 SMALL_PASSIVE_CHECK combinations and clean full exit.",
+  "profiles": "Available isolated synthetic profiles, action/DOM traces, screenshots, logs and exits retained locally. Cleaned native fixtures and post-run profiles are not earlier failing moments. No raw userdata or private quota data staged.",
+  "current_pack_bytes": 2096740,
+  "initial_allocation_failed": 10000,
+  "disclosed_revised_allocation": 14500,
+  "measured_growth": 14340,
+  "hard_cap": 2097152,
+  "headroom": 412
+}

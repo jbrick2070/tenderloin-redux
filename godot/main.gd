@@ -12529,6 +12529,7 @@ func save_godot_state() -> bool:
 	return wrote
 
 func reset_mural_state_to_defaults(status_label: String) -> void:
+	if programme_studio != null: programme_studio.reset_visit()
 	if habitat_room != null: habitat_room.reset_visit()
 	if helper_bench != null: helper_bench.reset_visit()
 	if before_streets != null: before_streets.reset_visit()
@@ -13033,6 +13034,7 @@ func validate_godot_optional(raw_opt: Variant) -> Dictionary:
 	return {"ok": true, "optional": (raw_opt as Dictionary).duplicate(true)}
 
 func apply_save_envelope(raw_json: String) -> bool:
+	if programme_studio != null: programme_studio.reset_visit()
 	if habitat_room != null: habitat_room.reset_visit()
 	if helper_bench != null: helper_bench.reset_visit()
 	if before_streets != null: before_streets.reset_visit()
@@ -13734,6 +13736,7 @@ func import_browser_save_json(raw_json: String) -> bool:
 			merged_opt[k] = imp_opt[k]
 		if JSON.stringify(merged_opt).length() <= OPTIONAL_SAVE_MAX_BYTES:
 			optional_save_data = merged_opt
+	if programme_studio != null: programme_studio.reset_visit()
 	if habitat_room != null: habitat_room.reset_visit()
 	if helper_bench != null: helper_bench.reset_visit()
 	if before_streets != null: before_streets.reset_visit()
@@ -14316,6 +14319,7 @@ func _process(delta: float) -> void:
 func _physics_process(delta: float) -> void:
 	if is_focused_activity_visible() or (startup_story_pending and is_story_card_visible()):
 		return
+	if programme_studio != null and programme_studio.release_pending(): return
 	if habitat_room != null and habitat_room.release_pending(): return
 	if helper_bench != null and helper_bench.release_pending(): return
 	var shift_held := Input.is_key_pressed(KEY_SHIFT) or Input.is_physical_key_pressed(KEY_SHIFT)

@@ -1,0 +1,9 @@
+{
+  "utc": "2026-10-26T21:26:19.344369+00:00",
+  "scope": "PRIVATE corrected candidate, not formal capture acceptance",
+  "captures": {
+    "browser4/320-table-wide/programme-320-complete.png": "8d7de50f8fdb9098bfd25c948716a0d9177f29b582274c2ea92b25cb4c10c412",
+    "browser4/1100-table-wide/programme-1100-complete.png": "0a240a54632d9f8a7b37fdf48746fa4f800d0f799dee75db7197d65d362492f2"
+  },
+  "observed": "All four recognizable original contributions, explicit Invite/Make room marks, readable full action labels, separate New posted plan row above disabled Complete, working scroll offset. Retained fictional/visit-only label. No overlap or blocked controls observed in inspected desktop/320 frames. Other six-case geometry/pixel assertions are automated evidence, not human aesthetic acceptance."
+}

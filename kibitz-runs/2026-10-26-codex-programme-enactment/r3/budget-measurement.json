@@ -1,0 +1,20 @@
+{
+  "utc": "2026-10-26T21:05:31.009955+00:00",
+  "baseline": 2082400,
+  "current": 2096516,
+  "growth": 14116,
+  "initial_estimate": 10000,
+  "initial_estimate_met": false,
+  "revised_measured_allocation": 14500,
+  "hard_cap_unchanged": 2097152,
+  "remaining": 636,
+  "pack_sha256": "492d5c8cab85d4ab40631b4d7d93453b68fe464c8bd90f13e130d1d12f3c2b00",
+  "actual_exported_entries": {
+    "main.gdc": 512782,
+    "programme_gathering.gdc": 12857,
+    "programme_studio.gdc": 19705
+  },
+  "engine": "4.7.2.stable.official.ed1daf0bf",
+  "script_mode_observation": "Actual exported .gdc entries demonstrate compiled scripts; no export setting changed. Source byte counts are not a predicted pack measurement.",
+  "judgment": "Measured allocation corrected, not a claimed pass of initial estimate. Preserve connected choices/copies/partial-completed state/input-reset defenses. No unrelated removal. Required review corrections must fit original cap; trim only new presentation/prose and remeasure if needed."
+}

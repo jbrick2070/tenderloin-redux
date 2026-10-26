@@ -1,0 +1,31 @@
+# Grounded pre-code judgment
+
+Exact sole-Claude r1 completed rc0 at 2026-10-26T20:35:49.985305Z, requested/selected claude-opus-5-5/high. Numeric allowance and provider-side runtime identity remain unknown. All 240 reviewed inputs were unchanged at completion and rechecked before selection; exact bytes are retained in artifacts/programme-enactment-20261026/reviewed-inputs. No product code preceded this selection. No second paid pass was purchased. Read-only source mapping supplemented the driver; Codex is sole writer and final judge.
+
+References below identify the reviewed baseline, f3e31cb. Line numbers will move during implementation.
+
+| Finding | Grounding and decision |
+|---|---|
+| Source citations | HOLDS: main9783-9811 validates four unique segments/quiet interval;9846-9867 compares last posted order;9869-10003 guards initial hosting and mutates canonical results. Studio116-137 guards entry/captures siblings;353-359 hides siblings; main14726 dispatches Escape;13035 resets before native validation. Hosted56-57 derives Listening invitation from earned state. Preserve these contracts. |
+| Must1 meaningful choice | HOLDS as a specification gap. Posted replies264-269 and Hosted detail23-49 already cover commentary/review. Select three explicit social handoff choices, keyed to adjacent pair and gesture, visibly accumulated in the composition. Exhaustive rule enumeration confirms16 valid orders,11 adjacent pairs,4 openings. No four-Next substitute. |
+| Must2 obsolete boundary | HOLDS. Deliberately revise Studio275/293 and native Hosted117. Reviewer missed tests/hosted-afternoon-browser.mjs62; update that assertion too while retaining its save/camera/copies/Follow checks. Posting alone still does not enact; a separate Gather again action does. |
+| Must3 retained invitation | HOLDS. New invitation is Posted primary, Gather again / Resume gathering / Revisit gathering. Back/Escape declines without clearing access. Existing Hosted Follow/Listening invitation is separate and unchanged. |
+| Must4 arc position | PARTIAL. Hosted62 and Habitat144-147 use original durable copies. Orbital209 refers to its imagined orbital gathering, not proof that only one original gathering can exist. Select availability after original hosting at any civic/finale phase, subject to existing modal/walking guards. Closure explains first-afternoon downstream records once. No downstream rewrites. |
+| Must5 spatial scope | PARTIAL. Spatial interaction does not inherently own city routes. Nevertheless select social gestures with a still2D composition; local walking is unnecessary for this outcome. |
+| Must6 identical order | HOLDS. Publish compares published, not hosted. Allow any valid posted order, including original order; explicitly acknowledge same order. No unnecessary extra gate. |
+| Must7 size | HOLDS as an unmeasured risk, not a demonstrated overrun. Select<=10000B measured growth from accepted2082400B; unchanged2MiB global cap. Export preset leaves script mode unspecified; do not infer source line count equals exported size. Actual engine/export size must decide. Reuse invitation and art textures; rhythm/seats need small original semantic primitives, since their current Studio fallback is only a poster. No new assets or unrelated deletion. |
+| Should1 child ownership | PARTIAL; blanket close-Studio requirement REFUTED. Studio124 captures CanvasLayer siblings, not descendants. Closing an actual Control child ancestor would hide the child. Select a true child, keep Studio as existing focused/Escape owner, hide only its internal surfaces, delegate close/reset/release. No new global activity owner needed. Register resets at defaults12531/native13035/successful-browser13737; failed browser13606 returns earlier and preserves. |
+| Should2 editable duplicate | Coupling HOLDS: existing rhythm Practice is visit-only, editors read canonical draft, world props read canonical records. Reject option2 for coherent scope, not because its infeasibility or size was measured. |
+| Should3 responses | ACCEPT: adjacent pair + selected gesture + validated copied value. Original posted-plan commentary remains. Literal zero rhythm and absence of personal notes stay explicit. |
+| Should4 snapshot | ACCEPT: transactionally snapshot posted order and original contributions once; edits/reposting leave retained partial/completed visit untouched. Return to Studio explicitly before editing. New posted plan is deliberate after completion. |
+| Should5 missing copies | Predicate HOLDS; normal-import implication overstated. Hosted7 validates; native12825 rejects malformed hosting and browser13446 stops at invalid prefix. Defensive invalid completed state still matters. Reject continuing with missing originals: refuse a new start transactionally, retain prior visit and original access, explain refusal. |
+| Optional option3 | Keep only as an honestly narrower future alternative if measured scope cannot fit; not selected and not a parallel implementation. |
+| Optional four textures | PARTIAL: invitation/art have real texture builders, rhythm/seats currently fallback to order poster. Draw actual silent eight slots and copied arc/pair+open seating; never claim the old poster depicts those copies. |
+| Cut1 editable option2 | Selected scope cut as above, not a measured impossibility. |
+| Cut2 prior art | Reject deletion; creator explicitly requested prior-art grounding. Retain concise primary Mutazione/Spiritfarer adjacent precedent, no uniqueness/rights assertion or borrowed assets. |
+| Cut3 architecture comparison | Resolved as true child above; preserve comparison rationale as review evidence. |
+| Cut4 spatial | Selected bounded social composition, not a general technical prohibition. |
+| Cut5 partial resume | Reject optional simplification. Retain three gestures and exact current review position this visit; no durable suspension claim. Small state does not justify discarding deliberate work. |
+| Cut6 archive prose | Archive remains deferred in one sentence of selected scope. No new save schema/flag. |
+
+The recommended core is accepted with these grounded corrections. This is a pre-code selection, not implementation or test acceptance. A distinct exact r3 follows the connected batch; do not repeat r1.
