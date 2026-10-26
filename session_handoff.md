@@ -2,7 +2,7 @@
 
 ## Accepted first helper workshop - October26,2026 UTC
 
-The first Tenderloin to the Stars helper workshop is IMPLEMENTED, independently reviewed and ALL FIVE locally verified on final unchanged inputs. Its source checkpoint is the commit containing this record; commit/push follows closure. Before These Streets remains accepted/pushed8d12f34. Creator priority stays START and FULL END: habitat, cooperative departure, orbital neighborhood and return remain unfinished. The full creative completion notification has NOT been reached; model switching stays manual. No deployment or human acceptance claimed.
+The first Tenderloin to the Stars helper workshop is IMPLEMENTED, independently reviewed and ALL FIVE locally verified on final unchanged inputs. Its accepted source checkpoint aed34b864811dddf43eed6f6fc3cf8ee86dd806c is pushed to origin/main[skip ci]. Before These Streets remains accepted/pushed8d12f34. Creator priority stays START and FULL END: habitat, cooperative departure, orbital neighborhood and return remain unfinished. The full creative completion notification has NOT been reached; model switching stays manual. No deployment or human acceptance claimed.
 
 PLAYER OUTCOME: a completed valid film earns Dez's retained original-viewer invitation. Choose Low/Upright, fit both supports in either order, deliberately ask the helper to lift the actual copied film frames, then receive a specific response and one visible display with parked helper. Keep/revisit retains this visit's steps; deliberate rearrangement changes the same completed display. Reload/successful load/import clears construction while existing film progress retains the invitation; failed browser import preserves the visit. No new saved flag, automatic progress/audio/camera/route, opening/cooking/optional-story prerequisite or global selector. Original film controls, hub/Power actions, F2-F8/ShiftF8, copied art/results, both layouts and quiet/manual/phone intent remain.
 
@@ -14,12 +14,12 @@ REJECTED EVIDENCE: final1 native rejected four civic Back/Escape camera assertio
 
 PRESERVATION: public0.12.0 fingerprint2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567; no public/workflow/OSM/data or legacy browser-save write changes. PCK2033468B/SHA3bfa0f0e71d931e38c685cb7ccadab1abcbb47496c1f9756611b34822459a1f7 below unchanged2MBcap. Native glyph/budget/import-refusal coverage retained. ASFOUND1272B/SHA2b7d1e849b4820a1d6c49602930ac3e0b104a8aa132375837038bfef80f2e0e1 unchanged, no verified recovery. Physical phones/fullAT/human comprehension/pacing/aesthetic/listening/cultural/field acceptance unverified. Music and unexplained shutdown remain separate.
 
-NEXT: finish source checkpoint commit/push[skip ci], then fresh scoped pre-code r1 for the habitat stage shaped by existing neighborhood choices. Ground current source, meaningful playable task/consequence and invitation, and exact visit/save/return boundaries before selecting. Cooperative departure/orbit/return remain later stages. Never rebuild closed opening/Hosted/Bea/Dez/cooking/story-switching or clear earned progress to fake replay. Future revised-programme enactment stays a separate lower-priority open question. No deployment.
+NEXT: source checkpoint is committed/pushed. Creator-requested graphics review is recorded in docs/GRAPHICS_REVIEW_20261025.md; it proposes visual hierarchy/annotation/completion improvements but changes no product code. Continue with fresh scoped pre-code r1 for the habitat stage shaped by existing neighborhood choices. Ground current source, meaningful playable task/consequence and invitation, and exact visit/save/return boundaries before selecting. Cooperative departure/orbit/return remain later stages. Never rebuild closed opening/Hosted/Bea/Dez/cooking/story-switching or clear earned progress to fake replay. Future revised-programme enactment stays a separate lower-priority open question. No deployment.
 
 | Outcome | Evidence/state | Remaining limit | Next action |
 |---|---|---|---|
 | Opening | Accepted/pushed8d12f34 | Human acceptance/publication separate | Leave closed |
-| First helper workshop | Implemented/reviewed/all-five accepted; r3/verification.json | Accepted source commit/push follows this record | Close checkpoint without repeating gates |
+| First helper workshop | Accepted/pushedaed34b8; r3/verification.json | Human acceptance/publication separate | Leave closed |
 | Habitat/departure/orbit/return | Unimplemented | Separate coherent review/build/verification stages | Fresh habitat r1 after commit |
 
 ## Verified Before These Streets opening - October26,2026 UTC
