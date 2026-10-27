@@ -1,14 +1,14 @@
 # Build status
 
-## Current: Field Guide verification complete; delivery pending - October 27, 2026 UTC
+## Current: Field Guide correction verified and pushed - October 27, 2026 UTC
 
 The Field Guide/local mount correction completed its same frozen final1 all-five chain plus the18-case Field Guide browser verifier. Native29 requirement families, export, check,106 Node and full genuine1100/390/320 game browser passed with errors[]external[]. All2479 bound inputs, served PCK and protected native ASFOUND stayed unchanged. The2096484-byte PCK leaves668 bytes under the unchanged cap. Both distinct exact sole-Claude reviews were grounded; later driver corrections were not independently re-reviewed. Final current field and game screenshots and the bounded diff were inspected. Full local evidence remains under artifacts/terra-field-guide-20261027/final1; compact receipts are in kibitz-runs/2026-10-26-codex-field-guide-route/r3/verification.json and final-capture-inspection.json.
 
-The local /field-guide and /browser slashless routes redirect safely; map failure and loading status are honest, and independent photo stops remain usable during pending data without losing focus or input. Static project-base slash path is tested only in a local fixture; external slashless redirects and live publication are not verified. A permanently stalled fetch may remain loading. Native post-open durability, actual physical phone, full screen-reader and human acceptance remain separate. Controller ended: inspect current HEAD/status and owned lock before normal authorized [skip ci] commit/push; no deployment. Other Terra recommendations, music/shutdown, playtesting and teaser remain open.
+The local /field-guide and /browser slashless routes redirect safely; map failure and loading status are honest, and independent photo stops remain usable during pending data without losing focus or input. Static project-base slash path is tested only in a local fixture; external slashless redirects and live publication are not verified. A permanently stalled fetch may remain loading. Native post-open durability, actual physical phone, full screen-reader and human acceptance remain separate. The controller ended; accepted feature commit 67757aa40efb13b42e65b0d038c1572725753b64 was pushed normally to origin/main after removing the owned lock. See artifacts/terra-field-guide-20261027/checkpoint-push.json and inspect live HEAD/status before new work. The old 4174 preview server was started before the route change; the final field verifier used its own current isolated server. No deployment. Other Terra recommendations, music/shutdown, playtesting and teaser remain open.
 
 | Outcome | Evidence | Blocker or limit | Next action |
 |---|---|---|---|
-| Field Guide map loading | Full same all-five,18 field cases, reviewed current captures/invariants | Delivery and human acceptance separate | Commit/push after intended diff and owned-lock removal |
+| Field Guide map loading | Full same all-five,18 field cases, reviewed captures/invariants and feature push | Human acceptance and publication separate | Keep closed; never repeat unchanged gates |
 | Other Terra recommendations | Static review and measurement plan | Runtime reproduction/profiling remain | Separate follow-up after checkpoint |
 
 ## Current: Field Guide reviewed; final verification pending - October 27, 2026 UTC
