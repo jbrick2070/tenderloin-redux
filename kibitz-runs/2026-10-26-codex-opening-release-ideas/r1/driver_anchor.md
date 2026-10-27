@@ -1,0 +1,7 @@
+# Driver anchor - opening held-key exit pre-code r1
+
+VERDICT: confirmed user-visible risk using real keyboard and real canvas exit in isolated browser contexts; no code edits yet. Source root: before_streets.gd close_opening hides and restores focus without tracking held movement; main.gd _physics_process returns while focused activities are visible then polls held WASD after close. Existing helper_bench/habitat release_pending gates provide local prior art, but exact contract and reset/late-held semantics need independent inspection.
+
+CONFIRMED: 8 held-W exit cases moved about2.08–2.93m; unheld desktop control zero. While open no movement; fresh press moved; all observed storage/quiet remained equal. Fingerprints, actual screenshots/traces and full samples retained under artifacts/terra-input-20261027/opening-probe1 and opening-probe2. Both desktop keyboard and Pixel7-emulated contexts; no physical-phone claim. Do not overinterpret post-release phone snapshot delta, which may reflect delayed snapshot.
+
+MUST: preserve whole opening and startup interaction, released-key recovery, native/input/focus/quiet/camera/save/route contracts, no unexpected held movement or spurious block after release. Inspect exact physics/event ordering, held logical/physical keys, reset/import/lifecycle cases and relevant tests. Select connected minimal safe slice and acceptance before any product code; no other activity refactor unless grounded and required.

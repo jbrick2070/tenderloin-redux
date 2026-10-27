@@ -1,0 +1,15 @@
+{
+  "utc": "2026-10-27T11:12:11.884549+00:00",
+  "images": {
+    "browser-evidence/opening-1100-startup-response.png": "8be081cf54d8201dffc155fe7a105939007ea1c73f35ba46190fd5396a585c25",
+    "browser-evidence/opening-390-revisit-response.png": "c4fea777d1904e37fb6286eb67efa192d1fb9d96f8e5894ae21ed751e0f78deb",
+    "browser-evidence/opening-320-revisit-response.png": "3cbb34940283bdced06a03154f72814d1ef56d30301ee7c83caa929a3af2a148",
+    "browser-evidence/helper-1100-world.png": "6aa61e3418b8c2b8959a3ba3b342b6f884febd52568d50f709a9cbca460c46c1",
+    "browser-evidence/helper-390-world.png": "68f9c39522eef1e2dcb51baecc71791245255e8869f4d4d1eb18edc7916deea2",
+    "browser-evidence/helper-320-world.png": "4547e798e0e9c80078cff85f371ee3f55e24158d81cd1e81d2e70c514edd7b1e",
+    "field-evidence/390-normal.png": "caf5358ea8c4c30585bdfc4d5d7ff54ffe6d01b19f2fbadb5c4fdb0b649c9a02",
+    "field-evidence/320-not-found.png": "6eae047e9f8d82f34d88f14479692b0a3f477d910695723a420cd7ac1e80c3ea"
+  },
+  "observed": "Opening artwork, fictional/historical labels, reader and controls visible in inspected desktop and phone-sized stills; helper frames present at deliberate inspection angle but small in phone world images. Field Guide normal map and unavailable state with stop controls visible.",
+  "limits": "Screenshots and browser emulation do not prove physical devices, actual field observation or human comprehension."
+}

@@ -43,9 +43,9 @@ export async function verifyBeforeStreets(page,{touch,size,renderedPixels,mode='
     for(const b of [h.top,h.tray,h.picture,...h.buttons])assert.ok(b.x>=-1&&b.y>=-1&&b.x+b.width<=viewport.width+1&&b.y+b.height<=viewport.height+1,'complete opening controls and illustration fit live rotation');
     assert.ok(h.buttons.every(b=>b.width>=44&&b.height>=44&&b.words_fit));assert.ok(h.picture.width>=180&&h.picture.height>=80&&h.reader.height>=64);
   }
-  if(mode==='startup')await page.keyboard.down('KeyW');
+  await page.keyboard.down('KeyW');
   await page.keyboard.press('Escape');await settle();
-  if(mode==='startup'){await page.keyboard.down('KeyW');await settle();await page.keyboard.up('KeyW');}
+  if(mode==='startup'){await page.keyboard.down('KeyW');await settle();await page.keyboard.up('KeyW');await page.waitForFunction(()=>!window.__tenderloinGodotA11ySnapshot.before_streets.release_pending,null,{timeout:5000});}
   s=await snap();assert.ok(!s.before_streets.visible);
   if(mode==='startup'){
     assert.ok(s.startup_pending&&s.story_detail.panel.visible&&s.story_start_focus);assert.ok(initial.story_detail.text.length>0);assert.equal(s.story_detail.text,initial.story_detail.text,'exact original chapter reader returns');
@@ -55,9 +55,14 @@ export async function verifyBeforeStreets(page,{touch,size,renderedPixels,mode='
     await page.setViewportSize(size);await settle();
   }
   else{
+    await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.before_streets.release_pending,null,{timeout:5000});
+    s=await snap();
+    assert.deepEqual([s.player_grounding.x,s.player_grounding.z],ground,'held revisit exit cannot walk behind the closing opening');
+    await page.keyboard.up('KeyW');await settle();
+    await page.waitForFunction(()=>!window.__tenderloinGodotA11ySnapshot.before_streets.release_pending,null,{timeout:5000});
     if(s.header_details_expanded!==initial.header_details_expanded)await tap(s.info_control);
     if(initial.block_panel_control.visible){await page.keyboard.press('KeyG');await settle();}
   }
   assert.deepEqual(await storage(),stable);s=await snap();assert.deepEqual([s.music_playing,s.music_volume,s.reward_sounds_enabled],quiet);
-  return {...size,touch,mode,privateFixture,changed,responsePixels,sourceReader:true,actualShiftF8:true,heldSkip:mode==='startup',rotatedReturn:mode==='startup',originalStartupPreserved:mode==='startup',noWrites:true};
+  return {...size,touch,mode,privateFixture,changed,responsePixels,sourceReader:true,actualShiftF8:true,heldSkip:mode==='startup',startupReleaseCleared:mode==='startup',heldRevisitRelease:mode==='revisit',rotatedReturn:mode==='startup',originalStartupPreserved:mode==='startup',noWrites:true};
 }

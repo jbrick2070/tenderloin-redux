@@ -1,0 +1,5 @@
+# Driver anchor: opening implementation r3
+
+Reviewable candidate; not full acceptance. The exact pre-code r1 selected the existing-pattern opening-owned capture. Before code actual input demonstrated held W exit motion, and corrected private actual-browser tests show stationary held exit and intended movement after release across supported widths, plus startup held through actual Start. The separate key D waits until captured W releases. Unique isolated native paired overrides check 11 sizes and repeated valid/invalid import and hidden load, protecting the real ASFOUND bytes. The synthetic-key timing failure and corrected run remain available, as does the initial overbroad save assertion after deliberate walking. No independent implementation review or full all-five has run. Current package has 172 bytes of headroom; no cap change is allowed.
+
+Challenge exact capture semantics, keycode/physical mapping, release polling, reset/hidden/reopen, startup focus, camera and path behavior, no-op/legacy data, accessibility sync, meaningful test oracle and liveness. Source and evidence outrank this anchor. No physical phone, full screen-reader or human-acceptance claim.

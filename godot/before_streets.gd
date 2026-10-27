@@ -35,6 +35,7 @@ var return_focus: Control
 var textures: Dictionary = {}
 var layout_pending := false
 var snapshot_clock := 0.0
+var held_on_exit: Array[Key] = []
 
 func setup(owner_game: Node) -> void:
 	game=owner_game; name="BeforeTheseStreets"
@@ -100,6 +101,9 @@ func open_opening() -> bool:
 
 func close_opening(announce: bool=true) -> void:
 	if not visible: return
+	held_on_exit.clear()
+	for key in [KEY_W,KEY_A,KEY_S,KEY_D,KEY_UP,KEY_DOWN,KEY_LEFT,KEY_RIGHT]:
+		if Input.is_key_pressed(key) or Input.is_physical_key_pressed(key): held_on_exit.append(key)
 	hide()
 	for c in saved_visibility:
 		if is_instance_valid(c): c.visible=saved_visibility[c]
@@ -116,6 +120,13 @@ func close_opening(announce: bool=true) -> void:
 
 func reset_visit() -> void:
 	close_opening(false); view=0; observation=-1; source_view=false; from_startup=false
+
+func release_pending() -> bool:
+	var was_pending := not held_on_exit.is_empty()
+	for i in range(held_on_exit.size()-1,-1,-1):
+		if not Input.is_key_pressed(held_on_exit[i]) and not Input.is_physical_key_pressed(held_on_exit[i]): held_on_exit.remove_at(i)
+	if was_pending and held_on_exit.is_empty(): game.sync_web_a11y_status()
+	return not held_on_exit.is_empty()
 
 func set_view(index: int) -> void:
 	if not visible or index<0 or index>=VIEWS.size(): return
@@ -233,7 +244,7 @@ func snapshot() -> Dictionary:
 			if font.get_string_size(word,HORIZONTAL_ALIGNMENT_LEFT,-1,size_value).x>available+0.1: c["words_fit"]=false
 		controls.append(c)
 	var bar := reader.get_v_scroll_bar()
-	return {"visible":visible,"view":view,"observation":observation,"source_view":source_view,"from_startup":from_startup,"layout_pending":layout_pending,"text":reader.text,"description":art_description(),"buttons":controls,"reader":game.control_snapshot(reader),"picture":game.control_snapshot(picture),"top":game.control_snapshot(top),"tray":game.control_snapshot(tray),"scroll":bar.value,"scroll_max":maxf(0,bar.max_value-bar.page),"entry":game.control_snapshot(entry)}
+	return {"visible":visible,"view":view,"observation":observation,"source_view":source_view,"from_startup":from_startup,"layout_pending":layout_pending,"release_pending":not held_on_exit.is_empty(),"text":reader.text,"description":art_description(),"buttons":controls,"reader":game.control_snapshot(reader),"picture":game.control_snapshot(picture),"top":game.control_snapshot(top),"tray":game.control_snapshot(tray),"scroll":bar.value,"scroll_max":maxf(0,bar.max_value-bar.page),"entry":game.control_snapshot(entry)}
 
 func _process(delta: float) -> void:
 	if not visible: return

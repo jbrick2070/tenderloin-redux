@@ -1,5 +1,43 @@
 # Build status
 
+## Current: opening held-key correction verified - October 27, 2026 UTC
+
+The held-exit guard and its startup release correction passed the same fresh final2 native/export/check/106 Node/full browser chain plus18 Field Guide cases. All2511 bound inputs, served export and protected ASFOUND matched; browser errors[]external[]. The2097028-byte PCK is124 bytes below the unchanged cap. Final captures and source/geography/save/public invariants were inspected. Distinct exact r1/r3 reviews were grounded; later driver corrections were not independently re-reviewed. Preserve the prior failed helper-image observation and controlled camera diagnosis. Details and compact receipts are in the current `session_handoff.md` and `kibitz-runs/2026-10-26-codex-opening-release/r3/verification.json`.
+
+| Outcome | Evidence | Blocker or limit | Next action |
+|---|---|---|---|
+| Opening held-key correction | Full final2 all-five plus18 field cases; captures inspected | Physical/human acceptance and publication separate | Preserve checkpoint and inspect push receipt |
+| Other Terra recommendations | Static review and measurement plan | Reproduction/profiling still needed | Separate follow-up |
+
+## Current: helper inspection test corrected; full verification pending - October 27, 2026 UTC
+
+The failed 320px pixel check was reproduced in a rebuilt isolated scene near the recorded pose. Controlled actual yaw A-B-A -0.9075/-0.7975/-0.9075 yielded pink0/25/0 with the same rebuilt scene; the exact original transient scene and occluder are unknown. The test now uses real right-drag after its original Shift+arrow input to reach the previously accepted inspection angle; original artwork, guide, input, quiet, save/reload and pixel thresholds remain. PRIVATE1100/390/320 corrected cases passed; see the current handoff and `artifacts/terra-input-20261027`. The test change requires a fresh full all-five plus18-case Field Guide verifier. Later changes are not independently re-reviewed; no full acceptance, commit, deployment or human acceptance yet.
+
+| Outcome | Evidence | Blocker or limit | Next action |
+|---|---|---|---|
+| Opening held-key correction and helper inspection | Grounded reviews, controlled yaw evidence and private matrix | Fresh full verification after test change | Freeze and run final2 |
+
+## Current: opening full verification blocked by browser assertion - October 27, 2026 UTC
+
+Frozen final1 passed native29 requirement families, export, check,106 Node and18 Field Guide cases. The full browser failed at the 320px helper copied-paint pixel assertion (`pinkMotif=0`, required >3); no complete browser result or commit. Its source, PCK, screenshot, trace, synthetic post-failure profile and logs are retained in `artifacts/terra-input-20261027/final1`. Manual yaw differed from the prior accepted capture, but the cause is not yet established. Protected ASFOUND and all2506 frozen inputs remained unchanged; the final PCK is2097028 bytes,124 under the unchanged cap. See the current handoff before diagnosing; no blind rerun or threshold weakening.
+
+Two PRIVATE replays from the retained storage passed the original pixel threshold after rebuilding the visit, at different camera poses; neither reconstructs the original transient scene or supplies a full gate. The failure's 25 nominal pink samples occupy only four gray/brown pixels. The cause remains unclassified; isolate the original pose and actual rendering before a correction or full rerun.
+
+| Outcome | Evidence | Blocker or limit | Next action |
+|---|---|---|---|
+| Opening held-key correction | Reviews grounded; focused input and five preliminary stages passed | Full browser pixel failure; later review fixes not independently re-reviewed | Diagnose actual helper input/rendering and retain all evidence |
+
+## Current: opening held-key correction under verification - October 27, 2026 UTC
+
+The opening-owned guard prevents a movement key held through exit from walking the player; all captured keys must release before the original physics resumes. Distinct exact pre-code r1 and implementation r3 are complete and grounded. The review identified a stale same-key hold on the startup card; the driver corrected it and improved native/browser tests. Later driver corrections were not independently re-reviewed.
+
+PRIVATE isolated native11-size tests and actual-browser supported-size held exits, startup and fresh-key checks pass. The corrected development export is2097028 bytes,124 bytes below the unchanged2MiB cap. Protected ASFOUND remains unchanged. These checks do not constitute full acceptance; failed test-oracle and timing evidence is retained under `artifacts/terra-input-20261027`. See the current `session_handoff.md` and `kibitz-runs/2026-10-26-codex-opening-release/r3/judgment.md` for details.
+
+| Outcome | Evidence | Blocker or limit | Next action |
+|---|---|---|---|
+| Opening held-key release | Corrected private native and actual-browser cases; reviews grounded | Full five gates, field verifier and inspection pending | Freeze final inputs and run one complete sequence |
+| Previously accepted opening, ending, programme, persistence and Field Guide | Verified and pushed separately | No human or publication acceptance implied | Preserve existing work |
+
 ## Current: Field Guide correction verified and pushed - October 27, 2026 UTC
 
 The Field Guide/local mount correction completed its same frozen final1 all-five chain plus the18-case Field Guide browser verifier. Native29 requirement families, export, check,106 Node and full genuine1100/390/320 game browser passed with errors[]external[]. All2479 bound inputs, served PCK and protected native ASFOUND stayed unchanged. The2096484-byte PCK leaves668 bytes under the unchanged cap. Both distinct exact sole-Claude reviews were grounded; later driver corrections were not independently re-reviewed. Final current field and game screenshots and the bounded diff were inspected. Full local evidence remains under artifacts/terra-field-guide-20261027/final1; compact receipts are in kibitz-runs/2026-10-26-codex-field-guide-route/r3/verification.json and final-capture-inspection.json.

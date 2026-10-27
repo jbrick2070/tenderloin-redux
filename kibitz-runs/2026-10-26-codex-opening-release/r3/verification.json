@@ -1,0 +1,94 @@
+{
+  "utc": "2026-10-27T11:12:11.882542+00:00",
+  "accepted_all_five_plus_field": true,
+  "baseline_head": "20041ad15b540043a8ed40abf432ab40051e314c",
+  "full_execution_sha256": "cfd65b93fffb500811142c3203136701e91ccdba3baaef384b41558b533d5f93",
+  "source_manifest_sha256": "2b5b27ed10ae663f0afce316f580abc929d764230acbd57ef3501cade3cebe33",
+  "bound_inputs": 2511,
+  "all_bound_inputs_matched_before_closure_docs": true,
+  "native": {
+    "literal_marker_families": 28,
+    "small_layout_combinations": 16,
+    "requirement_families": 29,
+    "paired_unique_paths_before_test_suite": true,
+    "protected_asfound_sha256": "2b7d1e849b4820a1d6c49602930ac3e0b104a8aa132375837038bfef80f2e0e1"
+  },
+  "export": {
+    "bytes": 2097028,
+    "sha256": "7faef21792360691fb00da625ee230f61835c73b22c5c35ca29983c40781cf91",
+    "cap": 2097152
+  },
+  "node_tests": 106,
+  "field": {
+    "field_ok": true,
+    "field_cases": 18,
+    "field_widths": [
+      320,
+      390,
+      1100
+    ],
+    "field_variants": [
+      "abort",
+      "bad-json",
+      "empty",
+      "mixed-invalid",
+      "normal",
+      "not-found"
+    ],
+    "field_errors": [],
+    "field_external": [],
+    "field_loading": true,
+    "field_project_base": true,
+    "field_page_errors_empty": true,
+    "field_exports": true
+  },
+  "browser": {
+    "opening_cases": 6,
+    "genuine_opening_startups": 3,
+    "genuine_opening_revisits": 3,
+    "opening_held_revisits": 3,
+    "opening_startup_release": 3,
+    "helper_cases": 3,
+    "genuine_helper_cases": 3,
+    "habitat_cases": 3,
+    "departure_cases": 3,
+    "orbital_cases": 3,
+    "finale_cases": 3,
+    "programme_cases": 3,
+    "hosted_cases": 4,
+    "community_invitation_cases": 9,
+    "shared_meal_cases": 3,
+    "fresh_phone_cases": 6,
+    "actual_pinch_cases": 4,
+    "genuine_voting_cases": 3,
+    "persistence_cases": 3,
+    "persistence_valid": true,
+    "errors": [],
+    "external": [],
+    "browser_fingerprint_matches": true,
+    "served_export_unchanged": true,
+    "pack_unchanged": true
+  },
+  "helper_paint": [
+    {
+      "width": 1100,
+      "yaw": -0.797500030517578,
+      "pink": 22,
+      "actual_reload": true
+    },
+    {
+      "width": 390,
+      "yaw": -0.797500030517578,
+      "pink": 21,
+      "actual_reload": true
+    },
+    {
+      "width": 320,
+      "yaw": -0.797500030517578,
+      "pink": 23,
+      "actual_reload": true
+    }
+  ],
+  "public_012_fingerprint": "2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567",
+  "limitations": "Later corrections were not independently re-reviewed; no physical phone, full screen reader, human acceptance, publication or native after-open durability proof."
+}

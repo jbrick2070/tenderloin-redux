@@ -27,6 +27,12 @@ export async function verifyHelperBench(page,{touch,size,renderedPixels,outputDi
   try{await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.camera_pose.yaw<=-.62,null,{timeout:4000});}finally{await page.keyboard.up('ArrowLeft');await page.keyboard.up('Shift');}
   await page.keyboard.down('Shift');await page.keyboard.down('ArrowUp');
   try{await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.camera_pose.pitch>=1.64,null,{timeout:4000});}finally{await page.keyboard.up('ArrowUp');await page.keyboard.up('Shift');}
+  // The held-key wait can overshoot by many frames. Bring the inspection to
+  // the proven clear angle using the same player's manual orbit control.
+  // Keep the exact copied-art pixel assertions below, including the pink motif.
+  {const s=await snap(),r=s.play_area,c=await page.locator('#canvas').boundingBox(),x=c.x+(r.x+r.width*.5)*c.width/s.viewport_width,y=c.y+(r.y+r.height*.5)*c.height/s.viewport_height,dx=(s.camera_pose.yaw-(-.7975))/.0085;
+   await page.mouse.move(x,y);await page.mouse.down({button:'right'});await page.mouse.move(x+dx*c.width/s.viewport_width,y,{steps:6});await page.mouse.up({button:'right'});await settle();
+   assert.ok(Math.abs((await snap()).camera_pose.yaw-(-.7975))<.01,'actual manual orbit reaches the copied-art inspection angle');}
   await settle();await centerDisplay();
   const initial=await snap(),stable=await storage();assert.ok(initial.helper_bench.available&&!initial.helper_bench.complete&&!initial.player_grounding.path_active);
   const copied=JSON.parse(stable['tenderloin-redux.godot.save.v1']).film.result;

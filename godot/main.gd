@@ -14310,11 +14310,13 @@ func _process(delta: float) -> void:
 	flush_web_a11y_status()
 
 func _physics_process(delta: float) -> void:
+	var opening_held: bool = before_streets != null and before_streets.release_pending()
 	if is_focused_activity_visible() or (startup_story_pending and is_story_card_visible()):
 		return
 	if programme_studio != null and programme_studio.release_pending(): return
 	if habitat_room != null and habitat_room.release_pending(): return
 	if helper_bench != null and helper_bench.release_pending(): return
+	if opening_held: return
 	var shift_held := Input.is_key_pressed(KEY_SHIFT) or Input.is_physical_key_pressed(KEY_SHIFT)
 	if shift_held and get_viewport().gui_get_focus_owner() == null:
 		var yaw_dir := 0.0

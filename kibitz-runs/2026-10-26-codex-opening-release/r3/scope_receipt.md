@@ -1,0 +1,3 @@
+# Scope receipt
+
+One distinct implementation r3 only, after grounded exact pre-code r1 and connected implementation. Plan SHA256 e476a6aa47ac2ec2a49a9953e5d752a30432d1e24019da07b5b02c34de68d53a. Codex is sole writer and driver. Request exactly claude-opus-5-5/high through installed Kibitz --driver codex --only claude --round r3; Claude reads files and writes only its report. No native/browser/render execution, source edits, model substitutes, extra paid passes or blind quota/auth retry. r2/r4 omitted. Later driver fixes are not independently re-reviewed; fresh full all-five and separate Field Guide verification are required.

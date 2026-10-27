@@ -4,13 +4,16 @@ static func verify(suite: SceneTree,game: Node,formal := false) -> void:
 	suite.require(game.is_test_suite_mode(),"opening checks require explicit isolated test paths")
 	suite.require(not formal or suite.get_script().resource_path.ends_with("/study_test.gd"),"opening FORMAL token belongs only to full native suite")
 	var opening: Control=game.before_streets
+	var original_held_on_exit: Array = opening.held_on_exit.duplicate()
+	var original_player_position: Vector3=game.player.position
+	var original_path: Array = game.current_path.duplicate()
 	suite.require(game.save_path!=game.GODOT_SAVE_PATH and (game.save_path.contains("_test_") or game.save_path.begins_with("user://before_streets_runtime")),"opening fixture restoration owns only explicit test save")
 	var had_test_file: bool=FileAccess.file_exists(game.save_path)
 	var test_bytes := FileAccess.get_file_as_bytes(game.save_path) if had_test_file else PackedByteArray()
 	var original: String=JSON.stringify(game.build_save_envelope())
 	var original_size: Vector2i=suite.root.size
 	var state := {}
-	for key in ["following_player","in_overview","in_wide_overview","target","view_size","camera_yaw","camera_pitch_scale","last_story_chapter","startup_story_pending","header_details_expanded","block_panel_mode","talk_partner","selected_neighbor","arrived_neighbor","save_seq","save_load_status","browser_import_status","browser_import_message","reward_sound_count","reward_audio_unlocked"]:
+	for key in ["following_player","in_overview","in_wide_overview","target","view_size","camera_yaw","camera_pitch_scale","last_story_chapter","startup_story_pending","header_details_expanded","block_panel_mode","talk_partner","selected_neighbor","arrived_neighbor","last_proximity_neighbor","save_seq","save_load_status","browser_import_status","browser_import_message","reward_sound_count","reward_audio_unlocked"]:
 		state[key]=game.get(key)
 	var visibility := {}
 	for c in opening.get_parent().get_children():
@@ -72,8 +75,31 @@ static func verify(suite: SceneTree,game: Node,formal := false) -> void:
 		for frame in range(6): await suite.process_frame
 		suite.require(not opening.visible and game.startup_story_pending and game.story_card.visible and game.story_continue_btn.has_focus() and game.story_title_label.text==chapter_text,"Escape restores exact startup chapter and Start focus without accepting")
 		suite.require(game.player.position==held_position,"held movement through Skip cannot walk behind original startup card")
-		held=InputEventKey.new(); held.keycode=KEY_W; held.pressed=false; Input.parse_input_event(held)
 		suite.require([game.music_playing,game.music_volume,game.reward_sounds_enabled]==music,"optional opening never activates or changes audio")
+		if cases==0:
+			await suite.phone_accept(game.story_continue_btn)
+			for frame in range(4): await suite.physics_frame
+			suite.require(not opening.held_on_exit.is_empty() and game.player.position==held_position,"actual Start while W is held cannot walk")
+		held=InputEventKey.new(); held.keycode=KEY_W; held.pressed=false; Input.parse_input_event(held)
+		for frame in range(3): await suite.physics_frame
+		suite.require(opening.held_on_exit.is_empty(),"physics clears captured release while startup or another panel is visible")
+		if cases==0:
+			game.show_story_card(game.current_chapter(),true)
+			for frame in range(6): await suite.process_frame
+			await suite.phone_accept(game.story_before_btn)
+			held=InputEventKey.new(); held.keycode=KEY_W; held.pressed=true; Input.parse_input_event(held)
+			for frame in range(3): await suite.process_frame
+			await suite.phone_accept(opening.back)
+			held=InputEventKey.new(); held.keycode=KEY_W; held.pressed=false; Input.parse_input_event(held)
+			for frame in range(3): await suite.physics_frame
+			suite.require(opening.held_on_exit.is_empty() and game.startup_story_pending,"release is observed while original startup remains open")
+			var fresh_position: Vector3=game.player.position
+			held=InputEventKey.new(); held.keycode=KEY_W; held.pressed=true; Input.parse_input_event(held)
+			for frame in range(4): await suite.physics_frame
+			suite.require(not game.startup_story_pending and game.player.position!=fresh_position,"fresh W starts and moves after prior captured W was released")
+			held=InputEventKey.new(); held.keycode=KEY_W; held.pressed=false; Input.parse_input_event(held)
+			for frame in range(3): await suite.physics_frame
+			if not music[0] and game.music_playing: game.stop_music_playback()
 		game.hide_story_card(); game.last_story_chapter=int(game.current_chapter().num)
 		game.set_header_details(false,false)
 		for frame in range(6): await suite.process_frame
@@ -87,6 +113,27 @@ static func verify(suite: SceneTree,game: Node,formal := false) -> void:
 		suite.require(game.info.size.y>=ceilf(game.info.get_theme_font("normal_font").get_height(game.info.get_theme_font_size("normal_font_size"))),"short Info retains a full scrollable line")
 		await suite.phone_accept(opening.entry)
 		suite.require(opening.visible and opening.observation==1 and opening.view==1,"Info revisit retains this visit's actual observation")
+		var first_held := InputEventKey.new(); first_held.keycode=KEY_W; first_held.pressed=true; Input.parse_input_event(first_held)
+		var second_held := InputEventKey.new(); second_held.keycode=KEY_D; second_held.pressed=true; Input.parse_input_event(second_held)
+		var revisit_position: Vector3=game.player.position
+		await suite.phone_accept(opening.back)
+		for frame in range(4): await suite.physics_frame
+		suite.require(not opening.visible and not opening.held_on_exit.is_empty() and game.player.position==revisit_position,"Return holds position until all movement keys held at exit are released")
+		first_held=InputEventKey.new(); first_held.keycode=KEY_W; first_held.pressed=false; Input.parse_input_event(first_held)
+		for frame in range(3): await suite.physics_frame
+		suite.require(not opening.held_on_exit.is_empty() and game.player.position==revisit_position,"releasing only one captured key does not resume movement")
+		var fresh_key := InputEventKey.new(); fresh_key.keycode=KEY_S; fresh_key.pressed=true; Input.parse_input_event(fresh_key)
+		for frame in range(3): await suite.physics_frame
+		suite.require(game.player.position==revisit_position,"new uncaptured key waits for remaining captured key")
+		second_held=InputEventKey.new(); second_held.keycode=KEY_D; second_held.pressed=false; Input.parse_input_event(second_held)
+		for frame in range(4): await suite.physics_frame
+		suite.require(opening.held_on_exit.is_empty() and game.player.position!=revisit_position,"physics resumes and fresh key moves after captured keys release")
+		fresh_key=InputEventKey.new(); fresh_key.keycode=KEY_S; fresh_key.pressed=false; Input.parse_input_event(fresh_key)
+		for frame in range(3): await suite.physics_frame
+		game.set_header_details(true,false)
+		for frame in range(6): await suite.process_frame
+		await suite.phone_accept(opening.entry)
+		suite.require(opening.visible,"opening can be revisited after releasing movement keys")
 		game.last_story_chapter=0
 		for frame in range(6): await suite.process_frame
 		suite.require(not game.story_card.visible,"pending chapter does not interrupt opening")
@@ -97,7 +144,17 @@ static func verify(suite: SceneTree,game: Node,formal := false) -> void:
 		game.hide_story_card(); game.set_header_details(true,false)
 		for frame in range(6): await suite.process_frame
 		await suite.phone_accept(opening.entry)
+		var import_held := InputEventKey.new(); import_held.keycode=KEY_W; import_held.pressed=true; Input.parse_input_event(import_held)
+		for frame in range(3): await suite.process_frame
+		suite.require(Input.is_key_pressed(KEY_W),"isolated held-key event is applied before import")
+		suite.require(not game.import_browser_save_json("not-json") and opening.visible,"invalid import while a movement key is held leaves the opening visible")
 		suite.require(game.import_browser_save_json('{"version":1,"core":{"greeted":true}}') and not opening.visible and opening.observation==-1,"successful legacy import clears only transient opening")
+		suite.require(not opening.held_on_exit.is_empty(),"successful import captures movement keys held when it closes the opening")
+		game.apply_save_envelope(original)
+		suite.require(not opening.held_on_exit.is_empty(),"another load while hidden preserves the pending release guard")
+		import_held=InputEventKey.new(); import_held.keycode=KEY_W; import_held.pressed=false; Input.parse_input_event(import_held)
+		for frame in range(3): await suite.physics_frame
+		suite.require(opening.held_on_exit.is_empty(),"release after import restores original physics")
 		game.apply_save_envelope(original); game.hide_story_card(); game.last_story_chapter=int(game.current_chapter().num); game.set_header_details(true,false)
 		for frame in range(6): await suite.process_frame
 		await suite.phone_accept(opening.entry); await suite.phone_accept(opening.time_choice)
@@ -142,6 +199,7 @@ static func verify(suite: SceneTree,game: Node,formal := false) -> void:
 	game.update_block_ui(); game.layout_walking_controls_and_hub()
 	for frame in range(8): await suite.process_frame
 	for key in state: game.set(key,state[key])
+	game.player.position=original_player_position; game.current_path.assign(original_path)
 	game.update_camera()
 	# Import correctly advances the monotone save sequence. Restore only this
 	# isolated fixture's caller bytes, never change production load semantics.
@@ -149,6 +207,8 @@ static func verify(suite: SceneTree,game: Node,formal := false) -> void:
 		var file := FileAccess.open(game.save_path,FileAccess.WRITE); file.store_buffer(test_bytes); file.close()
 	else: DirAccess.remove_absolute(ProjectSettings.globalize_path(game.save_path))
 	if is_instance_valid(focus) and focus.is_visible_in_tree(): focus.grab_focus()
+	opening.held_on_exit.assign(original_held_on_exit)
+	suite.require(game.player.position==original_player_position and game.current_path==original_path,"opening movement checks restore caller position and route")
 	suite.require(JSON.stringify(game.build_save_envelope())==original,"opening checks restore caller saved state")
 	print("BEFORE_STREETS_PASS:"+("FORMAL" if formal else "PRIVATE")+" actual startup/held-Skip/gusts/choices/sources/revisit/ShiftF8/11sizes/import/load/rotation/header/deferred-chapter/caller-restored ",cases)
 
