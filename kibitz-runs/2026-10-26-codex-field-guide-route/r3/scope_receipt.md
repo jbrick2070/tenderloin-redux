@@ -1,0 +1,3 @@
+# Scope receipt
+
+One separate implementation r3 only, following complete grounded exact pre-code r1. Input kibitz-runs/2026-10-26-codex-field-guide-route/r3/plan.md SHA256 e19f61b5c9b18f74d5f2c22fa5ffa8df7fcc3476f0979a465470c49adae1fd74. Codex is sole writer and driver. Request exactly claude-opus-5-5/high through installed Kibitz --driver codex --only claude --round r3; Claude reads files and writes only its report. No native/browser/render execution, source edits, model substitutes, extra paid passes or blind quota/auth retry. r2/r4 not run. Later driver fixes must be disclosed as not independently re-reviewed; fresh full all-five and separate field browser verification required.

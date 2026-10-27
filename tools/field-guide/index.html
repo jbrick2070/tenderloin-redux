@@ -297,7 +297,7 @@
   <header>
     <div class="brand">
       <h1>📸 Tenderloin Field Photo & Surface Guide</h1>
-      <p id="progressSummary">Loading 188 measured DataSF buildings & 14 photo stops…</p>
+      <p id="progressSummary">Loading map footprints and photo stops…</p>
     </div>
     <div class="top-actions">
       <button id="gpsBtn" type="button">📍 Locate Me (GPS)</button>
@@ -309,7 +309,7 @@
   <main>
     <section class="map-pane">
       <div class="map-overlay">
-        <div class="map-pill" id="mapStatusPill">Tap any numbered stop (1–14) or any of the 188 buildings</div>
+        <div class="map-pill" id="mapStatusPill">Loading map footprints; photo stops are available.</div>
         <div class="map-pill" id="gpsStatusPill" style="display:none;">GPS: Off</div>
       </div>
       <canvas id="mapCanvas" width="720" height="460"></canvas>
@@ -620,6 +620,7 @@
 
     let cityData = { buildings: [], wider_buildings: [], wider_streets: [] };
     let allBuildings = [];
+    let geometryStatus = "loading";
     let view = { cx: -140, cz: 0, scale: 1.15 };
     let userGps = null;
 
@@ -629,21 +630,37 @@
     async function loadCityData() {
       try {
         const res = await fetch("./buildings.json");
-        cityData = await res.json();
-        if (cityData.origin && Number.isFinite(cityData.origin.lat) && Number.isFinite(cityData.origin.lon)) {
-          ORIGIN = { lon: cityData.origin.lon, lat: cityData.origin.lat };
-          METERS_PER_DEG_LON = Math.cos((ORIGIN.lat * Math.PI) / 180.0) * 111320.0;
+        if (!res.ok) throw new Error(`Map request failed (${res.status})`);
+        const data = await res.json();
+        if (!data || !Array.isArray(data.buildings) || !Array.isArray(data.wider_buildings) ||
+            !data.origin || !Number.isFinite(data.origin.lat) || !Number.isFinite(data.origin.lon)) {
+          throw new Error("Map data is incomplete");
         }
+        const validPoint = p => Array.isArray(p) && p.length >= 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]);
+        const validRing = ring => Array.isArray(ring) && ring.length >= 3 && ring.every(validPoint);
+        const validBuilding = b => b && (typeof b.id === "string" || typeof b.id === "number") &&
+          Number.isFinite(b.height_m) && Array.isArray(b.polygons) && b.polygons.length > 0 &&
+          b.polygons.every(poly => poly && Array.isArray(poly.rings) && poly.rings.length > 0 && poly.rings.every(validRing));
+        const buildings = [...data.buildings, ...data.wider_buildings];
+        const streets = data.wider_streets || data.streets || [];
+        if (!buildings.length || !buildings.every(validBuilding) || !Array.isArray(streets) ||
+            !streets.every(st => st && Array.isArray(st.points) && st.points.every(validPoint))) {
+          throw new Error("Map geometry is empty or invalid");
+        }
+        cityData = data;
+        ORIGIN = { lon: data.origin.lon, lat: data.origin.lat };
+        METERS_PER_DEG_LON = Math.cos((ORIGIN.lat * Math.PI) / 180.0) * 111320.0;
         allBuildings = [
-          ...(cityData.buildings || []).map(b => ({ ...b, zone: "opening" })),
-          ...(cityData.wider_buildings || []).map(b => ({ ...b, zone: "wider" }))
+          ...data.buildings.map(b => ({ ...b, zone: "opening" })),
+          ...data.wider_buildings.map(b => ({ ...b, zone: "wider" }))
         ];
+        geometryStatus = "loaded";
       } catch (e) {
+        geometryStatus = "unavailable";
         console.warn("Could not load buildings.json:", e);
       }
       updateProgressSummary();
-      renderStopChips();
-      renderActiveStop();
+      renderActiveStopLocation();
       drawMap();
     }
 
@@ -661,8 +678,14 @@
         }
       }
       const bldgOverrides = Object.keys(state.buildings || {}).length;
+      const mapSummary = geometryStatus === "loaded" ? `${allBuildings.length} footprints loaded` :
+        geometryStatus === "loading" ? "loading footprints" : "map footprints unavailable";
       document.getElementById("progressSummary").textContent =
-        `${completedStops}/${PHOTO_STOPS.length} stops logged · ${totalPhotos} photos attached · ${bldgOverrides} individual buildings tagged (${allBuildings.length || 188} footprints loaded)`;
+        `${completedStops}/${PHOTO_STOPS.length} stops logged · ${totalPhotos} photos attached · ${bldgOverrides} individual buildings tagged (${mapSummary})`;
+      document.getElementById("mapStatusPill").textContent = geometryStatus === "loaded"
+        ? `Tap any numbered stop (1–${PHOTO_STOPS.length}) or any of the ${allBuildings.length} buildings`
+        : geometryStatus === "loading" ? "Loading map footprints; photo stops are available."
+        : "Map footprints unavailable. Photo stops are available; reload to try again.";
     }
 
     function worldToScreen(x, z) {
@@ -809,17 +832,21 @@
       if (view.scale < 1.6) view.scale = 1.85;
     }
 
-    function renderActiveStop() {
+    function renderActiveStopLocation() {
       const stop = PHOTO_STOPS[state.activeStopIdx];
-      const rec = ensureStopRecord(stop.id);
       const gps = gameXZToLatLon(stop.x, stop.z);
-
       document.getElementById("stopTitle").textContent = `#${stop.num}. ${stop.name}`;
       document.getElementById("stopCoords").textContent =
         `Game 3D: (${stop.x.toFixed(1)}m, ${stop.z.toFixed(1)}m) · GPS: ${gps.lat}, ${gps.lon}`;
       document.getElementById("stopStand").textContent = `🧭 Where to stand: ${stop.stand}`;
       document.getElementById("gmapsLink").href =
         `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${gps.lat},${gps.lon}`;
+    }
+
+    function renderActiveStop() {
+      const stop = PHOTO_STOPS[state.activeStopIdx];
+      const rec = ensureStopRecord(stop.id);
+      renderActiveStopLocation();
 
       // Shots checklist
       const shotsList = document.getElementById("shotsList");
@@ -1222,6 +1249,11 @@
       setTimeout(() => URL.revokeObjectURL(url), 5000);
     });
 
+    // Make the independent stop controls usable while map data is still loading.
+    updateProgressSummary();
+    renderStopChips();
+    renderActiveStop();
+    drawMap();
     loadCityData();
   </script>
 </body>

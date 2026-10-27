@@ -1,5 +1,31 @@
 # Build status
 
+## Current: Field Guide verification complete; delivery pending - October 27, 2026 UTC
+
+The Field Guide/local mount correction completed its same frozen final1 all-five chain plus the18-case Field Guide browser verifier. Native29 requirement families, export, check,106 Node and full genuine1100/390/320 game browser passed with errors[]external[]. All2479 bound inputs, served PCK and protected native ASFOUND stayed unchanged. The2096484-byte PCK leaves668 bytes under the unchanged cap. Both distinct exact sole-Claude reviews were grounded; later driver corrections were not independently re-reviewed. Final current field and game screenshots and the bounded diff were inspected. Full local evidence remains under artifacts/terra-field-guide-20261027/final1; compact receipts are in kibitz-runs/2026-10-26-codex-field-guide-route/r3/verification.json and final-capture-inspection.json.
+
+The local /field-guide and /browser slashless routes redirect safely; map failure and loading status are honest, and independent photo stops remain usable during pending data without losing focus or input. Static project-base slash path is tested only in a local fixture; external slashless redirects and live publication are not verified. A permanently stalled fetch may remain loading. Native post-open durability, actual physical phone, full screen-reader and human acceptance remain separate. Controller ended: inspect current HEAD/status and owned lock before normal authorized [skip ci] commit/push; no deployment. Other Terra recommendations, music/shutdown, playtesting and teaser remain open.
+
+| Outcome | Evidence | Blocker or limit | Next action |
+|---|---|---|---|
+| Field Guide map loading | Full same all-five,18 field cases, reviewed current captures/invariants | Delivery and human acceptance separate | Commit/push after intended diff and owned-lock removal |
+| Other Terra recommendations | Static review and measurement plan | Runtime reproduction/profiling remain | Separate follow-up after checkpoint |
+
+## Current: Field Guide reviewed; final verification pending - October 27, 2026 UTC
+
+Accepted persistence checkpoint remains pushed; opening, ending and programme stay closed. Local isolated browser evidence reproduced missing geometry and a false188 count at /field-guide; /field-guide/ worked. A separate actual local observation confirmed /browser had the same slashless relative-asset failure. No real user field records were accessed.
+
+A distinct exact sole-Claude pre-code r1 completed and every finding was grounded before implementation. The selected connected batch adds nonpermanent same-origin query-preserving redirects for the two local directory mounts and truthful loading/loaded/unavailable Field Guide map status. Malformed/empty geometry is refused as a whole; no footprints or field notes/photos are discarded. Static slashless hosting and live Pages were not tested; public/workflows remain unchanged. The browser-only `field:browser` verifier runs its own local preview with synthetic state.
+
+PRIVATE browser-dev3 passed18 cases at1100/390/320, including failure injection, synthetic notes/photos/export, a real geometry pixel and mouse/touch building selection, successful project-base slash path, pending-load stop/notes input with preserved focus/caret, redirected /browser assets, query/fragment and GET/HEAD. Errors/external lists were empty, current sources were hash-unchanged through the run; actual phone, OS picker and human acceptance remain unverified. Retain before/after screenshots and failure evidence in artifacts/terra-field-guide-20261027. No full all-five acceptance or commit yet.
+
+The distinct exact sole-Claude implementation r3 completed; every finding was grounded. Review identified stop controls unavailable while geometry was pending; driver now renders them immediately and preserves focus/caret when map data arrives. Targeted tests verify a saved shot and note during loading, stronger exported state, all context errors/external requests and the dataset-derived count. Later driver corrections are NOT independently re-reviewed. No repeated paid pass. The corrected private evidence supplements, not replaces, the required fresh full all-five and separate final Field Guide browser verifier. A stalled fetch can remain in loading state while photo stops work; no timeout or physical/human acceptance is claimed.
+
+| Outcome | Evidence | Blocker or limit | Next action |
+|---|---|---|---|
+| Field Guide and local mount correction | Both exact reviews grounded; corrected18 private browser cases | Full gates and final field verifier pending | Finish one frozen final sequence |
+| Other Terra review work | Separate source/measurement leads | Input, native post-open, performance and human findings remain | Resume after this checkpoint |
+
 ## Current: persistence corrections verified and pushed - October 27, 2026 UTC
 
 The honest-persistence batch completed its same frozen final1 all-five chain clean: native29 requirement families, export, check,106 Node tests and full genuine1100/390/320 browser progression plus three isolated persistence fault journeys. Browser errors and external requests were empty. All327 final inputs, served export and protected native ASFOUND were unchanged. The2096484-byte PCK is668 bytes below the unchanged cap. Both exact scoped Claude reviews were grounded; later driver corrections were not independently re-reviewed. Final current captures and the bounded persistence diff were inspected. Full evidence is retained in artifacts/terra-remediation-20261026/final1 and compact receipts in kibitz-runs/2026-10-26-codex-terra-persistence/r3/verification.json and final-capture-inspection.json.

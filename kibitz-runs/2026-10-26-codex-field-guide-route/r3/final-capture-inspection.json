@@ -1,0 +1,17 @@
+{
+  "utc": "2026-10-27T05:44:19.104538+00:00",
+  "method": "Current-run screenshots inspected by Codex and a read-only subagent; functional claims come from actual browser receipts, not stills alone.",
+  "screens": [
+    "field-evidence/1100-normal.png",
+    "field-evidence/1100-not-found.png",
+    "field-evidence/320-normal.png",
+    "field-evidence/320-not-found.png",
+    "field-evidence/390-normal.png",
+    "field-evidence/390-empty.png",
+    "browser-evidence/finale-320-gathered.png",
+    "browser-evidence/finale-320-return-2.png",
+    "browser-evidence/programme-320-complete.png"
+  ],
+  "finding": "Normal field guide displays measured geometry and selected building; unavailable cases visibly warn while sampled stop controls remain. Finale figures and return, programme completion visible. At320 header is substantial; physical ergonomics not tested.",
+  "limits": "Headless/emulated browsers and synthetic fault/data; no physical-phone, OS-picker, screen-reader or human acceptance."
+}

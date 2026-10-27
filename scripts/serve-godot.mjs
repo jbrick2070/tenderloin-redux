@@ -10,7 +10,13 @@ const godotBuildingsPath = fileURLToPath(new URL('../godot/data/buildings.json',
 const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.xml': 'application/xml; charset=utf-8', '.ico': 'image/x-icon', '.wasm': 'application/wasm', '.pck': 'application/octet-stream', '.png': 'image/png', '.svg': 'image/svg+xml' };
 const server = http.createServer(async (req, res) => {
   try {
-    const name = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
+    const url = new URL(req.url, 'http://localhost');
+    const name = decodeURIComponent(url.pathname);
+    if (name === '/field-guide' || name === '/browser') {
+      res.writeHead(302, { Location: `${name}/${url.search}`, 'Cache-Control': 'no-store' });
+      res.end();
+      return;
+    }
     if (name === '/field-guide/buildings.json') {
       const bytes = await readFile(godotBuildingsPath);
       res.writeHead(200, { 'Content-Type': mime['.json'], 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
