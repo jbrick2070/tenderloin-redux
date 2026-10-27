@@ -249,6 +249,7 @@ func present() -> void:
 	music_button.text = "Music:\n"+("On" if game.music_playing else "Off")
 	var text: String = message+" Celeste: "+game.mural_scene_reply()+" Story scenes sit under the original marks on the street board. Your earlier keepsake stays as it was."
 	if selected == "music" or "music" in game.mural_scenes.values(): text += " Making Music is a silent illustration; Music controls the soundtrack separately."
+	text=game.persistence_text(text)
 	if reader.text != text:
 		reader.text = text
 		reader.scroll_to_line(0)

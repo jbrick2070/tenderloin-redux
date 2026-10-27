@@ -1,0 +1,3 @@
+# Scope receipt
+
+ONE pre-code ideation r1 only. Creator-authorized useful Terra recommendations; current creator-selected Codex driver remains sole writer. Exact requested reviewer claude-opus-5-5/high through installed Kibitz --driver codex --only claude --round r1. Claude reads files and writes only its report. Scope: honest persistence/import/feedback and strictly related unreachable loader simplification plus current docs; no unrelated input/audio/performance/tooling implementation, no four-round campaign or panel. No architecture selected or product code changed before this pass. Later distinct r3 and full gates remain required.

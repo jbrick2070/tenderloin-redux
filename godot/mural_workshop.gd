@@ -178,7 +178,7 @@ func open_stories() -> void:
 	stories.scene_page = 0
 	stories.selected = "cooking"
 	stories.thumbnail_palette = ""
-	stories.message = "Choose any two of five illustrated scenes, then the left or right half. Music & Garden shows more scenes. Optional art saves as you go; lifting keeps the original three marks."
+	stories.message = "Choose any two of five illustrated scenes, then the left or right half. Music & Garden shows more scenes. Lifting keeps the original three marks."
 	stories.scroll.scroll_vertical = 0
 	stories.present()
 	stories.choices[0].grab_focus()

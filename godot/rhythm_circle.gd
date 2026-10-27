@@ -271,7 +271,7 @@ func open_circle() -> bool:
 	entry.visible = false
 	game.pointer_active = false
 	game.orbit_dragging = false
-	message = "Practice copy only. Your hosted result and keepsake stay saved." if practice else "Dez: Choose hits or rests. Listening is welcome too. Complete when you are ready."
+	message = "Practice copy only. Your hosted result is unchanged." if practice else "Dez: Choose hits or rests. Listening is welcome too. Complete when you are ready."
 	refresh()
 	fit_layout()
 	pads[0].grab_focus()
@@ -311,7 +311,7 @@ func close_circle(announce: bool = true) -> void:
 	layout_entry()
 	if is_instance_valid(return_focus) and return_focus.is_visible_in_tree(): return_focus.grab_focus()
 	elif entry.visible: entry.grab_focus()
-	if announce: game.announce_a11y_status("Back to the block. Saved rhythm restored; practice was not saved." if was_practice else "Back to the block. Your rhythm draft is saved; return when ready to complete it.")
+	if announce: game.announce_a11y_status("Back to the block. Hosted rhythm restored; practice was not saved." if was_practice else "Back to the block. "+game.save_receipt()+" Return when ready to complete it.")
 
 func restore_follow_after_layout(generation: int, pose: Array) -> void:
 	await get_tree().process_frame
@@ -326,7 +326,7 @@ func toggle_step(index: int) -> void:
 		practice_pattern = (practice_pattern ^ (1<<index)) & 255
 	elif not game.host_toggle_beat(index):
 		return
-	message = "Step %d: %s. %s"%[index+1,"hit" if pattern() & (1<<index) else "rest","Practice only; saved result unchanged." if practice else "Draft saved. Complete when ready."]
+	message = "Step %d: %s. %s"%[index+1,"hit" if pattern() & (1<<index) else "rest","Practice only; hosted result unchanged." if practice else game.save_receipt()]
 	refresh()
 	game.announce_a11y_status(message)
 
@@ -337,7 +337,7 @@ func listen() -> void:
 	else:
 		for i in range(8):
 			if pattern() & (1<<i): game.host_toggle_beat(i)
-	message = "Listening round. No performance needed; this is an equally complete choice."
+	message = "Listening round. No performance needed; this is an equally complete choice." + ("" if practice else " "+game.save_receipt())
 	refresh()
 	game.announce_a11y_status(message)
 
@@ -346,7 +346,7 @@ func complete() -> void:
 	if practice:
 		var saved: Variant = game.get_hosted_segment_value("beats")
 		practice_pattern = int(saved) if saved != null else 0
-		message = "Saved rhythm restored. Practice never changes your hosted result."
+		message = "Hosted rhythm restored. Practice never changes your hosted result."
 		refresh()
 		return
 	if visible and game.current_hosting_activity()=="beats" and game.host_complete_current():
@@ -361,7 +361,8 @@ func refresh() -> void:
 	if not visible: return
 	heading.text = "Dez's Rhythm Circle - "+("Practice" if practice else "Hosting")
 	objective.text = "%s | Sparks: %d"%[String(game.current_objective().get("text",game.current_objective().get("title","Explore the block"))),game.spark_count()]
-	reader.text = message+ (" Local track: %s. Bar audition is unavailable with local files; step cues stay still."%game.local_music_name if game.music_mode=="local" else " Play Bar: one original drum bar, then the sketch returns. Music must be On; set volume at Rook's speaker. Reward Sounds is separate.")+" Drag the street to inspect."
+	var text: String=game.persistence_text(message+ (" Local track: %s. Bar audition is unavailable with local files; step cues stay still."%game.local_music_name if game.music_mode=="local" else " Play Bar: one original drum bar, then the sketch returns. Music must be On; set volume at Rook's speaker. Reward Sounds is separate.")+" Drag the street to inspect.")
+	if reader.text!=text: reader.text=text
 	for i in range(8):
 		var hit := (pattern() & (1<<i))!=0
 		pads[i].set_pressed_no_signal(hit)

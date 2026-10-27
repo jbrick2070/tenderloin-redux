@@ -178,21 +178,11 @@ func release_pending() -> bool:
 	return gathering.release_pending()
 
 func allow_envelope(next: Dictionary) -> bool:
-	# The existing import contract permits oversized optional metadata in memory.
-	# Never grow that profile or silently promise persistence for a refused write.
-	next["save_seq"]=game.save_seq+1
-	var old: Dictionary=game.build_save_envelope()
-	var current_bytes := JSON.stringify(old).to_utf8_buffer().size()
-	old["save_seq"]=game.save_seq+1
-	var bytes := JSON.stringify(next).to_utf8_buffer().size()
-	var old_bytes := JSON.stringify(old).to_utf8_buffer().size()
-	if bytes<=game.SAVE_BUDGET_MAX_BYTES:
-		budget_notice=""
+	var admission: int=game.save_budget_kind(next)
+	if admission>=0:
+		budget_notice=game.save_receipt("save full") if admission==1 else ""
 		return true
-	if current_bytes>game.SAVE_BUDGET_MAX_BYTES and bytes<=old_bytes:
-		budget_notice="Visit-only change: this imported profile is too large to save. The last stored save stays unchanged; reload restores it."
-		return true
-	budget_notice="Change not made: this imported profile has no saving room for it. The last stored save stays unchanged."
+	budget_notice="Change not made: save full; stored progress is unchanged."
 	refresh(true)
 	return false
 
@@ -241,11 +231,6 @@ func advance() -> void:
 		if not allow_envelope(next): return
 		close_studio(false)
 		game.advance_programme_and_hosting_step()
-		if not budget_notice.is_empty():
-			game.last_panel_dialogue+="\n"+budget_notice
-			game.info.text=budget_notice+"\n"+game.info.text
-			game.update_block_ui()
-			game.announce_a11y_status(budget_notice)
 	elif allow_draft(game.programme_order,true) and game.programme_publish():
 		posted=true
 		refresh(false)
@@ -289,11 +274,11 @@ func description() -> String:
 		var text: String=Hosted.detail(game,selected)+"\n"+Hosted.invitation(game)+"\nCopied order: "+order_text(game.hosting_order)+"."
 		if Hosted.invitation_available(game): text+="\nFollow takes you to the Listening Hour button; open it when ready. Keep exploring leaves this offer with your completed gathering."
 		text+="\nPicture: "+hosted_picture_description()+". Draft and Posted keep the first afternoon unchanged. Posting alone does not start another gathering. Posted offers Gather again for this visit."
-		return text
+		return game.persistence_text(text)
 	var order: Array=game.programme_published if posted else game.programme_order
 	var lines: Array[String]=[]
 	if not budget_notice.is_empty(): lines.append(budget_notice)
-	elif JSON.stringify(game.build_save_envelope()).to_utf8_buffer().size()>game.SAVE_BUDGET_MAX_BYTES: lines.append("This imported profile is too large to save. Non-growing edits are visit-only; the last stored save is kept.")
+	elif JSON.stringify(game.build_save_envelope()).to_utf8_buffer().size()>game.SAVE_BUDGET_MAX_BYTES: lines.append(game.save_receipt("save full"))
 	if posted:
 		if not gathering.notice.is_empty(): lines.append(gathering.notice)
 		lines.append("Posted future plan. "+game.programme_poster_heading(order)+". No date or real event is announced.")
@@ -310,7 +295,7 @@ func description() -> String:
 		if game.is_hosting_done(): lines.append("Posting alone does not start another gathering. Posted offers Gather again for this visit; the first afternoon stays unchanged.")
 	else: lines.append("Posting copies the draft. Start Hosting copies that posted order; listening is welcome.")
 	lines.append("Pinboard order: "+order_text(order)+". Original imagined paper, not a real event poster.")
-	return "\n".join(lines)
+	return game.persistence_text("\n".join(lines))
 
 func hosted_picture_description() -> String:
 	var copy: Dictionary=Hosted.copied(game,selected)

@@ -159,7 +159,7 @@ const VOICES_DATA_PATH := "res://data/neighborhood_voices.json"
 const VOICES_CHECKED_AT := "2026-10-18"
 const VOICES_DISCLAIMER := "Sources checked October 18, 2026. This is a dated introduction, not a current service or emergency directory. Follow the official pages for current information. No organization endorses or assigns missions in this game. \"Neighborhood Voices\" is the feature's name; this version contains no recorded voices."
 const VOICES_MAX_BYTES := 8192
-const OPTIONAL_SAVE_MAX_BYTES := 8192
+const OPTIONAL_SAVE_MAX_BYTES := 8192 # Serialized characters; the write budget uses UTF-8 bytes.
 const VOICES_SOURCES: Dictionary = {
 	"tndc": "https://www.tndc.org/about",
 	"glide": "https://www.glide.org/programs/",
@@ -556,6 +556,8 @@ var mural_palette_btn: Button
 var mural_sun_btn: Button
 var mural_wave_btn: Button
 var mural_rise_btn: Button
+var save_notice := ""
+var settings_save_failed := false
 var save_path := GODOT_SAVE_PATH
 var save_seq := 0
 var celeste_talk_count := 0
@@ -6097,7 +6099,7 @@ func update_landmark_tour_completion() -> void:
 		return
 	landmark_tour_celebrated = true
 	trigger_progress_cue("tour_complete", "All %d session stops" % int(tour.total))
-	announce_a11y_status("Neighborhood Tour Complete! All %d stops visited this session. Your 10 keepsakes stay saved; the optional tour starts fresh next session." % int(tour.total))
+	announce_a11y_status("Neighborhood Tour Complete! All %d stops visited this session. You found all 10 keepsakes; the optional tour starts fresh next session." % int(tour.total))
 
 func current_objective() -> Dictionary:
 	if voting_story != null and voting_story.active: return voting_story.objective()
@@ -6185,13 +6187,15 @@ func current_objective() -> Dictionary:
 		"neighbor": -1,
 		"has_target": false,
 		"target": Vector3.ZERO,
-		"text": "All 10 keepsakes saved! Tour %d/%d this session complete!" % [tour.count, tour.total],
-		"hint": "You've visited all %d tour stops this session and found every keepsake! Wander freely, revisit the museum (Shift+M), or switch to evening lights (Shift+L). Your keepsakes stay saved; the optional tour starts fresh on reload." % int(tour.total)
+		"text": "All 10 keepsakes found! Tour %d/%d this session complete!" % [tour.count, tour.total],
+		"hint": "You've visited all %d tour stops this session and found every keepsake! Wander freely, revisit the museum (Shift+M), or switch to evening lights (Shift+L). The optional tour starts fresh on reload." % int(tour.total)
 	}
 
 func update_objective_ui() -> void:
 	if progress_label != null:
 		progress_label.text = "Sparks: %d · Keepsakes: %d/10" % [spark_count(), discovered_surprises.size()]
+		var notice := persistence_text("")
+		if not notice.is_empty(): progress_label.text += "\n" + notice
 	if objective_label == null:
 		return
 	var ch := current_chapter()
@@ -10666,28 +10670,25 @@ func resolve_settings_path() -> String:
 		return GODOT_TEST_SETTINGS_PATH
 	return GODOT_SETTINGS_PATH
 
-func save_godot_settings() -> bool:
-	var env := {
-		"schema": "tenderloin-redux.godot.settings.v1",
-		"version": 1,
-		"neighborhood_voices": voices_enabled,
-		"reward_sounds": reward_sounds_enabled
-	}
-	var raw_json := JSON.stringify(env)
-	var wrote := false
+func write_save_json(key: String, path: String, raw: String) -> bool:
 	if OS.has_feature("web"):
-		var js_literal := JSON.stringify(raw_json)
-		var web_ok: Variant = JavaScriptBridge.eval("try { window.localStorage.setItem('%s', %s); true; } catch (_e) { false; }" % [GODOT_SETTINGS_WEB_STORAGE_KEY, js_literal], true)
-		wrote = bool(web_ok)
-	if not wrote and not settings_path.is_empty():
-		var file := FileAccess.open(settings_path, FileAccess.WRITE)
-		if file != null:
-			file.store_string(raw_json)
-			file.close()
-			wrote = true
+		var result: Variant = JavaScriptBridge.eval("try { window.localStorage.setItem(%s, %s); true; } catch (_e) { false; }" % [JSON.stringify(key), JSON.stringify(raw)], true)
+		return result != null and bool(result)
+	if path.is_empty(): return false
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null: return false
+	var wrote := file.store_string(raw)
+	file.close()
 	return wrote
 
+func save_godot_settings() -> bool:
+	var env := {"schema": "tenderloin-redux.godot.settings.v1", "version": 1, "neighborhood_voices": voices_enabled, "reward_sounds": reward_sounds_enabled}
+	settings_save_failed = not write_save_json(GODOT_SETTINGS_WEB_STORAGE_KEY, settings_path, JSON.stringify(env))
+	update_objective_ui()
+	return not settings_save_failed
+
 func load_godot_settings() -> bool:
+	settings_save_failed = false
 	set_reward_sounds_enabled(true, false)
 	var raw_str := ""
 	if OS.has_feature("web"):
@@ -10718,6 +10719,7 @@ func load_godot_settings() -> bool:
 	return set_voices_enabled(bool(nv_val), false)
 
 func clear_godot_settings() -> void:
+	settings_save_failed = false
 	set_reward_sounds_enabled(true, false)
 	voices_custom_json_override = ""
 	voices_simulate_error = false
@@ -11997,8 +11999,8 @@ func get_a11y_status_snapshot() -> Dictionary:
 
 func announce_a11y_status(msg: String) -> void:
 	var clean := msg.replace("\n", " ").strip_edges()
-	if clean.is_empty():
-		return
+	if clean.is_empty(): return
+	clean = persistence_text(clean).replace("\n", " ")
 	a11y_announcement_seq += 1
 	last_a11y_announcement = clean
 	sync_web_a11y_status()
@@ -12181,9 +12183,9 @@ func edit_mural_scene(id: String, slot: String) -> bool:
 		mural_workshop.stories.present()
 		announce_a11y_status(mural_workshop.stories.message)
 		return false
-	var saved := save_godot_state()
+	save_godot_state()
 	update_mural_3d()
-	var receipt := "Saved. " if saved else ("Changed for this visit; the save is full. " if candidate_bytes > SAVE_BUDGET_MAX_BYTES else "Changed for this visit; storage is unavailable. ")
+	var receipt := save_receipt() + " "
 	mural_workshop.stories.message = receipt+("Lifted the %s scene." % slot if id.is_empty() else "%s painted on the %s." % [preload("res://mural_stories.gd").NAMES[id],slot])
 	mural_workshop.stories.present()
 	announce_a11y_status(mural_workshop.stories.message+" Celeste: "+mural_scene_reply())
@@ -12207,7 +12209,7 @@ func open_mural_workshop() -> bool:
 	mural_workshop_return_focus = get_viewport().gui_get_focus_owner()
 	mural_workshop_selected = active_motif if active_motif in MURAL_MOTIFS else "sun"
 	select_next_workshop_contribution()
-	mural_workshop_message = "Pick a neighbor's mark, then touch a dotted spot on the canvas. Your art saves as you go. Celeste: " + mural_composition_reply()
+	mural_workshop_message = "Pick a neighbor's mark, then touch a dotted spot on the canvas. Your art changes as you go. Celeste: " + mural_composition_reply()
 	mural_workshop.visible = true
 	mural_workshop.reset_mode()
 	mural_workshop.scroll.scroll_vertical = 0
@@ -12266,7 +12268,7 @@ func place_workshop_contribution(col: int, row: int) -> bool:
 		return false
 	if not place_mural_motif(mural_workshop_selected,col,row):
 		return false
-	mural_workshop_message = "Placed %s at column %d, row %d. Celeste: %s" % [mural_workshop_selected.capitalize(),col+1,row+1,mural_composition_reply()]
+	mural_workshop_message = save_receipt() + " Placed %s at column %d, row %d. Celeste: %s" % [mural_workshop_selected.capitalize(),col+1,row+1,mural_composition_reply()]
 	select_next_workshop_contribution()
 	refresh_mural_workshop()
 	announce_a11y_status("Mural %d/3. %s" % [mural_placements.size(),mural_workshop_message])
@@ -12275,7 +12277,7 @@ func place_workshop_contribution(col: int, row: int) -> bool:
 func refresh_mural_workshop() -> void:
 	if not is_mural_workshop_visible():
 		return
-	mural_workshop.present({"selected":mural_workshop_selected,"placements":mural_placements,"palette":mural_palette,"canvas_color":mural_palette_color(mural_palette,mural_completed),"sparks":spark_count(),"music":music_playing,"message":mural_workshop_message})
+	mural_workshop.present({"selected":mural_workshop_selected,"placements":mural_placements,"palette":mural_palette,"canvas_color":mural_palette_color(mural_palette,mural_completed),"sparks":spark_count(),"music":music_playing,"message":persistence_text(mural_workshop_message)})
 
 func layout_mural_compose_entry() -> void:
 	if mural_compose_btn == null:
@@ -12343,7 +12345,7 @@ func place_mural_motif(motif_id: String, col: int, row: int) -> bool:
 		trigger_progress_cue("mural_complete", "3/3 motifs")
 	else:
 		trigger_progress_cue("mural_motif", motif_id)
-	info.text = "Placed %s motif at column %d, row %d on Portable Mural Board with Celeste (%d/3 motifs)\nFreestanding sidewalk easel · %s palette · Saved to Godot storage\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [motif_id.capitalize(), col+1, row+1, mural_placements.size(), mural_palette.capitalize()]
+	info.text = "Placed %s motif at column %d, row %d on Portable Mural Board with Celeste (%d/3 motifs)\nFreestanding sidewalk easel · %s palette · %s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [motif_id.capitalize(), col+1, row+1, mural_placements.size(), mural_palette.capitalize(), save_receipt()]
 	announce_a11y_status("Placed %s motif at column %d, row %d on Portable Mural Board (%d/3 motifs)." % [motif_id.capitalize(), col+1, row+1, mural_placements.size()])
 	return true
 
@@ -12395,7 +12397,7 @@ func set_mural_palette(palette_id: String) -> bool:
 	save_godot_state()
 	update_mural_ui()
 	trigger_progress_cue("mural_palette", palette_id)
-	info.text = "Portable Mural Board palette set to %s with Celeste (%d/3 motifs)\nFreestanding sidewalk easel · Saved to Godot storage\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [mural_palette.capitalize(), mural_placements.size()]
+	info.text = "Portable Mural Board palette set to %s with Celeste (%d/3 motifs)\nFreestanding sidewalk easel · %s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [mural_palette.capitalize(), mural_placements.size(), save_receipt()]
 	announce_a11y_status("Portable Mural Board palette set to %s (%d/3 motifs)." % [mural_palette.capitalize(), mural_placements.size()])
 	return true
 
@@ -12507,28 +12509,41 @@ func build_save_envelope() -> Dictionary:
 	if not mural_scenes.is_empty(): envelope["mural_scenes"] = mural_scenes.duplicate()
 	return envelope
 
+func save_budget_kind(next: Dictionary) -> int:
+	# Admission only: 0 fits, 1 is non-growing visit-only, -1 refuses mutation.
+	next.save_seq = save_seq + 1
+	var current := build_save_envelope()
+	current.save_seq = save_seq + 1
+	var oversized := JSON.stringify(current).to_utf8_buffer().size() > SAVE_BUDGET_MAX_BYTES
+	var bytes := JSON.stringify(next).to_utf8_buffer().size()
+	return 0 if bytes <= SAVE_BUDGET_MAX_BYTES else (1 if oversized and bytes <= JSON.stringify(current).to_utf8_buffer().size() else -1)
+
+func save_receipt(reason: String = "") -> String:
+	if reason.is_empty(): reason = save_notice
+	return "Saved to Godot storage." if reason.is_empty() else "Visit-only: %s; reload may lose changes." % reason
+
+func persistence_text(body: String) -> String:
+	for notice in [save_receipt() if not save_notice.is_empty() else "", "Preferences are visit-only; reload may lose changes." if settings_save_failed else ""]:
+		if not notice.is_empty() and not body.contains(notice): body = notice + "\n" + body
+	return body.strip_edges()
+
 func save_godot_state() -> bool:
 	var next := build_save_envelope()
 	next["save_seq"] = save_seq + 1
 	var raw_json := JSON.stringify(next)
-	# Imported optional metadata can already exceed this budget. Keep it in memory,
-	# but never replace the last valid stored profile with an oversized envelope.
-	if raw_json.to_utf8_buffer().size() > SAVE_BUDGET_MAX_BYTES: return false
-	save_seq += 1
+	save_notice = "save full"
 	var wrote := false
-	if OS.has_feature("web"):
-		var js_literal := JSON.stringify(raw_json)
-		var web_ok: Variant = JavaScriptBridge.eval("try { window.localStorage.setItem('%s', %s); true; } catch (_e) { false; }" % [GODOT_WEB_STORAGE_KEY, js_literal], true)
-		wrote = wrote or bool(web_ok)
-	if not wrote:
-		var file := FileAccess.open(save_path, FileAccess.WRITE)
-		if file != null:
-			file.store_string(raw_json)
-			file.close()
-			wrote = true
+	if raw_json.to_utf8_buffer().size() <= SAVE_BUDGET_MAX_BYTES:
+		save_notice = "storage unavailable"
+		wrote = write_save_json(GODOT_WEB_STORAGE_KEY, save_path, raw_json)
+		if wrote:
+			save_seq += 1
+			save_notice = ""
+	update_objective_ui()
 	return wrote
 
 func reset_mural_state_to_defaults(status_label: String) -> void:
+	save_notice = ""
 	if programme_studio != null: programme_studio.reset_visit()
 	if habitat_room != null: habitat_room.reset_visit()
 	if helper_bench != null: helper_bench.reset_visit()
@@ -13034,6 +13049,7 @@ func validate_godot_optional(raw_opt: Variant) -> Dictionary:
 	return {"ok": true, "optional": (raw_opt as Dictionary).duplicate(true)}
 
 func apply_save_envelope(raw_json: String) -> bool:
+	save_notice = ""
 	if programme_studio != null: programme_studio.reset_visit()
 	if habitat_room != null: habitat_room.reset_visit()
 	if helper_bench != null: helper_bench.reset_visit()
@@ -13564,8 +13580,9 @@ func inspect_browser_save_json(raw_json: String) -> Dictionary:
 	var clean_optional: Dictionary = {}
 	if env.get("optional", null) is Dictionary:
 		var cand_opt: Dictionary = env.get("optional")
-		if JSON.stringify(cand_opt).length() <= OPTIONAL_SAVE_MAX_BYTES:
-			clean_optional = cand_opt.duplicate(true)
+		if JSON.stringify(cand_opt).length() > OPTIONAL_SAVE_MAX_BYTES:
+			return {"valid": false, "error": "optional_too_large"}
+		clean_optional = cand_opt.duplicate(true)
 	return {
 		"valid": true,
 		"greeted": greeted,
@@ -13607,9 +13624,14 @@ func film_phase_rank(ph: String) -> int:
 
 func import_browser_save_json(raw_json: String) -> bool:
 	var res := inspect_browser_save_json(raw_json)
+	var merged_opt := optional_save_data.duplicate(true)
+	if bool(res.get("valid", false)):
+		merged_opt.merge(res.get("optional", {}), true)
+		if JSON.stringify(merged_opt).length() > OPTIONAL_SAVE_MAX_BYTES:
+			res = {"valid": false, "error": "optional_too_large"}
 	if not bool(res.get("valid", false)):
 		browser_import_status = "error"
-		browser_import_message = "Browser save not imported (invalid or absent v1 save); Godot progress kept."
+		browser_import_message = "Import refused: optional data exceeds 8192 characters. Nothing changed." if res.get("error", "") == "optional_too_large" else "Browser save not imported (invalid or absent v1 save); Godot progress kept."
 		update_block_ui()
 		info.text = "%s\nBrowser save ('%s') is read-only and never overwritten by Godot\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [browser_import_message, BROWSER_WEB_STORAGE_KEY]
 		announce_a11y_status(browser_import_message)
@@ -13729,13 +13751,7 @@ func import_browser_save_json(raw_json: String) -> bool:
 				for s_item in imp_fm_cap:
 					film_captured.append(String(s_item))
 				film_screen_frame = 0
-	var imp_opt: Dictionary = res.get("optional", {})
-	if not imp_opt.is_empty():
-		var merged_opt := optional_save_data.duplicate(true)
-		for k in imp_opt.keys():
-			merged_opt[k] = imp_opt[k]
-		if JSON.stringify(merged_opt).length() <= OPTIONAL_SAVE_MAX_BYTES:
-			optional_save_data = merged_opt
+	optional_save_data = merged_opt
 	if programme_studio != null: programme_studio.reset_visit()
 	if habitat_room != null: habitat_room.reset_visit()
 	if helper_bench != null: helper_bench.reset_visit()
@@ -13757,7 +13773,7 @@ func import_browser_save_json(raw_json: String) -> bool:
 	update_mural_ui()
 	update_music_ui()
 	update_block_ui()
-	info.text = "%s\nBrowser save ('%s') preserved untouched · Saved to Godot storage\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [browser_import_message, BROWSER_WEB_STORAGE_KEY]
+	info.text = "%s\nBrowser save ('%s') preserved untouched · %s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [browser_import_message, BROWSER_WEB_STORAGE_KEY, save_receipt()]
 	announce_a11y_status(browser_import_message)
 	return true
 
@@ -13784,40 +13800,17 @@ func import_browser_save_from_web_storage() -> bool:
 		return false
 	return import_browser_save_json(raw_str)
 
-func extract_candidate_save_seq(raw_json: String) -> int:
-	var trimmed := raw_json.strip_edges()
-	if not trimmed.begins_with("{") or not trimmed.ends_with("}"):
-		return -1
-	var parsed: Variant = JSON.parse_string(trimmed)
-	if not (parsed is Dictionary):
-		return -1
-	var env: Dictionary = parsed
-	var seq_val: Variant = env.get("save_seq", 0)
-	if not is_whole_json_number(seq_val):
-		return -1
-	return int(roundf(float(seq_val)))
-
 func load_godot_state() -> bool:
-	var candidates: Array[String] = []
+	var raw := ""
 	if OS.has_feature("web"):
-		var web_val: Variant = JavaScriptBridge.eval("try { window.localStorage.getItem('%s') || ''; } catch (_e) { ''; }" % GODOT_WEB_STORAGE_KEY, true)
-		if web_val is String and not String(web_val).strip_edges().is_empty():
-			candidates.append(String(web_val))
+		var value: Variant = JavaScriptBridge.eval("try { window.localStorage.getItem('%s') || ''; } catch (_e) { ''; }" % GODOT_WEB_STORAGE_KEY, true)
+		if value is String: raw = String(value)
 	elif FileAccess.file_exists(save_path):
-		var file_val := FileAccess.get_file_as_string(save_path)
-		if not file_val.strip_edges().is_empty() and not candidates.has(file_val):
-			candidates.append(file_val)
-	if candidates.is_empty():
+		raw = FileAccess.get_file_as_string(save_path)
+	if raw.strip_edges().is_empty():
 		reset_mural_state_to_defaults("fresh")
 		return false
-	if candidates.size() > 1:
-		candidates.sort_custom(func(a: String, b: String) -> bool:
-			return extract_candidate_save_seq(a) > extract_candidate_save_seq(b)
-		)
-	for raw_json in candidates:
-		if apply_save_envelope(raw_json):
-			return true
-	return false
+	return apply_save_envelope(raw)
 
 func clear_godot_save() -> void:
 	save_seq = 0

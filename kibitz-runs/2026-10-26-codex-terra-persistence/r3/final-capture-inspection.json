@@ -1,0 +1,19 @@
+{
+  "utc": "2026-10-27T02:14:34.642321+00:00",
+  "method": "Current-run screenshots inspected by Codex and a read-only subagent; operation/recovery from test receipts, not inferred from stills.",
+  "screens": [
+    "persistence-browser-1793066194288/320-settings-refused.png",
+    "persistence-browser-1793066194288/320-studio-refused.png",
+    "persistence-browser-1793066194288/320-mural-refused.png",
+    "persistence-browser-1793066194288/390-rhythm-practice-refused.png",
+    "persistence-browser-1793066194288/390-optional-visit-only.png",
+    "persistence-browser-1793066194288/390-panel-refused.png",
+    "persistence-browser-1793066194288/1100-settings-refused.png",
+    "persistence-browser-1793066194288/1100-studio-refused.png",
+    "finale-320-gathered.png",
+    "finale-320-return-2.png",
+    "programme-320-complete.png"
+  ],
+  "findings": "Warnings are visible and accurately describe visit-only/reload risk; sampled controls and scrolling remain visible. Finale gathering shows five figures; return and programme completed states are visible.",
+  "limits": "Synthetic faults; no physical phone, OS picker, spoken output, human acceptance or native post-open durability proof."
+}

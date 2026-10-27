@@ -1,0 +1,71 @@
+{
+  "utc": "2026-10-27T02:14:34.642321+00:00",
+  "accepted_all_five": true,
+  "baseline_head": "feb4ad814cb37a078a3f5d9cf6da4ad863237a26",
+  "full_execution_sha256": "afa692552664d3479fc5f342996c8c93444d88e62d1223308443ad246cee513f",
+  "source_manifest_sha256": "365a2012f41d31d6a4db547749c871d99c1eaf8aca30fc9bab5e058a49474006",
+  "bound_inputs": 327,
+  "all_bound_inputs_matched_before_closure_docs": true,
+  "native": {
+    "literal_marker_families": 28,
+    "small_layout_combinations": 16,
+    "requirement_families": 29,
+    "paired_unique_paths_before_test_suite": true,
+    "protected_asfound_sha256": "2b7d1e849b4820a1d6c49602930ac3e0b104a8aa132375837038bfef80f2e0e1"
+  },
+  "export": {
+    "bytes": 2096484,
+    "sha256": "a887b73444d3bad9329a2b7189c0eae68d8e3c8dd36185d5961883eff6e4a53f",
+    "cap": 2097152
+  },
+  "node_tests": 106,
+  "browser": {
+    "departure_cases": 3,
+    "genuine_departure_cases": 3,
+    "habitat_cases": 3,
+    "genuine_habitat_cases": 3,
+    "helper_cases": 3,
+    "genuine_helper_cases": 3,
+    "opening_cases": 6,
+    "genuine_opening_startups": 3,
+    "genuine_opening_revisits": 3,
+    "hosted_cases": 4,
+    "community_invitation_cases": 9,
+    "genuine_earned_invitations": 3,
+    "fresh_phone_cases": 6,
+    "actual_pinch_cases": 4,
+    "genuine_voting_cases": 3,
+    "orbital_cases": 3,
+    "genuine_orbital_cases": 3,
+    "finale_cases": 3,
+    "genuine_finale_cases": 3,
+    "programme_cases": 3,
+    "genuine_programme_cases": 3,
+    "persistence_cases": 3,
+    "persistence_widths": [
+      320,
+      390,
+      1100
+    ],
+    "persistence_valid": true,
+    "errors": [],
+    "external": [],
+    "served_export_unchanged": true,
+    "browser_fingerprint_matches": true
+  },
+  "reviews": {
+    "requested_selected": "claude-opus-5-5/high",
+    "r1_r3": "complete and grounded",
+    "later_driver_changes_independently_rereviewed": false,
+    "provider_runtime_identity": "unknown",
+    "numeric_allowance": "unknown"
+  },
+  "capture_inspection": "final-capture-inspection.json",
+  "limitations": [
+    "native post-open flush/atomic durability unverified",
+    "physical phones, actual OS file picker, full screen-reader and human acceptance unverified",
+    "not deployed",
+    "package size is not a measured runtime speedup"
+  ],
+  "retained_full_evidence": "artifacts/terra-remediation-20261026/final1/"
+}

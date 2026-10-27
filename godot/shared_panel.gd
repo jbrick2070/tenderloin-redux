@@ -149,23 +149,16 @@ func close_panel(announce: bool=true) -> void:
 	if is_instance_valid(return_focus) and return_focus.is_visible_in_tree(): return_focus.grab_focus()
 	elif game.block_programme_btn.is_visible_in_tree(): game.block_programme_btn.grab_focus()
 	if announce:
-		var fallback := "Your draft is saved; nothing was hung." if editing() else "Your copied panel and earlier keepsake are unchanged."
-		if editing() and JSON.stringify(game.build_save_envelope()).to_utf8_buffer().size()>game.SAVE_BUDGET_MAX_BYTES: fallback="This imported draft is visit-only; the last stored save stays unchanged."
+		var fallback: String = game.save_receipt()+" Nothing was hung." if editing() else "Your copied panel and earlier keepsake are unchanged."
+		if editing() and JSON.stringify(game.build_save_envelope()).to_utf8_buffer().size()>game.SAVE_BUDGET_MAX_BYTES: fallback=game.save_receipt("save full")
 		game.announce_a11y_status("Back to the block. "+(message if not message.is_empty() else fallback))
 
 func allow(next: Dictionary) -> bool:
-	next.save_seq=game.save_seq+1
-	var old: Dictionary=game.build_save_envelope()
-	var current_bytes := JSON.stringify(old).to_utf8_buffer().size()
-	old.save_seq=game.save_seq+1
-	var bytes := JSON.stringify(next).to_utf8_buffer().size()
-	if bytes<=game.SAVE_BUDGET_MAX_BYTES:
-		message="Draft saved. Hang our panel when you are ready."
+	var admission: int=game.save_budget_kind(next)
+	if admission>=0:
+		message=game.save_receipt("save full") if admission==1 else ""
 		return true
-	if current_bytes>game.SAVE_BUDGET_MAX_BYTES and bytes<=JSON.stringify(old).to_utf8_buffer().size():
-		message="Changed for this visit only; this imported save is full. The last stored save stays unchanged."
-		return true
-	message="Change not made: there is no saving room. The last stored save stays unchanged."
+	message="Change not made: save full; stored progress is unchanged."
 	refresh(true)
 	return false
 
@@ -174,7 +167,7 @@ func cycle(index: int) -> void:
 	var next: Dictionary=game.build_save_envelope()
 	next.hosting.draft.tiles[index]=(int(next.hosting.draft.tiles[index])+1)%3
 	if not allow(next) or not game.host_cycle_tile(index): return
-	message="Tile %d: %s. "%[index+1,SHAPES[int(value().tiles[index])]]+message
+	message="Tile %d: %s. "%[index+1,SHAPES[int(value().tiles[index])]]+game.save_receipt()
 	refresh(true)
 	pads[index].grab_focus()
 
@@ -183,7 +176,7 @@ func palette(id: String) -> void:
 	var next: Dictionary=game.build_save_envelope()
 	next.hosting.draft.palette=id
 	if not allow(next) or not game.host_set_palette(id): return
-	message=id.capitalize()+" palette. "+message
+	message=id.capitalize()+" palette. "+game.save_receipt()
 	refresh(true)
 	options[1 if id=="warm" else 0].grab_focus()
 
@@ -215,7 +208,8 @@ func refresh(announce: bool) -> void:
 	var text := explanation()+"\n"+("Live draft on this paper. The street frame receives the copied artwork when you hang it." if editing() else 'Celeste: "Our '+String(v.palette)+' panel came out of everyone\'s shapes. Look for it beside our first mural."\nCopied artwork: looking changes no saved choices or keepsake.')
 	text+="\n"+String(v.palette).capitalize()+" palette | "+", ".join(shapes)+".\nOriginal fictional portable art, separate from the opening mural. Music stays yours to choose."
 	if not message.is_empty(): text=message+"\n"+text
-	elif JSON.stringify(game.build_save_envelope()).to_utf8_buffer().size()>game.SAVE_BUDGET_MAX_BYTES: text="This imported profile is too large to save; non-growing edits are visit-only.\n"+text
+	elif JSON.stringify(game.build_save_envelope()).to_utf8_buffer().size()>game.SAVE_BUDGET_MAX_BYTES: text=game.save_receipt("save full")+"\n"+text
+	text=game.persistence_text(text)
 	if not painting_room: text="Make room for painting: enlarge the window or rotate it. No tiny overlapping paint targets are active.\n"+text
 	if reader.text!=text: reader.text=text; reader.get_v_scroll_bar().value=0
 	options[0].disabled=not editing() or not painting_room or v.palette=="warm"
