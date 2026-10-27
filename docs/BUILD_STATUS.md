@@ -1,14 +1,14 @@
 # Build status
 
-## Current: persistence verification complete; delivery pending - October 27, 2026 UTC
+## Current: persistence corrections verified and pushed - October 27, 2026 UTC
 
 The honest-persistence batch completed its same frozen final1 all-five chain clean: native29 requirement families, export, check,106 Node tests and full genuine1100/390/320 browser progression plus three isolated persistence fault journeys. Browser errors and external requests were empty. All327 final inputs, served export and protected native ASFOUND were unchanged. The2096484-byte PCK is668 bytes below the unchanged cap. Both exact scoped Claude reviews were grounded; later driver corrections were not independently re-reviewed. Final current captures and the bounded persistence diff were inspected. Full evidence is retained in artifacts/terra-remediation-20261026/final1 and compact receipts in kibitz-runs/2026-10-26-codex-terra-persistence/r3/verification.json and final-capture-inspection.json.
 
-The current batch tells the truth about failed or oversized saves, preserves imported data and separates preferences from progress. Native after-open/flush/atomic durability, actual OS picker, physical phones, full screen-reader use and human acceptance remain unverified. No deployment or measured runtime speedup is claimed. The controller ended; inspect current HEAD/status and the owned lock before the authorized normal [skip ci] commit/push. Never repeat accepted unchanged checks. Other review/optimization, music/shutdown, expanded playtesting and teaser remain open.
+The current batch tells the truth about failed or oversized saves, preserves imported data and separates preferences from progress. Native after-open/flush/atomic durability, actual OS picker, physical phones, full screen-reader use and human acceptance remain unverified. No deployment or measured runtime speedup is claimed. The controller ended; the accepted feature commit 87cf3b5bb2ae166779b22940e20dcc7aaf31af59 was pushed normally to origin/main after the owned lock was removed. See artifacts/terra-remediation-20261026/checkpoint-push.json for the delivery receipt and inspect live HEAD/status before new work. Never repeat accepted unchanged checks. Other review/optimization, music/shutdown, expanded playtesting and teaser remain open.
 
 | Outcome | Evidence | Blocker or limit | Next action |
 |---|---|---|---|
-| Persistence honesty | Same full all-five, current captures/invariants and grounded reviews | Delivery and human acceptance separate | Commit/push after final diff and owned-lock removal |
+| Persistence honesty | Same full all-five, current captures/invariants, grounded reviews and feature push | Human acceptance and publication separate | Keep closed; no repeated unchanged checks |
 | Other Terra recommendations | Complete static review and measurement plan | Reproduction and profiling remain | Choose a separate coherent follow-up |
 
 ## Current: reviewed persistence corrections entering full verification - October 27, 2026 UTC
