@@ -1,5 +1,30 @@
 # Build status
 
+## Current: scheduled work paused - October 27, 2026 UTC
+
+The creator stopped scheduled work to conserve credits. The last verified gameplay checkpoint is `1d55dbd`; no later product/test change has been made. A separate Gather again repeated-input defect is reproduced in isolated actual-browser tests: rapid repeat at the second handoff selected two choices, while saved data, copied order and quiet remained intact. The required pre-code Claude review failed due to OAuth token refresh (rc1); no successful report or fix exists. Preserve the diagnostics, do not retry or restart scheduled work without the creator's request, and follow the current handoff if work resumes. Human/device acceptance and publication remain separate.
+
+| Outcome | Evidence | Blocker or limit | Next action |
+|---|---|---|---|
+| Accepted game checkpoint | Full final2 verification, commit and push | No physical/human acceptance or deployment claim | Preserve |
+| Gather repeated-choice | Isolated input matrices with source/PCK and storage checks | Review OAuth error; scheduler paused | Resume only when requested; review before implementation |
+
+## Current: Gather again repeated-choice defect reproduced - October 27, 2026 UTC
+
+The isolated second-handoff matrix showed that rapid mouse double-click or emulated repeated tap at the same choice selects two handoffs in all eight repeated cases; single-input controls select one. Four sizes and both table/floor layouts were exercised, with preserved storage, legacy, quiet and order, unchanged source/served PCK and errors[]external[]. Earlier first-handoff repeats retained one choice but unintentionally navigated Previous after reflow. See `artifacts/terra-input-20261027/gather-repeated-choice1` and `gather-repeated-choice2`. No product fix yet; exact scoped pre-code and implementation reviews plus fresh full verification follow. Physical-phone/human intent remains unverified.
+
+| Outcome | Evidence | Blocker or limit | Next action |
+|---|---|---|---|
+| Deliberate gathering handoffs | Repeat input reproduced two choices in eight private cases | Correction and mandatory review/gates pending | Ground pre-code review, implement one connected slice |
+
+## Current: Gather again repeated-input diagnosis - October 27, 2026 UTC
+
+In16 isolated actual-input cases at four viewports and both furniture layouts, a repeat at the first handoff did not choose twice: it retained one gesture but landed on Previous after the controls moved. Stored data, quiet and copied order stayed unchanged. This is a reversible navigation surprise; the second-handoff probe is active under the primary owned lock. See the current handoff and `artifacts/terra-input-20261027/gather-repeated-choice1`. No product change or physical-device proof.
+
+| Outcome | Evidence | Blocker or limit | Next action |
+|---|---|---|---|
+| Repeated handoff input | First-choice private matrix, source/served PCK matched | Later handoffs still under investigation | Finish second-handoff probe; select only grounded fixes |
+
 ## Current: opening held-key correction verified - October 27, 2026 UTC
 
 The held-exit guard and its startup release correction passed the same fresh final2 native/export/check/106 Node/full browser chain plus18 Field Guide cases. All2511 bound inputs, served export and protected ASFOUND matched; browser errors[]external[]. The2097028-byte PCK is124 bytes below the unchanged cap. Final captures and source/geography/save/public invariants were inspected. Distinct exact r1/r3 reviews were grounded; later driver corrections were not independently re-reviewed. Preserve the prior failed helper-image observation and controlled camera diagnosis. Details and compact receipts are in the current `session_handoff.md` and `kibitz-runs/2026-10-26-codex-opening-release/r3/verification.json`.

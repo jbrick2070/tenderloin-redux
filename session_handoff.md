@@ -1,5 +1,38 @@
 # Session Handoff - Tenderloin Redux - October 24, 2026 UTC
 
+## Current: scheduler paused; Gather input issue recorded, no product change - October 27, 2026 UTC
+
+At the creator's request, the `build-tenderloin-redux` scheduled automation is PAUSED to conserve credits and avoid an interrupted release. Do not restart it or run paid reviews unless the creator explicitly resumes work. The last fully verified gameplay checkpoint is `1d55dbdff7b189e52d0e99c4bf8dcd6a1342b68d`, committed and pushed; the Before These Streets opening, the selected complete space ending, Gather again, persistence and Field Guide remain implemented and verified. No deployment or physical/human acceptance is implied.
+
+Subsequent isolated actual-input diagnosis reproduced a separate Gather again issue: in all eight repeated second-handoff cases, a rapid mouse double-click or two emulated taps chose two handoffs; the eight single-input controls chose one. At the first handoff, eight repeats retained one gesture but unintentionally activated Previous. Inputs covered1100/390/320 and520x360, both table/floor; stored bytes, legacy, quiet and copied order remained unchanged, with errors[]external[] and source/PCK/served assets unchanged. See `artifacts/terra-input-20261027/gather-repeated-choice1` and `gather-repeated-choice2`. This is an open input defect, not loss of saved progress or physical-phone proof.
+
+No product or test correction has been made. The exact pre-code sole-Claude r1 attempted before the stop returned rc1 due to an OAuth token refresh error; no valid independent report exists and it was not retried. Preserve the failed receipt and diagnostics. If the creator explicitly resumes this work later, recheck current HEAD/ownership, resolve the reviewer authentication without blind retries, complete the required scoped pre-code review before selecting or coding a fix, then the distinct r3 and fresh all-five plus Field Guide verifier. The remaining review/optimization, music/listening, expanded playtesting and teaser are separate unfinished work.
+
+| Outcome | Evidence | Blocker or limit | Next action |
+|---|---|---|---|
+| Accepted opening, ending, programme, persistence and Field Guide | Verified pushed checkpoint `1d55dbd` and prior receipts | Human/device acceptance and publication separate | Keep closed |
+| Gather repeated-choice input | Two isolated16-case actual-input matrices; no product change | Pre-code review failed OAuth refresh; scheduler paused by creator | Resume only on creator request; resolve authentication and review before implementation |
+
+## Current: Gather again repeated-choice defect reproduced - October 27, 2026 UTC
+
+The second-handoff PRIVATE actual-input probe completed16 synthetic-profile cases at desktop1100, phone-emulated390/320 and side520, both table/floor. A single click/tap advanced one gesture (step1 to2); a mouse double-click or two rapid touch taps at the original same choice coordinate advanced two (step1 to3) in every repeated case. The reused choice row stayed in place for the second handoff, so the second press selected the following resident without a separate decision. Original storage/legacy, quiet, posted order, contributions, source and served PCK remained unchanged; errors[]external[]. Traces, screenshots and input snapshots are under `artifacts/terra-input-20261027/gather-repeated-choice2`. The first-handoff probe separately found repeat activates Previous after reflow while retaining the one recorded choice. This is a demonstrated input-design defect, not lost saved data or physical-phone proof.
+
+PRIMARY owns `codex-gather-input-diagnostic-20261027` at `1d55dbdff7b189e52d0e99c4bf8dcd6a1342b68d`; no product changes yet. Player outcome: each meaningful welcome is chosen deliberately, including pointer/touch and keyboard, while original copied order, contributions, reentry, review, Finish/Next, focus, quiet, routes and saved data remain intact. The first-choice reflow to Previous must not make an accidental rapid repeat undo the displayed handoff. Complete one exact sole-Claude pre-code r1 before choosing implementation, then distinct r3 and fresh full all-five plus Field Guide verification; retain actual failing evidence. No fresh acceptance or commit yet.
+
+| Outcome | Evidence | Blocker or limit | Next action |
+|---|---|---|---|
+| Gather deliberate handoffs | Actual repeated-input matrix reproduces unintended second choice | No fix or new review yet; emulation is not physical testing | Complete exact pre-code r1, ground scope, implement connected correction |
+
+## Current: Gather again repeated-input diagnosis - October 27, 2026 UTC
+
+PRIMARY owns `codex-gather-input-diagnostic-20261027` at `1d55dbdff7b189e52d0e99c4bf8dcd6a1342b68d`. Isolated synthetic actual-input tests in `artifacts/terra-input-20261027/gather-repeated-choice1` exercised a single click/tap versus a mouse double-click or two fast emulated taps at the first choice in desktop1100, phone390/320 and side520, both table/floor. All16 retained one gesture; none selected two handoffs. Every repeated input returned the visible review step to0 because the choice row moved upward and the second input landed on Previous; a single input stayed at step1. The original choice remains present; the source exposes Next to review it, though this probe did not press Next. Storage, legacy, quiet, copied order, source and served PCK stayed unchanged; errors[]external[]. Screens/traces and exact snapshots are retained. This is a reversible review-navigation surprise, not lost progress or proof of two handoffs.
+
+The same isolated diagnostic is now testing repeated input on the second handoff in `gather-repeated-choice2` (owned node22652). Inspect its actual process/result/screens/trace before classifying the full risk; do not duplicate a live probe. If a consequential defect is demonstrated, ground a coherent scope and complete exact pre-code r1 before implementation, then distinct r3 and fresh all-five. No product change or new acceptance yet. Physical devices and human intent are not proven by emulation.
+
+| Outcome | Evidence | Blocker or limit | Next action |
+|---|---|---|---|
+| Gather first-choice repeat | 16 private desktop/phone-emulated/side cases, one gesture retained | Repeat returns to Previous; later handoffs not yet classified | Finish same second-handoff probe and choose scope from evidence |
+
 ## Current: opening held-key correction verified - October 27, 2026 UTC
 
 The opening now waits for movement keys held at exit to release before resuming the normal physics step. Releases are polled while the original startup card or another activity owns input, so a fresh same-key press after release works. The existing helper artwork inspection test now uses actual manual orbit to a verified inspection angle while retaining every original art and interaction threshold. Product camera, art, geography and saving were not changed.

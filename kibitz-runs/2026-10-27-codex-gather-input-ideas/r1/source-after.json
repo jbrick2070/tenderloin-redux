@@ -1,0 +1,15 @@
+{
+  "godot/programme_gathering.gd": "974704a87e8165ccf0bf8351fc591401276dd9a3791017ec1972e91fc2f2de73",
+  "godot/programme_studio.gd": "f1afdb8a1794ad97d62155cdd9ec45731199836dca5b8b23f5be9554720b2a97",
+  "godot/main.gd": "e51ec9b8c61155a901105a5495e21124d9ed385072f4fd5eb3e4d132c862f5a8",
+  "godot/tests/programme_gathering_checks.gd": "d95a7e72e441391d56736e6f9ff4416242a1abd817c98d8543d50382fa24a543",
+  "godot/tests/study_test.gd": "9d111bcf017608cc253efab57755808cacd47b30ac1593d075d61eb18a387b76",
+  "tests/programme-gathering-browser.mjs": "ca8547604319d57c20254747f1b8e010e42eb69a4b20abc0f80cbc078fcbe9da",
+  "tests/godot-browser.mjs": "7af309ade3a42f38afb11a2d5c8a727085edc39f192e35e017ec55c0ff8b62a2",
+  "artifacts/godot-web/index.pck": "7faef21792360691fb00da625ee230f61835c73b22c5c35ca29983c40781cf91",
+  "artifacts/terra-input-20261027/gather-repeated-choice1/result.json": "d71e12382a2a7ea3dfa318de892b870c02583591c733b254a0a32bdfc8a0fae6",
+  "artifacts/terra-input-20261027/gather-repeated-choice2/result.json": "052d54f9f9205ede38b2888f8f6ba4a79ee5d6d11076182b2a1fa3f26a20b0f1",
+  "kibitz-runs/2026-10-27-codex-gather-input-ideas/r1/plan.md": "f1c24a36d9cabebd3a9bd418e9bcdfd535df45966f48a21267ea4d233b0453f6",
+  "kibitz-runs/2026-10-27-codex-gather-input-ideas/r1/driver_anchor.md": "d641bec4aee26e76639c057f6060004c41e82b2e3cbcc18603032a97def31205",
+  "kibitz-runs/2026-10-27-codex-gather-input-ideas/r1/scope_receipt.md": "1c8caf3d712419bc6be9fbc0c6e7f9f3e59cc286de06e6a916198ebb430351da"
+}
