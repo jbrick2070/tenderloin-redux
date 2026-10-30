@@ -1,4 +1,4 @@
-// Run with a local Playwright installation; it is QA tooling, not a game runtime dependency.
+// Run with a local Playwright installation; it is QA tooling, not a game runtime dependency. BROWSER_CHANNEL selects chrome (default), msedge, bundled Chromium, or firefox (the installed Firefox through Playwright's BiDi channel).
 import assert from 'node:assert/strict';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { buildInfo } from '../scripts/build-fingerprint.mjs';
 import { initialState } from '../public/core.js';
 import { BLACK_HAWK } from '../public/history.js';
-const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : 'playwright');
+const { chromium, firefox } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : 'playwright');
 let ownedServer, browser, base;
 async function startServer() {
   if (process.env.BASE_URL) return process.env.BASE_URL.replace(/\/$/, '');
@@ -211,7 +211,10 @@ async function finish(page, choice) {
   await page.screenshot({ path: `artifacts/complete-${choice}.png`, fullPage: true });
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('tenderloin-redux.save.v1')));
   assert.equal(saved.core.opened, true);
-  await page.reload(); await page.locator('#begin').click();
+  await page.reload();
+  // The dialog's close event is queued after close(); a key pressed before it runs is cleared by the game's own close handler.
+  await page.evaluate(() => { window.__welcomeClosed = new Promise(resolve => document.querySelector('#modal').addEventListener('close', resolve, { once: true })); });
+  await page.locator('#begin').click(); await page.evaluate(() => window.__welcomeClosed);
   assert.equal(await page.evaluate(() => window.tenderloin.snapshot().opened), true);
   assert.equal(await page.locator('#progress-percent').textContent(), '100%');
   const x = await page.evaluate(() => window.tenderloin.snapshot().player.x);
@@ -457,16 +460,17 @@ try {
   base = await startServer();
   const identity = await fetch(base + '/__build'); assert.equal(identity.status, 200);
   assert.deepEqual(await identity.json(), await buildInfo(), 'The browser must test the source in this checkout');
-  const channel = process.env.BROWSER_CHANNEL || 'chrome';
-  browser = await chromium.launch({ ...(channel === 'bundled' ? {} : { channel }), headless: true });
+  const channel = process.env.BROWSER_CHANNEL || 'chrome', isFirefox = channel === 'firefox';
+  // Playwright's BiDi Firefox ignores the reducedMotion context option, so the preference supplies it.
+  browser = isFirefox ? await firefox.launch({ channel: 'moz-firefox', headless: true, firefoxUserPrefs: { 'ui.prefersReducedMotion': 1 } }) : await chromium.launch({ ...(channel === 'bundled' ? {} : { channel }), headless: true });
   for (const choice of ['table', 'floor']) {
     const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' });
     const page = await context.newPage(), errors = []; page.on('pageerror', error => errors.push(error.message));
     await start(page);
     await page.locator('#world').focus(); await page.keyboard.press('e'); assert.equal(await page.locator('#choose-table').isVisible(), true); await page.locator('#close-modal').click();
     await finish(page, choice);
-    await page.locator('#sound-toggle').click(); assert.equal(await page.locator('#sound-toggle').getAttribute('aria-pressed'), 'true');
-    await page.locator('#sound-toggle').click(); assert.equal(await page.locator('#sound-toggle').getAttribute('aria-pressed'), 'false');
+    await page.locator('#sound-toggle').click(); await page.waitForFunction(() => document.querySelector('#sound-toggle').getAttribute('aria-pressed') === 'true', null, { timeout: 5000 });
+    await page.locator('#sound-toggle').click(); await page.waitForFunction(() => document.querySelector('#sound-toggle').getAttribute('aria-pressed') === 'false', null, { timeout: 5000 });
     const before = await page.evaluate(() => window.tenderloin.snapshot().player.x);
     await page.keyboard.down('ArrowLeft'); await page.waitForTimeout(200); await page.keyboard.up('ArrowLeft');
     assert.ok(await page.evaluate(() => window.tenderloin.snapshot().player.x) < before, 'movement after music-button focus');
@@ -479,7 +483,7 @@ try {
   const pendingContext = await browser.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' });
   const pendingPage = await pendingContext.newPage(), pendingErrors = [];
   pendingPage.on('pageerror', e => pendingErrors.push(e.message)); await hostingWithPendingLoans(pendingPage); assert.deepEqual(pendingErrors, []); await pendingContext.close();
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, ...(isFirefox ? {} : { isMobile: true }), hasTouch: true, reducedMotion: 'reduce' });
   const mobile = await context.newPage(); await start(mobile);
   const mobileErrors = []; mobile.on('pageerror', e => mobileErrors.push(e.message));
   const initialView = await mobile.evaluate(() => window.tenderloin.location());
@@ -500,7 +504,8 @@ try {
   await mobile.waitForTimeout(250);
   assert.deepEqual(await mobile.evaluate(() => window.tenderloin.snapshot().player), beforeDrag, 'drag pans without starting a walk');
   assert.equal(await mobile.locator('#modal').evaluate(n => n.open), false);
-  const touch = await context.newCDPSession(mobile);
+  // Multi-touch and touchCancel need the Chromium DevTools Protocol; Firefox runs skip this block and say so in the evidence.
+  if (!isFirefox) { const touch = await context.newCDPSession(mobile);
   const touchPoint = { x: Math.round(mapBox.x + 150), y: Math.round(mapBox.y + 290), id: 1 };
   await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [touchPoint] });
   await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ ...touchPoint, x: touchPoint.x + 60 }] });
@@ -513,7 +518,7 @@ try {
   await touch.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
   await mobile.waitForTimeout(200);
   assert.deepEqual(await mobile.evaluate(() => window.tenderloin.snapshot().player), beforeDrag, 'multi-touch and cancelled touch do not activate the map');
-  await touch.detach();
+  await touch.detach(); }
   await mobile.locator('#neighbors-button').click(); await dialogFocus(mobile);
   assert.equal(await mobile.locator('.neighbor-directory button').count(), 5);
   for (const id of ['neighbor-bea', 'neighbor-celeste', 'neighbor-rook', 'neighbor-dez', 'neighbor-thanh', 'neighbors-close']) {
@@ -553,7 +558,7 @@ try {
   await mobile.locator('#neighbors-button').click(); await mobile.locator('#neighbor-bea').click();
   await mobile.locator('#choose-table').waitFor(); await mobile.locator('#close-modal').click();
   await mobile.locator('#recenter').click();
-  evidence.push({ mobileNavigation: 'close view, zoom, full block, follow, mouse/touch drag without movement, multi-touch and cancelled touch suppression, five named neighbor buttons, keyboard route selection, stop, arrival dialog focus pass', pageErrors: mobileErrors });
+  evidence.push({ mobileNavigation: 'close view, zoom, full block, follow, mouse/touch drag without movement, ' + (isFirefox ? 'multi-touch and cancelled touch suppression skipped (Chromium only), ' : 'multi-touch and cancelled touch suppression, ') + 'five named neighbor buttons, keyboard route selection, stop, arrival dialog focus pass', pageErrors: mobileErrors });
   assert.deepEqual(mobileErrors, []);
   assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await mobile.screenshot({ path: 'artifacts/first-playable-mobile.png', fullPage: true });
@@ -667,6 +672,6 @@ try {
   assert.equal(await partialPage.locator('#motif-wave').getAttribute('aria-pressed'), 'true');
   evidence.push({ partialLayoutResumeSelectsMissingSupply: 'pass', partialMuralResumeSelectsMissingMotif: 'pass' }); await partialContext.close();
   const privateResponse = await fetch(base + '/package.json'); assert.equal(privateResponse.status, 404);
-  await writeFile('artifacts/browser-results.json', JSON.stringify({ testedAt: new Date().toISOString(), browser: await browser.version(), source: await buildInfo(), isolatedServer: !process.env.BASE_URL, evidence, staticRootIsolation: 'pass', limits: 'Automated Chrome checks; not a full keyboard-only completion audit, human playtest, screen reader audit, audible musical-quality assessment or surveyed street verification.' }, null, 2));
+  await writeFile('artifacts/browser-results.json', JSON.stringify({ testedAt: new Date().toISOString(), browser: await browser.version(), channel, source: await buildInfo(), isolatedServer: !process.env.BASE_URL, evidence, staticRootIsolation: 'pass', limits: 'Automated ' + (channel === 'chrome' ? 'Chrome' : channel) + ' checks' + (isFirefox ? ' (Chromium-only multi-touch suppression skipped)' : '') + '; not a full keyboard-only completion audit, human playtest, screen reader audit, audible musical-quality assessment or surveyed street verification.' }, null, 2));
   console.log(JSON.stringify(evidence, null, 2));
 } finally { await browser?.close(); ownedServer?.kill(); }
