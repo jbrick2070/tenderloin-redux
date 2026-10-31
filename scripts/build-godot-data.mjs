@@ -190,7 +190,7 @@ export async function build() {
   result.west_intersections = deriveWestIntersections();
   result.history_stops = HISTORY_STOPS;
 
-  await writeFile(new URL('../godot/data/buildings.json', import.meta.url), JSON.stringify(result, null, 2) + '\n');
+  await writeFile(new URL('../godot/data/buildings.json', import.meta.url), JSON.stringify(result) +'\n');
   console.log(`Derived ${result.buildings.length} opening footprints + ${result.wider_buildings.length} wider Tenderloin footprints (${result.buildings.length + result.wider_buildings.length} total); courtyards and cultural district retained. ${result.source_sha256}`);
   return result;
 }

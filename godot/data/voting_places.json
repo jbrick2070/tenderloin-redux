@@ -567,6 +567,6 @@
   "source_sha256": {
     "docs/research/2026-10-22-episode-locations/polling-2024-official-selected-rows.tsv": "71689d465d8ac6e9272ff7c625ab3c887c60f55bcb95ef9355aac1195fab5d48",
     "docs/research/2026-10-22-episode-locations/polling-addresses.json": "9d6b164ef9874f2ac4fae057bf7caeb9d38567b3bc9f3291cca3104135635e59",
-    "godot/data/buildings.json": "8b3afd7a6ec3d00ac22fb77347caeafa262be2f55ad1ddbf0a9dd296afd332d2"
+    "godot/data/buildings.json": "0c55db1aaa2beb0d8b8b6cef3d7f4acdaa07e6fea0607d4717b7c17c7ecb1098"
   }
 }
