@@ -3232,6 +3232,8 @@ func run() -> void:
 	# Both must keep Stop intent until release; a later gesture must work again.
 	root.size = Vector2i(640, 360)
 	for stop_gesture in range(2):
+		# A later gesture at the same spot inside the press settle window would be the same double press; wait it out.
+		if stop_gesture > 0: await create_timer(0.65).timeout
 		require(study.walk_to_history_stop("blackhawk"), "touch Stop fixture starts a real long route")
 		study.show_block_panel(true)
 		await process_frame
@@ -3305,6 +3307,7 @@ func run() -> void:
 	await preload("res://tests/orbital_checks.gd").verify(self,study,saved_m4_json,true)
 	await preload("res://tests/finale_checks.gd").verify(self,study,saved_m4_json,true)
 	await preload("res://tests/programme_gathering_checks.gd").verify(self,study,saved_m4_json,true)
+	await preload("res://tests/press_settle_checks.gd").verify(self,study,saved_m4_json,true)
 	await verify_quiet_seats(study,saved_m4_json)
 	await verify_bea_invitation(study,saved_m4_json)
 	await verify_civic_listening(study,saved_m4_json)
@@ -4685,7 +4688,8 @@ func verify_quiet_seats(study: Node, full_profile: String) -> void:
 					if original.is_visible_in_tree(): targets.append(original)
 				for b in targets:
 					require(b.is_visible_in_tree() and b.size.y>=44 and Rect2(Vector2.ZERO,Vector2(size)).encloses(b.get_global_rect()),"full quiet choice targets fit viewport")
-					for walking in study.controls.get_children(): require(not b.get_global_rect().intersects(walking.get_global_rect()),"quiet choices/original actions/Close never overlap walking buttons")
+					# A hidden walking control keeps the rect of its last layout; only visible ones can overlap what the player sees.
+					for walking in study.controls.get_children(): require(not walking.is_visible_in_tree() or not b.get_global_rect().intersects(walking.get_global_rect()),"quiet choices/original actions/Close never overlap walking buttons")
 				var li := 0 if layout=="table" else 1
 				var expected: Array = ([-0.55,0.55] if id=="arc" else [-3.85,-2.75]) if li==0 else ([-1.2,0.0] if id=="arc" else [-4.2,-3.2])
 				for i in range(2):

@@ -207,6 +207,7 @@ func setup(owner_game: Node, owner_workshop: Control) -> void:
 	var footer := HBoxContainer.new()
 	outer.add_child(footer)
 	palette_button = workshop.button(footer,"Palette",func(): game.cycle_mural_palette())
+	palette_button.set_meta("rapid", true)
 	music_button = workshop.button(footer,"Music",func(): game.toggle_music_playback())
 	back_button = workshop.button(footer,"Back to\nMural",func(): workshop.close_stories())
 	page_button = workshop.button(footer,"Music &\nGarden",change_page)

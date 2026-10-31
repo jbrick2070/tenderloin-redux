@@ -65,6 +65,7 @@ func setup(owner_game: Node) -> void:
 	var cooks := HBoxContainer.new(); box.add_child(cooks)
 	previous=button(cooks,"Previous cook",func(): select_cook(posmod(selected-1,revealed)))
 	next=button(cooks,"Next cook",func(): select_cook((selected+1)%revealed))
+	previous.set_meta("rapid",true); next.set_meta("rapid",true)
 	prepare=button(box,"",advance)
 	var portions := HBoxContainer.new(); box.add_child(portions)
 	for i in range(2):

@@ -9,6 +9,7 @@ export async function verifyPersistence(browser,{base,full,output,errors,externa
  for(const size of sizes){
   const touch=size.width<600,ctx=await browser.newContext({viewport:size,hasTouch:touch});
   await ctx.tracing.start({screenshots:true,snapshots:true,sources:true});
+  await ctx.addInitScript(()=>{window.__tenderloinPressSettleMs=0;});
   await ctx.addInitScript(()=>{const originalEval=window.eval;window.__persistenceNullBridge=false;window.eval=function(code){if(window.__persistenceNullBridge&&String(code).includes('window.localStorage.setItem('))return null;return (0,originalEval)(code);};const set=Storage.prototype.setItem;window.__persistenceReject=[];window.__persistenceFaults=[];Storage.prototype.setItem=function(k,v){if(this===localStorage&&window.__persistenceReject.includes(k)){window.__persistenceFaults.push({key:k,bytes:new TextEncoder().encode(v).length});throw new DOMException('Isolated persistence refusal','QuotaExceededError');}return set.call(this,k,v);};});
   const page=await ctx.newPage();let stage='startup',failed=null;
   ctx.on('request',r=>{if(![base,'data:','blob:'].some(p=>r.url().startsWith(p)))external.push(r.url());});

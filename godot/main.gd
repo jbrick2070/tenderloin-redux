@@ -1928,6 +1928,7 @@ func apply_device_pixel_ratio() -> float:
 
 func _ready() -> void:
 	apply_device_pixel_ratio()
+	get_tree().node_added.connect(press_settle_hook)
 	save_path = resolve_save_path()
 	settings_path = resolve_settings_path()
 	var parsed = JSON.parse_string(FileAccess.get_file_as_string("res://data/buildings.json"))
@@ -11844,6 +11845,7 @@ func get_a11y_status_snapshot() -> Dictionary:
 		marker_visible = guide_marker.visible and not camera.is_position_behind(center) and play_area_rect().has_point(marker_screen) and not is_screen_point_in_ui(marker_screen)
 	return {
 		"ui_frame": Engine.get_process_frames(),
+		"press_settle": {"armed": press_armed, "swallowed": press_swallowed, "open": press_settle_clock < press_settle_until},
 		"sounds_control": control_snapshot(sounds_btn),
 		"music_toggle_control": control_snapshot(music_toggle_btn),
 		"music_toggle_text": music_toggle_btn.text if music_toggle_btn != null else "",
@@ -14286,6 +14288,9 @@ func update_readable_scene_labels() -> void:
 	update_guide_arrow() # Place objective text after the current captions and Talk prompt.
 
 func _process(delta: float) -> void:
+	var settle_now := Time.get_ticks_msec()
+	if press_settle_tick > 0: press_settle_clock += mini(settle_now - press_settle_tick, PRESS_SETTLE_MAX_FRAME_MSEC)
+	press_settle_tick = settle_now
 	poll_web_audio()
 	apply_map_pinch()
 	refresh_phone_disclosure()
@@ -14625,7 +14630,119 @@ func apply_map_pinch() -> void:
 		update_camera()
 	update_occlusion(true)
 
+# Press settle: one pointer activation, one effect.
+# A double click or double tap presses a panel Button twice. After a Button is pressed by a mouse or a finger, further
+# left presses or touches near that spot inside PRESS_SETTLE_MSEC are swallowed here, before any Control, the walk control
+# or the world sees them. One rule covers a Button that relabels in place, a neighbour that reflows into its spot, a panel
+# that closes onto the HUD and a panel that opens another panel under the pointer. Keyboard and ui_accept never arm it and
+# are never gated. press_settle_hook() arms every BaseButton, the PRESS-mode walk control included. A stepper or cycler
+# whose same-button repeats are the point (Zoom, a pager, Earlier/Later, a palette) is marked set_meta("rapid", true) (a
+# parent's mark covers its children): its repeat goes through only while that same Button is still enabled and under the
+# pointer, so a rapid control that moves, hides or is covered by what its press opened is guarded like any other. Toggles,
+# selectors and place-then-move buttons are not rapid. A press on a different Button inside the window is swallowed too: a
+# double press that drifts 20-36 px lands on the neighbour (Clear Board under a motif, Convene under a topic), and losing a
+# rare deliberate quick tap near a seam is the safer trade.
+const PRESS_SETTLE_MSEC := 450
+const PRESS_SETTLE_RADIUS := 32.0
+const PRESS_SETTLE_RADIUS_TOUCH := 36.0
+const PRESS_SETTLE_MAX_FRAME_MSEC := 50
+var press_settle_msec := PRESS_SETTLE_MSEC # native tests set 0 to switch the gate off
+# The window runs on a clock that advances each frame by at most PRESS_SETTLE_MAX_FRAME_MSEC. Closing a panel can make the
+# next frames slow, so the second tap of a quick double tap is processed long after the player made it; wall-clock time would
+# let that late tap through to whatever opened under the finger.
+var press_settle_clock := 0
+var press_settle_tick := 0
+var press_settle_until := 0 # on press_settle_clock
+var press_settle_frame := -10
+var press_settle_at := Vector2.ZERO
+var press_settle_radius := 0.0
+var press_settle_button: WeakRef = null # the Button that opened the window; a rapid one may repeat in place
+var press_settle_rapid := false
+var press_pointer_frame := -1
+var press_pointer_at := Vector2.ZERO
+var press_pointer_radius := 0.0
+var press_armed := 0
+var press_swallowed := 0
+
+## True for a left press or touch that repeats the last pointer activation of a Button: near the same spot, inside the window
+## (or in the frame of the activation and the next one, which covers a slow handler). A tap arrives as an emulated mouse press AND
+## the touch itself, and Godot 4.7 lets the touch press a Button when only the mouse half was handled, so both are swallowed.
+## A swallowed press does not end the window, so a burst at one spot is one activation; a press anywhere else ends it.
+## Every left or touch event records the frame and spot of the last pointer action, which is how arming knows the pointer pressed.
+func settle_swallows(event: InputEvent) -> bool:
+	var touch := event is InputEventScreenTouch
+	if not (touch or (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT)): return false
+	var frame := Engine.get_process_frames()
+	if event.pressed:
+		if (press_settle_clock < press_settle_until or frame <= press_settle_frame + 1) and event.position.distance_to(press_settle_at) < press_settle_radius:
+			if not press_repeats_in_place():
+				press_swallowed += 1
+				return true
+		else:
+			press_settle_until = 0
+			press_settle_frame = -10
+	press_pointer_frame = frame
+	press_pointer_at = event.position
+	press_pointer_radius = PRESS_SETTLE_RADIUS_TOUCH if touch or event.device == InputEvent.DEVICE_ID_EMULATION else PRESS_SETTLE_RADIUS
+	return false
+
+## The window in ms. On the Web a page may override it (browser tests set window.__tenderloinPressSettleMs = 0); 0 switches the gate off.
+func press_settle_ms() -> int:
+	if OS.has_feature("web"):
+		var value: Variant = JavaScriptBridge.eval("window.__tenderloinPressSettleMs", true)
+		if value is int or value is float: return maxi(0, int(value))
+	return press_settle_msec
+
+## True when same-button repeats on this Button are the point. The nearest "rapid" meta on the Button or a parent decides
+## (true or false); without one a Button is guarded, toggles included.
+func press_is_rapid(button_node: BaseButton) -> bool:
+	var node: Node = button_node
+	while node != null:
+		if node.has_meta("rapid"): return bool(node.get_meta("rapid"))
+		node = node.get_parent()
+	return false
+
+## True when the window was opened by a rapid Button that is still enabled and is the Button the press would reach. The
+## viewport refreshes the hovered Control against the current layout for each mouse press before _input runs, and a tap's
+## touch half follows its emulated mouse half at the same spot, so this sees what the press would reach after press 1 moved,
+## hid or covered something. A Button that only relabels (a pager's "Next 3/4") is still the one under the pointer.
+func press_repeats_in_place() -> bool:
+	if not press_settle_rapid or press_settle_button == null: return false
+	var armed := press_settle_button.get_ref() as BaseButton
+	if armed == null or armed.disabled or not armed.is_visible_in_tree(): return false
+	var over: Node = get_viewport().gui_get_hovered_control()
+	while over != null and not (over is BaseButton): over = over.get_parent()
+	return over == armed
+
+## Connected to every BaseButton's pressed signal. Arms only when the pointer activated the Button: a left or touch event
+## reached _input on this very frame. Keyboard, ui_accept and pressed.emit() from code never arm. A PRESS-mode Button arms
+## at the press, so the touch half of that same tap is swallowed too (press_walk_control already ignores it).
+## Arming is keyed to the frame, not the spot: in the rare flush where ui_accept activates a Button alongside an unrelated
+## left or touch event, the window opens at that event's spot.
+func arm_press_settle(button_node: BaseButton) -> void:
+	var frame := Engine.get_process_frames()
+	if press_pointer_frame != frame: return
+	var msec := press_settle_ms()
+	if msec <= 0: return
+	press_settle_until = press_settle_clock + msec
+	press_settle_frame = frame
+	press_settle_at = press_pointer_at
+	press_settle_radius = press_pointer_radius
+	press_settle_button = weakref(button_node)
+	press_settle_rapid = press_is_rapid(button_node)
+	press_armed += 1
+
+## Every BaseButton in the tree, now or added later, arms the gate. The factories connect the action before add_child,
+## so arming runs after the action; settle_swallows covers a slow action for the frame after as well.
+func press_settle_hook(node: Node) -> void:
+	if node is BaseButton:
+		var arm := arm_press_settle.bind(node)
+		if not node.pressed.is_connected(arm): node.pressed.connect(arm)
+
 func _input(event: InputEvent) -> void:
+	if settle_swallows(event):
+		get_viewport().set_input_as_handled()
+		return
 	if is_habitat_room_visible():
 		habitat_room.handle_input(event)
 		return
@@ -15799,6 +15916,7 @@ func make_ui() -> void:
 	mural_vbox.add_child(row1)
 	mural_button(row1, "Chat with Celeste", func(): loan_homecoming.chat(celeste_index) if loan_homecoming != null else talk_with_celeste())
 	mural_palette_btn = mural_button(row1, "Palette: Garden", func(): cycle_mural_palette())
+	mural_palette_btn.set_meta("rapid", true)
 	var row2 := HBoxContainer.new()
 	row2.add_theme_constant_override("separation", 4)
 	mural_vbox.add_child(row2)
@@ -15840,6 +15958,7 @@ func make_ui() -> void:
 	music_vbox.add_child(m_row1)
 	music_play_btn = music_button(m_row1, "Play Groove", func(): toggle_music_playback())
 	music_vol_btn = music_button(m_row1, "Volume: 70%", func(): cycle_music_volume())
+	music_vol_btn.set_meta("rapid", true)
 	var m_row2 := HBoxContainer.new()
 	m_row2.add_theme_constant_override("separation", 4)
 	music_vbox.add_child(m_row2)
@@ -15894,6 +16013,7 @@ func make_ui() -> void:
 	conv_bye_btn = conv_button(c_row1, "Goodbye (Esc)", func():
 		if not phone_primary_transition: end_conversation()
 	)
+	conv_chat_btn.set_meta("rapid", true) # Keep Chatting steps through lines; Next Step / What's Next stays guarded (it toggles the phone steps row)
 	var c_row2 := HBoxContainer.new()
 	c_row2.name = "ConversationActions"
 	c_row2.add_theme_constant_override("separation", 4)
@@ -15932,6 +16052,7 @@ func make_ui() -> void:
 	block_page_prev = button(block_page_nav, "Previous", func(): change_block_action_page(-1))
 	block_page_next = button(block_page_nav, "Next", func(): change_block_action_page(1))
 	for nav in [block_page_prev, block_page_next]:
+		nav.set_meta("rapid", true)
 		nav.custom_minimum_size.y = 44
 		nav.add_theme_font_size_override("font_size", 13)
 	block_close_btn = block_button(block_page_nav, "Close", func(): show_block_panel(false))
@@ -15956,6 +16077,9 @@ func make_ui() -> void:
 	# Act on press so arrival between press and release cannot start another route.
 	walk_control.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
 	walk_control.button_up.connect(func(): walk_control_press_handled = false)
+	# Zoom repeats in place. The rest are guarded: What's Next relabels to Back to Me on a phone map, and a double press on the
+	# walk control must not start a walk and stop it, or open a story or conversation and press inside it.
+	for zoom_control in [zoom_in_control, zoom_out_control]: zoom_control.set_meta("rapid", true)
 	update_walk_control()
 	make_phone_disclosure(layer)
 	guide_arrow = Control.new()

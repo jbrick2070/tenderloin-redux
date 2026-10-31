@@ -147,6 +147,7 @@ func setup(owner_game: Node) -> void:
 	options.add_theme_constant_override("h_separation", 4)
 	content.add_child(options)
 	palette_button = button(options, "Palette: Garden", func(): palette_requested.emit())
+	palette_button.set_meta("rapid", true)
 	music_button = button(options, "Music: Off", func(): music_requested.emit())
 	var footer := HBoxContainer.new()
 	outer.add_child(footer)

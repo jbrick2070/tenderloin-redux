@@ -1,6 +1,7 @@
 extends RefCounted
 const MOTION := preload("res://tests/helper_bench_checks.gd")
 const KEYS := preload("res://tests/community_invitation_checks.gd")
+const PRESS := preload("res://tests/press_settle_checks.gd")
 
 static func settle(suite: SceneTree) -> void:
 	for frame in range(8): await suite.process_frame
@@ -100,10 +101,11 @@ static func verify(suite: SceneTree,game: Node,full: String,formal := false) -> 
 	suite.require(visit.open_gathering(),"reposted partial resume"); visit.handoff(1); visit.handoff(0); visit.advance()
 	suite.require(visit.completed and visit.order==saved_order,"completion retains copied order after repost")
 	await suite.phone_accept(visit.choices[0]); suite.require(not visit.completed and visit.gestures.is_empty() and visit.order==game.programme_published and visit.order!=saved_order and visit.copies==saved_copies,"deliberate new posted plan captures current order with original contributions")
-	visit.handoff(0); var held_buttons: Array=visit.choices+[visit.previous,visit.next,visit.back,visit.keep]
-	suite.require(held_buttons.all(func(b): return b.mouse_filter==Control.MOUSE_FILTER_IGNORE),"a handoff briefly holds pointer input so a double-click or double tap cannot choose the next welcome")
-	await suite.create_timer(0.65).timeout
-	suite.require(held_buttons.all(func(b): return b.mouse_filter==Control.MOUSE_FILTER_STOP),"pointer input returns after the settle")
+	var held_buttons: Array=visit.choices+[visit.previous,visit.next,visit.back,visit.keep]
+	var twice: Dictionary=await PRESS.double_press(suite,game,visit.choices[0])
+	suite.require(visit.gestures.size()==1 and twice.swallowed==1 and twice.downs==1 and twice.pressed==1,"a real double-click chooses one welcome and its second press never reaches a button")
+	suite.require(held_buttons.all(func(b): return b.mouse_filter==Control.MOUSE_FILTER_STOP),"no handoff button ever ignores the pointer")
+	await suite.create_timer(0.55).timeout
 	visit.handoff(1); visit.handoff(0); visit.advance()
 	var prior: Dictionary=visit.snapshot(); var results: Array=game.hosting_results.duplicate(true); game.hosting_results[0].value="invalid"
 	suite.require(not visit.prepare() and visit.order==prior.order and visit.gestures==prior.gestures and visit.completed and visit.notice.contains("unavailable"),"invalid copied contribution refuses without destroying previous visit")

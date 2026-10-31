@@ -20,6 +20,7 @@ const finaleChecks=[];
 import { verifyProgrammeGathering } from './programme-gathering-browser.mjs';
 const programmeGatheringChecks=[];
 import { verifyPersistence } from './persistence-browser.mjs';
+import { verifyListeningDoublePress, verifyCloseThrough, verifyStudioDoublePress, verifyFastZoom, verifyRapidInPlace } from './press-settle-browser.mjs';
 let persistenceChecks=[];
 const orbitalChecks=[];
 import { verifyHabitatRoom } from './habitat-room-browser.mjs';
@@ -80,6 +81,8 @@ const [pckStat, ...sourceStats] = await Promise.all([
   stat('godot/dog_story.gd'),
   stat('godot/power_place.gd'),
   stat('godot/data/power_place.json'),
+  stat('godot/tests/press_settle_checks.gd'),
+  stat('tests/press-settle-browser.mjs'),
   stat('godot/tests/study_test.gd'),
   stat('godot/quiet_seats.gd'),
   stat('godot/bea_invitation.gd'),
@@ -102,7 +105,7 @@ assert.ok(pckStat.size > 0 && pckStat.size <= 2 * 1024 * 1024, `artifacts/godot-
 const BROWSER_SAVE_SENTINEL = JSON.stringify({ schema: 'tenderloin-redux.save', version: 1, sentinel: 'preserve-browser-save-v1' });
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : 'playwright');
 const base = 'http://127.0.0.1:' + (process.env.GODOT_PORT || 4174) + '/';
-const sourceFingerprint={sources:Object.fromEntries(await Promise.all(['tests/persistence-browser.mjs','godot/tests/persistence_checks.gd','godot/rhythm_circle.gd','godot/mural_workshop.gd','godot/mural_stories.gd','godot/programme_gathering.gd','godot/tests/programme_gathering_checks.gd','tests/programme-gathering-browser.mjs','tests/godot-browser.mjs','godot/tests/finale_checks.gd','tests/finale-browser.mjs','godot/orbital_commons.gd','godot/tests/orbital_checks.gd','tests/orbital-browser.mjs','godot/tests/departure_checks.gd','tests/departure-browser.mjs','godot/habitat_room.gd','godot/tests/habitat_room_checks.gd','tests/habitat-room-browser.mjs','godot/helper_bench.gd','godot/tests/helper_bench_checks.gd','tests/helper-bench-browser.mjs','godot/film_screening.gd','godot/before_streets.gd','godot/tests/before_streets_checks.gd','tests/before-streets-browser.mjs','godot/hosted_afternoon.gd','godot/programme_studio.gd','godot/tests/hosted_afternoon_checks.gd','tests/hosted-afternoon-browser.mjs','godot/main.gd','godot/civic_listening.gd','godot/tests/community_invitation_checks.gd','godot/shared_meal.gd','godot/shared_meal_data.gd','godot/tests/shared_meal_checks.gd','godot/shared_panel.gd','godot/loan_homecoming.gd','godot/power_story.gd','godot/dog_story.gd','godot/lantern_procession.gd','godot/story_picker.gd','godot/voting_story.gd','godot/data/voting_places.json','godot/power_place.gd','godot/data/power_place.json','godot/tests/study_test.gd'].map(async p=>[p,createHash('sha256').update(await readFile(p)).digest('hex')]))),pack_sha256:createHash('sha256').update(await readFile('artifacts/godot-web/index.pck')).digest('hex')};
+const sourceFingerprint={sources:Object.fromEntries(await Promise.all(['tests/persistence-browser.mjs','godot/tests/persistence_checks.gd','godot/rhythm_circle.gd','godot/mural_workshop.gd','godot/mural_stories.gd','godot/programme_gathering.gd','godot/tests/programme_gathering_checks.gd','tests/programme-gathering-browser.mjs','tests/godot-browser.mjs','godot/tests/finale_checks.gd','tests/finale-browser.mjs','godot/orbital_commons.gd','godot/tests/orbital_checks.gd','tests/orbital-browser.mjs','godot/tests/departure_checks.gd','tests/departure-browser.mjs','godot/habitat_room.gd','godot/tests/habitat_room_checks.gd','tests/habitat-room-browser.mjs','godot/helper_bench.gd','godot/tests/helper_bench_checks.gd','tests/helper-bench-browser.mjs','godot/film_screening.gd','godot/before_streets.gd','godot/tests/before_streets_checks.gd','tests/before-streets-browser.mjs','godot/hosted_afternoon.gd','godot/programme_studio.gd','godot/tests/hosted_afternoon_checks.gd','tests/hosted-afternoon-browser.mjs','godot/main.gd','godot/civic_listening.gd','godot/tests/community_invitation_checks.gd','godot/shared_meal.gd','godot/shared_meal_data.gd','godot/tests/shared_meal_checks.gd','godot/shared_panel.gd','godot/loan_homecoming.gd','godot/power_story.gd','godot/dog_story.gd','godot/lantern_procession.gd','godot/story_picker.gd','godot/voting_story.gd','godot/data/voting_places.json','godot/power_place.gd','godot/data/power_place.json','godot/tests/press_settle_checks.gd','tests/press-settle-browser.mjs','tests/shared-meal-browser.mjs','godot/tests/study_test.gd'].map(async p=>[p,createHash('sha256').update(await readFile(p)).digest('hex')]))),pack_sha256:createHash('sha256').update(await readFile('artifacts/godot-web/index.pck')).digest('hex')};
 await mkdir('artifacts', { recursive: true });
 let queuedActivityRewardChecks = 0;
 const shortStoryReadChecks = [];
@@ -126,6 +129,7 @@ const browserTraceRun=Date.now().toString(),activeContextTraces=new Map(),traceR
 let contextTraceCounter=0;
 async function newTracedContext(browser,options){
   const context=await browser.newContext(options);
+  await context.addInitScript(()=>{window.__tenderloinPressSettleMs=0;}); // the press settle is off for journeys that repeat taps at one spot; tests/press-settle-browser.mjs switches it on
   const trace=`artifacts/godot-browser-trace-${browserTraceRun}-${String(++contextTraceCounter).padStart(3,'0')}.zip`;
   await context.tracing.start({screenshots:false,snapshots:true,sources:false});
   activeContextTraces.set(context,trace);
@@ -1541,7 +1545,7 @@ async function verifyVotingStory(page,touch,size,privateFixture=false){
  for(const i of [1,0]){
   await tap((await snap()).voting_story.buttons[i]);await tap((await snap()).voting_story.buttons[5]);
   if(!(await snap()).voting_story.near)await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.player_grounding.path_active,null,{timeout:10000});
-  if(i===1){await page.waitForTimeout(220);await tap((await snap()).walk_control);assert.ok(!(await snap()).voting_story.traveling);await tap((await snap()).walk_control);await tap((await snap()).voting_story.buttons[5]);}
+  if(i===1){await page.waitForTimeout(220);await tap((await snap()).walk_control);assert.ok(!(await snap()).voting_story.traveling);await tap((await snap()).walk_control);await page.waitForFunction(()=>{const v=window.__tenderloinGodotA11ySnapshot.voting_story;return v.visible&&v.buttons[5]?.visible===true&&!v.layout_pending;},null,{timeout:10000}).catch(e=>{throw new Error('voting story did not reopen after the second walk-control tap: '+e.message);});await tap((await snap()).voting_story.buttons[5]);}
   await page.waitForFunction(()=>{const s=window.__tenderloinGodotA11ySnapshot;return s.voting_story.visible&&s.voting_story.near&&!s.player_grounding.path_active;},null,{timeout:90000});
   s=await snap();assert.ok(Math.hypot(s.player_grounding.x-s.voting_story.goal[0],s.player_grounding.z-s.voting_story.goal[1])<=2);await tap(s.voting_story.buttons[6]);
   if(i===1)await verifyStoryReturn(page,touch,size,'voting_story',1);
@@ -3752,6 +3756,21 @@ try {
     context.on('request',r=>{if(!r.url().startsWith(base)&&!r.url().startsWith('data:')&&!r.url().startsWith('blob:'))external.push(r.url());});page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
     await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending&&!window.__tenderloinGodotA11ySnapshot.layout_refit_pending);await page.keyboard.press('Escape');
     await verifyCivicListening(page,touch,size,false,true);await closeTracedContext(context);
+  }
+  // PRIVATE press-settle journeys run the shipped 450 ms gate (every other journey runs with it off): real double click / double tap.
+  for(const [width,height,touch] of [[1100,760,false],[390,667,true],[320,667,true]]){
+    for(const kind of ['listening','studio']){
+      const fixture=JSON.parse(rhythmFixtureSave);
+      fixture.civic={phase:'idle',draft:{topic:'repairs',format:'circle',notes:'themes'},result:null};fixture.film={...fixture.film,phase:'idle',result:null,captured:[]};
+      if(kind==='studio'){fixture.programme.published=[];fixture.hosting.order=[];fixture.hosting.results=[];}
+      const size={width,height},context=await newTracedContext(browser,{viewport:size,hasTouch:touch}),page=await context.newPage();latestPage=page;
+      await context.addInitScript(f=>{if(!localStorage.getItem('tenderloin-redux.godot.save.v1'))localStorage.setItem('tenderloin-redux.godot.save.v1',JSON.stringify(f));},fixture);
+      context.on('request',r=>{if(!r.url().startsWith(base)&&!r.url().startsWith('data:')&&!r.url().startsWith('blob:'))external.push(r.url());});page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
+      await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending&&!window.__tenderloinGodotA11ySnapshot.layout_refit_pending);await page.keyboard.press('Escape');
+      if(kind==='listening'){await verifyListeningDoublePress(page,{touch,size});await verifyCloseThrough(page,{touch,size});if(touch)await verifyRapidInPlace(page,{touch,size});else await verifyFastZoom(page,{touch});}
+      else await verifyStudioDoublePress(page,{touch,size});
+      await closeTracedContext(context);
+    }
   }
   // PRIVATE current-run copied profiles, stories after quiet interval, real world ink in both layouts.
   for(const [width,height,touch,layout] of [[1100,760,false,'table'],[320,667,true,'floor'],[520,360,true,'table'],[559,360,false,'floor']]){

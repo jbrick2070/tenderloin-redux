@@ -84,6 +84,7 @@ func setup(owner_game: Node) -> void:
 	edits.append(button(edit_row,"Add",toggle_card))
 	edits.append(button(edit_row,"Earlier",func(): move_card(-1)))
 	edits.append(button(edit_row,"Later",func(): move_card(1)))
+	edits[1].set_meta("rapid",true); edits[2].set_meta("rapid",true)
 	actions=GridContainer.new()
 	actions.columns=4
 	box.add_child(actions)

@@ -57,6 +57,7 @@ func setup(owner_game: Node) -> void:
 	box.add_child(row)
 	earlier=make_button(row,"Earlier",func(): change_page(-1))
 	later=make_button(row,"Later",func(): change_page(1))
+	earlier.set_meta("rapid",true); later.set_meta("rapid",true)
 	footer=GridContainer.new(); footer.columns=1
 	box.add_child(footer)
 	follow=make_button(footer,"Follow this invitation",follow_invitation)

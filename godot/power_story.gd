@@ -100,6 +100,7 @@ func setup(owner_game: Node) -> void:
 			style.border_color=Color("fff0aa")
 			style.set_border_width_all(3 if state=="focus" else (1 if state=="hover" else 0))
 			pad.add_theme_stylebox_override(state,style)
+		pad.set_meta("rapid", true) # each press turns one quarter
 		pad.pressed.connect(func(): rotate(i))
 		add_child(pad)
 		pads.append(pad)

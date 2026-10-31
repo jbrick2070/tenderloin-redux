@@ -60,6 +60,7 @@ func setup(owner_game: Node) -> void:
 			s.border_color=Color("fff5dc") if state=="hover" else Color("ffd45e")
 			s.set_border_width_all(3 if state=="focus" else (1 if state=="hover" else 0))
 			pad.add_theme_stylebox_override(state,s)
+		pad.set_meta("rapid", true) # each press cycles a shape
 		pad.pressed.connect(func(): cycle(i))
 		add_child(pad)
 		pads.append(pad)
