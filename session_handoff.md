@@ -1,5 +1,13 @@
 # Session Handoff - Tenderloin Redux - October 24, 2026 UTC
 
+## Current: 2D fork Phase 1 in browser-next/ - October 31, 2026 UTC
+
+Standing constraints are unchanged: the `build-tenderloin-redux` automation stays PAUSED, no paid reviews, `public/` (browser 0.12.0) frozen, `[skip ci]` commits, no deployment without the creator's authorization, the 2 MiB PCK cap unchanged. 2D work now happens in the fork, `browser-next/`, never in `public/`.
+
+What changed. `browser-next/` is a copy of `public/` plus `godot-save.js` (the shared Godot save), `story.js` (chapters and Next), `press-settle.js` (the guard) and `version.js`. Copied files keep classic's line endings (several are CRLF); new files are LF. `scripts/serve.mjs` serves it at `/browser-next/`; `.github/workflows/deploy-pages.yml` publishes it there on the next deploy. Rules for touching the save are in `docs/BROWSER_NEXT.md`: never write classic's keys, write only by read-modify-write through `buildGodotSave`, and keep the drift tests green when Godot's text changes.
+
+Evidence: `npm run check`, 224 Node tests, `npm run next:browser` PASS 71 steps (logs in `artifacts/browser-next/`). Open: Chrome only, no phone or human playtest, no deploy. Next: Phase 2, porting Godot's synthesized music, neighbor conversations and the ending chain; specs are being written.
+
 ## Current: press settle gate for every Godot button; building data minified - October 31, 2026 UTC
 
 Standing constraints are unchanged: the `build-tenderloin-redux` automation stays PAUSED, no paid reviews, `public/` (browser 0.12.0) frozen, `[skip ci]` commits, no deployment without the creator's authorization, the 2 MiB PCK cap unchanged.

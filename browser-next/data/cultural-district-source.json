@@ -1,0 +1,17 @@
+{
+  "dataset": "Cultural Districts",
+  "datasetId": "5xmc-5bjj",
+  "publisher": "San Francisco Planning Department",
+  "downloaded": "2026-10-18",
+  "query": "https://data.sfgov.org/resource/5xmc-5bjj.geojson?%24where=upper%28district_name%29+like+%27%25TRANSGENDER%25%27",
+  "metadataUrl": "https://data.sfgov.org/api/views/5xmc-5bjj.json",
+  "sourceUrl": "https://data.sf.gov/d/5xmc-5bjj",
+  "license": {
+    "name": "Open Data Commons Public Domain Dedication and License",
+    "termsLink": "http://opendatacommons.org/licenses/pddl/1.0/"
+  },
+  "licenseId": "PDDL",
+  "rowsUpdatedAt": 1792321554,
+  "scope": "One complete unmodified GeoJSON feature selected by district_name containing Transgender. Geometry is not clipped, simplified, relocated or inferred from street centerlines. City-published map context, not a field survey, parcel/entrance certification or legal boundary interpretation.",
+  "designationDateNote": "Dataset date uses January 1 within 2017; do not promote this to an exact founding day. Organization describes founding year 2017."
+}

@@ -8,7 +8,8 @@ A peaceful neighborhood adventure set on an accurate map of San Francisco's Tend
 
 **Play Online (GitHub Pages):**
 - 🎮 **[3D Godot Web Edition](https://jbrick2070.github.io/tenderloin-redux/)** — Isometric/2.5D 188-building measured neighborhood walk & block party (`artifacts/godot-web/`)
-- 🗺️ **[2D Browser Edition](https://jbrick2070.github.io/tenderloin-redux/browser/)** — Illustrated block adventure (`public/`)
+- 🗺️ **[2D Browser Edition](https://jbrick2070.github.io/tenderloin-redux/browser/)** — Illustrated block adventure, the frozen classic 0.12.0 (`public/`)
+- 🧭 **[2D Next Edition](https://jbrick2070.github.io/tenderloin-redux/browser-next/)** — The 2D fork of the 3D story: meet five neighbors, chapters, and one save shared with the 3D edition (`browser-next/`, [design](docs/BROWSER_NEXT.md)). It appears on Pages with the first deploy after it lands.
 - 📸 **[Field Photo & Surface Guide](https://jbrick2070.github.io/tenderloin-redux/field-guide/)** — Mobile GPS & 14-stop walking guide for capturing Tenderloin building facades (`tools/field-guide/`)
 
 **Bring a field survey into the 3D game:** tag stops or individual buildings (tags plus facade/trim colors) in the Field Guide, tap **Export Field Pack**, save the `tenderloin-field-survey-*.json` file in `tools/field-guide/` (it is gitignored because it holds your photos), then:
