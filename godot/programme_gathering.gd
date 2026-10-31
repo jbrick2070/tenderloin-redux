@@ -164,7 +164,9 @@ func refresh(announce: bool) -> void:
 	next.text="Next handoff" if review_step<gestures.size() else ("Complete" if completed else "Finish gathering")
 	var ring: Array[Control]=[reader]
 	for b in choices+[previous,next,back,keep]:
+		b.mouse_filter=2
 		if b.visible and not b.disabled: b.accessibility_name=b.text; ring.append(b)
+	get_tree().create_timer(.45).timeout.connect(func(): for b in choices+[previous,next,back,keep]: b.mouse_filter=0)
 	for i in range(ring.size()): ring[i].focus_next=ring[i].get_path_to(ring[(i+1)%ring.size()]); ring[i].focus_previous=ring[i].get_path_to(ring[posmod(i-1,ring.size())])
 	queue_layout(); queue_redraw()
 	if announce: game.announce_a11y_status(notice if not notice.is_empty() else response())
