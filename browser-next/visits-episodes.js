@@ -140,7 +140,10 @@ export function createEpisodeScreens(kit) {
       kind: 'lantern', credit: v.credit, title: v.heading, headingEntry: kit.readerEntry('lantern'),
       picture: figure({ src: pictures.lantern(v.art.costume, v.art.lantern), alt: '' }), reader: v.text, tray: tray('lantern', v.buttons),
     }),
-    // Godot's tray: the reader, a row of the three tabs with Missing dogs and More stories, then the six actions.
+    // Godot's tray: the reader, a row of the three tabs with Missing dogs and More stories, then the six actions. Godot's relay tabs
+    // are plain buttons; here the relay on show is pressed while the story is active (aria-pressed, the kit's selected look), a
+    // declared 2D accessibility addition that says which relay the reader, the pads and Check path are about. The hub's Festival,
+    // Larkin 2017 and Place map stay plain.
     power: (v, ctx, p) => frameHTML({
       kind: 'power', credit: v.credit, title: v.heading,
       picture: figure({
@@ -148,7 +151,7 @@ export function createEpisodeScreens(kit) {
         overlay: v.pads.filter(pad => pad.visible).map(padHTML).join('') + v.mapLabels.filter(label => label.visible).map(mapLabelHTML).join(''),
       }),
       reader: v.text,
-      extra: `<div class="visits-tray">${v.tabs.map(t => btn({ ...t, id: `power-tab-${t.index}` })).join('')}${btn({ ...v.dogs, id: 'power-dogs' })}${btn({ ...v.more, id: 'power-more' })}</div>`,
+      extra: `<div class="visits-tray">${v.tabs.map(t => btn({ ...t, id: `power-tab-${t.index}`, pressed: p.active ? t.index === p.station : undefined })).join('')}${btn({ ...v.dogs, id: 'power-dogs' })}${btn({ ...v.more, id: 'power-more' })}</div>`,
       tray: v.actions.map(a => btn({ ...a, id: `power-${a.id}` })).join(''),
     }),
     election: (v, ctx, e) => frameHTML({

@@ -14,14 +14,18 @@ import { nextObjective } from '../browser-next/story.js';
 import { conversationActions, freshTalk } from '../browser-next/characters.js';
 import { VISITS_FORK_TEXT } from '../browser-next/visits-kit.js';
 import { GODOT_TEXT, WEB_OVERRIDES, web } from '../browser-next/visits/text.js';
-import { conversationLabel, progressLabel, SURPRISE_IDS, markers } from '../browser-next/visits/surprises.js';
+import { conversationLabel, progressLabel, SURPRISE_IDS, SURPRISES, markers } from '../browser-next/visits/surprises.js';
 import { entryTooltip } from '../browser-next/visits/power.js';
 import { SURPRISE_SITES, MUSEUM } from '../browser-next/visits/positions.js';
 import { createVisits } from '../browser-next/visits-ui.js';
+import { createEpisodeScreens } from '../browser-next/visits-episodes.js';
 import { createWorldVisits } from '../browser-next/visits-world.js';
+import { showBubble, spokenText } from '../browser-next/bubble.js';
 import * as sprites from '../browser-next/sprites.js';
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+// A macrotask: every promise the stand-in host settled, and everything queued after it, has run by then (nothing here sets a timer).
+const flush = () => new Promise(resolve => setImmediate(resolve));
 const GAME = read('browser-next/game.js'), LINES = GAME.split('\n');
 // A top-level declaration of game.js, from the line that starts with `start` to the column-0 line that closes it; a one-line
 // declaration is its line alone. game.js keeps its top level at column 0 and indents everything inside.
@@ -69,6 +73,214 @@ test('resetSession starts the visit over, and only restart, an adopted reread an
 
 test('updateUI syncs the visits after every state change, beside the ending and the Rhythm Circle', () => {
   assert.match(declaration('function updateUI('), /ending\.sync\(\); rhythm\.sync\(\); visits\.sync\(\);/);
+});
+
+// ---------------------------------------------------------------- a side story's walk ends with the visit
+// game.js's own walk bookkeeping (startWalk, visitWalk, stopWalk), resetSession and renderFrame's arrival line, evaluated over
+// stand-ins: a route of `length` points (none when blocked(goal)), one route point a frame while no dialog is open, and hint(), the
+// camera and the toast as no-ops. They drive the real visits shell with its real parts on the stand-in host, whose walk, stopWalk,
+// walking and player are game.js's, as its visitsHost wires them.
+const PLACE_FILES = { 'power_place.json': JSON.parse(read('browser-next/data/power_place.json')), 'voting_places.json': JSON.parse(read('browser-next/data/voting_places.json')) };
+function walkGame({ blocked = () => false, length = 2 } = {}) {
+  const { host, io, log, dialog } = visitsHost();
+  io.files = { ...PLACE_FILES };
+  const state = { player: { x: 0, y: 0 } }, world = { path: [], camera: { following: true, follow() { this.following = true; } } };
+  let shell = null;
+  const visits = new Proxy({}, { get: (_, name) => (...args) => shell[name](...args) });
+  const findPath = (from, goal) => (blocked(goal) ? [] : Array.from({ length }, (_, i) => ({ x: from.x + (goal.x - from.x) * (i + 1) / length, y: from.y + (goal.y - from.y) * (i + 1) / length })));
+  const arrival = LINES.find(line => /^\s+if \(!walkPath\.length\) \{ hint\(\); if \(walkOwner === 'visit'\) \{ walkOwner = null; visits\.walkEnded\(\); \}/.test(line));
+  assert.ok(arrival, "renderFrame's arrival line");
+  const game = new Function('visits', 'world', 'state', 'modal', 'ways', 'findPath', 'freshTalk', 'cameraUI', 'hint', 'toast', 'interact', [
+    "let talks = null, arrivedAt = null, nearAt = null, chapterNotice = '', bubble = null, routeSpeech = null;",
+    "let walkTarget = null, walkPath = [], walkOwner = null, walkName = '';",
+    declaration('function resetSession('), declaration('function startWalk('), declaration('function visitWalk('), declaration('function stopWalk('),
+    `function frame() {\n  if (!modal.open && walkPath.length) {\n    state.player = walkPath.shift();\n${arrival}\n  }\n  visits.tick(0, null);\n}`,
+    "function goTo(goal) { return startWalk(goal, { target: { id: 'bea' }, name: 'Bea' }); }",
+    'return { resetSession, stopWalk, visitWalk, frame, goTo, walk: () => ({ owner: walkOwner, steps: walkPath.length, name: walkName }) };',
+  ].join('\n'))(visits, world, state, dialog.modal, null, findPath, () => ({}), () => {}, () => {}, () => {}, () => {});
+  Object.assign(host, { walk: (goal, options) => game.visitWalk(goal, options), stopWalk: () => game.stopWalk(), walking: () => game.walk().steps > 0, player: () => ({ ...state.player }) });
+  shell = createVisits(host, { createEpisodeScreens, createWorldVisits });
+  return { host, io, log, dialog, state, game, visits: shell };
+}
+
+test("resetSession ends a side story's walk with the visit: after an adopted save or Start fresh no visit-owned walk goes on", async () => {
+  const g = walkGame(), { visits, dialog, game } = g;
+  assert.equal(visits.open('story'), true);
+  await flush();
+  dialog.click('power-begin'); dialog.click('power-walk');
+  assert.deepEqual([visits.snapshot().trip, game.walk().owner, game.walk().steps > 0, dialog.modal.open], ['power', 'visit', true, false], 'the premise: Power walks to its relay');
+  // Another tab's save is adopted (reread), or the player uses the shared save as it is (declineRecovery).
+  assert.deepEqual(game.resetSession(), { reset: true, closed: false });
+  assert.deepEqual(game.walk(), { owner: null, steps: 0, name: '' }, 'the walk stops: Stop walking is off and the hint no longer says "Walking to"');
+  assert.deepEqual([visits.snapshot().trip, visits.snapshot().stories.power.active, g.host.walking()], [null, false, false]);
+  // Nothing walks on to the relay, so nothing opens there.
+  for (let i = 0; i < 4; i++) game.frame();
+  assert.deepEqual([dialog.modal.open, visits.snapshot().screen], [false, null]);
+  // A walk of the player's own (a neighbor, a street tap) is not the visit's: it goes on.
+  assert.equal(game.goTo({ x: 30, y: 4 }), true);
+  game.resetSession();
+  assert.deepEqual([game.walk().owner, game.walk().steps], [null, 2]);
+  assert.match(declaration('function resetSession('), /if \(walkOwner === 'visit'\) stopWalk\(\); return visits\.sync\(\{ adopted: true \}\);/, 'the walk stops before the visit starts over');
+});
+
+test("a seeded fuzz of the walk protocol on game.js's own bookkeeping: a visit-owned walk always has its trip, and none outlives resetSession or its episode", async () => {
+  let seed = 0x5eed;
+  const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32, pick = list => list[Math.floor(rnd() * list.length)];
+  const reached = { checks: 0, trips: 0, resetsWhileTheStoryWalks: 0, blockClosesWhileTheStoryWalks: 0 }, broken = [];
+  for (let run = 0; run < 12; run++) {
+    const g = walkGame({ blocked: () => rnd() < 0.15, length: 6 }), { visits, dialog, game, io } = g;
+    const enabled = () => [...io.html.matchAll(/<button\b[^>]*\bid="([^"]+)"/g)].map(m => m[1]).filter(id => dialog.has(id) && !dialog.doc.getElementById(id).disabled);
+    const press = id => { if (dialog.has(id) && !dialog.doc.getElementById(id).disabled) dialog.click(id); };
+    const check = where => {
+      const s = visits.snapshot(), { owner, steps } = game.walk(), active = ['power', 'dogs', 'lantern', 'election'].filter(id => s.stories[id].active);
+      reached.checks++; if (s.trip) reached.trips++;
+      if ((s.trip !== null) !== (owner === 'visit')) broken.push(`${where}: trip ${s.trip}, walk owner ${owner}`);
+      if (s.trip && !s.stories[s.trip].traveling) broken.push(`${where}: the trip's episode ${s.trip} is not traveling`);
+      if (owner === 'visit' && !steps) broken.push(`${where}: a visit-owned walk with no route`);
+      if (active.length > 1) broken.push(`${where}: two active episodes ${active}`);
+    };
+    const OPS = {
+      open: () => visits.open(pick(['story', 'meal', 'picker', 'resume', 'notes-spot', 'notes-museum'])),
+      click: () => { const ids = enabled(); if (ids.length) dialog.click(pick(ids)); },
+      storyWalk: async () => { visits.open('story'); await flush(); press('power-begin'); press('power-walk'); },
+      episodeWalk: async () => { visits.open('resume'); await flush(); const ids = enabled().filter(id => /-(begin|walk|lead1)$/.test(id)); if (ids.length) dialog.click(pick(ids)); },
+      frames: () => { for (let i = 0; i < 1 + Math.floor(rnd() * 4); i++) game.frame(); },
+      stop: () => game.stopWalk(), goTo: () => game.goTo({ x: 9, y: 9 }), close: () => dialog.close(),
+      adopt: () => {
+        if (game.walk().owner === 'visit') reached.resetsWhileTheStoryWalks++;
+        game.resetSession();
+        if (game.walk().owner === 'visit' || visits.snapshot().trip) broken.push(`run ${run}: a story walk outlived resetSession`);
+      },
+      restart: () => { game.resetSession(); game.stopWalk(); dialog.close(); },
+      blockCloses: () => { if (visits.snapshot().trip) reached.blockClosesWhileTheStoryWalks++; io.state = { ...io.state, opened: false }; visits.sync(); },
+      blockOpens: () => { io.state = { ...io.state, opened: true }; visits.sync(); },
+    };
+    // The walks, the adoption and the block closing are drawn twice as often as the rest, so they meet often.
+    const names = [...Object.keys(OPS), 'storyWalk', 'episodeWalk', 'adopt', 'blockCloses'];
+    for (let step = 0; step < 160; step++) {
+      const name = pick(names);
+      await OPS[name]();
+      await flush();
+      check(`run ${run} step ${step} after ${name}`);
+    }
+  }
+  assert.deepEqual(broken.slice(0, 6), [], `${broken.length} broken checks`);
+  // The premise: the fuzz walks stories and starts the visit over, or closes the block, while they walk.
+  assert.ok(reached.trips >= 60 && reached.resetsWhileTheStoryWalks >= 5 && reached.blockClosesWhileTheStoryWalks >= 5, JSON.stringify(reached));
+});
+
+// ---------------------------------------------------------------- focus back where the dialog was opened
+// game.js's returnFocus and focusReturn over a stand-in page: elements with hidden, disabled, isConnected and a parent chain.
+function focusPage() {
+  const focused = [], page = new Map();
+  const element = (id, { hidden = false, disabled = false, parent = null, connected = true } = {}) => {
+    const el = { id, hidden, disabled, parent, isConnected: connected, focus() { focused.push(id); }, scrollIntoView() {},
+      closest(selector) { assert.equal(selector, '[hidden]'); for (let at = this; at; at = at.parent) if (at.hidden) return at; return null; } };
+    if (connected) page.set(id, el);
+    return el;
+  };
+  const canvas = element('world');
+  const made = new Function('canvas', 'document', `let modalReturnTarget = canvas;\n${declaration('function returnFocus(')}\n${declaration('function focusReturn(')}\nreturn { focusReturn, to(target) { modalReturnTarget = target; } };`)(canvas, { getElementById: id => page.get(id) ?? null });
+  const returns = target => { focused.length = 0; made.to(target); made.focusReturn(); return focused.join(' '); };
+  return { element, canvas, returns };
+}
+
+test("focus returns to the control a dialog came from, or to the map when that control is hidden (the resume control once its story ended) or disabled", () => {
+  const { element, canvas, returns } = focusPage();
+  assert.equal(returns(element('story-entry')), 'story-entry');
+  assert.equal(returns(canvas), 'world');
+  // End story hides #story-resume (storyResumeUI) while its episode's screen is open; Back then returns there.
+  assert.equal(returns(element('story-resume', { hidden: true })), 'world', 'never a hidden control, whose focus would fall to the page body');
+  const afterglow = element('afterglow', { hidden: true });
+  assert.equal(returns(element('meal-entry', { parent: afterglow })), 'world', 'nor one in a hidden panel');
+  assert.equal(returns(element('stop-walking', { disabled: true })), 'world', 'nor a disabled one');
+  // A control the page drew again since is found by its id, unless that one is hidden too; a gone one is the map.
+  element('journal-button');
+  assert.equal(returns(element('journal-button', { connected: false })), 'journal-button');
+  element('rhythm-circle', { hidden: true });
+  assert.equal(returns(element('rhythm-circle', { connected: false })), 'world');
+  assert.equal(returns(element('civic-hour', { connected: false })), 'world');
+  // The three ways a dialog closes all end there: close(), the dialog's close event and ×.
+  assert.match(declaration('function close('), /modal\.close\(\); focusReturn\(\);/);
+  assert.match(GAME, /modal\.addEventListener\('close', \(\) => \{[^\n]*focusReturn\(\);/);
+  assert.match(GAME, /\$\('#close-modal'\)\.addEventListener\('click', \(\) => close\(returnFocus\(\)\)\);/);
+});
+
+// game.js's visitsHost literal itself, over stand-ins for what it reads when it is built.
+function hostLiteral(page, canvas, closed) {
+  const doc = { getElementById: id => page.get(id) ?? null }, none = () => {};
+  return new Function('document', 'window', 'modal', 'settle', 'show', 'modalStatus', 'announce', 'toast', 'act', 'saveReason', 'toggleMusic', 'canvas', 'close',
+    `let modalReturnTarget = null;\n${declaration('const visitsHost = {')}\nreturn { host: visitsHost, target: () => modalReturnTarget };`)(doc, {}, { open: false }, {}, none, none, none, none, () => true, () => '', async () => '', canvas, target => closed.push(target));
+}
+test("host.returnTo and host.close take a control's id to that control, and only an id the page lacks to the map", () => {
+  const page = new Map(['journal-button', 'story-resume', 'meal-entry'].map(id => [id, { id }])), canvas = { id: 'world' }, closed = [];
+  const { host, target } = hostLiteral(page, canvas, closed);
+  for (const id of ['journal-button', 'story-resume', 'meal-entry']) { host.returnTo(id); assert.equal(target(), page.get(id), id); }
+  host.returnTo('nope');
+  assert.equal(target(), canvas);
+  host.close('journal-button'); host.close('nope'); host.close(page.get('story-resume')); host.close(undefined);
+  assert.deepEqual(closed, [page.get('journal-button'), canvas, page.get('story-resume'), undefined], "an element as it is, and nothing for close()'s own default, the map");
+});
+
+test("the resume control follows the active story, and a resume control hidden under focus gives the focus to the map", () => {
+  const WALK = GODOT_TEXT['main.gd'].update_walk_control, focused = [];
+  const el = id => ({ id, textContent: '', title: '', hidden: true, focus() { focused.push(id); } });
+  const control = el('story-resume'), tip = el('story-resume-tip'), canvas = el('world'), doc = { activeElement: null };
+  let resume = { id: 'story-resume', label: WALK.dogs, description: WALK.dogsTip, visible: true };
+  const ui = new Function('$', 'visits', 'document', 'canvas', `${declaration('function storyResumeUI(')}\nreturn storyResumeUI;`)(selector => ({ '#story-resume': control, '#story-resume-tip': tip })[selector] ?? null, { entries: () => ({ resume }) }, doc, canvas);
+  ui();
+  assert.deepEqual([control.hidden, control.textContent, control.title, tip.textContent, focused], [false, WALK.dogs, WALK.dogsTip, WALK.dogsTip, []]);
+  // The story ends (or the player walks) while the control has the focus: it hides and the map takes the focus.
+  doc.activeElement = control;
+  resume = { ...resume, visible: false };
+  ui();
+  assert.deepEqual([control.hidden, focused], [true, ['world']]);
+  // Hidden while the focus is elsewhere (a dialog's control): the focus stays where it is.
+  resume = { ...resume, visible: true }; ui();
+  doc.activeElement = { id: 'power-end' };
+  resume = { ...resume, visible: false }; ui();
+  assert.deepEqual([control.hidden, focused], [true, ['world']]);
+  resume = { id: 'story-resume', label: WALK.power, description: WALK.powerTip, visible: true }; ui();
+  assert.deepEqual([control.hidden, control.textContent, control.title], [false, WALK.power, WALK.powerTip]);
+});
+
+// ---------------------------------------------------------------- the place files' size
+test('host.load refuses a place file over 256 kB: unread when the response says its length, unparsed when it does not', async () => {
+  const LIMIT = 256 * 1024, reads = [];
+  const respond = (text, { ok = true, length = null } = {}) => ({ ok, headers: { get: name => (name.toLowerCase() === 'content-length' && length != null ? String(length) : null) }, text: async () => { reads.push(text.length); return text; } });
+  let next = null;
+  const load = new Function('fetch', 'setTimeout', 'clearTimeout', 'AbortController', `${declaration('const VISIT_DATA_LIMIT')}\n${declaration('async function loadVisitData(')}\nreturn loadVisitData;`)(
+    async (url, { signal }) => { assert.equal(url, './data/power_place.json'); assert.ok(signal); return next; }, () => 1, () => {}, class { constructor() { this.signal = {}; } abort() { this.aborted = true; } });
+  const real = read('browser-next/data/power_place.json');
+  next = respond(real, { length: real.length });
+  assert.deepEqual(await load('power_place.json'), JSON.parse(real), 'the real file');
+  next = respond(' '.repeat(LIMIT - 2) + '{}');
+  assert.deepEqual(await load('power_place.json'), {}, '256 kB is still a place file');
+  reads.length = 0;
+  next = respond('{}', { length: LIMIT + 1 });
+  await assert.rejects(load('power_place.json'), /too large/);
+  assert.deepEqual(reads, [], 'a length over the limit is refused before the body is read');
+  next = respond(' '.repeat(LIMIT) + '{}');
+  await assert.rejects(load('power_place.json'), /too large/, 'and a body over it before it is parsed');
+  next = respond(real, { ok: false });
+  await assert.rejects(load('power_place.json'), /unavailable/);
+  await assert.rejects(load('streets.osm.json'), /Not a story data file/);
+});
+
+// ---------------------------------------------------------------- one line, said once
+test("a map tap on a beacon says its line once: the card's status line, never also the page's live region (the card is up before the bubble)", () => {
+  const { host, io, log, dialog } = visitsHost(), live = [];
+  io.state = { opened: true, surprises: [] };
+  // game.js speak(): the bubble, and the page's live region only while no dialog shows the line.
+  const speak = new Function('showBubble', 'spokenText', 'modal', 'routeSay', `let bubble = null;\n${declaration('function speak(')}\nreturn speak;`)(showBubble, spokenText, dialog.modal, text => live.push(text));
+  host.speak = (id, text, name) => { log.push(['speak', id, text, name]); speak(id, text, name); };
+  const visits = createVisits(host, { createWorldVisits }), rec = SURPRISES.jeffrey_record;
+  assert.equal(visits.interact({ id: 'surprise:jeffrey_record', kind: 'visit', name: rec.title, ...SURPRISE_SITES.jeffrey_record }, 'tap'), true);
+  assert.deepEqual(log.find(e => e[0] === 'speak'), ['speak', 'surprise:jeffrey_record', rec.speech, rec.speaker], 'the bubble is raised');
+  assert.deepEqual(live, [], 'nothing in the page live region');
+  const status = log.filter(e => e[0] === 'status').map(e => e[1]);
+  assert.equal(status.length, 1);
+  assert.ok(status[0].includes(rec.speech), "the card's one status line says the speaker's words");
 });
 
 // ---------------------------------------------------------------- the visits host

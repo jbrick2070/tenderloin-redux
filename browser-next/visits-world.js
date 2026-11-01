@@ -5,15 +5,17 @@
 // Every word comes from visits/text.js through the pure modules, or is the kit's declared fork text.
 //
 // Only the finds are saved, and only through host.act({ type: 'surprise', id }), which runs before anything else: the camera, the
-// bubble, a chime and the card come after it, each wrapped, and every count, spark and receipt is read after it returns (spec 4,
-// lessons 1 and 4). The tour, the surprise guide index and the last hint are the visit session's (session.world), never saved.
+// card, the bubble and a chime come after it (the three host calls each wrapped), and every count, spark and receipt is read after
+// it returns (spec 4, lessons 1 and 4). The tour, the surprise guide index and the last hint are the visit session's
+// (session.world), never saved.
 //
 // createWorldVisits(kit) -> {
 //   objects(world)                     hit-test objects { id, kind: 'visit', name, x, y }; no beacons while the camera is in an overview
 //   interact(object, how)              a tap, E/Enter ('talk') or an arrival ('walk') on one of them or on an objective target
 //                                      (tour:<stop>, episode)
 //   conversationAction(kind, partner)  'surprise' | 'museum' | 'eateries' | 'landmark_tour' (Godot run_conversation_action_id)
-//   openNotes(kind)                    Field notes' 'spot' | 'museum' | 'eateries' (or 'notes-spot'...): Godot's Shift+D, M and E
+//   openNotes(kind)                    Field notes' 'spot' | 'museum' | 'eateries' | 'park' | 'so-what' (or 'notes-spot'...): Godot's
+//                                      Shift+D, M and E, then the 2D controls for its park label tap and Shift+H
 //   cancel(), silentClose()            Escape on the card; forget the card when the dialog closed or was replaced
 //   scenePart()                        the world part of the VisitsScene (spec 3.8) that sprites.js draws
 //   anchor(id), parkTrees()            a speech bubble's { x, y, name }; Boeddeker Park's trees
@@ -151,12 +153,15 @@ export function createWorldVisits(kit) {
     kit.say(card.announce);
     return true;
   }
-  // Each inspect after its change, in Godot's order: the camera, the bubble and the chime, each wrapped, then the card.
+  // Each inspect after its change: the camera, the card, then the bubble and the chime in Godot's order, each host call wrapped. The
+  // card comes before the bubble: a map tap opens it from the street, and game.js speak() says a line in the page's live region
+  // only while no dialog shows it, so the speaker's words are said once, in the card's status line.
   function present({ look, speech, chime }, card) {
     if (look) safely(() => host.lookAt(xy(look)));
+    const drawn = drawCard({ burst: '', quotes: [], receipt: '', ...card });
     if (speech) safely(() => host.speak(speech.id, speech.text, speech.name));
     if (chime) safely(() => host.chime(chime[0], chime[1]));
-    return drawCard({ burst: '', quotes: [], receipt: '', ...card });
+    return drawn;
   }
   // Back and Escape: no toast, the status line already said Godot's announcement.
   function closeCard() {
@@ -287,21 +292,28 @@ export function createWorldVisits(kit) {
     if (kind === 'landmark_tour') return tourStop(goalNow().tourId);
     return false;
   }
-  // Field notes, the 2D Info column: Godot's Shift+D, Shift+M and Shift+E, returning to the Field notes button.
-  const NOTES = { spot: () => spot(-1, JOURNAL), museum: () => museum(JOURNAL), eateries: () => nextEatery(JOURNAL) };
+  // Field notes, the 2D Info column: Godot's Shift+D, Shift+M and Shift+E, returning to the Field notes button. Then Boeddeker
+  // Park and "So What", which Godot inspects from a tap on the park's label and Shift+H: declared 2D controls for both, so keyboard
+  // and touch players reach them without a map tap or the finished tour, under the labels Godot's landmark tour gives the same
+  // two visits (landmark_tour_state).
+  const TOUR = T.landmark_tour_state;
+  const NOTES = { spot: () => spot(-1, JOURNAL), museum: () => museum(JOURNAL), eateries: () => nextEatery(JOURNAL), park: () => park(JOURNAL), 'so-what': () => soWhat(JOURNAL) };
+  const NOTES_LABELS = { spot: have => conversationLabel(have), museum: () => T.conversation_actions.museum, eateries: () => T.conversation_actions.eateries, park: () => TOUR.parkAction, 'so-what': () => TOUR.soWhatAction };
   function openNotes(kind) {
     const key = String(kind ?? '').replace(/^notes-/, '');
     return Object.hasOwn(NOTES, key) ? NOTES[key]() : false;
   }
   function notesHTML() {
-    const have = found(), buttons = [{ id: 'notes-spot', label: conversationLabel(have) }, { id: 'notes-museum', label: T.conversation_actions.museum }, { id: 'notes-eateries', label: T.conversation_actions.eateries }];
+    const have = found(), buttons = Object.keys(NOTES).map(key => ({ id: `notes-${key}`, label: NOTES_LABELS[key](have) }));
     return `<div class="history-entry" data-visits-notes><span class="eyebrow visits-eyebrow">${esc(VISITS_FORK_TEXT.notesEyebrow)}</span><h3>${esc(VISITS_FORK_TEXT.notesTitle)}</h3>`
       + `<p>${esc(progressLabel(have, sparksNow()))}</p><div class="button-row">${buttons.map(b => btn(b)).join('')}</div></div>`;
   }
-  // Each button acts only while its entry is in the open dialog (Field notes may have been replaced since it was drawn).
+  // Each button acts only while its entry is in the open dialog (Field notes may have been replaced since it was drawn), and opens a
+  // card in Field notes' place, so a held Enter or Space never presses one again (kit.noRepeat).
   function bindNotes() {
-    const keys = Object.keys(NOTES);
-    return keys.filter(key => kit.bind(`notes-${key}`, () => { const el = kit.$(`notes-${key}`); if (el && host.modal.open && host.modal.contains(el)) openNotes(key); })).length === keys.length;
+    const keys = Object.keys(NOTES), bound = keys.filter(key => kit.bind(`notes-${key}`, () => { const el = kit.$(`notes-${key}`); if (el && host.modal.open && host.modal.contains(el)) openNotes(key); }));
+    kit.noRepeat(bound.map(key => `notes-${key}`));
+    return bound.length === keys.length;
   }
 
   // ---------- The scene part (spec 3.8): each part rebuilt only when what it shows changed ----------

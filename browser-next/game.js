@@ -113,9 +113,10 @@ const mapLayers = {
 let talks = freshTalk(), bubble = null, routeSpeech = null;
 // This visit's session-only state: talk turns, the last arrival, a pending chapter notice, the speech bubble and the side stories
 // (visits-ui.js). Start fresh starts it over, and so does a stored save that replaces this tab's state (from another tab or
-// edition, or Use the shared save), as Godot's load does. An action rebased onto a newer save keeps it. Returns the side
-// stories' sync: closed when one of their screens held the dialog.
-function resetSession() { talks = freshTalk(); arrivedAt = nearAt = null; chapterNotice = ''; bubble = null; routeSpeech = null; return visits.sync({ adopted: true }); }
+// edition, or Use the shared save), as Godot's load does. An action rebased onto a newer save keeps it. A walk a side story owns
+// stops first (its trip is part of the visit; stopWalk cancels it silently), so no story walk goes on to a screen that is gone.
+// Returns the side stories' sync: closed when one of their screens held the dialog.
+function resetSession() { talks = freshTalk(); arrivedAt = nearAt = null; chapterNotice = ''; bubble = null; routeSpeech = null; if (walkOwner === 'visit') stopWalk(); return visits.sync({ adopted: true }); }
 let voicesModulePromise, voicesImportAttempt = 0;
 const voicesHost = new ExperimentHost({
   load: async scope => {
@@ -289,7 +290,9 @@ function show(html) {
   $('#modal-status').textContent = body.querySelector('.grid-message')?.textContent || '';
 }
 function returnFocus() { return modalReturnTarget.isConnected ? modalReturnTarget : document.getElementById(modalReturnTarget.id) || canvas; }
-function focusReturn() { const target = returnFocus(); target.focus({ preventScroll: true }); if (['civic-hour', 'film-shoot'].includes(target.id)) target.scrollIntoView({ block: 'nearest' }); }
+// A control that is hidden (the resume control once its story ended, an afterglow button once the block closed) or disabled cannot
+// take the focus, which would fall to the page body: the map takes it.
+function focusReturn() { let target = returnFocus(); if (target.hidden || target.closest?.('[hidden]') || target.disabled) target = canvas; target.focus({ preventScroll: true }); if (['civic-hour', 'film-shoot'].includes(target.id)) target.scrollIntoView({ block: 'nearest' }); }
 function close(target = canvas) { voicesHost.dismiss(); modalReturnTarget = target instanceof HTMLElement ? target : canvas; modal.close(); focusReturn(); releaseNotice(); }
 function bind(id, callback) { document.getElementById(id)?.addEventListener('click', callback); }
 function button(id, label, primary = false, disabled = false) { return `<button id="${id}" class="${primary ? 'primary-button' : 'secondary-button'}" ${disabled ? 'disabled' : ''}>${label}</button>`; }
@@ -874,14 +877,20 @@ async function requestDistrict() {
   }
   districtUI(); await districtPromise; districtUI();
 }
-// host.load of the side stories: one of their two place files, same-origin and parsed, within 10 s (as requestDistrict).
+// host.load of the side stories: one of their two place files, same-origin and parsed, within 10 s (as requestDistrict). The real
+// files are 5 and 12 kB: one over 256 kB is refused, unread when the response says its length and unparsed when it does not (the
+// side stories' kit then bounds what it holds, visits-kit.js).
+const VISIT_DATA_LIMIT = 256 * 1024;
 async function loadVisitData(name) {
   if (!['power_place.json', 'voting_places.json'].includes(name)) throw Error('Not a story data file');
   const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 10000);
   try {
     const response = await fetch('./data/' + name, { signal: controller.signal });
     if (!response.ok) throw Error('Story data unavailable');
-    return await response.json();
+    if (Number(response.headers.get('content-length')) > VISIT_DATA_LIMIT) { controller.abort(); throw Error('Story data too large'); }
+    const text = await response.text();
+    if (text.length > VISIT_DATA_LIMIT) throw Error('Story data too large');
+    return JSON.parse(text);
   } finally { clearTimeout(timeout); }
 }
 function livingDistrict() {

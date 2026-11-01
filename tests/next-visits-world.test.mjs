@@ -142,14 +142,15 @@ test('objects: the beacons, landmarks and eateries as visit objects with Godot n
 });
 
 // ---------------------------------------------------------------- the surprise inspect (1.2 feature 8)
-test('a first find: host.act first, then the camera, the bubble and the card, every text built from the post-act state', () => {
+test('a first find: host.act first, then the camera, the card and the bubble, every text built from the post-act state', () => {
   const s = setup({ instrument: true }), id = 'jeffrey_record', rec = S.SURPRISES[id];
   assert.equal(s.world.interact(s.object(`surprise:${id}`), 'tap'), true);
   const order = s.log.map(e => (e[0] === 'read' ? `read:${e[1]}` : e[0])), at = name => order.indexOf(name);
   assert.deepEqual(s.log.find(e => e[0] === 'act'), ['act', { type: 'surprise', id }]);
   assert.ok(order.slice(0, at('act')).every(name => !name.startsWith('read:')), `nothing is read before the find: ${order.join(' ')}`);
   for (const read of ['read:sparks', 'read:saveReason', 'read:openNeighborId', 'read:objective']) assert.ok(at(read) > at('act'), read);
-  assert.ok(at('act') < at('lookAt') && at('lookAt') < at('speak') && at('speak') < at('show') && at('show') < order.lastIndexOf('status'), order.join(' '));
+  // The camera, then the card with its status line, then the bubble: game.js speak() leaves the line to the open card.
+  assert.ok(at('act') < at('lookAt') && at('lookAt') < at('show') && at('show') < at('status') && at('status') < at('speak'), order.join(' '));
   assert.deepEqual(s.io.state.surprises, [id], 'the stand-in act saved it');
   assert.deepEqual(s.chimes(), [], "the find's chime is act's own (progressCues), never host.chime");
   assert.deepEqual(s.log.find(e => e[0] === 'lookAt'), ['lookAt', xy(P.SURPRISE_SITES[id])]);
@@ -170,6 +171,30 @@ test('a first find: host.act first, then the camera, the bubble and the card, ev
     assert.equal(t.world.interact(t.object('surprise:cutesy_dino'), how), true);
     assert.equal(t.card().title, gdf(I.found, [S.SURPRISES.cutesy_dino.title]));
   }
+});
+
+// A map tap opens the card from the street: were the bubble raised first, game.js speak() would say the speaker's words in the
+// page's live region while the card's status line said them again in the same task. So every inspect draws its card first.
+test('every inspect draws its card before it raises the bubble or the chime: the speaker speaks into an open card', () => {
+  const s = setup({ state: exploring(ALL.slice(1)) }), at = [];
+  const record = name => (...args) => at.push([name, args[0], s.dialog.modal.open && s.kit.holds('card')]);
+  Object.assign(s.host, { speak: record('speak'), chime: record('chime') });
+  s.world.interact(s.object('surprise:jeffrey_record'), 'tap');
+  s.world.interact(s.object('museum'), 'tap');
+  s.dialog.close();
+  s.world.interact(s.object('eatery:2'), 'tap');
+  s.dialog.close();
+  s.world.interact(s.object('counter:2'), 'tap');
+  s.dialog.close();
+  s.world.interact(s.object('park'), 'tap');
+  s.world.interact(s.object('so_what_floor'), 'tap');
+  s.world.conversationAction('surprise', 'bea');
+  s.dialog.close();
+  s.world.openNotes('museum');
+  const eatery = `eatery:${L.EATERIES[2].id}`, last = `surprise:${ALL[0]}`;
+  assert.deepEqual(at.map(e => e.slice(0, 2)), [['speak', 'surprise:jeffrey_record'], ['speak', 'museum_docent'], ['chime', 'museum_portal'], ['speak', eatery], ['speak', eatery], ['chime', 'eatery_order'],
+    ['chime', 'boeddeker_park'], ['chime', 'so_what_egg'], ['speak', last], ['speak', 'museum_docent'], ['chime', 'museum_portal']], 'the bubble, then the chime, as Godot raises them');
+  for (const [name, id, open] of at) assert.equal(open, true, `${name} ${id}: the card holds the dialog`);
 });
 
 test('a throwing chime, lookAt or speak never undoes a change or blocks its card', () => {
@@ -526,18 +551,24 @@ test('Back and Escape close the card without a toast; focus returns to the canva
   assert.equal(s.world.cancel(), false);
 });
 
-test('Field notes: the neighborhood entry, its three buttons, and openNotes', () => {
+test('Field notes: the neighborhood entry, its five buttons, and openNotes', () => {
   const s = setup({ state: exploring(['cutesy_dino']) });
   const html = s.world.notesHTML();
   assert.match(html, /^<div class="history-entry"/);
   assert.ok(html.includes(`<span class="eyebrow visits-eyebrow">${K.esc(K.VISITS_FORK_TEXT.notesEyebrow)}</span>`));
   assert.ok(html.includes(`<h3>${K.esc(K.VISITS_FORK_TEXT.notesTitle)}</h3>`));
   assert.ok(html.includes(`<p>${K.esc(S.progressLabel(['cutesy_dino'], 6))}</p>`), 'the progress line with this visit\'s sparks');
-  const buttons = cardOf(html).buttons;
-  assert.deepEqual(buttons.map(b => [b.id, b.label]), [['notes-spot', S.conversationLabel(['cutesy_dino'])], ['notes-museum', T.conversation_actions.museum], ['notes-eateries', T.conversation_actions.eateries]]);
+  // Godot's Shift+D, Shift+M and Shift+E, then the park and "So What": Godot inspects those from a tap on the park's label and
+  // Shift+H, with the labels its landmark tour gives the same two visits.
+  const buttons = cardOf(html).buttons, TOUR = T.landmark_tour_state;
+  assert.deepEqual(buttons.map(b => [b.id, b.label]), [['notes-spot', S.conversationLabel(['cutesy_dino'])], ['notes-museum', T.conversation_actions.museum], ['notes-eateries', T.conversation_actions.eateries],
+    ['notes-park', TOUR.parkAction], ['notes-so-what', TOUR.soWhatAction]]);
   // Field notes is game.js's dialog; the entry binds into it and each button opens its card with the return to Field notes.
   s.host.show(`<span class="eyebrow">FIELD NOTES</span><h2 id="modal-title">Notes</h2>${html}`);
   assert.equal(s.world.bindNotes(), true);
+  // Each replaces Field notes with a card, so a held Enter or Space never presses one again (kit.noRepeat).
+  const keydown = (id, init) => { const event = { ...init, defaultPrevented: false, preventDefault() { this.defaultPrevented = true; } }; for (const fn of s.dialog.doc.getElementById(id).listeners.keydown || []) fn(event); return event.defaultPrevented; };
+  for (const { id } of buttons) assert.deepEqual([keydown(id, { key: 'Enter', repeat: false }), keydown(id, { key: 'Enter', repeat: true }), keydown(id, { key: ' ', repeat: true })], [false, true, true], id);
   s.dialog.click('notes-eateries');
   assert.deepEqual([s.card().title, s.tour().eateryGuide], [EATERY_LABEL(0), 0]);
   assert.ok(s.log.some(e => e[0] === 'returnTo' && e[1] === 'journal-button'));
@@ -545,8 +576,55 @@ test('Field notes: the neighborhood entry, its three buttons, and openNotes', ()
   s.dialog.close();
   assert.equal(s.world.openNotes('notes-spot'), true);
   assert.equal(s.session.world.card.id, 'jeffrey_record');
-  for (const kind of ['nope', '', undefined, 'notes-']) assert.equal(s.world.openNotes(kind), false, String(kind));
+  for (const kind of ['nope', '', undefined, 'notes-', 'soWhat', 'notes-so_what']) assert.equal(s.world.openNotes(kind), false, String(kind));
   assert.equal(setup().world.bindNotes(), false, 'no entry on screen, nothing bound');
+});
+
+test('Field notes: Visit the Park and See "So What" open their cards as a tap on the park or the awning does, chime once, and Back returns to Field notes', () => {
+  const s = setup(), trees = s.world.parkTrees().length;
+  s.host.show(`<h2 id="modal-title">Notes</h2>${s.world.notesHTML()}`);
+  s.world.bindNotes();
+  s.dialog.click('notes-park');
+  const park = L.inspectPark(L.initialTour(), trees);
+  assert.deepEqual([s.card().credit, s.card().title, s.card().reader, s.card().ids], [say(T.build_boeddeker_park.label), park.title, lines(park.info), ['card-back']]);
+  assert.equal(s.status(), park.announce);
+  assert.deepEqual([s.chimes(), s.tour().park, s.log.filter(e => e[0] === 'lookAt').at(-1)], [[['boeddeker_park', T.inspect_boeddeker_park.title]], true, ['lookAt', xy(P.PARK_VIEW)]]);
+  assert.deepEqual(s.log[s.log.findLastIndex(e => e[0] === 'show') + 1], ['returnTo', 'journal-button']);
+  s.dialog.click('card-back');
+  assert.deepEqual(s.log.at(-1), ['close', 'journal-button']);
+  // "So What" from Field notes is Godot's Shift+H: the awning's card.
+  assert.equal(s.world.openNotes('notes-so-what'), true);
+  const soWhat = L.inspectSoWhat(L.initialTour());
+  assert.deepEqual([s.card().credit, s.card().title, s.card().reader], [say(D.soWhatAwning), soWhat.title, lines(soWhat.info)]);
+  assert.deepEqual(s.chimes().at(-1), ['so_what_egg', T.inspect_so_what_easter_egg.title]);
+  assert.ok(s.world.cancel(), 'Escape is Back');
+  assert.deepEqual(s.log.at(-1), ['close', 'journal-button']);
+  // Again: no chime, the stop is already visited (Godot chimes once a visit).
+  s.world.openNotes('park'); s.world.openNotes('so-what');
+  assert.equal(s.chimes().length, 2);
+  assert.deepEqual([s.tour().park, s.tour().soWhat], [true, true]);
+});
+
+// The card's own next step and the tour's next stop each move the visit on a stage: a held key must not press them twice.
+test("held Enter or Space never presses a card's own step or the tour's next stop again (kit.noRepeat); Back is left to the global rule", () => {
+  const keydown = (s, id, init) => { const event = { ...init, defaultPrevented: false, preventDefault() { this.defaultPrevented = true; } }; for (const fn of s.dialog.doc.getElementById(id).listeners.keydown || []) fn(event); return event.defaultPrevented; };
+  const held = (s, id) => [keydown(s, id, { key: 'Enter', repeat: false }), keydown(s, id, { key: 'Enter', repeat: true }), keydown(s, id, { key: ' ', repeat: true }), keydown(s, id, { key: 'ArrowDown', repeat: true })];
+  const cards = [
+    [exploring(), s => s.world.interact(s.object('surprise:cutesy_dino'), 'tap'), ['card-spot']],
+    [exploring(), s => s.world.interact(s.object('eatery:1'), 'tap'), ['card-order', 'card-eateries']],
+    // All ten found: the museum's tour stop under the gold marker, with Next era and the tour's next stop.
+    [exploring(ALL), s => s.world.interact(s.object('tour-marker'), 'tap'), ['card-next-era', 'card-tour']],
+  ];
+  for (const [state, open, chained] of cards) {
+    const s = setup({ state });
+    open(s);
+    assert.deepEqual(s.card().ids, [...chained, 'card-back']);
+    for (const id of chained) assert.deepEqual(held(s, id), [false, true, true, false], id);
+    assert.equal((s.dialog.doc.getElementById('card-back').listeners.keydown || []).length, 0, 'card-back');
+    // A redraw by its own button binds them again.
+    s.dialog.click(chained[0]);
+    for (const id of s.card().ids.filter(id => id !== 'card-back')) assert.deepEqual(held(s, id).slice(1, 3), [true, true], `${id} after a redraw`);
+  }
 });
 
 // ---------------------------------------------------------------- stale screens (spec 4, lesson 2)

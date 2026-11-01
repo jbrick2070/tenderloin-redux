@@ -29,7 +29,11 @@ const GD_LITERALS = new Set(GD_FILES.flatMap(name => gdStrings(gdSource(name))))
 const MAIN = GODOT_TEXT['main.gd'], BT = GODOT_TEXT['before_streets.gd'], MT = GODOT_TEXT['shared_meal.gd'], PT = GODOT_TEXT['story_picker.gd'];
 const HUB = MAIN.apply_hub_guidance, WALK = MAIN.update_walk_control;
 const API = ['open', 'entries', 'entryHTML', 'bindEntry', 'conversationAction', 'objects', 'interact', 'scene', 'anchor', 'objectiveInputs', 'hinted', 'walkEnded', 'walkCancelled', 'tick', 'sync', 'reset', 'holds', 'snapshot'];
-const flush = async () => { for (let i = 0; i < 20; i++) await null; };
+// A macrotask: every microtask queued before it, and every one those queue in turn, has run by then (the visits files set no timer),
+// so "draws nothing" means nothing, however long the promise chain before the draw.
+const flush = () => new Promise(resolve => setImmediate(resolve));
+// n microtask ticks: the old flush was ticks(20), kept only to show what it missed.
+const ticks = async n => { for (let i = 0; i < n; i++) await null; };
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; };
 
 // Screens game.js and other modules draw into the same dialog.
@@ -701,6 +705,20 @@ test("the picker: a refused select restores the owner and says Godot's line", as
 });
 
 // ---------------------------------------------------------------- held screens, ×, replacement, reset and adoption
+test('flush() waits out a promise chain longer than 20 microtasks, which the old 20-tick flush returned before', async () => {
+  const s = setup(), { visits, host } = s;
+  host.music.toggle = async () => { await ticks(30); return 'Music playing.'; };
+  s.begin('dogs');
+  visits.open('resume');
+  const shows = s.count('render');
+  s.press('dogs-music');
+  await ticks(20);
+  assert.equal(s.count('render'), shows, 'after 20 ticks the screen that still holds the dialog is not redrawn yet: a "draws nothing" check would pass vacuously');
+  await flush();
+  assert.equal(s.count('render'), shows + 1, 'flush() waits for it');
+  assert.deepEqual(s.log.at(-1), ['status', 'Music playing.']);
+});
+
 test('a music toggle that resolves after Back draws nothing; a load that settles after the recovery offer replaced the picker draws nothing', async () => {
   const s = setup(), { visits, log, host } = s;
   let settle = null;
@@ -841,6 +859,31 @@ test('sync(): an active episode ends when the block is no longer open (Godot _pr
   assert.equal(s.snap().screen, 'before');
 });
 
+test("sync(): an episode that ends while its walk goes on stops the walk with it (silently), and the trip is gone", () => {
+  const s = setup(), { visits, io, log, host } = s;
+  // game.js stopWalk reports a visits-owned walk's stop through walkCancelled.
+  host.stopWalk = () => { log.push(['stopWalk']); visits.walkCancelled(); };
+  s.begin('dogs');
+  visits.open('resume');
+  s.part().step('dogs', { type: 'lead', index: 1 });
+  s.press('dogs-walk');
+  assert.deepEqual([s.snap().trip, s.snap().stories.dogs.traveling, s.dialog.modal.open], ['dogs', true, false], 'the premise: the dogs search walks');
+  const stops = s.count('stopWalk'), count = log.length;
+  io.state = { ...io.state, opened: false };
+  assert.deepEqual(visits.sync(), { reset: false, closed: false });
+  assert.equal(s.count('stopWalk'), stops + 1, "the game's walk stops with its episode");
+  assert.deepEqual([s.snap().trip, s.snap().stories.dogs.active, s.snap().stories.dogs.traveling], [null, false, false]);
+  assert.deepEqual(log.slice(count).filter(e => !['stopWalk'].includes(e[0])), [], 'without a word, a draw or a close');
+  visits.sync();
+  assert.equal(s.count('stopWalk'), stops + 1, 'once');
+  // An episode that ends with no walk of its own stops nothing (the player's own walk goes on).
+  io.state = { ...io.state, opened: true };
+  s.begin('lantern');
+  io.state = { ...io.state, opened: false };
+  visits.sync();
+  assert.deepEqual([s.snap().stories.lantern.active, s.count('stopWalk')], [false, stops + 1]);
+});
+
 // ---------------------------------------------------------------- the walk protocol and the trip tick (spec 3.6)
 test("the walk protocol through the shell: 'walking' then 'blocked', walkEnded() reopens with Godot's line, walkCancelled() is silent", () => {
   const answers = ['walking', 'walking', 'blocked'], s = setup(), { visits, log, io } = s;
@@ -979,7 +1022,7 @@ test('snapshot(): the visit session as data, the files by status only, never the
 // ---------------------------------------------------------------- the neighborhood part
 test('the neighborhood part: objects, interact, conversation actions, anchors, hints, the tick, the notes entries, the card and the reset', () => {
   const calls = [], made = [];
-  const NOTES_HTML = '<div data-visits-notes><button id="notes-spot">Spot</button><button id="notes-museum">Museum</button><button id="notes-eateries">Eateries</button></div>';
+  const NOTES_HTML = '<div data-visits-notes><button id="notes-spot">Spot</button><button id="notes-museum">Museum</button><button id="notes-eateries">Eateries</button><button id="notes-park">Park</button><button id="notes-so-what">So What</button></div>';
   const RET = { objects: [{ id: 'museum', kind: 'visit', name: 'Museum', x: 1, y: 2 }], interact: true, conversationAction: true, openNotes: true, scenePart: { museum: { x: 1, y: 2 } },
     anchor: { x: 3, y: 4, name: 'Docent' }, objectiveInputs: { tour: 'TOUR', lastHinted: 'x' }, notesHTML: NOTES_HTML, bindNotes: true, snapshot: { tour: 'TOUR', guideIdx: 3, lastHinted: 'x' } };
   const world = kit => { made.push(kit); return new Proxy({}, { get: (_, name) => (typeof name === 'string' ? (...args) => { calls.push([name, ...args]); return RET[name]; } : undefined) }); };
@@ -997,19 +1040,28 @@ test('the neighborhood part: objects, interact, conversation actions, anchors, h
   assert.deepEqual(visits.objectiveInputs(), { episode: null, tour: 'TOUR', lastHinted: 'x' });
   assert.deepEqual(visits.snapshot().world, RET.snapshot, "the part's own snapshot of the tour, the guide index and the last hint");
   assert.deepEqual(own(), [['objects', W], ['interact', object, 'tap'], ['conversationAction', 'museum', 'bea'], ['anchor', 'museum_docent'], ['hinted', 'cutesy_dino'], ['tick', 16, W], ['tick', 32, undefined]]);
-  // Field notes: the part draws the three buttons; the shell binds them through open(), so stale flags close before the part opens.
+  // Field notes: the part draws the five buttons; the shell binds them through open(), so stale flags close before the part opens.
   calls.length = 0;
   assert.equal(visits.entryHTML('notes'), NOTES_HTML);
   assert.equal(visits.bindEntry('notes'), false, 'not on screen yet');
   dialog.show(NOTES + NOTES_HTML);
   assert.equal(visits.bindEntry('notes'), true);
   assert.equal(visits.bindEntry('notes'), false, 'each button is bound once');
+  // Each opens a card that replaces Field notes, so a held Enter or Space never presses one again (kit.noRepeat), bound once too.
+  const keydown = (id, init) => { const event = { ...init, defaultPrevented: false, preventDefault() { this.defaultPrevented = true; } }; const fns = dialog.doc.getElementById(id).listeners.keydown || []; for (const fn of fns) fn(event); return [fns.length, event.defaultPrevented]; };
+  for (const id of ['notes-spot', 'notes-museum', 'notes-eateries', 'notes-park', 'notes-so-what']) {
+    assert.deepEqual(keydown(id, { key: 'Enter', repeat: false }), [1, false], `${id}: the first Enter presses`);
+    assert.deepEqual([keydown(id, { key: 'Enter', repeat: true })[1], keydown(id, { key: ' ', repeat: true })[1]], [true, true], `${id}: its repeats do not`);
+  }
   const stale = s.kit().session;
   stale.meal = { ...stale.meal, open: true };
   s.press('notes-museum');
   assert.equal(s.snap().meal.open, false, 'normalized first');
   assert.equal(visits.open('notes-eateries', { from: 'notes' }), true);
-  assert.deepEqual(own(), [['notesHTML'], ['openNotes', 'notes-museum'], ['openNotes', 'notes-eateries']], 'no part bindNotes: the shell binds the buttons');
+  s.press('notes-park'); s.press('notes-so-what');
+  assert.equal(visits.open('notes-park', { from: 'notes' }), true);
+  assert.equal(visits.open('notes-so-what', { from: 'notes' }), true);
+  assert.deepEqual(own(), [['notesHTML'], ['openNotes', 'notes-museum'], ['openNotes', 'notes-eateries'], ['openNotes', 'notes-park'], ['openNotes', 'notes-so-what'], ['openNotes', 'notes-park'], ['openNotes', 'notes-so-what']], 'no part bindNotes: the shell binds the buttons');
   // The visit card is the part's screen: Escape runs its cancel; × and a replacement close it silently.
   const kit = made[0];
   calls.length = 0;
@@ -1114,7 +1166,8 @@ test('with the real episode screens and neighborhood visits: the shell opens, ro
   assert.deepEqual(visits.sync(), { reset: false, closed: true });
   assert.deepEqual([dialog.modal.open, s.snap().screen, s.snap().stories.dogs.active], [false, null, false]);
   io.state = { ...io.state, opened: true };
-  // Field notes: the neighborhood part's three buttons, bound by the shell; the museum's visit card; Escape is its Back.
+  // Field notes: the neighborhood part's five buttons, bound by the shell; the museum's visit card; Escape is its Back. Boeddeker
+  // Park and "So What" open their cards from there too (the 2D control for Godot's park label tap and Shift+H).
   dialog.show(NOTES + visits.entryHTML('notes'));
   assert.equal(visits.bindEntry('notes'), true);
   s.press('notes-museum');
@@ -1122,6 +1175,14 @@ test('with the real episode screens and neighborhood visits: the shell opens, ro
   assert.deepEqual(s.lastOf('returnTo'), ['returnTo', 'journal-button']);
   assert.equal(s.escape(), true);
   assert.deepEqual([s.lastOf('close'), s.kit().session.world.card], [['close', 'journal-button'], null]);
+  for (const [id, kind, title] of [['notes-park', 'park', MAIN.inspect_boeddeker_park.title], ['notes-so-what', 'so_what', MAIN.inspect_so_what_easter_egg.title]]) {
+    dialog.show(NOTES + visits.entryHTML('notes'));
+    assert.equal(visits.bindEntry('notes'), true, id);
+    s.press(id);
+    assert.deepEqual([s.snap().screen, s.kit().session.world.card?.kind, dialog.heading(), s.lastOf('returnTo')], ['card', kind, title, ['returnTo', 'journal-button']], id);
+    assert.equal(s.escape(), true);
+    assert.deepEqual(s.lastOf('close'), ['close', 'journal-button'], id);
+  }
   // × on a card: the part forgets it.
   visits.interact({ id: 'museum', kind: 'visit' }, 'tap');
   assert.equal(s.snap().screen, 'card');

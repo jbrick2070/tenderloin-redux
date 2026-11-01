@@ -25,7 +25,11 @@ const VOTING = JSON.parse(read('godot/data/voting_places.json'));
 const GD_FILES = readdirSync(new URL('../godot/', import.meta.url)).filter(name => name.endsWith('.gd'));
 const GD_SOURCE = GD_FILES.map(name => gdSource(name)).join('\n');
 const GD_LITERALS = new Set(GD_FILES.flatMap(name => gdStrings(gdSource(name))));
-const flush = async () => { for (let i = 0; i < 20; i++) await null; };
+// A macrotask: every microtask queued before it, and every one those queue in turn, has run by then (the kit sets no timer), so
+// "draws nothing" means nothing, however long the promise chain before the draw.
+const flush = () => new Promise(resolve => setImmediate(resolve));
+// n microtask ticks: the old flush was ticks(20), kept only to show what it missed.
+const ticks = async n => { for (let i = 0; i < n; i++) await null; };
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; };
 const RECOVERY = '<section data-recovery><h2 id="modal-title">Some progress went back.</h2><button id="recover-save">Keep this tab’s progress</button></section>';
 const CONTRACT = ['$', 'bind', 'on', 'focus', 'show', 'holds', 'leave', 'say', 'ctx', 'musicButton', 'bindMusic', 'startWalk', 'readerEntry', 'bindReaderEntry', 'openPicker', 'openResume', 'data', 'ensureData', 'sparks', 'objective', 'noRepeat', 'bump'];
@@ -42,9 +46,11 @@ function buttonsOf(html) {
     return { id: attrs.id, attrs, shown, name: attrs['aria-label'] ?? shown, description: desc === undefined ? undefined : decode(desc) };
   });
 }
-// WCAG 2.5.3: the accessible name starts with the visible label; Godot's own name is the name or the description.
+// WCAG 2.5.3: the accessible name starts with the visible label, or, for a label of one or two characters that are no word (the
+// Election Walk's pins), holds it as a token of its own; Godot's own name is the name or the description.
+const token = (name, label) => /^[^\p{L}]{1,2}$/u.test(label) && [...name.matchAll(/[^\p{L}\p{N}\s]+|[\p{L}\p{N}]+/gu)].some(m => m[0] === label);
 function assertLabelInName(b, view = {}) {
-  assert.ok(b.name.startsWith(b.shown), `#${b.id}: the name ${JSON.stringify(b.name)} starts with the visible label ${JSON.stringify(b.shown)}`);
+  assert.ok(b.name.startsWith(b.shown) || token(b.name, b.shown), `#${b.id}: the name ${JSON.stringify(b.name)} starts with the visible label ${JSON.stringify(b.shown)}`);
   if (view.name != null && spoken(view.name) !== b.shown) assert.ok(b.name === spoken(view.name) || b.description?.includes(spoken(view.name)), `#${b.id}: Godot's name is the accessible name or its description`);
 }
 const lum = hex => { const c = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(v => v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
@@ -240,6 +246,29 @@ test('btn: the accessible name starts with the visible label; a Godot name that 
   assert.deepEqual([b.attrs.title, b.attrs['aria-describedby']], ['Just a title', undefined]);
 });
 
+// The Election Walk's pins show "1" and "2": a name that starts with them would say nothing, and WCAG 2.5.3 asks only that the name
+// contain the visible label. So a label of one or two characters that are no word lets Godot's name be the name when it holds the
+// label as a token of its own ("Map pin 1: city address point"), and a screen reader says the pin, not "1".
+test('btn: a visible label of one or two characters that are no word is named by the Godot name that holds it as a token', () => {
+  const named = (label, name) => buttonsOf(K.btn({ id: 'x-pin', label, name }))[0];
+  for (const [label, name] of [['1', 'Map pin 1: city address point'], ['2', 'Map pin 2: city address point'], ['12', 'Pin 12, the corner'], ['+', 'Zoom + in'], ['1', '1 of 3']]) {
+    const b = named(label, name);
+    assert.deepEqual([b.shown, b.attrs['aria-label'], b.attrs['aria-describedby']], [label, name, undefined], `${label} in ${name}`);
+    assertLabelInName(b, { name });
+  }
+  // Not inside a longer number or word, not a word itself, not three characters: the label stays the name, Godot's the description.
+  for (const [label, name] of [['1', 'Map pin 10: city address point'], ['1', 'Map pin 21'], ['OK', 'Mark this OK'], ['No', 'Say No'], ['1/2', 'Half 1/2 done'], ['1', 'Pin1 at the corner']]) {
+    const b = named(label, name);
+    assert.deepEqual([b.attrs['aria-label'], b.description], [label, name], `${label} in ${name}`);
+  }
+  // The real pins (voting_story.gd refresh): named "Map pin n: city address point".
+  const pins = election.electionView({ ...election.initialElection(), open: true, active: true, phase: 2 }, { voting: VOTING, powerPlace: POWER_PLACE }).pins;
+  for (const pin of pins) {
+    const b = buttonsOf(K.btn({ ...pin, id: `election-pin-${pin.index}`, className: 'visits-pin' }))[0];
+    assert.deepEqual([b.shown, b.attrs['aria-label'], b.description], [String(pin.index + 1), pin.name, undefined]);
+  }
+});
+
 test('btn: pressed, disabled, primary, class, position, rapid and hidden', () => {
   const attrs = b => tagsOf(K.btn({ id: 'x', label: 'X', ...b }))[0]?.attrs;
   assert.equal(attrs({ pressed: true })['aria-pressed'], 'true');
@@ -309,10 +338,11 @@ test("btn: every Godot view the visits screens draw keeps the label in the name,
   assert.ok(all.length >= 60, `${all.length} buttons`);
   const get = (id, tag = '') => { const found = all.find(e => e.b.id === id && e.tag === tag); assert.ok(found, `${id} ${tag}`); return found; };
   const described = (id, tag) => { const { b, view } = get(id, tag); assert.ok(!spoken(view.name).startsWith(b.shown), `${id}: Godot's name does not start with the label`); assert.deepEqual([b.attrs['aria-label'], b.description], [b.shown, spoken(view.name)], id); };
-  for (const id of ['meal-previous', 'meal-next', 'picker-follow', 'dogs-stories', 'election-pin-0', 'election-pin-1']) described(id);
+  for (const id of ['meal-previous', 'meal-next', 'picker-follow', 'dogs-stories']) described(id);
   for (const id of ['power-dogs', 'power-more', 'power-tab-0', 'power-tab-1', 'power-tab-2']) described(id, 'hub');
   const named = (id, tag) => { const { b, view } = get(id, tag); assert.equal(b.attrs['aria-label'], spoken(view.name), id); };
-  for (const id of ['picker-entry-0', 'dogs-pippin', 'dogs-music']) named(id);
+  // The pins' "1" and "2" are held by Godot's "Map pin n: city address point", which names them.
+  for (const id of ['picker-entry-0', 'dogs-pippin', 'dogs-music', 'election-pin-0', 'election-pin-1']) named(id);
   for (const id of ['power-tab-0', 'power-music', 'power-begin']) named(id, 'active');
   const back = get('before-back');
   assert.deepEqual([back.b.attrs.title, back.b.description], [back.view.tooltip, back.view.tooltip], "Before's Back: Godot's tooltip is its title and its description");
@@ -440,8 +470,8 @@ test('the kit hand-types no Godot text: string literals it shares with Godot are
   assert.deepEqual(shared.filter(text => !STRUCTURAL.includes(text) && !/^[a-z][a-z_]*$/.test(text)), [], 'a Godot line or label comes from visits/text.js or is declared fork text');
 });
 
-test('every VISITS_FORK_TEXT key is drawn somewhere in browser-next', { todo: 'the screens (visits-ui.js, visits-episodes.js, visits-world.js) and game.js draw them; make this a plain test once they land' }, () => {
-  const text = ['visits-kit.js', 'visits-ui.js', 'visits-episodes.js', 'visits-world.js', 'game.js'].map(name => { try { return read(`browser-next/${name}`); } catch { return ''; } }).join('\n');
+test('every VISITS_FORK_TEXT key is drawn somewhere in browser-next', () => {
+  const text = ['visits-kit.js', 'visits-ui.js', 'visits-episodes.js', 'visits-world.js', 'game.js'].map(name => read(`browser-next/${name}`)).join('\n');
   for (const key of Object.keys(K.VISITS_FORK_TEXT)) assert.ok(text.includes(`VISITS_FORK_TEXT.${key}`), key);
 });
 
@@ -560,6 +590,28 @@ test('bindMusic: the redraw waits for the music only while its screen holds the 
   dialog.click('dogs-music'); await flush();
   assert.equal(draws, 1);
   assert.notEqual(log.at(-1)[0], 'status');
+});
+
+test('flush() waits out a promise chain longer than 20 microtasks, which the old 20-tick flush returned before', async () => {
+  const s = setup(), { kit, host } = s;
+  let draws = 0;
+  host.music.toggle = async () => { await ticks(30); return 'Music playing.'; };
+  const draw = () => { draws++; s.draw('dogs', K.btn(kit.musicButton('dogs'))); kit.bindMusic('dogs', draw); };
+  draw(); draws = 0;
+  s.dialog.click('dogs-music');
+  await ticks(20);
+  assert.equal(draws, 0, 'after 20 ticks the screen that still holds the dialog is not redrawn yet: a "draws nothing" check would pass vacuously');
+  await flush();
+  assert.equal(draws, 1, 'flush() waits for it');
+  // A load that settles 30 ticks late, under a screen that still waits: the same.
+  host.load = async () => { await ticks(30); return POWER_PLACE; };
+  let redraws = 0;
+  s.draw('power');
+  kit.ensureData(['power_place.json'], () => redraws++);
+  await ticks(20);
+  assert.equal(redraws, 0);
+  await flush();
+  assert.deepEqual([redraws, s.session.data.power_place.status], [1, 'ready']);
 });
 
 test('noRepeat: a held Enter or Space never presses a chained control again', () => {
@@ -707,6 +759,66 @@ test('ensureData: idle, loading, ready; invalid is final for the visit; a networ
     assert.equal(s.kit.ensureData([], () => {}), true);
     assert.deepEqual(s.loads(), []);
   });
+});
+
+// Godot's valid_source pins the place files rule for rule but checks no Election Walk name or listed description, and bounds no list
+// (tests/next-visits.test.mjs pins the validators to Godot). The kit's own bounds, before it: these same-origin tampers, each of
+// which Godot's rules accept, end as invalid (final for the visit, as a file valid_source refuses), never as a TypeError in
+// sourceText or a picture of millions of points; the real files are ready.
+test('ensureData: a tampered place file that valid_source accepts is invalid: printed strings are strings, lists stay within 4x the real files, coordinates are plain', async () => {
+  const P = () => structuredClone(POWER_PLACE), V = () => structuredClone(VOTING), ring = p => p.exterior.polygons[0].rings[0];
+  const points = (n, at = i => [i % 300, i % 200]) => Array.from({ length: n }, (_, i) => at(i));
+  const TAMPERS = {
+    power_place: {
+      'a 1e308 junction (mapSVG draws "inf")': p => { p.junction.xz = [1e308, -1e308]; },
+      'an address point 200 km out': p => { p.address_point.xz = [200000, 0]; },
+      'a 1.5 million point ring': p => { p.exterior.polygons[0].rings[0] = points(1.5e6); p.exterior.polygons[0].triangles = points(3000, i => i % 1000).flat(); },
+      'a ring of 29 points (4 x 7 + 1)': p => { ring(p).push(...points(29 - ring(p).length)); },
+      'Eddy with 25 points (4 x 6 + 1)': p => { p.eddy.points.push(...points(25 - p.eddy.points.length)); },
+      '63 triangle indices (the first whole triangle past 4 x 15)': p => { const t = p.exterior.polygons[0].triangles; while (t.length < 63) t.push(0, 1, 2); },
+      'five polygons': p => { const at = p.exterior.polygons[0]; p.exterior.polygons = [at, at, at, at, at]; },
+    },
+    voting_places: {
+      'a site name {"toString":1} (sourceText throws)': v => { v.sites[0].name = { toString: 1 }; },
+      'a site with no listed description': v => { delete v.sites[1].listed_description; },
+      'a numeric site name': v => { v.sites[0].name = 7; },
+      '200,000 streets': v => { v.streets = Array.from({ length: 200000 }, () => ({ points: [[0, 0], [1, 1]] })); },
+      '81 streets (4 x 20 + 1)': v => { while (v.streets.length < 81) v.streets.push({ points: [[0, 0]] }); },
+      '381 street points in all (4 x 95 + 1)': v => { v.streets[0].points.push(...points(381 - v.streets.reduce((n, s) => n + s.points.length, 0))); },
+      'an observation point 1e300 out': v => { v.sites[1].observation = [1e300, 1]; },
+    },
+  };
+  const valid = { power_place: power.validSource, voting_places: election.validSource }, edges = ['a ring of 29 points (4 x 7 + 1)', 'Eddy with 25 points (4 x 6 + 1)', '63 triangle indices (the first whole triangle past 4 x 15)', '81 streets (4 x 20 + 1)', '381 street points in all (4 x 95 + 1)'];
+  assert.throws(() => { const v = V(); TAMPERS.voting_places['a site name {"toString":1} (sourceText throws)'](v); election.sourceText(election.initialElection(), { voting: v }); }, TypeError, 'the premise: sourceText throws on it');
+  for (const [key, cases] of Object.entries(TAMPERS)) {
+    for (const [what, tamper] of Object.entries(cases)) {
+      const value = key === 'power_place' ? P() : V();
+      tamper(value);
+      if (!what.startsWith('a 1.5') && !what.startsWith('200,000')) assert.equal(valid[key](value), true, `the premise: Godot's valid_source accepts ${what}`);
+      const s = setup();
+      s.host.load = name => { s.log.push(['load', name]); return Promise.resolve(value); };
+      s.draw('power');
+      assert.equal(s.kit.ensureData([`${key}.json`], () => s.draw('power')), false);
+      await flush();
+      assert.deepEqual(s.session.data[key], { status: 'invalid', value: null }, `${key}: ${what}`);
+      assert.equal(s.kit.ensureData([`${key}.json`], () => {}), true, 'final for the visit');
+      assert.deepEqual(s.log.filter(e => e[0] === 'load').length, 1, 'never loaded again');
+      assert.ok(!s.said().some(e => e[1] === K.VISITS_FORK_TEXT.dataError), 'a bad file is not a network error');
+    }
+  }
+  // The edges themselves are fine: the real files, a ring of 28, 24 Eddy points, 60 indices, 80 streets, 380 points.
+  for (const [key, fix] of [['power_place', p => { ring(p).push(...points(28 - ring(p).length)); p.eddy.points.push(...points(24 - p.eddy.points.length)); const t = p.exterior.polygons[0].triangles; while (t.length < 60) t.push(0, 1, 2); }],
+    ['voting_places', v => { while (v.streets.length < 80) v.streets.push({ points: [] }); v.streets[0].points.push(...points(380 - v.streets.reduce((n, s) => n + s.points.length, 0))); }], ['power_place', () => {}], ['voting_places', () => {}]]) {
+    const value = key === 'power_place' ? P() : V();
+    fix(value);
+    assert.equal(valid[key](value), true);
+    const s = setup();
+    s.host.load = () => Promise.resolve(value);
+    s.kit.ensureData([`${key}.json`], () => {});
+    await flush();
+    assert.deepEqual(s.session.data[key], { status: 'ready', value }, key);
+  }
+  assert.ok(edges.every(what => Object.values(TAMPERS).some(cases => what in cases)));
 });
 
 // A prefetch that no visible control waits on (the shell's first Story open) loads quietly: the screen's own line stays.

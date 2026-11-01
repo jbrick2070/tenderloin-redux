@@ -29,9 +29,10 @@ const MAIN = GODOT_TEXT['main.gd'], CARD = MAIN.build_story_card, MAKE = MAIN.ma
 const STORY = GODOT_TEXT['power_story.gd'].setup;
 // Godot update_walk_control: the walk control's label and tooltip while an episode is active.
 const RESUME = { power: [WALK.power, WALK.powerTip], dogs: [WALK.dogs, WALK.dogsTip], lantern: [WALK.lantern, WALK.lanternTip], election: [WALK.election, WALK.electionTip] };
-// The entries of spec 3.7 in entries() order; Field notes' three neighborhood buttons and the control focus returns to from it.
+// The entries of spec 3.7 in entries() order; Field notes' five neighborhood buttons (Godot's Shift+D, Shift+M and Shift+E, then
+// the 2D controls for its park label tap and Shift+H, visits-world.js) and the control focus returns to from it.
 const ENTRY = { before: 'before-entry', revisit: 'before-revisit', story: 'story-entry', meal: 'meal-entry', resume: 'story-resume', notes: 'notes-spot' };
-const NOTES = ['notes-spot', 'notes-museum', 'notes-eateries'], JOURNAL = 'journal-button';
+const NOTES = ['notes-spot', 'notes-museum', 'notes-eateries', 'notes-park', 'notes-so-what'], JOURNAL = 'journal-button';
 const PLACE = 'power_place', VOTING = 'voting_places';
 const SILENT = { type: 'close', announce: false };
 // power_story.gd update_world: seven street lamps, then three gathering lanterns.
@@ -73,7 +74,8 @@ export function createVisits(host, parts = {}) {
 
   // ---------- Opening (spec 3.3) ----------
   // kind: 'before' (from 'startup' or 'notes'), 'meal', 'story' (Godot power_story.open_story), 'resume' (the active episode,
-  // open_from_walking), 'picker', or 'notes-spot' | 'notes-museum' | 'notes-eateries' (the neighborhood part's Field notes ways in).
+  // open_from_walking), 'picker', or 'notes-spot' | 'notes-museum' | 'notes-eateries' | 'notes-park' | 'notes-so-what' (the
+  // neighborhood part's Field notes ways in).
   function open(kind, { from } = {}) {
     normalize();
     if (kind === 'before') return openBefore(from);
@@ -344,7 +346,8 @@ export function createVisits(host, parts = {}) {
   // After every state change (game.js updateUI), and with adopted: true from game.js resetSession (a restart or an adopted save).
   // Godot _process: an active episode that is no longer available stops (Power ends and the dogs reset in place; the procession and
   // the election walk reset and close), and Cook & Share closes once the block is not open; a meal or episode screen that goes then
-  // closes the dialog without a word, focus to the canvas. Never act, updateUI or a draw.
+  // closes the dialog without a word, focus to the canvas. An episode's walk ends with it: host.stopWalk() stops the game's walk,
+  // which cancels the trip without a word (walkCancelled; a cancel is idempotent). Never act, updateUI or a draw.
   function sync({ adopted = false } = {}) {
     if (adopted) { const held = holds(); reset(); if (held) host.close(); return { reset: true, closed: held }; }
     const opened = host.getState()?.opened === true;
@@ -354,6 +357,7 @@ export function createVisits(host, parts = {}) {
     for (const id of picker.EPISODES) {
       if (!session.stories[id].active || picker.isAvailable(id, ctx)) continue;
       session.stories = picker.changeEpisode(session.stories, id, { type: 'unavailable' }, ctx).stories; changed = true;
+      if (session.trip === id) host.stopWalk();
     }
     if (!opened && session.meal.open) { session.meal = changeMeal(session.meal, SILENT).state; changed = true; }
     const gone = held && (screen === 'meal' ? !session.meal.open : episode && (!opened || !session.stories[screen].open));
@@ -451,8 +455,15 @@ export function createVisits(host, parts = {}) {
   }
   function bindEntry(kind) {
     // Field notes' neighborhood buttons go through open(), so stale flags close first; each acts only while it is in the open
-    // dialog (Field notes may have been replaced since it was drawn).
-    if (kind === 'notes') return NOTES.map(id => bindOnce(id, () => { const el = kit.$(id); if (el && host.modal.open && host.modal.contains(el)) open(id, { from: 'notes' }); })).every(Boolean);
+    // dialog (Field notes may have been replaced since it was drawn). Each opens a card in Field notes' place, so a held Enter or
+    // Space never presses one again (kit.noRepeat, once per button).
+    if (kind === 'notes') {
+      return NOTES.map(id => {
+        const bound = bindOnce(id, () => { const el = kit.$(id); if (el && host.modal.open && host.modal.contains(el)) open(id, { from: 'notes' }); });
+        if (bound) kit.noRepeat([id]);
+        return bound;
+      }).every(Boolean);
+    }
     return Object.hasOwn(OPENS, kind) && bindOnce(ENTRY[kind], OPENS[kind]);
   }
 

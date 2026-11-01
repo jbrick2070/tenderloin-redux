@@ -70,8 +70,13 @@ export function sourceLinesHTML(lines) {
 // The accessible name keeps the visible label first (WCAG 2.5.3, spec 3.11): Godot's name is aria-label when it starts with the
 // label (a whole word); otherwise the label is the name and Godot's name is the description, an sr-only span after the button
 // (the #reward-sounds-help precedent). description is Godot's tooltip text; tooltip is both that description and the title.
+// A label of one or two characters that are no word (the Election Walk's pins "1" and "2") says nothing as a name of its own:
+// there Godot's name is the name when it holds the label as a token ("Map pin 1: city address point"), which is what WCAG 2.5.3
+// asks (the name contains the visible label), and a screen reader says the pin rather than "1".
 const spoken = text => String(text ?? '').replace(/\s+/g, ' ').trim();
 const startsWithLabel = (name, label) => name.startsWith(label) && (name.length === label.length || /^[^\p{L}\p{N}]/u.test(name.slice(label.length)));
+const SHORT_LABEL = /^[^\p{L}]{1,2}$/u, TOKENS = /[\p{L}\p{N}]+|[^\p{L}\p{N}\s]+/gu;
+const holdsLabel = (name, label) => SHORT_LABEL.test(label) && (name.match(TOKENS) ?? []).includes(label);
 const UNSAFE_STYLE = /url\s*\(|expression\s*\(|@import|[<>\x22\x27\\]/i;
 // b = { id, label, name, description, tooltip, title, pressed, disabled, primary, className, style, rapid, hidden, visible }.
 // Godot's "\n" in a label is a line break; pressed renders aria-pressed when it is set; className adds classes (visits-pin);
@@ -81,7 +86,7 @@ export function btn(b) {
   const id = esc(b.id), label = spoken(b.label), name = spoken(b.name), notes = [];
   let aria = '';
   if (name && name !== label) {
-    if (!label || startsWithLabel(name, label)) aria = name;
+    if (!label || startsWithLabel(name, label) || holdsLabel(name, label)) aria = name;
     else { aria = label; notes.push(name); }
   } else if (String(b.label ?? '').includes('\n')) aria = label;
   const description = b.description ?? b.tooltip, title = b.title ?? b.tooltip;
@@ -167,6 +172,35 @@ export function freshSession() {
 // The two lazily loaded files and Godot's valid_source for each (power_place.gd, voting_story.gd).
 const VALIDATE = { power_place: validPowerPlace, voting_places: validVoting };
 const dataKey = name => String(name ?? '').replace(/\.json$/, '');
+// The fork's own bounds on a fetched place file, checked before Godot's valid_source, which pins the files rule for rule but checks
+// no Election Walk name or listed description and bounds no list. Every string a screen prints from the file must be a string, no
+// list may be longer than four times the real file's (browser-next/data: 2 sites, 20 streets with 95 points in all, one exterior
+// polygon whose ring has 7 points and 15 triangle indices, 6 Eddy points) and no coordinate may lie over 100 km out (the real
+// ones stay within 600 m). A tampered same-origin file is then invalid, final for the visit, never a TypeError in election.js
+// sourceText or a picture of millions of points (game.js host.load already refuses a file over 256 kB). A value valid_source
+// will refuse anyway (a missing list, a pair that is not two numbers) is left to it.
+const BOUNDS = { sites: 8, streets: 80, streetPoints: 380, polygons: 4, ring: 28, triangles: 60, eddy: 24, coordinate: 1e5 };
+const SITE_TEXT = ['id', 'name', 'address', 'room', 'eas_id', 'listed_description'], SITE_POINTS = ['xz', 'observation', 'lonlat', 'centerline'];
+const within = (list, max) => !Array.isArray(list) || list.length <= max;
+const plain = p => !Array.isArray(p) || (p.length <= 2 && p.every(n => typeof n !== 'number' || Math.abs(n) <= BOUNDS.coordinate));
+function inBounds(key, v) {
+  if (!v || typeof v !== 'object') return true;
+  if (key === 'voting_places') {
+    const sites = Array.isArray(v.sites) ? v.sites : [], streets = Array.isArray(v.streets) ? v.streets : [];
+    if (sites.length > BOUNDS.sites || streets.length > BOUNDS.streets) return false;
+    for (const site of sites) if (!site || typeof site !== 'object' || !SITE_TEXT.every(name => typeof site[name] === 'string') || !SITE_POINTS.every(name => plain(site[name]))) return false;
+    let points = 0;
+    for (const street of streets) {
+      const list = street?.points;
+      if (!Array.isArray(list)) continue;
+      if ((points += list.length) > BOUNDS.streetPoints || !list.every(plain)) return false;
+    }
+    return true;
+  }
+  const polygons = v.exterior?.polygons, polygon = Array.isArray(polygons) ? polygons[0] : null, ring = Array.isArray(polygon?.rings) ? polygon.rings[0] : null, eddy = v.eddy?.points;
+  if (!within(polygons, BOUNDS.polygons) || !within(ring, BOUNDS.ring) || !within(polygon?.triangles, BOUNDS.triangles) || !within(eddy, BOUNDS.eddy)) return false;
+  return ['junction', 'address_point', 'return_junction'].every(name => plain(v[name]?.xz)) && [ring, eddy].every(list => !Array.isArray(list) || list.every(plain));
+}
 const finite = p => !!p && Number.isFinite(p.x) && Number.isFinite(p.y);
 // One level deep: the lantern's per-frame tick returns a new object even when the player stood still.
 const sameState = (a, b) => a === b || (!!a && !!b && Object.keys(a).length === Object.keys(b).length
@@ -257,7 +291,7 @@ export function createKit(host, session = freshSession(), routes = {}) {
     try { request = Promise.resolve(host.load(`${key}.json`)); } catch (error) { request = Promise.reject(error); }
     const settled = request.then(value => {
       let valid = false;
-      try { valid = !!VALIDATE[key](value); } catch { valid = false; }
+      try { valid = inBounds(key, value) && !!VALIDATE[key](value); } catch { valid = false; }
       return valid ? { status: 'ready', value } : { status: 'invalid', value: null };
     }, () => ({ status: 'error', value: null })).then(next => {
       if (loads.get(key)?.entry === entry) loads.delete(key);

@@ -20,7 +20,11 @@ const SRC = read('browser-next/visits-episodes.js');
 const POWER_PLACE = JSON.parse(read('godot/data/power_place.json'));
 const VOTING = JSON.parse(read('godot/data/voting_places.json'));
 const GD_LITERALS = new Set(readdirSync(new URL('../godot/', import.meta.url)).filter(name => name.endsWith('.gd')).flatMap(name => gdStrings(gdSource(name))));
-const flush = async () => { for (let i = 0; i < 20; i++) await null; };
+// A macrotask: every microtask queued before it, and every one those queue in turn, has run by then (the episode screens set no
+// timer), so "draws nothing" means nothing, however long the promise chain before the draw.
+const flush = () => new Promise(resolve => setImmediate(resolve));
+// n microtask ticks: the old flush was ticks(20), kept only to show what it missed.
+const ticks = async n => { for (let i = 0; i < n; i++) await null; };
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; };
 const RECOVERY = '<section data-recovery><h2 id="modal-title">Some progress went back.</h2><button id="recover-save">Keep this tab’s progress</button></section>';
 const IDS = ['dogs', 'lantern', 'power', 'election'];
@@ -39,9 +43,11 @@ function buttonsOf(html) {
     return { id: attrs.id, attrs, shown, name: attrs['aria-label'] ?? shown, description: desc === undefined ? undefined : decode(desc) };
   });
 }
-// WCAG 2.5.3: the accessible name starts with the visible label; Godot's own name is the name or the description.
+// WCAG 2.5.3: the accessible name starts with the visible label, or, for a label of one or two characters that are no word (the
+// Election Walk's pins), holds it as a token of its own; Godot's own name is the name or the description.
+const token = (name, label) => /^[^\p{L}]{1,2}$/u.test(label) && [...name.matchAll(/[^\p{L}\p{N}\s]+|[\p{L}\p{N}]+/gu)].some(m => m[0] === label);
 function assertLabelInName(b, view = {}) {
-  assert.ok(b.name.startsWith(b.shown), `#${b.id}: the name ${JSON.stringify(b.name)} starts with the visible label ${JSON.stringify(b.shown)}`);
+  assert.ok(b.name.startsWith(b.shown) || token(b.name, b.shown), `#${b.id}: the name ${JSON.stringify(b.name)} starts with the visible label ${JSON.stringify(b.shown)}`);
   if (view.name != null && spoken(view.name) !== b.shown) assert.ok(b.name === spoken(view.name) || b.description?.includes(spoken(view.name)), `#${b.id}: Godot's name is the accessible name or its description`);
 }
 const spans = html => [...html.matchAll(/<span class="visits-label" style="([^"]*)">([^<]*)<\/span>/g)].map(m => ({ style: decode(m[1]), text: decode(m[2]) }));
@@ -100,11 +106,13 @@ function assertScreen(s, id) {
   }
   const all = buttonsOf(html), by = new Map(all.map(b => [b.id, b]));
   assert.deepEqual(all.map(b => b.id), expected.filter(e => e[2]).map(e => e[0]), 'every control in Godot\'s order, and no other');
+  // Power's relay tabs, while its story is active, are pressed for the relay on show (a declared 2D addition; Godot's are plain).
+  const pressed = (dom, item) => (dom.startsWith('power-tab-') ? (st.active ? item.index === st.station : undefined) : item.pressed);
   for (const [dom, item, visible] of expected) {
     const b = by.get(dom);
     if (!visible) { assert.equal(b, undefined, `#${dom} is not drawn`); continue; }
     assert.equal('disabled' in b.attrs, !!item.disabled, `#${dom} is disabled exactly when the view says so`);
-    assert.equal(b.attrs['aria-pressed'], item.pressed === undefined ? undefined : String(!!item.pressed), `#${dom} aria-pressed`);
+    assert.equal(b.attrs['aria-pressed'], pressed(dom, item) === undefined ? undefined : String(!!pressed(dom, item)), `#${dom} aria-pressed`);
     assert.equal(b.shown, spoken(item.label ?? ''), `#${dom} shows Godot's label`);
     assertLabelInName(b, item);
     assert.equal('data-rapid' in b.attrs, dom.startsWith('power-pad-'), `#${dom}: only the connector pads are rapid`);
@@ -206,7 +214,12 @@ test("names: the label stays first; Godot's names that do not start with it are 
   s.session.stories = { ...s.session.stories, election: { ...s.state('election'), observed: 3 } };
   s.click('election-make');
   assert.equal(s.state('election').phase, 2);
-  for (const pin of s.view('election').pins) described(`election-pin-${pin.index}`, pin.name);
+  // The pins show "1" and "2", which Godot's "Map pin n: city address point" holds: that is their name, not a description.
+  for (const pin of s.view('election').pins) {
+    named(`election-pin-${pin.index}`, pin.name);
+    const b = buttonsOf(s.io.html).find(x => x.id === `election-pin-${pin.index}`);
+    assert.deepEqual([b.shown, b.attrs['aria-describedby'], b.attrs.title], [String(pin.index + 1), undefined, pin.name]);
+  }
   s.click('election-end');
   s.screens.cancel('election');
   s.open('dogs');
@@ -559,6 +572,30 @@ test('Power Story: Missing dogs opens Two Dogs Home in place; More stories opens
   assert.deepEqual([s.shows(), s.state('power').open], [shows, true]);
 });
 
+// Godot's relay tabs are plain buttons (power_story.gd setup). In 2D the relay on show is pressed: aria-pressed and the kit's
+// selected look tell a screen reader and the eye which relay the reader, the pads and Check path are about. A declared 2D
+// accessibility addition; the hub's Festival, Larkin 2017 and Place map stay plain, as their reader says which one is on show.
+test("Power's relay tabs: the relay on show is pressed while the story is active (a declared 2D addition); the hub's tabs are plain", () => {
+  const s = setup();
+  const tabs = () => buttonsOf(s.io.html).filter(b => b.id.startsWith('power-tab-')).map(b => b.attrs['aria-pressed']);
+  s.open('power');
+  assert.deepEqual(tabs(), [undefined, undefined, undefined], 'Festival, Larkin 2017 and Place map');
+  s.click('power-begin');
+  assert.deepEqual(tabs(), ['true', 'false', 'false'], 'Relay 1 is on show');
+  for (const st of [2, 1, 0]) {
+    s.click(`power-tab-${st}`);
+    assert.deepEqual(tabs(), [0, 1, 2].map(i => String(i === st)), `Relay ${st + 1}`);
+    assert.equal(focused(s), `power-tab-${st}`, 'the pressed tab keeps the focus (Godot choose)');
+    assertScreen(s, 'power');
+  }
+  // The look is the kit's selected look (tests/next-visits-kit.test.mjs pins it to the hosting choices'); the names are Godot's.
+  assert.match(K.STYLE, /\.visits \[aria-pressed=true\]\{background:#d5e5ca;border:2px solid #23675c;/);
+  const v = s.view('power');
+  for (const t of v.tabs) assert.equal(buttonsOf(s.io.html).find(b => b.id === `power-tab-${t.index}`).name, spoken(t.name));
+  s.click('power-end');
+  assert.deepEqual(tabs(), [undefined, undefined, undefined], 'the story ended: the hub again');
+});
+
 // ---------------------------------------------------------------- Election Walk
 test('Election Walk: both sites, the paper map with its pins and placed labels, and Share with Bea', () => {
   const s = setup();
@@ -655,6 +692,19 @@ test('cancel is Escape, which is Back; silentClose clears the open flag without 
 });
 
 // ---------------------------------------------------------------- awaits
+test('flush() waits out a promise chain longer than 20 microtasks, which the old 20-tick flush returned before', async () => {
+  const s = setup();
+  s.host.music.toggle = async () => { await ticks(30); return 'Music playing.'; };
+  s.open('lantern');
+  const shows = s.shows();
+  s.click('lantern-music');
+  await ticks(20);
+  assert.equal(s.shows(), shows, 'after 20 ticks the screen that still holds the dialog is not redrawn yet: a "draws nothing" check would pass vacuously');
+  await flush();
+  assert.equal(s.shows(), shows + 1, 'flush() waits for it');
+  assert.deepEqual(s.log.at(-1), ['status', 'Music playing.']);
+});
+
 test('Music: Godot\'s line last after the redraw; a toggle that resolves after Back or under another screen draws nothing', async () => {
   for (const id of IDS) {
     const s = setup();
