@@ -31,6 +31,7 @@ import { createWorldVisits } from './visits-world.js';
 import { VISITS_FORK_TEXT } from './visits-kit.js';
 import { createSprites, tourMarkerLift, BEACON_LIFT } from './sprites.js';
 import { EDITION_URL, EDITION_TEXT, swapAction } from './edition.js';
+import { inputKey, readLanguageSettings, resolveStartup, loadCatalog, loadManifest, shippedLocales, setLocale, applyDocument, createSwitcher, diagnostics as i18nDiagnostics, localeMeta, offerParts, offerFor, languageChoices, languageLabel, boot, locale as activeLocale, escapeHTML, STORABLE } from './i18n.js';
 
 const $ = selector => document.querySelector(selector);
 const modal = $('#modal'), body = $('#modal-body'), canvas = $('#world');
@@ -61,13 +62,23 @@ try {
   settings.volume = cleanVolume(stored.volume);
   settings.rewardSounds = cleanRewardSounds(stored.rewardSounds);
   settings.experimental.neighborhoodVoices = stored.experimental?.neighborhoodVoices === true;
+  // docs/I18N_PLAN.md 2.9: language, languageOffer and addressForm, known values only. Absent means English, not chosen.
+  Object.assign(settings, readLanguageSettings(stored));
 } catch { /* Invalid preferences do not make a valid game save unavailable. */ }
 music.setVolume(settings.volume); rewards.setEnabled(settings.rewardSounds);
 document.documentElement.classList.toggle('reduced-motion', settings.reducedMotion);
+// Localization: the page starts in English. The URL (?lang=xx, &preview=1 for a locale not shipped yet) or the stored language
+// may name a locale, which init() loads beside the street data; the game never switches on its own (D6). shippedCodes: the
+// manifest's shipped locales, once read; localeBooted: the startup card has been drawn.
+const PAGE_TITLE = document.title, startupLocale = resolveStartup({ stored: settings, search: location.search, languages: navigator.languages });
+let shippedCodes = [], localeBooted = false;
+const localeSwitcher = createSwitcher({ load: (code, options) => code === 'en' ? { ok: true, code, catalog: null } : loadCatalog(code, options), apply: (result, code) => adoptLocale(result, code) });
 const settle = installPressSettle(document, window);
 let world, ways, toastTimeout, activeTool = 'table', activeMotif = 'sun', lastFrame = 0, lastHint = 0;
 // walkOwner is 'visit' while a side story owns the walk (its arrival goes to visits.walkEnded); walkName is where the walk goes.
 let walkTarget = null, walkPath = [], walkOwner = null, walkName = '', keys = new Set(), arrivedAt = null, nearAt = null, lastChapter = -1, cardQueued = false;
+// The movement key each physical key (event.code) went down as, so its keyup releases that key even if the layout changed.
+const heldCodes = new Map();
 let districtStatus = 'idle', districtPromise;
 // startupContinue: the open startup card's continue; walkOnClose: the movement key that dismissed it, walking once it closes.
 let startupContinue = null, walkOnClose = null;
@@ -357,7 +368,7 @@ function showChapterCard(startup = false, { announce } = {}) {
   const card = chapterCard(state, { startup, notice: chapterNotice }), id = startup ? 'begin' : 'chapter-continue';
   chapterNotice = '';
   lastChapter = card.num;
-  show(`<section data-chapter-card>${startup ? '<div class="welcome-art" aria-hidden="true"><span></span><span></span><span></span><span></span></div>' : ''}<span class="eyebrow">${startup ? 'WELCOME TO YOUR AFTERNOON' : 'A NEW CHAPTER ON THE BLOCK'}</span><h2 id="modal-title">${card.title}</h2><p>${card.body}</p>${startup ? `<div class="button-row">${visits.entryHTML('before')}</div>` : ''}<div class="button-row">${button(id, card.button, true)}</div>${startup ? '<div class="dialog-controls"><span><kbd>WASD</kbd> or arrows to walk</span><span><kbd>E</kbd> to talk / help</span></div><p class="footnote">Tap people or objects, choose a preparation, or use Meet the neighbors to walk over. Use + / − to zoom, drag to look around, and Follow me to find yourself. A fictional gathering on real street centerlines; scenery is an early approximation. Music is optional.</p>' : ''}</section>`);
+  show(`<section data-chapter-card>${startup ? '<div class="welcome-art" aria-hidden="true"><span></span><span></span><span></span><span></span></div>' : ''}<span class="eyebrow">${startup ? 'WELCOME TO YOUR AFTERNOON' : 'A NEW CHAPTER ON THE BLOCK'}</span><h2 id="modal-title">${card.title}</h2><p>${card.body}</p>${startup ? `<div class="button-row">${visits.entryHTML('before')}</div>` : ''}<div class="button-row">${button(id, card.button, true)}</div>${startup ? languageOfferHTML() : ''}${startup ? '<div class="dialog-controls"><span><kbd>WASD</kbd> or arrows to walk</span><span><kbd>E</kbd> to talk / help</span></div><p class="footnote">Tap people or objects, choose a preparation, or use Meet the neighbors to walk over. Use + / − to zoom, drag to look around, and Follow me to find yourself. A fictional gathering on real street centerlines; scenery is an early approximation. Music is optional.</p>' : ''}</section>`);
   $('#modal-status').textContent = announce ?? card.announcement;
   const returning = state.visited.length || Object.keys(state.mural).length;
   // Godot continue_story(true): the startup card's button, or W/A/S/D or an arrow key on it, starts the music unless it is
@@ -365,6 +376,7 @@ function showChapterCard(startup = false, { announce } = {}) {
   const go = () => { close(); if (startup && !music.enabled && !music.starting) music.start(); if (startup) toast(held ? savedMessage : returning && savedMessage ? savedMessage : 'Bea is just ahead. Tap her, or choose Meet the neighbors.'); };
   bind(id, go); startupContinue = startup ? go : null;
   // Godot's optional opening sits above Start Exploring, which keeps the focus (story_continue_btn.grab_focus).
+  if (startup) bindLanguageOffer();
   if (startup) { visits.bindEntry('before'); $('#begin').focus({ preventScroll: true }); }
 }
 function queueChapterCard() {
@@ -1000,13 +1012,64 @@ function finale() {
   show(`<span class="success-stamp">THE BLOCK IS OPEN</span><h2 id="modal-title">You made a little room.</h2>${wasOpen ? '' : `<p>${fmt(BLOCK_TEXT.opened, GATHERING_LAYOUT_TITLES[state.layout])}</p>`}<p>${state.layout === 'table' ? 'The long table fills with conversation. Bea leaves an extra chair at the end, and Dez keeps the rhythm easy enough to hear each other.' : 'The open floor fills with movement. Dez taps out a rhythm, Celeste starts a small dance, and Bea finds a seat with a good view.'}</p><p>Rook has the sound just right. The neighbor-made panel catches the afternoon light. Thanh smiles when the trumpet part comes in.</p><p>It’s one afternoon. The neighborhood’s bigger stories continue. For now, there’s room to be together.</p><div class="button-row">${button('stay-block', 'Stay a little longer ↗', true)}${button('finale-notes', 'Remember this afternoon')}</div><p class="footnote">First playable complete. You can keep walking, meet the other neighbors, discover the history stop, and revisit the mural. Your progress is saved in this browser, shared with the 3D edition.</p>`);
   bind('stay-block', close); bind('finale-notes', journal);
 }
+// Localization (docs/I18N_PLAN.md 2.5, 2.9). A failed load keeps English and says so; applying a locale sets <html lang dir>,
+// the title and [data-i18n] nodes and, on a switch, clears the transient messages. Only the screen that holds the language
+// control ([data-settings]) is drawn again; the startup offer row just goes.
+function startLocale() {
+  if (startupLocale.code !== 'en') return localeSwitcher.switchTo(startupLocale.code, { preview: startupLocale.preview });
+  if (startupLocale.offer) return loadManifest().then(manifest => { shippedCodes = shippedLocales(manifest); });
+  return null;
+}
+function adoptLocale(result, code) {
+  if (result.manifest) shippedCodes = shippedLocales(result.manifest);
+  const before = activeLocale();
+  if (result.ok && code !== 'en') setLocale(code, result.catalog, { preview: result.preview, rejected: result.rejected }); else setLocale('en');
+  if (activeLocale() !== before) applyLocale();
+  if (!result.ok && code !== 'en') toast(boot('failed', code, localeMeta(code)?.endonym ?? code));
+}
+function applyLocale() {
+  applyDocument(document, { title: PAGE_TITLE });
+  let badge = $('#preview-badge');
+  if (localeInfoPreview() && !badge) { badge = document.createElement('span'); badge.id = 'preview-badge'; badge.className = 'prototype-badge'; badge.lang = 'en'; badge.textContent = boot('preview', 'en'); $('#chapter-line').append(badge); }
+  else if (!localeInfoPreview() && badge) badge.remove();
+  if (!localeBooted) return;
+  clearTimeout(toastTimeout); $('#toast').classList.remove('show'); notice.textContent = ''; $('#route-status').textContent = '';
+  chapterNotice = ''; bubble = null; routeSpeech = null; if (world) world.bubble = null;
+}
+const localeInfoPreview = () => i18nDiagnostics().preview;
+function languageOfferHTML() {
+  const code = offerFor({ offer: startupLocale.offer, shipped: shippedCodes, settings, current: activeLocale() }); if (!code) return '';
+  const meta = localeMeta(code), parts = offerParts(code), endonym = `<span lang="${meta.html}">${escapeHTML(meta.endonym)}</span>`;
+  return `<div class="button-row language-offer" data-language-offer><p>${parts.own ? `<span lang="${meta.html}">${escapeHTML(parts.own)}</span> · ` : ''}${escapeHTML(parts.english)}</p>${button('language-accept', escapeHTML(boot('accept', code, '\u0000')).replace('\u0000', endonym))}${button('language-decline', escapeHTML(boot('decline', code)))}</div>`;
+}
+function bindLanguageOffer() {
+  const code = offerFor({ offer: startupLocale.offer, shipped: shippedCodes, settings, current: activeLocale() }); if (!code) return;
+  const done = () => { $('[data-language-offer]')?.remove(); $('#begin')?.focus({ preventScroll: true }); };
+  bind('language-accept', () => { done(); chooseLanguage(code); });
+  bind('language-decline', () => { settings.languageOffer = 'declined'; saveSettings(); done(); });
+}
+function languageRowHTML() {
+  const now = activeLocale(), codes = languageChoices(shippedCodes, now); if (!codes.length) return '';
+  return `<label class="settings-row" for="language" data-settings><span>${escapeHTML(languageLabel(now))}</span><select id="language">${codes.map(code => { const meta = localeMeta(code); return `<option value="${code}" lang="${meta.html}"${code === now ? ' selected' : ''}>${escapeHTML(meta.endonym)}</option>`; }).join('')}</select></label>`;
+}
+// A shipped locale (or English) is stored; a preview locale from the URL stays this visit's only.
+function chooseLanguage(code) {
+  if (!languageChoices(shippedCodes, activeLocale()).includes(code) && !(code === startupLocale.offer && shippedCodes.includes(code))) return;
+  if (code === 'en' || (STORABLE.includes(code) && shippedCodes.includes(code))) { settings.language = code; saveSettings(); }
+  localeSwitcher.switchTo(code, { preview: startupLocale.preview && code === startupLocale.code }).then(result => {
+    if (result.stale) return;
+    if (modal.open && body.querySelector('[data-settings]')) { showSettings(); $('#language')?.focus({ preventScroll: true }); }
+    if (result.ok) { const said = boot('switched', code, localeMeta(code).endonym); if (modal.open) modalStatus(said); else toast(said); }
+  });
+}
 function showSettings() {
-  show(`<span class="eyebrow">MAKE YOURSELF COMFORTABLE</span><h2 id="modal-title">Your afternoon.</h2><label class="settings-row" for="volume"><span>Music volume <span id="volume-number">${Math.round(settings.volume * 100)}%</span></span><input id="volume" data-rapid type="range" min="0" max="${MAX_VOLUME * 100}" value="${Math.round(settings.volume * 100)}"></label><div class="settings-row"><span id="reward-sounds-label">Reward sounds</span><button id="reward-sounds" class="secondary-button" aria-pressed="${settings.rewardSounds}" aria-describedby="reward-sounds-help" title="${SOUNDS_TEXT.tooltip}">${soundsLabel(settings.rewardSounds)}</button><span id="reward-sounds-help" class="sr-only">${SOUNDS_TEXT.tooltip}</span></div><label class="settings-row" for="motion"><span>Reduce ambient motion</span><input type="checkbox" id="motion" ${settings.reducedMotion ? 'checked' : ''}></label><p>Music is optional. Every preparation, conversation, and completion message works without sound.</p><fieldset class="experiment-settings"><legend>Experimental</legend><label class="settings-row" for="voices-enabled"><span>Neighborhood Voices · text only</span><input id="voices-enabled" type="checkbox" ${settings.experimental.neighborhoodVoices ? 'checked' : ''}></label><p>Three dated organization cards with official links. Off by default. You can turn this off at any time; your gathering stays the same. No TenderVoice code, recordings or interviews are included.</p><p id="voices-settings-status" role="status"></p></fieldset><div class="history-entry"><span class="eyebrow">YOUR SAVED AFTERNOON</span><p>${held ? SAVE_TEXT.held : storageAvailable ? 'Your progress stays in this browser, shared with the 3D edition of this site. After switching editions, reload the other one.' : 'Browser storage is unavailable. Progress will last in this tab.'}</p><div class="edition-row"><p id="swap-edition-settings-help">${EDITION_TEXT.help}</p><a id="swap-edition-settings" class="edition-link" href="${EDITION_URL}" aria-describedby="swap-edition-settings-help">${EDITION_TEXT.link}<span aria-hidden="true">↗</span></a></div><button id="restart" class="danger-button">${held ? 'Start over…' : 'Start a new afternoon…'}</button></div>`);
+  show(`<span class="eyebrow">MAKE YOURSELF COMFORTABLE</span><h2 id="modal-title">Your afternoon.</h2>${languageRowHTML()}<label class="settings-row" for="volume"><span>Music volume <span id="volume-number">${Math.round(settings.volume * 100)}%</span></span><input id="volume" data-rapid type="range" min="0" max="${MAX_VOLUME * 100}" value="${Math.round(settings.volume * 100)}"></label><div class="settings-row"><span id="reward-sounds-label">Reward sounds</span><button id="reward-sounds" class="secondary-button" aria-pressed="${settings.rewardSounds}" aria-describedby="reward-sounds-help" title="${SOUNDS_TEXT.tooltip}">${soundsLabel(settings.rewardSounds)}</button><span id="reward-sounds-help" class="sr-only">${SOUNDS_TEXT.tooltip}</span></div><label class="settings-row" for="motion"><span>Reduce ambient motion</span><input type="checkbox" id="motion" ${settings.reducedMotion ? 'checked' : ''}></label><p>Music is optional. Every preparation, conversation, and completion message works without sound.</p><fieldset class="experiment-settings"><legend>Experimental</legend><label class="settings-row" for="voices-enabled"><span>Neighborhood Voices · text only</span><input id="voices-enabled" type="checkbox" ${settings.experimental.neighborhoodVoices ? 'checked' : ''}></label><p>Three dated organization cards with official links. Off by default. You can turn this off at any time; your gathering stays the same. No TenderVoice code, recordings or interviews are included.</p><p id="voices-settings-status" role="status"></p></fieldset><div class="history-entry"><span class="eyebrow">YOUR SAVED AFTERNOON</span><p>${held ? SAVE_TEXT.held : storageAvailable ? 'Your progress stays in this browser, shared with the 3D edition of this site. After switching editions, reload the other one.' : 'Browser storage is unavailable. Progress will last in this tab.'}</p><div class="edition-row"><p id="swap-edition-settings-help">${EDITION_TEXT.help}</p><a id="swap-edition-settings" class="edition-link" href="${EDITION_URL}" aria-describedby="swap-edition-settings-help">${EDITION_TEXT.link}<span aria-hidden="true">↗</span></a></div><button id="restart" class="danger-button">${held ? 'Start over…' : 'Start a new afternoon…'}</button></div>`);
   $('#volume').addEventListener('input', event => { settings.volume = Number(event.target.value) / 100; music.setVolume(settings.volume); $('#volume-number').textContent = `${Math.round(settings.volume * 100)}%`; saveSettings(); });
   // Godot toggle_reward_sounds: Sounds On/Off in the fork's settings key; turning it off stops a chime at once. Godot's tooltip
   // is the button's description too (#reward-sounds-help), so it is not reachable by hover alone.
   bind('reward-sounds', () => { settings.rewardSounds = !settings.rewardSounds; rewards.setEnabled(settings.rewardSounds); saveSettings(); const control = $('#reward-sounds'); control.textContent = soundsLabel(settings.rewardSounds); control.setAttribute('aria-pressed', String(settings.rewardSounds)); $('#modal-status').textContent = soundsAnnouncement(settings.rewardSounds); });
   $('#motion').addEventListener('change', event => { settings.reducedMotion = event.target.checked; document.documentElement.classList.toggle('reduced-motion', settings.reducedMotion); saveSettings(); });
+  $('#language')?.addEventListener('change', event => chooseLanguage(event.target.value));
   $('#voices-enabled').addEventListener('change', event => setVoicesEnabled(event.target.checked)); voicesUI();
   bind('restart', () => confirmRestart(() => { showSettings(); const restartButton = $('#restart'); restartButton.focus({ preventScroll: true }); restartButton.scrollIntoView({ block: 'nearest' }); }));
   bindSwap($('#swap-edition-settings'), () => { showSettings(); const link = $('#swap-edition-settings'); link.focus({ preventScroll: true }); link.scrollIntoView({ block: 'nearest' }); });
@@ -1187,15 +1250,17 @@ modal.addEventListener('close', () => { keys.clear(); if (walkOnClose && !modal.
 // A held Escape is one Escape: its repeats never close the screen under the one it just left.
 window.addEventListener('keydown', event => { if (event.key === 'Escape' && event.repeat && modal.open) event.preventDefault(); }, { capture: true });
 window.addEventListener('keydown', event => {
-  const key = event.key.toLowerCase();
-  if (modal.open && world && !event.repeat && MOVE_KEYS.includes(key) && startupContinue && body.querySelector('[data-chapter-card] #begin')) { event.preventDefault(); walkOnClose = key; startupContinue(); return; }
+  // D13: KeyW/A/S/D/E and the arrows by position, so non-Latin layouts walk; every other key by its typed identity, as before.
+  const key = inputKey(event);
+  if (modal.open && world && !event.repeat && MOVE_KEYS.includes(key) && startupContinue && body.querySelector('[data-chapter-card] #begin')) { event.preventDefault(); walkOnClose = key; if (event.code) heldCodes.set(event.code, key); startupContinue(); return; }
   if (modal.open || !world) return;
   if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName) || document.activeElement?.isContentEditable) return;
   // A repeat of a key that is not walking is a key held through a dialog: only a fresh press walks.
-  if (MOVE_KEYS.includes(key)) { event.preventDefault(); if (!event.repeat || keys.has(key)) keys.add(key); }
+  if (MOVE_KEYS.includes(key)) { event.preventDefault(); if (!event.repeat || keys.has(key)) { keys.add(key); if (event.code) heldCodes.set(event.code, key); } }
   if ((key === 'e' || key === 'enter') && !event.repeat && !['BUTTON', 'A'].includes(document.activeElement?.tagName)) { event.preventDefault(); const nearest = world.nearest(); if (nearest) { stopWalk(); interact(nearest, 'talk'); } else toast('Walk a little closer to a neighbor or a marked object.'); }
 });
-window.addEventListener('keyup', event => { const key = event.key.toLowerCase(); keys.delete(key); if (walkOnClose === key) walkOnClose = null; });
+// A keyup releases its typed or positional identity and whatever its physical key went down as.
+window.addEventListener('keyup', event => { const key = inputKey(event), down = heldCodes.get(event.code); heldCodes.delete(event.code); keys.delete(key); if (down) keys.delete(down); if (walkOnClose === key || (down && walkOnClose === down)) walkOnClose = null; });
 // Godot reward_audio_unlocked: the first real key, mouse or touch press. Capture, so the press that acts can already chime.
 for (const type of ['keydown', 'mousedown', 'pointerdown', 'pointerup', 'touchend']) window.addEventListener(type, event => rewards.unlock(event), { capture: true, passive: true });
 window.addEventListener('blur', () => keys.clear());
@@ -1221,6 +1286,8 @@ $('#sound-toggle').addEventListener('click', toggleMusic);
 $('#music-button').addEventListener('click', showMusic);
 async function init() {
   try {
+    // A stored or linked locale (or, for the first-run offer, the manifest) loads beside the street data; it never throws.
+    const localeReady = startLocale();
     const response = await fetch('./data/streets.osm.json'); if (!response.ok) throw Error(`Street data: HTTP ${response.status}`);
     const data = await response.json(); ways = makeWays(data);
     if (!walkable(state.player, ways)) state.player = initialState().player;
@@ -1230,9 +1297,11 @@ async function init() {
     world = new World(canvas, ways, () => state, { click: (point, object) => object ? object.kind === 'visit' ? interact(object, 'tap') : goTo(object) : moveTo(point), tap: event => settle.tap(event), camera: cameraUI, reducedMotion: settings.reducedMotion, layers: mapLayers });
     cameraUI();
     updateUI();
+    if (localeReady) await localeReady;
+    localeBooted = true;
     showChapterCard(true); $('#loading').remove(); requestAnimationFrame(frame);
     // Read-only inspection for diagnostics; no production bypass for quest actions.
-    window.tenderloin = Object.freeze({ snapshot: () => structuredClone(state), location: () => ({ ...world.offset, scale: world.scale }), sound: () => ({ mode: music.fileName ? 'local' : 'sketch', enabled: music.enabled, starting: music.starting, fileName: music.fileName, volume: music.volume, position: music.position, error: music.error, mask: music.sketch.mask, summary: stemSummary(music.sketch.mask), frames: music.sketch.position(), engine: music.sketch.engine, rate: music.sketch.context?.sampleRate ?? null, muted: music.sketch.muted, rewardsEnabled: settings.rewardSounds, rewardsUnlocked: rewards.unlocked, rewardCount: rewards.count, rewardLastCue: rewards.lastCue, audition: rhythm.auditioning }), ending: () => ending.snapshot(), rhythm: () => rhythm.snapshot(), visits: () => visits.snapshot(), experiment: () => voicesHost.snapshot(), version: VERSION, edition: EDITION,
+    window.tenderloin = Object.freeze({ snapshot: () => structuredClone(state), location: () => ({ ...world.offset, scale: world.scale }), sound: () => ({ mode: music.fileName ? 'local' : 'sketch', enabled: music.enabled, starting: music.starting, fileName: music.fileName, volume: music.volume, position: music.position, error: music.error, mask: music.sketch.mask, summary: stemSummary(music.sketch.mask), frames: music.sketch.position(), engine: music.sketch.engine, rate: music.sketch.context?.sampleRate ?? null, muted: music.sketch.muted, rewardsEnabled: settings.rewardSounds, rewardsUnlocked: rewards.unlocked, rewardCount: rewards.count, rewardLastCue: rewards.lastCue, audition: rhythm.auditioning }), ending: () => ending.snapshot(), rhythm: () => rhythm.snapshot(), visits: () => visits.snapshot(), experiment: () => voicesHost.snapshot(), version: VERSION, edition: EDITION, i18n: () => i18nDiagnostics(),
       story: () => { chapterUI(); const goal = nextObjective(state, storyWorld()); return { chapter: currentChapter(state), line: $('#chapter-text').textContent, objective: { id: goal.id, text: goal.text }, card: chapterCardOpen() }; },
       save: () => ({ status: saveInfo.status, reason: saveInfo.reason, bytes: saveInfo.bytes, seq: saveSeq() }), pressSettle: () => settle.snapshot(),
       // The open conversation and the speech bubble on the frame clock (visible: drawn this frame).

@@ -255,6 +255,15 @@ Godot's reward banner, the on-screen half of its feel-good burst, is ported in `
   - Godot's fallback into an expanded Info panel is not ported: 2D has no Info panel.
   - `BURST_WEB_OVERRIDES` drops the key hints 2D does not bind: the keepsake detail is only "Press Shift+Y ..." and becomes empty, and "(Q)" and "(.)" leave the hosting and listening-circle details. The rest is Godot's text verbatim, its defects included (below).
 
+## Localization
+
+`docs/I18N_PLAN.md` is the design (Spanish, Vietnamese, Arabic and Thai, in that order); `i18n/README.md` is the contributor's guide. The foundation (I1) is built and no locale ships yet, so the game is English exactly as before.
+- `browser-next/i18n.js` holds the active locale and the runtime: catalog validation (`readCatalog`), same-origin loading with a size cap and the manifest's SHA-256 (`loadCatalog`), lookups (`L`, `t`, `html`), the shared formatter core (`format`), `plural`, `select`, `list`, `num`, `isolate`, `canvasFont` and the pseudo-locale transform. English is the identity: with no catalog every function returns today's value.
+- Catalogs are `browser-next/locales/<code>.json`, keyed by the English text the 2D edition shows; `locales/index.json` lists which ones ship. A string without a translation falls back to English.
+- The language is `language` (with `languageOffer` and `addressForm`) in the fork settings key. Unknown values mean English, and the shared save gains nothing. The game never switches on its own: a first-run offer appears only for a shipped locale, and `?lang=xx` (with `&preview=1` for one not shipped) is for links and QA and is never stored.
+- Movement and talk keys are positional (`event.code`): W, A, S, D and E walk and talk on Arabic, Thai, AZERTY and other layouts, as Godot's physical keys do. A US layout behaves as before.
+- `scripts/i18n.mjs` extracts `i18n/source.json` from the registered tables and checks the catalogs; `tests/next-i18n.test.mjs` and `tests/next-i18n-catalogs.test.mjs` run under `npm test`.
+
 ## Not ported, known limits and known debt
 
 - **Not ported yet.**
@@ -270,7 +279,6 @@ Godot's reward banner, the on-screen half of its feel-good burst, is ported in `
   - Larkin Street is not in `data/streets.osm.json`, so the map draws none where the Eddy corridor ends at the Larkin place.
   - Some story props are small at the 2D people's scale: a paper lantern is 5 by 6 map px, the election folio 9 by 6.5 and a shared platter 6 by 4.
   - The park's tree jitter assumes Godot 4's `String.hash()` is djb2 over code points. No Godot run checked it, so the tests pin the park's bounds, not the points.
-  - Keyboard layouts: movement keys and E read the typed character (`event.key`), not the physical key (`event.code`). On a layout without Latin letters, such as Arabic or Thai, only the arrow keys walk and only Enter interacts; on AZERTY the W, A, S and D letters walk but sit apart. Godot also reads the physical keys (`is_physical_key_pressed`), and `docs/I18N_PLAN.md` proposes `event.code` (its D13).
   - Map & source notes still title the map "Turk: Taylor to Hyde." and do not mention the Eddy corridor, Boeddeker Park or Larkin.
   - Godot source text defects, which the fork copies verbatim and the drift tests keep, for the creator: the reward banner's "Hosted Block Activity — %s" names the raw activity id ("Hosted Block Activity — beats"), "Neighbor Care — Returned %s" capitalizes the loan id ("Returned Paint-case"), and two banner details still say Celeste's "easel" where 2D paints on the mural (`main.gd` `trigger_progress_cue`); "Step %d of5: %s. %s" (`godot/shared_meal.gd` line 233, Cook & Share's step cue), "%d taps in eight slots" (`godot/hosted_afternoon.gd` lines 41 and 42, which reads "1 taps" for one beat) and "Surprise Found: Surprise Impromptu Drag Show!" (the drag show's title, `godot/main.gd` line 300, inside the find's heading "Surprise Found: %s", line 5724). After a fix in `godot/`, the drift tests name the fork's copies to update.
   - `npm run next:browser` is slow: a full run takes about 17 minutes, and its slowest steps are the side stories' long walks, most of them at 1440 px.
