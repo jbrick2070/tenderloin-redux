@@ -12,45 +12,60 @@ const WORKLET_URL = new URL('./sketch-worklet.js', import.meta.url).href;
 
 export class SketchPlayer {
   constructor({ volume = DEFAULT_VOLUME } = {}) {
-    this.context = null; this.master = null; this.node = null; this.engine = '';
+    this.context = null; this.master = null; this.node = null; this.engine = ''; this.building = null;
     this.enabled = false; this.starting = false; this.generation = 0; this.muted = false;
     this.volume = cleanVolume(volume); this.layers = {}; this.currentMask = 1;
     this.reported = { n: 0, at: 0 }; this.k = 0; // k: the fallback engine's own counter
   }
   get mask() { return this.currentMask; }
   get rate() { return this.context?.sampleRate || MIX_RATE; }
-  // One shared context for the sketch, the reward chimes and the drum bar.
+  // One shared context for the sketch, the reward chimes and the drum bar. Null when the browser has no Web Audio or refuses a
+  // context (Chrome caps open contexts): every caller then goes on silently. A context is kept only once its master is wired.
   ensureContext() {
     if (this.context) return this.context;
     const Context = globalThis.AudioContext || globalThis.webkitAudioContext;
     if (!Context) return null;
-    try { this.context = new Context({ sampleRate: MIX_RATE, latencyHint: 'interactive' }); }
-    catch { this.context = new Context(); }
-    this.master = this.context.createGain(); this.master.gain.value = 0; this.master.connect(this.context.destination);
-    return this.context;
+    let context = null;
+    try {
+      try { context = new Context({ sampleRate: MIX_RATE, latencyHint: 'interactive' }); }
+      catch { context = new Context(); }
+      const master = context.createGain(); master.gain.value = 0; master.connect(context.destination);
+      this.context = context; this.master = master;
+      return context;
+    } catch {
+      try { context?.close()?.catch?.(() => {}); } catch { /* a half-built context may refuse even close */ }
+      return null;
+    }
   }
-  async buildNode() {
-    if (this.node) return;
+  // One node however start() calls overlap: a start, stop and start while the worklet module loads waits for the first build.
+  buildNode() {
+    if (this.node) return Promise.resolve();
+    this.building ??= this.makeNode().finally(() => { this.building = null; });
+    return this.building;
+  }
+  async makeNode() {
     const ctx = this.context;
+    let node = null;
     if (ctx.audioWorklet && globalThis.AudioWorkletNode) {
       try {
         await ctx.audioWorklet.addModule(WORKLET_URL);
-        this.node = new AudioWorkletNode(ctx, 'tenderloin-sketch', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [1], processorOptions: { mask: this.currentMask, playing: false } });
-        this.node.port.onmessage = ({ data }) => { if (Number.isInteger(data?.n)) this.reported = { n: data.n, at: ctx.currentTime }; };
+        node = new AudioWorkletNode(ctx, 'tenderloin-sketch', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [1], processorOptions: { mask: this.currentMask, playing: false } });
+        node.port.onmessage = ({ data }) => { if (Number.isInteger(data?.n)) this.reported = { n: data.n, at: ctx.currentTime }; };
         this.engine = 'worklet';
-      } catch { this.node = null; }
+      } catch { node = null; }
     }
-    if (!this.node) {
-      const node = ctx.createScriptProcessor(1024, 0, 1);
+    if (!node) {
+      node = ctx.createScriptProcessor(1024, 0, 1);
       node.onaudioprocess = event => {
         const out = event.outputBuffer.getChannelData(0);
         if (!this.enabled) { out.fill(0); return; }
         this.k = renderSketch(out, this.k, this.currentMask, ctx.sampleRate);
         this.reported = { n: this.k, at: ctx.currentTime };
       };
-      this.node = node; this.engine = 'script';
+      this.engine = 'script';
     }
-    this.node.connect(this.master);
+    node.connect(this.master);
+    this.node = node;
   }
   async start() {
     const generation = ++this.generation; this.starting = true;

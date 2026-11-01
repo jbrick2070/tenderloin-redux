@@ -5,8 +5,13 @@ import * as sketch from '../browser-next/sketch-core.js';
 import * as rewards from '../browser-next/rewards.js';
 import * as rhythm from '../browser-next/rhythm.js';
 import { SketchPlayer } from '../browser-next/sketch-player.js';
+import { Soundtrack } from '../browser-next/soundtrack.js';
+import { createRhythm } from '../browser-next/rhythm-ui.js';
 import { initialState, applyAction, musicLayers } from '../browser-next/core.js';
 import { segmentTitle } from '../browser-next/story.js';
+import { buildGodotSave, freshEnvelope } from '../browser-next/godot-save.js';
+import { sceneReceipt } from '../browser-next/ending/mural.js';
+import { fakeDialog } from './next-fixtures.mjs';
 
 // --- Godot sources, read at test time: a changed Godot number, line or string fails here. ---
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
@@ -434,6 +439,66 @@ test('SketchPlayer: linear gain to 1.0, mute for the drum bar, mask and position
   assert.equal(player.position(), 22050);
   player.enabled = false; player.applyGain(); assert.equal(player.master.gain.value, 0);
 });
+// Swaps the Web Audio globals for one test and restores them after.
+async function withAudio(globals, fn) {
+  const saved = Object.fromEntries(Object.keys(globals).map(key => [key, globalThis[key]]));
+  Object.assign(globalThis, globals);
+  try { await fn(); } finally { for (const [key, value] of Object.entries(saved)) { if (value === undefined) delete globalThis[key]; else globalThis[key] = value; } }
+}
+const flush = async () => { for (let i = 0; i < 20; i++) await null; };
+// Chrome refuses a context past its hardware limit, and a context can fail half-built: either way the music stays off, a chime
+// is counted silently as Godot counts it without an audio device, and Play Bar does nothing instead of throwing.
+test('a refused AudioContext never aborts an action: no context, no music, a silent chime, a quiet Play Bar', async () => {
+  const made = [], closed = [];
+  class Refused { constructor() { throw new DOMException('The number of hardware contexts provided (6) is greater than or equal to the maximum bound (6).', 'NotSupportedError'); } }
+  class NoGain { constructor() { this.destination = {}; made.push(this); } createGain() { throw new DOMException('No gain', 'InvalidStateError'); } close() { closed.push(this); return Promise.resolve(); } }
+  const practice = hostedState(3), refusing = new rewards.RewardPlayer(() => { throw new DOMException('Refused', 'NotSupportedError'); });
+  refusing.unlock({ type: 'keydown', key: 'e', repeat: false, isTrusted: true });
+  assert.equal(refusing.play({ id: 'mural_motif', reason: 'sun', sounds: true }), true, 'a context getter that throws is a silent chime');
+  assert.deepEqual([refusing.count, refusing.lastCue], [1, 'mural_motif']);
+  for (const Context of [Refused, NoGain]) await withAudio({ AudioContext: Context }, async () => {
+    const player = new SketchPlayer();
+    assert.equal(player.ensureContext(), null, `${Context.name}: ensureContext returns null`);
+    assert.deepEqual([player.context, player.master], [null, null], `${Context.name}: nothing half-built is kept`);
+    assert.equal(await player.start(), false, `${Context.name}: the music does not start`);
+    const music = new Soundtrack({ sketch: player, hidden: () => false });
+    assert.deepEqual([await music.start(), music.error], [false, 'Audio is unavailable in this browser. All activities still work.']);
+    const chimes = new rewards.RewardPlayer(() => player.ensureContext());
+    chimes.unlock({ type: 'keydown', key: 'e', repeat: false, isTrusted: true });
+    assert.equal(chimes.play({ id: 'neighbor_visit', reason: 'Bea', sounds: true }), true, `${Context.name}: the chime does not throw`);
+    assert.deepEqual([chimes.count, chimes.lastCue], [1, 'neighbor_visit'], `${Context.name}: the count and last cue still advance`);
+    const dialog = fakeDialog(), statuses = [];
+    const circle = createRhythm({ ...dialog, getState: () => practice, show: dialog.show, status: text => statuses.push(text), toast() {}, act: () => true, music: { enabled: true, starting: false, fileName: '', sketch: player },
+      volume: () => 0.7, unlocked: () => true, toggleMusic: async () => {}, receipt: () => 'Saved in this browser.', objective: () => '', sparks: () => 0, stopWalk() {}, lastChapter: () => false, afterClose: () => dialog.close() });
+    assert.equal(circle.open('block'), true);
+    dialog.click('rhythm-play-bar');
+    assert.deepEqual([circle.auditioning, player.muted], [false, false], `${Context.name}: Play Bar plays nothing and leaves the sketch unmuted`);
+  });
+  assert.ok(made.length > 0 && closed.length === made.length, 'every half-built context is closed');
+});
+test('SketchPlayer builds one node when start, stop and start overlap while the worklet module loads', async () => {
+  for (const loads of [true, false]) {
+    const nodes = [], modules = [];
+    class Node { constructor() { this.connected = 0; this.port = { postMessage() {} }; nodes.push(this); } connect() { this.connected++; } disconnect() { this.connected = 0; } }
+    class Context {
+      constructor() { this.sampleRate = 22050; this.currentTime = 0; this.destination = {}; this.audioWorklet = { addModule: () => new Promise((resolve, reject) => modules.push({ resolve, reject })) }; }
+      createGain() { return { gain: { value: 0, setTargetAtTime(v) { this.value = v; } }, connect() {} }; }
+      createScriptProcessor() { return new Node(); }
+      resume() { return Promise.resolve(); }
+    }
+    await withAudio({ AudioContext: Context, AudioWorkletNode: Node }, async () => {
+      const player = new SketchPlayer(), first = player.start();
+      await flush(); player.stop();
+      const second = player.start();
+      await flush();
+      assert.equal(modules.length, 1, 'the second start waits for the module the first is loading');
+      if (loads) modules[0].resolve(); else modules[0].reject(Error('network'));
+      assert.deepEqual(await Promise.all([first, second]), [null, true], 'the stopped start gives way to the second');
+      assert.deepEqual([nodes.length, nodes[0].connected, player.node === nodes[0], player.engine], [1, 1, true, loads ? 'worklet' : 'script'], `one node (${loads ? 'worklet' : 'ScriptProcessor fallback'})`);
+      if (!loads) { nodes[0].onaudioprocess({ outputBuffer: { getChannelData: () => new Float32Array(1024) } }); assert.equal(player.k, 1024, 'one quantum advances the sketch by 1024 samples'); }
+    });
+  }
+});
 
 // --- Units: rewards. ---
 test('rewardSamples: length, the 0.138 peak bound and the arpeggio lookup', () => {
@@ -615,6 +680,8 @@ test('Rhythm Circle hosting: toggles and Listen are host-beat actions; Complete 
   assert.deepEqual(r.actions, [{ type: 'host-beat', step: 0 }]); assert.equal(r.message, 'Step 1: rest. Saved to Godot storage.');
   for (const a of r.actions) s = applyAction(s, a);
   assert.equal(s.hosting.draft.pattern, 84);
+  assert.equal(r.done?.(s, 'Visit-only: test; reload may lose changes.').message, 'Step 1: rest. Visit-only: test; reload may lose changes.', "done() builds Godot's message from the state and the receipt after the write");
+  assert.equal(rhythm.listen(s, r.session).done?.(s, 'Saved in this browser.').message, 'Listening round. No performance needed; this is an equally complete choice. Saved in this browser.');
   r = rhythm.listen(s, r.session, { receipt: 'Visit-only: test; reload may lose changes.' });
   assert.deepEqual(r.actions.map(a => a.step), [2, 4, 6]); assert.equal(r.message, 'Listening round. No performance needed; this is an equally complete choice. Visit-only: test; reload may lose changes.');
   for (const a of r.actions) s = applyAction(s, a);
@@ -627,6 +694,76 @@ test('Rhythm Circle hosting: toggles and Listen are host-beat actions; Complete 
   const last = applyAction(done, { type: 'host-complete', id: 'art' });
   assert.deepEqual(rhythm.afterComplete(last), { notice: 'Second Afternoon Complete! 4/4 activities hosted. ', announce: '' });
   assert.deepEqual(rhythm.afterComplete(last, { lastChapter: true }), { notice: '', announce: '' });
+});
+// The Rhythm Circle's DOM side on a stand-in dialog: host is game.js's, with these defaults.
+function circleHost(dialog, over = {}) {
+  const statuses = [], toasts = [];
+  const host = { ...dialog, show: dialog.show, getState: () => hostedState(2), status: text => statuses.push(text), toast: text => toasts.push(text), act: () => true,
+    music: { enabled: false, starting: false, fileName: '', sketch: { ensureContext: () => null, mute() {}, position: () => 0 } }, volume: () => 0.7, unlocked: () => true,
+    toggleMusic: async () => {}, receipt: () => 'Saved in this browser.', objective: () => '', sparks: () => 0, stopWalk() {}, lastChapter: () => false, afterClose: () => dialog.close(), ...over };
+  return { host, statuses, toasts, circle: createRhythm(host) };
+}
+const RECOVERY = '<section data-recovery><h2 id="modal-title">Some progress went back.</h2><button id="recover-save">Keep this tab’s progress</button></section>';
+test('Rhythm Circle: a redraw that waits draws nothing once the circle is closed or covered', async t => {
+  let settle;
+  const pending = () => new Promise(resolve => { settle = resolve; });
+  await t.test('Music, then Back before the music has started: the circle is not drawn again with a Back that does nothing', async () => {
+    const dialog = fakeDialog(), c = circleHost(dialog, { toggleMusic: pending });
+    c.circle.open('hosting'); dialog.click('rhythm-music'); dialog.click('rhythm-back');
+    settle(); await flush();
+    assert.deepEqual([dialog.modal.open, c.circle.isOpen], [false, false]);
+  });
+  await t.test('Music, then the recovery offer covers the circle before the music has started: the offer stays on top', async () => {
+    const dialog = fakeDialog(), c = circleHost(dialog, { toggleMusic: pending });
+    c.circle.open('hosting'); dialog.click('rhythm-music'); dialog.show(RECOVERY);
+    settle(); await flush();
+    assert.deepEqual([dialog.heading(), dialog.has('recover-save')], ['Some progress went back.', true]);
+  });
+  await t.test("a pad whose act() closed the circle (sync: another tab's save has no Rhythm Circle) draws nothing after it", () => {
+    const dialog = fakeDialog();
+    let s = hostedState(2), c;
+    c = circleHost(dialog, { getState: () => s, act: () => { s = initialState(); c.circle.sync(); return true; } });
+    c.circle.open('hosting'); dialog.click('rhythm-pad-2');
+    assert.deepEqual([dialog.modal.open, c.circle.isOpen, c.statuses.some(line => line.startsWith('Step 3'))], [false, false, false]);
+  });
+  await t.test('a drum bar that ends under the recovery offer unmutes the sketch and draws nothing', () => {
+    const sources = [], muted = [], ctx = { currentTime: 0, destination: {}, createBuffer: (channels, length) => ({ getChannelData: () => new Float32Array(length) }), createGain: () => ({ gain: { value: 1 }, connect() {}, disconnect() {} }), createBufferSource: () => { const source = { connect() {}, disconnect() {}, start() {}, stop() {} }; sources.push(source); return source; } };
+    const dialog = fakeDialog(), c = circleHost(dialog, { music: { enabled: true, starting: false, fileName: '', sketch: { ensureContext: () => ctx, mute: on => muted.push(on), position: () => 0 } } });
+    c.circle.open('hosting'); dialog.click('rhythm-play-bar');
+    assert.deepEqual([c.circle.auditioning, sources.length, muted], [true, 1, [true]], 'the bar plays with the sketch muted');
+    dialog.show(RECOVERY); sources[0].onended();
+    assert.deepEqual([dialog.heading(), dialog.has('recover-save'), c.circle.auditioning, muted], ['Some progress went back.', true, false, [true, false]]);
+  });
+});
+test("Rhythm Circle: a pad's message is Godot's, built after the write: that write's receipt, and none for a press act() refused", () => {
+  // tests/next-save: a save padded so that a two-digit beats pattern fits Godot's budget and a three-digit one does not.
+  let state = hostedState(2);
+  const withPattern = pattern => ({ ...state, hosting: { ...state.hosting, draft: { ...state.hosting.draft, pattern } } });
+  const padded = pad => ({ ...buildGodotSave(freshEnvelope(), state).envelope, optional: { pad: 'x'.repeat(pad) } });
+  let lo = 0, hi = 4096;
+  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (buildGodotSave(padded(mid), withPattern(127)).ok) lo = mid; else hi = mid - 1; }
+  let envelope = padded(lo + 1), reason = '';
+  assert.deepEqual([buildGodotSave(envelope, withPattern(95)).ok, buildGodotSave(envelope, withPattern(127)).reason], [true, 'full']);
+  // game.js act() and commit(): the reducer, then the write; a refused write leaves the reason sceneReceipt reports.
+  const act = action => { const next = applyAction(state, action); if (next === state) return false; state = next; const out = buildGodotSave(envelope, state); if (out.ok) { envelope = out.envelope; reason = ''; } else reason = out.reason === 'full' ? 'save full' : 'not saved'; return true; };
+  const dialog = fakeDialog(), t = circleHost(dialog, { getState: () => state, act: action => act(action), receipt: () => sceneReceipt(reason) });
+  t.circle.open('hosting');
+  for (const step of [1, 3, 5]) dialog.click(`rhythm-pad-${step}`);
+  assert.deepEqual(t.statuses.slice(-3), ['Step 2: hit. Saved in this browser.', 'Step 4: hit. Saved in this browser.', 'Step 6: hit. Visit-only: save full; reload may lose changes.'], 'the refused write says so on the press that made it');
+  assert.equal(t.circle.snapshot().message, 'Step 6: hit. Visit-only: save full; reload may lose changes.');
+  // A press another tab's newer save took back (game.js persist: "Your last change no longer applies"): its notice stands alone.
+  t.host.act = () => { t.host.toast('The shared save was cleared in another tab. A fresh afternoon is ready. Your last change no longer applies, so it was not saved.'); return false; };
+  const said = t.statuses.length;
+  dialog.click('rhythm-pad-7');
+  assert.deepEqual([t.statuses.length, t.circle.snapshot().message, t.toasts.length], [said, 'Step 6: hit. Visit-only: save full; reload may lose changes.', 1], 'no hit and no receipt for a press that did not happen');
+  // A press rebased onto another tab's pattern reads the step as the save now holds it, as Godot reads pattern() after the toggle.
+  for (const [mine, theirs, word] of [[87, 85, 'hit'], [85, 87, 'rest']]) {
+    state = withPattern(mine); envelope = buildGodotSave(freshEnvelope(), state).envelope;
+    const stored = withPattern(theirs);
+    t.host.act = action => { state = stored; return act(action); };
+    dialog.click('rhythm-pad-1');
+    assert.deepEqual([state.hosting.draft.pattern, t.statuses.at(-1)], [theirs ^ 2, `Step 2: ${word}. Saved in this browser.`], `this tab ${mine}, the stored save ${theirs}`);
+  }
 });
 test('Rhythm Circle labels, reader text, lamps and the step highlight', () => {
   const s = hostedState(3), session = { ...rhythm.openCircle(s).session, stepCues: true };

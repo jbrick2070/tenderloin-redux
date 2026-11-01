@@ -519,3 +519,47 @@ test('a whole ending run leaves the stored save byte-identical except mural_scen
   for (const e of [a, z]) { delete e.mural_scenes; delete e.save_seq; }
   assert.equal(JSON.stringify(z), JSON.stringify(a), 'everything else is byte-identical');
 });
+
+// ---------- The DOM side (ending/ui.js) on a stand-in dialog: a redraw that waits draws only the stage still on screen ----------
+import { createEnding } from '../browser-next/ending/ui.js';
+import { fakeDialog } from './next-fixtures.mjs';
+function endingHost(dialog, state, over = {}) {
+  return { ...dialog, show: dialog.show, close: () => dialog.close(), getState: () => state, status() {}, toast() {}, stopWalk() {}, reducedMotion: () => false, chapterText: () => '', act() {},
+    sceneAdmission: () => true, saveReason: () => '', settle: { tap() {} }, music: { label: () => 'Music: Off', on: () => false, toggle: async () => {} }, filmButtonLabel: () => 'A little film on the block',
+    openDraft() {}, openPosted() {}, openMural: () => dialog.show('<h2 id="modal-title">Many hands. One mural.</h2><button id="mural-scenes">Paint Scenes</button>'), ...over };
+}
+const RECOVERY = '<section data-recovery><h2 id="modal-title">Some progress went back.</h2><button id="recover-save">Keep this tab’s progress</button></section>';
+// The habitat room to the orbital commons, pressed as tests/next-browser.mjs phase 2 presses it.
+const TO_ORBIT = ['room-item-0', 'room-place-0', 'room-assist', 'room-item-2', 'room-place-1', 'room-assist', 'room-item-1', 'room-place-2', 'room-assist', 'room-assist', 'room-assist',
+  'room-item-0', 'room-place-2', 'room-assist', 'room-place-0', 'room-assist', 'room-item-2', 'room-place-1', 'room-assist', 'room-item-1', 'room-place-2', 'room-assist', 'room-assist', 'room-assist',
+  'room-place-0', 'room-place-1', 'room-assist'];
+test('ending: a redraw that waits draws only the stage still on screen', async t => {
+  let settle;
+  const music = { label: () => 'Music: Off', on: () => false, toggle: () => new Promise(resolve => { settle = resolve; }) }, flush = async () => { for (let i = 0; i < 20; i++) await null; };
+  await t.test('Mural Stories: Music, then Back to Mural before the music has started', async () => {
+    const dialog = fakeDialog(), ending = createEnding(endingHost(dialog, full(), { music }));
+    assert.equal(ending.open('stories'), true); dialog.click('ending-music'); dialog.click('scene-back');
+    settle(); await flush();
+    assert.deepEqual([ending.stage, dialog.heading()], [null, 'Many hands. One mural.']);
+  });
+  await t.test('the hosted view: Music, then Back', async () => {
+    const dialog = fakeDialog(), ending = createEnding(endingHost(dialog, full(), { music }));
+    assert.equal(ending.open('hosted'), true); dialog.click('ending-music'); dialog.click('hosted-back');
+    settle(); await flush();
+    assert.deepEqual([ending.stage, dialog.modal.open], [null, false]);
+  });
+  await t.test('the screening: Music, then Helper workshop', async () => {
+    const dialog = fakeDialog(), ending = createEnding(endingHost(dialog, full(), { music }));
+    assert.equal(ending.open('screening'), true); dialog.click('ending-music'); dialog.click('screen-helper');
+    settle(); await flush();
+    assert.deepEqual([ending.stage, dialog.has('bench-assist')], ['bench', true]);
+  });
+  await t.test('the orbital commons: the recovery offer covers a walk in progress', () => {
+    const dialog = fakeDialog(), ending = createEnding(endingHost(dialog, full()));
+    assert.equal(ending.open('room'), true); for (const id of TO_ORBIT) dialog.click(id);
+    assert.equal(ending.stage, 'orbit');
+    dialog.click('orbit-0'); dialog.frames(3); assert.equal(ending.snapshot().moving, true, 'walking to the first destination');
+    dialog.show(RECOVERY); dialog.frames(600);
+    assert.deepEqual([dialog.heading(), dialog.has('recover-save'), ending.snapshot().moving], ['Some progress went back.', true, false], 'the walk halts under the offer and draws nothing over it');
+  });
+});

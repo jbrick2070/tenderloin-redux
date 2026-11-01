@@ -75,6 +75,10 @@ const rhythm = createRhythm({ doc: document, win: window, modal, getState: () =>
 // Godot's session-only talk counters (characters.js freshTalk; Celeste's is the saved celesteTalks) and the one shared
 // speech bubble with its live-region mirror (routeSpeech, read by hint()).
 let talks = freshTalk(), bubble = null, routeSpeech = null;
+// This visit's session-only state: talk turns, the last arrival, a pending chapter notice and the speech bubble. Start fresh
+// starts it over, and so does a stored save that replaces this tab's state (from another tab or edition, or Use the shared
+// save), as Godot's load does. An action rebased onto a newer save keeps it.
+function resetSession() { talks = freshTalk(); arrivedAt = nearAt = null; chapterNotice = ''; bubble = null; routeSpeech = null; }
 let voicesModulePromise, voicesImportAttempt = 0;
 const voicesHost = new ExperimentHost({
   load: async scope => {
@@ -139,8 +143,9 @@ function adoptSave(result, raw, keep) {
 // Another tab or the 3D edition may have written since the last load or write. Returns the stored save when it changed.
 // A save that lost forward-only progress (a 3D tab opened earlier, or a restart there) is offered back: this tab keeps showing
 // its own progress until the player chooses. The offer is withdrawn when the stored save is cleared (someone started over),
-// becomes unreadable, or holds this tab's progress again.
-function reread() {
+// becomes unreadable, or holds this tab's progress again. A stored save that replaces this tab's state starts the session
+// over, unless an action is about to be rebased onto it (rebase).
+function reread({ rebase = false } = {}) {
   let raw;
   try { raw = localStorage.getItem(SAVE_KEY); } catch { storageAvailable = false; return null; }
   if (raw === lastRaw) return null;
@@ -149,6 +154,7 @@ function reread() {
   if (recovery && (!loaded || !lostProgress(ownEnvelope(before), result.envelope))) { recovery = null; if (modal.open && body.querySelector('[data-recovery]')) close(); }
   else if (!recovery && loaded && lostProgress(base, result.envelope)) recovery = { envelope: base, scenes };
   if (recovery) state = before;
+  else if (state !== before && !rebase) resetSession();
   ending.sync({ adopted: true });
   return { result, before };
 }
@@ -165,7 +171,7 @@ const savedFields = s => JSON.stringify(FORK_FIELDS.map(key => s[key]));
 const photoLayout = () => (recovery ? recovery.envelope : envelope)?.epilogue?.photo?.layout;
 // False when the action no longer applies to a save another tab or edition wrote first, so nothing was written for it.
 function persist(action) {
-  const changed = reread();
+  const changed = reread({ rebase: true });
   if (recovery) { updateUI(); offerRecovery(); return true; }
   if (changed && !held) {
     // Rebase: the same action on the stored progress. Nothing to write when it changes nothing there.
@@ -201,15 +207,17 @@ function recover() {
   if (!recovery) { if (changed) notify(syncNotice(changed)); return; }
   const out = combineSaves(envelope, state, recovery.envelope, recovery.scenes);
   if (!out.ok || !commit(out)) { offerRecovery(KEEP_REFUSED[out.ok ? 'storage' : out.reason] || KEEP_REFUSED.other); return; }
-  // Scenes this tab had only adopted now follow the combined save; scenes it painted or lifted stay its own.
-  loadedScenes = JSON.stringify(state.muralScenes) === JSON.stringify(recovery.scenes) ? out.state.muralScenes : recovery.scenes;
+  // Slots this tab had only adopted now follow the combined save; slots it painted or lifted stay its own (combineSaves).
+  loadedScenes = out.loadedScenes;
   recovery = null; state = { ...out.state, player: state.player, litter: state.litter }; close(); updateUI();
   notify('This tab’s progress is back, combined with the shared save. Reload the other edition before you play it again.');
 }
 function declineRecovery() {
   const changed = reread();
   if (!recovery) { if (changed) notify(syncNotice(changed)); return; }
-  recovery = null; adoptSave(parseGodotSave(lastRaw, { initialState }), lastRaw, state); close(); updateUI();
+  recovery = null; adoptSave(parseGodotSave(lastRaw, { initialState }), lastRaw, state); close();
+  // The shared save replaces this tab's progress as a load does: this visit's session and the ending's copies start over.
+  resetSession(); ending.sync({ adopted: true }); updateUI();
   notify('The shared save stays as it is. Reload the other edition after switching.');
 }
 const SAVE_TEXT = { fresh: 'Progress saves in this browser, shared with the 3D edition.', loaded: 'Your afternoon is saved in this browser, shared with the 3D edition.', saved: 'Saved in this browser. Your afternoon can wait.', held: 'The shared save could not be read, so it is kept as it is and nothing is saved. Start over to replace it; that also resets the 3D edition.', pending: 'Some progress went back. This tab’s progress is not saved until you choose to keep it or use the shared save.' };
@@ -802,8 +810,8 @@ function confirmRestart(back) {
 }
 function restart() {
   try { localStorage.removeItem(SAVE_KEY); storageAvailable = true; } catch { storageAvailable = false; }
-  state = initialState(); held = false; envelope = freshEnvelope(); lastRaw = null; loadedScenes = {}; savedMessage = ''; arrivedAt = nearAt = null; recovery = null; saveInfo = { status: 'fresh', reason: null, bytes: 0 };
-  talks = freshTalk(); bubble = null; routeSpeech = null; ending.reset(); rhythm.stop(); chapterNotice = '';
+  state = initialState(); held = false; envelope = freshEnvelope(); lastRaw = null; loadedScenes = {}; savedMessage = ''; recovery = null; saveInfo = { status: 'fresh', reason: null, bytes: 0 };
+  resetSession(); ending.reset(); rhythm.stop();
   stopWalk(); if (world) { world.camera.overview(); if (world.width < 600) world.camera.follow(state.player); cameraUI(); }
   updateUI(); close(); toast('A fresh afternoon. Bea is ready when you are.');
 }

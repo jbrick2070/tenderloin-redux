@@ -8,7 +8,7 @@
 //   music,                        the Soundtrack (enabled, starting, fileName, sketch: SketchPlayer)
 //   volume(), unlocked(),         the music volume 0-1 and Godot's reward_audio_unlocked (the first real press)
 //   toggleMusic(),                Godot toggle_music_playback
-//   receipt(),                    Godot save_receipt in the fork's words
+//   receipt(),                    Godot save_receipt in the fork's words, read after the write it reports
 //   objective(), sparks(),        the current objective text and spark_count
 //   stopWalk(), lastChapter(),    stop the street walk first; true when the current chapter is the story's last
 //   afterClose(origin, text, notice),   return to where the circle was opened from ('hosting' or 'block') with an
@@ -41,6 +41,9 @@ export function createRhythm(host) {
   const mode = () => host.music.fileName ? 'local' : 'sketch';
   const auditioning = () => !!audition;
   const pattern = () => circlePattern(state(), session);
+  // A redraw that waits (for the music to start, for a bar to end) only while the circle still holds the dialog: Back or × may
+  // have closed it, or another screen, such as the recovery offer, may have replaced it in the same dialog.
+  const onScreen = () => open && modal.open && modal.contains($('rhythm-reader'));
 
   function lampSVG(step) {
     const ls = lamps(pattern(), step);
@@ -50,9 +53,9 @@ export function createRhythm(host) {
     const opts = options(session, { musicPlaying: musicPlaying(), auditioning: auditioning() });
     const text = readerText(session.message, { mode: mode(), localName: host.music.fileName });
     host.show(`<section class="rhythm" data-rhythm><p class="eyebrow rhythm-credit">${esc(RHYTHM_TEXT.credit)}</p><h2 id="modal-title" tabindex="-1">${esc(heading(session))}</h2><p class="rhythm-objective">${esc(objectiveLine(host.objective(), host.sparks()))}</p><figure id="rhythm-figure" style="margin:0">${lampSVG(currentStep())}</figure><div id="rhythm-reader" class="rhythm-reader" tabindex="0" role="region" aria-label="Rhythm Circle text">${text.split('\n').map(line => `<p>${esc(line)}</p>`).join('')}</div><div class="rhythm-pads" role="group" aria-label="Eight steps">${pads(pattern()).map(p => `<button id="rhythm-pad-${p.step}" class="secondary-button" aria-pressed="${p.hit}" aria-label="${esc(p.name)}">${label(p.label)}</button>`).join('')}</div><div class="rhythm-options">${opts.map(o => `<button id="rhythm-${o.id}" class="secondary-button"${o.name ? ` aria-label="${esc(o.name)}"` : ''}>${label(o.label)}</button>`).join('')}</div></section>`);
-    for (let i = 0; i < 8; i++) bind(`rhythm-pad-${i}`, () => edit(toggleStep(state(), session, i, { receipt: host.receipt() }), `rhythm-pad-${i}`));
-    bind('rhythm-listen', () => edit(listen(state(), session, { receipt: host.receipt() }), 'rhythm-listen'));
-    bind('rhythm-music', async () => { await host.toggleMusic(); render('rhythm-music'); });
+    for (let i = 0; i < 8; i++) bind(`rhythm-pad-${i}`, () => edit(toggleStep(state(), session, i), `rhythm-pad-${i}`));
+    bind('rhythm-listen', () => edit(listen(state(), session), 'rhythm-listen'));
+    bind('rhythm-music', async () => { await host.toggleMusic(); if (onScreen()) render('rhythm-music'); });
     bind('rhythm-complete', finish);
     bind('rhythm-step-cues', () => { session = { ...session, stepCues: !session.stepCues }; render('rhythm-step-cues'); });
     bind('rhythm-back', () => leave(true));
@@ -60,12 +63,16 @@ export function createRhythm(host) {
     if (focusId) $(focusId)?.focus({ preventScroll: true });
     loop();
   }
+  // Godot builds the message once host_toggle_beat has saved: the step as the save now holds it, and that write's receipt. An act()
+  // may close the circle (sync), and one that returns false did not happen (a newer save took it back): it adds no message, so
+  // the rebase's own notice stands.
   function edit(out, focusId) {
     stopAudition(false);
-    for (const action of out.actions) host.act(action);
-    session = out.session;
+    const applied = out.actions.map(action => host.act(action)).every(Boolean);
+    if (!onScreen()) return;
+    if (applied) session = out.done(state(), host.receipt());
     render(focusId);
-    host.status(out.message);
+    if (applied) host.status(session.message);
   }
   function finish() {
     stopAudition(false);
@@ -104,7 +111,7 @@ export function createRhythm(host) {
       source.buffer = buffer; source.connect(gain); gain.connect(ctx.destination);
       host.music.sketch.mute(true);
       const mine = { source, gain, startedAt: ctx.currentTime, ctx };
-      source.onended = () => { if (audition !== mine) return; audition = null; host.music.sketch.mute(false); if (open) { session = { ...session, message: RHYTHM_TEXT.barEnded }; render(doc.activeElement?.id || null); host.status(RHYTHM_TEXT.barEnded); } };
+      source.onended = () => { if (audition !== mine) return; audition = null; host.music.sketch.mute(false); if (onScreen()) { session = { ...session, message: RHYTHM_TEXT.barEnded }; render(doc.activeElement?.id || null); host.status(RHYTHM_TEXT.barEnded); } };
       audition = mine; source.start();
       return true;
     } catch { audition = null; host.music.sketch.mute(false); return false; }

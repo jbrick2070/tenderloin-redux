@@ -145,6 +145,9 @@ export function freshEnvelope() {
     programme: { order: [], published: [] }, hosting: { order: [], results: [], draft: defaultDraft() }, civic: defaultCivic(), film: defaultFilm(), optional: {},
   };
 }
+// The top-level keys build_save_envelope writes (tests/next-save.test.mjs checks them against main.gd). Godot's own next write
+// drops every other key.
+const GODOT_KEYS = new Set([...Object.keys(freshEnvelope()), 'mural_scenes']);
 export function freshState() {
   return {
     greeted: false, layout: null, furniture: {}, litter: [], mural: {}, palette: 'garden', soundcheck: false, opened: false, history: false, blackhawk: false,
@@ -471,7 +474,22 @@ function assemble(base, state) {
   envelope.optional = withFurniture(base.optional, state);
   return withScenes(envelope, base, state);
 }
+// Keys no Godot writes are kept as they were loaded (rule 2) unless they alone make a write full: then they are dropped, largest
+// first and only as many as it takes, as Godot's own next write would drop them all. A write that cannot fit without them stays
+// refused as full.
 export function buildGodotSave(baseEnvelope, state, { reset = false } = {}) {
+  const first = writeOver(baseEnvelope, state, reset);
+  if (first.ok || first.reason !== 'full' || !isDict(baseEnvelope)) return first;
+  const extra = Object.keys(baseEnvelope).filter(key => !GODOT_KEYS.has(key))
+    .map(key => [key, utf8Bytes(JSON.stringify(key)) + utf8Bytes(canonicalStringify(baseEnvelope[key]))]).sort((a, b) => b[1] - a[1] || byCodePoint(a[0], b[0]));
+  const without = n => { const base = { ...baseEnvelope }; for (const [key] of extra.slice(0, n)) delete base[key]; return writeOver(base, state, reset); };
+  if (!extra.length || !without(extra.length).ok) return first;
+  // Dropping more never makes a write longer, so the fewest that fit are found by halving.
+  let fewest = 1, most = extra.length;
+  while (fewest < most) { const n = (fewest + most) >> 1; if (without(n).ok) most = n; else fewest = n + 1; }
+  return without(fewest);
+}
+function writeOver(baseEnvelope, state, reset) {
   const refuse = (reason, detail, bytes = 0) => ({ ok: false, raw: null, bytes, envelope: null, reason, detail });
   let was, envelope, raw;
   try {
@@ -547,33 +565,43 @@ function withGodotOnly(stored, base) {
   if (extra.length) out.discovered_surprises = [...new Set([...have.filter(id => typeof id === 'string'), ...extra])].sort(byCodePoint);
   return out;
 }
-// Mural scenes are not forward-only. Scenes this tab painted or lifted win (mergeState keeps them), saved or not: "changed"
-// is against loadedScenes, the scenes this tab last read from the shared save (its own writes do not move it), or against
-// the write base when the caller has no such record. Scenes it left alone follow the stored save, or come back from the
-// write base when the stored save has none that Godot's clean() keeps.
+// Mural scenes are not forward-only. They are decided slot by slot. A slot this tab painted or lifted wins (mergeState keeps
+// it), saved or not: "changed" is against loadedScenes, the scenes this tab last read from the shared save (its own writes do
+// not move it), or against the write base when the caller has no such record. A slot it left alone follows the stored save,
+// or comes back from the write base when the stored save has no scene that Godot's clean() keeps; then clean() as Godot loads.
+// Returns the record for the next combine: the combined scene where this tab's own change did not stand, its old one where it did.
 function withScenesFrom(state, base, mine, mineBase, stored, loadedScenes) {
-  const origin = loadedScenes === undefined ? get(isDict(mineBase) ? mineBase : {}, 'mural_scenes', {}) : loadedScenes;
-  if (!isDict(mineBase) || !sameValue(mine.muralScenes, cleanMuralScenes(origin))) return;
+  const origin = cleanMuralScenes(loadedScenes === undefined ? get(isDict(mineBase) ? mineBase : {}, 'mural_scenes', {}) : loadedScenes);
+  if (!isDict(mineBase)) return origin;
   const painted = v => Object.keys(cleanMuralScenes(v)).length > 0;
   if (!painted(stored.mural_scenes) && painted(mineBase.mural_scenes)) base.mural_scenes = copy(mineBase.mural_scenes);
-  state.muralScenes = cleanMuralScenes(get(base, 'mural_scenes', {}));
+  const ours = isDict(mine.muralScenes) ? mine.muralScenes : {}, theirs = cleanMuralScenes(get(base, 'mural_scenes', {})), slots = {}, read = {};
+  const own = slot => get(ours, slot, undefined) !== origin[slot];
+  for (const slot of MURAL_SCENE_SLOTS) { const id = own(slot) ? get(ours, slot, undefined) : theirs[slot]; if (id !== undefined) slots[slot] = id; }
+  state.muralScenes = cleanMuralScenes(slots);
+  for (const slot of MURAL_SCENE_SLOTS) {
+    const id = own(slot) && state.muralScenes[slot] === get(ours, slot, undefined) ? origin[slot] : state.muralScenes[slot];
+    if (id !== undefined) read[slot] = id;
+  }
+  return read;
 }
 // This tab's state (mine, written over mineBase) combined with a stored save that lost some of it: mergeState's progress on
 // the stored save, plus mineBase's Godot-only discoveries. The result passes buildGodotSave's self-check and budget, and is
 // refused unless it keeps how far both the stored save and this tab got, so a mix Godot would reset is never written.
-// loadedScenes (optional) is the mural scenes this tab last read from the shared save (withScenesFrom).
+// loadedScenes (optional) is the mural scenes this tab last read from the shared save (withScenesFrom); the result's loadedScenes
+// is what this tab reads as that record once the combined save is written.
 export function combineSaves(storedEnvelope, mine, mineBase = null, loadedScenes = undefined) {
   const refuse = (reason, detail, bytes = 0) => ({ ok: false, raw: null, bytes, envelope: null, reason, detail, state: null });
   const stored = parseGodotSave(isDict(storedEnvelope) ? canonicalStringify(storedEnvelope) : null);
   if (stored.status === 'invalid') return refuse('self-check', stored.reason);
-  let state, base, ours;
+  let state, base, ours, read;
   try {
     state = mergeState(copy(mine), stored.state); base = withGodotOnly(stored.envelope, mineBase);
-    withScenesFrom(state, base, mine, mineBase, stored.envelope, loadedScenes);
+    read = withScenesFrom(state, base, mine, mineBase, stored.envelope, loadedScenes);
     ours = fromState(mine, isDict(mineBase) ? mineBase : stored.envelope);
   } catch { return refuse('self-check', 'state'); }
   const out = buildGodotSave(base, state, { reset: true });
   if (!out.ok) return { ...out, state: null };
   const now = readEnvelope(out.envelope), lost = regression(readEnvelope(stored.envelope), now, true) || regression(ours, now, true);
-  return lost ? refuse('regress', lost, out.bytes) : { ...out, state };
+  return lost ? refuse('regress', lost, out.bytes) : { ...out, state, loadedScenes: read };
 }

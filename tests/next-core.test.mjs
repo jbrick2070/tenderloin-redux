@@ -47,6 +47,16 @@ test('meet ports Godot arrival and talk: visited sorted, greeted from Bea, Celes
   assert.equal(act(s, { type: 'meet', id: 'dez', talk: true }).celesteTalks, 3);
 });
 
+test("mural-scene ports edit_mural_scene: '' lifts a slot, and an action without a string id changes nothing", () => {
+  const s = act(initialState(), { type: 'mural-scene', id: 'cooking', slot: 'left' }, { type: 'mural-scene', id: 'music', slot: 'right' });
+  assert.deepEqual(s.muralScenes, { left: 'cooking', right: 'music' });
+  assert.deepEqual(act(s, { type: 'mural-scene', id: '', slot: 'left' }).muralScenes, { right: 'music' }, 'the empty id is the lift');
+  for (const id of [undefined, null, 7, {}, ['cooking'], true]) {
+    const action = id === undefined ? { type: 'mural-scene', slot: 'left' } : { type: 'mural-scene', id, slot: 'left' };
+    assert.equal(applyAction(s, action), s, `id ${JSON.stringify(id)} is not a lift`);
+  }
+});
+
 test('progress and ready are Godot is_block_ready; layout and tidying are not gates', () => {
   let s = initialState();
   assert.deepEqual(progress(s), { neighbors: false, mural: false, sound: false });
@@ -354,7 +364,7 @@ test("combining brings back the neighborhood surprises and mural scenes in this 
   const repainted = act(mine, { type: 'mural-scene', id: 'cooking', slot: 'right' }), paintWrite = wrote(myWrite, repainted);
   const sharing = loadEnv(godotEnvelope({ save_seq: 11, visited_neighbors: ['bea'], mural_scenes: { left: 'sharing' } }));
   keep = combineSaves(sharing.envelope, repainted, paintWrite.envelope, loaded);
-  assert.deepEqual([keep.state.muralScenes, JSON.parse(keep.raw).mural_scenes], [{ left: 'music', right: 'cooking' }, { left: 'music', right: 'cooking' }], 'a saved paint stays painted');
+  assert.deepEqual([keep.state.muralScenes, JSON.parse(keep.raw).mural_scenes], [{ left: 'sharing', right: 'cooking' }, { left: 'sharing', right: 'cooking' }], 'a saved paint stays painted; the slot this tab only adopted follows the stored save');
   // Scenes this tab only adopted still follow the stored save, as above.
   assert.deepEqual(JSON.parse(combineSaves(painted.envelope, mine, myWrite.envelope, loaded).raw).mural_scenes, { left: 'cooking' });
   // A stored value Godot would clean to nothing counts as no scenes, so the write base's scenes come back.
@@ -369,4 +379,23 @@ test("combining brings back the neighborhood surprises and mural scenes in this 
   while (n < hi) { const mid = (n + hi + 1) >> 1; if (combineSaves(padded(mid).envelope, mine).ok) n = mid; else hi = mid - 1; }
   assert.ok(n > 2000); assert.equal(combineSaves(padded(n).envelope, mine).ok, true);
   assert.equal(combineSaves(padded(n).envelope, mine, myWrite.envelope).reason, 'full', "the write base's additions are budgeted");
+});
+
+test('combining decides mural scenes slot by slot: a slot this tab painted wins, a slot it only adopted follows the stored save', () => {
+  // The 3D edition saved the left scene and this tab adopted it; this tab posted a programme and painted only the right.
+  const adopted = loadEnv(openedEnvelope({ save_seq: 10, mural_scenes: { left: 'cooking' } })), loaded = adopted.state.muralScenes;
+  const mine = act(adopted.state, ...PUBLISHED.map(id => ({ type: 'programme-add', id })), { type: 'programme-publish' }, { type: 'mural-scene', id: 'music', slot: 'right' });
+  const myWrite = wrote(adopted, mine);
+  assert.deepEqual(myWrite.envelope.mural_scenes, { left: 'cooking', right: 'music' });
+  // A 3D tab opened earlier, without the programme, then saved a repainted left.
+  const stale = loadEnv(openedEnvelope({ save_seq: 99, mural_scenes: { left: 'garden' } }));
+  assert.equal(lostProgress(myWrite.envelope, stale.envelope), 'programme');
+  const out = combineSaves(stale.envelope, mine, myWrite.envelope, loaded);
+  assert.equal(out.ok, true, `${out.reason} ${out.detail}`);
+  assert.deepEqual([out.state.muralScenes, JSON.parse(out.raw).mural_scenes], [{ left: 'garden', right: 'music' }, { left: 'garden', right: 'music' }], 'the adopted left follows the stored save; the painted right stays');
+  assert.deepEqual(out.state.programme.published, PUBLISHED, "this tab's programme comes back too");
+  // What this tab now counts as read: the left from the combined save; the right stays its own paint for the next combine.
+  assert.deepEqual(out.loadedScenes, { left: 'garden' });
+  const again = loadEnv(openedEnvelope({ save_seq: 120, mural_scenes: { left: 'sharing' } }));
+  assert.deepEqual(combineSaves(again.envelope, out.state, out.envelope, out.loadedScenes).state.muralScenes, { left: 'sharing', right: 'music' }, 'a second stale save is followed on the left again');
 });

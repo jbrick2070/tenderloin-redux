@@ -40,3 +40,17 @@ test('the local server keeps classic routes and serves the fork behind its slash
     for (const path of ['/package.json', '/browser-next/missing.js']) assert.equal((await fetch(base + path)).status, 404, path);
   } finally { await new Promise(resolve => server.close(resolve)); }
 });
+
+test('the fork declares its Content-Security-Policy first in <head>, with no inline script or handler to allow', () => {
+  const html = readFileSync(new URL('../browser-next/index.html', import.meta.url), 'utf8'), head = /<head>\s*([\s\S]*?)<\/head>/.exec(html)?.[1] ?? '';
+  const meta = /^<meta http-equiv="Content-Security-Policy" content="([^"]+)">/.exec(head);
+  assert.ok(meta, 'a Content-Security-Policy meta is the first element in <head>');
+  const policy = Object.fromEntries(meta[1].split(';').map(part => part.trim().split(/\s+/)).map(([directive, ...sources]) => [directive, sources]));
+  assert.deepEqual(policy, {
+    'default-src': ["'none'"], 'script-src': ["'self'"], 'style-src': ["'self'", "'unsafe-inline'"], 'img-src': ["'self'", 'data:', 'blob:'], 'media-src': ["'self'", 'blob:', 'data:'],
+    'connect-src': ["'self'"], 'worker-src': ["'self'"], 'object-src': ["'none'"], 'base-uri': ["'none'"], 'form-action': ["'none'"],
+  });
+  assert.ok(!policy['script-src'].includes("'unsafe-inline'") && !policy['script-src'].includes("'unsafe-eval'"), 'scripts load from the fork only, never inline or from eval');
+  assert.doesNotMatch(html, /<script\b(?![^>]*\bsrc=)[^>]*>/i, 'no inline <script>');
+  assert.doesNotMatch(html, /<[^>]+\son[a-z]+\s*=/i, 'no on* event handler attribute');
+});

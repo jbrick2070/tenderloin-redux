@@ -50,11 +50,13 @@ async function step(label, fn) {
   try { const detail = await fn(); evidence.push({ step: label, ms: Date.now() - t, ...detail }); }
   catch (error) { error.message = `${label}: ${error.message}`; throw error; }
 }
-const bucket = () => ({ pageErrors: [], consoleErrors: [], failedResponses: [], external: [] });
+const bucket = () => ({ pageErrors: [], consoleErrors: [], failedResponses: [], external: [], csp: [] });
 async function newContext(w, { gate = false } = {}) {
   const context = await browser.newContext({ viewport: w.viewport, reducedMotion: 'reduce', ...(w.touch ? { hasTouch: true, ...(isFirefox ? {} : { isMobile: true }) } : {}) });
   context.setDefaultTimeout(15000);
   if (!gate) await context.addInitScript(() => { window.__tenderloinPressSettleMs = 0; });
+  // Every Content-Security-Policy violation reaches the page's log by name: the directive, what it blocked and where.
+  await context.addInitScript(() => addEventListener('securitypolicyviolation', event => window.__nextCspViolation?.(`${event.effectiveDirective} blocked ${event.blockedURI || 'an inline resource'} (${event.sourceFile || document.URL}:${event.lineNumber})`), true));
   return context;
 }
 async function newPage(context, label) {
@@ -63,9 +65,11 @@ async function newPage(context, label) {
   page.on('console', message => { if (message.type() === 'error') log[log.on].consoleErrors.push(message.text()); });
   page.on('response', response => { if (response.status() >= 400) log[log.on].failedResponses.push(`${response.status()} ${response.url()}`); });
   page.on('request', request => { if (!request.url().startsWith(base + '/') && !/^(data|blob):/.test(request.url())) log[log.on].external.push(request.url()); });
+  await page.exposeBinding('__nextCspViolation', (source, text) => log[log.on].csp.push(text));
   logs.push(log); activePage = page; return { page, log };
 }
 function clean(log) {
+  assert.deepEqual(log.fork.csp, [], `${log.label}: no Content-Security-Policy violations in the fork`);
   assert.deepEqual(log.fork, bucket(), `${log.label}: no page errors, console errors, failed responses or external requests in the fork`);
   assert.deepEqual([log.godot.pageErrors, log.godot.external], [[], []], `${log.label}: no page errors or external requests in Godot`);
 }
@@ -177,6 +181,13 @@ async function layoutCheck(page, w, label) {
   return r.checked;
 }
 const toastText = page => page.locator('#toast').textContent();
+// Half a second of silence as a WAV (16-bit mono PCM at 22,050 Hz), for Load Local Track.
+function silentWav(seconds = 0.5, rate = 22050) {
+  const bytes = Math.round(seconds * rate) * 2, out = Buffer.alloc(44 + bytes);
+  out.write('RIFF', 0); out.writeUInt32LE(36 + bytes, 4); out.write('WAVEfmt ', 8); out.writeUInt32LE(16, 16); out.writeUInt16LE(1, 20); out.writeUInt16LE(1, 22);
+  out.writeUInt32LE(rate, 24); out.writeUInt32LE(rate * 2, 28); out.writeUInt16LE(2, 32); out.writeUInt16LE(16, 34); out.write('data', 36); out.writeUInt32LE(bytes, 40);
+  return out;
+}
 // Holding Enter: one press, then three key repeats.
 async function holdEnter(page) { for (let i = 0; i < 4; i++) { await page.keyboard.down('Enter'); await page.waitForTimeout(40); } await page.keyboard.up('Enter'); await page.waitForTimeout(300); }
 
@@ -544,14 +555,32 @@ async function recoveryCases(w) {
     assert.deepEqual([(await call(page, 'snapshot')).opened, await stored(page)], [false, text]);
     return { card: card.label };
   });
-  await step('recovery: another tab starting over withdraws a pending offer', async () => {
+  await step('recovery: another tab starting over withdraws a pending offer, and this visit’s conversations start over', async () => {
+    await walkTo(page, w, 'bea'); await press(page, '#talk-chat', w.touch); await press(page, '#talk-chat', w.touch);
+    await until(page, () => window.tenderloin.conversation().header.includes('Turn 3/5'), null, 'Bea is on her third turn');
+    await press(page, '#close-modal', w.touch); await closed(page);
     await stale(godotEnvelope({ save_seq: 24, visited_neighbors: ['bea'] })); await offered('a stale save is offered back');
     await S.page.evaluate(key => localStorage.removeItem(key), GODOT_SAVE_KEY); // Start fresh in another tab
     await until(page, () => !document.querySelector('dialog[open]') && /cleared in another tab/.test(document.querySelector('#toast').textContent), null, 'the offer is withdrawn and the restart is reported');
     assert.deepEqual((await call(page, 'snapshot')).visited, [], 'this tab takes the fresh afternoon');
+    assert.deepEqual(Object.values((await call(page, 'conversation')).talks).filter(n => typeof n === 'number' && n > 0), [], 'and its conversation turns start over, as a restart here does');
     await walkTo(page, w, 'bea'); const s = await written(page, 0, { save_seq: 1, visited_neighbors: ['bea'] });
+    const talk = await call(page, 'conversation');
+    assert.ok(talk.header.includes('Turn 1/5'), `Bea's next panel reads Turn 1/5 (${talk.header})`);
+    assert.equal(talk.line, webLine(neighborLines({ opened: false }, 'bea')[0]), 'and says her first line');
     await press(page, '#close-modal', w.touch); await closed(page);
     return { seq: s.env.save_seq };
+  });
+  await step('recovery: Use the shared save adopts it as a load does, so the ending visit starts over', async () => {
+    await start(filmDoneEnvelope({ save_seq: 30 }));
+    await press(page, '#film-shoot', w.touch); await until(page, () => window.tenderloin.ending().stage === 'screening', null, 'the screening opens');
+    await press(page, '#screen-frame-2', w.touch); assert.equal((await call(page, 'ending')).visit.screenFrame, 2, 'a visit-only choice in the ending');
+    await page.keyboard.press('Escape'); await closed(page);
+    await stale(civicDoneEnvelope({ save_seq: 31 })); await offered('a save without the film is offered back');
+    await press(page, '#recover-skip', w.touch); await dismissCard(page, w, await cardCheck(page, false));
+    const [visit, snap] = await Promise.all([call(page, 'ending'), call(page, 'snapshot')]);
+    assert.deepEqual([snap.film.phase, visit.visit.screenFrame], ['idle', 0], "the ending's visit-only copies start over with the shared save");
+    return { screenFrame: visit.visit.screenFrame };
   });
   await step('recovery: a Keep that cannot be written keeps the offer and this tab’s progress', async () => {
     const mine = openedEnvelope({ save_seq: 50 }), thin = godotEnvelope({ save_seq: 51, visited_neighbors: ['bea'], optional: { pad: '' } });
@@ -575,8 +604,11 @@ async function recoveryCases(w) {
 // Restart clears the shared save, so a held or repeated Enter must never confirm it. The guard runs as in production.
 async function restartSafety(w) {
   const context = await newContext(w, { gate: true }), { page, log } = await newPage(context, `restart-${w.name}`);
+  // The guard's window runs on frame time, so the previous press on Settings may still hold it after 500 ms of real time; a
+  // deliberate new press waits for it to close.
   const settings = async () => {
     if (await page.evaluate(() => document.querySelector('#modal').open)) { await page.keyboard.press('Escape'); await closed(page); }
+    await until(page, () => !window.tenderloin.pressSettle().open, null, 'the press-settle window of the last press closes');
     await page.locator('#settings-button').click(); await page.locator('#restart').waitFor(); await page.waitForTimeout(500); await page.locator('#restart').focus();
   };
   await step(`${w.name} holding or repeating Enter on Start a new afternoon keeps the shared save`, async () => {
@@ -1070,7 +1102,8 @@ async function charactersSuite(w) {
     assert.deepEqual(pick(await bubbleView(), ['id', 'text', 'visible', 'matched']), { id: 'thanh', text: spokenText(loanReply('table')), visible: true, matched: false }, "Thanh's reply is drawn over him");
     await page.screenshot({ path: file(`${w.name}-bubble.png`) });
     await written(page, 95, {});
-    await until(page, () => window.tenderloin.bubble() === null, null, 'the bubble hides when its hold time ends', 16000);
+    // The hold runs on the game clock (at most 45 ms a frame), which a slow headless frame rate stretches in real time.
+    await until(page, () => window.tenderloin.bubble() === null, null, 'the bubble hides when its hold time ends', 40000);
     await walkTo(page, w, 'thanh');
     assert.equal(await page.locator('#loan-receipt').textContent(), `Returned ${LOAN_TITLES.table}`, 'the conversation keeps a receipt for this visit');
     assert.ok((await talkView()).line.includes(LOAN_REPLIES.table), "Thanh remembers the return in his memory tail");
@@ -1180,8 +1213,14 @@ async function phase2Suite(w) {
     targets.rook = await layoutCheck(page, w, 'p2-talk-rook');
     await once('#talk-load'); await page.locator('#soundtrack-volume').waitFor();
     assert.equal(await page.locator('#soundtrack-volume').getAttribute('max'), '100');
+    // Load Local Track under the fork's Content-Security-Policy: the chosen file plays from a blob: URL (media-src blob:).
+    await page.setInputFiles('#soundtrack-file', { name: 'neighbors.wav', mimeType: 'audio/wav', buffer: silentWav() });
+    await until(page, () => window.tenderloin.sound().mode === 'local', null, 'the local track is chosen');
+    await press(page, '#track-play', w.touch); await until(page, () => window.tenderloin.sound().enabled, null, 'the local track plays', 10000);
+    assert.deepEqual(pick(await sound(), ['mode', 'fileName', 'error']), { mode: 'local', fileName: 'neighbors.wav', error: '' });
+    await press(page, '#use-sketch', w.touch); await until(page, () => window.tenderloin.sound().mode === 'sketch', null, 'Return to synth sketch leaves the local track');
     await press(page, '#close-modal', w.touch); await closed(page); await stored(page);
-    return { volume: v2 };
+    return { volume: v2, local: 'neighbors.wav' };
   });
   await step(`${w.name} phase 2: memory tails, and a loan reply in the bubble and the live region`, async () => {
     raw = await start(canonicalStringify(openedEnvelope({ save_seq: 95, mural_scenes: { left: 'music' }, epilogue: { photo: { status: 'skipped', participants: [], mural: {}, palette: 'garden', layout: 'table' }, packing: true, returned: [] } })));

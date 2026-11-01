@@ -61,3 +61,32 @@ export function hostedEnvelope(overrides = {}) {
 }
 export const civicDoneEnvelope = (overrides = {}) => hostedEnvelope({ civic: { phase: 'done', draft: { topic: 'access', format: 'dropin', notes: 'none' }, result: { topic: 'access', format: 'dropin', notes: 'none' } }, ...overrides });
 export const filmDoneEnvelope = (overrides = {}) => civicDoneEnvelope({ film: { phase: 'done', draft: { framing: 'wide', plan: 'later', order: ['welcome', 'seat', 'paint'] }, result: { framing: 'wide', plan: 'later', order: ['welcome', 'seat', 'paint'] }, captured: ['welcome', 'seat', 'paint'] }, ...overrides });
+
+// The dialog and document the DOM modules (rhythm-ui.js, ending/ui.js) take from game.js, for unit tests. show(html) gives
+// every id in html an element, as #modal-body's innerHTML would, and opens the dialog; close() closes it and fires its close
+// listeners; click(id) presses a shown button; frames(n) runs up to n animation frames 16 ms apart.
+export function fakeDialog() {
+  const shown = new Map(), listeners = {}, queue = [];
+  let html = '', frameId = 0, now = 0;
+  const element = (id, disabled) => ({
+    id, disabled, innerHTML: '', listeners: {}, addEventListener(type, fn) { (this.listeners[type] ||= []).push(fn); },
+    focus() {}, scrollIntoView() {}, setAttribute() {}, querySelector: () => null, querySelectorAll: () => [],
+  });
+  const modal = { open: false, addEventListener(type, fn) { (listeners[type] ||= []).push(fn); }, contains: el => !!el && shown.get(el.id) === el };
+  const fire = type => { for (const fn of listeners[type] || []) fn({ preventDefault() {} }); };
+  return {
+    modal,
+    doc: { head: { append() {} }, createElement: () => ({}), activeElement: null, hidden: false, addEventListener() {}, getElementById: id => shown.get(id) ?? null },
+    win: { addEventListener() {}, requestAnimationFrame: fn => { queue.push([++frameId, fn]); return frameId; }, cancelAnimationFrame: id => { const at = queue.findIndex(([n]) => n === id); if (at >= 0) queue.splice(at, 1); } },
+    show(text) {
+      html = text; shown.clear();
+      for (const [, attrs] of text.matchAll(/<\w+\b([^>]*)>/g)) { const id = /\bid="([^"]+)"/.exec(attrs)?.[1]; if (id) shown.set(id, element(id, /\sdisabled\b/.test(attrs))); }
+      modal.open = true;
+    },
+    close() { if (!modal.open) return; modal.open = false; shown.clear(); html = ''; fire('close'); },
+    click(id) { const el = shown.get(id); if (!el) throw Error(`#${id} is not on screen`); for (const fn of el.listeners.click || []) fn({ preventDefault() {} }); },
+    has: id => shown.has(id),
+    heading: () => /<h2\b[^>]*>([^<]*)</.exec(html)?.[1] ?? '',
+    frames(n) { for (let i = 0; i < n && queue.length; i++) { now += 16; for (const [, fn] of queue.splice(0)) fn(now); } },
+  };
+}

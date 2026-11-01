@@ -20,6 +20,11 @@ Classic stays frozen:
   - `godot-save.js`, which reads and writes the shared save;
   - `story.js`, with chapters and the Next objective;
   - `press-settle.js`, the one-gesture guard.
+- `browser-next/index.html` opens its `<head>` with a Content-Security-Policy meta: `default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: data:; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'`.
+  - Scripts, modules and the sketch worklet load only from the fork, never inline or through eval.
+  - Inline styles stay allowed: the dialogs draw style attributes and `<style>` blocks.
+  - `data:` images are the SVG illustrations, and `blob:` media is Load Local Track.
+  - A meta policy cannot set `frame-ancestors`.
 - `scripts/build-fingerprint-next.mjs`: hashes `browser-next/`. `scripts/serve.mjs` serves the fork at `/browser-next/` (a bare `/browser-next` gets a 302 to the trailing slash) and its build info at `/browser-next/__build`. The classic routes are unchanged.
 - Tests: `tests/next-*.test.mjs` run under `npm test`, `npm run next:check` (chained onto `npm run check`) checks the fork's syntax, and `tests/next-browser.mjs` runs locally as `npm run next:browser`. Fixtures stay under `tests/`, never in the published folder.
 
@@ -31,17 +36,17 @@ Godot reads the save once at startup and has no recovery hold: an invalid core f
    - the required, optional-but-strict and lenient field classes;
    - the opening cascade: `block_opened` holds only with 5 neighbors met, 3 motifs placed and the soundcheck done; the later sections need their own gates.
    - It returns the validated envelope and the fork's state. An invalid save is held: the fork starts fresh in memory and does not write until the player chooses to start over.
-2. **Write by read-modify-write.** The fork overwrites only the fields it owns and keeps every other key exactly as it was loaded: Godot-only progress (`discovered_surprises`, `district_boundary_visible`) and any key a later Godot adds. It writes `mural_scenes` by Godot's rules when the player paints or lifts a scene in Mural Stories. The one exception is "Keep this tab's progress" (rule 6):
+2. **Write by read-modify-write.** The fork overwrites only the fields it owns and keeps every other key exactly as it was loaded: Godot-only progress (`discovered_surprises`, `district_boundary_visible`) and any key a later Godot adds. Keys that no Godot writes are dropped only when they alone would make a write full, largest first, as Godot's own next write drops them. It writes `mural_scenes` by Godot's rules when the player paints or lifts a scene in Mural Stories. The one exception is "Keep this tab's progress" (rule 6):
    - Known surprise ids come back from this tab's own last write.
-   - Mural scenes this tab painted or lifted, judged against the scenes it last read from the shared save, win over the stored save. Scenes it only adopted follow the stored save. This tab's last write supplies scenes only when the stored save has none that Godot's clean keeps.
+   - Mural scenes are decided slot by slot. A slot this tab painted or lifted, judged against the scenes it last read from the shared save, wins over the stored save. A slot it only adopted follows the stored save. When the stored save has no scene that Godot's clean keeps, this tab's last write supplies the slots it left alone.
    - Fork-only data goes in `optional['browser-next']`: furniture for the current layout. The player position and litter stay session-only.
    - The output is canonical JSON: compact, keys sorted recursively.
    - `save_seq` is one more than the stored value.
-   - Writes stay within Godot's 4,096-byte UTF-8 budget, with room left for Godot's own next write of the same state: `save_seq` gaining a digit, the keys `build_save_envelope` always writes that an older save lacks, `optional`'s floats, the values Godot cleans on load to longer defaults (`active_motif`, `discovered_surprises`), and a non-taken keepsake's palette, which Godot reloads as the mural palette. Over budget, nothing is written and a "Visit-only: save full" notice is shown.
-3. **Self-check.** Every envelope is parsed again by the fork's own Godot-rules loader before it is written. A write that Godot would reset or demote is refused. So is a write that would move Godot's forward-only progress backwards, such as meetings, the opening or reading history, from a stale or reset state.
+   - Writes stay within Godot's 4,096-byte UTF-8 budget, with room left for Godot's own next write of the same state: `save_seq` gaining a digit, the keys `build_save_envelope` always writes that an older save lacks, `optional`'s floats, the values Godot cleans on load to longer defaults (`active_motif`, `discovered_surprises`), and a non-taken keepsake's palette, which Godot reloads as the mural palette. Over budget even without keys that no Godot writes, nothing is written and a "Visit-only: save full" notice is shown.
+3. **Self-check.** Every envelope is parsed again by the fork's own Godot-rules loader before it is written, including one that dropped keys no Godot writes. A write that Godot would reset or demote is refused. So is a write that would move Godot's forward-only progress backwards, such as meetings, the opening or reading history, from a stale or reset state.
 4. **Write only on change.** A write happens only when a reducer returns new state, never while walking or on page hide.
-5. **Another tab wrote first.** Before writing, the fork re-reads the key. If the stored string differs from the last one it loaded or wrote, it rebases the action onto the stored save and applies it again on top. If the action no longer changes anything, nothing is written and a notice says the change no longer applies: a toast, or, while a dialog is open, a status line at the top of that dialog. No success message is shown for an action that did not happen. A `storage` event, `pageshow` and becoming visible also re-read the key.
-6. **Progress went back.** When a re-read save holds less forward-only progress than this tab had, the fork does not adopt it silently. A "Some progress went back" dialog offers "Keep this tab's progress", which `combineSaves` writes by Godot's upward-import rules (how far each part got is unioned, a taken photo and returned loans survive, and this tab's records win where both reached the same point), and "Use the shared save as it is". Until the player chooses, the tab keeps its own progress and writes nothing. Escape or × puts the choice off, and the next action that saves asks again. If Keep cannot be written, the offer stays with the reason. The offer is withdrawn if a later save covers the lost progress again, or if another tab starts over.
+5. **Another tab wrote first.** Before writing, the fork re-reads the key. If the stored string differs from the last one it loaded or wrote, it rebases the action onto the stored save and applies it again on top. If the action no longer changes anything, nothing is written and a notice says the change no longer applies: a toast, or, while a dialog is open, a status line at the top of that dialog. No success message is shown for an action that did not happen. A `storage` event, `pageshow` and becoming visible also re-read the key. A stored save that replaces this tab's state starts the visit's session over, as Godot's load does: talk turns, the last arrival, the speech bubble and a waiting chapter notice. An action rebased onto it keeps them.
+6. **Progress went back.** When a re-read save holds less forward-only progress than this tab had, the fork does not adopt it silently. A "Some progress went back" dialog offers "Keep this tab's progress", which `combineSaves` writes by Godot's upward-import rules (how far each part got is unioned, a taken photo and returned loans survive, and this tab's records win where both reached the same point), and "Use the shared save as it is", which adopts it as a load does: the session starts over (rule 5), and so do the ending's visit-only copies when the shared save's differ. Until the player chooses, the tab keeps its own progress and writes nothing. Escape or × puts the choice off, and the next action that saves asks again. If Keep cannot be written, the offer stays with the reason. The offer is withdrawn if a later save covers the lost progress again, or if another tab starts over.
 7. **Known limit.** A 3D tab that was already open overwrites newer fork progress on its next action, because Godot only reads at startup. Fixing that needs a `godot/` change, which is out of scope. The fork tells the player to reload the other edition after switching, and the dialog above recovers what it can.
 8. **Restart** says that it also resets the 3D edition, including surprises and mural scenes found only in 3D. "Keep my afternoon" has focus, and repeated Enter keys on "Start fresh" are ignored.
 
@@ -93,6 +98,7 @@ Godot reads the save once at startup and has no recovery hold: an invalid core f
   - Text is copied verbatim into `ending/text.js`. Only the import, F5 and Godot-storage lines are rewritten, through `ENDING_WEB_OVERRIDES`.
 - **Drift tests.** `tests/next-music.test.mjs`, `next-characters.test.mjs` and `next-ending.test.mjs` parse the Godot sources at test time and fail when a copied line, constant or cue drifts.
 - **Not ported yet.** Godot's visual feel-good bursts, a street tap on the startup card, and movement keys on a later chapter card.
+- **Known limits.** The Rhythm Circle's step lamp divides the sketch's cumulative frames by Godot's 8,268.75-frame step, exactly as `godot/rhythm_circle.gd` line 228 does, while the sketch plays 8,269-sample steps. After tens of minutes of continuous play the lamp drifts off the audible step. It is kept for parity: a fix would be a deliberate deviation from Godot.
 
 ## Proof
 
@@ -101,16 +107,20 @@ Godot reads the save once at startup and has no recovery hold: an invalid core f
   - Round-trip: Godot-only fields survive.
   - Budget, chapters and the objective.
   - The guard, on an injected clock.
+  - Audio on fake contexts: a refused AudioContext never aborts an action, and overlapping music starts build one node.
+  - The Rhythm Circle and the ending on a stand-in dialog: a redraw that waits draws only the screen still shown, and a pad's receipt is the write it made.
+  - The Content-Security-Policy meta comes first, with no inline script or handler.
   - The classic fingerprint is pinned.
   - The copied data is identical to classic's.
 - **Browser tests** at 320, 390 and 1440 px:
   - the chapter line, chapter card and Next line;
   - one double click, double tap or map double tap acting once, and a `[data-rapid]` zoom double press acting twice;
   - no overflow and 44 px targets, including the layout choice, the furniture grid and its scroll cue, Settings, Music, Field notes, the history notes, Living district, programme, second-gathering and film dialogs, and no dialog text under the close button;
-  - two tabs rebasing on each other, and recovering progress after a third page writes a stale save (found by an action, put off with Escape or ×, declined, withdrawn by a restart elsewhere, kept when Keep cannot be written);
+  - two tabs rebasing on each other, and recovering progress after a third page writes a stale save (found by an action, put off with Escape or ×, declined, withdrawn by a restart elsewhere, kept when Keep cannot be written), with the session and the ending's visit starting over when a save is adopted;
   - restart safety with held and repeated Enter;
   - a held unreadable save, and a refused save at the budget;
   - classic's keys left untouched;
-  - no external requests.
+  - no external requests;
+  - no Content-Security-Policy violation (a `securitypolicyviolation` listener names any), with Load Local Track playing under the policy.
   - `NEXT_BROWSER_WIDTHS` and `NEXT_BROWSER_SUITES` (journey, guard, tabs, restart, seeded) run a subset while debugging.
 - **Cross-edition check.** A save the fork writes on the local server's origin opens in the Godot build served at `/godot/`, with the fork's progress intact and no reset.

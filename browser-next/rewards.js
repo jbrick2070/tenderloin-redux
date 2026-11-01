@@ -148,14 +148,15 @@ export class RewardPlayer {
   setEnabled(on) { this.enabled = !!on; if (!this.enabled) this.stop(); }
   unlock(event) { if (!this.unlocked && unlocksRewardAudio(event)) this.unlocked = true; return this.unlocked; }
   stop() { try { this.source?.stop(); } catch {} this.source?.disconnect(); this.source = null; }
-  // Godot play_reward_sound: the count and last cue advance even when no audio device exists.
+  // Godot play_reward_sound: the count and last cue advance even when no audio device exists. A context the browser refuses
+  // is the same silence: act() plays the chime before it commits, so nothing here may throw.
   play(c) {
     if (!c || !c.sounds || !this.enabled || !this.unlocked) return false;
     this.stop();
     this.count++; this.lastCue = c.id;
-    const ctx = this.getContext?.();
-    if (!ctx) return true;
     try {
+      const ctx = this.getContext?.();
+      if (!ctx) return true;
       const pcm = cueSamples(c.id, c.reason, REWARD_RATE, { quantize: true });
       const buffer = ctx.createBuffer(1, pcm.length, REWARD_RATE);
       buffer.copyToChannel(pcm, 0);

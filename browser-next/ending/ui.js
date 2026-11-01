@@ -66,8 +66,11 @@ export function createEnding(host) {
   const focus = id => { const target = id === 'reader' ? $('ending-reader') : $(id); target?.focus({ preventScroll: true }); target?.scrollIntoView?.({ block: 'nearest' }); };
   const say = text => { if (text) host.status(text); };
   const target = id => $(id) || undefined;
+  // A redraw that waits (for the music to start, for the next walk frame) only for the stage still on screen: the player may have
+  // left it, or another screen, such as the recovery offer, may have replaced it in the same dialog.
+  const holds = kind => stage === kind && modal.open && modal.contains($('ending-reader'));
   const musicButton = () => ({ id: 'ending-music', label: host.music.label() });
-  const bindMusic = rerender => bind('ending-music', async () => { await host.music.toggle(); rerender(); focus('ending-music'); });
+  const bindMusic = rerender => bind('ending-music', async () => { const kind = stage; await host.music.toggle(); if (!holds(kind)) return; rerender(); focus('ending-music'); });
   function frameHTML({ kind, title, credit, picture = '', reader, tray, extra = '' }) {
     return `<section class="ending" data-ending="${kind}"><p class="eyebrow ending-credit">${esc(credit)}</p><h2 id="modal-title" tabindex="-1">${esc(title)}</h2>${picture}<div id="ending-reader" class="ending-reader" tabindex="0" role="region" aria-label="Story text">${lines(reader)}</div>${extra}<div class="ending-tray">${tray}</div></section>`;
   }
@@ -215,7 +218,7 @@ export function createEnding(host) {
     else if (focused && $(focused) && !$(focused).disabled) focus(focused);
   }
   function orbitHalt(announce) {
-    if (stage !== 'orbit') { visit.orbit = halt(visit.orbit).orbit; stopLoop(); return; }
+    if (!holds('orbit')) { visit.orbit = halt(visit.orbit).orbit; stopLoop(); return; }
     const out = halt(visit.orbit);
     visit.orbit = out.orbit; stopLoop();
     if (out.halted) { const focused = doc.activeElement?.id, scroll = $('ending-reader')?.scrollTop ?? 0; orbit(null, announce); if (focused) focus(focused); const r = $('ending-reader'); if (r) r.scrollTop = scroll; }
@@ -243,7 +246,7 @@ export function createEnding(host) {
   function stopLoop() { if (frame) win.cancelAnimationFrame(frame); frame = 0; last = null; }
   function tick(now) {
     frame = 0;
-    if (stage !== 'orbit' || !modal.open) { visit.orbit = halt(visit.orbit).orbit; return; }
+    if (!holds('orbit')) { visit.orbit = halt(visit.orbit).orbit; return; }
     const dt = last === null ? 0 : now - last; last = now;
     const out = step(visit.orbit, dt, host.reducedMotion());
     visit.orbit = out.orbit;

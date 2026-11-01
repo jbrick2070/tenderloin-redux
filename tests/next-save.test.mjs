@@ -509,6 +509,21 @@ test('the 4096-byte budget leaves Godot room to write the same save again', () =
   assert.ok(save(r.envelope, r.state).bytes <= SAVE_BUDGET, 'study_test.gd 4348: full profile, both scenes, all surprises and 512 bytes of metadata fit');
 });
 
+test("a save full only of keys no Godot writes drops them, largest first, as Godot's own next write would", () => {
+  // A readable save carrying 2 MB under an unknown key (a non-Godot writer or a corrupt save): the write goes through without it.
+  const junk = loaded(canonicalStringify({ ...freshEnvelope(), junk: 'x'.repeat(2_000_000) }));
+  const met = { ...structuredClone(junk.state), visited: ['bea'], greeted: true }, out = save(junk.envelope, met);
+  assert.deepEqual([Object.hasOwn(parseRaw(out.raw), 'junk'), Object.hasOwn(out.envelope, 'junk')], [false, false], 'the junk is dropped');
+  assert.ok(out.bytes <= SAVE_BUDGET); assert.deepEqual(loaded(out.raw).state.visited, ['bea'], "the write loads under the fork's Godot rules");
+  // Only as many as it takes, largest first: a small unknown key that fits stays, as rule 2 keeps it.
+  const base = { ...freshEnvelope(), save_seq: 7 }, room = SAVE_BUDGET - buildGodotSave(base, freshState()).bytes;
+  const two = save({ ...base, future: 1, later: 'b'.repeat(room) }, freshState());
+  assert.deepEqual([Object.hasOwn(two.envelope, 'later'), parseRaw(two.raw).future], [false, 1]);
+  assert.equal(parseRaw(save({ ...base, future: 1 }, freshState()).raw).future, 1, '{"future":1} beside a normal save is kept');
+  // A save that cannot fit even once every unknown key is gone stays full.
+  assert.deepEqual(why({ ...base, future: 1, optional: { pad: 'x'.repeat(room) } }, freshState()), ['full', '']);
+});
+
 test('UTF-8 bytes, not UTF-16 length, decide the budget', () => {
   assert.equal(utf8Bytes('aé😀'), 1 + 2 + 4);
   const unicode = loaded(raw(godotEnvelope({ visited_neighbors: ['bea'], optional: { unicode: 'é'.repeat(2200) } })));

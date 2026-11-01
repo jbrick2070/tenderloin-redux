@@ -113,27 +113,32 @@ export function openCircle(state, { busy = false } = {}) {
 export function closeCircle(session, { receipt = RHYTHM_TEXT.saved } = {}) {
   return { session: closedSession(), announce: session?.practice ? RHYTHM_TEXT.closePractice : RHYTHM_TEXT.closeHosting + receipt + RHYTHM_TEXT.closeHostingTail };
 }
-// Each edit returns {session, actions, message}: actions are core.js actions for the caller's act().
+// Each edit returns {session, actions, message, done}: actions are core.js actions for the caller's act(). Godot builds the
+// message after host_toggle_beat has saved, so a caller that acts calls done(state, receipt) afterwards for the session: the
+// step as the state the write left holds it, with Godot's save_receipt for that write. message reads the state passed in.
+const unchanged = session => ({ session, actions: [], message: session?.message || '', done: () => session });
 export function toggleStep(state, session, index, { receipt = RHYTHM_TEXT.saved } = {}) {
-  if (!session?.visible || !Number.isInteger(index) || index < 0 || index > 7) return { session, actions: [], message: session?.message || '' };
+  if (!session?.visible || !Number.isInteger(index) || index < 0 || index > 7) return unchanged(session);
   const next = { ...session }, actions = [];
   let pattern;
   if (next.practice) { next.practicePattern = (next.practicePattern ^ (1 << index)) & 255; pattern = next.practicePattern; }
   else {
-    if (currentActivity(state?.hosting) !== 'beats') return { session, actions: [], message: session.message };
+    if (currentActivity(state?.hosting) !== 'beats') return unchanged(session);
     actions.push({ type: 'host-beat', step: index });
     pattern = (circlePattern(state, session) ^ (1 << index)) & 255;
   }
-  next.message = fill(RHYTHM_TEXT.toggled, index + 1, has(pattern, index) ? RHYTHM_TEXT.hit : RHYTHM_TEXT.rest, next.practice ? RHYTHM_TEXT.practiceOnly : receipt);
-  return { session: next, actions, message: next.message };
+  const say = (p, text) => ({ ...next, message: fill(RHYTHM_TEXT.toggled, index + 1, has(p, index) ? RHYTHM_TEXT.hit : RHYTHM_TEXT.rest, next.practice ? RHYTHM_TEXT.practiceOnly : text) });
+  const out = say(pattern, receipt);
+  return { session: out, actions, message: out.message, done: (after, text = RHYTHM_TEXT.saved) => say(circlePattern(after, next), text) };
 }
 export function listen(state, session, { receipt = RHYTHM_TEXT.saved } = {}) {
-  if (!session?.visible) return { session, actions: [], message: session?.message || '' };
+  if (!session?.visible) return unchanged(session);
   const next = { ...session }, actions = [];
   if (next.practice) next.practicePattern = 0;
   else { const p = circlePattern(state, session); for (let i = 0; i < 8; i++) if (has(p, i)) actions.push({ type: 'host-beat', step: i }); }
-  next.message = RHYTHM_TEXT.listened + (next.practice ? '' : ' ' + receipt);
-  return { session: next, actions, message: next.message };
+  const say = text => ({ ...next, message: RHYTHM_TEXT.listened + (next.practice ? '' : ' ' + text) });
+  const out = say(receipt);
+  return { session: out, actions, message: out.message, done: (after, text = RHYTHM_TEXT.saved) => say(text) };
 }
 // Practice: Reset Practice restores the saved pattern. Hosting: complete the beats activity, close the
 // circle, then call afterComplete with the new state.

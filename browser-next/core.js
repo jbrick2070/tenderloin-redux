@@ -88,8 +88,9 @@ export function applyAction(state, action) {
       if (Object.entries(next.mural).some(([id, p]) => id !== action.id && p.col === action.col && p.row === action.row)) return state;
       next.mural[action.id] = { col: action.col, row: action.row }; break;
     case 'palette': if (!PALETTES.includes(action.value)) return state; next.palette = action.value; break;
-    // Godot edit_mural_scene: '' lifts a slot; a scene moves rather than repeats. Budget admission is the host's.
-    case 'mural-scene': { const out = editScene(next.muralScenes, typeof action.id === 'string' ? action.id : '', action.slot); if (!out.changed) return state; next.muralScenes = out.scenes; break; }
+    // Godot edit_mural_scene: '' lifts a slot; a scene moves rather than repeats. Budget admission is the host's. An id that is
+    // not a string is no edit at all, never a lift.
+    case 'mural-scene': { if (typeof action.id !== 'string') return state; const out = editScene(next.muralScenes, action.id, action.slot); if (!out.changed) return state; next.muralScenes = out.scenes; break; }
     case 'discover-blackhawk': next.blackhawk = true; break;
     case 'history': next.history = true; break;
     // Godot open_block_gathering: the Long Table when no layout was chosen.
