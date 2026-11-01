@@ -5,6 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
+import { isDeepStrictEqual } from 'node:util';
 import { visitsHost, filmDoneEnvelope } from './next-fixtures.mjs';
 import { initialState } from '../browser-next/core.js';
 import { parseGodotSave, canonicalStringify } from '../browser-next/godot-save.js';
@@ -15,7 +16,7 @@ import { VISITS_FORK_TEXT } from '../browser-next/visits-kit.js';
 import { GODOT_TEXT, WEB_OVERRIDES, web } from '../browser-next/visits/text.js';
 import { conversationLabel, progressLabel, SURPRISE_IDS, markers } from '../browser-next/visits/surprises.js';
 import { entryTooltip } from '../browser-next/visits/power.js';
-import { SURPRISE_SITES } from '../browser-next/visits/positions.js';
+import { SURPRISE_SITES, MUSEUM } from '../browser-next/visits/positions.js';
 import { createVisits } from '../browser-next/visits-ui.js';
 import { createWorldVisits } from '../browser-next/visits-world.js';
 import * as sprites from '../browser-next/sprites.js';
@@ -264,6 +265,108 @@ test("a beacon label's hit points are never what nearest() finds for E/Enter and
     const chip = label(at);
     if (chip) assert.ok(chip.bottom < player.y - 38 || chip.top > player.y + 11 || chip.right < player.x - 18 || chip.left > player.x + 18, `the label keeps off the player at (${dx}, ${dy})`);
   }
+});
+
+// Real Worlds over one visits shell and one state: `now` with game.js's mapLayers; `then` with the objects game.js gave before a
+// beacon had tap points past its foot (its earlier wrapper: each shell object once, the tour marker at its diamond), so what `then`
+// finds is what E/Enter and the Nearby hint found; `flat` with game.js's objects with every tapOnly mark taken off (the defect).
+// stand(p, scale) puts the player at p with every camera following at scale, as game.js's does.
+function nearbyPair({ found = [], objective = null } = {}) {
+  const { host, io } = visitsHost();
+  io.state = { opened: true, surprises: [...found] };
+  if (objective) io.objective = objective;
+  const visits = createVisits(host, { createWorldVisits }), drawn = sprites.createSprites({ reducedMotion: () => true });
+  const made = new Function('visits', 'sprites', 'tourMarkerLift', 'BEACON_LIFT', `${declaration('const mapLayers = {')}\nreturn mapLayers;`)(visits, drawn, sprites.tourMarkerLift, sprites.BEACON_LIFT);
+  const state = { ...initialState(), opened: true, surprises: io.state.surprises, player: { x: 95, y: -47 } };
+  const build = objects => {
+    const { ctx } = recorder(), canvas = { width: 0, height: 0, style: {}, getContext: () => ctx, addEventListener() {}, getBoundingClientRect: () => ({ left: 0, top: 0, width: 1440, height: 1000 }), setPointerCapture() {}, focus() {} };
+    return new World(canvas, WAYS, () => state, { click() {}, reducedMotion: true, layers: { objects } });
+  };
+  const now = build(made.objects), then = build(w => visits.objects(w).map(o => (o.id === 'tour-marker' ? { ...o, y: o.y - sprites.tourMarkerLift(w.scale) } : o)));
+  const flat = build(w => made.objects(w).map(({ tapOnly, ...o }) => o));
+  const stand = (p, scale) => { state.player = p; for (const world of [now, then, flat]) { world.camera.follow(p); world.camera.scale = scale; world.camera.track(p); } };
+  return { now, then, flat, stand, visits };
+}
+// Player positions every 10 px up to 80 px from each centre, both ways.
+const around = centres => centres.flatMap(c => Array.from({ length: 17 * 17 }, (_, i) => ({ x: c.x + (i % 17) * 10 - 80, y: c.y + Math.floor(i / 17) * 10 - 80 })));
+// Each position where nearest() on `now` differs from `then` or is tapOnly; how many differ on `flat`; how many find a beacon or the marker.
+function compareNearby(pair, points, scale) {
+  const differ = [], name = o => (o ? `${o.id} (${o.x.toFixed(1)}, ${o.y.toFixed(1)})${o.tapOnly ? ' tapOnly' : ''}` : 'nothing');
+  let flat = 0, beacons = 0, marker = 0;
+  for (const p of points) {
+    pair.stand(p, scale);
+    const now = pair.now.nearest(), then = pair.then.nearest();
+    if (!isDeepStrictEqual(now, then) || now?.tapOnly) differ.push(`(${p.x.toFixed(1)}, ${p.y.toFixed(1)}): ${name(then)} before, ${name(now)} now`);
+    if (!isDeepStrictEqual(pair.flat.nearest(), then)) flat++;
+    if (then?.id.startsWith('surprise:')) beacons++;
+    if (then?.id === 'tour-marker') marker++;
+  }
+  return { differ, flat, beacons, marker };
+}
+
+test('E/Enter and the Nearby hint find what they found before a beacon had tap points past its foot: nearest() measures a beacon from its foot alone', () => {
+  // Around every beacon and landmark of the shell, at the follow zoom, zoomed out and fully in.
+  const { now, visits } = nearbyPair();
+  now.camera.follow({ x: 95, y: -47 });
+  const centres = visits.objects(now);
+  assert.deepEqual(centres.filter(o => o.id.startsWith('surprise:')).map(o => o.id).sort(), SURPRISE_IDS.map(id => `surprise:${id}`).sort(), 'every beacon is a centre');
+  assert.ok(centres.length >= 20, `and every landmark (${centres.length} centres)`);
+  const points = around(centres);
+  for (const scale of [0.5, 0.85, 1.6]) {
+    const { differ, flat, beacons } = compareNearby(nearbyPair(), points, scale);
+    assert.deepEqual(differ.slice(0, 8), [], `${differ.length} of ${points.length} player positions find something else at scale ${scale}`);
+    // The premise: the grid reaches the beacons by their feet, and their other points would change answers without the marks.
+    assert.ok(beacons > 200, `a beacon is nearby by its foot from ${beacons} positions (scale ${scale})`);
+    assert.ok(flat > points.length * 0.02, `without the tapOnly marks ${flat} of ${points.length} answers would change (scale ${scale})`);
+  }
+});
+
+test("the gold tour marker stays the marker's one object, lifted to its diamond: a tap there finds it and E/Enter finds it from where it did", () => {
+  // All ten found and the explore objective on the museum's tour stop, where story.js puts its target: the marker stands there.
+  const objective = { id: 'explore', text: '', hint: '', tourId: 'museum:0', tourAction: 'Tour', target: { x: MUSEUM.x, y: MUSEUM.y, name: 'Tour' } };
+  for (const scale of [0.5, 0.85, 1.6]) {
+    const pair = nearbyPair({ found: SURPRISE_IDS, objective }), lift = sprites.tourMarkerLift(scale);
+    pair.stand({ x: MUSEUM.x, y: MUSEUM.y + 60 }, scale);
+    assert.deepEqual(pair.now.objects().filter(o => o.id === 'tour-marker'), [{ id: 'tour-marker', kind: 'visit', name: 'Tour', x: MUSEUM.x, y: MUSEUM.y - lift }], `one marker object, at its diamond and not tapOnly (scale ${scale})`);
+    assert.equal(pair.now.hit({ x: MUSEUM.x, y: MUSEUM.y - lift })?.id, 'tour-marker', `a tap on the diamond finds it (scale ${scale})`);
+    const { differ, marker } = compareNearby(pair, around([MUSEUM, { x: MUSEUM.x, y: MUSEUM.y - lift }]), scale);
+    assert.deepEqual(differ.slice(0, 8), [], `${differ.length} player positions find something else at scale ${scale}`);
+    assert.ok(marker > 20, `E/Enter finds the marker from ${marker} positions, as before (scale ${scale})`);
+  }
+});
+
+test("a beacon's tap points past its foot are tapOnly copies of it: the foot, half way up, the globe and the label open the beacon, named for the hover chip", () => {
+  const layer = declaration('const mapLayers = {');
+  assert.match(layer, /\.\.\.sprites\.chipTargets\(w, scene \?\?= visits\.scene\(\), o\)\]\.map\(p => p === o \? p : \{ \.\.\.p, tapOnly: true \}\) : \[o\]\);/, "every point but the beacon's own object is tapOnly");
+  assert.match(layer, /o\.id === 'tour-marker' \? \[\{ \.\.\.o, y: o\.y - tourMarkerLift\(w\.scale\) \}\] : /, "the lifted tour marker is the marker's one object, unmarked");
+  const { id } = clearBeacon(), site = SURPRISE_SITES[id], at = `surprise:${id}`, middle = site.y - sprites.BEACON_LIFT / 2;
+  const points = { 'the foot': () => ({ x: site.x, y: site.y }), 'half way up': () => ({ x: site.x, y: middle }), 'the globe': m => m.globe(id), 'the label': m => { const c = m.label(at); return { x: c.x, y: (c.top + c.bottom) / 2 }; } };
+  for (const scale of [0.5, 0.85, 1.6]) {
+    const m = beaconMap(), { world, visits } = m;
+    world.camera.lookAt(site, scale);
+    const own = visits.objects(world).find(o => o.id === at), mine = world.objects().filter(o => o.id === at), radius = R(world);
+    assert.deepEqual(mine.filter(o => !o.tapOnly), [own], `the shell's own object is the beacon's one point for nearest() (scale ${scale})`);
+    assert.ok(mine.length > 3 && mine.every(o => o === own || (o.tapOnly === true && o.kind === 'visit' && o.name === own.name)), `the rest are tapOnly copies with its kind and name (${mine.length} points, scale ${scale})`);
+    for (const [what, point] of Object.entries(points)) {
+      const o = world.hit(point(m));
+      assert.equal(o?.id, at, `${what} (scale ${scale})`);
+      assert.equal(o === own, what === 'the foot', `${what}: ${what === 'the foot' ? "the beacon's own object" : 'a tapOnly copy'} (scale ${scale})`);
+      assert.equal(o.name, own.name, `${what}: the hover chip names the beacon`);
+    }
+    for (const p of [{ x: site.x - radius - 12, y: middle }, { x: site.x, y: site.y + radius + 8 }]) assert.equal(world.hit(p), undefined, `empty ground (${p.x.toFixed(1)}, ${p.y.toFixed(1)}) walks (scale ${scale})`);
+  }
+  // Each opens the beacon: game.js's map tap gives a visit object to visits.interact, which reads its id.
+  for (const [what, point] of Object.entries(points)) {
+    const m = beaconMap();
+    m.world.camera.lookAt(site, 0.85);
+    const o = m.world.hit(point(m));
+    assert.equal(o?.kind, 'visit', what);
+    assert.equal(m.visits.interact(o, 'tap'), true, `a tap on ${what} opens ${at}`);
+  }
+  // E/Enter, the world prompt and the Nearby hint read world.nearest() alone; E/Enter and the prompt interact with what it finds.
+  assert.equal([...GAME.matchAll(/\bworld\.nearest\(\)/g)].length, 3);
+  assert.equal([...GAME.matchAll(/const nearest = world\.nearest\(\); if \(nearest\) \{ stopWalk\(\); interact\(nearest, 'talk'\); \}/g)].length, 2, 'E/Enter and the world prompt');
+  assert.match(declaration('function hint('), /const nearest = world\.nearest\(\), text = [^\n]*nearest\.name/);
 });
 
 test("the beacon and its label are no target in an overview (Godot taps no surprise there), nor its label below the chip zoom", () => {

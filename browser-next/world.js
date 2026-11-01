@@ -93,7 +93,9 @@ export class World {
     }).filter(hit => hit.label || hit.distance < radius);
     return hits.sort((a, b) => Number(b.label) - Number(a.label) || a.distance - b.distance)[0]?.object;
   }
-  nearest() { const p = this.getState().player; return this.objects().map(o => ({ ...o, distance: Math.hypot(p.x - o.x, p.y - o.y) })).filter(o => o.distance < 40).sort((a, b) => a.distance - b.distance)[0]; }
+  // E/Enter and the Nearby hint: the nearest object within 40 px of the player's feet. A layer's tapOnly objects (a sprite's
+  // tap points past its own object, such as a beacon's globe) are hit() targets alone.
+  nearest() { const p = this.getState().player; return this.objects().filter(o => !o.tapOnly).map(o => ({ ...o, distance: Math.hypot(p.x - o.x, p.y - o.y) })).filter(o => o.distance < 40).sort((a, b) => a.distance - b.distance)[0]; }
   rect(x, y, w, h, color, radius = 0) { const c = this.ctx; c.fillStyle = color; c.beginPath(); if (c.roundRect) c.roundRect(x, y, w, h, radius); else c.rect(x, y, w, h); c.fill(); }
   line(points, color, width, dash = []) {
     const c = this.ctx; c.beginPath(); points.forEach((p, i) => i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)); c.strokeStyle = color; c.lineWidth = width; c.setLineDash(dash); c.stroke(); c.setLineDash([]);

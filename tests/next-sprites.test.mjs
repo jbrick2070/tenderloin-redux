@@ -181,6 +181,30 @@ test('world.js: layers.objects joins hit testing and nearest after the built-in 
   assert.equal(w.world.nearest()?.id, 'surprise:x');
 });
 
+test('world.js: a layer object marked tapOnly is a tap target only: hit() finds it, nearest() (E/Enter and the Nearby hint) never does', () => {
+  // A beacon's own object at its foot and two tap-only copies of it up its pole, as game.js's beacon objects add them.
+  const foot = { id: 'surprise:x', kind: 'visit', name: 'A visit object', x: 760, y: 100 };
+  const half = { ...foot, y: 81, tapOnly: true }, globe = { ...foot, y: 62, tapOnly: true };
+  const w = makeWorld({ layers: { objects: () => [foot, half, globe] } }), bare = makeWorld({ layers: { objects: () => [foot] } });
+  assert.deepEqual(w.world.objects().slice(-3), [foot, half, globe], 'objects() keeps the tap-only copies');
+  assert.equal(w.world.hit({ x: 761, y: 61 }), globe, 'a tap on the globe finds its copy');
+  assert.equal(w.world.hit({ x: 761, y: 82 }), half, 'half way up');
+  assert.equal(w.world.hit({ x: 761, y: 101 }), foot, 'the foot');
+  assert.equal(w.world.hit({ x: 760, y: 100 + Math.max(28, 22 / w.world.scale) + 6 }), undefined, 'empty ground below it walks');
+  // The player all around the pole: the same nearest object as with the foot alone, never a tap-only copy.
+  for (let y = 0; y <= 160; y += 2) for (const x of [720, 745, 760, 775, 800]) {
+    for (const holder of [w.holder, bare.holder]) holder.state = { ...holder.state, player: { x, y } };
+    const near = w.world.nearest();
+    assert.deepEqual(near, bare.world.nearest(), `the player at (${x}, ${y})`);
+    assert.ok(!near?.tapOnly, `the player at (${x}, ${y}): never a tap-only copy`);
+  }
+  // Within 40 px of the globe and beyond 40 px of the foot: nothing is nearby. Nearer the globe than the foot: the foot, from the foot.
+  w.holder.state = { ...w.holder.state, player: { x: 760, y: 50 } };
+  assert.equal(w.world.nearest(), undefined);
+  w.holder.state = { ...w.holder.state, player: { x: 760, y: 70 } };
+  assert.deepEqual(w.world.nearest(), { ...foot, distance: 30 });
+});
+
 test('world.js: ground draws after the litter and before the walking path; overlay after the people and before the name chips', () => {
   const marks = [];
   const w = makeWorld({ layers: { ground: (c, world) => marks.push(['ground', c.calls.length, c, world]), overlay: (c, world) => marks.push(['overlay', c.calls.length, c, world]) } });

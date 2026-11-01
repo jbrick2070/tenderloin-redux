@@ -101,8 +101,10 @@ const sprites = createSprites({ reducedMotion: () => settings.reducedMotion });
 // and overlay layers, all drawn from visits.scene().
 const mapLayers = {
   objects: w => {
+    // A beacon's own object stands at its foot and its other tap points are tapOnly, so world.js nearest() (E/Enter and the Nearby
+    // hint) measures it from its foot alone. The lifted tour marker is the marker's one object, for a tap and for E/Enter.
     let scene = null;
-    return visits.objects(w).flatMap(o => o.id === 'tour-marker' ? [{ ...o, y: o.y - tourMarkerLift(w.scale) }] : o.id.startsWith('surprise:') ? [o, { ...o, y: o.y - BEACON_LIFT / 2 }, { ...o, y: o.y - BEACON_LIFT }, ...sprites.chipTargets(w, scene ??= visits.scene(), o)] : [o]);
+    return visits.objects(w).flatMap(o => o.id === 'tour-marker' ? [{ ...o, y: o.y - tourMarkerLift(w.scale) }] : o.id.startsWith('surprise:') ? [o, { ...o, y: o.y - BEACON_LIFT / 2 }, { ...o, y: o.y - BEACON_LIFT }, ...sprites.chipTargets(w, scene ??= visits.scene(), o)].map(p => p === o ? p : { ...p, tapOnly: true }) : [o]);
   },
   ground: (c, w) => sprites.ground(c, w, visits.scene()), actors: w => sprites.actors(w, visits.scene()), overlay: (c, w) => sprites.overlay(c, w, visits.scene()),
 };
