@@ -386,6 +386,12 @@ const results = {
 const GROUPS = ['screens', 'labelInName', 'gestures', 'focus', 'scenes'];
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const spoken = s => String(s ?? '').replace(/\s+/g, ' ').trim();
+// WCAG 2.5.3 label in name: the accessible name starts with the visible label. A label of one or two characters that are no letter
+// (the Election Walk's map pins "1" and "2") says nothing as a name of its own, so its name may say more around it ("Map pin 1:
+// city address point"), as long as the label stands in the name as a whole word: no letter or digit right before or after it.
+const labelInName = (name, visible) => /^[^\p{L}]{1,2}$/u.test(visible)
+  ? new RegExp(`(?:^|[^\\p{L}\\p{N}])${visible.replace(/[\\^$.*+?()[\]{}|/]/g, '\\$&')}(?:[^\\p{L}\\p{N}]|$)`, 'u').test(name)
+  : name.startsWith(visible);
 const hexRgb = hex => { const n = parseInt(hex.slice(1, 7), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
 const rgbHex = rgb => '#' + rgb.map(v => v.toString(16).padStart(2, '0')).join('');
 
@@ -528,7 +534,7 @@ async function audit(t, label, { roots = [VISITS] } = {}) {
   for (const b of kept ? r.buttons : []) {
     const name = spoken(names[b.key]?.name ?? b.computed);
     if (!name) { const message = `${at}: ${b.ref} has no accessible name`; results.labelInName.push(message); t.fail('labelInName', message); }
-    else if (!name.startsWith(b.visible)) { const message = `${at}: ${b.ref} shows "${b.visible}" but its accessible name is "${name}"`; results.labelInName.push(message); t.fail('labelInName', message); }
+    else if (!labelInName(name, b.visible)) { const message = `${at}: ${b.ref} shows "${b.visible}" but its accessible name is "${name}"`; results.labelInName.push(message); t.fail('labelInName', message); }
   }
   await page.evaluate(() => document.querySelectorAll('[data-audit-key]').forEach(el => el.removeAttribute('data-audit-key')));
   t.note('labelInName', { screen: label, buttons: r.buttons.length, names: names.source });
@@ -554,27 +560,30 @@ async function once(t, id, { rapid = false, check, what }) {
   const before = await page.evaluate(() => { delete window.__tenderloinPressSettleMs; window.H.passed = { pointerdown: 0, pointerup: 0, click: 0 }; return window.H.settle.snapshot(); });
   if (w.touch) { await page.touchscreen.tap(x, y); await sleep(80); await page.touchscreen.tap(x, y); } else await page.mouse.dblclick(x, y, { delay: 40 });
   const want = rapid ? 2 : 1;
-  await page.waitForFunction(([before, want, gated]) => { const s = window.H.settle.snapshot(), p = window.H.passed; return p.pointerdown >= want && p.pointerup >= want && p.click >= want && (!gated || (s.armed > before.armed && s.swallowed > before.swallowed)); },
-    [before, want, !rapid], { timeout: 10000, polling: 50 }).catch(() => {});
+  // Polled up to 10 s: what the gesture must bring has reached the page (both presses of a rapid control; the first press of a gated
+  // one, with the guard armed and the second press swallowed). Whether it did is part of the verdict below, with its counts.
+  const arrived = await page.waitForFunction(([before, want, gated]) => { const s = window.H.settle.snapshot(), p = window.H.passed; return p.pointerdown >= want && p.pointerup >= want && p.click >= want && (!gated || (s.armed > before.armed && s.swallowed > before.swallowed)); },
+    [before, want, !rapid], { timeout: 10000, polling: 50 }).then(() => true, () => false);
   await sleep(300);
   const [after, passed] = await page.evaluate(() => [window.H.settle.snapshot(), { ...window.H.passed }]), s = await snap(t), acted = !!check(s, start);
   // Where the control is now, and what the press point holds: a control that moved after the first press cannot take the second.
   const landed = await page.evaluate(([id, x, y]) => { const b = document.getElementById(id)?.getBoundingClientRect(), hit = document.elementFromPoint(x, y)?.closest('button, a[href], [tabindex]'); return { box: b ? [b.x, b.y, b.width, b.height].map(Math.round) : null, at: hit ? hit.id || hit.tagName : null }; }, [id, x, y]);
-  await page.waitForFunction(() => !window.H.settle.snapshot().open, null, { timeout: 10000, polling: 50 }).catch(() => {});
+  // Required: the guard's window (game-clock time, so slower on a loaded machine) closes before the guard goes off for the next press.
+  await until(page, () => !window.H.settle.snapshot().open, null, `${w.name}: the press-settle window of the ${w.touch ? 'two taps' : 'double click'} on #${id} closes`, 20000);
   await page.evaluate(() => { window.__tenderloinPressSettleMs = 0; window.H.passed = null; });
-  const item = { gesture: w.touch ? 'two taps' : 'double click', control: id, rapid, marked, armed: after.armed - before.armed, swallowed: after.swallowed - before.swallowed, passed, acted, expected: what,
+  const item = { gesture: w.touch ? 'two taps' : 'double click', control: id, rapid, marked, arrived, armed: after.armed - before.armed, swallowed: after.swallowed - before.swallowed, passed, acted, expected: what,
     box: [box.x, box.y, box.width, box.height].map(Math.round), boxAfter: landed.box, atPressPointAfter: landed.at, heightsBefore: shape, heightsAfter: await heights() };
   t.note('gestures', item);
   const grew = Object.keys(shape).filter(k => shape[k] !== item.heightsAfter[k]).map(k => `${k} ${shape[k]} -> ${item.heightsAfter[k]} px`).join(', ');
   const at = `${w.name} #${id}`, moved = landed.at !== id ? ` (after the first press #${id} moved from ${item.box.join(',')} to ${landed.box?.join(',')} (x,y,w,h)${grew ? ` as the ${grew}` : ''}, so the press point holds ${landed.at ?? 'nothing'})` : '';
-  if (rapid) {
-    if (!marked) t.fail('gestures', `${at}: a rapid control without data-rapid`);
+  if (rapid && !marked) t.fail('gestures', `${at}: a rapid control without data-rapid`);
+  if (!arrived) t.fail('gestures', `${at}: within 10 s the page did not get ${rapid ? "both presses' pointerdown, pointerup and click" : "the first press's pointerdown, pointerup and click with the guard armed and the second press swallowed"}: ${JSON.stringify(passed)} reached it, the guard armed ${item.armed} and swallowed ${item.swallowed}${moved}`);
+  else if (rapid) {
     if (after.swallowed !== before.swallowed) t.fail('gestures', `${at}: the guard swallowed ${after.swallowed - before.swallowed} event(s) of a [data-rapid] control${moved}`);
-    if (passed.pointerdown !== 2 || passed.click !== 2) t.fail('gestures', `${at}: both presses of a [data-rapid] control should reach the page, ${JSON.stringify(passed)} did${moved}`);
+    if (passed.pointerdown !== 2 || passed.pointerup !== 2 || passed.click !== 2) t.fail('gestures', `${at}: both presses of a [data-rapid] control should reach the page, ${JSON.stringify(passed)} did${moved}`);
   } else {
     if (item.armed !== 1) t.fail('gestures', `${at}: one gesture armed the guard ${item.armed} times`);
-    if (item.swallowed < 1) t.fail('gestures', `${at}: the second press was not swallowed`);
-    if (passed.pointerdown !== 1 || passed.click !== 1) t.fail('gestures', `${at}: only the first press should reach the page, ${JSON.stringify(passed)} did`);
+    if (passed.pointerdown !== 1 || passed.pointerup !== 1 || passed.click !== 1) t.fail('gestures', `${at}: only the first press should reach the page, ${JSON.stringify(passed)} did`);
   }
   if (!acted) t.fail('gestures', `${at}: one ${item.gesture} should act ${rapid ? 'twice' : 'once'} (${what}); the visit shows ${JSON.stringify(brief(s))}${rapid ? moved : ''}`);
   return item;
@@ -590,17 +599,23 @@ async function held(t, id, { reach = id, arrive = false, check, what }) {
   const arrivals = await page.evaluate(() => { window.H.keys = []; return window.H.arrivals; });
   await page.keyboard.down('Enter');
   const end = Date.now() + 10000;
-  let reached = false;
+  let reached = false, sent = 1;
   while (!reached && Date.now() < end) {
-    await sleep(40); await page.keyboard.down('Enter');
+    await sleep(40); await page.keyboard.down('Enter'); sent++;
     reached = await page.evaluate(([reach, arrivals, arrive]) => window.H.keys.some(k => k.key === 'Enter' && k.repeat && k.target === reach) && (!arrive || window.H.arrivals > arrivals), [reach, arrivals, arrive]);
   }
-  for (let i = 0; i < 3; i++) { await sleep(40); await page.keyboard.down('Enter'); }
+  for (let i = 0; i < 3; i++) { await sleep(40); await page.keyboard.down('Enter'); sent++; }
   await page.keyboard.up('Enter');
+  // The positive part, polled: the visit shows what the first press did, and every keydown of the hold has reached the page. Then
+  // 300 ms for a repeat that acted to show, and the same check again.
+  const shown = reached && await poll(async () => !!check(await snap(t)), `${w.name}: ${what}`, 5000).then(() => true, () => false);
+  const delivered = await poll(() => page.evaluate(n => window.H.keys.filter(k => k.key === 'Enter').length >= n, sent), `${w.name}: the held Enter's keydowns reach the page`, 8000).then(() => true, () => false);
   await sleep(300);
-  const keys = await page.evaluate(() => window.H.keys.filter(k => k.key === 'Enter')), s = await snap(t), ok = reached && !!check(s);
-  t.note('gestures', { held: 'Enter', control: id, reach, repeats: keys.filter(k => k.repeat).length, onReach: keys.filter(k => k.repeat && k.target === reach).length, prevented: keys.filter(k => k.repeat && k.prevented).length, ok, expected: what });
+  const keys = await page.evaluate(() => window.H.keys.filter(k => k.key === 'Enter')), s = await snap(t), ok = shown && delivered && !!check(s);
+  t.note('gestures', { held: 'Enter', control: id, reach, sent, delivered: keys.length, repeats: keys.filter(k => k.repeat).length, onReach: keys.filter(k => k.repeat && k.target === reach).length, prevented: keys.filter(k => k.repeat && k.prevented).length, ok, expected: what });
   if (!reached) t.fail('gestures', `${w.name}: the held Enter on #${id} never reached #${reach}${arrive ? ' after the walk arrived' : ''} (repeats landed on ${[...new Set(keys.map(k => k.target))].join(', ')})`);
+  else if (!shown) t.fail('gestures', `${w.name}: a held Enter on #${id} never showed ${what} (the visit shows ${JSON.stringify(brief(s))})`);
+  else if (!delivered) t.fail('gestures', `${w.name}: of the held Enter's ${sent} keydowns on #${id}, ${keys.length} reached the page`);
   else if (!check(s)) t.fail('gestures', `${w.name}: a held Enter on #${id} pressed more than once (${what} expected; the visit shows ${JSON.stringify(brief(s))})`);
 }
 // A held Escape: one Escape, six repeats; exactly one screen may close (still: what must be on screen after the hold).
@@ -610,11 +625,16 @@ async function holdEscape(t, still, what) {
   await page.keyboard.down('Escape');
   for (let i = 0; i < 6; i++) { await sleep(40); await page.keyboard.down('Escape'); }
   await page.keyboard.up('Escape');
+  // The positive part, polled: the first Escape left `still` on screen, and all seven keydowns have reached the page. Then 300 ms
+  // for a repeat's close to land, and `still` again.
   const ok = await poll(() => still(), `${w.name}: after a held Escape, ${what}`, 5000).then(() => true, () => false);
+  const delivered = await poll(() => page.evaluate(() => window.H.keys.filter(k => k.key === 'Escape').length >= 7), `${w.name}: the held Escape's keydowns reach the page`, 8000).then(() => true, () => false);
   await sleep(300);
-  const after = ok && await still(), keys = await page.evaluate(() => window.H.keys.filter(k => k.key === 'Escape'));
-  t.note('gestures', { held: 'Escape', repeats: keys.filter(k => k.repeat).length, prevented: keys.filter(k => k.repeat && k.prevented).length, ok: !!after, expected: what });
-  if (!after) t.fail('gestures', `${w.name}: a held Escape closed more than one screen (${what} expected; ${await where(t)})`);
+  const after = ok && delivered && await still(), keys = await page.evaluate(() => window.H.keys.filter(k => k.key === 'Escape'));
+  t.note('gestures', { held: 'Escape', delivered: keys.length, repeats: keys.filter(k => k.repeat).length, prevented: keys.filter(k => k.repeat && k.prevented).length, ok: !!after, expected: what });
+  if (!ok) t.fail('gestures', `${w.name}: after a held Escape, ${what} never held (${await where(t)})`);
+  else if (!delivered) t.fail('gestures', `${w.name}: of the held Escape's seven keydowns, ${keys.length} reached the page (${what} expected)`);
+  else if (!after) t.fail('gestures', `${w.name}: a held Escape closed more than one screen (${what} expected; ${await where(t)})`);
 }
 // A walk control: the screen closes, the frame loop walks the real route, and the arrival reopens the screen.
 async function walked(t, id, kind) {
@@ -648,7 +668,8 @@ async function tapObject(t, id) {
   if (w.touch) await page.touchscreen.tap(at.x, at.y); else await page.mouse.click(at.x, at.y);
   await until(page, () => window.H.log.some(e => e[0] === 'click'), null, `${w.name}: the tap on ${id} reaches the World`);
   const hit = await page.evaluate(() => window.H.log.find(e => e[0] === 'click')[1]);
-  await page.waitForFunction(() => !window.H.settle.snapshot().open, null, { timeout: 10000, polling: 50 }).catch(() => {});
+  // Required: the window the card armed (game-clock time) closes before the guard goes off for the next press.
+  await until(page, () => !window.H.settle.snapshot().open, null, `${w.name}: the press-settle window of the tap on ${id} closes`, 20000);
   const after = await page.evaluate(() => { window.__tenderloinPressSettleMs = 0; return window.H.settle.snapshot(); });
   t.note('gestures', { tap: id, hit, armed: after.armed - before.armed, swallowed: after.swallowed - before.swallowed });
   if (hit !== id) throw Error(`a tap on ${id} hit ${hit ?? 'nothing'}`);
