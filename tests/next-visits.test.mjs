@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { gdConst, gdFunc, gdStrings, gdSource, jsStrings, firstMissingInOrder } from './gd-literal.mjs';
+import { gdConst, gdVar, gdFunc, gdStrings, gdSource, jsStrings, firstMissingInOrder } from './gd-literal.mjs';
 import * as core from '../browser-next/core.js';
 import { compassPhrase } from '../browser-next/story.js';
 import { GODOT_CONSTANTS, GODOT_TEXT, WEB_OVERRIDES, web, MAIN, MEAL_DATA } from '../browser-next/visits/text.js';
@@ -17,6 +17,7 @@ import * as election from '../browser-next/visits/election.js';
 import * as picker from '../browser-next/visits/picker.js';
 import * as surprises from '../browser-next/visits/surprises.js';
 import * as landmarks from '../browser-next/visits/landmarks.js';
+import { VISITS_FORK_TEXT } from '../browser-next/visits-kit.js';
 
 const json = path => JSON.parse(readFileSync(new URL(`../${path}`, import.meta.url), 'utf8'));
 const POWER_PLACE = json('godot/data/power_place.json');
@@ -42,16 +43,50 @@ test('every copied template occurs, in order, among its Godot function literals'
   }
 });
 
-test('web overrides only drop 3D key hints, and each Godot literal still exists', () => {
+// visits/text.js rewords Godot text only in WEB_OVERRIDES: the 3D edition's key hints, which the fork does not bind, are
+// dropped or name the 2D control. Each row is one class of rewrite, with why. An override's value must be its Godot key with
+// every row applied (at every match, in this order), letter for letter, so each value is pinned to Godot and only a key hint
+// can differ; an override no row explains fails, and so does a row no override uses.
+const KEY_HINT_REWRITES = [
+  // A key in its own parenthesis after a phrase: "revisit the museum (Shift+M)", "(Shift+D for next surprise)".
+  { pattern: / \(Shift\+[A-Z](?: for [^()]*)?\)/, replacement: '' },
+  // A key as the last item of a parenthesis: "(%d/%d found, Shift+D)", "(Tap / Shift+D)", "(Stop %d/%d · Tap the counter to
+  // order · Shift+E for next fictionalized spot)".
+  { pattern: /(?:,| \/| ·) Shift\+[A-Z](?: for [^()]*)?(?=\))/, replacement: '' },
+  // The museum's era key is the 2D museum card's button.
+  { pattern: /press Shift\+M again/, replacement: `choose ${VISITS_FORK_TEXT.nextEra}` },
+  // F8 (resume the active story) and Shift F8 (the story picker) end the picker's detail, its reader entry and Power's
+  // tooltip; the 2D picker is the story reader's entry, so the phrase that names them goes.
+  { pattern: / F8 resumes your active story, or a paused Power visit; Shift F8 opens these choices\.$/, replacement: '' },
+  { pattern: / Shift F8\.$/, replacement: '' },
+  { pattern: /: resume F8; switch story visits Shift F8$/, replacement: '' },
+];
+// A 3D key name (F1-F12, Shift): no 2D wording has one.
+const KEY_NAME = /\bF\d{1,2}\b|\bShift\b/;
+const dropKeyHints = text => KEY_HINT_REWRITES.reduce((out, { pattern, replacement }) => out.replace(new RegExp(pattern.source, 'g'), replacement), text);
+const strings = value => (typeof value === 'string' ? [value] : value && typeof value === 'object' ? Object.values(value).flatMap(strings) : []);
+
+test('web overrides are their Godot literal with only the listed key-hint rewrites, letter for letter', () => {
+  const used = new Set();
   for (const [file, map] of Object.entries(WEB_OVERRIDES)) {
     const lits = gdStrings(gdSource(file));
     for (const [godot, fork] of Object.entries(map)) {
       assert.ok(lits.includes(godot), `${file}: override key no longer in Godot: ${godot}`);
-      assert.match(godot, /F8|Shift/, 'an override must be about a key hint');
-      assert.doesNotMatch(fork, /F8|Shift\+?[A-Z]/, 'the 2D wording names no 3D key');
+      const rows = KEY_HINT_REWRITES.filter(r => r.pattern.test(godot));
+      assert.ok(rows.length > 0, `${file}: no listed rewrite explains the override of ${godot}`);
+      for (const r of rows) used.add(r);
+      assert.equal(fork, dropKeyHints(godot), `${file}: the override is its Godot literal with the listed rewrites`);
       assert.equal(web(file, godot), fork);
+      for (const r of KEY_HINT_REWRITES) assert.doesNotMatch(fork, r.pattern, `${file}: a key hint is left in ${fork}`);
+      assert.doesNotMatch(fork, KEY_NAME, `${file}: the 2D wording names no 3D key: ${fork}`);
     }
   }
+  assert.equal(used.size, KEY_HINT_REWRITES.length, 'every listed rewrite explains an override');
+  // Every copied Godot text that names a 3D key has its override, and no copied constant names one, so none reaches the screen.
+  for (const [file, fns] of Object.entries(GODOT_TEXT)) for (const text of strings(fns)) {
+    if (KEY_NAME.test(text)) assert.ok(Object.hasOwn(WEB_OVERRIDES[file] ?? {}, text), `${file}: no override for ${text}`);
+  }
+  for (const text of strings(GODOT_CONSTANTS)) assert.doesNotMatch(text, KEY_NAME);
   assert.equal(web('main.gd', 'unchanged text'), 'unchanged text');
   // The meal cue's missing space is Godot's own; it is copied, not overridden.
   assert.equal(GODOT_TEXT['shared_meal.gd'].refresh.cueStep, 'Step %d of5: %s. %s');
@@ -229,6 +264,18 @@ test('Cook & Share: text, cue and art', () => {
     assert.doesNotMatch(svg, /NaN|undefined/);
     assert.equal(svg.includes('translate(320 135) scale(0.5)'), style === 1 && (stage >= 5 || world));
   }
+});
+
+// The visits pictures are data: URIs (img-src allows no other origin), each built by concatenating one prefix; the scan pins
+// every copy of it, so a typo in any one fails here.
+const SVG_DATA_URI = 'data:image/svg+xml;charset=utf-8,';
+test('every visits data: URI builder uses the one SVG prefix', () => {
+  for (const file of ['browser-next/visits/before-streets.js', 'browser-next/visits/meal.js', 'browser-next/visits-kit.js']) {
+    const src = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
+    assert.deepEqual([...src.matchAll(/(['"`])(data:[^'"`]*)\1/g)].map(m => m[2]), [SVG_DATA_URI], `${file}: its one data: literal`);
+    assert.ok(src.includes(`'${SVG_DATA_URI}' + encodeURIComponent(`), `${file} builds its URI from the prefix`);
+  }
+  assert.ok(meal.artworkDataURI(0, 0, 0).startsWith(`${SVG_DATA_URI}%3Csvg`));
 });
 
 // ---------------------------------------------------------------- episodes: shared context
@@ -651,6 +698,48 @@ test('Surprises: next id, cycling, inspect texts, finale and memory lines', () =
   assert.deepEqual(surprises.keepsakes(['cutesy_dino']), [{ id: 'cutesy_dino', neighbor: 'celeste', label: "Pip the Tiny Dino on Celeste's easel" }]);
   assert.equal(surprises.markers([]).length, 10);
   assert.equal(surprises.darken('#ffffff'), '#b8b8b8');
+});
+
+// Godot neighbor_surprise_memory_line(), read from its source: per neighbor (its match arm), each branch in order with the
+// surprises it needs (discovered_surprises.has, joined by `and`) and the line it returns. Godot returns the first branch whose
+// surprises are all found, else "".
+function gdMemoryBranches() {
+  const src = gdFunc('main.gd', 'neighbor_surprise_memory_line'), out = {};
+  let neighbor = null, ids = null;
+  for (const line of src.split('\n')) {
+    let m;
+    if ((m = /^\t\t"(\w+)":$/.exec(line))) out[neighbor = m[1]] = [];
+    else if ((m = /^\t\t\tif (.+):$/.exec(line))) {
+      ids = [...m[1].matchAll(/discovered_surprises\.has\("(\w+)"\)/g)].map(x => x[1]);
+      assert.equal(m[1], ids.map(id => `discovered_surprises.has("${id}")`).join(' and '), 'a branch tests found surprises only');
+    } else if ((m = /^\t\t\t\treturn (".+")$/.exec(line))) out[neighbor].push({ ids, line: gdStrings(m[1])[0] });
+  }
+  assert.equal(Object.values(out).flat().length + 1, src.match(/^\s*return\b/gm).length, 'every return is read (the last is "")');
+  return out;
+}
+test('Surprises: memory lines and their speakers\' names are Godot\'s, for every neighbor and find', () => {
+  const branches = gdMemoryBranches();
+  const godotLine = (neighbor, found) => (branches[neighbor] ?? []).find(b => b.ids.every(id => found.includes(id)))?.line ?? '';
+  assert.equal(Object.values(branches).flat().length, 15);
+  // Each neighbor with each combination of its own surprises found, alone or beside all the others.
+  for (const [neighbor, list] of Object.entries(branches)) {
+    const own = [...new Set(list.flatMap(b => b.ids))], others = surprises.SURPRISE_IDS.filter(id => !own.includes(id));
+    for (let mask = 0; mask < 1 << own.length; mask++) {
+      const found = own.filter((_, i) => mask & (1 << i));
+      for (const extra of [[], others]) assert.equal(surprises.memoryLine(neighbor, [...extra, ...found]), godotLine(neighbor, found), `${neighbor}: ${found}`);
+    }
+  }
+  assert.equal(surprises.memoryLine('nobody', surprises.SURPRISE_IDS), '');
+  // A new find with its paired neighbor's dialog open: Godot's neighbors[].name, then the line without its curly quotes.
+  const names = Object.fromEntries(gdVar('main.gd', 'neighbors').map(n => [n.id, n.name]));
+  const speakers = new Set();
+  for (const id of surprises.SURPRISE_IDS) {
+    const neighbor = surprises.KEEPSAKES[id].neighbor, line = godotLine(neighbor, [id]).replace(/^“/, '').replace(/”$/, '');
+    assert.ok(line, id);
+    assert.equal(surprises.inspect([], id, { openNeighborId: neighbor }).memory, gdf(GODOT_TEXT['main.gd'].inspect_neighborhood_surprise.memory, [names[neighbor], line]), id);
+    speakers.add(neighbor);
+  }
+  assert.deepEqual([...speakers].sort(), Object.keys(names).sort(), 'every Godot neighbor speaks a memory');
 });
 
 // ---------------------------------------------------------------- landmarks

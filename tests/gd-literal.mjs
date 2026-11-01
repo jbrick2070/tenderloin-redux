@@ -43,6 +43,15 @@ export function gdConst(file, name) {
   return literal(tokens(src.slice(m.index + m[0].length)), 0)[0];
 }
 
+// The value of a script-level `var NAME := …`, `var NAME = …` or `var NAME: Type = …` in godot/<file>, read as gdConst reads a
+// const: a literal initializer only (main.gd's `neighbors` table, for one).
+export function gdVar(file, name) {
+  const src = gdSource(file);
+  const m = new RegExp(`^var ${name}\\s*(?::=|=|:[^=\\n]*=)\\s*`, 'm').exec(src);
+  if (!m) throw Error(`var ${name} is missing from godot/${file}`);
+  return literal(tokens(src.slice(m.index + m[0].length)), 0)[0];
+}
+
 // String literals of a JavaScript function's source (from fn.toString()), decoded, in order.
 // Skips // and /* */ comments; template literals are read without interpolation.
 const JS_ESCAPES = { n: '\n', t: '\t', r: '\r', '0': '\0' };
