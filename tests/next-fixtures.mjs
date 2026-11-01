@@ -90,3 +90,58 @@ export function fakeDialog() {
     frames(n) { for (let i = 0; i < n && queue.length; i++) { now += 16; for (const [, fn] of queue.splice(0)) fn(now); } },
   };
 }
+
+// The visits host of the Phase 3 wiring (game.js's side of createVisits and createKit) over a fakeDialog(), for unit tests of
+// visits-kit.js and the visits screens. Every call is recorded in `log` as [member, ...args], and a shown control's focus() as
+// ['focus', id]. `io` holds what the getters read: state, player, walking, music (playing), cards, neighbor (the open
+// conversation), hosting (in progress), sparks, objective, saveReason, and files, the parsed JSON load(name) resolves (any other
+// name rejects). act() adds a new surprise id to io.state.surprises, sorted, and returns whether it changed the state. Pass
+// `over` to replace any member, for example walk: () => 'blocked'.
+export function visitsHost(dialog = fakeDialog(), over = {}) {
+  const log = [];
+  const io = { state: { opened: true, surprises: [] }, player: { x: 0, y: 0 }, walking: false, music: false, cards: { startup: false, story: false }, neighbor: null, hosting: false,
+    sparks: 0, objective: { id: 'explore', text: '', hint: '', target: null }, saveReason: '', files: {}, html: '', focused: null };
+  const host = {
+    doc: dialog.doc, win: dialog.win, modal: dialog.modal, settle: { tap: event => log.push(['tap', event]) },
+    show(html) {
+      io.html = html; log.push(['show', html]); dialog.show(html);
+      for (const [, attrs] of html.matchAll(/<\w+\b([^>]*)>/g)) {
+        const id = /\bid="([^"]+)"/.exec(attrs)?.[1], el = id ? dialog.doc.getElementById(id) : null;
+        if (el) el.focus = () => { io.focused = id; log.push(['focus', id]); };
+      }
+    },
+    close(target) { log.push(['close', target]); dialog.close(); },
+    returnTo(id) { log.push(['returnTo', id]); },
+    status(text) { log.push(['status', text]); },
+    announce(text) { log.push(['announce', text]); },
+    toast(text) { log.push(['toast', text]); },
+    getState: () => io.state,
+    act(action) {
+      log.push(['act', action]);
+      const found = io.state.surprises ?? [];
+      if (action?.type !== 'surprise' || typeof action.id !== 'string' || found.includes(action.id)) return false;
+      io.state = { ...io.state, surprises: [...found, action.id].sort() };
+      return true;
+    },
+    saveReason: () => io.saveReason,
+    chime(id, reason) { log.push(['chime', id, reason]); },
+    walk(goal, opts) { log.push(['walk', goal, opts]); return 'walking'; },
+    stopWalk() { log.push(['stopWalk']); },
+    walking: () => io.walking,
+    player: () => ({ ...io.player }),
+    lookAt(point) { log.push(['lookAt', point]); },
+    speak(id, text, name) { log.push(['speak', id, text, name]); },
+    music: { label: () => (io.music ? 'Music: On' : 'Music: Off'), on: () => io.music, toggle: async () => { io.music = !io.music; return io.music ? 'Music playing.' : 'Music paused.'; } },
+    reducedMotion: () => false,
+    sparks: () => io.sparks,
+    objective: () => io.objective,
+    openNeighborId: () => io.neighbor,
+    cards: () => ({ ...io.cards }),
+    dialogOpen: () => dialog.modal.open,
+    hostingInProgress: () => io.hosting,
+    restoreStartupCard(text) { log.push(['restoreStartupCard', text]); },
+    load(name) { log.push(['load', name]); return Object.hasOwn(io.files, name) ? Promise.resolve(io.files[name]) : Promise.reject(Error(`${name} is not a stand-in file`)); },
+    ...over,
+  };
+  return { host, log, io, dialog };
+}

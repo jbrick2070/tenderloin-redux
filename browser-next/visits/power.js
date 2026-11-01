@@ -1,7 +1,7 @@
 // Power Story (godot/power_story.gd) and the Larkin place (godot/power_place.gd), pure.
 // Visit-only. Shared episode context `ctx` (see picker.js): { opened, busy, walking, player,
 // activeId, musicPlaying, powerPlace (parsed power_place.json or null), sites: { larkin } }.
-import { POWER, GODOT_TEXT } from './text.js';
+import { POWER, GODOT_TEXT, web } from './text.js';
 import { gdf, gdFloat, f32 } from './format.js';
 import { RELAY_GOALS, RELAY_GODOT_GOALS, LARKIN_JUNCTION, LARKIN_JUNCTION_XZ, RELAY_LAMPS, BATTERY_STAND, PIXELS_PER_METRE } from './positions.js';
 
@@ -228,7 +228,7 @@ export function powerView(p, ctx = {}) {
 }
 export const announce = (p, ctx) => { const v = powerView(p, ctx); return v.heading + '. ' + v.text; };
 // The hub "Story" button: tooltip without Godot's F8 / Shift F8 hint.
-export const entryTooltip = () => T.setup.storyTip;
+export const entryTooltip = () => web('power_story.gd', T.setup.storyTip);
 
 // Map drawing (Godot apply_lighting / update_world): after dark for the festival while active,
 // daytime for Larkin; relay boxes, the battery stand and lit bits.

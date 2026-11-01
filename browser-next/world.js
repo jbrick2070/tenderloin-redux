@@ -82,7 +82,7 @@ export class World {
   toWorld(event) { const r = this.canvas.getBoundingClientRect(); return this.camera.toWorld(event.clientX - r.left, event.clientY - r.top); }
   objects() {
     const state = this.getState();
-    return [...NEIGHBORS, ...PLACES, ...LITTER.filter(item => !state.litter.includes(item.id)).map(item => ({ ...item, name: item.label }))];
+    return [...NEIGHBORS, ...PLACES, ...LITTER.filter(item => !state.litter.includes(item.id)).map(item => ({ ...item, name: item.label })), ...(this.callbacks.layers?.objects?.(this) ?? [])];
   }
   hit(p) {
     const radius = Math.max(28, 22 / this.scale), labelScale = Math.max(1, 1 / this.scale);
@@ -252,14 +252,18 @@ export class World {
       if (item.kind === 'cup') { this.rect(item.x - 3, item.y - 5, 6, 10, '#f4eedb', 1); this.rect(item.x - 4, item.y - 5, 8, 2, '#b7aa87', 1); }
       else { c.save(); c.translate(item.x, item.y); c.rotate(.4); this.rect(-6, -3, 12, 6, item.kind === 'paper' ? '#e0b2a0' : '#e3c870', 1); c.restore(); }
     }
+    // Optional layers (the side stories' sprites): ground under the path and people, actors y-sorted with them, overlay under the name chips.
+    const layers = this.callbacks.layers;
+    layers?.ground?.(c, this);
     if (this.path.length) {
       this.line([state.player, ...this.path], '#456e5a85', 2, [3, 7]); const last = this.path.at(-1); this.circle(last.x, last.y, 4, '#467c65');
     }
     const visitorStyles = [{ coat: '#b16d67', skin: '#be8b60', hair: '#4a4239' }, { coat: '#7f9776', skin: '#a27353', hair: '#666251' }, { coat: '#987b9e', skin: '#b88668', hair: '#373d34' }];
     const visitors = (hostingGuests(state.hosting, this.hostCells) || scene.guests).map((guest, i) => ({ ...guest, ...visitorStyles[i], ...visitorPoint(guest) }));
     if (state.hosting.order.length && (!currentActivity(state.hosting) || currentActivity(state.hosting) === 'pause')) for (const guest of visitors) this.rect(guest.x - 7, guest.y + 4, 14, 4, '#75907c', 1);
-    const people = [...NEIGHBORS, ...visitors, { ...state.player, id: 'player' }].sort((a, b) => a.y - b.y);
-    people.forEach(person => this.person(person, person.id === 'player'));
+    const people = [...NEIGHBORS, ...visitors, { ...state.player, id: 'player' }, ...(layers?.actors?.(this) ?? [])].sort((a, b) => a.y - b.y);
+    people.forEach(person => person.draw ? person.draw(c, this) : this.person(person, person.id === 'player'));
+    layers?.overlay?.(c, this);
     for (const person of NEIGHBORS) {
       const label = objectLabel(person, this.scale);
       if (label) this.chip(label.text, label.x, label.y, this.hover?.id === person.id ? '#f2d28f' : '#f7f0db');

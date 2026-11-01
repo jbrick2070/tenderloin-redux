@@ -4,12 +4,17 @@
 // (tests/next-story.test.mjs fails on drift); WEB_OVERRIDES drops Godot's key hints and names the
 // mural where Godot names Celeste's easel, which 2D does not have.
 //
-// state: the fork state (classic initialState() shape plus visited and celesteTalks), never the
-// Godot envelope: pass the state parseGodotSave returns. world: { player: {x, y}, neighbors:
+// state: the fork state (classic initialState() shape plus visited, celesteTalks and surprises),
+// never the Godot envelope: pass the state parseGodotSave returns. world: { player: {x, y}, neighbors:
 // [{id, name, x, y}], places: {mural, history, blackhawk} }, in 2D map pixels: neighbors is world.js
-// NEIGHBORS, places is PLACES keyed by id (an array works too). Missing pieces fall back to
-// state.player, the fork's start, Godot's names and a null target.
+// NEIGHBORS, places is PLACES keyed by id (an array works too). The visit-only side stories add
+// episode (the active episode's objective, visits/picker.js activeObjective, or null), tour
+// (visits/landmarks.js), lastHinted and openNeighborId (Godot last_hinted_surprise_id and the
+// open conversation). Missing pieces fall back to state.player, the fork's start, Godot's names,
+// a fresh tour and a null target.
 import { ORIGIN, PIXELS_PER_METRE, project, initialState } from './core.js';
+import { exploreObjective, initialTour } from './visits/landmarks.js';
+import { SURPRISE_IDS, neighborHint } from './visits/surprises.js';
 
 export const STORY_CHAPTERS = [
   { num: 1, title: 'Get the Block Ready', intro: 'An afternoon at Turk & Taylor. You live on this block, and your neighbors have already started planning a small gathering. Bea has a plan, Celeste brought paint, Rook knows sound, Dez has a beat, and Thanh is lending supplies. Help them get the block ready. The gathering and the neighbors are fictional; the streets and the history are real.' },
@@ -92,15 +97,16 @@ export const WEB_OVERRIDES = {
   "Read the Compton's Cafeteria plaque at Turk & Taylor (J)": "Read the Compton's Cafeteria plaque at Turk & Taylor",
   'Visit the former Black Hawk jazz club at Turk & Hyde (H)': 'Visit the former Black Hawk jazz club at Turk & Hyde',
 };
-// Fork-only text. After Black Hawk, Godot names surprises, the museum and a tour, which 2D lacks.
-export const FORK_TEXT = { wander: 'Wander freely', wanderHint: STORY_CHAPTERS[5].intro, nearby: 'nearby' };
+// Fork-only text: the compass phrase when a point is missing.
+export const FORK_TEXT = { nearby: 'nearby' };
 
 const T = GODOT_TEMPLATES.current_objective;
 const list = value => Array.isArray(value) ? value : [];
 const isPoint = p => !!p && Number.isFinite(p.x) && Number.isFinite(p.y);
 const roundHalfAway = v => Math.sign(v) * Math.round(Math.abs(v));
 // The 2D map frame comes from the fork's core.js: project() turns Turk to the screen at
-// PIXELS_PER_METRE. It is read on first use, so core.js may import this module.
+// PIXELS_PER_METRE. It is read on first use. core.js must not import this module: its visits
+// modules load history.js, which calls project() at load.
 let frame = null;
 function mapFrame() {
   if (!frame) {
@@ -163,8 +169,22 @@ export function currentChapter(state) {
 }
 export const storyChapter = state => STORY_CHAPTERS[currentChapter(state)];
 
+// A point an objective walks to that is no neighbor or place: a visits object ({id, kind: 'visit', name, x, y}).
+const visitTarget = (id, name, point) => isPoint(point) ? { id, kind: 'visit', name, x: point.x, y: point.y } : null;
+// An active story episode's objective (visits/picker.js activeObjective), as the fork's goal shape.
+const episodeGoal = o => ({ id: o.id, text: o.text, hint: o.hint, target: o.hasTarget ? visitTarget('episode', o.targetName, o.target) : null, neighbor: null });
+// Godot current_objective's chapter 6 tail (visits/landmarks.js exploreObjective): the next surprise, the landmark tour, then
+// the final line. While surprises remain, speakerHints holds each neighbor's ask_whats_next hint ({hint, lastHinted}).
+function exploreGoal(found, world, p) {
+  const o = exploreObjective(found, world?.tour ?? initialTour(), { player: p, openNeighborId: world?.openNeighborId ?? null, lastHinted: world?.lastHinted ?? '', compass: compassPhrase });
+  const target = o.hasTarget ? visitTarget(o.surpriseId ? `surprise:${o.surpriseId}` : `tour:${o.tourId}`, o.targetName, o.target) : null;
+  const speakerHints = found.length < SURPRISE_IDS.length ? Object.fromEntries(NEIGHBOR_IDS.map(id => [id, neighborHint(found, id, { player: p, compass: compassPhrase })])) : null;
+  return { id: 'explore', text: o.text, hint: o.hint, target, neighbor: null, surpriseId: o.surpriseId ?? '', tourId: o.tourId ?? '', tourAction: o.tourAction ?? '', speakerHints };
+}
+
 // {id, text, hint, target, neighbor}: target is the world object to walk to (or null). As in
 // Godot, neighbor is the id of who can help (or null), not who says the hint: see whatsNextLine.
+// An active episode comes first. The explore goal adds surpriseId, tourId, tourAction and speakerHints.
 export function nextObjective(state, world = {}) {
   const s = forkState(state), p = isPoint(world?.player) ? world.player : isPoint(s.player) ? s.player : mapFrame().start;
   const person = id => list(world?.neighbors).find(n => n?.id === id) ?? null;
@@ -172,6 +192,7 @@ export function nextObjective(state, world = {}) {
   const place = id => (Array.isArray(world?.places) ? world.places.find(item => item?.id === id) : world?.places?.[id]) ?? null;
   const where = target => compassPhrase(p, target);
   const goal = (id, text, hint, target, neighbor = null) => ({ id, text, hint, target: target ?? null, neighbor });
+  if (world?.episode && typeof world.episode === 'object') return episodeGoal(world.episode);
   if (s.opened !== true) {
     const visited = new Set(list(s.visited).filter(id => NEIGHBOR_IDS.includes(id)));
     let best = null, bestD = Infinity;
@@ -205,16 +226,19 @@ export function nextObjective(state, world = {}) {
   if (s.film?.phase !== 'done') return goal('film', say(T.film), say(T.filmHint), person('dez'), 'dez');
   if (s.history !== true) return goal('comptons', say(T.comptons), say(T.comptonsHint, where(place('history'))), place('history'));
   if (s.blackhawk !== true) return goal('blackhawk', say(T.blackhawk), say(T.blackhawkHint, where(place('blackhawk'))), place('blackhawk'));
-  return goal('explore', FORK_TEXT.wander, FORK_TEXT.wanderHint, null);
+  return exploreGoal(list(s.surprises), world, p);
 }
 
 // ask_whats_next: the speaker is the neighbor being talked to, else the nearest one in reach; the
-// caller picks it (null for nobody). Bea and the Open Floor pair pitch the layout in their own words.
+// caller picks it (null for nobody). Bea and the Open Floor pair pitch the layout in their own words;
+// on the explore objective a neighbor names the next surprise of their own pair first.
 export function hintFor(goal, speakerId = null) {
   const A = GODOT_TEMPLATES.ask_whats_next;
   if (goal?.id === 'layout' && speakerId === 'bea') return A.layoutBea;
   if (goal?.id === 'layout' && (speakerId === 'dez' || speakerId === 'celeste')) return A.layoutOpenFloor;
-  return String(goal?.hint ?? '');
+  const hints = goal?.id === 'explore' && Object.hasOwn(NEIGHBOR_NAMES, speakerId) ? goal.speakerHints : null;
+  const spoken = hints && Object.hasOwn(hints, speakerId) ? hints[speakerId] : null;
+  return typeof spoken?.hint === 'string' ? spoken.hint : String(goal?.hint ?? '');
 }
 export function whatsNextLine(goal, speakerId = null) {
   const hint = hintFor(goal, speakerId);

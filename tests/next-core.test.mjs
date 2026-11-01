@@ -5,7 +5,7 @@ import {
   SAVE_KEY, SETTINGS_KEY, NEIGHBOR_IDS, LITTER, MOTIFS, PALETTES, FURNITURE, PHOTO_GUESTS, LOANS, BLOCK_TEXT,
   initialState, applyAction, progress, ready, arranged, metCount, blockMissing, musicLayers, canPlaceFurniture,
 } from '../browser-next/core.js';
-import { GODOT_SAVE_KEY, FORK_FIELDS, SAVE_BUDGET, parseGodotSave, buildGodotSave, freshEnvelope, freshState, lostProgress, combineSaves } from '../browser-next/godot-save.js';
+import { GODOT_SAVE_KEY, FORK_FIELDS, SAVE_BUDGET, SURPRISE_IDS, parseGodotSave, buildGodotSave, freshEnvelope, freshState, lostProgress, combineSaves, cleanSurprises } from '../browser-next/godot-save.js';
 import { currentChapter } from '../browser-next/story.js';
 import { gatheringScene, sceneFurniture, DEFAULT_FURNITURE } from '../browser-next/gathering.js';
 import { GODOT_WRITTEN, PUBLISHED, godotEnvelope, readyEnvelope, openedEnvelope, raw } from './next-fixtures.mjs';
@@ -55,6 +55,26 @@ test("mural-scene ports edit_mural_scene: '' lifts a slot, and an action without
     const action = id === undefined ? { type: 'mural-scene', slot: 'left' } : { type: 'mural-scene', id, slot: 'left' };
     assert.equal(applyAction(s, action), s, `id ${JSON.stringify(id)} is not a lift`);
   }
+});
+
+test('surprise ports inspect_neighborhood_surprise: a known id once, kept sorted, before or after opening', () => {
+  // Godot marks a surprise found wherever it is inspected, with no chapter or block gate, and saves only a new one.
+  assert.match(body('inspect_neighborhood_surprise'), /\tvar newly_discovered := not discovered_surprises\.has\(s_id\)\n\tdiscovered_surprises\[s_id\] = true\n/);
+  assert.doesNotMatch(body('inspect_neighborhood_surprise').split('var newly_discovered')[0], /block_opened|current_chapter|is_block_ready/, 'no gate before the find');
+  const fresh = initialState();
+  assert.deepEqual(fresh.surprises, []);
+  for (const id of ['nope', '', undefined, null, 7, ['cutesy_dino'], 'constructor', 'Cutesy_Dino']) assert.equal(applyAction(fresh, { type: 'surprise', id }), fresh, `id ${JSON.stringify(id)} is not a surprise`);
+  let s = applyAction(fresh, { type: 'surprise', id: 'jeffrey_record' });
+  assert.deepEqual(s.surprises, ['jeffrey_record']);
+  assert.equal(s.opened, false, 'found before the block opens');
+  assert.equal(applyAction(s, { type: 'surprise', id: 'jeffrey_record' }), s, 'a repeat find returns the same state');
+  s = act(s, { type: 'surprise', id: 'cutesy_dino' }, { type: 'surprise', id: 'bite_size_nachos' });
+  assert.deepEqual(s.surprises, ['bite_size_nachos', 'cutesy_dino', 'jeffrey_record'], 'sorted, as build_save_envelope writes them');
+  assert.deepEqual(fresh.surprises, [], 'the earlier state is untouched');
+  assert.deepEqual(act(fresh, ...[...SURPRISE_IDS].reverse().map(id => ({ type: 'surprise', id }))).surprises, [...SURPRISE_IDS].sort());
+  const open = act(readyState(), { type: 'open' }), found = applyAction(open, { type: 'surprise', id: 'mayor_pomp_event' });
+  assert.deepEqual([found.opened, found.surprises], [true, ['mayor_pomp_event']], 'and after it opens');
+  assert.equal(currentChapter(found), currentChapter(open), 'a find is not a chapter step');
 });
 
 test('progress and ready are Godot is_block_ready; layout and tidying are not gates', () => {
@@ -161,6 +181,7 @@ function randomAction(s, rand) {
     () => ({ type: 'civic-open' }), () => ({ type: 'civic-close' }), () => ({ type: 'film-start' }), () => ({ type: 'film-choice', key: pick(['framing', 'plan']), value: pick(['close', 'wide', 'quiet', 'later']) }),
     () => ({ type: 'film-move', id: pick(['seat', 'paint', 'welcome']), direction: pick([-1, 1]) }), () => ({ type: 'film-roll' }), () => ({ type: 'film-clear' }),
     () => ({ type: 'film-capture', id: shot }), () => ({ type: 'film-capture', id: shot }), () => ({ type: 'move', x: int(600), y: -int(60) }),
+    () => ({ type: 'surprise', id: pick([...SURPRISE_IDS, 'nope']) }),
   ])();
 }
 function mulberry(seed) {
@@ -169,7 +190,7 @@ function mulberry(seed) {
 // The game writes from the last envelope it loaded or wrote; each write must load back to the same fork state.
 function walk(start, base, seed, steps) {
   const rand = mulberry(seed), chapters = new Set();
-  let s = start, env = base, writes = 0; const kept = JSON.stringify([env.discovered_surprises, env.mural_scenes, env.district_boundary_visible, env.active_motif]);
+  let s = start, env = base, writes = 0; const kept = JSON.stringify([env.mural_scenes, env.district_boundary_visible, env.active_motif]);
   for (let i = 0; i < steps; i++) {
     const action = randomAction(s, rand), next = applyAction(s, action);
     if (next === s) continue;
@@ -181,7 +202,9 @@ function walk(start, base, seed, steps) {
     const back = parseGodotSave(out.raw);
     assert.equal(back.status, 'loaded', back.reason);
     for (const key of FORK_FIELDS) assert.deepEqual(back.state[key], s[key], `seed ${seed} step ${i} ${action.type}: ${key}`);
-    assert.equal(JSON.stringify([out.envelope.discovered_surprises, out.envelope.mural_scenes, out.envelope.district_boundary_visible, out.envelope.active_motif]), kept, 'Godot-only fields survive');
+    assert.equal(JSON.stringify([out.envelope.mural_scenes, out.envelope.district_boundary_visible, out.envelope.active_motif]), kept, 'Godot-only fields survive');
+    const had = cleanSurprises(env.discovered_surprises), has = cleanSurprises(out.envelope.discovered_surprises);
+    assert.ok(had.every(id => has.includes(id)), `seed ${seed} step ${i}: a write keeps every surprise its base had`);
     env = out.envelope; writes++;
   }
   return { chapters, writes, state: s };
@@ -347,11 +370,12 @@ test("combining brings back the neighborhood surprises and mural scenes in this 
   const out = combineSaves(stale.envelope, mine, myWrite.envelope), env = JSON.parse(out.raw);
   assert.equal(out.ok, true, `${out.reason} ${out.detail}`);
   assert.deepEqual([env.visited_neighbors, env.discovered_surprises, env.mural_scenes], [['bea', 'celeste', 'dez', 'thanh'], ['cutesy_dino', 'hidden_mural_145', 'jeffrey_record'], { left: 'music', right: 'garden' }]);
-  // Scenes the stored save has are kept; only known surprise ids are added; a stored value with nothing to add stays verbatim.
+  // Scenes the stored save has are kept. This tab's state carries its surprises, so they come back whatever its write base
+  // holds; only known ids are written, in place of a stored value Godot would clean.
   const painted = loadEnv(godotEnvelope({ save_seq: 10, visited_neighbors: ['bea'], discovered_surprises: 7, mural_scenes: { left: 'cooking' } }));
   const kept = JSON.parse(combineSaves(painted.envelope, mine, { ...myWrite.envelope, discovered_surprises: ['not_a_surprise'] }).raw);
-  assert.deepEqual([kept.discovered_surprises, kept.mural_scenes], [7, { left: 'cooking' }]);
-  assert.equal(JSON.parse(combineSaves(stale.envelope, mine).raw).discovered_surprises.length, 1, 'without a write base nothing is added');
+  assert.deepEqual([kept.discovered_surprises, kept.mural_scenes], [['hidden_mural_145', 'jeffrey_record'], { left: 'cooking' }]);
+  assert.equal(JSON.parse(combineSaves(stale.envelope, mine).raw).discovered_surprises.length, 3, 'without a write base too');
   // Scenes this tab painted or lifted and saved itself are its choices: an older stored save with scenes does not undo them.
   // The fourth argument is the scenes this tab last read from the shared save (its own writes do not change it).
   const loaded = { left: 'music', right: 'garden' };
@@ -373,12 +397,15 @@ test("combining brings back the neighborhood surprises and mural scenes in this 
     const out = combineSaves(bad.envelope, mine, myWrite.envelope, loaded);
     assert.deepEqual([out.ok, out.state.muralScenes, JSON.parse(out.raw).mural_scenes], [true, loaded, loaded], `stored ${JSON.stringify(junk)}`);
   }
-  // The merged fields count toward the budget.
+  // The merged fields count toward the budget. This tab's finds ride on its state, so they cost the same with or without its
+  // write base, and without them the stored save fits exactly their bytes more.
   const padded = n => loadEnv(godotEnvelope({ save_seq: 10, visited_neighbors: ['bea'], optional: { pad: 'x'.repeat(n) } }));
   let n = 0, hi = SAVE_BUDGET;
   while (n < hi) { const mid = (n + hi + 1) >> 1; if (combineSaves(padded(mid).envelope, mine).ok) n = mid; else hi = mid - 1; }
   assert.ok(n > 2000); assert.equal(combineSaves(padded(n).envelope, mine).ok, true);
-  assert.equal(combineSaves(padded(n).envelope, mine, myWrite.envelope).reason, 'full', "the write base's additions are budgeted");
+  assert.deepEqual([combineSaves(padded(n).envelope, mine, myWrite.envelope).ok, combineSaves(padded(n + 1).envelope, mine, myWrite.envelope).reason], [true, 'full'], 'the same budget with the write base');
+  const finds = JSON.stringify(mine.surprises).length - 2, none = { ...mine, surprises: [] };
+  assert.deepEqual([combineSaves(padded(n + finds).envelope, none).ok, combineSaves(padded(n + finds + 1).envelope, none).reason], [true, 'full'], "this tab's finds are budgeted");
 });
 
 test('combining decides mural scenes slot by slot: a slot this tab painted wins, a slot it only adopted follows the stored save', () => {

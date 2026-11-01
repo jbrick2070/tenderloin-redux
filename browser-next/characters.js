@@ -6,7 +6,8 @@
 // end_conversation, talk_with_neighbor and finish_neighbor_arrival. Every Godot line is copied
 // verbatim (tests/next-characters.test.mjs fails on drift); CHARACTER_WEB_OVERRIDES rewrites only
 // the lines that name Godot's 3D-only keys and controls (Shift+D surprises, T, Shift Motif,
-// Pack Borrowed Gear).
+// Pack Borrowed Gear). The side stories' action labels (Spot Surprise, Visit the Museum, Visit
+// Eateries) are visits/text.js's copies.
 //
 // Pure: no DOM, timers or storage. Inputs:
 // - state: fork state (the state parseGodotSave returns), never the Godot envelope;
@@ -20,6 +21,7 @@ import { musicLayers } from './core.js';
 import { FILM_SHOTS } from './film.js';
 import { loanMemory, conversationLoan } from './hosted-text.js';
 import { spokenText } from './bubble.js';
+import { GODOT_TEXT } from './visits/text.js';
 
 export { spokenText };
 // godot/main.gd neighbors (positions are 2D's own, in world.js) and NEIGHBOR_STORY_BADGES.
@@ -261,15 +263,17 @@ export const CAPTION_TEXT = {
   whatsNextA11y: 'Next: %s. %s',
   spokenWithTail: '%s %s',
 };
-// conversation_actions labels and the hub button labels it borrows.
+// conversation_actions labels and the hub button labels it borrows. Spot Surprise, Visit the Museum and Visit Eateries are
+// visits/text.js's copies (the side stories' one table); the landmark tour's label is the explore goal's tourAction.
+const VISIT_ACTIONS = GODOT_TEXT['main.gd'].conversation_actions;
 export const ACTION_LABELS = {
   layoutTable: 'Long Table (Bea)', layoutFloor: 'Open Floor (Dez & Celeste)', hub: 'All Block Actions',
   returned: 'Returned ', return: 'Return ',
   meet: 'Go Meet %s', mural: 'Paint with Celeste', soundcheck: 'Soundcheck with Rook', open: 'Open Block Party!', photo: 'Take Group Photo',
   pack: 'Pack Gear', returnGear: 'Return Gear (%d/3)',
   comptons: "Walk to Compton's", blackhawk: 'Walk to Black Hawk',
-  surprise: 'Spot Surprise (%d/%d)', museum: 'Visit the Museum',
-  sharedPanel: "Celeste's Shared Panel", talkTo: 'Talk to %s', plaque: "See Compton's Plaque", eateries: 'Visit Eateries',
+  surprise: VISIT_ACTIONS.spot, museum: VISIT_ACTIONS.museum,
+  sharedPanel: "Celeste's Shared Panel", talkTo: 'Talk to %s', plaque: "See Compton's Plaque", eateries: VISIT_ACTIONS.eateries,
 };
 export const HUB_LABELS = {
   programmeDone: 'Hosted All 4 Events', programmeHost: 'Host Activity (%d/4)', programmeStart: 'Start Hosting Party', programmeDraft: 'Plan Schedule (%d/4)', programme: 'Plan Party Schedule',
@@ -283,29 +287,27 @@ export const NARROW_LABEL_REWRITES = [
 ];
 // Conversation steps that reopen the conversation after they run (run_conversation_action).
 export const REOPEN_ACTIONS = ['epilogue', 'programme', 'civic', 'film', 'open', 'layout_table', 'layout_floor'];
-// Godot's 3D-only actions with no 2D place: they are left out of the fork's conversations, and the
-// next Godot choice takes the slot (the fork has no surprises, tour, museum or eateries).
-export const FORK_OMITTED_ACTIONS = ['surprise', 'landmark_tour', 'museum', 'eateries'];
 // The conversation buttons Godot marks rapid: Keep Chatting (conv_chat_btn) and Rook's Volume (music_vol_btn). The
 // Mural Stories Palette is rapid too (ending/mural.js); tests/next-press-settle.test.mjs pins every rapid mark on both sides.
 export const RAPID_BUTTONS = ['chat', 'volume'];
 
 // Godot text -> 2D text, keyed by the exact copied line. Only lines naming Godot's 3D-only keys or
-// controls are here: the Shift+D surprise hunt, the T key, the Shift Motif button and the hub's
-// Pack Borrowed Gear button (2D offers the conversation's Pack Gear). Each keeps the rest of the
-// Godot sentence and drops only that clause.
+// controls are here, and each keeps every other Godot word: the surprise lines drop their (Shift+D)
+// hint, or say "choose Spot Surprise" (the 2D button for the hunt) where Godot says "press Shift+D";
+// the T key's hints are dropped; the Shift Motif button and the hub's Pack Borrowed Gear button
+// become 2D's "choose a new space" and the conversation's Pack Gear.
 export const CHARACTER_WEB_OVERRIDES = {
-  [NEIGHBOR_LINES.bea.open[4]]: 'Bea: "If you lose track of the afternoon, tap What\'s Next?"',
-  [NEIGHBOR_LINES.bea.before[4]]: 'Bea: "Lost? Tap What\'s Next? any time."',
-  [NEIGHBOR_LINES.dez.open[4]]: 'Dez: "Thanks for keeping the tempo easy."',
-  [NEIGHBOR_LINES.dez.before[4]]: 'Dez: "The Black Hawk at Turk & Hyde had jazz from 1949 to 1963."',
+  [NEIGHBOR_LINES.bea.open[4]]: 'Bea: "If you lose track of the afternoon, tap What\'s Next?—or choose Spot Surprise to spot the small cutesy dinosaur by Boeddeker Park and the wild woman chef on a magic carpet!"',
+  [NEIGHBOR_LINES.bea.before[4]]: 'Bea: "Lost? Tap What\'s Next? any time—or choose Spot Surprise if you hear rumors of a small cutesy dinosaur or a wild woman chef on a magic carpet!"',
+  [NEIGHBOR_LINES.dez.open[4]]: 'Dez: "Thanks for keeping the tempo easy—and if you spot that random guy on a dirt bike in a Viking helmet or Jeffrey\'s lost 1961 record by 361 Turk, choose Spot Surprise!"',
+  [NEIGHBOR_LINES.dez.before[4]]: 'Dez: "The Black Hawk at Turk & Hyde had jazz from 1949 to 1963—and rumor has it Jeffrey\'s lost 1961 record and a guy on a dirt bike in a Viking helmet are out along Turk!"',
   [NEIGHBOR_LINES.thanh.open[1]]: 'Thanh: "Whenever the afternoon winds down, tap \'Pack Gear\' and we\'ll return the folding table, paint case, and speaker."',
-  [NEIGHBOR_LINES.thanh.open[4]]: 'Thanh: "When everyone\'s ready, we pack up together."',
-  [NEIGHBOR_LINES.thanh.before[4]]: 'Thanh: "Bea taught me to keep the sidewalk wide enough for walkers and strollers."',
-  [CELESTE_LINES.completed[4]]: 'Celeste: "Have you walked over to 145 Leavenworth or Boeddeker Park yet?"',
+  [NEIGHBOR_LINES.thanh.open[4]]: 'Thanh: "When everyone\'s ready, we pack up together—and don\'t miss the surprise drag show, bite-sized bags of nachos, fresh donut & bagel, clown horn walker, or the impromptu Mayor Public Event!"',
+  [NEIGHBOR_LINES.thanh.before[4]]: 'Thanh: "Bea taught me to keep the sidewalk wide enough for walkers, strollers, bite-sized nachos, a good donut or bagel, a guy with a clown horn, and even an impromptu Mayor Public Event!"',
+  [CELESTE_LINES.completed[4]]: 'Celeste: "Have you walked over to 145 Leavenworth or Boeddeker Park yet? Choose Spot Surprise to spot the hidden mural alcove and Pip the Tiny Dino!"',
   [CELESTE_LINES.before[1]]: 'Celeste: "Try Garden, Sunset, or Ocean, or choose a new space to slide your shape around the 6×3 board."',
-  [CELESTE_LINES.before[4]]: 'Celeste: "When the board is finished, Rook\'s groove gets another layer."',
-  [ROOK_LINES.completed[4]]: 'Rook: "If you walk out toward 361 Turk or Jones & Turk, our groove goes with you."',
+  [CELESTE_LINES.before[4]]: 'Celeste: "When the board is finished, Rook\'s groove gets another layer—and if you walk over to 145 Leavenworth, look for the hidden mural alcove below the 8th floor!"',
+  [ROOK_LINES.completed[4]]: 'Rook: "If you walk out toward 361 Turk or Jones & Turk, choose Spot Surprise—Jeffrey\'s lost 1961 LP and Honker Barnaby are right in pocket with our groove!"',
   [PANEL_TEXT.detail]: '%s',
   [BUTTON_TEXT.chat]: 'Keep Chatting',
 };
@@ -611,10 +613,9 @@ export const narrowLabel = label => NARROW_LABEL_REWRITES.reduce((text, [from, t
 
 // conversation_actions for the neighbor being talked to: up to three context actions, then (Godot's
 // last slot) All Block Actions. goal is story.js nextObjective(state, world); ids are Godot's, with
-// walk_neighbor:<neighbor id> and return_owner:<loan id>. opts: {narrow, screenFrame, fork}. With
-// fork (the default) FORK_OMITTED_ACTIONS never appear; fork: false gives Godot's full list.
+// walk_neighbor:<neighbor id> and return_owner:<loan id>. opts: {narrow, screenFrame}.
 export function conversationActions(state, extras, talk, partner, goal, opts = {}) {
-  const s = forkState(state), e = extrasOf(extras), fork = opts.fork !== false, A = ACTION_LABELS, visited = new Set(list(s.visited));
+  const s = forkState(state), e = extrasOf(extras), A = ACTION_LABELS, visited = new Set(list(s.visited));
   const g = goal ?? nextObjective(s), acts = [];
   const done = () => opts.narrow === true ? acts.map(a => ({ ...a, label: narrowLabel(a.label) })) : acts;
   if (g.id === 'layout') {
@@ -623,7 +624,7 @@ export function conversationActions(state, extras, talk, partner, goal, opts = {
   }
   const loan = conversationLoan(s, partner, talk?.confirmedLoan ?? '');
   if (loan) acts.push({ id: `return_owner:${loan}`, label: (list(s.epilogue?.returned).includes(loan) ? A.returned : A.return) + LOAN_TITLES[loan] });
-  const surprisesLeft = e.surprises.size < SURPRISE_IDS.length;
+  const surprisesLeft = e.surprises.size < SURPRISE_IDS.length, spot = () => ({ id: 'surprise', label: gdFormat(A.surprise, e.surprises.size, SURPRISE_IDS.length) });
   switch (g.id) {
     case 'meet': acts.push({ id: `walk_neighbor:${g.neighbor}`, label: gdFormat(A.meet, NEIGHBOR_NAMES[g.neighbor]) }); break;
     case 'mural': acts.push({ id: 'mural', label: A.mural }); break;
@@ -636,9 +637,9 @@ export function conversationActions(state, extras, talk, partner, goal, opts = {
     case 'film': acts.push({ id: 'film', label: filmLabel(s, opts.screenFrame) }); break;
     case 'comptons': acts.push({ id: 'comptons', label: A.comptons }); break;
     case 'blackhawk': acts.push({ id: 'blackhawk', label: A.blackhawk }); break;
-    default:
-      if (fork) break;
-      acts.push(surprisesLeft ? { id: 'surprise', label: gdFormat(A.surprise, e.surprises.size, SURPRISE_IDS.length) } : { id: 'museum', label: A.museum });
+    // Godot's _: the explore goal, or an active story episode's: Spot Surprise while any is left, else the
+    // landmark tour's next stop under its tour_action when the goal has one, else Visit the Museum.
+    default: acts.push(surprisesLeft ? spot() : g.tourId ? { id: 'landmark_tour', label: String(g.tourAction ?? '') } : { id: 'museum', label: A.museum });
   }
   if (hasHosted(s, 'art') && partner === 'dez') {
     acts.push({ id: 'shared_panel', label: A.sharedPanel }, { id: 'hub', label: A.hub });
@@ -653,10 +654,10 @@ export function conversationActions(state, extras, talk, partner, goal, opts = {
   if (first !== otherId && other !== at && !visited.has(NEIGHBOR_IDS[other])) acts.push({ id: otherId, label: gdFormat(A.talkTo, NEIGHBOR_NAMES[NEIGHBOR_IDS[other]]) });
   else if (s.history !== true && first !== 'comptons') acts.push({ id: 'comptons', label: A.plaque });
   else if (s.blackhawk !== true && first !== 'blackhawk') acts.push({ id: 'blackhawk', label: A.blackhawk });
-  else if (!fork && surprisesLeft && first !== 'surprise') acts.push({ id: 'surprise', label: gdFormat(A.surprise, e.surprises.size, SURPRISE_IDS.length) });
-  else if (!fork && g.id === 'explore' && !surprisesLeft) acts.push({ id: 'eateries', label: A.eateries });
+  else if (surprisesLeft && first !== 'surprise') acts.push(spot());
+  else if (g.id === 'explore' && !surprisesLeft) acts.push({ id: 'eateries', label: A.eateries });
   else if (first !== otherId && other !== at) acts.push({ id: otherId, label: gdFormat(A.talkTo, NEIGHBOR_NAMES[NEIGHBOR_IDS[other]]) });
-  else if (!fork) acts.push({ id: 'museum', label: A.museum });
+  else acts.push({ id: 'museum', label: A.museum });
   acts.push({ id: 'hub', label: A.hub });
   return done();
 }

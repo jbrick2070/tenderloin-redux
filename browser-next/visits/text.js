@@ -1023,6 +1023,8 @@ export const GODOT_TEXT = {
     },
     conversation_actions: {
       spot: "Spot Surprise (%d/%d)",
+      museum: "Visit the Museum",
+      eateries: "Visit Eateries",
     },
     landmark_tour_state: {
       museumAction: "Visit the Museum",
@@ -1100,6 +1102,56 @@ export const GODOT_TEXT = {
     show_eatery_host_speech: {
       speech: "%s (fictional)\n%s",
     },
+    // Entry labels, map labels and tooltips the visits UI shows, in Godot source order.
+    build_street_life_decor: {
+      soWhatAwning: "361 Turk · 'So What' Awning",
+      soWhatFloor: "145 Leavenworth · 8th Floor ('So What')",
+      museum: "Tenderloin Museum & Info Hub · 398 Eddy (Cadillac Hotel)",
+      portal: "Living Archive Time-Portal · 1961 / 1966 / 1907",
+      eatery: "%s (fictional)",
+    },
+    build_boeddeker_park: {
+      label: "Boeddeker Park · 240 Eddy St",
+    },
+    build_eatery_counters: {
+      menu: "Today: %s",
+    },
+    build_neighborhood_surprises: {
+      jeffrey_record: "[*] Jeffrey's Lost 1961 Record (Tap / Shift+D)",
+      hidden_mural_145: "[*] 145 Leavenworth Hidden Mural (Tap / Shift+D)",
+      impromptu_drag_show: "[*] Impromptu Drag Show! (Tap / Shift+D)",
+      viking_dirt_biker: "[*] Dirt Biker in a Viking Helmet (Tap / Shift+D)",
+      cutesy_dino: "[*] Small Cutesy Dinosaur (Tap / Shift+D)",
+      magic_carpet_chef: "[*] Wild Woman Chef on a Magic Carpet (Tap / Shift+D)",
+      bite_size_nachos: "[*] Bite-Sized Bags of Nachos (Tap / Shift+D)",
+      good_donut_and_bagel: "[*] Good Donut & Everything Bagel (Tap / Shift+D)",
+      clown_horn_walker: "[*] Guy with a Clown Horn — Honk! (Tap / Shift+D)",
+      mayor_pomp_event: "[*] Impromptu 'Mayor Public Event' (Tap / Shift+D)",
+    },
+    apply_hub_guidance: {
+      suggested: "Suggested next step",
+      locked: "Unlocks later",
+      joiner: ". ",
+      meal: "Optional shared meal with fictional neighbors; preparation and invitations last for this visit.",
+    },
+    build_story_card: {
+      before: "Before These Streets",
+      beforeName: "Optional opening: Before These Streets",
+    },
+    update_walk_control: {
+      power: "Power Story",
+      powerTip: "Resume the relay adventure or End story to return to your afternoon.",
+      dogs: "Dog search",
+      dogsTip: "Resume owner notes and your chosen lead. End search returns to your afternoon.",
+      lantern: "Parade",
+      lanternTip: "Resume the costume makers and lantern march.",
+      election: "Election map",
+      electionTip: "Resume your historical polling-list map walk.",
+    },
+    make_ui: {
+      meal: "Cook & Share",
+      beforeRevisit: "Before These Streets",
+    },
   },
 };
 // Godot literal -> 2D wording. Only the 3D edition's key and control hints (F8, Shift F8, Shift+D,
@@ -1132,6 +1184,26 @@ export const WEB_OVERRIDES = {
       "Cultural center & adventure base (footprint 201006.0001559) · Offers walking tours, live performances & the Living Archive Time-Portal (choose Next era to channel past eras!)",
     "%s · Specialty: %s (Stop %d/%d · Tap the counter to order · Shift+E for next fictionalized spot)":
       "%s · Specialty: %s (Stop %d/%d · Tap the counter to order)",
+    "[*] Jeffrey's Lost 1961 Record (Tap / Shift+D)":
+      "[*] Jeffrey's Lost 1961 Record (Tap)",
+    "[*] 145 Leavenworth Hidden Mural (Tap / Shift+D)":
+      "[*] 145 Leavenworth Hidden Mural (Tap)",
+    "[*] Impromptu Drag Show! (Tap / Shift+D)":
+      "[*] Impromptu Drag Show! (Tap)",
+    "[*] Dirt Biker in a Viking Helmet (Tap / Shift+D)":
+      "[*] Dirt Biker in a Viking Helmet (Tap)",
+    "[*] Small Cutesy Dinosaur (Tap / Shift+D)":
+      "[*] Small Cutesy Dinosaur (Tap)",
+    "[*] Wild Woman Chef on a Magic Carpet (Tap / Shift+D)":
+      "[*] Wild Woman Chef on a Magic Carpet (Tap)",
+    "[*] Bite-Sized Bags of Nachos (Tap / Shift+D)":
+      "[*] Bite-Sized Bags of Nachos (Tap)",
+    "[*] Good Donut & Everything Bagel (Tap / Shift+D)":
+      "[*] Good Donut & Everything Bagel (Tap)",
+    "[*] Guy with a Clown Horn — Honk! (Tap / Shift+D)":
+      "[*] Guy with a Clown Horn — Honk! (Tap)",
+    "[*] Impromptu 'Mayor Public Event' (Tap / Shift+D)":
+      "[*] Impromptu 'Mayor Public Event' (Tap)",
   },
 };
 // A Godot literal as the 2D fork shows it: its override when one is declared, else verbatim.

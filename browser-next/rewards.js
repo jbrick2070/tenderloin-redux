@@ -10,6 +10,7 @@
 // A new chime stops the previous one; chimes never stack or queue. Their gain is fixed: no music
 // volume, and they play with the music off. Loading a save never replays a cue.
 import { NEIGHBOR_NAMES } from './story.js';
+import { SURPRISE_IDS } from './godot-save.js';
 
 export const REWARD_RATE = 22050;
 // trigger_progress_cue's first match, arm by arm. reasons: the surprise_discovery / rook_soundcheck arm.
@@ -110,7 +111,11 @@ export function progressCues(before, after, action) {
     return out;
   }
   if (after === before) return out;
-  if (type === 'palette') out.push(cue('mural_palette', after.palette));
+  // inspect_neighborhood_surprise: a new find; the find that completes the set is the finale.
+  if (type === 'surprise') {
+    const found = after.surprises || [];
+    if (found.includes(action.id) && !(before.surprises || []).includes(action.id)) out.push(cue(found.length >= SURPRISE_IDS.length ? 'surprise_finale' : 'surprise_discovery', action.id));
+  } else if (type === 'palette') out.push(cue('mural_palette', after.palette));
   else if (type === 'history' && !before.history && after.history) out.push(cue('history_comptons', HISTORY_REASONS.comptons));
   else if (type === 'discover-blackhawk' && !before.blackhawk && after.blackhawk) out.push(cue('history_blackhawk', HISTORY_REASONS.blackhawk));
   else if (type === 'open' && !before.opened && after.opened) out.push(cue('block_opened', CUE_REASONS.block_opened));
@@ -134,11 +139,17 @@ export function progressCues(before, after, action) {
   }
   return out;
 }
+// The cues of Godot's visit-only stops, which no saved action raises: the museum's new era (inspect_tenderloin_museum_hub),
+// Boeddeker Park and "So What" once a visit, an eatery's first order (eatery_counter_interact) and the completed tour
+// (update_landmark_tour_completion). The visits UI raises them; any other id is null.
+export const VISIT_CUES = ['museum_portal', 'boeddeker_park', 'so_what_egg', 'eatery_order', 'tour_complete'];
+export const visitCue = (id, reason) => VISIT_CUES.includes(id) ? cue(id, reason) : null;
 // The cue a chime would sound for, honouring Godot's gates. One action raises at most one Godot
 // chime in the fork, but if several sound, the last replaces the earlier ones (max_polyphony 1).
+// A null entry (visitCue of an id no visit raises) is no cue.
 export function rewardFor(cues, { enabled = true, unlocked = false } = {}) {
   if (!enabled || !unlocked) return null;
-  const sounding = (cues || []).filter(c => c.sounds);
+  const sounding = (cues || []).filter(c => c?.sounds);
   return sounding.length ? sounding[sounding.length - 1] : null;
 }
 // Plays chimes on a shared context (SketchPlayer.ensureContext()), straight to the destination at a

@@ -10,6 +10,12 @@ import {
   fmt, webText, segmentTitle, isNarrow, compassPhrase, currentChapter, storyChapter, chapterLine, chapterCard, chapterCardDue, chapterAnnouncement,
   nextObjective, hintFor, whatsNextLine,
 } from '../browser-next/story.js';
+import { SURPRISE_IDS } from '../browser-next/godot-save.js';
+import { MAIN } from '../browser-next/visits/text.js';
+import { MUSEUM, SURPRISE_SITES } from '../browser-next/visits/positions.js';
+import { neighborHint } from '../browser-next/visits/surprises.js';
+import { initialTour } from '../browser-next/visits/landmarks.js';
+import * as picker from '../browser-next/visits/picker.js';
 
 // --- Drift: godot/main.gd is read at test time, so a Godot text or logic change fails here. ---
 const gd = readFileSync(new URL('../godot/main.gd', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
@@ -296,12 +302,12 @@ test('chapterLine is wide by default and short below NARROW_WIDTH', () => {
   assert.equal(chapterLine(fresh(), null), chapterLine(fresh()), 'null options are the defaults');
   assert.equal(chapterLine(opened(), { world }), 'Chapter 2: The Gathering · Next: Take the group keepsake photo');
   assert.equal(chapterLine(opened({ epilogue: packed() }), { narrow: true }), 'Ch. 3 · Next: Plan the party schedule with Bea');
-  const done = { ...afternoon({ civic: civicDone, film: filmDone }), history: true, blackhawk: true };
-  assert.equal(chapterLine(done), 'Chapter 6: Your Block · Next: Wander freely');
-  assert.equal(chapterLine(done, { narrow: true }), 'Ch. 6 · Next: Wander freely');
-  assert.equal(chapterLine(done, { width: 599 }), 'Ch. 6 · Next: Wander freely');
-  assert.equal(chapterLine(done, { width: 600 }), 'Chapter 6: Your Block · Next: Wander freely');
-  assert.equal(chapterLine(done, { width: 320, narrow: false }), 'Chapter 6: Your Block · Next: Wander freely', 'a boolean narrow wins');
+  const done = { ...afternoon({ civic: civicDone, film: filmDone }), history: true, blackhawk: true }, spot = "Spot Jeffrey's Lost 1961 Record (0/10 surprises) · Museum";
+  assert.equal(chapterLine(done), `Chapter 6: Your Block · Next: ${spot}`);
+  assert.equal(chapterLine(done, { narrow: true }), `Ch. 6 · Next: ${spot}`);
+  assert.equal(chapterLine(done, { width: 599 }), `Ch. 6 · Next: ${spot}`);
+  assert.equal(chapterLine(done, { width: 600 }), `Chapter 6: Your Block · Next: ${spot}`);
+  assert.equal(chapterLine(done, { width: 320, narrow: false }), `Chapter 6: Your Block · Next: ${spot}`, 'a boolean narrow wins');
 });
 
 test('isNarrow is Godot\'s strict viewport.x < 600', () => {
@@ -412,7 +418,7 @@ test('after opening: photo, pack and each loan in Godot order', () => {
   assert.equal(nextObjective(opened({ epilogue: packed(['speaker']) }), world).text, "Return Thanh's folding table · 1/3 returned", 'the first unreturned loan is next');
 });
 
-test('after the loans: programme, hosting, civic, film, then the history stops and wandering', () => {
+test('after the loans: programme, hosting, civic, film, then the history stops and the neighborhood', () => {
   const ready = opened({ epilogue: packed() }), published = { order: [...order], published: [...order] };
   let goal = nextObjective(ready, world);
   assert.deepEqual({ ...goal, target: goal.target.id }, { id: 'programme', text: 'Plan the party schedule with Bea', hint: "Let's line up the afternoon: stories, rhythm, shared art, and a quiet pause.", target: 'bea', neighbor: 'bea' });
@@ -433,23 +439,96 @@ test('after the loans: programme, hosting, civic, film, then the history stops a
   assert.equal(goal.id, 'blackhawk'); assert.equal(goal.text, 'Visit the former Black Hawk jazz club at Turk & Hyde'); assert.equal(goal.target, world.places.blackhawk); assert.equal(goal.neighbor, null);
   assert.match(goal.hint, /^The Black Hawk site at Turk & Hyde is about \d+ blocks west\.$/);
   assert.equal(nextObjective({ ...filmed, blackhawk: true }, world).id, 'comptons', 'Compton\'s comes before Black Hawk');
-  assert.deepEqual(nextObjective({ ...filmed, history: true, blackhawk: true }, world), { id: 'explore', text: 'Wander freely', hint: STORY_CHAPTERS[5].intro, target: null, neighbor: null });
   assert.equal(nextObjective({ ...afternoon({ civic: civicDone, film: filmDone }), history: true }, { places: PLACES }).target.id, 'blackhawk', 'places may be an array');
   assert.equal(nextObjective({ ...afternoon(), history: true, blackhawk: true }, world).id, 'civic', 'history stops never skip the afternoon projects');
+  // Godot's chapter 6 tail: the next surprise, then the landmark tour, then the final line (current_objective).
+  const done = { ...filmed, history: true, blackhawk: true }, site = SURPRISE_SITES.jeffrey_record;
+  goal = nextObjective(done, world);
+  assert.deepEqual({ ...goal, speakerHints: Object.keys(goal.speakerHints) }, {
+    id: 'explore', text: "Spot Jeffrey's Lost 1961 Record (0/10 surprises) · Museum",
+    hint: "Take your time. Spot the 10 neighborhood surprises (0/10 found)—next is Jeffrey's Lost 1961 Record (about 3 blocks west at 361 Turk St sidewalk (beside the 'So What' awning))—or try the museum's Time-Portal on Eddy and the eateries along Turk.",
+    target: { id: 'surprise:jeffrey_record', kind: 'visit', name: "Jeffrey's Lost 1961 Record", x: site.x, y: site.y }, neighbor: null,
+    surpriseId: 'jeffrey_record', tourId: '', tourAction: '', speakerHints: NEIGHBOR_IDS,
+  });
+  assert.equal(nextObjective(done, { ...world, openNeighborId: 'dez' }).surpriseId, 'viking_dirt_biker', "the open neighbor's pair first");
+  assert.equal(nextObjective(done, { ...world, lastHinted: 'cutesy_dino' }).target.id, 'surprise:cutesy_dino', 'then the last hint');
+  assert.equal(nextObjective({ ...done, surprises: ['jeffrey_record'] }, world).text, 'Spot The Hidden Mural at 145 Leavenworth (1/10 surprises) · Museum');
+  const all = [...SURPRISE_IDS].sort();
+  assert.deepEqual(nextObjective({ ...done, surprises: all }, world), {
+    id: 'explore', text: 'Tour 0/12 this session: Museum: Present Day',
+    hint: 'All 10 keepsakes are yours! Optional tour: Museum: Present Day, about 2 blocks west. 0/12 stops this session; tour progress starts fresh on reload. Ask a neighbor to show you the stop, or follow the gold marker.',
+    target: { id: 'tour:museum:0', kind: 'visit', name: 'Museum: Present Day', x: MUSEUM.x, y: MUSEUM.y }, neighbor: null,
+    surpriseId: '', tourId: 'museum:0', tourAction: 'Visit the Museum', speakerHints: null,
+  });
+  const toured = { ...initialTour(), eras: [...MAIN.TOUR_MUSEUM_ERAS], park: true, soWhat: true, orders: Object.fromEntries(MAIN.NEIGHBORHOOD_EATERIES.map(e => [e.id, 1])) };
+  assert.deepEqual(nextObjective({ ...done, surprises: all }, { ...world, tour: toured }), {
+    id: 'explore', text: 'All 10 keepsakes found! Tour 12/12 this session complete!',
+    hint: "You've visited all 12 tour stops this session and found every keepsake! Wander freely, revisit the museum, or switch to evening lights. The optional tour starts fresh on reload.",
+    target: null, neighbor: null, surpriseId: '', tourId: '', tourAction: '', speakerHints: null,
+  });
 });
 
 test('every objective id is reachable and no output names a key hint or a place 2D lacks', () => {
   const goals = SAMPLES.map(s => nextObjective(s, world));
   assert.deepEqual(goals.map(g => g.id), OBJECTIVE_IDS);
-  for (const [i, goal] of goals.entries()) {
-    const speakers = [null, ...NEIGHBOR_IDS].map(id => whatsNextLine(goal, id));
-    for (const text of [goal.text, goal.hint, ...speakers, chapterLine(SAMPLES[i], { world }), chapterLine(SAMPLES[i], { narrow: true, world })]) {
-      assert.ok(!SHORTCUT.test(text), text);
-      assert.ok(!/surprise|museum|tour\b|eater|easel/i.test(text), text);
-      assert.ok(!/%[sd]/.test(text), text);
+  // Chapter 6's tour and final line too, and the surprise hunt with a pair half found.
+  const done = SAMPLES.at(-1), toured = { ...initialTour(), eras: [...MAIN.TOUR_MUSEUM_ERAS], park: true, soWhat: true, orders: Object.fromEntries(MAIN.NEIGHBORHOOD_EATERIES.map(e => [e.id, 1])) };
+  const more = [[{ ...done, surprises: ['cutesy_dino', 'hidden_mural_145'] }, world], [{ ...done, surprises: [...SURPRISE_IDS] }, world], [{ ...done, surprises: [...SURPRISE_IDS] }, { ...world, tour: toured }]];
+  for (const [i, [state, w]] of [...SAMPLES.map(s => [s, world]), ...more].entries()) {
+    const goal = nextObjective(state, w), speakers = [null, ...NEIGHBOR_IDS].map(id => whatsNextLine(goal, id));
+    for (const text of [goal.text, goal.hint, ...speakers, chapterLine(state, { world: w }), chapterLine(state, { narrow: true, world: w })]) {
+      assert.ok(!SHORTCUT.test(text), `${i}: ${text}`);
+      assert.ok(!/easel/i.test(text), `${i}: ${text}`);
+      assert.ok(!/%[sd]/.test(text), `${i}: ${text}`);
     }
   }
-  assert.equal(FORK_TEXT.wander, 'Wander freely');
+});
+
+test('an active story episode is the objective over every chapter, as in current_objective', () => {
+  inOrder(codeLines(funcBody('current_objective')), [
+    'if voting_story != null and voting_story.active: return voting_story.objective()', 'if lantern_procession != null and lantern_procession.active: return lantern_procession.objective()',
+    'if dog_story != null and dog_story.active: return dog_story.objective()', 'if power_story != null and power_story.active: return power_story.objective()',
+    'var p := player_xz() if player != null else Vector2(PLAYER_START.x, PLAYER_START.z)',
+  ], 'current_objective');
+  const ctx = { opened: true, player: { ...world.player }, powerPlace: null, voting: null };
+  let stories = picker.changeEpisode(picker.initialStories(), 'dogs', { type: 'open' }, ctx).stories;
+  stories = picker.changeEpisode(stories, 'dogs', { type: 'begin' }, ctx).stories;
+  const choosing = picker.activeObjective(stories, ctx);
+  stories = picker.changeEpisode(stories, 'dogs', { type: 'lead', index: 1 }, ctx).stories;
+  const lead = picker.activeObjective(stories, ctx);
+  assert.deepEqual([choosing.hasTarget, lead.hasTarget], [false, true]);
+  for (const state of SAMPLES) {
+    assert.deepEqual(nextObjective(state, { ...world, episode: lead }), { id: 'dog_story', text: lead.text, hint: lead.hint, target: { id: 'episode', kind: 'visit', name: lead.targetName, x: lead.target.x, y: lead.target.y }, neighbor: null });
+    assert.deepEqual(nextObjective(state, { ...world, episode: choosing }), { id: 'dog_story', text: choosing.text, hint: choosing.hint, target: null, neighbor: null });
+  }
+  assert.equal(chapterLine(SAMPLES[0], { world: { ...world, episode: lead } }), `Chapter 1: Get the Block Ready · Next: ${lead.text}`);
+  assert.equal(whatsNextLine(nextObjective(SAMPLES.at(-1), { ...world, episode: lead }), 'bea'), `Bea: "${lead.hint}"`, 'an episode hint is said plainly');
+  assert.equal(nextObjective(SAMPLES[0], { ...world, episode: null }).id, 'meet', 'no episode, the chapter objective');
+  assert.throws(() => nextObjective({ block_opened: true }, { episode: lead }), { name: 'TypeError' }, 'an envelope is still refused');
+});
+
+test('explore: each neighbor names the next surprise of their own pair, then the next one anywhere (ask_whats_next)', () => {
+  const done = SAMPLES.at(-1);
+  let goal = nextObjective(done, world);
+  assert.deepEqual(Object.keys(goal.speakerHints), NEIGHBOR_IDS);
+  for (const id of NEIGHBOR_IDS) assert.deepEqual(goal.speakerHints[id], neighborHint([], id, { player: world.player, compass: compassPhrase }), id);
+  assert.deepEqual(goal.speakerHints.celeste, { hint: 'Have you spotted The Hidden Mural at 145 Leavenworth yet? Look about 2 blocks west at 145 Leavenworth St frontage (below the 8th-floor bay) (0/10 surprises found).', lastHinted: 'hidden_mural_145' });
+  assert.equal(whatsNextLine(goal, 'celeste'), `Celeste: "${goal.speakerHints.celeste.hint}"`);
+  assert.equal(hintFor(goal, 'rook'), goal.speakerHints.rook.hint);
+  goal = nextObjective({ ...done, surprises: ['cutesy_dino', 'hidden_mural_145'] }, world);
+  assert.equal(whatsNextLine(goal, 'celeste'), `Celeste: "You found both of my favorite block surprises! Next, check out Jeffrey's Lost 1961 Record about 3 blocks west at 361 Turk St sidewalk (beside the 'So What' awning) (2/10 found)."`);
+  assert.equal(goal.speakerHints.celeste.lastHinted, 'jeffrey_record');
+  for (const speaker of [null, undefined, 'ghost', 'constructor', '__proto__']) assert.equal(hintFor(goal, speaker), goal.hint, String(speaker));
+  assert.equal(whatsNextLine(goal), goal.hint);
+  // All ten found: no pair hint is left, so every neighbor gives the tour hint (Godot clears last_hinted_surprise_id).
+  const tour = nextObjective({ ...done, surprises: [...SURPRISE_IDS] }, world);
+  assert.equal(tour.speakerHints, null);
+  for (const id of NEIGHBOR_IDS) assert.equal(hintFor(tour, id), tour.hint, id);
+  assert.equal(hintFor({ id: 'film', hint: 'Film hint', speakerHints: { bea: { hint: 'not this' } } }, 'bea'), 'Film hint', 'only explore reads speaker hints');
+});
+
+test('FORK_TEXT keeps only the compass fallback: chapter 6 is Godot\'s now', () => {
+  assert.deepEqual(FORK_TEXT, { nearby: 'nearby' });
 });
 
 test('compassPhrase uses the fork core.js map frame and keeps Godot\'s distance bands', () => {

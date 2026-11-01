@@ -5,8 +5,9 @@ import {
   GODOT_SAVE_KEY, GODOT_SAVE_SCHEMA, GODOT_SAVE_VERSION, SAVE_BUDGET, OPTIONAL_MAX_CHARS, MAX_JSON_DEPTH, FORK_FIELDS, FORK_OPTIONAL_KEY, NEIGHBOR_IDS,
   MURAL_COLS, MURAL_ROWS, MOTIFS, PALETTES, LAYOUTS, FURNITURE, FURNITURE_GRID, PHOTO_GUESTS, PHOTO_STATUSES, LOAN_IDS, SEGMENTS, STORIES, TILE_PALETTES,
   QUIETS, CIVIC_FIELDS, CIVIC_PHASES, FILM_SHOTS, FILM_FRAMING, FILM_PLANS, FILM_PHASES, FLAGS, SURPRISE_IDS,
-  parseGodotSave, buildGodotSave, canonicalStringify, freshEnvelope, freshState, isWholeNumber, utf8Bytes,
+  parseGodotSave, buildGodotSave, canonicalStringify, freshEnvelope, freshState, isWholeNumber, utf8Bytes, cleanSurprises, lostProgress,
 } from '../browser-next/godot-save.js';
+import { readDiscovered } from '../browser-next/visits/surprises.js';
 import {
   GODOT_WRITTEN, EDITED_PARTIAL_ART, EDITED_PARTIAL_ART_GODOT_BYTES, SURPRISES, FULL_MURAL, NEIGHBORS, HOSTED_RESULTS, parseRaw, raw,
   godotEnvelope, minimalEnvelope, readyEnvelope, openedEnvelope, hostedEnvelope, civicDoneEnvelope, filmDoneEnvelope,
@@ -459,6 +460,9 @@ test('self-check refuses writes Godot would reset or demote', () => {
     [s => { s.furniture = { table: { col: 0, row: 0 }, seats: { col: 1, row: 0 } }; }, 'furniture', opened],
     [s => { s.furniture = { table: { col: 0, row: 0 } }; }, 'furniture', ready],
     [s => { s.hosting.extra = true; }, 'hosting', opened],
+    [s => { s.surprises = ['not_a_surprise']; }, 'surprises', opened],
+    [s => { s.surprises = ['jeffrey_record', 'cutesy_dino']; }, 'surprises', opened],
+    [s => { s.surprises = 'cutesy_dino'; }, 'surprises', opened],
     [s => { delete s.epilogue; }, 'state', opened],
   ];
   for (const [change, detail, from] of cases) {
@@ -639,6 +643,8 @@ test('a write never loses progress the base envelope holds', () => {
     [civicDoneEnvelope(), s => { s.civic = { phase: 'planning', draft: { topic: 'access', format: 'dropin', notes: 'none' }, result: null }; }, 'civic'],
     [filmDoneEnvelope(), s => { s.film.phase = 'shooting'; s.film.captured.pop(); }, 'film'],
     [civicDoneEnvelope({ film: { phase: 'shooting', result: plan, captured: ['seat', 'paint'] } }), s => { s.film.captured.pop(); }, 'film'],
+    [godotEnvelope({ visited_neighbors: ['bea'], discovered_surprises: ['cutesy_dino', 'jeffrey_record'] }), s => { s.surprises = ['cutesy_dino']; }, 'discovered_surprises'],
+    [godotEnvelope({ visited_neighbors: ['bea'], discovered_surprises: ['future_id', 'jeffrey_record'] }), s => { s.surprises = []; }, 'discovered_surprises'],
   ];
   for (const [env, change, detail] of cases) {
     const { envelope, state } = loaded(raw(env));
@@ -709,12 +715,87 @@ test('the budget leaves room for the values Godot rewrites longer when it reload
 });
 
 test('a classic-shaped initial state gets the fork-only fields on every path', () => {
-  const classic = () => { const s = freshState(); delete s.visited; delete s.celesteTalks; return s; };
-  for (const [text, visited] of [[null, []], ['', []], ['garbage', []], ['{}', []], [GODOT_WRITTEN.firstMeeting, ['bea']]]) {
+  const classic = () => { const s = freshState(); delete s.visited; delete s.celesteTalks; delete s.surprises; return s; };
+  const found = raw(godotEnvelope({ visited_neighbors: ['bea'], discovered_surprises: ['cutesy_dino', 'bogus'] }));
+  for (const [text, visited, surprises] of [[null, [], []], ['', [], []], ['garbage', [], []], ['{}', [], []], [GODOT_WRITTEN.firstMeeting, ['bea'], []], [found, ['bea'], ['cutesy_dino']]]) {
     const result = parseGodotSave(text, { initialState: classic });
-    assert.deepEqual([result.state.visited, result.state.celesteTalks], [visited, 0], String(text));
+    assert.deepEqual([result.state.visited, result.state.celesteTalks, result.state.surprises], [visited, 0, surprises], String(text));
     assert.equal(save(result.envelope, result.state).ok, true, `first write after ${text}`);
   }
+});
+
+// --- Neighborhood surprises: found in either edition, held as the fork's state.surprises, written as discovered_surprises. ---
+test('discovered_surprises loads as apply_save_envelope reads it: known string ids once, sorted, never a reset', () => {
+  assert.match(funcBody('apply_save_envelope'), /var raw_surprises: Variant = env\.get\("discovered_surprises", \[\]\)\n\tif raw_surprises is Array:\n\t\tfor s_entry in raw_surprises:\n\t\t\tif s_entry is String and String\(s_entry\) in NEIGHBORHOOD_SURPRISE_IDS:\n\t\t\t\tdiscovered_surprises\[String\(s_entry\)\] = true\n/);
+  assert.match(funcBody('build_save_envelope'), /\tfor sk in discovered_surprises\.keys\(\):\n\t\tvar s_id := String\(sk\)\n\t\tif s_id in NEIGHBORHOOD_SURPRISE_IDS:\n\t\t\ts_list\.append\(s_id\)\n\ts_list\.sort\(\)\n/);
+  const at = value => loaded(raw(godotEnvelope({ visited_neighbors: ['bea'], discovered_surprises: value })));
+  const absent = godotEnvelope({ visited_neighbors: ['bea'] });
+  delete absent.discovered_surprises;
+  assert.deepEqual(loaded(raw(absent)).state.surprises, [], 'absent');
+  for (const value of ['x', 7, null, true, {}, { 0: 'cutesy_dino' }, []]) assert.deepEqual(at(value).state.surprises, [], JSON.stringify(value));
+  const mixed = ['mayor_pomp_event', 7, null, 'mayor_pomp_event', 'future_id', 'cutesy_dino', ['cutesy_dino'], 'Cutesy_Dino', { id: 'jeffrey_record' }];
+  assert.deepEqual(at(mixed).state.surprises, ['cutesy_dino', 'mayor_pomp_event']);
+  assert.deepEqual(at([...SURPRISE_IDS].reverse()).state.surprises, [...SURPRISE_IDS].sort());
+  for (const value of ['x', 7, mixed]) assert.deepEqual(at(value).envelope.discovered_surprises, value, 'the envelope keeps the stored value for Godot to clean');
+  assert.deepEqual(freshState().surprises, []);
+});
+
+test('cleanSurprises is visits/surprises.js readDiscovered, sorted (godot-save.js cannot import it)', () => {
+  const inputs = [undefined, null, '', 'cutesy_dino', 7, true, {}, { 0: 'cutesy_dino', length: 1 }, [], ['cutesy_dino'], ['cutesy_dino', 'cutesy_dino'],
+    ['mayor_pomp_event', 7, null, 'mayor_pomp_event', 'future_id', 'cutesy_dino', ['x']], [...SURPRISE_IDS].reverse(), [...SURPRISE_IDS, ...SURPRISE_IDS],
+    [new String('cutesy_dino'), ' cutesy_dino', 'cutesy_dino ', 'CUTESY_DINO', 'constructor', '__proto__', 'jeffrey_record']];
+  for (const value of inputs) assert.deepEqual(cleanSurprises(value), [...readDiscovered(value)].sort(), JSON.stringify(value));
+});
+
+test('a find writes the sorted union, keeping stored ids no Godot knows yet and dropping what Godot drops', () => {
+  const stored = loaded(raw(godotEnvelope({ visited_neighbors: ['bea'], discovered_surprises: ['mayor_pomp_event', 7, null, 'future_id', 'cutesy_dino', 'cutesy_dino', ['x'], 'another_future'] })));
+  assert.deepEqual(stored.state.surprises, ['cutesy_dino', 'mayor_pomp_event']);
+  const found = { ...structuredClone(stored.state), surprises: ['bite_size_nachos', 'cutesy_dino', 'mayor_pomp_event'] }, out = save(stored.envelope, found);
+  assert.deepEqual(parseRaw(out.raw).discovered_surprises, ['another_future', 'bite_size_nachos', 'cutesy_dino', 'future_id', 'mayor_pomp_event']);
+  assert.deepEqual(loaded(out.raw).state.surprises, found.surprises);
+  // A first find on an older save without the key writes it; the same save without a find gains no key.
+  const old = godotEnvelope({ visited_neighbors: ['bea'] });
+  delete old.discovered_surprises;
+  const first = loaded(raw(old));
+  assert.equal(Object.hasOwn(save(first.envelope, first.state).envelope, 'discovered_surprises'), false);
+  assert.deepEqual(save(first.envelope, { ...structuredClone(first.state), surprises: ['jeffrey_record'] }).envelope.discovered_surprises, ['jeffrey_record']);
+  // A stored value Godot would clean to nothing is replaced by the find.
+  const odd = loaded(raw(godotEnvelope({ visited_neighbors: ['bea'], discovered_surprises: 'x' })));
+  assert.deepEqual(parseRaw(save(odd.envelope, { ...structuredClone(odd.state), surprises: ['jeffrey_record'] }).raw).discovered_surprises, ['jeffrey_record']);
+});
+
+test('without a find, any stored discovered_surprises is written back verbatim', () => {
+  for (const value of ['x', 7, null, {}, ['cutesy_dino', 'cutesy_dino', 'future_id', 3], [...SURPRISES], [...SURPRISES].reverse(), []]) {
+    const r = loaded(raw(godotEnvelope({ visited_neighbors: ['bea'], discovered_surprises: value })));
+    assert.deepEqual(parseRaw(save(r.envelope, { ...structuredClone(r.state), celesteTalks: 1 }).raw).discovered_surprises, value, JSON.stringify(value));
+  }
+});
+
+test('found surprises are forward-only: a stale state is refused, Restart writes it, and lostProgress names it', () => {
+  const two = godotEnvelope({ visited_neighbors: ['bea'], discovered_surprises: ['cutesy_dino', 'jeffrey_record', 'future_id'] }), r = loaded(raw(two));
+  const stale = { ...structuredClone(r.state), surprises: ['cutesy_dino'] };
+  assert.deepEqual(why(r.envelope, stale), ['regress', 'discovered_surprises']);
+  assert.deepEqual(parseRaw(save(r.envelope, stale, { reset: true }).raw).discovered_surprises, ['cutesy_dino', 'future_id'], 'Restart may; ids Godot does not know stay');
+  const one = godotEnvelope({ visited_neighbors: ['bea'], discovered_surprises: ['jeffrey_record'] });
+  assert.equal(lostProgress(two, one), 'discovered_surprises');
+  assert.equal(lostProgress(one, two), '');
+  assert.equal(lostProgress(two, { ...two, discovered_surprises: 'x' }), 'discovered_surprises', 'a value Godot cleans to nothing lost them as well');
+  assert.equal(lostProgress(two, { ...two, discovered_surprises: [...two.discovered_surprises].reverse() }), '', 'order is not progress');
+  assert.equal(lostProgress(two, { ...one, visited_neighbors: [] }), 'visited_neighbors', 'the meetings are named first');
+});
+
+test('all ten surprises fit beside the full run and both scenes; on a full save a find stays visit-only', () => {
+  const r = loaded(GODOT_WRITTEN.fullRunScenes), all = { ...structuredClone(r.state), surprises: [...SURPRISE_IDS].sort() };
+  const without = save(r.envelope, r.state), out = save(r.envelope, all);
+  assert.equal(out.bytes - without.bytes, utf8Bytes(JSON.stringify([...SURPRISE_IDS].sort())) - 2, 'the ten sorted ids in place of []');
+  assert.ok(out.bytes <= SAVE_BUDGET && godotReloadBytes(out.raw) <= SAVE_BUDGET, `${out.bytes} B; Godot's next write ${godotReloadBytes(out.raw)} B`);
+  // Padded until the stored save fills the budget: the find is refused as full, as Godot's own save_godot_state would refuse it.
+  const padded = n => loaded(edit(GODOT_WRITTEN.fullRun, env => { env.optional.pad = 'x'.repeat(n); }));
+  let lo = 0, hi = SAVE_BUDGET;
+  while (lo < hi) { const mid = (lo + hi + 1) >> 1, p = padded(mid); if (buildGodotSave(p.envelope, p.state).ok) lo = mid; else hi = mid - 1; }
+  const full = padded(lo);
+  assert.equal(buildGodotSave(full.envelope, full.state).ok, true);
+  assert.deepEqual(why(full.envelope, { ...structuredClone(full.state), surprises: ['cutesy_dino'] }), ['full', '']);
 });
 
 test('celeste_talk_count stays within the whole numbers JavaScript holds exactly', () => {

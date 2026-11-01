@@ -11,6 +11,9 @@ import { STORY_CHOICES, QUIET_CHOICES } from '../browser-next/hosting.js';
 import * as C from '../browser-next/characters.js';
 import * as H from '../browser-next/hosted-text.js';
 import * as B from '../browser-next/bubble.js';
+import { GODOT_TEXT, MAIN } from '../browser-next/visits/text.js';
+import { initialTour } from '../browser-next/visits/landmarks.js';
+import * as picker from '../browser-next/visits/picker.js';
 
 // --- Godot sources are read at test time, so a Godot text or logic change fails here. ---
 const read = name => readFileSync(new URL(`../godot/${name}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
@@ -85,6 +88,7 @@ const hosted = (results = [['stories', 'memory'], ['beats', 85], ['art', { tiles
   return s;
 };
 const talkAt = (id, n) => ({ ...C.freshTalk(), [id]: n });
+const PEOPLE = C.CHARACTER_PEOPLE.map(p => p.id);
 
 test('drift: neighbor data, badges, surprise pairs, stems and mural scene names', () => {
   assert.deepEqual(C.NEIGHBOR_BADGES, godotConst('NEIGHBOR_STORY_BADGES'));
@@ -289,10 +293,63 @@ test('drift: conversation_actions labels, order, narrow rewrites and reopening s
   assert.deepEqual([...rewrite.matchAll(/\.replace\("((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"\)/g)].map(m => [m[1], m[2]]), C.NARROW_LABEL_REWRITES);
   const reopen = /act_id in (\[[^\]]+\])/.exec(funcBody('run_conversation_action'));
   assert.deepEqual(JSON.parse(reopen[1]), C.REOPEN_ACTIONS);
-  // The 2D-omitted actions are exactly Godot's surprise, tour, museum and eateries ids.
-  const ids = new Set([...body.matchAll(/"id": ?"([a-z_]+)/g)].map(m => m[1]));
-  for (const id of C.FORK_OMITTED_ACTIONS) assert.ok(ids.has(id), id);
-  has(funcBody('run_conversation_action_id'), ['return_owner:', 'walk_neighbor:', 'layout_table', 'layout_floor', 'mural', 'soundcheck', 'open', 'epilogue', 'programme', 'shared_panel', 'civic', 'film', 'comptons', 'blackhawk', ...C.FORK_OMITTED_ACTIONS, 'hub'], 'run_conversation_action_id');
+});
+
+// Godot's default arm and its someone-else chain, with nothing left out: the labels, each arm line for line, and one case per arm,
+// so the fork builds exactly the action ids Godot builds and run_conversation_action_id runs.
+test('every conversation_actions arm is ported, landmark_tour with tour_action', () => {
+  const body = funcBody('conversation_actions'), A = C.ACTION_LABELS, V = GODOT_TEXT['main.gd'].conversation_actions;
+  // Spot Surprise, Visit the Museum and Visit Eateries are visits/text.js's copies, not a second inline copy in characters.js.
+  assert.deepEqual([A.surprise, A.museum, A.eateries], [V.spot, V.museum, V.eateries]);
+  const chars = readFileSync(new URL('../browser-next/characters.js', import.meta.url), 'utf8'), at = chars.indexOf('export const ACTION_LABELS = {');
+  assert.ok(at >= 0, 'characters.js declares ACTION_LABELS');
+  const table = chars.slice(at, chars.indexOf('\n};\n', at));
+  for (const label of Object.values(V)) assert.ok(!table.includes(`'${label}'`) && !table.includes(`"${label}"`), `ACTION_LABELS reads ${JSON.stringify(label)} from visits/text.js`);
+  const spot = `acts.append({"id": "surprise", "label": ${q(A.surprise)} % [discovered_surprises.size(), NEIGHBORHOOD_SURPRISE_IDS.size()]})`;
+  inOrder(codeLines(body), [
+    '_:', 'if discovered_surprises.size() < NEIGHBORHOOD_SURPRISE_IDS.size():', spot, 'else:',
+    `acts.append({"id": "landmark_tour", "label": String(obj.tour_action)} if obj.has("tour_id") else {"id": "museum", "label": ${q(A.museum)}})`,
+    'elif discovered_surprises.size() < NEIGHBORHOOD_SURPRISE_IDS.size() and String(acts[0].id) != "surprise":', spot,
+    'elif String(obj.get("id", "")) == "explore" and discovered_surprises.size() >= NEIGHBORHOOD_SURPRISE_IDS.size():', `acts.append({"id": "eateries", "label": ${q(A.eateries)}})`,
+    'elif String(acts[0].id) != other_id and someone_else != talk_partner:', `acts.append({"id": other_id, "label": ${q(A.talkTo)} % String(neighbors[someone_else].name)})`,
+    'else:', `acts.append({"id": "museum", "label": ${q(A.museum)}})`,
+  ], 'conversation_actions default arm and someone-else chain');
+  const godotIds = new Set([...body.matchAll(/"id": ?"([a-z_]+)/g)].map(m => m[1]));
+  has(funcBody('run_conversation_action_id'), [...godotIds].map(id => ['return_owner', 'walk_neighbor'].includes(id) ? `${id}:` : id), 'run_conversation_action_id');
+  // One case per arm, in Godot's objective order: [state, found surprises, partner, the visit's tour].
+  const met = { ...base(), visited: [...PEOPLE] }, laid = { ...met, layout: 'table' }, ready = withMural(laid);
+  const packing = { ...opened(), epilogue: { packing: true, returned: [], photo: { status: 'skipped' } } };
+  const civicDone = { ...hosted(), civic: { phase: 'done', result: { topic: 'repairs', format: 'circle', notes: 'themes' } } };
+  const filmDone = { ...civicDone, film: { phase: 'done', result: { framing: 'close', plan: 'quiet', order: ['seat', 'paint', 'welcome'] }, captured: ['seat', 'paint', 'welcome'] } };
+  const chapter6 = { ...filmDone, history: true, blackhawk: true }, lastToMeet = { ...base(), visited: ['bea', 'celeste', 'rook', 'dez'], history: true, blackhawk: true };
+  const toured = { ...initialTour(), eras: [...MAIN.TOUR_MUSEUM_ERAS], park: true, soWhat: true, orders: Object.fromEntries(MAIN.NEIGHBORHOOD_EATERIES.map(e => [e.id, 1])) };
+  const cases = [
+    [{ ...base(), visited: ['bea'] }, [], 'bea'], [met, [], 'bea'], [laid, [], 'dez'], [ready, [], 'bea'], [{ ...ready, soundcheck: true }, [], 'bea'], [opened(), [], 'bea'],
+    [packing, [], 'thanh'], [packing, [], 'bea'], [hosted([['stories', 'memory']]), [], 'bea'], [hosted(), [], 'dez'], [civicDone, [], 'bea'], [filmDone, [], 'bea'],
+    [{ ...filmDone, history: true }, [], 'bea'], [chapter6, ['jeffrey_record'], 'bea'], [chapter6, SURPRISE_IDS, 'bea'], [chapter6, SURPRISE_IDS, 'bea', toured], [lastToMeet, SURPRISE_IDS, 'bea'],
+  ];
+  const run = (state, found, partner, world = {}) => {
+    const s = { ...state, surprises: [...found] };
+    return C.conversationActions(s, extras(found), C.freshTalk(), partner, nextObjective(s, world)).map(a => [a.id, a.label]);
+  };
+  const forkIds = new Set(cases.flatMap(([s, found, partner, tour]) => run(s, found, partner, { tour }).map(([id]) => id.split(':')[0])));
+  assert.deepEqual([...forkIds].sort(), [...godotIds].sort(), 'the fork builds every action Godot builds, and no other');
+  const hub = ['hub', 'All Block Actions'];
+  // The chain's own Spot Surprise, and its last arm, Visit the Museum, with the last neighbor still to meet.
+  assert.deepEqual(run(lastToMeet, ['jeffrey_record'], 'bea'), [['walk_neighbor:thanh', 'Go Meet Thanh'], ['surprise', 'Spot Surprise (1/10)'], hub]);
+  assert.deepEqual(run(lastToMeet, SURPRISE_IDS, 'bea'), [['walk_neighbor:thanh', 'Go Meet Thanh'], ['museum', 'Visit the Museum'], hub]);
+  // landmark_tour's label is the explore goal's tour_action, whatever the stop.
+  const all = { ...chapter6, surprises: [...SURPRISE_IDS] }, tour = nextObjective(all);
+  assert.deepEqual([tour.tourId, tour.tourAction], ['museum:0', GODOT_TEXT['main.gd'].landmark_tour_state.museumAction]);
+  assert.deepEqual(C.conversationActions(all, extras(SURPRISE_IDS), C.freshTalk(), 'bea', { ...tour, tourAction: 'Any stop' })[0], { id: 'landmark_tour', label: 'Any stop' });
+  // During a story episode Godot's current_objective is the episode's: it takes the default arm, and it has no tour_id.
+  const ctx = { opened: true, player: { ...base().player }, powerPlace: null, voting: null };
+  let stories = picker.changeEpisode(picker.initialStories(), 'dogs', { type: 'open' }, ctx).stories;
+  stories = picker.changeEpisode(stories, 'dogs', { type: 'begin' }, ctx).stories;
+  const episode = picker.activeObjective(stories, ctx);
+  assert.equal(nextObjective(chapter6, { episode }).id, 'dog_story');
+  assert.deepEqual(run(chapter6, ['jeffrey_record'], 'bea', { episode }), [['surprise', 'Spot Surprise (1/10)'], ['walk_neighbor:celeste', 'Talk to Celeste'], hub]);
+  assert.deepEqual(run(chapter6, SURPRISE_IDS, 'bea', { episode }), [['museum', 'Visit the Museum'], ['walk_neighbor:celeste', 'Talk to Celeste'], hub]);
 });
 
 test('drift: speech bubble numbers, colours, text and the spoken-text rule', () => {
@@ -340,6 +397,18 @@ test('drift: CHARACTER_WEB_OVERRIDES covers exactly the lines naming 3D-only key
     assert.equal(C.webLine(godot), web);
     const speaker = /^([A-Z][a-z]+): "/.exec(godot)?.[1];
     if (speaker) assert.ok(web.startsWith(`${speaker}: "`) && web.endsWith('"'), web);
+  }
+  // Each override is Godot's text with only declared changes. The nine surprise lines keep every Godot word: their key hint is
+  // dropped, or Godot's Shift+D becomes the 2D Spot Surprise button (conversation_actions' label). The other four drop a key
+  // hint or name the 2D control (Pack Gear, a new space).
+  const spot = C.ACTION_LABELS.surprise.split(' (')[0], KEY_HINTS = [' (Shift+D)', ' (T)', '  (Click %s or press T to keep chatting)'].map(hint => [hint, '']);
+  const SURPRISE_WORDING = [['press Shift+D', `choose ${spot}`], ['Press Shift+D', `Choose ${spot}`]];
+  const CONTROLS = [["'Pack Borrowed Gear'", "'Pack Gear'"], ['tap Shift Motif', 'choose a new space']];
+  const declared = (text, rules) => rules.reduce((out, [from, to]) => out.split(from).join(to), text);
+  const surpriseLines = Object.keys(C.CHARACTER_WEB_OVERRIDES).filter(godot => godot.includes('Shift+D'));
+  assert.deepEqual(surpriseLines.sort(), [C.NEIGHBOR_LINES.bea.open[4], C.NEIGHBOR_LINES.bea.before[4], C.NEIGHBOR_LINES.dez.open[4], C.NEIGHBOR_LINES.dez.before[4], C.NEIGHBOR_LINES.thanh.open[4], C.NEIGHBOR_LINES.thanh.before[4], C.CELESTE_LINES.completed[4], C.CELESTE_LINES.before[4], C.ROOK_LINES.completed[4]].sort());
+  for (const [godot, web] of Object.entries(C.CHARACTER_WEB_OVERRIDES)) {
+    assert.equal(web, declared(godot, surpriseLines.includes(godot) ? [...KEY_HINTS, ...SURPRISE_WORDING] : [...KEY_HINTS, ...CONTROLS]), `only declared changes: ${godot}`);
   }
   // Every line the fork can render is free of them, in every chapter, turn, layout and memory.
   const states = [base(), withMural(base()), opened('table'), opened('floor'), hosted()];
@@ -419,7 +488,7 @@ test('lines: chapter, layout and surprise slots, mural replies, Celeste and Rook
   assert.equal(C.spokenLine(base(), NONE, talkAt('dez', 4), 'dez'), C.NEIGHBOR_LINES.dez.before[3]);
   const both = extras(['viking_dirt_biker', 'magic_carpet_chef']);
   assert.equal(C.spokenLine(open, both, talkAt('dez', 5), 'dez'), `Dez: "${C.SURPRISE_MEMORY.dez.both.slice(1, -1)}"`);
-  assert.equal(C.spokenLine(open, NONE, talkAt('dez', 5), 'dez'), 'Dez: "Thanks for keeping the tempo easy."');
+  assert.equal(C.spokenLine(open, NONE, talkAt('dez', 5), 'dez'), 'Dez: "Thanks for keeping the tempo easy—and if you spot that random guy on a dirt bike in a Viking helmet or Jeffrey\'s lost 1961 record by 361 Turk, choose Spot Surprise!"');
   const music = extras([], { left: 'music' }), garden = extras([], { right: 'garden' });
   assert.equal(C.spokenLine(open, music, talkAt('dez', 1), 'dez'), C.NEIGHBOR_LINES.dez.open[0].slice(0, -1) + C.MURAL_REPLY.dez.text + '"');
   assert.equal(C.spokenLine(open, music, talkAt('thanh', 1), 'thanh'), C.NEIGHBOR_LINES.thanh.open[0]);
@@ -528,8 +597,8 @@ test('sparks, headers, buttons, captions and goodbye', () => {
   assert.equal(C.rookMusicDetail(base(), 'x'), 'Original 80 BPM sketch · Soundcheck: Pending · Groove Stems: bass (1/4 stems) — x');
 });
 
-test('conversation actions: every objective, loans, Dez after art, narrow labels and the fork omissions', () => {
-  const ids = acts => acts.map(a => a.id), labels = acts => acts.map(a => a.label);
+test("conversation actions: every objective, loans, Dez after art, narrow labels and Godot's three explore states", () => {
+  const labels = acts => acts.map(a => a.label);
   const start = { ...base(), visited: ['bea'] };
   assert.deepEqual(C.conversationActions(start, NONE, C.freshTalk(), 'bea', { id: 'meet', neighbor: 'celeste' }), [
     { id: 'walk_neighbor:celeste', label: 'Go Meet Celeste' }, { id: 'walk_neighbor:rook', label: 'Talk to Rook' }, { id: 'hub', label: 'All Block Actions' },
@@ -574,17 +643,33 @@ test('conversation actions: every objective, loans, Dez after art, narrow labels
   const filmDone = { ...civicDone, film: { phase: 'done', result: { framing: 'close', plan: 'quiet', order: ['seat', 'paint', 'welcome'] }, captured: ['seat', 'paint', 'welcome'] } };
   assert.deepEqual(labels(C.conversationActions(filmDone, NONE, C.freshTalk(), 'bea', nextObjective(filmDone))), ["Walk to Compton's", 'Walk to Black Hawk', 'All Block Actions']);
   const hist = { ...filmDone, history: true };
-  assert.deepEqual(labels(C.conversationActions(hist, NONE, C.freshTalk(), 'bea', nextObjective(hist))), ['Walk to Black Hawk', 'Talk to Celeste', 'All Block Actions']);
-  // After every objective the fork offers the next neighbor; Godot's surprise hunt and museum are omitted.
-  const all = { ...hist, blackhawk: true }, explore = nextObjective(all);
-  assert.equal(explore.id, 'explore');
-  assert.deepEqual(C.conversationActions(all, NONE, C.freshTalk(), 'thanh', explore), [{ id: 'walk_neighbor:bea', label: 'Talk to Bea' }, { id: 'hub', label: 'All Block Actions' }]);
-  assert.deepEqual(ids(C.conversationActions(all, NONE, C.freshTalk(), 'bea', explore, { fork: false })), ['surprise', 'walk_neighbor:celeste', 'hub']);
-  assert.deepEqual(labels(C.conversationActions(all, extras(SURPRISE_IDS), C.freshTalk(), 'bea', explore, { fork: false })), ['Visit the Museum', 'Visit Eateries', 'All Block Actions']);
-  for (const s of [start, met, laid, ready, o, packing, back, plan, h, civicDone, filmDone, hist, all]) for (const id of C.CHARACTER_PEOPLE.map(p => p.id)) for (const narrow of [false, true]) {
+  // With Black Hawk next, the someone-else chain offers Spot Surprise while any surprise is left.
+  assert.deepEqual(C.conversationActions(hist, NONE, C.freshTalk(), 'bea', nextObjective(hist)), [{ id: 'blackhawk', label: 'Walk to Black Hawk' }, { id: 'surprise', label: 'Spot Surprise (0/10)' }, { id: 'hub', label: 'All Block Actions' }]);
+  // Chapter 6 in Godot's three explore states, for each speaker: surprises left (Spot Surprise, then the next neighbor), the
+  // landmark tour (landmark_tour with the stop's tour_action, then Visit Eateries) and done (Visit the Museum, then Visit
+  // Eateries). Dez's Shared Panel takes the second slot, as in Godot.
+  const all = { ...hist, blackhawk: true }, pairs = acts => acts.map(a => [a.id, a.label]);
+  const explore = (found, tour) => { const s = { ...all, surprises: [...found] }; return [s, extras(found), nextObjective(s, { tour })]; };
+  const hub = ['hub', 'All Block Actions'], art = ['shared_panel', "Celeste's Shared Panel"], eateries = ['eateries', 'Visit Eateries'];
+  const second = { bea: ['walk_neighbor:celeste', 'Talk to Celeste'], celeste: ['walk_neighbor:rook', 'Talk to Rook'], rook: ['walk_neighbor:dez', 'Talk to Dez'], dez: art, thanh: ['walk_neighbor:bea', 'Talk to Bea'] };
+  const [left, leftExtras, leftGoal] = explore(['cutesy_dino', 'hidden_mural_145', 'jeffrey_record'], initialTour());
+  assert.deepEqual([leftGoal.id, leftGoal.surpriseId !== '', leftGoal.tourId], ['explore', true, '']);
+  for (const id of PEOPLE) assert.deepEqual(pairs(C.conversationActions(left, leftExtras, C.freshTalk(), id, leftGoal)), [['surprise', 'Spot Surprise (3/10)'], second[id], hub], `${id}: surprises left`);
+  assert.deepEqual(labels(C.conversationActions(left, leftExtras, C.freshTalk(), 'bea', leftGoal, { narrow: true })), ['Find 3/10', 'Talk to Celeste', 'All Actions']);
+  const eras = { ...initialTour(), eras: [...MAIN.TOUR_MUSEUM_ERAS] }, park = { ...eras, park: true }, soWhat = { ...park, soWhat: true };
+  for (const [tour, stop, action, narrowAction] of [[initialTour(), 'museum:0', 'Visit the Museum', 'Museum'], [eras, 'park', 'Visit the Park', 'Park'], [park, 'so_what', "See 'So What'", "See 'So What'"], [soWhat, 'eatery:0', 'Order at Next Stop', 'Order Next']]) {
+    const [s, e, goal] = explore(SURPRISE_IDS, tour);
+    assert.deepEqual([goal.tourId, goal.tourAction], [stop, action]);
+    for (const id of PEOPLE) assert.deepEqual(pairs(C.conversationActions(s, e, C.freshTalk(), id, goal)), [['landmark_tour', action], id === 'dez' ? art : eateries, hub], `${id}: tour stop ${stop}`);
+    assert.deepEqual(labels(C.conversationActions(s, e, C.freshTalk(), 'bea', goal, { narrow: true })), [narrowAction, 'Eateries', 'All Actions']);
+  }
+  const [done, doneExtras, doneGoal] = explore(SURPRISE_IDS, { ...soWhat, orders: Object.fromEntries(MAIN.NEIGHBORHOOD_EATERIES.map(e => [e.id, 1])) });
+  assert.deepEqual([doneGoal.id, doneGoal.tourId, doneGoal.target], ['explore', '', null]);
+  for (const id of PEOPLE) assert.deepEqual(pairs(C.conversationActions(done, doneExtras, C.freshTalk(), id, doneGoal)), [['museum', 'Visit the Museum'], id === 'dez' ? art : eateries, hub], `${id}: tour done`);
+  assert.deepEqual(labels(C.conversationActions(done, doneExtras, C.freshTalk(), 'bea', doneGoal, { narrow: true })), ['Museum', 'Eateries', 'All Actions']);
+  for (const s of [start, met, laid, ready, o, packing, back, plan, h, civicDone, filmDone, hist, all]) for (const id of PEOPLE) for (const narrow of [false, true]) {
     const acts = C.conversationActions(s, extras(SURPRISE_IDS.slice(0, 3)), C.freshTalk(), id, nextObjective(s), { narrow });
     assert.ok(acts.length >= 1 && acts.length <= 4 && acts.at(-1).id === 'hub', `${id} ${JSON.stringify(acts)}`);
-    for (const a of acts) assert.ok(!C.FORK_OMITTED_ACTIONS.includes(a.id), a.id);
   }
 });
 

@@ -2,7 +2,7 @@ import { restoreProgramme, changeProgramme } from './programme.js';
 import { initialHosting, changeHosting } from './hosting.js';
 import { initialCivic, changeCivic, civicAvailable } from './civic.js';
 import { initialFilm, changeFilm, filmAvailable } from './film.js';
-import { GODOT_SAVE_KEY, NEIGHBOR_IDS } from './godot-save.js';
+import { GODOT_SAVE_KEY, NEIGHBOR_IDS, SURPRISE_IDS } from './godot-save.js';
 import { editScene } from './ending/mural.js';
 
 // The fork shares the Godot edition's save (godot-save.js); classic's two keys are never touched.
@@ -30,9 +30,10 @@ export const BLOCK_TEXT = { neighbors: '%d/5 neighbors', mural: '%d/3 mural moti
 export function initialEpilogue() {
   return { packing: false, returned: [], photo: { status: 'unasked' } };
 }
-// Player and litter are session-only; visited and celesteTalks are Godot's visited_neighbors and celeste_talk_count.
+// Player and litter are session-only; visited, celesteTalks and surprises are Godot's visited_neighbors, celeste_talk_count
+// and discovered_surprises.
 export function initialState() {
-  return { greeted: false, layout: null, furniture: {}, litter: [], mural: {}, palette: 'garden', soundcheck: false, opened: false, history: false, blackhawk: false, player: { x: 95, y: -47 }, epilogue: initialEpilogue(), programme: restoreProgramme(null, false), hosting: initialHosting(), civic: initialCivic(), film: initialFilm(), optional: {}, visited: [], celesteTalks: 0, muralScenes: {} };
+  return { greeted: false, layout: null, furniture: {}, litter: [], mural: {}, palette: 'garden', soundcheck: false, opened: false, history: false, blackhawk: false, player: { x: 95, y: -47 }, epilogue: initialEpilogue(), programme: restoreProgramme(null, false), hosting: initialHosting(), civic: initialCivic(), film: initialFilm(), optional: {}, visited: [], celesteTalks: 0, muralScenes: {}, surprises: [] };
 }
 export function occupiedCells(id, position, layout) {
   const vertical = id === 'table' && layout === 'floor';
@@ -91,6 +92,12 @@ export function applyAction(state, action) {
     // Godot edit_mural_scene: '' lifts a slot; a scene moves rather than repeats. Budget admission is the host's. An id that is
     // not a string is no edit at all, never a lift.
     case 'mural-scene': { if (typeof action.id !== 'string') return state; const out = editScene(next.muralScenes, action.id, action.slot); if (!out.changed) return state; next.muralScenes = out.scenes; break; }
+    // Godot inspect_neighborhood_surprise: ungated, a known id once, kept sorted as build_save_envelope writes them.
+    case 'surprise': {
+      const found = Array.isArray(next.surprises) ? next.surprises : [];
+      if (!SURPRISE_IDS.includes(action.id) || found.includes(action.id)) return state;
+      next.surprises = [...found, action.id].sort(); break;
+    }
     case 'discover-blackhawk': next.blackhawk = true; break;
     case 'history': next.history = true; break;
     // Godot open_block_gathering: the Long Table when no layout was chosen.
@@ -178,15 +185,46 @@ export function streetDistance(point, ways) {
   return best;
 }
 export const OPENING_BOUNDS = { left: -300, right: 850, top: -460, bottom: 220 };
-export const BOUNDS = { ...OPENING_BOUNDS, left: -2400 };
-export const walkable = (point, ways) => point.x >= BOUNDS.left && point.x <= BOUNDS.right && point.y >= BOUNDS.top && point.y <= BOUNDS.bottom && streetDistance(point, ways) < 60;
+// Turk from Taylor west to Hyde: the route overview and the zoom-out minimum (camera.js).
+export const ROUTE_BOUNDS = { ...OPENING_BOUNDS, left: -2400 };
+// The walkable window, Eddy to the north and 145 Leavenworth to the south; world.js clips the district layer to it.
+export const BOUNDS = { left: -2400, right: 850, top: -600, bottom: 280 };
+// West of BOUNDS only the Eddy approach is walkable, to the Larkin junction less 10 m (godot/power_place.gd).
+export const WALK_EXTENT = { ...BOUNDS, left: -2980 };
+// The camera centre's clamp, so the views of Boeddeker Park, Larkin and "So What" stay reachable.
+export const VIEW_BOUNDS = { left: -2980, right: 850, top: -800, bottom: 280 };
+export const STREET_CORRIDOR = 60;
+// godot/data/power_place.json eddy.points (Godot x east, z south, metres). Static: it is OSM Eddy Street, also in
+// streets.osm.json. The side stories' positions.js holds the same copy; this module cannot import it (history.js projects
+// at load).
+export const EDDY_XZ = [[-595.0969483830913, -10.553135999932692], [-585.4895286962443, -11.98916399931278], [-566.1515172750908, -15.206311999732804], [-494.83490190474566, -26.67227199925918], [-458.0328537816451, -32.60562799978203], [-450.3961868504012, -33.84127999998441]];
+// Godot metres to map pixels with project()'s rotation (positions.js godotToMap).
+const cosA = Math.cos(angle), sinA = Math.sin(angle);
+export const EDDY_WEST = EDDY_XZ.map(([x, z]) => ({ x: PIXELS_PER_METRE * (x * cosA - z * sinA), y: PIXELS_PER_METRE * (x * sinA + z * cosA) }));
+export function eddyDistance(point) {
+  let best = Infinity;
+  for (let i = 1; i < EDDY_WEST.length; i++) best = Math.min(best, distanceToSegment(point, EDDY_WEST[i - 1], EDDY_WEST[i]));
+  return best;
+}
+const inside = (point, b) => point.x >= b.left && point.x <= b.right && point.y >= b.top && point.y <= b.bottom;
+export const walkable = (point, ways) => inside(point, BOUNDS) ? streetDistance(point, ways) < STREET_CORRIDOR
+  : point.x >= WALK_EXTENT.left && point.x < BOUNDS.left && point.y >= BOUNDS.top && point.y <= BOUNDS.bottom && eddyDistance(point) < STREET_CORRIDOR;
 
+// walkable() of each grid cell, kept per ways array: the streets never change once loaded (world.js makeWays), so a
+// route reuses the cells earlier routes on them computed and finds the path it would find alone.
+const cellCache = new WeakMap();
+function cellsFor(ways) {
+  if (ways === null || typeof ways !== 'object') return new Map();
+  let cells = cellCache.get(ways);
+  if (!cells) cellCache.set(ways, cells = new Map());
+  return cells;
+}
 // A small grid search routes clicks around blocks rather than through buildings.
 export function findPath(start, goal, ways) {
   if (!walkable(goal, ways)) return [];
   const step = 10, key = p => `${p.x},${p.y}`;
-  const limit = Math.ceil((BOUNDS.right - BOUNDS.left) / step + 1) * Math.ceil((BOUNDS.bottom - BOUNDS.top) / step + 1);
-  const cells = new Map();
+  const limit = Math.ceil((WALK_EXTENT.right - WALK_EXTENT.left) / step + 1) * Math.ceil((WALK_EXTENT.bottom - WALK_EXTENT.top) / step + 1);
+  const cells = cellsFor(ways);
   const passable = p => {
     const id = key(p);
     if (!cells.has(id)) cells.set(id, walkable(p, ways));

@@ -2,7 +2,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';
 import { gdConst, gdFunc, gdStrings, gdSource, jsStrings, firstMissingInOrder } from './gd-literal.mjs';
 import * as core from '../browser-next/core.js';
 import { compassPhrase } from '../browser-next/story.js';
@@ -112,8 +111,9 @@ test('data copied into positions.js equals godot/data', () => {
   assert.deepEqual(P.ELECTION_OBSERVATION_XZ, VOTING.sites.map(s => s.observation));
   assert.deepEqual(P.ELECTION_PIN_XZ, VOTING.sites.map(s => s.xz));
   assert.deepEqual(election.sourceGoals(VOTING), P.ELECTION_GOALS);
-  // A later byte copy into browser-next/data must hash like the Godot files.
-  assert.equal(createHash('sha256').update(readFileSync(new URL('../godot/data/power_place.json', import.meta.url))).digest('hex').length, 64);
+  // The fork serves byte copies of both files from its own data folder (same-origin ./data/<name>).
+  const bytes = path => readFileSync(new URL(`../${path}`, import.meta.url));
+  for (const name of ['power_place.json', 'voting_places.json']) assert.ok(bytes(`browser-next/data/${name}`).equals(bytes(`godot/data/${name}`)), `browser-next/data/${name} is a byte copy of godot/data/${name}`);
 });
 
 // ---------------------------------------------------------------- format
@@ -425,6 +425,7 @@ test('Power Story: Larkin 2017 goal, distances, refusals and map', () => {
   assert.equal(power.powerScene(p).batteryStand.lit, true);
   assert.equal(power.powerScene(p).relays[0].visible, false);
   assert.equal(power.openRefusal(power.initialPower(), { opened: false }), GODOT_TEXT['power_story.gd'].open_story.refuse);
+  assert.equal(power.entryTooltip(), 'Neighborhood Stories');
   // Map and diagram SVGs: numbers parse and stay inside the 360 x 240 view.
   const map = power.mapSVG(POWER_PLACE);
   const nums = [...map.matchAll(/-?\d+(?:\.\d+)?/g)].map(m => Number(m[0]));
@@ -742,8 +743,10 @@ test('Positions: the conversion formula matches core.js and Godot anchors', () =
   close(P.ELECTION_GOALS[0], { x: -1298.4, y: -554.7 }, 0.06); close(P.ELECTION_GOALS[1], { x: -433.4, y: -564.8 }, 0.06);
   close(P.DOG_SEARCH[0], { x: -51.2, y: -29.3 }, 0.06, 'Pippin'); close(P.DOG_GOALS[0], { x: -52.6, y: -20.4 }, 0.06, 'Pippin goal');
   close(P.EDDY_WEST[0], { x: -2929.4, y: -524.4 }, 0.06); close(P.EDDY_WEST.at(-1), { x: -2196.6, y: -524.5 }, 0.06);
-  assert.deepEqual(P.ROUTE_BOUNDS, core.BOUNDS, 'ROUTE_BOUNDS is today\'s core BOUNDS');
-  assert.deepEqual(P.OPENING_BOUNDS, core.OPENING_BOUNDS);
+  // core.js keeps its own copy of the bounds and the corridor: it cannot import positions.js (history.js projects at load).
+  for (const name of ['OPENING_BOUNDS', 'ROUTE_BOUNDS', 'BOUNDS', 'WALK_EXTENT', 'VIEW_BOUNDS', 'STREET_CORRIDOR', 'EDDY_XZ']) assert.deepEqual(core[name], P[name], name);
+  assert.equal(core.EDDY_WEST.length, P.EDDY_WEST.length);
+  core.EDDY_WEST.forEach((p, i) => close(p, P.EDDY_WEST[i], 1e-9, `EDDY_WEST[${i}]`));
   assert.equal(P.WALK_EXTENT.left, Math.floor((P.LARKIN_JUNCTION.x - 50) / 10) * 10);
 });
 
@@ -799,6 +802,9 @@ test('Positions: pinned surprise sites and eatery counters reproduce the constru
   }
 });
 
+// positions.js proposedFindPath from the start, once per target (the uncached router both routing tests compare with).
+const proposedPaths = new Map();
+const proposedPath = (id, p) => { if (!proposedPaths.has(id)) proposedPaths.set(id, P.proposedFindPath(P.START, p, WAYS)); return proposedPaths.get(id); };
 test('Positions: every target is inside the proposed bounds and walkable, and routes from the start', () => {
   const targets = P.walkTargets();
   assert.equal(Object.keys(targets).length, 34);
@@ -808,22 +814,29 @@ test('Positions: every target is inside the proposed bounds and walkable, and ro
     assert.ok(p.x >= P.BOUNDS.left || P.eddyDistance(p) < P.STREET_CORRIDOR, `${id}: west of BOUNDS only on the Eddy corridor`);
     assert.ok(Math.abs(p.x) < 3000 && Math.abs(p.y) < 3000, `${id} within core.js move cap`);
     assert.ok(P.proposedWalkable(p, WAYS), `${id} walkable under the proposed rules`);
-    assert.ok(P.proposedFindPath(P.START, p, WAYS).length > 0, `${id} routable under the proposed rules`);
+    assert.ok(proposedPath(id, p).length > 0, `${id} routable under the proposed rules`);
+    assert.equal(core.walkable(p, WAYS), P.proposedWalkable(p, WAYS), id);
     if (!core.walkable(p, WAYS)) outsideToday.push(id);
   }
-  // The proposed walkable agrees with core.js inside today's BOUNDS.
-  for (const [id, p] of Object.entries(targets)) if (P.inside(p, P.ROUTE_BOUNDS)) assert.equal(P.proposedWalkable(p, WAYS), core.walkable(p, WAYS), id);
-  assert.deepEqual(outsideToday.sort(), ['boeddeker', 'cadillac', 'counter:blue_valve_hifi', 'larkin', 'museum', 'park', 'soWhatLeavenworth', 'surprise:hidden_mural_145', 'surprise:magic_carpet_chef', 'surprise:mayor_pomp_event'].sort());
+  assert.deepEqual(outsideToday, [], 'core.js walks to every target');
+  // core.js walkable is the positions.js rule at every point of a 7 px grid over the camera's view bounds (and 20 px
+  // beyond), and along each bounds edge, where < and <= differ.
+  const V = P.VIEW_BOUNDS, grid = [];
+  for (let x = V.left - 20; x <= V.right + 20; x += 7) for (let y = V.top - 20; y <= V.bottom + 20; y += 7) grid.push({ x, y });
+  for (const x of [P.WALK_EXTENT.left, P.BOUNDS.left, P.BOUNDS.right]) for (let y = V.top; y <= V.bottom; y += 5) grid.push({ x, y });
+  for (const y of [P.BOUNDS.top, P.BOUNDS.bottom]) for (let x = V.left; x <= V.right; x += 5) grid.push({ x, y });
+  const differ = grid.filter(p => core.walkable(p, WAYS) !== P.proposedWalkable(p, WAYS));
+  assert.deepEqual(differ, [], `core.js walkable agrees with proposedWalkable on ${grid.length} points`);
+  assert.ok(grid.length > 85000);
 });
 
-test('Positions: targets inside today\'s bounds also route with core.js findPath unchanged', () => {
-  // core.js findPath(start, goal, ways) takes no bounds argument (it reads the module BOUNDS),
-  // so the proposed bounds cannot be passed in; targets outside today's BOUNDS must return [].
+test('Positions: every target routes with core.js findPath, on the same path as proposedFindPath', () => {
+  // core.js findPath(start, goal, ways) keeps its signature: the bounds, the Eddy corridor and the cell limit are its own.
   assert.equal(core.findPath.length, 3);
   for (const [id, p] of Object.entries(P.walkTargets())) {
     const path = core.findPath(P.START, p, WAYS);
-    if (core.walkable(p, WAYS)) assert.ok(path.length > 0, `${id} routes with core.js today`);
-    else assert.deepEqual(path, [], `${id} needs the proposed bounds`);
+    assert.ok(path.length > 0, `${id} routes with core.js`);
+    assert.equal(JSON.stringify(path), JSON.stringify(proposedPath(id, p)), id);
   }
 });
 
