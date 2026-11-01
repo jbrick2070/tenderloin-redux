@@ -93,6 +93,14 @@ async function letThrough(page, before, want, gated) {
 const closed = page => until(page, () => !document.querySelector('dialog[open]'), null, 'the dialog closes');
 const talkOpen = (page, name, timeout = 30000) => until(page, name => document.querySelector('#modal').open && document.querySelector('#modal-title')?.textContent.trim() === name, name, `${name}'s dialog opens`, timeout);
 async function walkTo(page, w, id) { await press(page, '#neighbors-button', w.touch); await press(page, `#neighbor-${id}`, w.touch); await talkOpen(page, NEIGHBORS.find(n => n.id === id).name); }
+// The dialog's close event comes after the task that closed it (Chrome dispatches it with the next frame), and game.js's close
+// handler then moves focus to the dialog's return target again. A key pressed on a button focused before then can land wherever
+// that handler puts focus. settledClose runs close and resolves once that event has run: the listener it adds runs after game.js's.
+async function settledClose(page, close, what) {
+  await page.evaluate(() => { window.__nextCloseRan = false; document.querySelector('#modal').addEventListener('close', () => { window.__nextCloseRan = true; }, { once: true }); });
+  await close();
+  await until(page, () => window.__nextCloseRan, null, `${what}: the dialog's close event runs`, 8000);
+}
 
 // A same-origin page with no script (and no favicon request), so nothing writes while a save is seeded.
 async function seed(page, raw) {
@@ -624,6 +632,9 @@ async function recoveryCases(w) {
     await stale(filmDoneEnvelope({ save_seq: 61, film: { ...film, draft: { ...film.draft, framing }, result: { ...film.result, framing } } }));
     await until(page, () => !document.querySelector('dialog[open]'), null, "the new copies close the screening (nothing was lost, so nothing is offered back)");
     await until(page, text => document.querySelector('#toast').textContent === text, FORK_TEXT.copiesChanged, 'the toast says why the screen closed');
+    // The storage event's task closes the dialog, then redraws the afterglow and so replaces the button close() focused. The dialog's
+    // close event comes after that task (Chrome dispatches it with the next frame) and focuses the new #film-shoot: wait for it.
+    await until(page, () => document.activeElement?.id === 'film-shoot', null, "focus returns to the film button once the dialog's close event has run", 8000);
     assert.deepEqual([(await call(page, 'ending')).stage, (await call(page, 'snapshot')).film.result.framing, await page.evaluate(() => document.activeElement?.id)], [null, framing, 'film-shoot']);
     return { toast: FORK_TEXT.copiesChanged };
   });
@@ -832,16 +843,19 @@ async function seeded(w) {
     return { results: [...results, 'storage event'] };
   });
   await step(`${w.name} a held Enter presses only the button it started on`, async () => {
-    await start(canonicalStringify(readyEnvelope({ save_seq: 12 })));
+    // Each held Enter starts on a button focused once the dialog before it has finished closing: while its close event is still
+    // pending, that event could move focus to the map, where Enter talks to Bea instead.
+    await seed(page, canonicalStringify(readyEnvelope({ save_seq: 12 }))); await boot(page);
+    const startCard = await cardCheck(page, true); await settledClose(page, () => dismissCard(page, w, startCard), 'the startup card');
     await until(page, () => document.querySelector('#world-prompt span').textContent === 'Talk with Bea', null, 'the map prompt offers Bea, who stands by the start');
     await page.locator('#world-prompt').focus(); await holdEnter(page);
     assert.deepEqual(await page.evaluate(() => [document.querySelector('dialog[open] #modal-title')?.textContent, !!document.querySelector('#choose-table'), !!document.querySelector('.placement-grid')]), ['Bea', true, false], "Bea's dialog opens and nothing in it is chosen");
     assert.equal((await call(page, 'snapshot')).layout, null); assert.equal((await envelope(page)).env.gathering_layout, '');
-    await page.keyboard.press('Escape'); await closed(page);
+    await settledClose(page, async () => { await page.keyboard.press('Escape'); await closed(page); }, "Escape on Bea's dialog");
     await page.locator('#open-gathering').focus(); await holdEnter(page);
     assert.equal(await page.evaluate(() => document.querySelector('dialog[open] #modal-title')?.textContent), 'You made a little room.', 'the opening dialog stays up to be read');
     await written(page, 12, { block_opened: true });
-    await page.keyboard.press('Escape'); await dismissCard(page, w, await cardCheck(page, false));
+    await page.keyboard.press('Escape'); const card = await cardCheck(page, false); await settledClose(page, () => dismissCard(page, w, card), 'the chapter card');
     const seq = (await call(page, 'save')).seq;
     await page.locator('#start-pack').focus(); await holdEnter(page);
     assert.equal(await page.evaluate(() => document.querySelector('dialog[open] #modal-title')?.textContent), 'An afternoon winds down.', 'the pack-up confirmation stays up');
@@ -887,7 +901,8 @@ async function endingSuite(w) {
     targets.hosted = await layoutCheck(page, w, 'ending-hosted');
     await press(page, '#hosted-card-art', w.touch); assert.equal(await page.locator('#hosted-card-art').getAttribute('aria-pressed'), 'true');
     await pressedLook(page, '#hosted-card-art', '#hosted-card-stories');
-    await press(page, '#hosted-follow', w.touch); await closed(page);
+    // A chapter card would open from the dialog's close event (game.js queueChapterCard), so these are read once it has run.
+    await settledClose(page, async () => { await press(page, '#hosted-follow', w.touch); await closed(page); }, 'Follow');
     assert.equal(await focused(), 'civic-hour', 'Follow focuses the Listening Hour button');
     assert.match(await toastText(), /Listening Hour is focused\. Open that button when you are ready; your plan and conversation are unchanged\.$/);
     assert.equal(await call(page, 'story').then(s => s.card), false, 'no chapter card steals focus');
