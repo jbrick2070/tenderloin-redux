@@ -1,7 +1,8 @@
 // Main-thread player for the Godot sketch (sketch-core.js) on an AudioWorklet (sketch-worklet.js).
 // Same public surface as audio.js MusicSketch (start, stop, setVolume, update, dispose, enabled, starting,
-// volume), so audio.js can adopt it without soundtrack.js changing; plus position(), mute(), mask and
-// ensureContext() for rewards.js and the Rhythm Circle. Not wired into game.js yet.
+// volume), so audio.js adopts it without soundtrack.js changing; plus position(), mute(), mask and
+// ensureContext() for rewards.js and the Rhythm Circle. audio.js's MusicSketch is this class, which game.js plays
+// through soundtrack.js.
 //
 // The context asks for 22050 Hz, which makes the output sample-exact with Godot's generator. If that
 // constructor throws, the default rate is used and sketch-core evaluates the same formula at t = k / rate.

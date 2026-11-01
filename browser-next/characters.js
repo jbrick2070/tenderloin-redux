@@ -235,6 +235,8 @@ export const PANEL_TEXT = {
   rookLocalDetail: 'Local full track: %s (procedural stems hidden) — %s Use Sketch returns to the original 80 BPM music.',
   rookSketchDetail: 'Original 80 BPM sketch · Soundcheck: %s · Groove Stems: %s — %s',
   stems: '%s (%d/%d stems)',
+  // neighbor_greeting_line's surprise slot; celeste_ and rook_dialogue_text write it with the name in place.
+  quoted: '%s: "%s"',
 };
 export const BUTTON_TEXT = {
   chat: 'Keep Chatting (T)', chatNarrow: 'Chat More',
@@ -244,6 +246,8 @@ export const BUTTON_TEXT = {
   rookDone: 'Chat & Soundcheck (Done)', rookCheck: 'Soundcheck w/ Rook', rookDoneNarrow: 'Chat w/ Rook', rookCheckNarrow: 'Check Sound',
   sketchActive: '80 BPM Sketch (Active)', sketchUse: 'Use 80 BPM Sketch', sketchActiveNarrow: 'Sketch On', sketchUseNarrow: 'Use Sketch',
   hint: 'Hint', close: 'Close',
+  // make_ui: Rook's Load Local Track, and the mural's Compose Mural, which 2D offers in Celeste's conversation.
+  load: 'Load Local Track', compose: 'Compose\nMural',
 };
 export const CAPTION_TEXT = {
   arrived: 'Arrived at %s (%s). Visited %d/5 neighbors.%s',
@@ -282,8 +286,9 @@ export const REOPEN_ACTIONS = ['epilogue', 'programme', 'civic', 'film', 'open',
 // Godot's 3D-only actions with no 2D place: they are left out of the fork's conversations, and the
 // next Godot choice takes the slot (the fork has no surprises, tour, museum or eateries).
 export const FORK_OMITTED_ACTIONS = ['surprise', 'landmark_tour', 'museum', 'eateries'];
-// Only Keep Chatting is rapid in Godot (conv_chat_btn.set_meta("rapid", true)).
-export const RAPID_BUTTONS = ['chat'];
+// The conversation buttons Godot marks rapid: Keep Chatting (conv_chat_btn) and Rook's Volume (music_vol_btn). The
+// Mural Stories Palette is rapid too (ending/mural.js); tests/next-press-settle.test.mjs pins every rapid mark on both sides.
+export const RAPID_BUTTONS = ['chat', 'volume'];
 
 // Godot text -> 2D text, keyed by the exact copied line. Only lines naming Godot's 3D-only keys or
 // controls are here: the Shift+D surprise hunt, the T key, the Shift Motif button and the hub's
@@ -323,6 +328,8 @@ const trimSuffix = (s, p) => p && s.endsWith(p) ? s.slice(0, -p.length) : s;
 const unquote = memory => trimSuffix(trimPrefix(memory, '“'), '”');
 const capitalize = word => String(word).split(/[_\s]+/).filter(Boolean).map(w => w[0].toUpperCase() + w.slice(1).toLowerCase()).join(' ');
 const person = id => CHARACTER_PEOPLE.find(p => p.id === id) ?? null;
+// A neighbor's surprise memory as their line: Name: "memory".
+const quoted = (id, memory) => gdFormat(PANEL_TEXT.quoted, person(id)?.name ?? capitalize(id), unquote(memory));
 const placedMotifs = state => MURAL_MOTIFS.filter(id => state?.mural?.[id]).length;
 const muralCompleted = state => placedMotifs(state) === MURAL_MOTIFS.length;
 const hostedValue = (state, id) => list(state?.hosting?.results).find(entry => entry?.id === id)?.value ?? null;
@@ -478,7 +485,7 @@ export function greetingLine(state, extras, talk, id) {
   const s = forkState(state), options = neighborLines(s, id), memory = s.opened === true ? layoutMemory(s, id) : '';
   if (memory && options.length >= 4) options[3] = memory;
   const surp = surpriseMemory(extras, id);
-  if (surp && options.length >= 5) options[4] = gdFormat('%s: "%s"', person(id)?.name ?? capitalize(id), unquote(surp));
+  if (surp && options.length >= 5) options[4] = quoted(id, surp);
   if (!options.length) return PANEL_TEXT.fallback;
   const line = webLine(options[lineIndex(talkCount(s, talk, id), options.length)]), art = muralNeighborReply(extras, id);
   return art && line.endsWith('"') ? line.slice(0, -1) + art + '"' : line + art;
@@ -489,11 +496,11 @@ export function celesteLine(state, extras) {
     const options = [gdFormat(CELESTE_LINES.completed[0], muralCompositionReply(s, extras)), ...CELESTE_LINES.completed.slice(1)];
     const lay = s.opened === true ? layoutMemory(s, 'celeste') : '';
     if (lay) options[3] = lay;
-    if (surp) options[4] = gdFormat('Celeste: "%s"', unquote(surp));
+    if (surp) options[4] = quoted('celeste', surp);
     return webLine(options[lineIndex(count, options.length)]);
   }
   const options = [...CELESTE_LINES.before];
-  if (surp) options[4] = gdFormat('Celeste: "%s"', unquote(surp));
+  if (surp) options[4] = quoted('celeste', surp);
   return webLine(options[lineIndex(count, options.length)]);
 }
 // music: {mode: 'sketch' | 'local', localName}. A loaded local track replaces every line.
@@ -504,11 +511,11 @@ export function rookLine(state, extras, talk, music = {}) {
   if (muralCompleted(s)) {
     const options = [...ROOK_LINES.completed], lay = s.opened === true ? layoutMemory(s, 'rook') : '';
     if (lay) options[3] = lay;
-    if (surp) options[4] = gdFormat('Rook: "%s"', unquote(surp));
+    if (surp) options[4] = quoted('rook', surp);
     return webLine(options[lineIndex(count, options.length)]);
   }
   const options = [gdFormat(ROOK_LINES.before[0], activeStemSummary(s)), ...ROOK_LINES.before.slice(1)];
-  if (surp) options[4] = gdFormat('Rook: "%s"', unquote(surp));
+  if (surp) options[4] = quoted('rook', surp);
   return webLine(options[lineIndex(count, options.length)]);
 }
 // The line a neighbor says at their current turn (talk_with_neighbor routing).
@@ -565,12 +572,12 @@ export function conversationButtons(narrow = false) {
     { id: 'bye', label: narrow ? B.byeNarrow : B.bye, rapid: false },
   ];
 }
-// Rook's music panel buttons (update_music_ui). music: {playing, mode, volume 0..1}.
+// Rook's music panel buttons (update_music_ui). music: {playing, mode, volume 0..1}. Volume is rapid, as Godot marks music_vol_btn.
 export function rookButtons(state, music = {}, narrow = false) {
   const s = forkState(state), B = BUTTON_TEXT, done = s.soundcheck === true, sketch = music?.mode !== 'local';
   return [
     { id: 'play', label: music?.playing ? B.pause : B.play },
-    { id: 'volume', label: gdFormat(B.volume, Math.round(Math.max(0, Math.min(1, Number(music?.volume) || 0)) * 100)) },
+    { id: 'volume', label: gdFormat(B.volume, Math.round(Math.max(0, Math.min(1, Number(music?.volume) || 0)) * 100)), rapid: true },
     { id: 'soundcheck', label: narrow ? (done ? B.rookDoneNarrow : B.rookCheckNarrow) : (done ? B.rookDone : B.rookCheck) },
     { id: 'sketch', label: narrow ? (sketch ? B.sketchActiveNarrow : B.sketchUseNarrow) : (sketch ? B.sketchActive : B.sketchUse) },
     { id: 'next', label: narrow ? B.hint : B.next },

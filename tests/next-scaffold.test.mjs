@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { buildInfo } from '../scripts/build-fingerprint.mjs';
 import { nextBuildInfo } from '../scripts/build-fingerprint-next.mjs';
 import { VERSION, EDITION } from '../browser-next/version.js';
@@ -53,4 +53,27 @@ test('the fork declares its Content-Security-Policy first in <head>, with no inl
   assert.ok(!policy['script-src'].includes("'unsafe-inline'") && !policy['script-src'].includes("'unsafe-eval'"), 'scripts load from the fork only, never inline or from eval');
   assert.doesNotMatch(html, /<script\b(?![^>]*\bsrc=)[^>]*>/i, 'no inline <script>');
   assert.doesNotMatch(html, /<[^>]+\son[a-z]+\s*=/i, 'no on* event handler attribute');
+});
+
+// Line endings: the files the fork copied from classic keep classic's CRLF, every other fork file is LF, and none is mixed.
+// browser-next/visits/ is untracked work that is not part of the fork yet, so it is skipped.
+const CRLF_FILES = ['camera.js', 'core.js', 'data/streets.osm.json', 'game.js', 'index.html', 'style.css', 'world.js'];
+test('every fork file is uniformly LF or uniformly CRLF, and only the files copied from classic are CRLF', () => {
+  const root = new URL('../browser-next/', import.meta.url), crlf = [], seen = [];
+  const walk = dir => {
+    for (const entry of readdirSync(new URL(dir, root), { withFileTypes: true })) {
+      const rel = dir + entry.name;
+      if (entry.isDirectory()) { if (rel !== 'visits') walk(rel + '/'); continue; }
+      const bytes = readFileSync(new URL(rel, root)), lf = bytes.filter(b => b === 10).length, cr = bytes.filter(b => b === 13).length;
+      let pairs = 0;
+      for (let i = 1; i < bytes.length; i++) if (bytes[i] === 10 && bytes[i - 1] === 13) pairs++;
+      assert.ok(lf > 0, `${rel} has lines`);
+      assert.ok(cr === 0 || (cr === lf && pairs === lf), `${rel} is uniformly LF or CRLF (${lf} LF, ${cr} CR, ${pairs} CRLF)`);
+      if (cr) crlf.push(rel);
+      seen.push(rel);
+    }
+  };
+  walk('');
+  assert.ok(seen.includes('game.js') && seen.includes('ending/ui.js') && seen.length > 40, `the walk reads the fork (${seen.length} files)`);
+  assert.deepEqual(crlf.sort(), CRLF_FILES.filter(rel => seen.includes(rel)), 'exactly these files are CRLF');
 });

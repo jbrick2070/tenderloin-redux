@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { createPressSettle, installPressSettle, PRESS_SETTLE_MS, PRESS_SETTLE_RADIUS, PRESS_SETTLE_RADIUS_TOUCH, PRESS_SETTLE_MAX_FRAME_MS, PRESS_SETTLE_EVENTS } from '../browser-next/press-settle.js';
 
 function setup(options) {
@@ -678,4 +678,50 @@ test('a click without pointerType takes the radius of the pointer that made it',
     assert.equal(page.dispatch('pointercancel', close, { pointerType, pointerId: 3 }).stopped, false, 'a pointer that was never pressed');
     settle.dispose();
   }
+});
+
+// The whole rapid set, both sides. A fork control marked rapid (a data-rapid attribute, or rapid: true on the view a renderer
+// reads) ports a Godot Button marked set_meta("rapid", true), or is declared fork-only; a Godot rapid Button is ported or declared
+// not ported. A rapid mark added or dropped on either side fails here. browser-next/visits/ is not part of the fork yet (untracked).
+const RAPID_SET = [
+  // [fork sites as file#id, Godot owners as file:receiver, what they are]
+  [['index.html#zoom-in', 'index.html#zoom-out'], ['main.gd:zoom_control'], 'the map zoom'],
+  [['characters.js#chat'], ['main.gd:conv_chat_btn'], 'Keep Chatting'],
+  [['characters.js#volume'], ['main.gd:music_vol_btn'], "Rook's Volume"],
+  [['ending/mural.js#scene-palette'], ['mural_stories.gd:palette_button'], 'the Mural Stories Palette'],
+  [['game.js#palette-${id}'], ['mural_workshop.gd:palette_button'], "the mural workshop's palette: Godot's one cycling button, 2D's three swatches"],
+  [['game.js#host-tile-${i}'], ['shared_panel.gd:pad'], "the shared panel's tiles: each press cycles a shape"],
+  [['game.js#programme-up-${id}', 'game.js#programme-down-${id}'], ['programme_studio.gd:edits[1]', 'programme_studio.gd:edits[2]'], "the studio's Earlier and Later"],
+  [['game.js#film-up-${shot}', 'game.js#film-down-${shot}'], [], "fork only: the film's Earlier and Later (Godot cycles the whole film plan with one button)"],
+  [['game.js#volume', 'game.js#soundtrack-volume'], [], "fork only: the volume sliders (Godot steps the volume with Rook's Volume)"],
+  [[], ['main.gd:mural_palette_btn'], "not ported: Celeste's panel Palette (2D's Celeste opens the mural workshop)"],
+  [[], ['main.gd:nav'], 'not ported: the block panel pager (2D has no paged block panel)'],
+  [[], ['power_story.gd:pad', 'shared_meal.gd:previous', 'shared_meal.gd:next', 'story_picker.gd:earlier', 'story_picker.gd:later'], 'not ported: the visit stories'],
+];
+test("the rapid set: every fork rapid mark ports a Godot set_meta(\"rapid\", true) Button or is declared, and every Godot one is", () => {
+  const forkRoot = new URL('../browser-next/', import.meta.url), files = [];
+  const walk = dir => { for (const entry of readdirSync(new URL(dir, forkRoot), { withFileTypes: true })) { const rel = dir + entry.name; if (entry.isDirectory()) { if (!['visits', 'data'].includes(entry.name)) walk(rel + '/'); } else if (/\.(js|html)$/.test(entry.name)) files.push(rel); } };
+  walk('');
+  const sites = [], conduits = [];
+  for (const rel of files) {
+    // Whole-line comments only describe marks.
+    const text = readFileSync(new URL(rel, forkRoot), 'utf8').split(/\r?\n/).filter(line => !/^\s*\/\//.test(line)).join('\n');
+    if (rel === 'press-settle.js') { assert.match(text, /closest\?\.\('\[data-rapid\]'\)/, 'the guard reads the nearest data-rapid'); continue; }
+    const tags = [...text.matchAll(/\bid="([^"]+)" data-rapid\b/g)].map(m => `${rel}#${m[1]}`);
+    const views = [...text.matchAll(/\{ id: '([^']+)'[^{}\n]*\brapid: true\b/g)].map(m => `${rel}#${m[1]}`);
+    const renders = [...text.matchAll(/\$\{(\w+)\.rapid \? ' data-rapid' : ''\}/g)].map(() => rel);
+    assert.equal((text.match(/data-rapid/g) || []).length, tags.length + renders.length, `${rel}: every data-rapid is an id's attribute or renders a view's rapid flag`);
+    assert.deepEqual(text.match(/\brapid: (?!true\b|false\b)[^,}]+/g), null, `${rel}: a view says rapid: true or rapid: false, never a computed mark`);
+    sites.push(...tags, ...views); conduits.push(...renders);
+  }
+  assert.deepEqual(conduits.sort(), ['ending/ui.js', 'game.js'], 'two renderers turn a view\'s rapid: true into data-rapid: the ending\'s btn() and the conversation controls');
+  const owners = [];
+  for (const name of readdirSync(new URL('../godot/', import.meta.url)).filter(n => n.endsWith('.gd'))) {
+    // Whole-line comments only describe marks (main.gd's press-settle notes).
+    const src = godot(name).split(/\r?\n/).filter(line => !/^\s*#/.test(line)).join('\n'), marks = [...src.matchAll(/([A-Za-z_]\w*(?:\[\d+\])?)\.set_meta\(\s*"rapid"\s*,\s*true\s*\)/g)];
+    assert.equal((src.match(/set_meta\(\s*"rapid"/g) || []).length, marks.length, `${name}: every rapid meta is true`);
+    owners.push(...marks.map(m => `${name}:${m[1]}`));
+  }
+  assert.deepEqual(sites.sort(), RAPID_SET.flatMap(row => row[0]).sort(), 'the fork marks exactly the declared controls rapid');
+  assert.deepEqual(owners.sort(), RAPID_SET.flatMap(row => row[1]).sort(), 'Godot marks exactly the declared Buttons rapid');
 });

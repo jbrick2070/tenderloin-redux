@@ -1,6 +1,7 @@
-// Browser check of browser-next/ending/ui.js on a stand-alone harness page (game.js does not open the ending yet).
-// node tests/next-ending-browser.mjs, with PLAYWRIGHT_MODULE as for tests/next-browser.mjs. Files are served from this
-// repository through page.route on http://ending.test/, so the page makes no other request and needs no server.
+// Browser check of browser-next/ending/ui.js on a stand-alone harness page: the host below stands in for game.js, which opens the
+// same screens (tests/next-browser.mjs drives them through the game). npm run next:ending, with PLAYWRIGHT_MODULE as for
+// tests/next-browser.mjs. Files are served from this repository through page.route on http://ending.test/, so the page makes no
+// other request and needs no server.
 import assert from 'node:assert/strict';
 import { readFile, mkdir } from 'node:fs/promises';
 import { pathToFileURL, fileURLToPath } from 'node:url';
@@ -31,10 +32,11 @@ const host = {
   stopWalk() {}, reducedMotion: () => window.reduced === true, chapterText: () => '',
   act(action) { const next = applyAction(state, action); if (next === state) return false; const outcome = buildGodotSave(envelope, next); state = next; if (outcome.ok) { envelope = outcome.envelope; window.writes.push(outcome.raw); } return true; },
   sceneAdmission: next => sceneAdmission(envelope, state, next), saveReason: () => '',
-  music: { label: () => music ? 'Music: On' : 'Music: Off', toggle: async () => { music = !music; } },
+  music: { label: () => music ? 'Music: On' : 'Music: Off', on: () => music, toggle: async () => { music = !music; return music ? 'Music playing: 80 BPM Sketch (bass (1/4 stems)).' : 'Music paused.'; } },
   filmButtonLabel: () => 'Screen our little film', openDraft() {}, openPosted() { modal.close(); }, openMural() { modal.close(); },
 };
 window.ending = createEnding(host);
+window.settle = settle;
 window.envelopeRaw = () => JSON.stringify(envelope);
 window.ready = true;
 </script></body></html>`;
@@ -178,7 +180,9 @@ for (const viewport of [{ width: 320, height: 640 }, { width: 390, height: 844 }
   await check(`${w} one pointer gesture is one press`, async () => {
     const { page, context } = await newPage(viewport, w < 600);
     await page.evaluate(() => { delete window.__tenderloinPressSettleMs; });
-    const dbl = async id => { await page.locator(`#${id}`).scrollIntoViewIfNeeded(); const b = await page.locator(`#${id}`).boundingBox(); await page.mouse.dblclick(b.x + b.width / 2, b.y + b.height / 2); await page.waitForTimeout(500); };
+    // The guard's window runs on frame time, so a press waits for it to close rather than for a stretch of real time.
+    const settled = () => page.waitForFunction(() => !window.settle.snapshot().open, null, { timeout: 10000 });
+    const dbl = async id => { await page.locator(`#${id}`).scrollIntoViewIfNeeded(); const b = await page.locator(`#${id}`).boundingBox(); await page.mouse.dblclick(b.x + b.width / 2, b.y + b.height / 2); await settled(); };
     await page.evaluate(() => window.ending.open('gather'));
     await dbl('gather-choice-0');
     assert.equal(await page.evaluate(() => window.ending.snapshot().visit.gather.gestures.length), 1, 'G3: one handoff');
@@ -187,10 +191,10 @@ for (const viewport of [{ width: 320, height: 640 }, { width: 390, height: 844 }
     assert.deepEqual(await page.evaluate(() => window.ending.snapshot().visit.bench), { selected: 0, fitted: [false, false], complete: false }, 'G7');
     await dbl('bench-support-0');
     assert.deepEqual(await page.evaluate(() => window.ending.snapshot().visit.bench.fitted), [true, false], 'G8');
-    await page.locator('#bench-support-1').click(); await page.waitForTimeout(500); await dbl('bench-assist');
+    await page.locator('#bench-support-1').click(); await settled(); await dbl('bench-assist');
     await dbl('bench-habitat');
     assert.deepEqual(await page.evaluate(() => window.ending.snapshot().visit.room.assigned), {}, 'G9');
-    for (const [item, place] of [[0, 0], [2, 1], [1, 2]]) { for (const id of [`room-item-${item}`, `room-place-${place}`]) { await page.locator(`#${id}`).click(); await page.waitForTimeout(500); } await dbl('room-assist'); }
+    for (const [item, place] of [[0, 0], [2, 1], [1, 2]]) { for (const id of [`room-item-${item}`, `room-place-${place}`]) { await page.locator(`#${id}`).click(); await settled(); } await dbl('room-assist'); }
     const r = await page.evaluate(() => window.ending.snapshot().visit.room);
     assert.deepEqual([Object.keys(r.assigned).length, r.complete], [3, false], 'G10: the third carry does not also welcome');
     await dbl('room-assist');

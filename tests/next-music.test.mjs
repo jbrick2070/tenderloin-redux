@@ -135,6 +135,26 @@ test('drift: recompute_music_stems rules and active_stem_summary text', () => {
   for (const key of ['playing', 'sketchTag', 'localTag']) assert.ok(start.includes(sketch.MUSIC_TEXT[key]), key);
   assert.ok(literals(funcBody('main', 'toggle_music_playback')).includes(sketch.MUSIC_TEXT.paused));
   assert.ok(literals(funcBody('main', 'cycle_music_volume')).includes(sketch.MUSIC_TEXT.volume));
+  assert.ok(literals(funcBody('main', 'use_synth_sketch')).includes(sketch.MUSIC_TEXT.switched));
+  // How Godot announces them (announce_a11y_status), which the fork's announcements build the same way.
+  const M = sketch.MUSIC_TEXT, gd = s => `"${s.replace(/"/g, '\\"')}"`;
+  inOrder(codeLines(funcBody('main', 'start_music_playback')), [
+    `var mode_tag := (${gd(M.localTag)} + local_music_name) if music_mode == "local" else (${gd(M.sketchTag)} + active_stem_summary() + ")")`,
+    `announce_a11y_status(${gd(M.playing)} % mode_tag)`,
+  ], 'start_music_playback');
+  inOrder(codeLines(funcBody('main', 'toggle_music_playback')), ['if music_playing:', 'stop_music_playback()', `announce_a11y_status(${gd(M.paused)})`, 'return start_music_playback()'], 'toggle_music_playback');
+  inOrder(codeLines(funcBody('main', 'use_synth_sketch')), [`announce_a11y_status(${gd(M.switched)} % active_stem_summary())`], 'use_synth_sketch');
+  inOrder(codeLines(funcBody('main', 'cycle_music_volume')), [`announce_a11y_status(${gd(M.volume)} % int(round(music_volume * 100.0)))`], 'cycle_music_volume');
+  // Rook's panel calls them: Play Groove toggles, the sketch button switches (make_ui).
+  inOrder(codeLines(funcBody('main', 'make_ui')), ['music_play_btn = music_button(m_row1, "Play Groove", func(): toggle_music_playback())', 'music_sketch_btn = music_button(m_row3, "80 BPM Sketch (Active)", func(): use_synth_sketch())'], 'make_ui music buttons');
+});
+test("music announcements: Godot's lines for the sketch, a local track, a pause and the switch back to the sketch", () => {
+  assert.equal(sketch.playingAnnouncement({ mode: 'sketch', summary: sketch.stemSummary(3) }), 'Music playing: 80 BPM Sketch (bass+brush (2/4 stems)).');
+  assert.equal(sketch.playingAnnouncement({ summary: sketch.stemSummary(1) }), 'Music playing: 80 BPM Sketch (bass (1/4 stems)).', 'the sketch is the default mode');
+  assert.equal(sketch.playingAnnouncement({ mode: 'local', localName: 'neighbors $& $1.wav', summary: sketch.stemSummary(15) }), 'Music playing: Local: neighbors $& $1.wav.', 'a local track is named as chosen, without the stems');
+  assert.equal(sketch.MUSIC_TEXT.paused, 'Music paused.');
+  assert.equal(sketch.switchedAnnouncement(sketch.stemSummary(15)), "Switched Rook's Speaker to 80 BPM Synth Sketch (bass+brush+chords+lead (4/4 stems)).");
+  assert.equal(sketch.switchedAnnouncement('$&'), "Switched Rook's Speaker to 80 BPM Synth Sketch ($&).");
 });
 
 test('drift: cycle_music_volume and the volume gain rule', () => {
@@ -327,15 +347,20 @@ test('drift: RHYTHM_TEXT is every player-facing literal of the ported rhythm_cir
   }
   assert.ok(funcBody('circle', 'refresh').includes('"Explore the block"'));
 });
-test('drift: RHYTHM_WEB_OVERRIDES rewrites only the 3D View Circle and street-drag lines', () => {
-  const values = Object.values(rhythm.RHYTHM_TEXT);
-  assert.deepEqual(Object.keys(rhythm.RHYTHM_WEB_OVERRIDES).sort(), [rhythm.RHYTHM_TEXT.openAnnounceTail, rhythm.RHYTHM_TEXT.dragTail].sort());
+test("drift: RHYTHM_WEB_OVERRIDES rewrites only the 3D View Circle and street-drag lines, and gives Play Bar a name that starts with its label", () => {
+  const values = Object.values(rhythm.RHYTHM_TEXT), T = rhythm.RHYTHM_TEXT;
+  assert.deepEqual(Object.keys(rhythm.RHYTHM_WEB_OVERRIDES).sort(), [T.openAnnounceTail, T.dragTail, T.playBarName].sort());
   for (const [godot, web] of Object.entries(rhythm.RHYTHM_WEB_OVERRIDES)) {
     assert.ok(values.includes(godot));
+    if (godot === T.playBarName) continue;
     assert.match(godot, /View Circle|Drag the street/);
     assert.doesNotMatch(web, /View Circle|Drag the street/);
   }
-  assert.equal(rhythm.RHYTHM_WEB_OVERRIDES[rhythm.RHYTHM_TEXT.openAnnounceTail], rhythm.RHYTHM_TEXT.openAnnounceTail.replace(' View Circle frames the visitors.', ''));
+  assert.equal(rhythm.RHYTHM_WEB_OVERRIDES[T.openAnnounceTail], T.openAnnounceTail.replace(' View Circle frames the visitors.', ''));
+  // WCAG 2.5.3 label in name: Godot's accessibility_name "Play one bar of this rhythm" does not contain the visible "Play Bar",
+  // so the fork's name is the visible label, then Godot's phrase unchanged. Stop Bar's "Stop bar audition" already starts with it.
+  assert.equal(rhythm.rhythmText('playBarName'), `${T.playBar.replace('\n', ' ')}: ${T.playBarName}`);
+  assert.ok(T.stopBarName.toLowerCase().startsWith(T.stopBar.replace('\n', ' ').toLowerCase()));
   for (const key of Object.keys(rhythm.RHYTHM_TEXT)) if (!Object.hasOwn(rhythm.RHYTHM_WEB_OVERRIDES, rhythm.RHYTHM_TEXT[key])) assert.equal(rhythm.rhythmText(key), rhythm.RHYTHM_TEXT[key]);
   assert.ok(!/rapid/.test(GD.circle), 'Godot marks no Rhythm Circle button rapid');
 });
@@ -384,7 +409,9 @@ test('volume: Godot cycle, the 0.70 default, kept preferences, dB and the announ
   assert.equal(sketch.cleanVolume(-1), 0);
   assert.equal(sketch.volumeDb(0), -80);
   near(sketch.volumeDb(0.5), -6.0206, 1e-4, 'dB');
-  assert.equal(sketch.volumeAnnouncement(0.35), 'Music volume 35%.');
+  // Godot "Music volume %d%%." % int(round(music_volume * 100.0)), at every step and between them. 0.57 * 100 is
+  // 56.99999999999999 and 0.995 * 100 is 99.5, so only rounding (not floor or trunc) says 57% and 100%.
+  assert.deepEqual([0, 0.05, 0.35, 0.57, 0.7, 0.995, 1].map(sketch.volumeAnnouncement), ['Music volume 0%.', 'Music volume 5%.', 'Music volume 35%.', 'Music volume 57%.', 'Music volume 70%.', 'Music volume 100%.', 'Music volume 100%.']);
 });
 test('step clock: queued frames, 8268.75-frame steps and the audition step', () => {
   assert.equal(sketch.stepAt(0, sketch.QUEUED_FRAMES), 0);
@@ -713,6 +740,12 @@ test('Rhythm Circle: a redraw that waits draws nothing once the circle is closed
     settle(); await flush();
     assert.deepEqual([dialog.modal.open, c.circle.isOpen], [false, false]);
   });
+  await t.test("Music: Godot's music announcement is said after the redraw, as rhythm_circle.gd's refresh() leaves it", async () => {
+    const dialog = fakeDialog(), c = circleHost(dialog, { toggleMusic: async () => 'Music paused.' });
+    c.circle.open('hosting'); const said = c.statuses.length; dialog.click('rhythm-music');
+    await flush();
+    assert.deepEqual([dialog.has('rhythm-music'), c.statuses.slice(said)], [true, ['Music paused.']]);
+  });
   await t.test('Music, then the recovery offer covers the circle before the music has started: the offer stays on top', async () => {
     const dialog = fakeDialog(), c = circleHost(dialog, { toggleMusic: pending });
     c.circle.open('hosting'); dialog.click('rhythm-music'); dialog.show(RECOVERY);
@@ -769,7 +802,8 @@ test('Rhythm Circle labels, reader text, lamps and the step highlight', () => {
   const s = hostedState(3), session = { ...rhythm.openCircle(s).session, stepCues: true };
   assert.deepEqual(rhythm.pads(5).slice(0, 2), [{ step: 0, hit: true, label: '1\nHit', name: 'Step 1, hit' }, { step: 1, hit: false, label: '2\nRest', name: 'Step 2, rest' }]);
   assert.deepEqual(rhythm.options(session, { musicPlaying: true, auditioning: true }).map(o => o.label), ['Listen', 'Music\nOn', 'Reset\nPractice', 'Step cues\nOn', 'Back', 'Stop\nBar']);
-  assert.equal(rhythm.options(session).at(-1).name, 'Play one bar of this rhythm');
+  assert.equal(rhythm.options(session).at(-1).name, 'Play Bar: Play one bar of this rhythm');
+  assert.equal(rhythm.options(session, { auditioning: true }).at(-1).name, 'Stop bar audition');
   assert.equal(rhythm.readerText('Hi.'), "Hi. Play Bar: one original drum bar, then the sketch returns. Music must be On; set volume at Rook's speaker. Reward Sounds is separate.");
   assert.equal(rhythm.readerText('Hi.', { mode: 'local', localName: 'a.mp3' }), 'Hi. Local track: a.mp3. Bar audition is unavailable with local files; step cues stay still.');
   assert.equal(rhythm.objectiveLine('', 3), 'Explore the block | Sparks: 3');

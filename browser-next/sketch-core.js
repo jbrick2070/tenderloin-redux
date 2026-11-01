@@ -36,7 +36,7 @@ export const CHORD_G = [196.0, 246.94, 293.66];
 // Gains and partials, as written in advance_music_clock.
 export const SKETCH_GAINS = { bass: 0.24, bassOctave: 0.08, brushA: 910.0, brushB: 1430.0, brushDecay: 14.0, brush: 0.10, chords: 0.16, vibratoHz: 5.0, vibratoDepth: 0.25, lead: 0.14, clamp: 0.95 };
 
-// Godot text around the music engine (main.gd active_stem_summary, start/toggle/cycle announcements).
+// Godot text around the music engine (main.gd active_stem_summary, start/toggle/cycle announcements, use_synth_sketch).
 export const MUSIC_TEXT = {
   stemSummary: '%s (%d/%d stems)',
   playing: 'Music playing: %s.',
@@ -44,6 +44,7 @@ export const MUSIC_TEXT = {
   localTag: 'Local: ',
   paused: 'Music paused.',
   volume: 'Music volume %d%%.',
+  switched: "Switched Rook's Speaker to 80 BPM Synth Sketch (%s).",
 };
 
 const TAU = Math.PI * 2;
@@ -128,6 +129,11 @@ export const cleanVolume = stored => typeof stored === 'number' && Number.isFini
 export const volumeDb = v => v <= 0.0001 ? -80.0 : 20 * Math.log10(v);
 // Godot "Music volume %d%%.": int(round(v * 100)).
 export const volumeAnnouncement = v => MUSIC_TEXT.volume.replace('%d', Math.round(v * 100)).replace('%%', '%');
+// Godot start_music_playback: "Music playing: Local: <name>." with a local track, else "Music playing: 80 BPM Sketch (<summary>)."
+// with active_stem_summary. A file name is inserted as written (a function replacement, so "$&" stays "$&").
+export const playingAnnouncement = ({ mode = 'sketch', localName = '', summary = '' } = {}) => MUSIC_TEXT.playing.replace('%s', () => mode === 'local' ? MUSIC_TEXT.localTag + localName : MUSIC_TEXT.sketchTag + summary + ')');
+// Godot use_synth_sketch: "Switched Rook's Speaker to 80 BPM Synth Sketch (<active_stem_summary>)."
+export const switchedAnnouncement = summary => MUSIC_TEXT.switched.replace('%s', () => summary);
 
 // Rhythm Circle step clock (rhythm_circle.gd update_world): the sketch position minus what is still
 // queued, in 8268.75-frame steps. The fork passes the worklet position and its output latency in frames.

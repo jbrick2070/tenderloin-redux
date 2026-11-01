@@ -8,7 +8,8 @@
 //   stopWalk(), reducedMotion(),     stop the street walk before a surface opens; the Settings motion choice
 //   chapterText(),                   the pending chapter announcement plus a space, consumed (story.js), or ''
 //   act(action), sceneAdmission(nextState), saveReason(),   reducer dispatch; Godot's scene budget admission; '' or 'save full'
-//   music: { label(), on(), toggle() },   Godot's Music: On/Off buttons inside ending dialogs; on() is playing or starting
+//   music: { label(), on(), toggle() },   Godot's Music: On/Off buttons inside ending dialogs; on() is playing or starting;
+//                                    toggle() resolves to Godot's music announcement ('' when there is none)
 //   settle,                          press-settle.js installPressSettle's result (tap)
 //   filmButtonLabel(),               the text of #film-shoot without its arrow
 //   openDraft(), openPosted(), openMural(),   the studio draft editor, the posted poster and the mural editor
@@ -26,12 +27,13 @@ import { storiesView, selectScene, changePage, editScene, sceneRefusal, sceneRec
 const esc = text => String(text).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]);
 const lines = text => String(text).split('\n').map(line => `<p>${esc(line)}</p>`).join('');
 const dataSVG = svg => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-// Button label lines (Godot's "\n" in labels) become line breaks; the accessible name, when different, is aria-label.
-function btn(b, extra = '') {
+// Button label lines (Godot's "\n" in labels) become line breaks; the accessible name, when different, is aria-label. A view's
+// rapid: true becomes data-rapid.
+function btn(b) {
   if (!b || b.hidden) return '';
   const label = esc(b.label).replace(/\n/g, '<br>'), name = b.name && b.name !== b.label ? ` aria-label="${esc(b.name)}"` : '';
   const pressed = b.pressed === undefined ? '' : ` aria-pressed="${!!b.pressed}"`;
-  return `<button id="${b.id}" class="${b.primary ? 'primary-button' : 'secondary-button'}"${pressed}${name}${b.disabled ? ' disabled' : ''}${b.title ? ` title="${esc(b.title)}"` : ''}${extra}>${label}</button>`;
+  return `<button id="${b.id}" class="${b.primary ? 'primary-button' : 'secondary-button'}"${pressed}${name}${b.disabled ? ' disabled' : ''}${b.title ? ` title="${esc(b.title)}"` : ''}${b.rapid ? ' data-rapid' : ''}>${label}</button>`;
 }
 const STYLE = `
 .ending{display:grid;gap:10px;min-width:0}
@@ -70,7 +72,8 @@ export function createEnding(host) {
   // left it, or another screen, such as the recovery offer, may have replaced it in the same dialog.
   const holds = kind => stage === kind && modal.open && modal.contains($('ending-reader'));
   const musicButton = () => ({ id: 'ending-music', label: host.music.label() });
-  const bindMusic = rerender => bind('ending-music', async () => { const kind = stage; await host.music.toggle(); if (!holds(kind)) return; rerender(); focus('ending-music'); });
+  // Godot toggle_music_playback announces, then refresh(false) redraws without announcing: the music line is the last word.
+  const bindMusic = rerender => bind('ending-music', async () => { const kind = stage, said = await host.music.toggle(); if (!holds(kind)) return; rerender(); focus('ending-music'); say(said); });
   function frameHTML({ kind, title, credit, picture = '', reader, tray, extra = '' }) {
     return `<section class="ending" data-ending="${kind}"><p class="eyebrow ending-credit">${esc(credit)}</p><h2 id="modal-title" tabindex="-1">${esc(title)}</h2>${picture}<div id="ending-reader" class="ending-reader" tabindex="0" role="region" aria-label="Story text">${lines(reader)}</div>${extra}<div class="ending-tray">${tray}</div></section>`;
   }
@@ -269,7 +272,7 @@ export function createEnding(host) {
     const choices = `<div class="ending-cards" role="group" aria-label="Scenes">${v.choices.map(c => `<button id="${c.id}" class="secondary-button" aria-pressed="${c.pressed}" aria-label="${esc(c.name)}" title="${esc(c.title)}"><img class="ending-thumb" alt="" src="${dataSVG(c.thumbnail)}">${esc(c.label).replace(/\n/g, '<br>')}</button>`).join('')}</div>`;
     const paper = `<figure class="ending-picture ending-paper"><img alt="${esc(v.targets.map(t => t.name.split('. Paint')[0]).join('; '))}" src="${dataSVG(v.paper)}"><div class="ending-targets">${v.targets.map(t => `<button id="${t.id}" aria-label="${esc(t.name)}" title="${esc(t.name)}">${esc(t.slot)}</button>`).join('')}</div></figure><img class="ending-signature" alt="${esc(v.signatureCredit)}" src="${dataSVG(v.signature)}">`;
     host.show(frameHTML({ kind: 'stories', title: v.title, credit: v.attribution, picture: choices + paper, reader: v.text,
-      tray: v.lifts.map(b => btn(b)).join('') + btn(v.palette, ' data-rapid') + btn(v.music) + btn(v.back) + btn(v.page) }));
+      tray: v.lifts.map(b => btn(b)).join('') + btn(v.palette) + btn(v.music) + btn(v.back) + btn(v.page) }));
     v.choices.forEach(c => bind(c.id, () => { const out = selectScene(visit.stories, c.scene); visit.stories = out.stories; stories(out.announce); focus(c.id); }));
     v.targets.forEach(t => bind(t.id, () => paint(visit.stories.selected, t.slot, t.id)));
     v.lifts.forEach(l => bind(l.id, () => paint('', l.slot, l.id)));
@@ -331,14 +334,15 @@ export function createEnding(host) {
       bind('civic-follow', () => { const text = civicFollow(state(), host.filmButtonLabel(), host.chapterText()); if (text) leave(text, 'film-shoot'); });
       bind('civic-keep', () => leave(civicClose(), 'civic-hour'));
     },
-    // After every state change; adopted is true when the state came from another tab or edition's save.
+    // After every state change; adopted is true when the state came from another tab or edition's save. Returns reset (the visit
+    // started over) and closed (an open ending screen closed), so the host can say why the screen went away.
     sync({ adopted = false } = {}) {
       const out = syncVisit(visit, state(), { adopted });
       visit = out.visit;
-      if (!stage || !modal.open) return out.reset;
+      if (!stage || !modal.open) return { reset: out.reset, closed: false };
       const s = state(), still = { hosted: s.hosting.results.length === 4, gather: visit.gather.order.length > 0, screening: screeningAvailable(s), bench: screeningAvailable(s), room: habitatAvailable(s), orbit: habitatAvailable(s), stories: true }[stage];
-      if (!still || out.reset && stage !== 'stories') { const back = ['hosted', 'gather'].includes(stage) ? 'host-afternoon' : 'film-shoot'; stopLoop(); stage = null; host.close(target(back)); }
-      return out.reset;
+      if (!still || out.reset && stage !== 'stories') { const back = ['hosted', 'gather'].includes(stage) ? 'host-afternoon' : 'film-shoot'; stopLoop(); stage = null; host.close(target(back)); return { reset: out.reset, closed: true }; }
+      return { reset: out.reset, closed: false };
     },
     // Start fresh: Godot reset_visit.
     reset() { stopLoop(); visit = freshVisit(state()); stage = null; },

@@ -14,7 +14,7 @@ import * as B from '../browser-next/bubble.js';
 
 // --- Godot sources are read at test time, so a Godot text or logic change fails here. ---
 const read = name => readFileSync(new URL(`../godot/${name}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
-const SRC = Object.fromEntries(['main.gd', 'bea_invitation.gd', 'quiet_seats.gd', 'loan_homecoming.gd', 'hosted_afternoon.gd', 'mural_stories.gd'].map(n => [n, read(n)]));
+const SRC = Object.fromEntries(['main.gd', 'bea_invitation.gd', 'quiet_seats.gd', 'loan_homecoming.gd', 'mural_stories.gd'].map(n => [n, read(n)]));
 const gd = SRC['main.gd'];
 function balanced(text, start) {
   let depth = 0, quoted = '';
@@ -150,14 +150,18 @@ test('drift: neighbor_lines, the greeting slot rules and the mural replies', () 
 });
 
 test('drift: Celeste and Rook lines, their slot rules and the stem summary', () => {
+  // Celeste's and Rook's surprise slot: Godot writes the quote with each name in place; the fork builds it from the name and
+  // neighbor_greeting_line's "%s: \"%s\"" (PANEL_TEXT.quoted), so a changed letter on either side fails here.
+  has(funcBody('neighbor_greeting_line'), [C.PANEL_TEXT.quoted], 'neighbor_greeting_line');
+  const quoted = id => q(C.gdFormat(C.PANEL_TEXT.quoted, C.CHARACTER_PEOPLE.find(p => p.id === id).name, '%s'));
   const cel = funcBody('celeste_dialogue_text');
   assert.deepEqual(arrays(cel, /: Array\[String\] = \[/g), [C.CELESTE_LINES.completed, C.CELESTE_LINES.before]);
   inOrder(codeLines(cel), [
-    'var c_surp := neighbor_surprise_memory_line(CELESTE_ID)', 'if mural_completed:', '"Celeste: \\"%s\\"" % mural_composition_reply(),',
+    'var c_surp := neighbor_surprise_memory_line(CELESTE_ID)', 'if mural_completed:', `${q(C.CELESTE_LINES.completed[0])} % mural_composition_reply(),`,
     'var c_lay_mem := layout_memory_line(CELESTE_ID) if block_opened else ""', 'if not c_lay_mem.is_empty():', 'completed_options[3] = c_lay_mem',
-    'if not c_surp.is_empty():', 'completed_options[4] = "Celeste: \\"%s\\"" % c_surp.trim_prefix("“").trim_suffix("”")',
+    'if not c_surp.is_empty():', `completed_options[4] = ${quoted('celeste')} % c_surp.trim_prefix("“").trim_suffix("”")`,
     'return completed_options[posmod(maxi(1, celeste_talk_count) - 1, completed_options.size())]',
-    'if not c_surp.is_empty():', 'options[4] = "Celeste: \\"%s\\"" % c_surp.trim_prefix("“").trim_suffix("”")',
+    'if not c_surp.is_empty():', `options[4] = ${quoted('celeste')} % c_surp.trim_prefix("“").trim_suffix("”")`,
     'return options[posmod(maxi(1, celeste_talk_count) - 1, options.size())]',
   ], 'celeste_dialogue_text');
   const rook = funcBody('rook_dialogue_text');
@@ -166,12 +170,15 @@ test('drift: Celeste and Rook lines, their slot rules and the stem summary', () 
     'if music_mode == "local" and not local_music_name.is_empty():', `return ${q(C.ROOK_LINES.local)} % local_music_name`,
     'var r_surp := neighbor_surprise_memory_line(ROOK_ID)', 'if mural_completed:',
     'var r_lay_mem := layout_memory_line(ROOK_ID) if block_opened else ""', 'completed_options[3] = r_lay_mem',
-    'completed_options[4] = "Rook: \\"%s\\"" % r_surp.trim_prefix("“").trim_suffix("”")',
+    `completed_options[4] = ${quoted('rook')} % r_surp.trim_prefix("“").trim_suffix("”")`,
     'return completed_options[posmod(maxi(1, rook_talk_count) - 1, completed_options.size())]',
     `${q(C.ROOK_LINES.before[0])} % active_stem_summary(),`,
-    'options[4] = "Rook: \\"%s\\"" % r_surp.trim_prefix("“").trim_suffix("”")',
+    `options[4] = ${quoted('rook')} % r_surp.trim_prefix("“").trim_suffix("”")`,
     'return options[posmod(maxi(1, rook_talk_count) - 1, options.size())]',
   ], 'rook_dialogue_text');
+  // Before the board is complete, each one's fifth line is the surprise they heard about, in that quote.
+  assert.equal(C.spokenLine({ ...base(), celesteTalks: 5 }, extras(['cutesy_dino']), C.freshTalk(), 'celeste'), `Celeste: "${C.SURPRISE_MEMORY.celeste.second.slice(1, -1)}"`);
+  assert.equal(C.spokenLine(base(), extras(['clown_horn_walker']), talkAt('rook', 5), 'rook'), `Rook: "${C.SURPRISE_MEMORY.rook.second.slice(1, -1)}"`);
   assert.deepEqual(codeLines(funcBody('active_stem_summary')).slice(1), ['var stems := unlocked_stems()', `return ${q(C.PANEL_TEXT.stems)} % ["+".join(stems), stems.size(), MUSIC_STEM_ORDER.size()]`]);
   assert.deepEqual(codeLines(funcBody('recompute_music_stems')).slice(1, 9).map(line => line.replace(/ # .*$/, '')), [
     'var mask := 1', 'if visited_neighbors.size() >= 1 or celeste_talk_count > 0 or rook_soundcheck_done:', 'mask |= 2',
@@ -235,9 +242,14 @@ test('drift: spark_count, panel headers and details, buttons, captions and the h
   has(funcBody('apply_block_panel_mode'), [Bt.chat, Bt.chatNarrow, Bt.next, Bt.nextNarrow, Bt.bye, Bt.byeNarrow], 'apply_block_panel_mode');
   const ui = funcBody('make_ui');
   assert.ok(ui.includes(`conv_chat_btn = conv_button(c_row1, ${q(Bt.chat)},`) && ui.includes(`conv_next_btn = conv_button(c_row1, ${q(Bt.next)},`) && ui.includes(`conv_bye_btn = conv_button(c_row1, ${q(Bt.bye)},`));
+  assert.ok(ui.includes(`music_load_btn = music_button(m_row2, ${q(Bt.load)}, func(): prompt_local_music_file())`), 'Load Local Track');
+  assert.ok(ui.includes(`mural_compose_btn.text = ${q(Bt.compose).replace('\n', '\\n')}`), 'Compose\\nMural');
+  // Rapid in Godot: Keep Chatting of the conversation's three buttons, and Rook's Volume (make_ui set_meta("rapid", true)).
   assert.deepEqual([...ui.matchAll(/(conv_\w+_btn)\.set_meta\("rapid", true\)/g)].map(m => m[1]), ['conv_chat_btn']);
-  assert.deepEqual(C.RAPID_BUTTONS, ['chat']);
-  assert.deepEqual(C.conversationButtons().filter(b => b.rapid).map(b => b.id), C.RAPID_BUTTONS);
+  assert.deepEqual([...ui.matchAll(/(music_\w+_btn)\.set_meta\("rapid", true\)/g)].map(m => m[1]), ['music_vol_btn']);
+  assert.ok(ui.includes('music_vol_btn = music_button(m_row1, "Volume: 70%", func(): cycle_music_volume())'));
+  assert.deepEqual(C.RAPID_BUTTONS, ['chat', 'volume']);
+  for (const narrow of [false, true]) assert.deepEqual([...C.conversationButtons(narrow), ...C.rookButtons(base(), { volume: 0.7 }, narrow)].filter(b => b.rapid).map(b => b.id), C.RAPID_BUTTONS);
   const T = C.CAPTION_TEXT;
   has(funcBody('finish_neighbor_arrival'), [T.arrived, T.arrivedCeleste, T.arrivedRook, T.soundReady, T.soundTap], 'finish_neighbor_arrival');
   has(funcBody('talk_with_neighbor'), [T.talking, T.spokenWithTail], 'talk_with_neighbor');
@@ -342,8 +354,11 @@ test('drift: CHARACTER_WEB_OVERRIDES covers exactly the lines naming 3D-only key
   }
 });
 
-test('drift: hosted-text copies bea_invitation, quiet_seats, loan_homecoming and hosted_afternoon', () => {
-  const bea = 'bea_invitation.gd', quiet = 'quiet_seats.gd', loan = 'loan_homecoming.gd', host = 'hosted_afternoon.gd', G = H.HOSTED_GODOT_TEXT;
+// hosted_afternoon.gd has one port, ending/hosted.js (tests/next-ending.test.mjs pins it); hosted-text.js keeps none of it.
+test('drift: hosted-text copies bea_invitation, quiet_seats, loan_homecoming and the hosting completion line', () => {
+  const bea = 'bea_invitation.gd', quiet = 'quiet_seats.gd', loan = 'loan_homecoming.gd', G = H.HOSTED_GODOT_TEXT;
+  assert.deepEqual(Object.keys(G), [bea, quiet, loan, 'main.gd']);
+  for (const name of ['HOSTED_IDS', 'HOSTED_OWNERS', 'HOSTED_POSITIONS', 'hostedCopied', 'hostedDetail', 'hostedReplies', 'hostedReview', 'hostedInvitation', 'hostedInvitationAvailable']) assert.ok(!(name in H), `hosted-text.js no longer exports ${name}`);
   assert.deepEqual(H.INVITATION_TITLES, godotConst('TITLES', bea));
   assert.deepEqual(H.INVITATION_TITLES, STORY_CHOICES);
   assert.deepEqual(H.INVITATION_EXAMPLES, godotConst('EXAMPLES', bea));
@@ -368,22 +383,6 @@ test('drift: hosted-text copies bea_invitation, quiet_seats, loan_homecoming and
   inOrder(codeLines(funcBody('memory', loan)), ['for id in game.LOAN_IDS:', "if game.LOAN_OWNERS[id]==neighbor_id and game.epilogue_returned.has(id): return '“'+String(REPLIES[id])+'”'", 'return ""'], 'loan memory');
   inOrder(codeLines(funcBody('pending', loan)), ['if not game.block_opened or not game.epilogue_packing or index<0 or index>=game.neighbors.size(): return ""', 'for id in game.LOAN_IDS:', 'if game.LOAN_OWNERS[id]==game.neighbors[index].id and not game.epilogue_returned.has(id): return id'], 'loan pending');
   inOrder(codeLines(funcBody('conversation_loan', loan)), ['var id := pending(index)', 'if not id.is_empty(): return id', 'if not confirmed_owner.is_empty() and index>=0 and index<game.neighbors.size() and game.LOAN_OWNERS[confirmed_owner]==game.neighbors[index].id:', 'return confirmed_owner'], 'conversation_loan');
-  assert.deepEqual(H.HOSTED_IDS, godotConst('IDS', host));
-  assert.deepEqual(H.HOSTED_OWNERS, godotConst('OWNERS', host));
-  assert.deepEqual(H.HOSTED_POSITIONS, godotConst('POSITIONS', host));
-  for (const [fn, texts] of Object.entries(G[host])) has(funcBody(fn, host), Object.values(texts), `hosted_afternoon.gd ${fn}`);
-  inOrder(codeLines(funcBody('detail', host)), [
-    'var index := IDS.find(id)', 'var position: int=game.hosting_order.find(id)', 'if index<0 or position<0 or position>=POSITIONS.size(): return "No copied contribution is available. The saved gathering stays unchanged."',
-    'var heading: String="%s was %s in the afternoon we hosted."%[game.programme_title(id),POSITIONS[position]]',
-    'reply="You made room for a small moment, and passing was welcome. No personal story was recorded." if value=="memory" else "You left room for something we hoped to make. Listening counted too. No personal story was recorded."',
-    'for i in range(8):', 'if (int(value)&(1<<i))!=0: slots.append(str(i+1))',
-    'result="Copied panel: %s colors and six arranged shapes."%String(value.palette).capitalize()',
-    'reply="Our six shapes stay in warm colors, just as we hung them." if value.palette=="warm" else "Our six shapes stay in cool colors, just as we hung them."',
-    `reply="${G[host].detail.pauseArc}" if value=="arc" else "${G[host].detail.pausePairs}"`,
-    `return OWNERS[index]+': "'+reply+'"'+"\\n"+heading+"\\n"+result`,
-  ], 'hosted_afternoon.gd detail');
-  inOrder(codeLines(funcBody('invitation', host)), ['if not game.is_hosting_done(): return ""', 'if game.civic_phase=="done": return "The Listening Hour is complete. Its remembered voices and Dez\'s offer remain in Listening Hour (F5)."', 'if game.civic_phase=="planning": offer="Your Listening Hour plan is still there. We can return to it at your pace."', 'elif game.civic_phase=="meeting": offer="The Listening Hour is open. We can return to the conversation without closing it."'], 'hosted_afternoon.gd invitation');
-  assert.deepEqual(codeLines(funcBody('invitation_available', host)).slice(1), ['return game.is_hosting_done() and game.is_civic_available() and game.civic_phase in ["idle","planning","meeting"]']);
   has(funcBody('host_complete_current'), Object.values(G['main.gd'].host_complete_current), 'host_complete_current');
   assert.deepEqual(godotConst('PROGRAMME_TITLES'), PROGRAMME_TITLES);
   // Overrides: exactly the copied texts with a key hint, each with only the hint dropped.
@@ -589,7 +588,7 @@ test('conversation actions: every objective, loans, Dez after art, narrow labels
   }
 });
 
-test('hosted text: invitation, quiet seats, loan replies and the hosted review', () => {
+test('hosted text: invitation, quiet seats, loan replies and the completion line', () => {
   assert.equal(H.invitationExplanation('memory'), `Bea: "A small moment you want to keep. ${H.INVITATION_EXAMPLES.memory} That is just my example. Tell something if you want to; listening is equally welcome. No story is recorded." (Original fictional scene.)`);
   assert.equal(H.invitationExplanation('nope'), '');
   assert.ok(H.invitationHubText('future').endsWith('" (Original fictional scene.) Choose the invitation, then Host Activity when ready. Nothing is timed.'));
@@ -618,40 +617,10 @@ test('hosted text: invitation, quiet seats, loan replies and the hosted review',
   assert.equal(H.conversationLoan(packing, 'bea', 'table'), '');
   assert.equal(H.loanMemory(packing, 'thanh'), `“${H.LOAN_REPLIES.table}”`);
   assert.equal(H.loanMemory(packing, 'rook'), '');
-  // Hosted review, per segment and value, in hosted order.
-  const order = ['beats', 'pause', 'stories', 'art'];
-  const h = hosted([['beats', 0b1010101], ['pause', 'pairs'], ['stories', 'memory'], ['art', { tiles: [0, 1, 2, 2, 1, 0], palette: 'cool' }]], order);
-  assert.equal(H.hostedDetail(h, 'beats'), 'Dez: "You gave us 4 taps in eight slots. I kept the spaces between them too."\nRhythm workshop was first in the afternoon we hosted.\nCopied rhythm: 4 taps in eight slots, at 1, 3, 5, 7.');
-  assert.equal(H.hostedDetail(h, 'pause'), 'Thanh: "You kept a pair and an open seat, with the cushion marking a place. Coming and going were welcome."\nQuiet interval was second in the afternoon we hosted.\nCopied seating: A pair and an open seat.');
-  assert.equal(H.hostedDetail(h, 'stories'), 'Bea: "You made room for a small moment, and passing was welcome. No personal story was recorded."\nStory circle was third in the afternoon we hosted.\nCopied invitation: A small moment you want to keep.');
-  assert.equal(H.hostedDetail(h, 'art'), 'Celeste: "Our six shapes stay in cool colors, just as we hung them."\nShared art panel was fourth in the afternoon we hosted.\nCopied panel: Cool colors and six arranged shapes.');
-  const other = hosted([['stories', 'future'], ['beats', 0], ['art', { tiles: [0, 1, 2, 2, 1, 0], palette: 'warm' }], ['pause', 'arc']]);
-  assert.deepEqual(H.hostedReplies(other).map(d => d.split('\n')[0]), [
-    'Bea: "You left room for something we hoped to make. Listening counted too. No personal story was recorded."',
-    'Dez: "You gave listening a place without asking anyone to make a beat."',
-    'Celeste: "Our six shapes stay in warm colors, just as we hung them."',
-    'Thanh: "You kept an open arc, with the cushion marking a place. Coming and going were welcome."',
-  ]);
-  assert.equal(H.hostedDetail(other, 'beats').split('\n')[2], 'Copied rhythm: listening only, with no marked beats.');
-  assert.deepEqual(H.hostedReview(h).map(r => [r.id, r.owner, r.lines.length]), [['beats', 'Dez', 3], ['pause', 'Thanh', 3], ['stories', 'Bea', 3], ['art', 'Celeste', 3]]);
-  const broken = hosted([['stories', 'memory'], ['beats', 2.5], ['art', { tiles: [0, 1, 2, 2, 1, 9], palette: 'warm' }], ['pause', 'arc']]);
-  assert.equal(H.hostedDetail(broken, 'beats'), 'Rhythm workshop was second in the afternoon we hosted.\nThe copied choice is unavailable. The saved gathering stays unchanged.');
-  assert.equal(H.hostedDetail(broken, 'art').split('\n')[1], 'The copied choice is unavailable. The saved gathering stays unchanged.');
-  assert.equal(H.hostedDetail(base(), 'stories'), 'No copied contribution is available. The saved gathering stays unchanged.');
-  assert.equal(H.hostedDetail(h, 'nope'), 'No copied contribution is available. The saved gathering stays unchanged.');
-  // Bea's Listening Hour offer through every civic phase.
-  const phase = p => ({ ...h, civic: { phase: p } });
-  assert.equal(H.hostedInvitation(phase('idle')), 'Bea: "Our afternoon began with Rhythm workshop and ended with Shared art panel. I would like to make room for a Listening Hour too, when you are ready."');
-  assert.equal(H.hostedInvitation(phase('planning')), 'Bea: "Our afternoon began with Rhythm workshop and ended with Shared art panel. Your Listening Hour plan is still there. We can return to it at your pace."');
-  assert.equal(H.hostedInvitation(phase('meeting')), 'Bea: "Our afternoon began with Rhythm workshop and ended with Shared art panel. The Listening Hour is open. We can return to the conversation without closing it."');
-  assert.equal(H.hostedInvitation(phase('done')), "The Listening Hour is complete. Its remembered voices and Dez's offer remain in Listening Hour.");
-  assert.deepEqual(['idle', 'planning', 'meeting', 'done'].map(p => H.hostedInvitationAvailable(phase(p))), [true, true, true, false]);
-  assert.equal(H.hostedInvitation(midwayHost()), '');
-  assert.equal(H.hostedInvitationAvailable(midwayHost()), false);
+  // The line Godot announces as each hosted activity completes (the review is ending/hosted.js's).
   assert.equal(H.hostedCompletion(hosted([['stories', 'memory']]), 'stories'), 'Completed Story circle (1/4 hosted) · Next: Rhythm workshop');
-  assert.equal(H.hostedCompletion(h, 'art'), 'Completed Shared art panel (4/4 hosted) — Second Afternoon Complete!');
+  assert.equal(H.hostedCompletion(hosted(), 'pause'), 'Completed Quiet interval (4/4 hosted) — Second Afternoon Complete!');
 });
-function midwayHost() { return hosted([['stories', 'memory']]); }
 
 test('bubble: spoken text, timing, scale, wrap, shape, fit and the frame clock', () => {
   assert.equal(B.spokenText('Bea: "Welcome!"'), 'Welcome!');
@@ -726,6 +695,32 @@ test('the hosting beats step is declared fork text: no Godot source has it, and 
   const game = readFileSync(new URL('../browser-next/game.js', import.meta.url), 'utf8');
   for (const text of all) assert.ok(!game.includes(text.slice(0, 24)), `game.js uses HOSTING_FORK_TEXT, not an inline copy: ${text}`);
   assert.ok(game.includes('HOSTING_FORK_TEXT.beats'));
+});
+
+// Godot labels and quotes game.js and characters.js draw come from the pinned tables above, never an inline copy that no drift
+// test reads.
+test('Rook\'s Play Groove, Pause Groove and Load Local Track, Celeste\'s Compose Mural and the surprise quotes have one pinned copy', () => {
+  const game = readFileSync(new URL('../browser-next/game.js', import.meta.url), 'utf8'), chars = readFileSync(new URL('../browser-next/characters.js', import.meta.url), 'utf8');
+  const B = C.BUTTON_TEXT;
+  for (const label of [B.play, B.pause, B.load, B.compose, B.compose.replace('\n', ' ')]) assert.ok(!game.includes(`'${label}'`) && !game.includes(`"${label}"`), `game.js reads BUTTON_TEXT, not an inline ${JSON.stringify(label)}`);
+  for (const key of ['play', 'pause', 'load', 'compose']) assert.ok(game.includes(`BUTTON_TEXT.${key}`), `game.js draws BUTTON_TEXT.${key}`);
+  assert.deepEqual([...chars.matchAll(/gdFormat\('([^']*%s[^']*)'/g)].map(m => m[1]).filter(t => /: "%s"/.test(t)), [], 'no quote template is written inline for gdFormat');
+});
+// WCAG AA for the conversation's small text: the badge on each neighbor's coat tint (panelBorder) and the header on the dialog's
+// paper, with the colors read from style.css.
+test("contrast: the talk badge on every neighbor's tint and the talk header on the dialog paper are at least 4.5:1", () => {
+  const css = readFileSync(new URL('../browser-next/style.css', import.meta.url), 'utf8');
+  const rule = selector => { const m = new RegExp(`(?:^|\\n)${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{([^}]*)\\}`).exec(css); assert.ok(m, `style.css has ${selector}`); return m[1]; };
+  const prop = (decls, name) => new RegExp(`(?:^|[;{\\s])${name}\\s*:\\s*([^;!]+?)\\s*(?:!important)?\\s*(?:;|$)`).exec(decls)?.[1];
+  const root = rule(':root'), color = value => { const v = /^var\((--[\w-]+)(?:,\s*(#[0-9a-f]{6}))?\)$/i.exec(value); return v ? prop(root, v[1]) ?? v[2] : value; };
+  const lum = hex => { const c = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(v => v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+  const badge = rule('.talk-badge'), text = color(prop(badge, 'color')), tints = [...C.CHARACTER_PEOPLE.map(p => C.panelBorder(p.id)), /var\(--talk-border, (#[0-9a-f]{6})\)/i.exec(prop(badge, 'background'))[1]];
+  assert.match(text, /^#[0-9a-f]{6}$/i, `.talk-badge color ${text}`);
+  for (const tint of tints) assert.ok(ratio(text, tint) >= 4.5, `badge ${text} on ${tint}: ${ratio(text, tint).toFixed(2)}:1`);
+  const header = color(prop(rule('.talk-header'), 'color')), paper = color(prop(rule('dialog'), 'background'));
+  assert.match(paper, /^#[0-9a-f]{6}$/i, `dialog background ${paper}`);
+  assert.ok(ratio(header, paper) >= 4.5, `header ${header} on ${paper}: ${ratio(header, paper).toFixed(2)}:1`);
 });
 
 test('new modules are LF, pure and import nothing from the DOM side', () => {

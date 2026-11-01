@@ -411,7 +411,7 @@ export const GODOT_CONSTS = {
 
 // Godot literal -> fork literal. 2D has no save import or F-keys; everything else is Godot's own words.
 export const ENDING_WEB_OVERRIDES = {
-  "The Listening Hour is complete. Its remembered voices and Dez's offer remain in Listening Hour (F5).": "The Listening Hour is complete. Its remembered voices and Dez's offer remain in the Listening Hour.",
+  "The Listening Hour is complete. Its remembered voices and Dez's offer remain in Listening Hour (F5).": "The Listening Hour is complete. Its remembered voices and Dez's offer remain in Listening Hour.",
   '. Reload or successful import clears this visit, not the original afternoon.': '. Reload clears this visit, not the original afternoon.',
   '\nInvite joins turns; Make room holds an opening. Back edits the pinboard without changing this copy. Keep exploring retains it under Posted. Reload or successful import clears this visit; the saved afternoon keeps the invitation.': '\nInvite joins turns; Make room holds an opening. Back edits the pinboard without changing this copy. Keep exploring retains it under Posted. Reload clears this visit; the saved afternoon keeps the invitation.',
   'Back to the block. Your helper bench stays this visit. Watch your film to return; reload or a successful import clears the bench, not your invitation.': 'Back to the block. Your helper bench stays this visit. Watch your film to return; reload clears the bench, not your invitation.',

@@ -52,11 +52,13 @@ export const RHYTHM_TEXT = {
   playing: 'Playing one drum bar. The sketch is quiet until it ends. Edit a pad to stop; Play Bar auditions your new choice.',
   saved: 'Saved to Godot storage.', // main.gd save_receipt with no notice
 };
-// Godot lines that name 3D-only controls (the View Circle camera and dragging the street). Everything
-// else is shown verbatim; the drift test checks both.
+// Godot lines that name 3D-only controls (the View Circle camera and dragging the street), and Play Bar's accessible name:
+// Godot's "Play one bar of this rhythm" does not contain the visible "Play Bar", which a speech user says (WCAG 2.5.3), so
+// the name starts with the label and keeps Godot's phrase. Everything else is shown verbatim; the drift test checks both.
 export const RHYTHM_WEB_OVERRIDES = {
   [RHYTHM_TEXT.openAnnounceTail]: " Play Bar optionally auditions your hits and rests. Music must be On; set volume at Rook's speaker.",
   [RHYTHM_TEXT.dragTail]: '',
+  [RHYTHM_TEXT.playBarName]: `${RHYTHM_TEXT.playBar.replace('\n', ' ')}: ${RHYTHM_TEXT.playBarName}`,
 };
 export const rhythmText = key => { const t = RHYTHM_TEXT[key]; return Object.hasOwn(RHYTHM_WEB_OVERRIDES, t) ? RHYTHM_WEB_OVERRIDES[t] : t; };
 const fill = (template, ...args) => { let i = 0; return template.replace(/%[sd]/g, m => { const v = args[i++]; return m === '%d' ? String(Math.trunc(Number(v))) : String(v); }); };
@@ -177,7 +179,7 @@ export function options(session, { musicPlaying = false, auditioning = false } =
     { id: 'complete', label: session?.practice ? RHYTHM_TEXT.resetPractice : RHYTHM_TEXT.complete },
     { id: 'step-cues', label: RHYTHM_TEXT.stepCues + (session?.stepCues ? RHYTHM_TEXT.on : RHYTHM_TEXT.off) },
     { id: 'back', label: RHYTHM_TEXT.back },
-    { id: 'play-bar', label: auditioning ? RHYTHM_TEXT.stopBar : RHYTHM_TEXT.playBar, name: auditioning ? RHYTHM_TEXT.stopBarName : RHYTHM_TEXT.playBarName },
+    { id: 'play-bar', label: auditioning ? RHYTHM_TEXT.stopBar : RHYTHM_TEXT.playBar, name: auditioning ? RHYTHM_TEXT.stopBarName : rhythmText('playBarName') },
   ];
 }
 

@@ -1,10 +1,11 @@
 // Text for the hosted afternoon, copied from the Godot edition: Bea's invitation
 // (godot/bea_invitation.gd), Thanh's quiet seats (godot/quiet_seats.gd), the loan homecoming
-// (godot/loan_homecoming.gd) and the hosted afternoon review (godot/hosted_afternoon.gd, with the
-// completion line from godot/main.gd host_complete_current). Godot's wording is copied
-// verbatim and tests/next-characters.test.mjs fails on drift; HOSTED_WEB_OVERRIDES drops the key
-// hints 2D does not bind. Pure: every function reads fork state (the state parseGodotSave returns).
-import { LOAN_IDS, LOAN_OWNERS, LOAN_TITLES, PROGRAMME_SEGMENTS, PROGRAMME_TITLES, fmt, isHostingDone } from './story.js';
+// (godot/loan_homecoming.gd) and the completion line of godot/main.gd host_complete_current.
+// The hosted afternoon's review and Bea's offer (godot/hosted_afternoon.gd) have one port,
+// ending/hosted.js. Godot's wording is copied verbatim and tests/next-characters.test.mjs fails on
+// drift; HOSTED_WEB_OVERRIDES drops the key hints 2D does not bind. Pure: every function reads fork
+// state (the state parseGodotSave returns).
+import { LOAN_IDS, LOAN_OWNERS, LOAN_TITLES, PROGRAMME_SEGMENTS, PROGRAMME_TITLES, fmt } from './story.js';
 
 export const INVITATION_TITLES = { memory: 'A small moment you want to keep', future: 'Something you hope to make together' };
 export const INVITATION_EXAMPLES = {
@@ -20,9 +21,6 @@ export const LOAN_REPLIES = {
   'paint-case': 'Paint case back, and still plenty for next time. Keep our mural up a little longer; I like what we made.',
   speaker: 'Speaker checked back in. It can stay for another afternoon; cover on hand, spare cable coiled. Good crew today.',
 };
-export const HOSTED_IDS = ['stories', 'beats', 'art', 'pause'];
-export const HOSTED_OWNERS = ['Bea', 'Dez', 'Celeste', 'Thanh'];
-export const HOSTED_POSITIONS = ['first', 'second', 'third', 'fourth'];
 
 // Every other copied Godot literal, grouped by source file and function.
 export const HOSTED_GODOT_TEXT = {
@@ -40,35 +38,6 @@ export const HOSTED_GODOT_TEXT = {
     note_completion: { notice: 'Returned all three neighbor loans (3/3). ' },
     return_to_owner: { announce: 'Returned %s (%d/3). %s' },
     memory: { open: '“', close: '”' },
-  },
-  'hosted_afternoon.gd': {
-    detail: {
-      missing: 'No copied contribution is available. The saved gathering stays unchanged.',
-      heading: '%s was %s in the afternoon we hosted.',
-      unavailable: '\nThe copied choice is unavailable. The saved gathering stays unchanged.',
-      storiesResult: 'Copied invitation: ',
-      storiesMemory: 'You made room for a small moment, and passing was welcome. No personal story was recorded.',
-      storiesFuture: 'You left room for something we hoped to make. Listening counted too. No personal story was recorded.',
-      beatsListen: 'Copied rhythm: listening only, with no marked beats.',
-      beatsTaps: 'Copied rhythm: %d taps in eight slots, at %s.',
-      beatsListenReply: 'You gave listening a place without asking anyone to make a beat.',
-      beatsTapsReply: 'You gave us %d taps in eight slots. I kept the spaces between them too.',
-      artResult: 'Copied panel: %s colors and six arranged shapes.',
-      artWarm: 'Our six shapes stay in warm colors, just as we hung them.',
-      artCool: 'Our six shapes stay in cool colors, just as we hung them.',
-      pauseResult: 'Copied seating: ',
-      pauseArc: 'You kept an open arc, with the cushion marking a place. Coming and going were welcome.',
-      pausePairs: 'You kept a pair and an open seat, with the cushion marking a place. Coming and going were welcome.',
-      replyOpen: ': "', replyClose: '"', end: '.', join: ', ',
-    },
-    invitation: {
-      done: "The Listening Hour is complete. Its remembered voices and Dez's offer remain in Listening Hour (F5).",
-      opening: 'Our afternoon began with %s and ended with %s.',
-      offerIdle: 'I would like to make room for a Listening Hour too, when you are ready.',
-      offerPlanning: 'Your Listening Hour plan is still there. We can return to it at your pace.',
-      offerMeeting: 'The Listening Hour is open. We can return to the conversation without closing it.',
-      open: 'Bea: "', close: '"',
-    },
   },
   'main.gd': {
     host_complete_current: { summary: 'Completed %s (%d/4 hosted)%s', last: ' — Second Afternoon Complete!', next: ' · Next: ' },
@@ -89,7 +58,6 @@ export const HOSTING_FORK_TEXT = {
 export const HOSTED_WEB_OVERRIDES = {
   ' Choose the invitation, then Host Activity (Z) when ready. Nothing is timed.': ' Choose the invitation, then Host Activity when ready. Nothing is timed.',
   ' Choose the seats, then Host Activity (Z) when you are ready.': ' Choose the seats, then Host Activity when you are ready.',
-  "The Listening Hour is complete. Its remembered voices and Dez's offer remain in Listening Hour (F5).": "The Listening Hour is complete. Its remembered voices and Dez's offer remain in Listening Hour.",
 };
 export const hostedWeb = text => Object.hasOwn(HOSTED_WEB_OVERRIDES, text) ? HOSTED_WEB_OVERRIDES[text] : text;
 const G = HOSTED_GODOT_TEXT;
@@ -166,54 +134,6 @@ export function conversationLoan(state, neighborId, confirmed = '') {
   return confirmed && LOAN_OWNERS[confirmed] === neighborId ? confirmed : '';
 }
 
-// hosted_afternoon.gd copied(): Godot's validation of each copied hosting value.
-const isWhole = v => typeof v === 'number' && Number.isFinite(v) && Math.round(v) === v;
-export function hostedCopied(state, id) {
-  const raw = hostedValue(state, id);
-  if (id === 'stories' && typeof raw === 'string' && Object.hasOwn(INVITATION_TITLES, raw)) return { valid: true, value: raw };
-  if (id === 'pause' && typeof raw === 'string' && Object.hasOwn(QUIET_TITLES, raw)) return { valid: true, value: raw };
-  if (id === 'beats' && isWhole(raw) && raw >= 0 && raw <= 255) return { valid: true, value: raw };
-  if (id === 'art' && raw && typeof raw === 'object' && typeof raw.palette === 'string' && ['warm', 'cool'].includes(raw.palette) && Array.isArray(raw.tiles) && raw.tiles.length === 6) {
-    if (!raw.tiles.every(t => isWhole(t) && t >= 0 && t <= 2)) return { valid: false };
-    return { valid: true, value: { palette: raw.palette, tiles: [...raw.tiles] } };
-  }
-  return { valid: false };
-}
-// hosted_afternoon.gd detail(): three lines joined by "\n": the owner's reply, the heading and the
-// copied result. A missing or unreadable copy gives Godot's unchanged-save lines.
-export function hostedDetail(state, id) {
-  const D = G['hosted_afternoon.gd'].detail, index = HOSTED_IDS.indexOf(id), position = list(state?.hosting?.order).indexOf(id);
-  if (index < 0 || position < 0 || position >= HOSTED_POSITIONS.length) return D.missing;
-  const heading = fmt(D.heading, PROGRAMME_TITLES[id], HOSTED_POSITIONS[position]), copy = hostedCopied(state, id);
-  if (!copy.valid) return heading + D.unavailable;
-  const value = copy.value;
-  let result = '', reply = '';
-  if (id === 'stories') { result = D.storiesResult + INVITATION_TITLES[value] + D.end; reply = value === 'memory' ? D.storiesMemory : D.storiesFuture; }
-  else if (id === 'beats') {
-    const slots = [];
-    for (let i = 0; i < 8; i++) if ((value & (1 << i)) !== 0) slots.push(String(i + 1));
-    result = slots.length ? fmt(D.beatsTaps, slots.length, slots.join(D.join)) : D.beatsListen;
-    reply = slots.length ? fmt(D.beatsTapsReply, slots.length) : D.beatsListenReply;
-  } else if (id === 'art') { result = fmt(D.artResult, capitalize(value.palette)); reply = value.palette === 'warm' ? D.artWarm : D.artCool; }
-  else { result = D.pauseResult + QUIET_TITLES[value] + D.end; reply = value === 'arc' ? D.pauseArc : D.pausePairs; }
-  return HOSTED_OWNERS[index] + D.replyOpen + reply + D.replyClose + '\n' + heading + '\n' + result;
-}
-// Godot replies(): one detail per segment in Godot's fixed segment order (stories, beats, art,
-// pause). hostedReview gives the same details in the order the afternoon was hosted.
-export const hostedReplies = state => HOSTED_IDS.map(id => hostedDetail(state, id));
-export const hostedReview = state => list(state?.hosting?.order).filter(id => HOSTED_IDS.includes(id)).map(id => ({ id, owner: HOSTED_OWNERS[HOSTED_IDS.indexOf(id)], lines: hostedDetail(state, id).split('\n') }));
-const civicAvailable = state => state?.opened === true && isHostingDone(state);
-// invitation_available(): Bea's Listening Hour offer stands until the Listening Hour is done.
-export const hostedInvitationAvailable = state => isHostingDone(state) && civicAvailable(state) && ['idle', 'planning', 'meeting'].includes(state?.civic?.phase ?? 'idle');
-export function hostedInvitation(state) {
-  const I = G['hosted_afternoon.gd'].invitation;
-  if (!isHostingDone(state)) return '';
-  const phase = state?.civic?.phase ?? 'idle';
-  if (phase === 'done') return hostedWeb(I.done);
-  const order = list(state.hosting.order), opening = fmt(I.opening, PROGRAMME_TITLES[order[0]], PROGRAMME_TITLES[order[3]]);
-  const offer = phase === 'planning' ? I.offerPlanning : phase === 'meeting' ? I.offerMeeting : I.offerIdle;
-  return I.open + opening + ' ' + offer + I.close;
-}
 // The line Godot announces as each hosted activity completes. state is the state after completing.
 export function hostedCompletion(state, completedId) {
   const C = G['main.gd'].host_complete_current, order = list(state?.hosting?.order), results = list(state?.hosting?.results);

@@ -7,7 +7,7 @@
 //   doc, win, modal, getState(), show(html), close(targetId), status(text), toast(text), act(action),
 //   music,                        the Soundtrack (enabled, starting, fileName, sketch: SketchPlayer)
 //   volume(), unlocked(),         the music volume 0-1 and Godot's reward_audio_unlocked (the first real press)
-//   toggleMusic(),                Godot toggle_music_playback
+//   toggleMusic(),                Godot toggle_music_playback; resolves to its announcement ('' when there is none)
 //   receipt(),                    Godot save_receipt in the fork's words, read after the write it reports
 //   objective(), sparks(),        the current objective text and spark_count
 //   stopWalk(), lastChapter(),    stop the street walk first; true when the current chapter is the story's last
@@ -55,7 +55,8 @@ export function createRhythm(host) {
     host.show(`<section class="rhythm" data-rhythm><p class="eyebrow rhythm-credit">${esc(RHYTHM_TEXT.credit)}</p><h2 id="modal-title" tabindex="-1">${esc(heading(session))}</h2><p class="rhythm-objective">${esc(objectiveLine(host.objective(), host.sparks()))}</p><figure id="rhythm-figure" style="margin:0">${lampSVG(currentStep())}</figure><div id="rhythm-reader" class="rhythm-reader" tabindex="0" role="region" aria-label="Rhythm Circle text">${text.split('\n').map(line => `<p>${esc(line)}</p>`).join('')}</div><div class="rhythm-pads" role="group" aria-label="Eight steps">${pads(pattern()).map(p => `<button id="rhythm-pad-${p.step}" class="secondary-button" aria-pressed="${p.hit}" aria-label="${esc(p.name)}">${label(p.label)}</button>`).join('')}</div><div class="rhythm-options">${opts.map(o => `<button id="rhythm-${o.id}" class="secondary-button"${o.name ? ` aria-label="${esc(o.name)}"` : ''}>${label(o.label)}</button>`).join('')}</div></section>`);
     for (let i = 0; i < 8; i++) bind(`rhythm-pad-${i}`, () => edit(toggleStep(state(), session, i), `rhythm-pad-${i}`));
     bind('rhythm-listen', () => edit(listen(state(), session), 'rhythm-listen'));
-    bind('rhythm-music', async () => { await host.toggleMusic(); if (onScreen()) render('rhythm-music'); });
+    // Godot toggle_music_playback announces, then refresh() redraws without announcing: the music line is the last word.
+    bind('rhythm-music', async () => { const said = await host.toggleMusic(); if (!onScreen()) return; render('rhythm-music'); if (said) host.status(said); });
     bind('rhythm-complete', finish);
     bind('rhythm-step-cues', () => { session = { ...session, stepCues: !session.stepCues }; render('rhythm-step-cues'); });
     bind('rhythm-back', () => leave(true));

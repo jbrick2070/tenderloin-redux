@@ -6,15 +6,15 @@ import { World, makeWays, objectLabel, NEIGHBORS, PLACES, PALETTE_COLORS } from 
 import { BLACK_HAWK } from './history.js';
 import { districtGeometry } from './district.js';
 import { Soundtrack } from './soundtrack.js';
-import { stemMask, stemSummary, cleanVolume, nextVolume, volumeAnnouncement, MAX_VOLUME } from './sketch-core.js';
+import { stemMask, stemSummary, cleanVolume, nextVolume, volumeAnnouncement, playingAnnouncement, switchedAnnouncement, MUSIC_TEXT, MAX_VOLUME } from './sketch-core.js';
 import { RewardPlayer, progressCues, rewardFor, soundsLabel, soundsAnnouncement, cleanRewardSounds, SOUNDS_TEXT } from './rewards.js';
 import { PHOTO_RESPONSES, postcardSVG } from './keepsake.js';
 import { gatheringScene, gatheringPlanSVG } from './gathering.js';
 import { SEGMENTS, segment, programmeIssue, programmeTitle, programmeSVG, programmeResponse } from './programme.js';
-import { currentActivity, hostedResult, tilePanelSVG, STORY_CHOICES, QUIET_CHOICES } from './hosting.js';
-import { godotExtras, freshTalk, arriveTalk, chatTalk, confirmLoan, conversationView, arrivalCaption, talkAnnouncement, goodbyeLines, whatsNext, whatsNextAnnouncement, rookMusicDetail, narrowLabel, sparkCount, ACTION_LABELS, HUB_LABELS, gdFormat } from './characters.js';
+import { currentActivity, tilePanelSVG, STORY_CHOICES, QUIET_CHOICES } from './hosting.js';
+import { godotExtras, freshTalk, arriveTalk, chatTalk, confirmLoan, conversationView, arrivalCaption, talkAnnouncement, goodbyeLines, whatsNext, whatsNextAnnouncement, rookMusicDetail, narrowLabel, sparkCount, ACTION_LABELS, BUTTON_TEXT, HUB_LABELS, gdFormat } from './characters.js';
 import { showBubble, stepBubble, spokenText, speechNotice, BUBBLE, BUBBLE_TEXT, FORK_BUBBLE } from './bubble.js';
-import { HOSTING_FORK_TEXT, invitationHubText, invitationSVG, quietHubText, loanReply, loanRefusal, loanReturnAnnouncement, LOAN_COMPLETION_NOTICE, hostedReview, hostedDetail, hostedInvitation, hostedInvitationAvailable, hostedCompletion } from './hosted-text.js';
+import { HOSTING_FORK_TEXT, invitationHubText, invitationSVG, quietHubText, loanReply, loanRefusal, loanReturnAnnouncement, LOAN_COMPLETION_NOTICE, hostedCompletion } from './hosted-text.js';
 import { ExperimentHost } from './experimental-host.js';
 import { VERSION, EDITION } from './version.js';
 import { CIVIC_TOPICS, CIVIC_FORMATS, CIVIC_NOTES, civicAvailable, civicConversation, civicPlanSVG } from './civic.js';
@@ -22,6 +22,7 @@ import { FILM_SHOTS, FILM_FRAMING, FILM_PLANS, filmAvailable, filmCaption, filmF
 import { createEnding } from './ending/ui.js';
 import { GODOT, FORK_TEXT, gdf } from './ending/text.js';
 import { sceneReceipt } from './ending/mural.js';
+import { hostedDetail, postedGatherLine } from './ending/hosted.js';
 import { createRhythm } from './rhythm-ui.js';
 
 const $ = selector => document.querySelector(selector);
@@ -69,9 +70,11 @@ const modalStatus = text => { $('#modal-status').textContent = text; }, STUDIO =
 const ending = createEnding({ doc: document, win: window, modal, settle, getState: () => state, show, close: target => close(target), status: modalStatus, toast, stopWalk, reducedMotion: () => settings.reducedMotion, chapterText, act,
   sceneAdmission: next => sceneAdmission(envelope ?? recovery?.envelope, state, next), saveReason, music: { label: () => music.enabled || music.starting ? STUDIO.musicOn : STUDIO.musicOff, on: () => music.enabled || music.starting, toggle: toggleMusic },
   filmButtonLabel: () => $('#film-shoot')?.textContent.replace(/\s*↗\s*$/, '') ?? '', openDraft: () => programmeEditor(), openPosted: () => programmePoster(), openMural: () => muralEditor() });
+// Leaving the circle returns focus to the button that opened it: the hosting dialog's (its title once the circle's Complete
+// hosted the beats) or the afterglow's.
 const rhythm = createRhythm({ doc: document, win: window, modal, getState: () => state, show, status: modalStatus, toast, act, music, volume: () => settings.volume, unlocked: () => rewards.unlocked, toggleMusic, stopWalk,
   receipt: () => sceneReceipt(saveReason()), objective: () => nextObjective(state, storyWorld()).text, sparks: () => sparkCount(state, talkExtras()), lastChapter: () => !chapterCardDue(lastChapter, state),
-  afterClose: (origin, text, notice = '') => { if (notice) chapterNotice = notice; if (origin === 'hosting' && state.hosting.order.length) return hostingScreen(text); close($('#rhythm-circle') || canvas); if (text) toast(text); } });
+  afterClose: (origin, text, notice = '') => { if (notice) chapterNotice = notice; if (origin === 'hosting' && state.hosting.order.length) return hostingScreen(text, 'host-rhythm'); close($('#rhythm-circle') || canvas); if (text) toast(text); } });
 // Godot's session-only talk counters (characters.js freshTalk; Celeste's is the saved celesteTalks) and the one shared
 // speech bubble with its live-region mirror (routeSpeech, read by hint()).
 let talks = freshTalk(), bubble = null, routeSpeech = null;
@@ -144,7 +147,7 @@ function adoptSave(result, raw, keep) {
 // A save that lost forward-only progress (a 3D tab opened earlier, or a restart there) is offered back: this tab keeps showing
 // its own progress until the player chooses. The offer is withdrawn when the stored save is cleared (someone started over),
 // becomes unreadable, or holds this tab's progress again. A stored save that replaces this tab's state starts the session
-// over, unless an action is about to be rebased onto it (rebase).
+// over, unless an action is about to be rebased onto it (rebase). closed: an open ending screen the stored save's new copies closed.
 function reread({ rebase = false } = {}) {
   let raw;
   try { raw = localStorage.getItem(SAVE_KEY); } catch { storageAvailable = false; return null; }
@@ -155,12 +158,13 @@ function reread({ rebase = false } = {}) {
   else if (!recovery && loaded && lostProgress(base, result.envelope)) recovery = { envelope: base, scenes };
   if (recovery) state = before;
   else if (state !== before && !rebase) resetSession();
-  ending.sync({ adopted: true });
-  return { result, before };
+  const closed = ending.sync({ adopted: true }).closed;
+  return { result, before, closed };
 }
 // This tab's progress as a save over its own write base, for comparing with a newer stored save.
 const ownEnvelope = s => buildGodotSave(recovery.envelope, s, { reset: true }).envelope || recovery.envelope;
-const syncNotice = changed => held ? SAVE_TEXT.held : changed.result.status === 'fresh' ? 'The shared save was cleared in another tab. A fresh afternoon is ready.' : 'Progress saved in another tab or edition is here now.';
+// An ending screen the new copies closed says why: this visit's ending started fresh, and the saved progress stays (FORK_TEXT).
+const syncNotice = changed => held ? SAVE_TEXT.held : changed.result.status === 'fresh' ? 'The shared save was cleared in another tab. A fresh afternoon is ready.' : changed.closed ? FORK_TEXT.copiesChanged : 'Progress saved in another tab or edition is here now.';
 function syncStored() {
   const changed = reread();
   if (!changed) return;
@@ -306,6 +310,8 @@ function queueChapterCard() {
   queueMicrotask(() => { cardQueued = false; if (world && !modal.open && !recovery && chapterCardDue(lastChapter, state)) showChapterCard(); });
 }
 
+// Godot active_stem_summary, for example "bass+brush (2/4 stems)".
+const stemsNow = () => stemSummary(stemMask(musicLayers(state)));
 function soundUI() {
   const local = !!music.fileName;
   $('#sound-toggle').setAttribute('aria-pressed', String(music.enabled));
@@ -317,26 +323,46 @@ function soundUI() {
   if (local) $('#sound-caption').textContent = music.error || `${music.enabled ? 'Playing' : music.starting ? 'Starting' : 'Ready'}: ${music.fileName}`;
   else {
     const count = Object.values(progress(state)).filter(Boolean).length, line = state.epilogue.packing ? 'A shared afternoon, kept in your field notes.' : state.opened ? 'All four parts are ready. Stay a little longer.' : count ? `${count} preparations made. The music is taking shape.` : 'A quiet beginning. Each contribution adds a layer.';
-    // Godot active_stem_summary, for example "bass+brush (2/4 stems)".
-    $('#sound-caption').textContent = `${line} · ${stemSummary(stemMask(musicLayers(state)))}`;
+    $('#sound-caption').textContent = `${line} · ${stemsNow()}`;
   }
   if (music.error) $('#sound-caption').textContent = music.error;
   // Rook's open music panel follows the player's play and pause.
   rhythm.musicChanged();
-  if ($('#talk-play')) $('#talk-play').textContent = music.enabled || music.starting ? 'Pause Groove' : 'Play Groove';
+  if ($('#talk-play')) $('#talk-play').textContent = music.enabled || music.starting ? BUTTON_TEXT.pause : BUTTON_TEXT.play;
   if ($('#soundtrack-status')) {
-    const sketchStatus = music.starting ? 'Starting the synth sketch…' : music.enabled ? 'Synth sketch playing.' : 'Original synth sketch selected. Press Play to listen.';
-    $('#soundtrack-status').textContent = music.error || (local ? `${music.fileName} — ${music.enabled ? 'playing on repeat' : music.starting ? 'starting' : 'ready; press Play'}.` : sketchStatus);
+    // Playing, the panel's status line says Godot's start_music_playback line; starting or waiting for Play, its own.
+    const playing = music.enabled ? playingAnnouncement({ ...musicView(), summary: stemsNow() }) : '';
+    const sketchStatus = music.starting ? 'Starting the synth sketch…' : playing || 'Original synth sketch selected. Press Play to listen.';
+    $('#soundtrack-status').textContent = music.error || (local ? playing || `${music.fileName} — ${music.starting ? 'starting' : 'ready; press Play'}.` : sketchStatus);
     $('#track-play').textContent = music.enabled || music.starting ? 'Pause music' : 'Play music';
     const wasFocused = document.activeElement === $('#use-sketch');
     $('#use-sketch').disabled = !local;
     if (wasFocused && !local) $('#track-play').focus({ preventScroll: true });
   }
 }
+// Godot toggle_music_playback: "Music paused.", or start_music_playback's "Music playing: …" once the music plays. The line is
+// announced as Godot announces it and returned, so a dialog that redraws after the toggle can say it again, last.
 async function toggleMusic() {
-  if (music.enabled || music.starting) music.stop();
-  else if (await music.start() === false) toast(music.error || 'Audio is unavailable in this browser. All activities still work.');
-  soundUI();
+  let said = '';
+  if (music.enabled || music.starting) { music.stop(); said = MUSIC_TEXT.paused; }
+  else {
+    const started = await music.start();
+    if (started === false) toast(music.error || 'Audio is unavailable in this browser. All activities still work.');
+    else if (started) said = playingAnnouncement({ ...musicView(), summary: stemsNow() });
+  }
+  soundUI(); announce(said);
+  return said;
+}
+// Godot use_synth_sketch (Rook's sketch button): a loaded local track gives way to the sketch, which plays on if the music was
+// playing or starting; already on the sketch, nothing audible changes. The switch is announced, and returned once a start has
+// settled, so Rook's panel redraws in the real state and says it again, last.
+async function useSynthSketch() {
+  const playing = !!music.fileName && (music.enabled || music.starting);
+  if (music.fileName) music.useSketch();
+  const said = switchedAnnouncement(stemsNow());
+  announce(said);
+  if (playing && await music.start() === false) toast(music.error || 'Audio is unavailable in this browser. All activities still work.');
+  return said;
 }
 function showMusic() {
   show(`<span class="eyebrow">SET THE MOOD</span><h2 id="modal-title">Your block. Your music.</h2><p>Bring a jazz track you made in Suno, or any MP3/WAV you want to try here. It plays on repeat while you explore.</p><label class="file-picker" for="soundtrack-file">Choose an MP3 or WAV<input id="soundtrack-file" type="file" accept=".mp3,.wav,audio/mpeg,audio/wav"></label><p id="soundtrack-status" class="track-status" role="status" aria-live="polite"></p><label class="settings-row" for="soundtrack-volume"><span>Music volume <span id="track-volume-number">${Math.round(settings.volume * 100)}%</span></span><input id="soundtrack-volume" data-rapid type="range" min="0" max="${MAX_VOLUME * 100}" value="${Math.round(settings.volume * 100)}"></label><div class="button-row">${button('track-play', 'Play music', true)}${button('use-sketch', 'Return to synth sketch')}${button('music-close', 'Back to the block')}</div><p class="footnote">The file stays on your device and is not uploaded or saved with your game. Choose it again after a reload. Up to 100 MB. Sound is always optional.</p>`);
@@ -434,15 +460,16 @@ function hostingScreen(message = '', focusId = '') {
     bind('host-begin', () => { stopWalk(); act({ type: 'host-start' }); hostingScreen('The neighbors are here. Take your time.'); });
     bind('host-close', () => close($('#host-afternoon'))); return;
   }
-  if (!id && ending.open('hosted')) { modalReturnTarget = $('#host-afternoon'); if (message) toast(message); return; }
-  const finished = !id, art = hostedResult(host, 'art'), previousScroll = $('#hosting-order') ? modal.scrollTop : 0;
+  // All four hosted: there is no current activity, and the review is the ending's hosted view, which opens exactly then.
+  if (!id) { if (ending.open('hosted')) { modalReturnTarget = $('#host-afternoon'); if (message) toast(message); } return; }
+  const previousScroll = $('#hosting-order') ? modal.scrollTop : 0;
   let activity = '';
   if (id === 'stories') activity = `<p>${esc(invitationHubText(draft.story))}</p><img class="host-art" alt="Original folded-paper invitation for ${esc(STORY_CHOICES[draft.story])}." src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(invitationSVG(draft.story))}"><div class="host-choices">${Object.entries(STORY_CHOICES).map(([key, label]) => `<button id="host-story-${key}" class="secondary-button" aria-pressed="${draft.story === key}">${label}</button>`).join('')}</div>`;
   const BEATS = HOSTING_FORK_TEXT.beats;
   if (id === 'beats') activity = `<p>${esc(BEATS.intro)}</p><div class="host-beats" aria-label="Eight-step visual rhythm">${Array.from({ length: 8 }, (_, i) => `<button id="host-beat-${i}" aria-label="Step ${i + 1}: ${draft.pattern & 1 << i ? 'tap' : 'rest'}" aria-pressed="${!!(draft.pattern & 1 << i)}">${i + 1}<small>${draft.pattern & 1 << i ? 'TAP' : 'rest'}</small></button>`).join('')}</div><p>${esc(BEATS.tail)} ${esc(draft.pattern ? BEATS.traced : BEATS.quiet)}</p>${button('host-rhythm', esc(rhythm.entryLabel()).replace(/\n/g, '<br>'))}`;
   if (id === 'art') activity = `<p>Celeste brings six prepared tiles: circles, waves and rising triangles. Change each tile with a tap, or keep her starting arrangement. These are original portable panels, away from real buildings and existing art.</p><img class="host-art" alt="Your original six-tile panel; matching numbered controls are below." src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(tilePanelSVG(draft))}"><div class="host-tiles" aria-label="Six tiles, left to right, top to bottom">${draft.tiles.map((tile, i) => `<button id="host-tile-${i}" data-rapid aria-label="Tile ${i + 1}: ${['circle', 'wave', 'triangle'][tile]}. Change shape." class="secondary-button">${i + 1} · ${['Circle', 'Wave', 'Triangle'][tile]}</button>`).join('')}</div><div class="host-choices">${['warm', 'cool'].map(key => `<button id="host-palette-${key}" class="secondary-button" aria-pressed="${draft.palette === key}">${key === 'warm' ? 'Warm' : 'Cool'} palette</button>`).join('')}</div>`;
   if (id === 'pause') activity = `<p>${esc(quietHubText(draft.quiet))}</p><div class="host-choices">${Object.entries(QUIET_CHOICES).map(([key, label]) => `<button id="host-quiet-${key}" class="secondary-button" aria-pressed="${draft.quiet === key}">${label}</button>`).join('')}</div>`;
-  show(`<span class="eyebrow">OUR SECOND AFTERNOON · ${finished ? 'SHARED AND REMEMBERED' : `${host.results.length + 1} OF 4`}</span><h2 id="modal-title">${finished ? 'We made room for another afternoon.' : `${segment(id).name} · ${segment(id).owner}`}</h2><ol id="hosting-order">${host.order.map((key, i) => `<li ${i === host.results.length ? 'aria-current="step"' : ''}>${i < host.results.length ? '✓ ' : ''}${segment(key).name}</li>`).join('')}</ol>${message ? `<p class="grid-message">${message}</p>` : ''}${finished ? `<div class="hosted-review">${hostedReview(state).map(item => `<article><p><strong>${esc(item.lines[0])}</strong></p><p>${item.lines.slice(1).map(esc).join('<br>')}</p></article>`).join('')}</div>${hostedInvitation(state) ? `<p id="hosted-invitation">${esc(hostedInvitation(state))}</p>` : ''}${hostedInvitationAvailable(state) ? button('host-follow', 'Follow this invitation', true) : ''}${art ? `<img class="host-art" alt="Completed original six-tile panel." src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(tilePanelSVG(art))}">` : ''}` : activity}<div class="button-row">${!finished ? button('host-complete', gdFormat(HUB_LABELS.programmeHost, host.results.length), true) : ''}${button('host-close', finished ? 'Back to our block' : 'Save & explore the block')}</div>${host.results.length ? `<details class="host-memories" ${finished ? 'open' : ''}><summary>What we shared</summary><ol>${host.results.map(result => `<li>${esc(hostedDetail(state, result.id).split('\n').at(-1))}</li>`).join('')}</ol></details>` : ''}<p class="footnote">This gathering keeps the running order you began with. Future programme edits stay separate. Original fictional neighbors and portable event art; no real event or performance is reproduced.</p>`);
+  show(`<span class="eyebrow">OUR SECOND AFTERNOON · ${host.results.length + 1} OF 4</span><h2 id="modal-title">${segment(id).name} · ${segment(id).owner}</h2><ol id="hosting-order">${host.order.map((key, i) => `<li ${i === host.results.length ? 'aria-current="step"' : ''}>${i < host.results.length ? '✓ ' : ''}${segment(key).name}</li>`).join('')}</ol>${message ? `<p class="grid-message">${message}</p>` : ''}${activity}<div class="button-row">${button('host-complete', gdFormat(HUB_LABELS.programmeHost, host.results.length), true)}${button('host-close', 'Save & explore the block')}</div>${host.results.length ? `<details class="host-memories"><summary>What we shared</summary><ol>${host.results.map(result => `<li>${esc(hostedDetail(state, result.id).split('\n').at(-1))}</li>`).join('')}</ol></details>` : ''}<p class="footnote">This gathering keeps the running order you began with. Future programme edits stay separate. Original fictional neighbors and portable event art; no real event or performance is reproduced.</p>`);
   modalReturnTarget = $('#host-afternoon');
   const edit = (action, control) => { act(action); hostingScreen('', control); };
   for (const key of Object.keys(STORY_CHOICES)) bind(`host-story-${key}`, () => edit({ type: 'host-story', value: key }, `host-story-${key}`));
@@ -456,8 +483,10 @@ function hostingScreen(message = '', focusId = '') {
     hostingScreen(state.hosting.results.length > previousCount ? hostedCompletion(state, id) : 'This part is already recorded. Here is where the gathering is now.');
   });
   bind('host-close', () => close($('#host-afternoon')));
-  bind('host-follow', () => civicScreen()); bind('host-rhythm', () => rhythm.open('hosting'));
-  if (focusId) { const target = document.getElementById(focusId); modal.scrollTop = previousScroll; target?.focus({ preventScroll: true }); target?.scrollIntoView({ block: 'nearest' }); }
+  bind('host-rhythm', () => rhythm.open('hosting'));
+  // A focus target the redraw no longer has (the circle's Complete hosted the beats) falls back to the title.
+  const target = focusId && document.getElementById(focusId);
+  if (target) { modal.scrollTop = previousScroll; target.focus({ preventScroll: true }); target.scrollIntoView({ block: 'nearest' }); }
   else { modal.scrollTop = 0; $('#modal-title').setAttribute('tabindex', '-1'); $('#modal-title').focus({ preventScroll: true }); }
 }
 function programmeEditor(message = '', focusId = '') {
@@ -480,10 +509,11 @@ function programmeEditor(message = '', focusId = '') {
   bind('programme-view', programmePoster); bind('programme-close', () => close($('#next-afternoon')));
   if (focusId) { const target = document.getElementById(focusId); target?.focus({ preventScroll: true }); modal.scrollTop = scroll; target?.scrollIntoView({ block: 'nearest' }); }
 }
+// The posted programme. Once all four are hosted it also says what Gather again is, as programme_studio.gd description() does.
 function programmePoster() {
   const { published, order } = state.programme, svg = programmeSVG(published);
   if (!svg) return programmeEditor();
-  show(`<span class="eyebrow">OUR POSTED PROGRAMME · FICTIONAL FUTURE GATHERING</span><h2 id="modal-title">${programmeTitle(published)}</h2><img class="programme-poster" alt="Original programme poster. The same running order is listed below." src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}"><ol id="posted-programme">${published.map(id => `<li>${segment(id).name} · proposed by ${segment(id).owner}</li>`).join('')}</ol><p>No real festival, date or performance is announced. ${state.hosting.order.length ? "This is a future plan. The gathering you began keeps its own running order, shown on the portable board. Revisions here do not rewrite it." : "This poster is ready to host as a fictional second afternoon. The portable board beside the mural shows this order."} Your optional soundtrack remains yours to choose.</p><div class="programme-response"><h3>The neighbors answer</h3>${['bea', 'dez', 'celeste', 'thanh'].map(id => `<p><strong>${NEIGHBORS.find(n => n.id === id).name}:</strong> ${programmeResponse(id, published)}</p>`).join('')}</div><p>${JSON.stringify(order) === JSON.stringify(published) ? 'Your draft matches this poster. You can still revise it.' : 'You have an unposted draft. This poster keeps the last programme everyone agreed on.'}</p><div class="button-row">${button('programme-edit', 'Revise the running order', true)}${state.hosting.results.length === 4 ? button('programme-gather', ending.gatherLabel(), false, !!programmeIssue(published) && !ending.snapshot().visit.gather.order.length) : ''}${button('programme-host', state.hosting.order.length ? 'Visit our second gathering' : 'Host the programme')}${button('programme-poster-close', 'Back to the block')}</div><p class="footnote">Original abstract art, no photos or real musician likenesses. Separate from your gathering keepsake and from real history in Field notes.</p>`);
+  show(`<span class="eyebrow">OUR POSTED PROGRAMME · FICTIONAL FUTURE GATHERING</span><h2 id="modal-title">${programmeTitle(published)}</h2><img class="programme-poster" alt="Original programme poster. The same running order is listed below." src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}"><ol id="posted-programme">${published.map(id => `<li>${segment(id).name} · proposed by ${segment(id).owner}</li>`).join('')}</ol><p>No real festival, date or performance is announced. ${state.hosting.order.length ? "This is a future plan. The gathering you began keeps its own running order, shown on the portable board. Revisions here do not rewrite it." : "This poster is ready to host as a fictional second afternoon. The portable board beside the mural shows this order."} Your optional soundtrack remains yours to choose.</p>${postedGatherLine(state) ? `<p id="posted-gather">${esc(postedGatherLine(state))}</p>` : ''}<div class="programme-response"><h3>The neighbors answer</h3>${['bea', 'dez', 'celeste', 'thanh'].map(id => `<p><strong>${NEIGHBORS.find(n => n.id === id).name}:</strong> ${programmeResponse(id, published)}</p>`).join('')}</div><p>${JSON.stringify(order) === JSON.stringify(published) ? 'Your draft matches this poster. You can still revise it.' : 'You have an unposted draft. This poster keeps the last programme everyone agreed on.'}</p><div class="button-row">${button('programme-edit', 'Revise the running order', true)}${state.hosting.results.length === 4 ? button('programme-gather', ending.gatherLabel(), false, !!programmeIssue(published) && !ending.snapshot().visit.gather.order.length) : ''}${button('programme-host', state.hosting.order.length ? 'Visit our second gathering' : 'Host the programme')}${button('programme-poster-close', 'Back to the block')}</div><p class="footnote">Original abstract art, no photos or real musician likenesses. Separate from your gathering keepsake and from real history in Field notes.</p>`);
   bind('programme-edit', () => programmeEditor('', 'programme-order-heading'));
   bind('programme-host', () => hostingScreen()); bind('programme-gather', () => { if (ending.open('gather')) modalReturnTarget = $('#host-afternoon'); });
   modalReturnTarget = $('#next-afternoon');
@@ -543,6 +573,14 @@ function actionDom(action) {
 }
 // The live region for speech and conversation steps while no dialog shows them (hint() keeps it until it expires).
 function routeSay(text, seconds = 6) { routeSpeech = { text, until: performance.now() + seconds * 1000 }; $('#route-status').textContent = text; }
+// Godot announce_a11y_status: the open dialog's status line (the music panel's own, so the panel speaks one line), else the
+// page's live region. A live line of the dialog that already says it is not repeated.
+function announce(text) {
+  if (!text) return;
+  if (!modal.open) { routeSay(text); return; }
+  if ([...body.querySelectorAll('[role=status]')].some(line => line.textContent === text)) return;
+  ($('#soundtrack-status') ?? $('#modal-status')).textContent = text;
+}
 // Godot show_neighbor_speech: the shared bubble over the speaker. An open dialog already shows the line, so it is not repeated.
 function say(id, line) {
   const text = spokenText(line);
@@ -559,13 +597,15 @@ function conversation(id, { custom = '', announce = '', speak = true } = {}) {
   const actions = view.actions.map(a => ({ ...a, dom: actionDom(a), pressed: a.id === 'layout_table' ? state.layout === 'table' : a.id === 'layout_floor' ? state.layout === 'floor' : null }));
   // Bea holds the layout until the block opens, so its choice stays in her conversation (Godot keeps it in the block hub).
   if (id === 'bea' && !state.opened && !actions.some(a => a.id === 'layout_table')) for (const [aid, text, value] of [['layout_table', ACTION_LABELS.layoutTable, 'table'], ['layout_floor', ACTION_LABELS.layoutFloor, 'floor']]) actions.push({ id: aid, label: label(text), dom: ACTION_DOM[aid], pressed: state.layout === value });
-  // Celeste's easel panel opens the mural (Godot's Compose Mural).
-  if (id === 'celeste') actions.push({ id: 'compose', label: 'Compose Mural', dom: 'start-mural', pressed: null });
+  // Celeste's easel panel opens the mural (Godot's two-line Compose Mural button).
+  if (id === 'celeste') actions.push({ id: 'compose', label: BUTTON_TEXT.compose, dom: 'start-mural', pressed: null });
+  // Rook's panel in Godot's order, Load Local Track after the soundcheck; rookButtons marks Volume rapid, as Godot does.
   const controls = id === 'rook'
-    ? view.music.flatMap(b => [{ ...b, dom: b.id === 'soundcheck' ? 'soundcheck' : `talk-${b.id}`, rapid: b.id === 'volume' }, ...b.id === 'soundcheck' ? [{ id: 'load', label: 'Load Local Track', dom: 'talk-load', rapid: false }] : []])
+    ? view.music.flatMap(b => [{ ...b, dom: b.id === 'soundcheck' ? 'soundcheck' : `talk-${b.id}` }, ...b.id === 'soundcheck' ? [{ id: 'load', label: BUTTON_TEXT.load, dom: 'talk-load', rapid: false }] : []])
     : view.buttons.map(b => ({ ...b, dom: `talk-${b.id}` }));
   const detail = id === 'rook' ? rookMusicDetail(state, view.detail, m) : view.detail;
-  const actionHTML = actions.map((a, i) => `<button id="${a.dom}" class="${i === 0 ? 'primary-button' : 'secondary-button'}"${a.pressed === null ? '' : ` aria-pressed="${a.pressed}"`}>${esc(a.label)}</button>`).join('');
+  // A two-line Godot label keeps its line break; its accessible name reads it as one line, as the Rhythm Circle entry's does.
+  const actionHTML = actions.map((a, i) => `<button id="${a.dom}" class="${i === 0 ? 'primary-button' : 'secondary-button'}"${a.pressed === null ? '' : ` aria-pressed="${a.pressed}"`}${a.label.includes('\n') ? ` aria-label="${esc(a.label.replace(/\n/g, ' '))}"` : ''}>${esc(a.label).replace(/\n/g, '<br>')}</button>`).join('');
   const controlHTML = controls.map(b => `<button id="${b.dom}" class="secondary-button"${b.rapid ? ' data-rapid' : ''}>${esc(b.label)}</button>`).join('');
   show(`<section class="conversation" data-conversation="${id}" style="--talk-border:${view.border}"><div class="character-heading"><span class="portrait" style="background:${n.coat}55" aria-hidden="true">${n.name[0]}</span><div><h2 id="modal-title">${n.name}</h2><span class="eyebrow">${esc(n.role.toUpperCase())}</span></div></div><p class="talk-badge">${esc(view.badge)}</p><p id="talk-header" class="talk-header">${esc(view.header)}</p><p id="talk-line" class="talk-line">${esc(detail)}</p>${actionHTML ? `<div class="button-row talk-actions" role="group" aria-label="Things to do with ${n.name}">${actionHTML}</div>` : ''}<div class="button-row talk-controls" role="group" aria-label="${id === 'rook' ? 'Music and conversation' : 'Conversation'}">${controlHTML}</div></section>`);
   if (announce) $('#modal-status').textContent = announce;
@@ -576,9 +616,9 @@ function conversation(id, { custom = '', announce = '', speak = true } = {}) {
   bind('talk-bye', () => goodbye(id));
   if (id !== 'rook') return;
   bind('soundcheck', () => talk('rook', 'talk'));
-  bind('talk-play', async () => { await toggleMusic(); if (openConversation() === 'rook') conversation('rook', { speak: false }); });
+  bind('talk-play', async () => { const said = await toggleMusic(); if (openConversation() === 'rook') conversation('rook', { speak: false, announce: said }); });
   bind('talk-volume', () => { settings.volume = nextVolume(settings.volume); music.setVolume(settings.volume); saveSettings(); conversation('rook', { speak: false, announce: volumeAnnouncement(settings.volume) }); });
-  bind('talk-sketch', () => { music.useSketch(); conversation('rook', { speak: false }); });
+  bind('talk-sketch', async () => { const said = await useSynthSketch(); if (openConversation() === 'rook') conversation('rook', { speak: false, announce: said }); });
   bind('talk-load', showMusic);
 }
 // Godot run_conversation_action_id, onto the fork's own screens and walking routes.
@@ -792,9 +832,10 @@ function finale() {
   bind('stay-block', close); bind('finale-notes', journal);
 }
 function showSettings() {
-  show(`<span class="eyebrow">MAKE YOURSELF COMFORTABLE</span><h2 id="modal-title">Your afternoon.</h2><label class="settings-row" for="volume"><span>Music volume <span id="volume-number">${Math.round(settings.volume * 100)}%</span></span><input id="volume" data-rapid type="range" min="0" max="${MAX_VOLUME * 100}" value="${Math.round(settings.volume * 100)}"></label><div class="settings-row"><span id="reward-sounds-label">Reward sounds</span><button id="reward-sounds" class="secondary-button" aria-pressed="${settings.rewardSounds}" aria-describedby="reward-sounds-label" title="${SOUNDS_TEXT.tooltip}">${soundsLabel(settings.rewardSounds)}</button></div><label class="settings-row" for="motion"><span>Reduce ambient motion</span><input type="checkbox" id="motion" ${settings.reducedMotion ? 'checked' : ''}></label><p>Music is optional. Every preparation, conversation, and completion message works without sound.</p><fieldset class="experiment-settings"><legend>Experimental</legend><label class="settings-row" for="voices-enabled"><span>Neighborhood Voices · text only</span><input id="voices-enabled" type="checkbox" ${settings.experimental.neighborhoodVoices ? 'checked' : ''}></label><p>Three dated organization cards with official links. Off by default. You can turn this off at any time; your gathering stays the same. No TenderVoice code, recordings or interviews are included.</p><p id="voices-settings-status" role="status"></p></fieldset><div class="history-entry"><span class="eyebrow">YOUR SAVED AFTERNOON</span><p>${held ? SAVE_TEXT.held : storageAvailable ? 'Your progress stays in this browser, shared with the 3D edition of this site. After switching editions, reload the other one.' : 'Browser storage is unavailable. Progress will last in this tab.'}</p><button id="restart" class="danger-button">${held ? 'Start over…' : 'Start a new afternoon…'}</button></div>`);
+  show(`<span class="eyebrow">MAKE YOURSELF COMFORTABLE</span><h2 id="modal-title">Your afternoon.</h2><label class="settings-row" for="volume"><span>Music volume <span id="volume-number">${Math.round(settings.volume * 100)}%</span></span><input id="volume" data-rapid type="range" min="0" max="${MAX_VOLUME * 100}" value="${Math.round(settings.volume * 100)}"></label><div class="settings-row"><span id="reward-sounds-label">Reward sounds</span><button id="reward-sounds" class="secondary-button" aria-pressed="${settings.rewardSounds}" aria-describedby="reward-sounds-help" title="${SOUNDS_TEXT.tooltip}">${soundsLabel(settings.rewardSounds)}</button><span id="reward-sounds-help" class="sr-only">${SOUNDS_TEXT.tooltip}</span></div><label class="settings-row" for="motion"><span>Reduce ambient motion</span><input type="checkbox" id="motion" ${settings.reducedMotion ? 'checked' : ''}></label><p>Music is optional. Every preparation, conversation, and completion message works without sound.</p><fieldset class="experiment-settings"><legend>Experimental</legend><label class="settings-row" for="voices-enabled"><span>Neighborhood Voices · text only</span><input id="voices-enabled" type="checkbox" ${settings.experimental.neighborhoodVoices ? 'checked' : ''}></label><p>Three dated organization cards with official links. Off by default. You can turn this off at any time; your gathering stays the same. No TenderVoice code, recordings or interviews are included.</p><p id="voices-settings-status" role="status"></p></fieldset><div class="history-entry"><span class="eyebrow">YOUR SAVED AFTERNOON</span><p>${held ? SAVE_TEXT.held : storageAvailable ? 'Your progress stays in this browser, shared with the 3D edition of this site. After switching editions, reload the other one.' : 'Browser storage is unavailable. Progress will last in this tab.'}</p><button id="restart" class="danger-button">${held ? 'Start over…' : 'Start a new afternoon…'}</button></div>`);
   $('#volume').addEventListener('input', event => { settings.volume = Number(event.target.value) / 100; music.setVolume(settings.volume); $('#volume-number').textContent = `${Math.round(settings.volume * 100)}%`; saveSettings(); });
-  // Godot toggle_reward_sounds: Sounds On/Off in the fork's settings key; turning it off stops a chime at once.
+  // Godot toggle_reward_sounds: Sounds On/Off in the fork's settings key; turning it off stops a chime at once. Godot's tooltip
+  // is the button's description too (#reward-sounds-help), so it is not reachable by hover alone.
   bind('reward-sounds', () => { settings.rewardSounds = !settings.rewardSounds; rewards.setEnabled(settings.rewardSounds); saveSettings(); const control = $('#reward-sounds'); control.textContent = soundsLabel(settings.rewardSounds); control.setAttribute('aria-pressed', String(settings.rewardSounds)); $('#modal-status').textContent = soundsAnnouncement(settings.rewardSounds); });
   $('#motion').addEventListener('change', event => { settings.reducedMotion = event.target.checked; document.documentElement.classList.toggle('reduced-motion', settings.reducedMotion); saveSettings(); });
   $('#voices-enabled').addEventListener('change', event => setVoicesEnabled(event.target.checked)); voicesUI();

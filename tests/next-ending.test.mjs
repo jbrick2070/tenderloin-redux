@@ -87,12 +87,32 @@ test('the ported rules still read as they do in Godot', () => {
   inOrder(gdLines(gdFunc('habitat_room.gd', 'carry_or_welcome')), ['if mode!="room": departure_action(); return', 'if complete and not can_carry(): prepare_together(); return', 'elif assigned.size()==3 and not complete: complete=true; inspecting=false'], 'carry_or_welcome');
   inOrder(gdLines(gdFunc('programme_gathering.gd', 'handoff')), ['if visible and completed and review_step==gestures.size() and gesture==0:', 'if not visible or completed or gesture<0 or gesture>1 or gestures.size()>=3 or review_step!=gestures.size(): return'], 'handoff');
   inOrder(gdLines(gdFunc('helper_bench.gd', 'choose_form')), ['if not complete and (fitted[0] or fitted[1]): return'], 'choose_form');
+  // hosted_afternoon.gd detail() and invitation(), the one port of them (ending/hosted.js; game.js's "What we shared" reads it).
+  const D = GODOT['hosted_afternoon.gd'].detail, I = GODOT['hosted_afternoon.gd'].invitation, q = s => `"${s.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n')}"`;
+  inOrder(gdLines(gdFunc('hosted_afternoon.gd', 'detail')), [
+    'var index := IDS.find(id)', 'var position: int=game.hosting_order.find(id)', `if index<0 or position<0 or position>=POSITIONS.size(): return ${q(D.none)}`,
+    `var heading: String=${q(D.heading)}%[game.programme_title(id),POSITIONS[position]]`, 'var copy := copied(game,id)', `if not copy.valid: return heading+${q(D.unavailable)}`,
+    `reply=${q(D.storiesMemory)} if value=="memory" else ${q(D.storiesFuture)}`,
+    'for i in range(8):', 'if (int(value)&(1<<i))!=0: slots.append(str(i+1))',
+    `result=${q(D.beatsNone)} if slots.is_empty() else ${q(D.beatsSome)}%[slots.size(),", ".join(slots)]`,
+    `reply=${q(D.beatsNoneReply)} if slots.is_empty() else ${q(D.beatsSomeReply)}%slots.size()`,
+    `result=${q(D.artResult)}%String(value.palette).capitalize()`, `reply=${q(D.artWarm)} if value.palette=="warm" else ${q(D.artCool)}`,
+    `reply=${q(D.pauseArc)} if value=="arc" else ${q(D.pausePairs)}`,
+    `return OWNERS[index]+': "'+reply+'"'+"\\n"+heading+"\\n"+result`,
+  ], 'hosted_afternoon.gd detail');
+  inOrder(gdLines(gdFunc('hosted_afternoon.gd', 'invitation')), [
+    'if not game.is_hosting_done(): return ""', `if game.civic_phase=="done": return ${q(I.done)}`,
+    `var opening: String=${q(I.opening)}%[game.programme_title(game.hosting_order[0]),game.programme_title(game.hosting_order[3])]`,
+    `if game.civic_phase=="planning": offer=${q(I.planning)}`, `elif game.civic_phase=="meeting": offer=${q(I.meeting)}`, `return 'Bea: "'+opening+" "+offer+'"'`,
+  ], 'hosted_afternoon.gd invitation');
+  inOrder(gdLines(gdFunc('hosted_afternoon.gd', 'copied')), ['if id=="beats" and game.is_whole_json_number(raw) and int(roundf(float(raw)))>=0 and int(roundf(float(raw)))<=255:', 'if not game.is_whole_json_number(tile) or int(roundf(float(tile)))<0 or int(roundf(float(tile)))>2: return {"valid":false}'], 'hosted_afternoon.gd copied');
 });
 
 // ---------- Per-step logic ----------
 import { parseGodotSave, buildGodotSave, sceneAdmission, cleanMuralScenes, combineSaves, MURAL_SCENE_IDS, MURAL_SCENE_SLOTS } from '../browser-next/godot-save.js';
 import { initialState, applyAction } from '../browser-next/core.js';
-import { GODOT_WRITTEN, hostedEnvelope, civicDoneEnvelope, filmDoneEnvelope, godotEnvelope, raw } from './next-fixtures.mjs';
+import { GODOT_WRITTEN, PUBLISHED, HOSTED_RESULTS, openedEnvelope, hostedEnvelope, civicDoneEnvelope, filmDoneEnvelope, godotEnvelope, raw } from './next-fixtures.mjs';
+import { currentActivity } from '../browser-next/hosting.js';
 import * as H from '../browser-next/ending/hosted.js';
 import * as GA from '../browser-next/ending/gather-again.js';
 import * as SC from '../browser-next/ending/screening.js';
@@ -143,7 +163,42 @@ test('hosted: detail, replies and the offer for every civic phase', () => {
   assert.deepEqual([v.primary.label, v.primary.disabled, v.back.label], ['Listening complete', true, 'Back']);
   assert.equal(H.followHosted(done), null);
   assert.equal(H.hostedClose(done), 'Back to the block. Your completed gathering and Listening Hour remain available.');
-  assert.equal(H.invitation(done), "The Listening Hour is complete. Its remembered voices and Dez's offer remain in the Listening Hour.");
+  // Godot's line with only its F5 key hint dropped, as every other key hint the fork drops.
+  assert.equal(H.invitation(done), "The Listening Hour is complete. Its remembered voices and Dez's offer remain in Listening Hour.");
+  assert.equal(web(GODOT['hosted_afternoon.gd'].invitation.done), GODOT['hosted_afternoon.gd'].invitation.done.replace(' (F5)', ''));
+});
+test('hosted: each detail in hosted order, unreadable copies, and no offer before the fourth is hosted', () => {
+  const order = ['beats', 'pause', 'stories', 'art'], results = [{ id: 'beats', value: 85 }, { id: 'pause', value: 'pairs' }, { id: 'stories', value: 'memory' }, { id: 'art', value: { palette: 'cool', tiles: [0, 1, 2, 2, 1, 0] } }];
+  const s = stateOf(hostedEnvelope({ programme: { order: [...order], published: [...order] }, hosting: { ...hostedEnvelope().hosting, order: [...order], results } }));
+  assert.equal(H.hostedDetail(s, 'beats'), 'Dez: "You gave us 4 taps in eight slots. I kept the spaces between them too."\nRhythm workshop was first in the afternoon we hosted.\nCopied rhythm: 4 taps in eight slots, at 1, 3, 5, 7.');
+  assert.equal(H.hostedDetail(s, 'pause'), 'Thanh: "You kept a pair and an open seat, with the cushion marking a place. Coming and going were welcome."\nQuiet interval was second in the afternoon we hosted.\nCopied seating: A pair and an open seat.');
+  assert.equal(H.hostedDetail(s, 'stories'), 'Bea: "You made room for a small moment, and passing was welcome. No personal story was recorded."\nStory circle was third in the afternoon we hosted.\nCopied invitation: A small moment you want to keep.');
+  assert.equal(H.hostedDetail(s, 'art'), 'Celeste: "Our six shapes stay in cool colors, just as we hung them."\nShared art panel was fourth in the afternoon we hosted.\nCopied panel: Cool colors and six arranged shapes.');
+  assert.deepEqual(H.hostedReplies(s).map(d => d.split('\n')[0].split(':')[0]), ['Bea', 'Dez', 'Celeste', 'Thanh'], "replies() keeps Godot's segment order, not the hosted order");
+  const quiet = structuredClone(s); quiet.hosting.results[0].value = 0;
+  assert.deepEqual(H.hostedDetail(quiet, 'beats').split('\n').filter((_, i) => i !== 1), ['Dez: "You gave listening a place without asking anyone to make a beat."', 'Copied rhythm: listening only, with no marked beats.']);
+  const broken = structuredClone(s); broken.hosting.results[0].value = 2.5; broken.hosting.results[3].value.tiles[5] = 9;
+  assert.equal(H.hostedDetail(broken, 'beats'), 'Rhythm workshop was first in the afternoon we hosted.\nThe copied choice is unavailable. The saved gathering stays unchanged.');
+  assert.equal(H.hostedDetail(broken, 'art').split('\n')[1], 'The copied choice is unavailable. The saved gathering stays unchanged.');
+  const whole = structuredClone(s); whole.hosting.results[0].value = 85.000001;
+  assert.equal(H.hostedDetail(whole, 'beats'), H.hostedDetail(s, 'beats'), 'a whole float reads as its integer, as Godot is_whole_json_number does');
+  for (const nothing of [[s, 'nope'], [stateOf(openedEnvelope()), 'stories']]) assert.equal(H.hostedDetail(...nothing), 'No copied contribution is available. The saved gathering stays unchanged.');
+  const midway = structuredClone(s); midway.hosting.results = midway.hosting.results.slice(0, 3);
+  assert.deepEqual([H.invitation(midway), H.invitationAvailable(midway), H.postedGatherLine(midway)], ['', false, '']);
+  assert.equal(H.invitation({ ...s, civic: { ...s.civic, phase: 'idle' } }), 'Bea: "Our afternoon began with Rhythm workshop and ended with Shared art panel. I would like to make room for a Listening Hour too, when you are ready."');
+  // programme_studio.gd description(): once all four are hosted the posted view adds the Gather again line.
+  assert.equal(H.postedGatherLine(s), GODOT['programme_studio.gd'].description.postedGather);
+});
+// The hosting dialog's own finished view (a review, Bea's offer and Follow) is unreachable: game.js hostingScreen returns through
+// ending.open('hosted') when currentActivity() is null, and that is exactly when the ending's hosted view opens.
+test("hosted: with no current activity the ending's hosted view always opens, so the hosting dialog never draws a finished view", () => {
+  for (const order of [PUBLISHED, ['stories', 'beats', 'art', 'pause'], ['art', 'stories', 'pause', 'beats']]) for (let done = 0; done <= 4; done++) {
+    const results = order.slice(0, done).map(id => HOSTED_RESULTS.find(r => r.id === id));
+    const s = stateOf(hostedEnvelope({ programme: { order: [...order], published: [...order] }, hosting: { ...hostedEnvelope().hosting, order: [...order], results } }));
+    assert.equal(s.hosting.results.length, done, `${order} ${done}: the save loads with ${done} hosted`);
+    const ending = createEnding(endingHost(fakeDialog(), s));
+    assert.deepEqual([currentActivity(s.hosting) === null, ending.open('hosted')], [done === 4, done === 4], `${order} after ${done}`);
+  }
 });
 test('hosted: the picture per card and the card labels', () => {
   const s = stateOf(hostedEnvelope());
@@ -554,6 +609,15 @@ test('ending: a redraw that waits draws only the stage still on screen', async t
     settle(); await flush();
     assert.deepEqual([ending.stage, dialog.has('bench-assist')], ['bench', true]);
   });
+  await t.test("Music: Godot's music announcement is said after the redraw, as refresh(false) leaves it", async () => {
+    const dialog = fakeDialog(), said = [];
+    const host = endingHost(dialog, full(), { status: text => said.push(text), music: { label: () => 'Music: Off', on: () => false, toggle: async () => 'Music paused.' } });
+    const ending = createEnding({ ...host, show: html => { said.push('show'); dialog.show(html); } });
+    for (const kind of ['hosted', 'screening', 'stories']) {
+      assert.equal(ending.open(kind), true); said.length = 0; dialog.click('ending-music'); await flush();
+      assert.deepEqual([ending.stage, said], [kind, ['show', 'Music paused.']], kind);
+    }
+  });
   await t.test('the orbital commons: the recovery offer covers a walk in progress', () => {
     const dialog = fakeDialog(), ending = createEnding(endingHost(dialog, full()));
     assert.equal(ending.open('room'), true); for (const id of TO_ORBIT) dialog.click(id);
@@ -562,4 +626,17 @@ test('ending: a redraw that waits draws only the stage still on screen', async t
     dialog.show(RECOVERY); dialog.frames(600);
     assert.deepEqual([dialog.heading(), dialog.has('recover-save'), ending.snapshot().moving], ['Some progress went back.', true, false], 'the walk halts under the offer and draws nothing over it');
   });
+});
+test("ending sync: a screen an adopted save's new copies close is reported, so game.js can say why; this tab's own change keeps it", () => {
+  const s = full(), dialog = fakeDialog(), flip = st => { const next = structuredClone(st); next.film.result.framing = next.film.result.framing === 'wide' ? 'close' : 'wide'; return next; };
+  let state = s;
+  const ending = createEnding(endingHost(dialog, s, { getState: () => state }));
+  assert.equal(ending.open('screening'), true);
+  state = flip(state);
+  assert.deepEqual([ending.sync(), ending.stage, dialog.modal.open], [{ reset: false, closed: false }, 'screening', true], "this tab's own change keeps the visit and the screen");
+  assert.deepEqual([ending.sync({ adopted: true }), ending.stage], [{ reset: false, closed: false }, 'screening'], 'an adopted save with the same copies keeps them');
+  state = flip(state);
+  assert.deepEqual([ending.sync({ adopted: true }), ending.stage, dialog.modal.open], [{ reset: true, closed: true }, null, false], 'new copies start the visit over and close the screen');
+  state = flip(state);
+  assert.deepEqual(ending.sync({ adopted: true }), { reset: true, closed: false }, 'with no screen open there is nothing to close');
 });

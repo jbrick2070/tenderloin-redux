@@ -12,8 +12,9 @@ import { GODOT_SAVE_KEY, SAVE_BUDGET, parseGodotSave, canonicalStringify, utf8By
 import { STORY_CHAPTERS, GODOT_TEMPLATES, currentChapter, nextObjective, chapterCard, isNarrow, fmt } from '../browser-next/story.js';
 import { NEIGHBORS, PLACES } from '../browser-next/world.js';
 import { SETTINGS_KEY } from '../browser-next/core.js';
-import { NEIGHBOR_LINES, NEIGHBOR_BADGES, SURPRISE_MEMORY, MURAL_REPLY, neighborLines, webLine, whatsNext, whatsNextAnnouncement, goodbyeLines, spokenText } from '../browser-next/characters.js';
-import { nextVolume, volumeAnnouncement } from '../browser-next/sketch-core.js';
+import { NEIGHBOR_LINES, NEIGHBOR_BADGES, SURPRISE_MEMORY, MURAL_REPLY, BUTTON_TEXT, neighborLines, webLine, whatsNext, whatsNextAnnouncement, goodbyeLines, spokenText } from '../browser-next/characters.js';
+import { nextVolume, volumeAnnouncement, playingAnnouncement, switchedAnnouncement, MUSIC_TEXT } from '../browser-next/sketch-core.js';
+import { GODOT, FORK_TEXT } from '../browser-next/ending/text.js';
 import { soundsLabel, soundsAnnouncement } from '../browser-next/rewards.js';
 import { LOAN_REPLIES, loanReply, loanReturnAnnouncement } from '../browser-next/hosted-text.js';
 import { LOAN_TITLES } from '../browser-next/story.js';
@@ -80,6 +81,15 @@ async function until(page, fn, arg, message, timeout = 5000) {
   try { await page.waitForFunction(fn, arg, { timeout }); } catch (error) { assert.fail(`${message} (${error.message.split('\n')[0]})`); }
 }
 async function press(page, target, touch) { const locator = typeof target === 'string' ? page.locator(target) : target; if (touch) await locator.tap(); else await locator.click(); }
+// What a guarded double press let through, read once it is in. Nothing in touchscreen.tap() promises that the page has had the
+// tap's pointer events and click when it returns (Chrome 156 and Edge 157 happen to deliver them first): wait (up to 10 s) until
+// at least the events that must reach the page have, and for a gated press the guard has armed and swallowed, then give anything
+// that must not arrive the same 300 ms as before. The caller's exact counts are the verdict.
+async function letThrough(page, before, want, gated) {
+  await page.waitForFunction(([before, want, gated]) => { const s = window.tenderloin.pressSettle(), p = window.__nextPassed; return Object.keys(want).every(type => p[type] >= want[type]) && (!gated || (s.armed > before.armed && s.swallowed > before.swallowed)); }, [before, want, gated], { timeout: 10000 }).catch(() => {});
+  await page.waitForTimeout(300);
+  return [await call(page, 'pressSettle'), await page.evaluate(() => window.__nextPassed)];
+}
 const closed = page => until(page, () => !document.querySelector('dialog[open]'), null, 'the dialog closes');
 const talkOpen = (page, name, timeout = 30000) => until(page, name => document.querySelector('#modal').open && document.querySelector('#modal-title')?.textContent.trim() === name, name, `${name}'s dialog opens`, timeout);
 async function walkTo(page, w, id) { await press(page, '#neighbors-button', w.touch); await press(page, `#neighbor-${id}`, w.touch); await talkOpen(page, NEIGHBORS.find(n => n.id === id).name); }
@@ -181,6 +191,17 @@ async function layoutCheck(page, w, label) {
   return r.checked;
 }
 const toastText = page => page.locator('#toast').textContent();
+// The selected look of a pressed choice (style.css, as the hosting choices draw it), and the computed look of a pressed control
+// and an unpressed sibling.
+const SELECTED = { pressed: 'true', background: 'rgb(213, 229, 202)', border: '2px solid rgb(35, 103, 92)', color: 'rgb(35, 61, 56)' };
+async function pressedLook(page, pressed, other) {
+  const [on, off] = await page.evaluate(ids => ids.map(id => { const e = document.querySelector(id), s = getComputedStyle(e); return { pressed: e.getAttribute('aria-pressed'), background: s.backgroundColor, border: `${s.borderTopWidth} ${s.borderTopStyle} ${s.borderTopColor}`, color: s.color, height: e.getBoundingClientRect().height }; }), [pressed, other]);
+  assert.deepEqual(pick(on, Object.keys(SELECTED)), SELECTED, `${pressed} shows the selected look`);
+  assert.equal(off.pressed, 'false', `${other} is not pressed`);
+  assert.ok(off.background !== on.background && off.border !== on.border, `${pressed} looks different from ${other} (${off.background}, ${off.border})`);
+  assert.ok(on.height >= 43.99, `${pressed} keeps its 44 px target (${on.height})`);
+  return { on, off };
+}
 // Half a second of silence as a WAV (16-bit mono PCM at 22,050 Hz), for Load Local Track.
 function silentWav(seconds = 0.5, rate = 22050) {
   const bytes = Math.round(seconds * rate) * 2, out = Buffer.alloc(44 + bytes);
@@ -398,13 +419,12 @@ async function guard(w) {
   }
   // mode: 'rapid' lets a [data-rapid] repeat through; 'map' is a canvas tap, which acts on pointerup and whose own click the guard claims.
   async function finish(before, mode = '') {
-    await page.waitForTimeout(300);
-    const after = await call(page, 'pressSettle'), passed = await page.evaluate(() => window.__nextPassed);
-    if (mode === 'rapid') { assert.equal(after.swallowed, before.swallowed, 'a [data-rapid] control still under the pointer is not gated'); assert.deepEqual(passed, { pointerdown: 2, pointerup: 2, click: 2 }); }
+    const want = mode === 'rapid' ? { pointerdown: 2, pointerup: 2, click: 2 } : { pointerdown: 1, pointerup: 1, click: mode === 'map' ? 0 : 1 }, [after, passed] = await letThrough(page, before, want, mode !== 'rapid');
+    if (mode === 'rapid') { assert.equal(after.swallowed, before.swallowed, 'a [data-rapid] control still under the pointer is not gated'); assert.deepEqual(passed, want); }
     else {
       assert.equal(after.armed - before.armed, 1, 'one press armed the guard');
       assert.ok(after.swallowed > before.swallowed, `pressSettle().swallowed increased (${before.swallowed} -> ${after.swallowed})`);
-      assert.deepEqual(passed, { pointerdown: 1, pointerup: 1, click: mode === 'map' ? 0 : 1 }, mode === 'map' ? "only the first tap's pointerup reached the page; its click went to the new dialog and was claimed" : 'only the first press reached the page');
+      assert.deepEqual(passed, want, mode === 'map' ? "only the first tap's pointerup reached the page; its click went to the new dialog and was claimed" : 'only the first press reached the page');
     }
     return { armed: after.armed - before.armed, swallowed: after.swallowed - before.swallowed };
   }
@@ -597,6 +617,16 @@ async function recoveryCases(w) {
     assert.deepEqual([(await call(page, 'snapshot')).opened, await stored(page)], [false, text]);
     return { bytes: utf8Bytes(text), targets };
   });
+  await step("recovery: another tab's save with new film copies closes the open screening and says the ending started fresh", async () => {
+    await start(filmDoneEnvelope({ save_seq: 60 }));
+    await press(page, '#film-shoot', w.touch); await until(page, () => window.tenderloin.ending().stage === 'screening', null, 'the screening opens');
+    const { film } = filmDoneEnvelope(), framing = film.result.framing === 'wide' ? 'close' : 'wide';
+    await stale(filmDoneEnvelope({ save_seq: 61, film: { ...film, draft: { ...film.draft, framing }, result: { ...film.result, framing } } }));
+    await until(page, () => !document.querySelector('dialog[open]'), null, "the new copies close the screening (nothing was lost, so nothing is offered back)");
+    await until(page, text => document.querySelector('#toast').textContent === text, FORK_TEXT.copiesChanged, 'the toast says why the screen closed');
+    assert.deepEqual([(await call(page, 'ending')).stage, (await call(page, 'snapshot')).film.result.framing, await page.evaluate(() => document.activeElement?.id)], [null, framing, 'film-shoot']);
+    return { toast: FORK_TEXT.copiesChanged };
+  });
   for (const tab of [{ log }, S]) clean(tab.log);
   await context.close();
 }
@@ -710,8 +740,13 @@ async function seeded(w) {
     const before = await x();
     for (let i = 0; i < 6; i++) { await page.keyboard.down('ArrowRight'); await page.waitForTimeout(50); }
     await page.waitForTimeout(200);
+    // Two animation frames in the page after the repeats, so at least one game frame has run with the key as the repeats left it.
+    await page.evaluate(() => { window.__nextFrames = 0; requestAnimationFrame(function count() { if (++window.__nextFrames < 2) requestAnimationFrame(count); }); });
+    await until(page, () => window.__nextFrames >= 2, null, 'two animation frames run after the repeats', 8000);
     assert.equal(await x(), before, 'repeats of the key held through the close do not walk');
-    await page.keyboard.up('ArrowRight'); await page.keyboard.down('ArrowRight'); await page.waitForTimeout(400); await page.keyboard.up('ArrowRight');
+    // Walking runs on animation frames, which a loaded machine slows to a few a second: hold the fresh press until it walks.
+    await page.keyboard.up('ArrowRight'); await page.keyboard.down('ArrowRight');
+    try { await until(page, before => window.tenderloin.snapshot().player.x > before, before, 'a fresh press walks', 8000); } finally { await page.keyboard.up('ArrowRight'); }
     assert.ok(await x() > before, 'a fresh press walks');
     return { walked: Math.round(await x() - before) };
   });
@@ -748,7 +783,10 @@ async function seeded(w) {
   });
   await step(`${w.name} a change that no longer applies says so inside the open dialog`, async () => {
     await start(canonicalStringify(readyEnvelope({ save_seq: 7, gathering_layout: 'table' })));
-    await walkTo(page, w, 'bea'); await press(page, '#choose-table'); await page.locator('.placement-grid').waitFor();
+    await walkTo(page, w, 'bea');
+    // The chosen layout shows as chosen, as the classic choice cards did: the hosting choices' selected look, not only aria-pressed.
+    await pressedLook(page, '#choose-table', '#choose-floor');
+    await press(page, '#choose-table'); await page.locator('.placement-grid').waitFor();
     const opened = canonicalStringify(openedEnvelope({ save_seq: 8 }));
     await page.evaluate(([key, value]) => localStorage.setItem(key, value), [GODOT_SAVE_KEY, opened]); // another edition opened the block
     await press(page, '#cell-0-0');
@@ -848,12 +886,15 @@ async function endingSuite(w) {
     assert.equal(await stage(), 'hosted'); assert.equal(await focused(), 'hosted-card-stories', "Godot's first card has focus");
     targets.hosted = await layoutCheck(page, w, 'ending-hosted');
     await press(page, '#hosted-card-art', w.touch); assert.equal(await page.locator('#hosted-card-art').getAttribute('aria-pressed'), 'true');
+    await pressedLook(page, '#hosted-card-art', '#hosted-card-stories');
     await press(page, '#hosted-follow', w.touch); await closed(page);
     assert.equal(await focused(), 'civic-hour', 'Follow focuses the Listening Hour button');
     assert.match(await toastText(), /Listening Hour is focused\. Open that button when you are ready; your plan and conversation are unchanged\.$/);
     assert.equal(await call(page, 'story').then(s => s.card), false, 'no chapter card steals focus');
     await press(page, '#next-afternoon', w.touch); await press(page, '#programme-view', w.touch);
     await page.locator('#programme-gather').waitFor(); assert.equal(await page.locator('#programme-gather').textContent(), 'Gather again');
+    // programme_studio.gd description(): the posted view, once all four are hosted, says what Gather again is.
+    assert.equal(await page.locator('#posted-gather').textContent(), GODOT['programme_studio.gd'].description.postedGather, "the poster shows Godot's Gather again line");
     await press(page, '#programme-gather', w.touch); await until(page, () => window.tenderloin.ending().stage === 'gather', null, 'Gather again opens');
     targets.gather = await layoutCheck(page, w, 'ending-gather');
     await press(page, '#gather-choice-0', w.touch); await page.keyboard.press('Escape'); await closed(page);
@@ -875,15 +916,17 @@ async function endingSuite(w) {
     await until(page, () => /^The Open Seat \| 1 \/ 3/.test(document.querySelector('dialog[open] #modal-title')?.textContent), null, 'the screening opens on frame 1');
     assert.equal(await focused(), 'screen-frame-0');
     targets.screening = await layoutCheck(page, w, 'ending-screening');
+    // Godot draws the screening frames, the bench forms and the room's places as toggles: the pressed one looks chosen.
+    await pressedLook(page, '#screen-frame-0', '#screen-frame-1');
     await press(page, '#screen-frame-2', w.touch); await page.keyboard.press('Escape'); await closed(page);
     assert.equal(await focused(), 'film-shoot');
     await press(page, '#film-shoot', w.touch); await until(page, () => /^The Open Seat \| 3 \/ 3/.test(document.querySelector('dialog[open] #modal-title')?.textContent), null, 'the frame is kept for the visit');
     await press(page, '#screen-helper', w.touch); await until(page, () => window.tenderloin.ending().stage === 'bench', null, 'Helper workshop opens the bench');
-    targets.bench = await layoutCheck(page, w, 'ending-bench');
+    targets.bench = await layoutCheck(page, w, 'ending-bench'); await pressedLook(page, '#bench-form-0', '#bench-form-1');
     await press(page, '#bench-support-1', w.touch); await press(page, '#bench-support-0', w.touch); await press(page, '#bench-assist', w.touch);
     assert.equal((await call(page, 'ending')).visit.bench.complete, true, 'the helper lifts the stand');
     await press(page, '#bench-habitat', w.touch); await until(page, () => window.tenderloin.ending().stage === 'room', null, 'Habitat room opens');
-    targets.room = await layoutCheck(page, w, 'ending-room');
+    targets.room = await layoutCheck(page, w, 'ending-room'); await pressedLook(page, '#room-place-0', '#room-place-1');
     await page.keyboard.press('Escape'); await closed(page); assert.equal(await focused(), 'film-shoot');
     assert.equal(await stored(page), raw, 'every ending step is visit-only');
     await page.reload(); await until(page, () => !!window.tenderloin, null, 'the fork restarts', 15000);
@@ -898,6 +941,7 @@ async function endingSuite(w) {
     assert.equal(await page.locator('#mural-scenes').textContent(), 'Paint Scenes');
     await press(page, '#mural-scenes', w.touch); await until(page, () => window.tenderloin.ending().stage === 'stories', null, 'Mural Stories opens');
     targets.stories = await layoutCheck(page, w, 'ending-stories');
+    await pressedLook(page, '#scene-choice-0', '#scene-choice-1');
     await press(page, '#scene-target-0', w.touch);
     const s = await written(page, before.env.save_seq, { mural_scenes: { left: 'cooking' } });
     // Godot's footer: Palette:\n<Name>, Music:\nOn/Off, Back to\nMural, then the page button.
@@ -928,6 +972,8 @@ async function endingSuite(w) {
     assert.equal(await focused(), 'rhythm-pad-0');
     assert.equal(await page.evaluate(() => document.querySelector('#modal-status').textContent), "Rhythm Circle. Practice copy only. Your hosted result is unchanged. Play Bar optionally auditions your hits and rests. Music must be On; set volume at Rook's speaker.");
     targets.rhythm = await layoutCheck(page, w, 'rhythm-practice');
+    // WCAG 2.5.3 label in name: Play Bar's accessible name starts with its visible label, then Godot's phrase.
+    assert.deepEqual(await page.locator('#rhythm-play-bar').evaluate(b => [b.innerText.replace(/\s+/g, ' ').trim(), b.getAttribute('aria-label')]), ['Play Bar', 'Play Bar: Play one bar of this rhythm']);
     await press(page, '#rhythm-pad-1', w.touch);
     assert.deepEqual(pick(await call(page, 'rhythm'), ['open', 'practice', 'pattern']), { open: true, practice: true, pattern: 87 }, 'practice toggles a copy of the hosted 85');
     // The startup card's button started the sketch, so Play Bar auditions one bar with the sketch muted, and stops it again.
@@ -944,13 +990,17 @@ async function endingSuite(w) {
     assert.equal(await toastText(), 'Back to the block. Hosted rhythm restored; practice was not saved.');
     assert.equal(await stored(page), raw, 'practice is never saved');
     const hosting = canonicalStringify(hostedEnvelope({ save_seq: 83, hosting: { ...hostedEnvelope().hosting, results: [{ id: 'stories', value: 'memory' }] } }));
-    await start(hosting); await press(page, '#host-afternoon', w.touch); await press(page, '#host-rhythm', w.touch);
+    await start(hosting); await press(page, '#host-afternoon', w.touch);
+    // What we shared: the copied result line of ending/hosted.js's hosted_afternoon.gd detail(), one per hosted part.
+    assert.deepEqual(await page.locator('.host-memories li').allTextContents(), ['Copied invitation: A small moment you want to keep.']);
+    await press(page, '#host-rhythm', w.touch);
     await until(page, () => document.querySelector('dialog[open] #modal-title')?.textContent === "Dez's Rhythm Circle - Hosting", null, 'the hosting beats open the circle');
     await press(page, '#rhythm-pad-0', w.touch);
     await written(page, 83, {}); assert.equal((await call(page, 'snapshot')).hosting.draft.pattern, 84, 'a hosting toggle saves the draft, as Godot does');
     // A held Escape leaves the circle for the hosting dialog it came from, and does not close that too.
     await page.keyboard.down('Escape'); await page.keyboard.down('Escape'); await page.keyboard.down('Escape'); await page.keyboard.up('Escape'); await page.waitForTimeout(200);
     assert.equal(await page.evaluate(() => !!document.querySelector('dialog[open] #host-rhythm')), true, 'a held Escape stops at the hosting dialog');
+    assert.equal(await focused(), 'host-rhythm', 'focus returns to the Rhythm Circle button, as it does to the afterglow one');
     await press(page, '#host-rhythm', w.touch);
     await until(page, () => document.querySelector('dialog[open] #modal-title')?.textContent === "Dez's Rhythm Circle - Hosting", null, 'the hosting beats open the circle again');
     await press(page, '#rhythm-complete', w.touch);
@@ -978,7 +1028,8 @@ async function musicSuite(w) {
     await boot(key.page); await cardCheck(key.page, true); const x0 = (await call(key.page, 'snapshot')).player.x;
     await key.page.keyboard.down('ArrowRight'); await closed(key.page);
     await until(key.page, () => window.tenderloin.sound().enabled, null, 'a movement key on the startup card starts the music', 10000);
-    await key.page.waitForTimeout(400); await key.page.keyboard.up('ArrowRight');
+    // Walking runs on animation frames, which a loaded machine slows to a few a second: hold the key until it walks.
+    try { await until(key.page, x0 => window.tenderloin.snapshot().player.x > x0, x0, 'and the held key walks', 8000); } finally { await key.page.keyboard.up('ArrowRight'); }
     assert.ok((await call(key.page, 'snapshot')).player.x > x0, 'and the held key walks');
     assert.equal((await call(key.page, 'story')).card, false);
     clean(key.log); await keyContext.close(); activePage = page;
@@ -1005,12 +1056,22 @@ async function musicSuite(w) {
   });
   await step(`${w.name} music: pausing keeps the clock, as Godot does`, async () => {
     await until(page, () => window.tenderloin.sound().frames > 22050, null, 'a second of the sketch has played', 10000);
+    // With no dialog open, Godot's music announcements go to the page's live region, as its other announcements do.
+    const said = (text, message) => until(page, text => document.querySelector('#route-status').textContent === text, text, `${message}: "${text}"`);
+    // The sketch clock in frames and the page's clock in seconds, read together, so a bound can follow the time that really passed.
+    const clock = () => page.evaluate(() => [window.tenderloin.sound().frames, performance.now() / 1000]);
     await press(page, '#sound-toggle', w.touch); await until(page, () => !window.tenderloin.sound().enabled, null, 'the toggle pauses');
-    await page.waitForTimeout(300); const paused = (await sound()).frames;
+    await said(MUSIC_TEXT.paused, "Music announces Godot's pause");
+    await page.waitForTimeout(300); const [paused, pausedAt] = await clock();
+    // Paused, the clock holds however slow the machine is: one still running would gain at least 0.3 s (6615 frames) by the next read.
+    await page.waitForTimeout(300); const [held, heldAt] = await clock();
+    assert.ok(paused > 22050 - 4410 && Math.abs(held - paused) < 2205, `the paused clock holds (${paused} -> ${held} over ${(heldAt - pausedAt).toFixed(2)} s)`);
     await press(page, '#sound-toggle', w.touch); await until(page, () => window.tenderloin.sound().enabled, null, 'the toggle plays again');
-    const resumed = (await sound()).frames;
-    assert.ok(paused > 22050 - 4410 && resumed >= paused && resumed - paused < 4410, `play resumes from the paused position (${paused} -> ${resumed})`);
-    return { paused, resumed };
+    const [resumed, resumedAt] = await clock();
+    await said(playingAnnouncement({ mode: 'sketch', summary: (await sound()).summary }), "Music announces Godot's playing line");
+    // Play continues from the held position, not from 0, and gains no more than the time since the last paused read (+0.1 s), however long.
+    assert.ok(resumed >= held && resumed - held < (resumedAt - heldAt) * 22050 + 2205, `play resumes from the paused position (${held} -> ${resumed} over ${(resumedAt - heldAt).toFixed(2)} s)`);
+    return { paused, held, resumed };
   });
   await step(`${w.name} music: a first visit chimes once; a repeat visit and Sounds Off stay quiet`, async () => {
     await walkTo(page, w, 'bea');
@@ -1021,6 +1082,8 @@ async function musicSuite(w) {
     assert.equal((await sound()).rewardCount, 1, 'a repeat visit is silent'); await press(page, '#close-modal', w.touch); await closed(page);
     await press(page, '#settings-button', w.touch); await page.locator('#reward-sounds').waitFor();
     assert.deepEqual(await page.locator('#reward-sounds').evaluate(b => [b.textContent, b.getAttribute('aria-pressed'), b.title]), ['Sounds: On', 'true', 'Gentle reward sounds. Music has separate controls with Rook.']);
+    // Godot's tooltip is also the button's description, in a visually hidden element, so it is not reachable by hover alone.
+    assert.deepEqual(await page.locator('#reward-sounds').evaluate(b => { const d = document.getElementById(b.getAttribute('aria-describedby')); return [d?.textContent, d?.classList.contains('sr-only')]; }), ['Gentle reward sounds. Music has separate controls with Rook.', true]);
     assert.deepEqual(await page.locator('#volume').evaluate(i => [i.min, i.max, i.value]), ['0', '100', '70'], "the volume slider runs to Godot's 100%");
     await press(page, '#reward-sounds', w.touch);
     assert.deepEqual(await page.evaluate(() => [document.querySelector('#reward-sounds').textContent, document.querySelector('#reward-sounds').getAttribute('aria-pressed'), document.querySelector('#modal-status').textContent]), ['Sounds: Off', 'false', 'Reward sounds off. Music has its own controls.']);
@@ -1132,13 +1195,12 @@ async function phase2Suite(w) {
     await page.evaluate(() => { delete window.__tenderloinPressSettleMs; window.__nextPassed = { pointerdown: 0, pointerup: 0, click: 0 }; if (!window.__nextCounting) { window.__nextCounting = true; for (const type of Object.keys(window.__nextPassed)) window.addEventListener(type, () => window.__nextPassed[type]++); } });
     const b = await locator.boundingBox(), x = b.x + b.width / 2, y = b.y + b.height / 2, before = await call(page, 'pressSettle');
     if (w.touch) { await page.touchscreen.tap(x, y); await page.waitForTimeout(80); await page.touchscreen.tap(x, y); } else await page.mouse.dblclick(x, y, { delay: 40 });
-    await page.waitForTimeout(300);
-    const after = await call(page, 'pressSettle'), passed = await page.evaluate(() => window.__nextPassed);
-    if (rapid) { assert.equal(after.swallowed, before.swallowed, `${selector}: a [data-rapid] control is not gated`); assert.deepEqual(passed, { pointerdown: 2, pointerup: 2, click: 2 }, `${selector}: both presses of a rapid control reach the page`); }
+    const want = rapid ? { pointerdown: 2, pointerup: 2, click: 2 } : { pointerdown: 1, pointerup: 1, click: 1 }, [after, passed] = await letThrough(page, before, want, !rapid);
+    if (rapid) { assert.equal(after.swallowed, before.swallowed, `${selector}: a [data-rapid] control is not gated`); assert.deepEqual(passed, want, `${selector}: both presses of a rapid control reach the page`); }
     else {
       assert.equal(after.armed - before.armed, 1, `${selector}: one press armed the guard`);
       assert.ok(after.swallowed > before.swallowed, `${selector}: the second press was swallowed (${before.swallowed} -> ${after.swallowed})`);
-      assert.deepEqual(passed, { pointerdown: 1, pointerup: 1, click: 1 }, `${selector}: only the first press reached the page`);
+      assert.deepEqual(passed, want, `${selector}: only the first press reached the page`);
     }
     await settled(); await page.evaluate(() => { window.__tenderloinPressSettleMs = 0; });
     guarded.push(selector);
@@ -1201,24 +1263,48 @@ async function phase2Suite(w) {
   });
   await step(`${w.name} phase 2: Rook's music panel plays, steps the volume, returns to the sketch and loads a local track`, async () => {
     await walkTo(page, w, 'rook');
+    // Godot's toggle_music_playback and start_music_playback announce through the open dialog's status line.
+    const said = (text, message) => until(page, text => document.querySelector('#modal-status').textContent === text, text, `${message}: "${text}"`);
     await once('#talk-play'); await until(page, () => !window.tenderloin.sound().enabled, null, 'Play/Pause Groove pauses the music once');
+    await said(MUSIC_TEXT.paused, "Pause Groove announces Godot's pause");
     await use('#talk-play'); await until(page, () => window.tenderloin.sound().enabled, null, 'and plays it again');
+    await said(playingAnnouncement({ mode: 'sketch', summary: (await sound()).summary }), "Play Groove announces Godot's playing line with the stems");
     const v0 = (await sound()).volume, v2 = nextVolume(nextVolume(v0));
     await once('#talk-volume', { rapid: true });
     await until(page, v => Math.abs(window.tenderloin.sound().volume - v) < 1e-9, v2, 'Volume is rapid: two presses, two steps');
     assert.equal(await status(), volumeAnnouncement(v2));
     assert.equal(await page.evaluate(key => JSON.parse(localStorage.getItem(key)).volume, SETTINGS_KEY), v2, 'the volume is kept in the fork settings');
     assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('.talk-controls button')].map(b => b.id)), ['talk-play', 'talk-volume', 'soundcheck', 'talk-load', 'talk-sketch', 'talk-next', 'talk-bye'], "Rook's music buttons in Godot's order");
-    await once('#talk-sketch'); assert.equal((await sound()).mode, 'sketch');
+    // Godot use_synth_sketch: on the sketch already, the music plays on (start_music_playback), so nothing audible changes.
+    await once('#talk-sketch'); assert.deepEqual(pick(await sound(), ['mode', 'enabled']), { mode: 'sketch', enabled: true }, 'the sketch button keeps the playing sketch playing');
+    await said(switchedAnnouncement((await sound()).summary), "the sketch button announces Godot's use_synth_sketch line");
+    assert.equal(await page.locator('#talk-play').textContent(), BUTTON_TEXT.pause, 'and the redrawn panel still offers Pause Groove');
     targets.rook = await layoutCheck(page, w, 'p2-talk-rook');
     await once('#talk-load'); await page.locator('#soundtrack-volume').waitFor();
     assert.equal(await page.locator('#soundtrack-volume').getAttribute('max'), '100');
     // Load Local Track under the fork's Content-Security-Policy: the chosen file plays from a blob: URL (media-src blob:).
-    await page.setInputFiles('#soundtrack-file', { name: 'neighbors.wav', mimeType: 'audio/wav', buffer: silentWav() });
-    await until(page, () => window.tenderloin.sound().mode === 'local', null, 'the local track is chosen');
-    await press(page, '#track-play', w.touch); await until(page, () => window.tenderloin.sound().enabled, null, 'the local track plays', 10000);
+    const playLocal = async () => {
+      await page.setInputFiles('#soundtrack-file', { name: 'neighbors.wav', mimeType: 'audio/wav', buffer: silentWav() });
+      await until(page, () => window.tenderloin.sound().mode === 'local', null, 'the local track is chosen');
+      await press(page, '#track-play', w.touch); await until(page, () => window.tenderloin.sound().enabled, null, 'the local track plays', 10000);
+    };
+    const statusLines = () => page.evaluate(() => ['#soundtrack-status', '#modal-status'].map(id => document.querySelector(id).textContent));
+    await playLocal();
     assert.deepEqual(pick(await sound(), ['mode', 'fileName', 'error']), { mode: 'local', fileName: 'neighbors.wav', error: '' });
+    // The panel's status line says Godot's playing line, and the dialog's own status line does not say it again.
+    assert.deepEqual(await statusLines(), [playingAnnouncement({ mode: 'local', localName: 'neighbors.wav' }), ''], "the panel's status line says Godot's local playing line, once");
+    await press(page, '#track-play', w.touch); await until(page, () => !window.tenderloin.sound().enabled, null, 'Pause music pauses the local track');
+    assert.deepEqual(await statusLines(), [MUSIC_TEXT.paused, ''], "a pause says only Godot's line, in the panel's status line");
+    await press(page, '#track-play', w.touch); await until(page, () => window.tenderloin.sound().enabled, null, 'and plays it again', 10000);
     await press(page, '#use-sketch', w.touch); await until(page, () => window.tenderloin.sound().mode === 'sketch', null, 'Return to synth sketch leaves the local track');
+    // With a local track, Play Groove says start_music_playback's local line; then Godot use_synth_sketch: Rook's sketch button
+    // swaps the playing local track for the sketch, which keeps playing.
+    await playLocal(); await press(page, '#close-modal', w.touch); await closed(page); await walkTo(page, w, 'rook');
+    await use('#talk-play'); await said(MUSIC_TEXT.paused, 'Pause Groove pauses the local track');
+    await use('#talk-play'); await said(playingAnnouncement({ mode: 'local', localName: 'neighbors.wav' }), "Play Groove announces Godot's local playing line");
+    await use('#talk-sketch');
+    await until(page, () => { const s = window.tenderloin.sound(); return s.mode === 'sketch' && s.enabled && /^Original 80 BPM sketch/.test(window.tenderloin.conversation().line); }, null, "Rook's sketch button swaps the playing local track for the sketch, still playing");
+    assert.deepEqual([await page.locator('#talk-play').textContent(), await status()], [BUTTON_TEXT.pause, switchedAnnouncement((await sound()).summary)], "Rook's redrawn panel plays on and says Godot's switch");
     await press(page, '#close-modal', w.touch); await closed(page); await stored(page);
     return { volume: v2, local: 'neighbors.wav' };
   });
@@ -1410,7 +1496,7 @@ try {
   await activePage?.screenshot({ path: file('failure.png'), fullPage: true }).catch(() => {});
 } finally {
   const godot = await stat(new URL('artifacts/godot-web/index.pck', root)).catch(() => null);
-  await writeFile(file('next-browser-results.json'), JSON.stringify({ testedAt: new Date().toISOString(), result: failure ? 'fail' : 'pass', failure, browser: await browser?.version(), channel, isolatedServer: !process.env.BASE_URL, widths: WIDTHS.map(w => w.name), suites: SUITES, source: next, classic: CLASSIC, godotBuild: godot && { pckBytes: godot.size, pckModified: godot.mtime }, durationMs: Date.now() - started, evidence, undersized, logs: logs.map(({ label, fork, godot }) => ({ label, fork, godot })), limits: 'Automated ' + channel + ' checks of the Phase 1 slice through real input; not a human playtest, screen reader audit or full keyboard-only completion.' }, null, 2));
+  await writeFile(file('next-browser-results.json'), JSON.stringify({ testedAt: new Date().toISOString(), result: failure ? 'fail' : 'pass', failure, browser: await browser?.version(), channel, isolatedServer: !process.env.BASE_URL, widths: WIDTHS.map(w => w.name), suites: SUITES, source: next, classic: CLASSIC, godotBuild: godot && { pckBytes: godot.size, pckModified: godot.mtime }, durationMs: Date.now() - started, evidence, undersized, logs: logs.map(({ label, fork, godot }) => ({ label, fork, godot })), limits: `Automated ${channel} checks of the ${SUITES.join(', ')} suites at ${WIDTHS.map(w => w.name).join(', ')} px through real input; not a human playtest, screen reader audit or full keyboard-only completion.` }, null, 2));
   await browser?.close(); ownedServer?.kill();
   console.log(failure ? `FAIL ${failure.message}` : `PASS ${evidence.length} steps in ${Math.round((Date.now() - started) / 1000)} s`);
 }
