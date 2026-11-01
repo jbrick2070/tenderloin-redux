@@ -100,9 +100,10 @@ export function resolveStartup({ stored = {}, search = '', languages = [] } = {}
   let params; try { params = new URLSearchParams(typeof search === 'string' ? search.slice(0, 2048) : ''); } catch { params = new URLSearchParams(); }
   const lang = params.get('lang'), preview = params.get('preview') === '1';
   if (typeof lang === 'string' && lang.length <= 16) {
-    const code = lang.toLowerCase() === 'en' ? 'en' : lang;
+    // Case-insensitive, and a region tag names its language (es-US and ES give es); pseudo-locales by their whole code.
+    const lower = lang.toLowerCase(), code = Object.hasOwn(PSEUDO_LOCALES, lower) ? lower : lower.split(/[-_]/)[0];
     if (code === 'en') return { code: 'en', source: 'url', preview: false, offer: null };
-    if (Object.hasOwn(LOCALES, code) || (preview && Object.hasOwn(PSEUDO_LOCALES, code))) return { code, source: 'url', preview, offer: null };
+    if ((Object.hasOwn(LOCALES, code) && !Object.hasOwn(PSEUDO_LOCALES, lower)) || (preview && Object.hasOwn(PSEUDO_LOCALES, code))) return { code, source: 'url', preview, offer: null };
   }
   const settings = readLanguageSettings(stored);
   if (settings.language) return { code: settings.language, source: 'stored', preview: false, offer: null };
@@ -118,6 +119,17 @@ export function resolveStartup({ stored = {}, search = '', languages = [] } = {}
   return { code: 'en', source: 'none', preview: false, offer };
 }
 
+// What a load result does to settings.language: a code to store, null to delete the field, or undefined to leave it.
+// A choice (Settings, the offer) is stored only once its load succeeded, and only when it may be stored (English or a shipped
+// locale). A stored language the manifest no longer lists, or no longer ships, is deleted so it does not fail on every start;
+// a transient failure (network, timeout, a hash or catalog error) keeps it.
+const GONE = new Set(['not-listed', 'not-shipped', 'unknown-locale']);
+export function storedLanguageAfter(result, { source, code, storable = false } = {}) {
+  if (source === 'choice') return result?.ok && storable && STORABLE_SET.has(code) ? code : undefined;
+  if (source === 'stored') return !result?.ok && !result?.stale && GONE.has(result?.reason) ? null : undefined;
+  return undefined;
+}
+
 // ---------------------------------------------------------------------------------------------------------------------------
 // Validation (readCatalog). An invalid envelope rejects the whole catalog; an invalid entry is dropped and that string falls
 // back to English.
@@ -129,6 +141,8 @@ const URLISH = /\b(?:https?:\/\/|www\.)[^\s<>"']+|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\
 // the deprecated format controls. Isolates (U+2066-2069), LRM and RLM stay allowed, and so do ZWSP, ZWNJ and ZWJ.
 const CONTROL = /[\u0000-\u0009\u000B-\u001F\u007F-\u009F\u202A-\u202E\u2028\u2029\uFEFF\uFFF9-\uFFFB\u061C\u206A-\u206F]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
 const ENVELOPE = /^([^\n:"]{1,40}): "([\s\S]*)"$/;
+const MARKUP_CHARS = Object.freeze(['<', '>', '&', '"', "'"]);
+const tagsOf = text => text.match(/<\/?[A-Za-z][^<>]*>/g) ?? [];
 const SELECT_ID = /^[a-z0-9][a-z0-9_-]{0,39}$/;
 const count = (text, needle) => text.split(needle).length - 1;
 const countRe = (text, re) => (text.match(re) ?? []).length;
@@ -166,7 +180,10 @@ export function checkText(source, translation, { names = null, protect = [], opt
   if (CONTROL.test(translation)) return 'control';
   if (count(translation, '\n') !== count(source, '\n')) return 'newlines';
   const placeholders = placeholdersMatch(source, translation, optional); if (placeholders) return placeholders;
-  if (count(translation, '<') > count(source, '<') || count(translation, '>') > count(source, '>')) return 'markup';
+  // Markup: a translation adds none of < > & " ' beyond the English's counts, and keeps the English's tags (names and
+  // attributes, in order). So a localized string can never inject more than its English already does at the same site.
+  for (const ch of MARKUP_CHARS) if (count(translation, ch) > count(source, ch)) return 'markup';
+  if (tagsOf(translation).join('\n') !== tagsOf(source).join('\n')) return 'markup';
   const sourceUrls = new Set((source.match(URLISH) ?? []).map(u => u.toLowerCase()));
   if ((translation.match(URLISH) ?? []).some(u => !sourceUrls.has(u.toLowerCase()))) return 'url';
   const envelope = ENVELOPE.exec(source);
@@ -228,6 +245,8 @@ const knownBy = sourceIndex => {
 // readCatalog(text, code, sourceIndex?, options?): pure. sourceIndex (a Set of msgids, with `ctx\u0004msgid` for context
 // entries, or a function) is the extractor's index; at runtime it is absent and unknown keys are simply never looked up.
 // Returns { catalog, rejected, error }: catalog is null when the envelope is invalid.
+// Catalogs readCatalog made: setLocale accepts no other, so every active string passed the validator.
+const VALIDATED = new WeakSet();
 export function readCatalog(text, code, sourceIndex = null, options = {}) {
   const fail = error => ({ catalog: null, rejected: [], error });
   const meta = metaOf(code);
@@ -271,7 +290,7 @@ export function readCatalog(text, code, sourceIndex = null, options = {}) {
       addresses.set(form, map);
     }
   }
-  const catalog = Object.freeze({
+  const catalog = Object.freeze({ __proto__: null,
     locale: code,
     size: messages.size,
     message: key => messages.get(key),
@@ -280,6 +299,7 @@ export function readCatalog(text, code, sourceIndex = null, options = {}) {
     address: (form, key) => addresses.get(form)?.get(key),
     keys: () => [...messages.keys()],
   });
+  VALIDATED.add(catalog);
   return { catalog, rejected: Object.freeze(rejected), error: null };
 }
 
@@ -412,7 +432,7 @@ const listFormats = new Map();
 
 export function setLocale(code, catalog = null, { preview = false, rejected = [] } = {}) {
   const meta = metaOf(code);
-  if (!meta || code === 'en' || (catalog && catalog.locale !== code)) { active = { code: 'en', meta: LOCALES.en, catalog: null, preview: false, address: active.address }; rejectedNow = Object.freeze([]); }
+  if (!meta || code === 'en' || (catalog && (catalog.locale !== code || !VALIDATED.has(catalog)))) { active = { code: 'en', meta: LOCALES.en, catalog: null, preview: false, address: active.address }; rejectedNow = Object.freeze([]); }
   else { active = { code, meta, catalog: catalog ?? null, preview: !!preview, address: active.address }; rejectedNow = Object.freeze([...rejected]); }
   misses.clear();
   return active.code;
@@ -539,6 +559,12 @@ export function format(template, args, flavor, ctx) {
   return substitute(variant(value, template, args), args, flavor);
 }
 
+// Escaping (for I2 authors): t(), L() and format() return text, for textContent, setAttribute and the canvas, and are
+// byte-identical to the English. Inside an HTML template they may stand where the code already inserts the same English
+// unescaped: a translation can add no < > & " ' or tag beyond its English (checkText), and setLocale accepts only catalogs
+// readCatalog validated. Everywhere else, build HTML with html() or tHTML(), which escape.
+// tHTML(english, ctx): t() escaped for an HTML template or attribute value.
+export const tHTML = (english, ctx) => escapeHTML(t(english, ctx));
 // html(english, ...parts): the localized text, escaped, with %s (or %n$s) filled by parts, which are already-escaped HTML.
 // In a locale, English that falls back is wrapped in <span lang="en" dir="ltr">.
 export const escapeHTML = text => String(text ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -582,15 +608,22 @@ export function applyDocument(doc, { title } = {}) {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------
-// Movement and interaction keys by position (D13). KeyW/A/S/D/E and the arrows map to the identity a US layout types, so the
-// D key walks right whether the layout reports 'd', 'ي' (Arabic 101) or 'ก' (Thai Kedmanee). Any other key keeps its
-// typed identity (event.key lowercased, as before), so Enter, Escape and the arrows on a keypad are unchanged. A key composing
-// in an IME keeps its typed identity.
+// Movement and interaction keys (D13). A typed basic Latin letter keeps its identity, exactly as before I1, so every Latin
+// layout (US, AZERTY, Dvorak, Colemak) is unchanged. Only a key that types no Latin letter at KeyW/A/S/D/E or an arrow maps by
+// position, so the D key walks right whether it reports 'd', 'ي' (Arabic 101) or 'ก' (Thai Kedmanee). Godot ORs the typed
+// and the physical key (main.gd is_key_pressed(KEY_D) or is_physical_key_pressed(KEY_D)); one DOM event carries one identity,
+// and this choice keeps the typed one wherever it is a letter. AltGr, IME input (isComposing, 'Process', keyCode 229) and
+// every other key keep their typed identity (lowercased), so Enter, Escape and the arrows on a keypad are unchanged.
 const KEY_CODES = Object.freeze({ KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd', KeyE: 'e', ArrowUp: 'arrowup', ArrowDown: 'arrowdown', ArrowLeft: 'arrowleft', ArrowRight: 'arrowright' });
 export function inputKey(event) {
-  const code = event?.code;
-  if (!event?.isComposing && typeof code === 'string' && Object.hasOwn(KEY_CODES, code)) return KEY_CODES[code];
-  return typeof event?.key === 'string' ? event.key.toLowerCase() : '';
+  const key = typeof event?.key === 'string' ? event.key : '', typed = key.toLowerCase(), code = event?.code;
+  // A basic Latin letter keeps its typed identity, as before (Dvorak's D is D, Colemak's S is S, AZERTY's Z is Z).
+  if (/^[A-Za-z]$/.test(key)) return typed;
+  // An IME composition, and AltGr (Polish ą, ś, ę) keep their typed identity too.
+  if (event?.isComposing || key === 'Process' || event?.keyCode === 229) return typed;
+  if (event?.getModifierState?.('AltGraph') || (event?.ctrlKey && event?.altKey)) return typed;
+  if (typeof code === 'string' && Object.hasOwn(KEY_CODES, code)) return KEY_CODES[code];
+  return typed;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------

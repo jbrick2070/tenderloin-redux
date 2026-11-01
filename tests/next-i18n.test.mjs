@@ -444,7 +444,7 @@ test('the first-run offer appears only for a shipped locale with nothing chosen,
   assert.equal(I.offerParts('en'), null); assert.equal(I.offerParts('qps-rtl'), null);
   // game.js: the offer only loads the manifest; the locale changes only from the accept button or the Settings select.
   const start = /\nfunction startLocale\(\) \{\n([\s\S]*?)\n\}\n/.exec(GAME)[1];
-  assert.match(start, /if \(startupLocale\.offer\) return loadManifest\(\)\.then\(manifest => \{ shippedCodes = shippedLocales\(manifest\); \}\);/);
+  assert.match(start, /if \(startupLocale\.offer\) loadManifest\(\)\.then\(manifest => \{ shippedCodes = shippedLocales\(manifest\); offerLate\(\); \}\);/, 'the offer only reads the manifest');
   assert.equal(start.split('switchTo(').length - 1, 1, 'startLocale switches only for a URL or stored language');
   assert.deepEqual([...GAME.matchAll(/chooseLanguage\(/g)].length, 3, 'chooseLanguage: its declaration, the accept button and the Settings select');
   assert.match(GAME, /bind\('language-accept', \(\) => \{ done\(\); chooseLanguage\(code\); \}\);/);
@@ -512,14 +512,20 @@ test('applyDocument sets lang, dir, the title and [data-i18n] nodes, and English
 
 // ------------------------------------------------------------------------------------------------- event.code (D13)
 // The probe-keys.mjs cases: the D key as a US, Arabic 101 and Thai Kedmanee layout report it, and the arrow.
-test('inputKey maps KeyW/A/S/D/E and the arrows by position; every other key keeps its typed identity', () => {
+test('inputKey: a typed Latin letter keeps its identity; a non-Latin key at KeyW/A/S/D/E or an arrow maps by position', () => {
   const cases = [
     [{ key: 'd', code: 'KeyD' }, 'd'], [{ key: 'ي', code: 'KeyD' }, 'd'], [{ key: 'ก', code: 'KeyD' }, 'd'], [{ key: 'ArrowRight', code: 'ArrowRight' }, 'arrowright'],
     [{ key: 'ص', code: 'KeyW' }, 'w'], [{ key: 'ش', code: 'KeyA' }, 'a'], [{ key: 'س', code: 'KeyS' }, 's'], [{ key: 'ث', code: 'KeyE' }, 'e'], [{ key: 'ไ', code: 'KeyW' }, 'w'],
     [{ key: 'D', code: 'KeyD', shiftKey: true }, 'd'], [{ key: 'W', code: 'KeyW' }, 'w'],
-    [{ key: 'z', code: 'KeyW' }, 'w'], [{ key: 'q', code: 'KeyA' }, 'a'], [{ key: 'a', code: 'KeyQ' }, 'a'], [{ key: 'w', code: 'KeyZ' }, 'w'], // AZERTY
+    // Latin layouts keep the letters as typed, as before I1: AZERTY, Dvorak, Colemak.
+    [{ key: 'z', code: 'KeyW' }, 'z'], [{ key: 'q', code: 'KeyA' }, 'q'], [{ key: 'a', code: 'KeyQ' }, 'a'], [{ key: 'w', code: 'KeyZ' }, 'w'],
+    [{ key: 'd', code: 'KeyH' }, 'd'], [{ key: 'e', code: 'KeyD' }, 'e'], [{ key: 'o', code: 'KeyS' }, 'o'], [{ key: '.', code: 'KeyE' }, 'e'], // Dvorak
+    [{ key: 's', code: 'KeyD' }, 's'], [{ key: 'r', code: 'KeyS' }, 'r'], [{ key: 'f', code: 'KeyE' }, 'f'], // Colemak
+    // AltGr and IME input keep their typed identity.
+    [{ key: 'ą', code: 'KeyA', ctrlKey: true, altKey: true }, 'ą'], [{ key: 'ś', code: 'KeyS', getModifierState: m => m === 'AltGraph' }, 'ś'], [{ key: 'ę', code: 'KeyE', ctrlKey: true, altKey: true }, 'ę'],
+    [{ key: 'Process', code: 'KeyW' }, 'process'], [{ key: 'ص', code: 'KeyW', keyCode: 229 }, 'ص'], [{ key: 'Process', code: 'KeyW', isComposing: true }, 'process'],
     [{ key: 'Enter', code: 'Enter' }, 'enter'], [{ key: 'Enter', code: 'NumpadEnter' }, 'enter'], [{ key: 'Escape', code: 'Escape' }, 'escape'],
-    [{ key: 'ArrowUp', code: 'Numpad8' }, 'arrowup'], [{ key: 'e', code: '' }, 'e'], [{ key: 'w' }, 'w'], [{ key: 'Process', code: 'KeyW', isComposing: true }, 'process'],
+    [{ key: 'ArrowUp', code: 'Numpad8' }, 'arrowup'], [{ key: 'e', code: '' }, 'e'], [{ key: 'w' }, 'w'],
     [{ key: 'Unidentified', code: 'KeyD' }, 'd'], [{ code: 'KeyD' }, 'd'], [{}, ''], [null, ''],
   ];
   for (const [event, want] of cases) assert.equal(I.inputKey(event), want, JSON.stringify(event));
@@ -575,4 +581,80 @@ test('game.js on a US layout is unchanged: repeats, typing, dialogs, the startup
   assert.equal(card.down({ key: 'ي', code: 'KeyD' }).defaultPrevented, true);
   assert.deepEqual([card.calls, card.state.walkOnClose], [['continue'], 'd'], 'an Arabic D on the startup card starts and walks once it closes');
   card.up({ key: 'd', code: 'KeyD' }); assert.equal(card.state.walkOnClose, null, 'released before the card closed: no walk');
+});
+
+// ------------------------------------------------------------------------------------------------- review fixes
+test('?lang= is case-insensitive and accepts region tags; pseudo-locales still need preview', () => {
+  const S = search => I.resolveStartup({ search });
+  for (const [search, code] of [['?lang=ES', 'es'], ['?lang=es-US', 'es'], ['?lang=es_MX', 'es'], ['?lang=Vi-VN', 'vi'], ['?lang=AR', 'ar'], ['?lang=en-GB', 'en'], ['?lang=qps', 'en'], ['?lang=qps-ploc', 'en'], ['?lang=QPS-RTL&preview=1', 'qps-rtl'], ['?lang=zz-ES', 'en']]) assert.equal(S(search).code, code, search);
+  assert.equal(S('?lang=es-US').source, 'url');
+});
+
+test('a stored language is saved only after a successful load, and dropped only when the manifest no longer ships it', () => {
+  const after = I.storedLanguageAfter;
+  assert.equal(after({ ok: true }, { source: 'choice', code: 'es', storable: true }), 'es');
+  assert.equal(after({ ok: true }, { source: 'choice', code: 'en', storable: true }), 'en');
+  for (const reason of ['fetch', 'timeout', 'not-shipped', 'hash']) assert.equal(after({ ok: false, reason }, { source: 'choice', code: 'es', storable: true }), undefined, `a failed choice is not stored (${reason})`);
+  assert.equal(after({ ok: true }, { source: 'choice', code: 'qps-rtl', storable: true }), undefined, 'a pseudo-locale is never stored');
+  assert.equal(after({ ok: true }, { source: 'choice', code: 'es', storable: false }), undefined, 'a preview locale is not stored');
+  for (const reason of ['not-listed', 'not-shipped', 'unknown-locale']) assert.equal(after({ ok: false, reason }, { source: 'stored', code: 'es' }), null, reason);
+  for (const reason of ['fetch', 'timeout', 'hash', 'manifest', 'json', 'too-large', 'error']) assert.equal(after({ ok: false, reason }, { source: 'stored', code: 'es' }), undefined, `a transient ${reason} keeps it`);
+  assert.equal(after({ ok: false, reason: 'not-shipped', stale: true }, { source: 'stored', code: 'es' }), undefined);
+  assert.equal(after({ ok: true }, { source: 'stored', code: 'es' }), undefined);
+  assert.equal(after({ ok: false, reason: 'not-shipped' }, { source: 'url', code: 'es' }), undefined, 'a URL language is never stored or cleared');
+  // game.js: the choice is saved in the load's then, never before; a stored start applies the same rule.
+  const choose = /\nfunction chooseLanguage\(code\) \{\n([\s\S]*?)\n\}\n/.exec(GAME)[1];
+  assert.ok(choose.indexOf('saveSettings()') > choose.indexOf('.then(result =>'), 'chooseLanguage saves after the load');
+  assert.match(choose, /storedLanguageAfter\(result, \{ source: 'choice', code,/);
+  assert.match(GAME, /storedLanguageAfter\(result, \{ source: startupLocale\.source, code: startupLocale\.code \}\)/);
+  assert.match(GAME, /if \(next === null\) \{ delete settings\.language; saveSettings\(\); \}/);
+});
+
+test('startup awaits only a URL or stored language, capped; the offer manifest never holds the Loading screen', () => {
+  const start = /\nfunction startLocale\(\) \{\n([\s\S]*?)\n\}\n/.exec(GAME)[1];
+  assert.match(start, /if \(startupLocale\.offer\) loadManifest\(\)\.then\(manifest => \{ shippedCodes = shippedLocales\(manifest\); offerLate\(\); \}\);\n {2}return null;/, 'the offer manifest is not returned, so init does not wait for it');
+  assert.match(GAME, /if \(localeReady\) await startupWait\(localeReady\);/);
+  const wait = /\nfunction startupWait\(ready\) \{\n([\s\S]*?)\n\}\n/.exec(GAME)[1];
+  assert.match(wait, /setTimeout\(\(\) => \{ localeSwitcher\.cancel\(\);/, 'on the cap a late catalog is ignored: startup goes on in English');
+  assert.match(wait, /clearTimeout\(timer\)/);
+  const late = /\nfunction offerLate\(\) \{\n([\s\S]*?)\n\}\n/.exec(GAME)[1];
+  assert.match(late, /\[data-chapter-card\] #begin/, 'a late offer joins only an open startup card');
+  assert.match(late, /\[data-language-offer\]/, 'and only once');
+});
+
+test('every place that clears the held keys clears their physical keys too', () => {
+  assert.doesNotMatch(GAME.replace(/const releaseKeys = \(\) => \{ keys\.clear\(\); heldCodes\.clear\(\); \};/, ''), /keys\.clear\(\)/, 'keys are released only through releaseKeys()');
+  for (const site of [/window\.addEventListener\('blur', \(\) => releaseKeys\(\)\);/, /if \(document\.hidden\) \{ releaseKeys\(\);/, /modalReturnTarget = canvas; releaseKeys\(\); modal\.showModal\(\);/, /modal\.addEventListener\('close', \(\) => \{ const kept = \[\.\.\.heldCodes\]\.filter\(\(\[, key\]\) => key === walkOnClose\); releaseKeys\(\);/]) assert.match(GAME, site);
+});
+
+test('markup: a translation keeps the English tags exactly and adds none of < > & " \'', () => {
+  const ok = (source, translation) => assert.equal(I.checkText(source, translation), null, translation);
+  const bad = (source, translation) => assert.equal(I.checkText(source, translation), 'markup', translation);
+  ok('Press <kbd>E</kbd> to talk', 'Pulsa <kbd>E</kbd> para hablar');
+  ok('Tom & Jerry say "hi"', 'Tom & Jerry dicen "hola"');
+  ok("Jeffrey's lost LP", 'El LP perdido de Jeffrey');
+  bad('Press <kbd>E</kbd> to talk', 'Pulsa <b>E</b> para hablar');
+  bad('Read <a href="./notes">notes</a>', 'Lee <a href="https://evil.example">notas</a>');
+  bad('Read <a href="./notes">notes</a>', 'Lee <a href="./notes" onclick="x()">notas</a>');
+  bad('<em>A</em> and <strong>B</strong>', '<strong>B</strong> y <em>A</em>');
+  bad('Plain', 'Plain <img src=x>');
+  bad('Plain text', 'Texto " onmouseover=alert(1) x="');
+  bad('Plain text', "Texto ' plano");
+  bad('Plain text', 'Texto &lt;script&gt;');
+  bad('Fish & chips', 'Pescado & papas & más');
+});
+
+test('setLocale takes only a catalog readCatalog made, so no unvalidated text can become active', () => {
+  const forged = Object.freeze({ locale: 'es', size: 1, message: () => '<img src=x onerror=alert(1)>', context: () => undefined, narrow: () => undefined, address: () => undefined, keys: () => [] });
+  assert.equal(I.setLocale('es', forged), 'en');
+  assert.equal(I.t('Field notes'), 'Field notes');
+  const real = catalogOf('es', { 'Field notes': 'Notas de campo' }).catalog;
+  assert.equal(I.setLocale('es', real), 'es'); english();
+});
+
+test('tHTML escapes t(): in English it equals game.js esc(), in a locale it escapes the translation', () => {
+  english();
+  for (const text of ['Field notes', 'Tom & "Jerry" <3']) assert.equal(I.tHTML(text), I.escapeHTML(text));
+  I.setLocale('es', catalogOf('es', { 'Tom & Jerry': 'Tom & Jerry juntos' }).catalog);
+  try { assert.equal(I.tHTML('Tom & Jerry'), 'Tom &amp; Jerry juntos'); assert.equal(I.tHTML('A <b>'), 'A &lt;b&gt;'); } finally { english(); }
 });

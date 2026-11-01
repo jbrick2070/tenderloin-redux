@@ -31,7 +31,7 @@ import { createWorldVisits } from './visits-world.js';
 import { VISITS_FORK_TEXT } from './visits-kit.js';
 import { createSprites, tourMarkerLift, BEACON_LIFT } from './sprites.js';
 import { EDITION_URL, EDITION_TEXT, swapAction } from './edition.js';
-import { inputKey, readLanguageSettings, resolveStartup, loadCatalog, loadManifest, shippedLocales, setLocale, applyDocument, createSwitcher, diagnostics as i18nDiagnostics, localeMeta, offerParts, offerFor, languageChoices, languageLabel, boot, locale as activeLocale, escapeHTML, STORABLE } from './i18n.js';
+import { inputKey, readLanguageSettings, resolveStartup, loadCatalog, loadManifest, shippedLocales, setLocale, applyDocument, createSwitcher, diagnostics as i18nDiagnostics, localeMeta, offerParts, offerFor, languageChoices, languageLabel, boot, locale as activeLocale, escapeHTML, STORABLE, storedLanguageAfter, LOAD_TIMEOUT_MS } from './i18n.js';
 
 const $ = selector => document.querySelector(selector);
 const modal = $('#modal'), body = $('#modal-body'), canvas = $('#world');
@@ -79,6 +79,7 @@ let world, ways, toastTimeout, activeTool = 'table', activeMotif = 'sun', lastFr
 let walkTarget = null, walkPath = [], walkOwner = null, walkName = '', keys = new Set(), arrivedAt = null, nearAt = null, lastChapter = -1, cardQueued = false;
 // The movement key each physical key (event.code) went down as, so its keyup releases that key even if the layout changed.
 const heldCodes = new Map();
+const releaseKeys = () => { keys.clear(); heldCodes.clear(); };
 let districtStatus = 'idle', districtPromise;
 // startupContinue: the open startup card's continue; walkOnClose: the movement key that dismissed it, walking once it closes.
 let startupContinue = null, walkOnClose = null;
@@ -312,7 +313,7 @@ function show(html) {
   voicesHost.dismiss();
   const focused = modal.open ? document.activeElement?.id : null;
   body.innerHTML = html;
-  if (!modal.open) { modalReturnTarget = canvas; keys.clear(); modal.showModal(); }
+  if (!modal.open) { modalReturnTarget = canvas; releaseKeys(); modal.showModal(); }
   const previous = focused ? document.getElementById(focused) : null;
   if (!previous || !modal.contains(previous)) modal.scrollTop = 0;
   const focusTarget = previous && modal.contains(previous) && !previous.disabled ? previous : body.querySelector('button:not([disabled]):not([hidden]),a[href]:not([hidden]),input:not([disabled]):not([hidden])') || $('#close-modal');
@@ -1015,10 +1016,26 @@ function finale() {
 // Localization (docs/I18N_PLAN.md 2.5, 2.9). A failed load keeps English and says so; applying a locale sets <html lang dir>,
 // the title and [data-i18n] nodes and, on a switch, clears the transient messages. Only the screen that holds the language
 // control ([data-settings]) is drawn again; the startup offer row just goes.
+// Only a URL or stored language is awaited at startup (startupWait caps it); the offer's manifest arrives when it does and
+// joins the startup card only if it is still open. A stored language the manifest no longer ships is dropped.
 function startLocale() {
-  if (startupLocale.code !== 'en') return localeSwitcher.switchTo(startupLocale.code, { preview: startupLocale.preview });
-  if (startupLocale.offer) return loadManifest().then(manifest => { shippedCodes = shippedLocales(manifest); });
+  if (startupLocale.code !== 'en') return localeSwitcher.switchTo(startupLocale.code, { preview: startupLocale.preview }).then(result => {
+    if (result.stale) return;
+    const next = storedLanguageAfter(result, { source: startupLocale.source, code: startupLocale.code });
+    if (next === null) { delete settings.language; saveSettings(); }
+  });
+  if (startupLocale.offer) loadManifest().then(manifest => { shippedCodes = shippedLocales(manifest); offerLate(); });
   return null;
+}
+function startupWait(ready) {
+  let timer;
+  const cap = new Promise(resolve => { timer = setTimeout(() => { localeSwitcher.cancel(); toast(boot('failed', startupLocale.code, localeMeta(startupLocale.code)?.endonym ?? startupLocale.code)); resolve(); }, LOAD_TIMEOUT_MS + 1000); });
+  return Promise.race([ready, cap]).finally(() => clearTimeout(timer));
+}
+function offerLate() {
+  const row = modal.open && !$('[data-language-offer]') ? $('[data-chapter-card] #begin')?.closest('.button-row') : null, html = row ? languageOfferHTML() : '';
+  if (!html) return;
+  row.insertAdjacentHTML('afterend', html); bindLanguageOffer();
 }
 function adoptLocale(result, code) {
   if (result.manifest) shippedCodes = shippedLocales(result.manifest);
@@ -1052,12 +1069,13 @@ function languageRowHTML() {
   const now = activeLocale(), codes = languageChoices(shippedCodes, now); if (!codes.length) return '';
   return `<label class="settings-row" for="language" data-settings><span>${escapeHTML(languageLabel(now))}</span><select id="language">${codes.map(code => { const meta = localeMeta(code); return `<option value="${code}" lang="${meta.html}"${code === now ? ' selected' : ''}>${escapeHTML(meta.endonym)}</option>`; }).join('')}</select></label>`;
 }
-// A shipped locale (or English) is stored; a preview locale from the URL stays this visit's only.
+// A shipped locale (or English) is stored once it has loaded; a preview locale from the URL stays this visit's only.
 function chooseLanguage(code) {
   if (!languageChoices(shippedCodes, activeLocale()).includes(code) && !(code === startupLocale.offer && shippedCodes.includes(code))) return;
-  if (code === 'en' || (STORABLE.includes(code) && shippedCodes.includes(code))) { settings.language = code; saveSettings(); }
   localeSwitcher.switchTo(code, { preview: startupLocale.preview && code === startupLocale.code }).then(result => {
     if (result.stale) return;
+    const stored = storedLanguageAfter(result, { source: 'choice', code, storable: code === 'en' || (STORABLE.includes(code) && shippedCodes.includes(code)) });
+    if (stored !== undefined) { settings.language = stored; saveSettings(); }
     if (modal.open && body.querySelector('[data-settings]')) { showSettings(); $('#language')?.focus({ preventScroll: true }); }
     if (result.ok) { const said = boot('switched', code, localeMeta(code).endonym); if (modal.open) modalStatus(said); else toast(said); }
   });
@@ -1235,7 +1253,7 @@ function renderFrame(ms) {
 function frame(ms) {
   try { renderFrame(ms); }
   catch (error) {
-    keys.clear(); console.error(error);
+    releaseKeys(); console.error(error);
     show('<span class="eyebrow">A PAUSE ON THE BLOCK</span><h2 id="modal-title">The scene needs a reload.</h2><p>Your saved preparations are kept. Reload to return to this afternoon. A current browser with Canvas support is required.</p><div class="button-row"><button id="reload-scene" class="primary-button">Reload the scene</button></div>');
     bind('reload-scene', () => location.reload());
   }
@@ -1246,7 +1264,7 @@ $('#close-modal').addEventListener('click', () => close(returnFocus()));
 modal.addEventListener('cancel', () => { const id = openConversation(); if (id) { const lines = goodbyeLines(id, nextObjective(state, storyWorld())); queueMicrotask(() => { toast(lines.text); routeSay(lines.announcement); }); } });
 bind('voices-button', openVoices);
 // Closing the recovery offer with Escape or × decides nothing: this tab's progress stays, unsaved, and the next action to save asks again.
-modal.addEventListener('close', () => { keys.clear(); if (walkOnClose && !modal.open) keys.add(walkOnClose); walkOnClose = null; if (!modal.open) { const later = recovery && body.querySelector('[data-recovery]'); voicesHost.dismiss(); focusReturn(); modalReturnTarget = canvas; releaseNotice(); if (later) toast('Decide whenever you like. This tab’s progress stays here, unsaved, until you keep it or use the shared save.'); queueChapterCard(); } });
+modal.addEventListener('close', () => { const kept = [...heldCodes].filter(([, key]) => key === walkOnClose); releaseKeys(); if (walkOnClose && !modal.open) { keys.add(walkOnClose); for (const [code, key] of kept) heldCodes.set(code, key); } walkOnClose = null; if (!modal.open) { const later = recovery && body.querySelector('[data-recovery]'); voicesHost.dismiss(); focusReturn(); modalReturnTarget = canvas; releaseNotice(); if (later) toast('Decide whenever you like. This tab’s progress stays here, unsaved, until you keep it or use the shared save.'); queueChapterCard(); } });
 // A held Escape is one Escape: its repeats never close the screen under the one it just left.
 window.addEventListener('keydown', event => { if (event.key === 'Escape' && event.repeat && modal.open) event.preventDefault(); }, { capture: true });
 window.addEventListener('keydown', event => {
@@ -1263,10 +1281,10 @@ window.addEventListener('keydown', event => {
 window.addEventListener('keyup', event => { const key = inputKey(event), down = heldCodes.get(event.code); heldCodes.delete(event.code); keys.delete(key); if (down) keys.delete(down); if (walkOnClose === key || (down && walkOnClose === down)) walkOnClose = null; });
 // Godot reward_audio_unlocked: the first real key, mouse or touch press. Capture, so the press that acts can already chime.
 for (const type of ['keydown', 'mousedown', 'pointerdown', 'pointerup', 'touchend']) window.addEventListener(type, event => rewards.unlock(event), { capture: true, passive: true });
-window.addEventListener('blur', () => keys.clear());
+window.addEventListener('blur', () => releaseKeys());
 window.addEventListener('pagehide', () => { music.stop(); rewards.stop(); if (modal.open && body.querySelector('[data-neighborhood-voices]')) close($('#voices-button')); voicesHost.suspend(); });
 window.addEventListener('pageshow', event => { if (event.persisted) { voicesHost.resume(); syncStored(); } });
-document.addEventListener('visibilitychange', () => { if (document.hidden) { keys.clear(); music.stop(); rewards.stop(); voicesHost.silence(); } else syncStored(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { releaseKeys(); music.stop(); rewards.stop(); voicesHost.silence(); } else syncStored(); });
 window.addEventListener('storage', event => { if (event.key === SAVE_KEY || event.key === null) syncStored(); });
 window.addEventListener('resize', chapterUI);
 $('#journal-button').addEventListener('click', journal); $('#settings-button').addEventListener('click', showSettings);
@@ -1286,7 +1304,7 @@ $('#sound-toggle').addEventListener('click', toggleMusic);
 $('#music-button').addEventListener('click', showMusic);
 async function init() {
   try {
-    // A stored or linked locale (or, for the first-run offer, the manifest) loads beside the street data; it never throws.
+    // A stored or linked locale loads beside the street data, and never throws; the first-run offer's manifest is not awaited.
     const localeReady = startLocale();
     const response = await fetch('./data/streets.osm.json'); if (!response.ok) throw Error(`Street data: HTTP ${response.status}`);
     const data = await response.json(); ways = makeWays(data);
@@ -1297,7 +1315,7 @@ async function init() {
     world = new World(canvas, ways, () => state, { click: (point, object) => object ? object.kind === 'visit' ? interact(object, 'tap') : goTo(object) : moveTo(point), tap: event => settle.tap(event), camera: cameraUI, reducedMotion: settings.reducedMotion, layers: mapLayers });
     cameraUI();
     updateUI();
-    if (localeReady) await localeReady;
+    if (localeReady) await startupWait(localeReady);
     localeBooted = true;
     showChapterCard(true); $('#loading').remove(); requestAnimationFrame(frame);
     // Read-only inspection for diagnostics; no production bypass for quest actions.

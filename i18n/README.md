@@ -27,11 +27,18 @@ This folder holds the localization metadata for the 2D edition (`browser-next/`)
 
 - Keep every placeholder: `%s`, `%d`, `%.1f`, `%%` and `{name}`. Reorder with positional forms (`%2$s`). A select or plural variant may leave out the argument it is chosen by, positionally.
 - Keep newlines, the speech envelope `Name: "…"` (with ASCII quotes), curly quotes, and the protected tokens (Tenderloin Redux, E, WASD, Enter, Esc, Shift, F5, BPM).
-- Do not add markup (`<`, `>`), URLs or domains that the English does not have, or control characters (the bidi isolates U+2066 to U+2069 and LRM/RLM are allowed).
+- Keep the English's tags exactly (`<kbd>E</kbd>` stays `<kbd>E</kbd>`, in the same order, with the same attributes), and add none of `<`, `>`, `&`, `"` or `'` beyond what the English has. Do not add URLs or domains the English does not have, or control characters (the bidi isolates U+2066 to U+2069 and LRM/RLM are allowed).
 - A translation may be at most four times the English plus 120 characters.
 - Plural forms use only the locale's CLDR categories and always include `other` (es: one, many, other; vi and th: other; ar: zero, one, two, few, many, other). A category you leave out falls back to `other`, so Spanish usually needs only `one` and `other` (`many` is for millions).
 
 The validator (`readCatalog` in `browser-next/i18n.js`) drops any entry that breaks these rules, and that string shows in English.
+
+## For code authors (I2): text and HTML
+
+- `t(english, ctx)`, `L(english, ctx)` and `format(template, args, flavor)` return **text**. In English they return exactly what the code produced before, byte for byte. Use them for `textContent`, `setAttribute`, `aria-*` values set from code, `document.title` and the canvas.
+- Inside an HTML template, a `t()`/`L()`/`format()` value may stand **only where the code already inserts the same English unescaped** (a table value in a `show()` template). That is safe because a validated translation adds no markup character or tag beyond its English, and `setLocale` accepts only validated catalogs.
+- Anywhere else in HTML, and for every new site, use `tHTML(english, ctx)` (escaped `t()`) or `html(english, ...parts)` (escaped text with already-escaped HTML parts for `%s`). In English these equal `esc(english)`, so they are safe drop-ins where the code escapes today.
+- Never pass player input, a file name or other non-catalog text through `html()` parts unescaped.
 
 ## Adding a locale (docs/I18N_PLAN.md 2.13)
 
