@@ -791,21 +791,42 @@ test('Rook\'s Play Groove, Pause Groove and Load Local Track, Celeste\'s Compose
   for (const key of ['play', 'pause', 'load', 'compose']) assert.ok(game.includes(`BUTTON_TEXT.${key}`), `game.js draws BUTTON_TEXT.${key}`);
   assert.deepEqual([...chars.matchAll(/gdFormat\('([^']*%s[^']*)'/g)].map(m => m[1]).filter(t => /: "%s"/.test(t)), [], 'no quote template is written inline for gdFormat');
 });
+// WCAG AA contrast with the colors read from style.css: rule(selector) is a top-level rule's declarations, prop(decls, name) one
+// value without !important, color(value) resolves var(--token) or var(--token, #fallback) through :root, and ratio(a, b) is the
+// contrast of two #rrggbb colors.
+const STYLE = readFileSync(new URL('../browser-next/style.css', import.meta.url), 'utf8');
+const rule = selector => { const m = new RegExp(`(?:^|\\n)${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{([^}]*)\\}`).exec(STYLE); assert.ok(m, `style.css has ${selector}`); return m[1]; };
+const prop = (decls, name) => new RegExp(`(?:^|[;{\\s])${name}\\s*:\\s*([^;!]+?)\\s*(?:!important)?\\s*(?:;|$)`).exec(decls)?.[1];
+const color = value => { const v = /^var\((--[\w-]+)(?:,\s*(#[0-9a-f]{6}))?\)$/i.exec(value); return v ? prop(rule(':root'), v[1]) ?? v[2] : value; };
+const lum = hex => { const c = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(v => v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
 // WCAG AA for the conversation's small text: the badge on each neighbor's coat tint (panelBorder) and the header on the dialog's
-// paper, with the colors read from style.css.
+// paper.
 test("contrast: the talk badge on every neighbor's tint and the talk header on the dialog paper are at least 4.5:1", () => {
-  const css = readFileSync(new URL('../browser-next/style.css', import.meta.url), 'utf8');
-  const rule = selector => { const m = new RegExp(`(?:^|\\n)${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{([^}]*)\\}`).exec(css); assert.ok(m, `style.css has ${selector}`); return m[1]; };
-  const prop = (decls, name) => new RegExp(`(?:^|[;{\\s])${name}\\s*:\\s*([^;!]+?)\\s*(?:!important)?\\s*(?:;|$)`).exec(decls)?.[1];
-  const root = rule(':root'), color = value => { const v = /^var\((--[\w-]+)(?:,\s*(#[0-9a-f]{6}))?\)$/i.exec(value); return v ? prop(root, v[1]) ?? v[2] : value; };
-  const lum = hex => { const c = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(v => v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
-  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
   const badge = rule('.talk-badge'), text = color(prop(badge, 'color')), tints = [...C.CHARACTER_PEOPLE.map(p => C.panelBorder(p.id)), /var\(--talk-border, (#[0-9a-f]{6})\)/i.exec(prop(badge, 'background'))[1]];
   assert.match(text, /^#[0-9a-f]{6}$/i, `.talk-badge color ${text}`);
   for (const tint of tints) assert.ok(ratio(text, tint) >= 4.5, `badge ${text} on ${tint}: ${ratio(text, tint).toFixed(2)}:1`);
   const header = color(prop(rule('.talk-header'), 'color')), paper = color(prop(rule('dialog'), 'background'));
   assert.match(paper, /^#[0-9a-f]{6}$/i, `dialog background ${paper}`);
   assert.ok(ratio(header, paper) >= 4.5, `header ${header} on ${paper}: ${ratio(header, paper).toFixed(2)}:1`);
+});
+// WCAG AA for the field guide's 9 px save status and the 3D edition note under it, which index.html gives both classes. game.js
+// only ever changes the status's text, so every save state shares the one color. Every rule that colors either line, at any width
+// (.edition-note only if it sets its own), is checked on the page's paper, which shows through: no rule gives the lines, the field
+// guide, the layout or main a background.
+test('contrast: the save status and the edition note in the field guide are at least 4.5:1 on the page paper', () => {
+  const html = readFileSync(new URL('../browser-next/index.html', import.meta.url), 'utf8'), at = html.indexOf('<aside class="field-guide"');
+  const guide = html.slice(at, html.indexOf('</aside>', at));
+  for (const line of ['<p class="save-status" id="save-status">', '<p class="save-status edition-note" id="edition-note">']) assert.ok(at >= 0 && guide.includes(line), `the field guide has ${line}`);
+  const rules = [...STYLE.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(([, sel, decls]) => ({ sel: sel.trim(), sels: sel.trim().split(/\s*,\s*/), decls }));
+  const on = re => rules.filter(r => r.sels.some(s => re.test(s))), lines = on(/[.#](?:save-status|edition-note)(?![\w-])/);
+  const papers = on(/^body$/).map(r => prop(r.decls, 'background') ?? prop(r.decls, 'background-color')).filter(Boolean).map(color);
+  assert.ok(papers.length && papers.every(p => /^#[0-9a-f]{6}$/i.test(p)), `body background ${papers}`);
+  for (const r of [...lines, ...on(/(?:^|[\s>+~])(?:main|aside|\.game-layout|\.field-guide)$/)]) for (const name of ['background', 'background-color']) assert.equal(prop(r.decls, name), undefined, `${r.sel} paints no ${name} over the paper`);
+  const texts = lines.filter(r => prop(r.decls, 'color')).map(r => [r.sel, color(prop(r.decls, 'color'))]);
+  assert.ok(texts.some(([sel]) => sel === '.save-status'), '.save-status colors both lines');
+  const low = papers.flatMap(paper => texts.filter(([, text]) => !(ratio(text, paper) >= 4.5)).map(([sel, text]) => `${sel} ${text} on ${paper}: ${ratio(text, paper).toFixed(2)}:1`));
+  assert.deepEqual(low, [], 'the save status and the edition note (both .save-status) have small text under 4.5:1');
 });
 
 test('new modules are LF, pure and import nothing from the DOM side', () => {

@@ -466,10 +466,11 @@ h1 {
   width:100%;
   margin-top:auto
 }
+/* The 9 px status and edition note use the talk header's darker muted: WCAG AA (4.5:1) on the paper (tests/next-characters). */
 .save-status {
   font-size:9px;
   line-height:1.4;
-  color:var(--muted);
+  color:#5a685f;
   text-align:center;
   margin:10px 0 0
 }
