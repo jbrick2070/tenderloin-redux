@@ -857,10 +857,12 @@ function drawBanner(v) {
   if (!v.visible) { bannerBox = null; return; }
   bannerEl.style.borderColor = v.border; bannerEl.style.opacity = String(v.opacity);
 }
-// update_celebration_burst, one frame on the frame clock (real seconds, as Godot's delta).
+// update_celebration_burst, one frame on the frame clock (real seconds, as Godot's delta). A frame after a hidden tab's pause
+// spends at most a quarter second, so a waiting banner is still read. A fault resets the banner: it never reaches renderFrame.
 function stepBanner(dt) {
-  if (!banner.pending() && bannerEl.hidden) { bannerBox = null; return; }
-  drawBanner(banner.step(dt, bannerEnv(), bannerReduced()));
+  if (!bannerEl || (!banner.pending() && bannerEl.hidden)) { bannerBox = null; return; }
+  try { drawBanner(banner.step(Math.min(dt, 0.25), bannerEnv(), bannerReduced())); }
+  catch { banner.reset(); bannerBox = null; bannerEl.hidden = true; }
 }
 // The banner's rect on the canvas, for the speech bubble to keep clear of (update_speech_bubble), or null.
 const bannerOnCanvas = () => (bannerBox && !bannerEl.hidden ? { x: bannerBox.x - bannerBox.mapX, y: bannerBox.y - bannerBox.mapY, w: bannerBox.w, h: bannerBox.h } : null);

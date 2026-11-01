@@ -926,3 +926,27 @@ test('confirmSwap asks before the 3D edition replaces an unreadable save: Stay h
   settings.made.confirmSwap(back, { id: 'swap-edition-settings' });
   assert.equal(settings.made.target(), settings.canvas);
 });
+
+// game.js stepBanner, evaluated over stand-ins: a banner fault never reaches renderFrame (whose throw stops the frame loop), and
+// a frame after a hidden tab's pause spends at most a quarter second of the banner's time.
+function stepBannerOver({ throwing = false, el = { hidden: false } } = {}) {
+  const steps = [], banner = { pending: () => true, step: dt => { steps.push(dt); if (throwing) throw new Error('layout'); return {}; }, reset() { banner.resets = (banner.resets || 0) + 1; }, resets: 0 };
+  const run = new Function('banner', 'bannerEl', 'drawBanner', 'bannerEnv', 'bannerReduced', `let bannerBox = { x: 1 }; ${declaration('function stepBanner(')}; return { stepBanner, box: () => bannerBox };`);
+  const api = run(banner, el, () => {}, () => ({}), () => false);
+  return { ...api, steps, banner, el };
+}
+test('the banner step is guarded and clamped: a fault resets the banner, and a long gap spends at most 0.25 s', () => {
+  const ok = stepBannerOver();
+  ok.stepBanner(9);
+  assert.deepEqual(ok.steps, [0.25], 'a frame after a hidden tab spends a quarter second, so a waiting banner is still read');
+  ok.stepBanner(0.016);
+  assert.equal(ok.steps[1], 0.016);
+  const bad = stepBannerOver({ throwing: true });
+  assert.doesNotThrow(() => bad.stepBanner(0.016), 'a banner fault never reaches renderFrame');
+  assert.equal(bad.banner.resets, 1, 'the fault resets the banner, so it is not pending and does not throw again next frame');
+  assert.equal(bad.el.hidden, true);
+  assert.equal(bad.box(), null);
+  const none = stepBannerOver({ el: null });
+  assert.doesNotThrow(() => none.stepBanner(0.016), 'a cached page without the banner element still runs');
+  assert.deepEqual(none.steps, []);
+});
