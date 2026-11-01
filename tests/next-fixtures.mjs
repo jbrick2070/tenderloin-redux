@@ -125,6 +125,8 @@ export function visitsHost(dialog = fakeDialog(), over = {}) {
     },
     saveReason: () => io.saveReason,
     chime(id, reason) { log.push(['chime', id, reason]); },
+    burst(spec) { log.push(['burst', spec]); },
+    rewardPending: () => io.rewardPending === true,
     walk(goal, opts) { log.push(['walk', goal, opts]); return 'walking'; },
     stopWalk() { log.push(['stopWalk']); },
     walking: () => io.walking,

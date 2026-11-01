@@ -22,7 +22,7 @@ Classic stays frozen:
   - `press-settle.js`, the one-gesture guard.
 - Phase 2 adds:
   - `sketch-core.js`, `sketch-worklet.js` and `sketch-player.js`, Godot's music sketch, which `audio.js` plays;
-  - `rewards.js`, the reward chimes;
+  - `rewards.js`, the reward chimes, and `bursts.js`, the reward banner (added after Phase 3, below);
   - `rhythm.js` and `rhythm-ui.js`, the Rhythm Circle;
   - `characters.js` and `bubble.js`, the neighbors' conversations and the speech bubble;
   - `hosted-text.js`, Bea's invitation, Thanh's seats, the loan homecoming and the hosting completion line;
@@ -130,7 +130,7 @@ Godot reads the save once at startup and has no recovery hold: an invalid core f
   - Text is copied verbatim into `ending/text.js`.
   - Once all four parts are hosted, the posted programme also shows Godot's Gather again line.
   - When another tab's or edition's save changes the copies an open ending screen shows, the screen closes and a notice says this visit's ending started fresh (`FORK_TEXT.copiesChanged`).
-- **Drift tests.** `tests/next-music.test.mjs`, `next-characters.test.mjs` and `next-ending.test.mjs` parse the Godot sources at test time and fail when a copied line, constant or cue drifts. `next-press-settle.test.mjs` pins the rapid marks on both sides.
+- **Drift tests.** `tests/next-music.test.mjs`, `next-bursts.test.mjs`, `next-characters.test.mjs` and `next-ending.test.mjs` parse the Godot sources at test time and fail when a copied line, constant or cue drifts. `next-press-settle.test.mjs` pins the rapid marks on both sides.
 
 ## Phase 3: the side stories, surprises and landmarks
 
@@ -232,10 +232,33 @@ Godot's side stories, its ten neighborhood surprises and its landmark tour now p
   - `ending/text.js` `FORK_TEXT.restart` names the neighborhood surprises without "found only in 3D", and `story.js` `FORK_TEXT` keeps only `nearby`.
 - **Future work.** Localization into Spanish, Vietnamese, Arabic and Thai is proposed, not started: `docs/I18N_PLAN.md`.
 
+## The reward banner
+
+Godot's reward banner, the on-screen half of its feel-good burst, is ported in `bursts.js` (pure) and drawn by `game.js` on the map. The 3D half is not (below).
+
+- **What shows it.** Every cue that chimes for a burst title also shows Godot's banner: "* title" and the detail from `trigger_progress_cue`'s burst arms (`main.gd` lines 10993-11105), with Godot's accent lifted by 0.15 for the border. The 20 cues: `neighbor_visit` (accent: the neighbor's coat lifted by 0.28, then by 0.15, unrounded between), `celeste_talk`, `mural_motif`, `mural_complete`, `rook_soundcheck`, `block_opened`, `keepsake_photo`, `loan_returned`, `programme_published` (its future text while a gathering runs), `hosting_segment`, `hosting_complete`, `civic_complete`, `film_shot`, `film_complete`, `history_comptons`, `history_blackhawk`, `museum_portal`, `tour_complete`, `boeddeker_park` and `so_what_egg`. The milestones are Godot's list.
+  - A suppressed cue (a repeat visit, a repeat soundcheck, Celeste's later talks) shows nothing, as `suppress_feel_good_burst` does. The banner does not follow the Sounds setting: Godot's banner is not a sound.
+  - Godot's three direct bursts: an eatery's first order ("Order Up: %s", line 5311) and a new find ("Surprise Found: %s", or "10/10 Surprises: %s" held for 4.5 s, line 5726) come after their cue's chime, from `visits-world.js` `host.burst`; a gathering layout choice ("Gathering Layout: %s", line 7689) comes from `game.js` `act`, again for the same layout as in Godot.
+  - The visit card already shows a find's and a first order's heading and burst line. The banner repeats them on the map once the card closes, as Godot shows the banner beside its Info panel. It is kept because it is the visual reward, it is aria-hidden (so nothing is said twice), and the 10/10 finale's protected 4.5 s is what the landmark tour waits for.
+- **Values.** Every count is the fork's own state after the action (`cueValues`): neighbors met, `characters.js` `activeStemSummary` and `sparkCount`, motifs placed, loans returned, segments hosted, frames captured. The visit-only counts come with the visit's cue: the museum's session eras, Boeddeker Park's 2D tree count (Godot counts its own trees, decision D5) and the tour's stops. A visit value that is missing shows no banner rather than an invented number.
+- **Timing.** One banner at a time. It reads for 3.2 s and fades over the last 0.45 s, with no fade under reduced motion (the setting or `prefers-reduced-motion`); the fade is per frame in `game.js`, not a CSS animation. A new burst replaces it unless `keep_finale` holds: a "10/10" finale with more than 1 s left, or a milestone still waiting, is not replaced by a lesser burst. Its time runs on the frame clock in real seconds, and only while it shows.
+  - Any open dialog is Godot's focused activity: the banner waits behind it with its full time and shows once it closes. In Godot only the full-screen activities do this, while its side panels (block, mural, music) leave the banner up; in 2D every one of those is a modal dialog that covers the map, so the banner waits for all of them.
+  - The overview ("Full block") ends it, as Godot's `in_overview` does. A load of another tab's save and a restart clear it (`resetSession`).
+  - The landmark tour's completion waits while a banner is up or waiting, as `update_landmark_tour_completion` does.
+  - The speech bubble keeps clear of it, as `update_speech_bubble` does (`bubble.js` `stepBubble`'s `reward` rect).
+- **Placement.** Godot's width, min(460, max(180, area - 16)) px, centered 4 px below the top of the play area: the map 8 px in, below its label, camera controls and compass, above the prompt and the bottom bar. It keeps clear of the player (`fit_overlay_around_player`) and of a toast on show. Godot's colors and sizes (`build_reward_banner`): a #ffe48f 15 px title and a #9ef5e5 13 px detail on #14242e at 0.94, at least 4.5:1 over any map color, the detail clamped to two lines.
+- **Deviations.**
+  - It never takes a pointer (`pointer-events: none`): a tap on it reaches the map. Godot's banner swallows a map tap (`is_screen_point_in_ui`).
+  - It is `aria-hidden`, never a live region, and never takes the focus: each step it celebrates is already announced, and Godot does not announce its banner either.
+  - Where no place clears the player (a phone's short map, whose camera keeps the player in the middle), it may cover the player rather than wait for good. With no room at all it waits, its time kept. It also keeps clear of the toast, which Godot has no counterpart for on the map.
+  - Godot's fallback into an expanded Info panel is not ported: 2D has no Info panel.
+  - `BURST_WEB_OVERRIDES` drops the key hints 2D does not bind: the keepsake detail is only "Press Shift+Y ..." and becomes empty, and "(Q)" and "(.)" leave the hosting and listening-circle details. The rest is Godot's text verbatim, its defects included (below).
+
 ## Not ported, known limits and known debt
 
 - **Not ported yet.**
-  - Godot's visual feel-good bursts and reward banner, including the film capture's burst cue and info panel (`main.gd` `film_capture_shot`). Of the side stories' bursts, only a surprise's and an eatery's "Order Up" appear, as text lines on the visit card; the museum, the park, So What and the finished tour have their chime and announcement only.
+  - Godot's 3D world burst: the gems, the ring and the floating "* title *" label at the burst's world position (`trigger_feel_good_burst`, `update_celebration_burst`, `build_celebration_burst`). Its reward banner is ported (The reward banner, above).
+  - The film capture's Info panel lines (`main.gd` `film_capture_shot`); its cue's banner is ported.
   - Godot's day and evening lights (Shift+L). 2D has no evening mode, so the tour's last hint still says "or switch to evening lights" (D9).
   - a street tap on the startup card, and movement keys on a later chapter card;
   - the Rhythm Circle's View Circle camera (`rhythm.js`);
@@ -248,7 +271,7 @@ Godot's side stories, its ten neighborhood surprises and its landmark tour now p
   - The park's tree jitter assumes Godot 4's `String.hash()` is djb2 over code points. No Godot run checked it, so the tests pin the park's bounds, not the points.
   - Keyboard layouts: movement keys and E read the typed character (`event.key`), not the physical key (`event.code`). On a layout without Latin letters, such as Arabic or Thai, only the arrow keys walk and only Enter interacts; on AZERTY the W, A, S and D letters walk but sit apart. Godot also reads the physical keys (`is_physical_key_pressed`), and `docs/I18N_PLAN.md` proposes `event.code` (its D13).
   - Map & source notes still title the map "Turk: Taylor to Hyde." and do not mention the Eddy corridor, Boeddeker Park or Larkin.
-  - Godot source text defects, which the fork copies verbatim and the drift tests keep, for the creator: "Step %d of5: %s. %s" (`godot/shared_meal.gd` line 233, Cook & Share's step cue), "%d taps in eight slots" (`godot/hosted_afternoon.gd` lines 41 and 42, which reads "1 taps" for one beat) and "Surprise Found: Surprise Impromptu Drag Show!" (the drag show's title, `godot/main.gd` line 300, inside the find's heading "Surprise Found: %s", line 5724). After a fix in `godot/`, the drift tests name the fork's copies to update.
+  - Godot source text defects, which the fork copies verbatim and the drift tests keep, for the creator: the reward banner's "Hosted Block Activity — %s" names the raw activity id ("Hosted Block Activity — beats"), "Neighbor Care — Returned %s" capitalizes the loan id ("Returned Paint-case"), and two banner details still say Celeste's "easel" where 2D paints on the mural (`main.gd` `trigger_progress_cue`); "Step %d of5: %s. %s" (`godot/shared_meal.gd` line 233, Cook & Share's step cue), "%d taps in eight slots" (`godot/hosted_afternoon.gd` lines 41 and 42, which reads "1 taps" for one beat) and "Surprise Found: Surprise Impromptu Drag Show!" (the drag show's title, `godot/main.gd` line 300, inside the find's heading "Surprise Found: %s", line 5724). After a fix in `godot/`, the drift tests name the fork's copies to update.
   - `npm run next:browser` is slow: a full run takes about 17 minutes, and its slowest steps are the side stories' long walks, most of them at 1440 px.
 - **Known debt.** Recorded, not yet fixed:
   - Constants and rules live in more than one module, each pinned to Godot: `cleanMuralScenes` (`godot-save.js`, `characters.js`), the mural scene ids and slots, `STEM_ORDER`, 22050, 0.375, the bare 8-step count, two exports named `FORK_TEXT` and three `capitalize` helpers.
@@ -279,6 +302,7 @@ Godot's side stories, its ten neighborhood surprises and its landmark tour now p
   - The hosting dialog never needs a finished view of its own: with no current activity, the ending's hosted view always opens.
   - The rapid marks: every fork mark ports a Godot `set_meta("rapid", true)` Button or is declared, and every Godot one is ported or declared not ported.
   - WCAG contrast of the conversation's badge on every neighbor's tint and of its header on the dialog paper, with the colors read from `style.css`.
+  - The reward banner (`next-bursts.test.mjs`): every burst arm, accent and argument, the milestones, `trigger_feel_good_burst`, `update_celebration_burst`, `layout_reward_banner`, `build_reward_banner` and the three direct bursts parsed from `main.gd`; each cue's text over real fork states; the 3.2 s, the fade, a dialog holding it, the overview ending it and both `keep_finale` rules on an injected clock; its CSS, `aria-hidden` and `pointer-events: none`; its text at least 4.5:1 on its background over white, black and the map. `next-visits-world.test.mjs` checks the visit values, the direct bursts and the tour waiting for the banner.
   - The Content-Security-Policy meta comes first, with no inline script or handler.
   - Line endings: files copied from classic keep classic's line endings (CRLF for `camera.js`, `core.js`, `game.js`, `world.js`, `index.html`, `style.css` and `data/streets.osm.json`); every other fork file is LF; none is mixed.
   - The classic fingerprint is pinned.
@@ -308,6 +332,7 @@ Godot's side stories, its ten neighborhood surprises and its landmark tour now p
   - classic's keys left untouched;
   - no external requests;
   - no Content-Security-Policy violation (a `securitypolicyviolation` listener names any), with Load Local Track playing under the policy;
+  - the reward banner (the `music` suite, at 1440): with Sounds Off, meeting Thanh raises Godot's banner, which waits behind the dialog with its full 3.2 s, then shows Godot's title and detail, aria-hidden, over the map and clear of every map control, and ends;
   - Godot's music announcements in the live regions, from Music, the Load Local Track panel's one status line and Rook's Play/Pause Groove and sketch buttons, with the sketch button keeping the music playing, from the sketch and from a local track;
   - the selected look of a pressed hosted card, scene, screening frame, bench form, room place and layout button, focus back on the Rhythm Circle button the circle was opened from, Play Bar's name starting with its label, and the Sounds tooltip as the button's description;
   - an open ending screen that another tab's new copies close, saying why;

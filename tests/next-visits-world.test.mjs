@@ -804,3 +804,51 @@ test('the file hand-types no Godot text: string literals it shares with Godot ar
   assert.equal((SOURCE.replace(/\/\/.*$/gm, '').match(/type: 'surprise'/g) || []).length, 1);
   assert.match(SOURCE, /host\.act\(\{ type: 'surprise', id \}\)/);
 });
+
+// ---------------------------------------------------------------- the reward banner (bursts.js; main.gd trigger_feel_good_burst)
+// The visit-only cues carry the counts their banner reads, Godot's direct bursts go to host.burst after the cue, and the tour's
+// completion waits while a banner is up or waiting (update_landmark_tour_completion).
+test('banner: a new find and a first order burst after their cue; visit cues carry their values; the tour waits for the banner', () => {
+  const bursts = [], chimes = [];
+  const s = setup({ over: { burst: spec => bursts.push(spec), chime: (...args) => chimes.push(args) } }), id = 'jeffrey_record';
+  s.world.interact(s.object(`surprise:${id}`), 'tap');
+  const r = S.inspect([], id, { sparks: 6 });
+  assert.deepEqual(bursts, [{ title: r.heading, detail: r.burstSub, accent: r.accent, finale: false }]);
+  s.dialog.close();
+  s.world.interact(s.object(`surprise:${id}`), 'tap');
+  assert.equal(bursts.length, 1, 'a find seen before does not burst');
+  // The tenth find: the finale heading, held for 4.5 s by game.js.
+  const nine = ALL.filter(other => other !== 'impromptu_drag_show'), t = setup({ state: exploring(nine), over: { burst: spec => bursts.push(spec) } });
+  t.world.interact(t.object('surprise:impromptu_drag_show'), 'tap');
+  const fin = S.inspect(nine, 'impromptu_drag_show', { sparks: 15 });
+  assert.deepEqual(bursts.at(-1), { title: fin.heading, detail: fin.burstSub, accent: fin.accent, finale: true });
+  // A first order bursts Order Up after its chime; a second order does not.
+  s.dialog.close();
+  s.world.interact(s.object('eatery:0'), 'tap'); s.dialog.close();
+  s.world.interact(s.object('counter:0'), 'tap');
+  const first = L.orderEatery(L.cycleEatery(L.initialTour(), 0).tour, 0, { sparks: 6 });
+  assert.deepEqual(bursts.at(-1), { title: first.burst.heading, detail: first.burst.sub, accent: first.burst.color });
+  assert.deepEqual(chimes.at(-1), ['eatery_order', L.EATERIES[0].id, undefined]);
+  s.dialog.click('card-order');
+  assert.equal(bursts.length, 3);
+  // The museum's era count and the park's trees after the visit.
+  s.dialog.close();
+  s.world.interact(s.object('museum'), 'tap');
+  assert.deepEqual(chimes.at(-1), ['museum_portal', L.inspectMuseum(L.initialTour()).eraTitle, { eras: 1 }]);
+  s.dialog.close();
+  s.world.interact(s.object('park'), 'tap');
+  assert.deepEqual(chimes.at(-1), ['boeddeker_park', T.inspect_boeddeker_park.title, { trees: s.world.parkTrees().length }]);
+  // The tour: held while a banner is pending, then once with its counts.
+  let pending = true;
+  const u = setup({ state: exploring(ALL), over: { rewardPending: () => pending, chime: (...args) => chimes.push(args) } });
+  u.session.world.tour = TOURED(); u.kit.bump();
+  assert.equal(u.world.tick(16), false, 'a banner up or waiting holds the completion');
+  pending = false;
+  assert.equal(u.world.tick(32), true, 'and it fires once the banner is gone');
+  assert.deepEqual(chimes.at(-1), ['tour_complete', gdf(T.update_landmark_tour_completion.cue, [12]), { tourCount: 12, tourTotal: 12 }]);
+  // A throwing rewardPending or burst never stops a visit.
+  const v = setup({ state: exploring(ALL), over: { rewardPending: boom, burst: boom } });
+  v.session.world.tour = TOURED(); v.kit.bump();
+  assert.equal(v.world.tick(16), true);
+  assert.equal(v.world.interact(v.object(`surprise:${id}`), 'tap'), true);
+});

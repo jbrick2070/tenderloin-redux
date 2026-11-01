@@ -94,6 +94,7 @@ function walkGame({ blocked = () => false, length = 2 } = {}) {
   const game = new Function('visits', 'world', 'state', 'modal', 'ways', 'findPath', 'freshTalk', 'cameraUI', 'hint', 'toast', 'interact', [
     "let talks = null, arrivedAt = null, nearAt = null, chapterNotice = '', bubble = null, routeSpeech = null;",
     "let walkTarget = null, walkPath = [], walkOwner = null, walkName = '';",
+    'const banner = { reset() {} };',
     declaration('function resetSession('), declaration('function startWalk('), declaration('function visitWalk('), declaration('function stopWalk('),
     `function frame() {\n  if (!modal.open && walkPath.length) {\n    state.player = walkPath.shift();\n${arrival}\n  }\n  visits.tick(0, null);\n}`,
     "function goTo(goal) { return startWalk(goal, { target: { id: 'bea' }, name: 'Bea' }); }",
@@ -346,7 +347,9 @@ test("game.js gives createVisits every host member of spec 3.2 that the visits p
   assert.ok(used.size > 20, `the packages read the host (${used.size} members)`);
   for (const name of used) assert.ok(keys.includes(name), `game.js's host gives ${name}`);
   assert.match(block, /music: \{ label: [^}]+, on: [^}]+, toggle: toggleMusic \}/, 'music: label(), on() and toggle(), which resolves to Godot\'s music line');
-  assert.match(block, /chime: \(id, reason\) => \{ try \{ rewards\.play\(rewardFor\(\[visitCue\(id, reason\)\], \{ enabled: settings\.rewardSounds, unlocked: rewards\.unlocked \}\)\); \} catch/, 'a chime is the visit cue under the Sounds setting, and can never throw');
+  assert.match(block, /chime: \(id, reason, values\) => \{\n    try \{ rewards\.play\(rewardFor\(\[visitCue\(id, reason\)\], \{ enabled: settings\.rewardSounds, unlocked: rewards\.unlocked \}\)\); \} catch/, 'a chime is the visit cue under the Sounds setting, and can never throw');
+  assert.match(block, /\n    try \{ burst\(cueBurst\(visitCue\(id, reason\), \{ \.\.\.cueValues\(state\), \.\.\.values \}\)\); \} catch/, "and its banner, with the visit's values, never throws either");
+  assert.match(block, /burst: spec => \{ try \{ burst\(directBurst\(spec\), spec\?\.finale \? BANNER\.finale : 0\); \} catch/, "a side story's direct burst; the 10/10 finale holds 4.5 s");
   assert.match(block, /walk: \(goal, options\) => visitWalk\(goal, options\)/);
   assert.match(block, /restoreStartupCard: text => showChapterCard\(true, \{ announce: text \}\)/);
   assert.match(GAME, /const visits = createVisits\(visitsHost, \{ createEpisodeScreens, createWorldVisits \}\);/);

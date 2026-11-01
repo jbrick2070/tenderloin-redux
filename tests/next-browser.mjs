@@ -17,6 +17,7 @@ import { NEIGHBOR_LINES, NEIGHBOR_BADGES, SURPRISE_MEMORY, MURAL_REPLY, BUTTON_T
 import { nextVolume, volumeAnnouncement, playingAnnouncement, switchedAnnouncement, MUSIC_TEXT } from '../browser-next/sketch-core.js';
 import { GODOT, FORK_TEXT } from '../browser-next/ending/text.js';
 import { soundsLabel, soundsAnnouncement } from '../browser-next/rewards.js';
+import { cueBurst, cueValues } from '../browser-next/bursts.js';
 import { LOAN_REPLIES, loanReply, loanReturnAnnouncement } from '../browser-next/hosted-text.js';
 import { LOAN_TITLES } from '../browser-next/story.js';
 import { VISITS_FORK_TEXT, freshSession } from '../browser-next/visits-kit.js';
@@ -1357,6 +1358,30 @@ async function musicSuite(w) {
     assert.equal((await sound()).rewardCount, 1, 'with Sounds Off a first visit is silent');
     await press(page, '#close-modal', w.touch); await closed(page);
     return { count: 1 };
+  });
+  // Godot's reward banner (bursts.js): with Sounds Off still on, a first visit's banner waits behind the dialog with its full
+  // 3.2 s, shows Godot's title and detail once the dialog closes, covers no map control, takes no pointer, and ends.
+  await step(`${w.name} banner: a first visit's reward banner waits behind its dialog, then shows Godot's text and ends`, async () => {
+    await walkTo(page, w, 'thanh');
+    const snap = await call(page, 'snapshot'), want = cueBurst({ id: 'neighbor_visit', reason: 'Thanh', suppressed: false }, cueValues(snap));
+    assert.equal(want.title, 'New Neighbor Connected — Thanh');
+    await until(page, () => window.tenderloin.banner().pending, null, "meeting Thanh raises Godot's banner");
+    assert.deepEqual(pick(await call(page, 'banner'), ['title', 'detail', 'shown', 'timer']), { title: `* ${want.title}`, detail: want.detail, shown: false, timer: 3.2 }, 'it waits behind the dialog, its time kept');
+    await press(page, '#close-modal', w.touch); await closed(page);
+    await until(page, () => window.tenderloin.banner().shown, null, 'the banner shows once the dialog closes');
+    const shownAt = Date.now();
+    const seen = await page.evaluate(() => {
+      const el = document.querySelector('#reward-banner'), r = el.getBoundingClientRect(), box = e => e.getBoundingClientRect();
+      const controls = [...document.querySelectorAll('.world-panel button, .world-panel a, .map-compass')].filter(e => e.getClientRects().length && !el.contains(e));
+      const under = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return { title: document.querySelector('#reward-title').textContent, body: document.querySelector('#reward-body').textContent, hidden: el.getAttribute('aria-hidden'), pointer: getComputedStyle(el).pointerEvents,
+        covered: controls.filter(c => { const b = box(c); return b.left < r.right && b.right > r.left && b.top < r.bottom && b.bottom > r.top; }).map(c => c.id || c.className), under: under?.id ?? '' };
+    });
+    assert.deepEqual(seen, { title: `* ${want.title}`, body: want.detail, hidden: 'true', pointer: 'none', covered: [], under: 'world' }, 'Godot text, aria-hidden, over the map and clear of every map control');
+    await until(page, () => !window.tenderloin.banner().shown && document.querySelector('#reward-banner').hidden, null, 'the banner ends', 8000);
+    const lasted = (Date.now() - shownAt) / 1000;
+    assert.ok(lasted > 2.8, `it read for about 3.2 s (${lasted} s)`);
+    return { lasted };
   });
   await step(`${w.name} music: a stored volume and Sounds choice are kept on reload`, async () => {
     await page.evaluate(key => localStorage.setItem(key, JSON.stringify({ ...JSON.parse(localStorage.getItem(key)), volume: 0.5 })), SETTINGS_KEY);

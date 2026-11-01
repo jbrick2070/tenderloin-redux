@@ -8,7 +8,8 @@
 //   show(html), close(target), returnTo(id),   game.js show/close; returnTo sets the dialog's return target (after show)
 //   status(text), announce(text), toast(text), settle,   #modal-status, game.js announce/toast, the press-settle handle
 //   getState(), act(action), saveReason(),     the fork state, reducer dispatch, '' or why the last write was not saved
-//   chime(id, reason), walk(goal, opts), stopWalk(), walking(), player(), lookAt(point), speak(id, text, name),
+//   chime(id, reason, values), walk(goal, opts), stopWalk(), walking(), player(), lookAt(point), speak(id, text, name),
+//   burst({ title, detail, accent, finale }), rewardPending()   Godot's direct burst on the reward banner; a banner up or waiting
 //   music: { label(), on(), toggle() },        toggle() resolves to Godot's music line
 //   reducedMotion(), sparks(), objective(), openNeighborId(), cards(), dialogOpen(), hostingInProgress(),
 //   restoreStartupCard(text), load(name)       load resolves the parsed same-origin ./data/<name>

@@ -8,12 +8,13 @@ import { districtGeometry } from './district.js';
 import { Soundtrack } from './soundtrack.js';
 import { stemMask, stemSummary, cleanVolume, nextVolume, volumeAnnouncement, playingAnnouncement, switchedAnnouncement, MUSIC_TEXT, MAX_VOLUME } from './sketch-core.js';
 import { RewardPlayer, progressCues, rewardFor, visitCue, soundsLabel, soundsAnnouncement, cleanRewardSounds, SOUNDS_TEXT } from './rewards.js';
+import { createBanner, cueBurst, cueValues, layoutBurst, directBurst, bannerRect, BANNER } from './bursts.js';
 import { PHOTO_RESPONSES, postcardSVG } from './keepsake.js';
 import { gatheringScene, gatheringPlanSVG } from './gathering.js';
 import { SEGMENTS, segment, programmeIssue, programmeTitle, programmeSVG, programmeResponse } from './programme.js';
 import { currentActivity, tilePanelSVG, STORY_CHOICES, QUIET_CHOICES } from './hosting.js';
 import { freshTalk, arriveTalk, chatTalk, confirmLoan, conversationView, arrivalCaption, talkAnnouncement, goodbyeLines, whatsNext, whatsNextAnnouncement, rookMusicDetail, narrowLabel, sparkCount, ACTION_LABELS, BUTTON_TEXT, HUB_LABELS, gdFormat } from './characters.js';
-import { showBubble, stepBubble, spokenText, speechNotice, BUBBLE, BUBBLE_TEXT, FORK_BUBBLE } from './bubble.js';
+import { showBubble, stepBubble, spokenText, speechNotice, fitAround, BUBBLE, BUBBLE_TEXT, FORK_BUBBLE } from './bubble.js';
 import { HOSTING_FORK_TEXT, invitationHubText, invitationSVG, quietHubText, loanReply, loanRefusal, loanReturnAnnouncement, LOAN_COMPLETION_NOTICE, hostedCompletion } from './hosted-text.js';
 import { ExperimentHost } from './experimental-host.js';
 import { VERSION, EDITION } from './version.js';
@@ -37,6 +38,11 @@ let modalReturnTarget = canvas;
 const music = new Soundtrack({ onChange: soundUI });
 // Godot's RewardAudioPlayer: one chime at a time on the sketch's shared context, at a fixed gain, with music on or off.
 const rewards = new RewardPlayer(() => music.sketch.ensureContext());
+// Godot's reward banner (bursts.js), one at a time on the map. It is aria-hidden, since every step it celebrates is already
+// announced, and it never takes a pointer or the focus. Any open dialog is a focused activity: the banner waits behind it.
+// bannerBox: where it was last placed, in the map panel's px; bannerMeasure: its height for one width and text.
+const banner = createBanner(), bannerEl = $('#reward-banner');
+let bannerBox = null, bannerMeasure = { key: '', h: 0 };
 // envelope is the write base: the Godot save as last loaded or written. An unreadable save is held: no writes until Start over.
 // recovery: the write base this tab had when a stored save lost some of its progress (envelope), with the mural scenes it had
 // last read (scenes). Until the player keeps it or declines,
@@ -87,7 +93,11 @@ const rhythm = createRhythm({ doc: document, win: window, modal, getState: () =>
 const visitsHost = {
   doc: document, win: window, modal, settle, show, close: target => close(typeof target === 'string' ? document.getElementById(target) || canvas : target),
   returnTo: id => { modalReturnTarget = document.getElementById(id) || canvas; }, status: modalStatus, announce, toast, getState: () => state, act, saveReason,
-  chime: (id, reason) => { try { rewards.play(rewardFor([visitCue(id, reason)], { enabled: settings.rewardSounds, unlocked: rewards.unlocked })); } catch { /* a chime never holds up a visit */ } },
+  chime: (id, reason, values) => {
+    try { rewards.play(rewardFor([visitCue(id, reason)], { enabled: settings.rewardSounds, unlocked: rewards.unlocked })); } catch { /* a chime never holds up a visit */ }
+    try { burst(cueBurst(visitCue(id, reason), { ...cueValues(state), ...values })); } catch { /* nor does its banner */ }
+  },
+  burst: spec => { try { burst(directBurst(spec), spec?.finale ? BANNER.finale : 0); } catch { /* a banner never holds up a visit */ } }, rewardPending: () => banner.pending(),
   walk: (goal, options) => visitWalk(goal, options), stopWalk: () => stopWalk(), walking: () => walkPath.length > 0, player: () => ({ ...state.player }),
   lookAt: point => { if (!world) return; world.camera.lookAt(point); cameraUI(); }, speak: (id, text, name) => speak(id, text, name),
   music: { label: () => music.enabled || music.starting ? STUDIO.musicOn : STUDIO.musicOff, on: () => music.enabled || music.starting, toggle: toggleMusic },
@@ -117,7 +127,7 @@ let talks = freshTalk(), bubble = null, routeSpeech = null;
 // edition, or Use the shared save), as Godot's load does. An action rebased onto a newer save keeps it. A walk a side story owns
 // stops first (its trip is part of the visit; stopWalk cancels it silently), so no story walk goes on to a screen that is gone.
 // Returns the side stories' sync: closed when one of their screens held the dialog.
-function resetSession() { talks = freshTalk(); arrivedAt = nearAt = null; chapterNotice = ''; bubble = null; routeSpeech = null; if (walkOwner === 'visit') stopWalk(); return visits.sync({ adopted: true }); }
+function resetSession() { banner.reset(); talks = freshTalk(); arrivedAt = nearAt = null; chapterNotice = ''; bubble = null; routeSpeech = null; if (walkOwner === 'visit') stopWalk(); return visits.sync({ adopted: true }); }
 let voicesModulePromise, voicesImportAttempt = 0;
 const voicesHost = new ExperimentHost({
   load: async scope => {
@@ -273,8 +283,16 @@ function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringif
 // changed nothing, or no longer applied to a save another tab or edition wrote first.
 function act(action) {
   const before = state, next = applyAction(state, action);
-  // Godot trigger_progress_cue: this action's chime, under the Sounds setting and the first-press unlock. Loads never chime.
-  rewards.play(rewardFor(progressCues(before, next, action), { enabled: settings.rewardSounds, unlocked: rewards.unlocked }));
+  // Godot trigger_progress_cue: this action's chime, under the Sounds setting and the first-press unlock, and its banner, which
+  // reads the state after the action. Loads never chime or burst.
+  const cues = progressCues(before, next, action);
+  rewards.play(rewardFor(cues, { enabled: settings.rewardSounds, unlocked: rewards.unlocked }));
+  try {
+    const values = cueValues(next);
+    for (const c of cues) burst(cueBurst(c, values));
+    // choose_gathering_layout's own burst, for a choice the reducer took (Godot bursts again for the same layout).
+    if (action.type === 'layout' && next !== before) burst(layoutBurst(action.value, values.sparks));
+  } catch { /* a banner never holds up an action */ }
   if (next === state) return false;
   state = next; updateUI();
   return savedFields(next) === savedFields(before) || persist(action);
@@ -794,6 +812,58 @@ function talk(id, how = 'tap') {
   const extras = talkExtras(), m = musicView();
   conversation(id, { announce: talking ? talkAnnouncement(state, extras, talks, id, m) : arrivalCaption(state, extras, talks, id, m) });
 }
+// trigger_feel_good_burst's banner half, laid out at once as Godot does; hold is the 10/10 finale's 4.5 s.
+function burst(spec, hold = 0) {
+  if (!spec) return;
+  banner.trigger(spec);
+  if (hold) banner.hold(hold);
+  drawBanner(banner.layout(bannerEnv()) ? banner.view() : { visible: false });
+}
+const bannerReduced = () => settings.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
+// layout_reward_banner's inputs: a focused activity (any open dialog), the overview, and room for the banner.
+function bannerEnv() {
+  const focused = modal.open, overview = !!world?.camera.overviewMode;
+  return { focused, overview, fits: !focused && !overview && banner.pending() && placeBanner() };
+}
+const inPanel = (el, o) => { const r = el.getBoundingClientRect(); return { x: r.left - o.left, y: r.top - o.top, w: r.width, h: r.height }; };
+const drawn = el => !!el && !el.hidden && el.getClientRects().length > 0;
+// play_area_rect and fit_overlay_around_player in the map panel's px: the map 8 px in, below its top controls (the label, the
+// camera controls, the compass) and above the prompt and the bottom bar. The banner keeps clear of the player, as in Godot, and
+// of a toast on show (2D's notices sit on the map). Where no place clears the player (a phone's short map, whose camera keeps the
+// player in the middle), it may cover the player rather than wait for good. No room at all: it waits, its reading time kept.
+function placeBanner() {
+  if (!world) return false;
+  const v = banner.view(), panel = bannerEl.parentElement, p = panel.getBoundingClientRect(), o = { left: p.left + panel.clientLeft, top: p.top + panel.clientTop };
+  const map = inPanel(canvas, o), edge = rect => rect.y + rect.h;
+  const top = Math.max(map.y, ...['.map-topline', '.camera-controls', '.map-compass'].map(s => $(s)).filter(drawn).map(el => edge(inPanel(el, o)))) + 8;
+  const bottom = Math.min(map.y + map.h, ...['#world-prompt', '.map-bottom'].map(s => $(s)).filter(drawn).map(el => inPanel(el, o).y)) - 8;
+  const area = { x: map.x + 8, y: top, w: Math.max(map.w - 16, 1), h: Math.max(bottom - top, 1) }, w = bannerRect(area, 0).w, key = `${w}|${v.title}|${v.detail}`;
+  if (bannerMeasure.key !== key) {
+    bannerEl.style.width = `${w}px`; $('#reward-title').textContent = v.title; $('#reward-body').textContent = v.detail;
+    const was = bannerEl.hidden; bannerEl.style.visibility = 'hidden'; bannerEl.hidden = false;
+    bannerMeasure = { key, h: bannerEl.offsetHeight };
+    bannerEl.hidden = was; bannerEl.style.visibility = '';
+  }
+  const s = world.scale, k = Math.max(1, s), off = world.offset, pl = state.player, toastEl = $('#toast');
+  const player = { x: map.x + off.x + pl.x * s - 12 * k, y: map.y + off.y + pl.y * s - 34 * k, w: 24 * k, h: 40 * k };
+  const wanted = bannerRect(area, bannerMeasure.h), toastBox = toastEl.classList.contains('show') ? inPanel(toastEl, o) : null;
+  const fitted = fitAround(wanted, area, player, toastBox) ?? fitAround(wanted, area, null, toastBox);
+  bannerBox = fitted && { ...fitted, mapX: map.x, mapY: map.y };
+  if (fitted) { bannerEl.style.left = `${fitted.x}px`; bannerEl.style.top = `${fitted.y}px`; }
+  return !!fitted;
+}
+function drawBanner(v) {
+  if (bannerEl.hidden !== !v.visible) bannerEl.hidden = !v.visible;
+  if (!v.visible) { bannerBox = null; return; }
+  bannerEl.style.borderColor = v.border; bannerEl.style.opacity = String(v.opacity);
+}
+// update_celebration_burst, one frame on the frame clock (real seconds, as Godot's delta).
+function stepBanner(dt) {
+  if (!banner.pending() && bannerEl.hidden) { bannerBox = null; return; }
+  drawBanner(banner.step(dt, bannerEnv(), bannerReduced()));
+}
+// The banner's rect on the canvas, for the speech bubble to keep clear of (update_speech_bubble), or null.
+const bannerOnCanvas = () => (bannerBox && !bannerEl.hidden ? { x: bannerBox.x - bannerBox.mapX, y: bannerBox.y - bannerBox.mapY, w: bannerBox.w, h: bannerBox.h } : null);
 // The speech bubble, one frame on the frame clock (bubble.js stepBubble), drawn by world.js in screen px.
 const measureContext = document.createElement('canvas').getContext('2d');
 function measureText(text) { measureContext.font = `${BUBBLE.font}px "Segoe UI", sans-serif`; return measureContext.measureText(text).width; }
@@ -807,7 +877,7 @@ function stepSpeech(dt) {
   const anchor = chip ? { x: o.x + chip.x * s, y: o.y + (chip.y - 19 * size) * s - 4 } : { x: o.x + n.x * s, y: o.y + n.y * s - FORK_BUBBLE.anchorLiftPx };
   const out = stepBubble(bubble, {
     dt, viewport: { w: innerWidth, h: innerHeight }, playArea: { x: 0, y: 0, w: world.width, h: world.height }, anchor,
-    player: { x: o.x + p.x * s - 12 * k, y: o.y + p.y * s - 34 * k, w: 24 * k, h: 40 * k }, reward: null,
+    player: { x: o.x + p.x * s - 12 * k, y: o.y + p.y * s - 34 * k, w: 24 * k, h: 40 * k }, reward: bannerOnCanvas(),
     overview: world.camera.overviewMode, targetDist: Math.hypot(world.camera.center.x - n.x, world.camera.center.y - n.y), pxPerMetre: PIXELS_PER_METRE,
     activityText: modal.open ? body.textContent : '', reducedMotion: settings.reducedMotion, measure: measureText,
   });
@@ -1067,7 +1137,7 @@ function storyResumeUI() {
   if (control.hidden !== !entry.visible) { control.hidden = !entry.visible; if (control.hidden && document.activeElement === control) canvas.focus({ preventScroll: true }); }
 }
 function renderFrame(ms) {
-  const delta = Math.min((ms - lastFrame) / 1000 || 0, .045); lastFrame = ms;
+  const elapsed = Math.max(0, (ms - lastFrame) / 1000 || 0), delta = Math.min((ms - lastFrame) / 1000 || 0, .045); lastFrame = ms;
   let moving = false;
   if (!modal.open) {
     let dx = 0, dy = 0;
@@ -1090,7 +1160,8 @@ function renderFrame(ms) {
       if (!walkPath.length) { hint(); if (walkOwner === 'visit') { walkOwner = null; visits.walkEnded(); } else if (walkTarget) { const target = walkTarget; walkTarget = null; interact(target, 'walk'); } }
     }
   }
-  // The side stories each frame: the lantern march while it travels, then the landmark tour's completion.
+  // The reward banner, then the side stories each frame: the lantern march while it travels, then the landmark tour's completion.
+  stepBanner(elapsed);
   visits.tick(ms, world);
   stepSpeech(delta); world.motion = moving; world.draw(ms / 1000, settings.reducedMotion);
   if (ms - lastHint > 150) { if (arrivedAt && distanceTo(arrivedAt) > 40) arrivedAt = null; hint(); chapterUI(); lastHint = ms; }
@@ -1164,7 +1235,9 @@ async function init() {
       save: () => ({ status: saveInfo.status, reason: saveInfo.reason, bytes: saveInfo.bytes, seq: saveSeq() }), pressSettle: () => settle.snapshot(),
       // The open conversation and the speech bubble on the frame clock (visible: drawn this frame).
       conversation: () => ({ partner: openConversation(), talks: { ...talks }, header: openConversation() ? $('#talk-header')?.textContent ?? '' : '', line: openConversation() ? $('#talk-line')?.textContent ?? '' : '' }),
-      bubble: () => bubble ? { id: bubble.id, text: bubble.text, visible: !!world.bubble, timer: bubble.timer, deferred: bubble.deferred, matched: bubble.matched } : null });
+      bubble: () => bubble ? { id: bubble.id, text: bubble.text, visible: !!world.bubble, timer: bubble.timer, deferred: bubble.deferred, matched: bubble.matched } : null,
+      // The reward banner (bursts.js): its state, and whether the page shows it.
+      banner: () => ({ ...banner.view(), pending: banner.pending(), shown: !bannerEl.hidden }) });
   } catch (error) {
     let loading = $('#loading'); if (!loading) { loading = document.createElement('div'); loading.id = 'loading'; loading.className = 'loading'; $('.world-panel').append(loading); }
     loading.innerHTML = '<div class="error-box"><strong>This corner could not load.</strong><p>Run the local server with <code>npm run dev</code>, then open its printed address. If the server is running, try again.</p><button class="secondary-button" id="retry-load">Try again</button></div>';

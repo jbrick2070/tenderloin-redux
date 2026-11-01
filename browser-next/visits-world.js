@@ -157,11 +157,15 @@ export function createWorldVisits(kit) {
   // Each inspect after its change: the camera, the card, then the bubble and the chime in Godot's order, each host call wrapped. The
   // card comes before the bubble: a map tap opens it from the street, and game.js speak() says a line in the page's live region
   // only while no dialog shows it, so the speaker's words are said once, in the card's status line.
-  function present({ look, speech, chime }, card) {
+  // chime: [cue id, reason, values], values the visit's counts its banner reads (bursts.js cueBurst). burst: Godot's direct
+  // trigger_feel_good_burst after the cue (a find's heading, an eatery's Order Up); finale: true for the 10/10 find, whose
+  // banner Godot holds for 4.5 s.
+  function present({ look, speech, chime, burst }, card) {
     if (look) safely(() => host.lookAt(xy(look)));
     const drawn = drawCard({ burst: '', quotes: [], receipt: '', ...card });
     if (speech) safely(() => host.speak(speech.id, speech.text, speech.name));
-    if (chime) safely(() => host.chime(chime[0], chime[1]));
+    if (chime) safely(() => host.chime(chime[0], chime[1], chime[2]));
+    if (burst) safely(() => host.burst?.(burst));
     return drawn;
   }
   // Back and Escape: no toast, the status line already said Godot's announcement.
@@ -180,7 +184,8 @@ export function createWorldVisits(kit) {
     const after = found(), w = session.world, reason = safely(() => host.saveReason(), '');
     const r = inspect(before.includes(id) ? after : after.filter(other => other !== id), id, { openNeighborId: safely(() => host.openNeighborId(), null), sparks: sparksNow(), guideIdx: w.guideIdx, lastHinted: w.lastHinted });
     w.guideIdx = r.guideIdx; w.lastHinted = r.lastHinted; kit.bump();
-    return present({ look: r.site, speech: { id: `surprise:${id}`, text: r.speech, name: r.speaker } }, {
+    const burst = r.newly ? { title: r.heading, detail: r.burstSub, accent: r.accent, finale: r.allFound } : null;
+    return present({ look: r.site, speech: { id: `surprise:${id}`, text: r.speech, name: r.speaker }, burst }, {
       kind: 'surprise', id, eyebrow: SURPRISES[id].badge ?? T.inspect_neighborhood_surprise.badge, heading: r.heading ?? r.title,
       burst: r.newly ? r.burstSub : '', info: r.info, quotes: r.memory ? [r.memory] : [], memory: r.memory,
       receipt: typeof reason === 'string' && reason ? sceneReceipt(reason) : '', announce: r.announce, returnTo,
@@ -198,13 +203,13 @@ export function createWorldVisits(kit) {
   function museum(returnTo, stop) {
     const r = stop ?? inspectMuseum(session.world.tour);
     setTour(r.tour);
-    return present({ look: MUSEUM, speech: { id: 'museum_docent', text: r.docent, name: MUSEUM_LABEL }, chime: r.newStop && ['museum_portal', r.eraTitle] },
+    return present({ look: MUSEUM, speech: { id: 'museum_docent', text: r.docent, name: MUSEUM_LABEL }, chime: r.newStop && ['museum_portal', r.eraTitle, { eras: list(r.tour.eras).length }] },
       { kind: 'museum', eyebrow: MUSEUM_LABEL, heading: r.eraTitle, info: r.info, quotes: [r.docent], announce: r.announce, returnTo });
   }
   function park(returnTo, stop) {
     const r = stop ?? inspectPark(session.world.tour, boeddekerTrees().length);
     setTour(r.tour);
-    return present({ look: PARK_VIEW, chime: r.newStop && ['boeddeker_park', r.title] }, { kind: 'park', eyebrow: PARK_LABEL, heading: r.title, info: r.info, announce: r.announce, returnTo });
+    return present({ look: PARK_VIEW, chime: r.newStop && ['boeddeker_park', r.title, { trees: boeddekerTrees().length }] }, { kind: 'park', eyebrow: PARK_LABEL, heading: r.title, info: r.info, announce: r.announce, returnTo });
   }
   function soWhat(returnTo, stop, eyebrow = AWNING_LABEL) {
     const r = stop ?? inspectSoWhat(session.world.tour);
@@ -222,6 +227,7 @@ export function createWorldVisits(kit) {
     const order = typeof r.count === 'number';
     return present({
       look: r.kind === 'order' && !r.guided ? null : EATERY_AWNINGS[i], speech: { id: `eatery:${rec.id}`, text: r.speech, name: rec.name }, chime: r.newStop && ['eatery_order', rec.id],
+      burst: r.burst && { title: r.burst.heading, detail: r.burst.sub, accent: r.burst.color },
     }, {
       kind: 'eatery', index: i, eyebrow: r.burst ? EATERY_LABELS[i] : MENU_LABELS[i], heading: r.burst?.heading ?? EATERY_LABELS[i],
       burst: r.burst?.sub ?? '', info: r.info, quotes: order ? [] : [r.speech], announce: r.announce, returnTo,
@@ -251,10 +257,12 @@ export function createWorldVisits(kit) {
     if (counted.count < STOP_TOTAL) return false;
     if (host.dialogOpen() || world?.camera?.overviewMode) return false;
     if (quiet && quiet.state === state && quiet.version === session.version) return false;
+    // Godot waits for the discovery banner, the 10/10 finale's included; that wait is not memoized, so the tour fires once it ends.
+    if (safely(() => host.rewardPending?.(), false)) return false;
     const r = tourCompletion(tour, { foundCount: have.length, objectiveId: goalNow().id });
     if (!r) { quiet = { state, version: session.version }; return false; }
     setTour(r.tour);
-    safely(() => host.chime('tour_complete', r.cue));
+    safely(() => host.chime('tour_complete', r.cue, { tourCount: counted.count, tourTotal: STOP_TOTAL }));
     safely(() => host.toast(r.announce));
     return true;
   }
