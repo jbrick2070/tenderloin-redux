@@ -157,6 +157,7 @@ export function freshEnvelope() {
 // The top-level keys build_save_envelope writes (tests/next-save.test.mjs checks them against main.gd). Godot's own next write
 // drops every other key.
 const GODOT_KEYS = new Set([...Object.keys(freshEnvelope()), 'mural_scenes']);
+const godotKeysOnly = env => Object.fromEntries(Object.entries(env).filter(([key]) => GODOT_KEYS.has(key)));
 export function freshState() {
   return {
     greeted: false, layout: null, furniture: {}, litter: [], mural: {}, palette: 'garden', soundcheck: false, opened: false, history: false, blackhawk: false,
@@ -397,7 +398,7 @@ export function parseGodotSave(raw, { initialState = freshState } = {}) {
     // Lenient Godot-owned values (active_motif, discovered_surprises, mural_scenes) stay verbatim in the envelope:
     // Godot cleans them on its own load, and a newer Godot's ids survive an older fork's write. The fork's own view of
     // mural_scenes and discovered_surprises is Godot's cleaned one; a write replaces the stored value only when the fork
-    // changed that view.
+    // changed that view, or cleans it as Godot does when the write would not fit otherwise (buildGodotSave).
     envelope = { ...copy(env), schema: GODOT_SAVE_SCHEMA, version: GODOT_SAVE_VERSION, ...godotFields(m), optional: copy(m.optional) };
     loaded = {
       greeted: m.visited.includes('bea'), visited: [...m.visited], celesteTalks: m.talks, layout: m.layout || null, palette: m.palette, mural: copy(m.placements),
@@ -497,16 +498,37 @@ function assemble(base, state) {
   envelope.optional = withFurniture(base.optional, state);
   return withSurprises(withScenes(envelope, base, state), base, state);
 }
+// The lenient values the fork otherwise keeps verbatim, as Godot's next write holds them once apply_save_envelope cleaned them:
+// active_motif a motif or "sun", mural_scenes through mural_stories.gd clean() (none written once no scene is left), and
+// discovered_surprises its known string ids, sorted. A key the base lacks stays absent: Godot's next write adds it, and
+// godotGrowth leaves room for that.
+function cleanLenient(base) {
+  const out = { ...base };
+  if (Object.hasOwn(out, 'active_motif') && !isIn(MOTIFS, out.active_motif)) out.active_motif = GODOT_ALWAYS.active_motif;
+  if (Object.hasOwn(out, 'discovered_surprises')) out.discovered_surprises = cleanSurprises(out.discovered_surprises);
+  if (Object.hasOwn(out, 'mural_scenes')) { const scenes = cleanMuralScenes(out.mural_scenes); delete out.mural_scenes; if (Object.keys(scenes).length) out.mural_scenes = scenes; }
+  return out;
+}
 // Keys no Godot writes are kept as they were loaded (rule 2) unless they alone make a write full: then they are dropped, largest
-// first and only as many as it takes, as Godot's own next write would drop them all. A write that cannot fit without them stays
-// refused as full.
+// first and only as many as it takes, as Godot's own next write would drop them all. A write still full without any of them is
+// retried once over the base Godot's own next write would hold: without those keys and with the lenient values cleaned
+// (cleanLenient), so junk in them never locks the fork out of saving. A write that cannot fit even then stays refused as full.
 export function buildGodotSave(baseEnvelope, state, { reset = false } = {}) {
+  return fitWrite(baseEnvelope, state, reset, true);
+}
+// buildGodotSave's write. Without `clean`, a write still full once the keys no Godot writes are gone stays refused (combineSaves).
+function fitWrite(baseEnvelope, state, reset, clean) {
   const first = writeOver(baseEnvelope, state, reset);
   if (first.ok || first.reason !== 'full' || !isDict(baseEnvelope)) return first;
   const extra = Object.keys(baseEnvelope).filter(key => !GODOT_KEYS.has(key))
     .map(key => [key, utf8Bytes(JSON.stringify(key)) + utf8Bytes(canonicalStringify(baseEnvelope[key]))]).sort((a, b) => b[1] - a[1] || byCodePoint(a[0], b[0]));
   const without = n => { const base = { ...baseEnvelope }; for (const [key] of extra.slice(0, n)) delete base[key]; return writeOver(base, state, reset); };
-  if (!extra.length || !without(extra.length).ok) return first;
+  if (!extra.length || !without(extra.length).ok) {
+    if (!clean) return first;
+    const bare = godotKeysOnly(baseEnvelope), cleaned = cleanLenient(bare);
+    const retry = sameValue(cleaned, bare) ? first : writeOver(cleaned, state, reset);
+    return retry.ok ? retry : first;
+  }
   // Dropping more never makes a write longer, so the fewest that fit are found by halving.
   let fewest = 1, most = extra.length;
   while (fewest < most) { const n = (fewest + most) >> 1; if (without(n).ok) most = n; else fewest = n + 1; }
@@ -533,12 +555,16 @@ function writeOver(baseEnvelope, state, reset) {
 }
 
 // main.gd edit_mural_scene's admission: a scene edit is refused only when the next save would exceed Godot's budget and
-// grow past the current one, so a lift is allowed on an oversized save. The fork's stricter budget (buildGodotSave 'full',
-// which leaves room for Godot's next write) then decides between saving and visit-only.
+// grow past the current one, so a lift is allowed on an oversized save. Godot sizes the save it holds, so the edit is sized over
+// the base as Godot holds it once loaded: only the keys build_save_envelope writes, the ones it always writes added, the lenient
+// values cleaned (cleanLenient) and optional's floats as it writes them. Room the write keeps for Godot's next write (godotGrowth)
+// covers each of these, so an edit the write can save is never refused. The fork's stricter budget (buildGodotSave 'full') then
+// decides between saving and visit-only.
 export function sceneAdmission(baseEnvelope, state, next) {
   try {
-    const base = isDict(baseEnvelope) ? copy(baseEnvelope) : freshEnvelope();
-    const current = utf8Bytes(canonicalStringify(assemble(base, state))), candidate = utf8Bytes(canonicalStringify(assemble(base, next)));
+    const base = isDict(baseEnvelope) ? copy(baseEnvelope) : freshEnvelope(), held = cleanLenient({ ...copy(GODOT_ALWAYS), ...godotKeysOnly(base) });
+    const size = env => utf8Bytes(canonicalStringify(env)) + godotFloatGrowth(env.optional);
+    const current = size(assemble(held, state)), candidate = size(assemble(held, next));
     return !(candidate > SAVE_BUDGET && candidate > current);
   } catch { return false; }
 }
@@ -585,6 +611,8 @@ function mergeState(c, o) {
 // not move it), or against the write base when the caller has no such record. A slot it left alone follows the stored save,
 // or comes back from the write base when the stored save has no scene that Godot's clean() keeps; then clean() as Godot loads.
 // Returns the record for the next combine: the combined scene where this tab's own change did not stand, its old one where it did.
+// The write base's scenes come back as they were stored, not cleaned: Godot reads either through clean(), and a later Godot's slots
+// survive, as rule 2 keeps them. buildGodotSave cleans them only when the combined save would not fit otherwise.
 function withScenesFrom(state, base, mine, mineBase, stored, loadedScenes) {
   const origin = cleanMuralScenes(loadedScenes === undefined ? get(isDict(mineBase) ? mineBase : {}, 'mural_scenes', {}) : loadedScenes);
   if (!isDict(mineBase)) return origin;
@@ -600,24 +628,36 @@ function withScenesFrom(state, base, mine, mineBase, stored, loadedScenes) {
   }
   return read;
 }
+// A newer Godot's surprise ids that only this tab's write base still holds come back, as a find keeps them (withSurprises): the
+// base with the stored save's and the write base's strings that are not known ids, and the state's found ids, sorted. Null when
+// the write base holds no such id that the stored save lacks.
+function withBaseSurprises(base, mineBase, state) {
+  const unknown = v => Array.isArray(v) ? v.filter(id => typeof id === 'string' && !SURPRISE_IDS.includes(id)) : [];
+  const stored = unknown(get(base, 'discovered_surprises', [])), more = unknown(isDict(mineBase) ? get(mineBase, 'discovered_surprises', []) : []).filter(id => !stored.includes(id));
+  return more.length ? { ...base, discovered_surprises: [...new Set([...stored, ...more, ...state.surprises])].sort(byCodePoint) } : null;
+}
 // This tab's state (mine, written over mineBase) combined with a stored save that lost some of it: mergeState's progress on
-// the stored save, with mural scenes decided against mineBase (withScenesFrom). The result passes buildGodotSave's self-check
-// and budget, and is refused unless it keeps how far both the stored save and this tab got, so a mix Godot would reset is never
-// written.
+// the stored save, with mural scenes decided against mineBase (withScenesFrom) and mineBase's surprise ids no Godot knows yet where
+// they fit (withBaseSurprises). The result passes buildGodotSave's self-check and budget, and is refused unless it keeps how far
+// both the stored save and this tab got, so a mix Godot would reset is never written.
 // loadedScenes (optional) is the mural scenes this tab last read from the shared save (withScenesFrom); the result's loadedScenes
 // is what this tab reads as that record once the combined save is written.
 export function combineSaves(storedEnvelope, mine, mineBase = null, loadedScenes = undefined) {
   const refuse = (reason, detail, bytes = 0) => ({ ok: false, raw: null, bytes, envelope: null, reason, detail, state: null });
   const stored = parseGodotSave(isDict(storedEnvelope) ? canonicalStringify(storedEnvelope) : null);
   if (stored.status === 'invalid') return refuse('self-check', stored.reason);
-  let state, base, ours, read;
+  let state, base, ours, read, more;
   try {
     // A copy: withScenesFrom may write mineBase's scenes into it. This tab's found surprises ride on its state (mergeState).
     state = mergeState(copy(mine), stored.state); base = copy(stored.envelope);
     read = withScenesFrom(state, base, mine, mineBase, stored.envelope, loadedScenes);
+    more = withBaseSurprises(base, mineBase, state);
     ours = fromState(mine, isDict(mineBase) ? mineBase : stored.envelope);
   } catch { return refuse('self-check', 'state'); }
-  const out = buildGodotSave(base, state, { reset: true });
+  // The write base's ids come back where they fit beside all that the combined save keeps without them: never at the cost of a key
+  // no Godot writes or of cleaning the stored save's own lenient values, so Keep never keeps less of a newer Godot's data for them.
+  const plain = buildGodotSave(base, state, { reset: true }), merged = more && plain.ok && fitWrite(more, state, true, false);
+  const out = merged?.ok && Object.keys(plain.envelope).every(key => Object.hasOwn(merged.envelope, key)) ? merged : plain;
   if (!out.ok) return { ...out, state: null };
   const now = readEnvelope(out.envelope), lost = regression(readEnvelope(stored.envelope), now, true) || regression(ours, now, true);
   return lost ? refuse('regress', lost, out.bytes) : { ...out, state, loadedScenes: read };

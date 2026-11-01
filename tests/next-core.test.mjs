@@ -9,6 +9,7 @@ import { GODOT_SAVE_KEY, FORK_FIELDS, SAVE_BUDGET, SURPRISE_IDS, parseGodotSave,
 import { currentChapter } from '../browser-next/story.js';
 import { gatheringScene, sceneFurniture, DEFAULT_FURNITURE } from '../browser-next/gathering.js';
 import { GODOT_WRITTEN, PUBLISHED, godotEnvelope, readyEnvelope, openedEnvelope, raw } from './next-fixtures.mjs';
+import { utf8Bytes, canonicalStringify } from '../browser-next/godot-save.js';
 
 const gd = readFileSync(new URL('../godot/main.gd', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const body = name => { const start = gd.indexOf(`\nfunc ${name}(`); assert.ok(start >= 0, `godot/main.gd has func ${name}`); const end = gd.indexOf('\nfunc ', start + 1); return gd.slice(start, end < 0 ? undefined : end); };
@@ -371,10 +372,10 @@ test("combining brings back the neighborhood surprises and mural scenes in this 
   assert.equal(out.ok, true, `${out.reason} ${out.detail}`);
   assert.deepEqual([env.visited_neighbors, env.discovered_surprises, env.mural_scenes], [['bea', 'celeste', 'dez', 'thanh'], ['cutesy_dino', 'hidden_mural_145', 'jeffrey_record'], { left: 'music', right: 'garden' }]);
   // Scenes the stored save has are kept. This tab's state carries its surprises, so they come back whatever its write base
-  // holds; only known ids are written, in place of a stored value Godot would clean.
+  // holds, beside the write base's strings no Godot knows yet, in place of a stored value Godot would clean.
   const painted = loadEnv(godotEnvelope({ save_seq: 10, visited_neighbors: ['bea'], discovered_surprises: 7, mural_scenes: { left: 'cooking' } }));
   const kept = JSON.parse(combineSaves(painted.envelope, mine, { ...myWrite.envelope, discovered_surprises: ['not_a_surprise'] }).raw);
-  assert.deepEqual([kept.discovered_surprises, kept.mural_scenes], [['hidden_mural_145', 'jeffrey_record'], { left: 'cooking' }]);
+  assert.deepEqual([kept.discovered_surprises, kept.mural_scenes], [['hidden_mural_145', 'jeffrey_record', 'not_a_surprise'], { left: 'cooking' }]);
   assert.equal(JSON.parse(combineSaves(stale.envelope, mine).raw).discovered_surprises.length, 3, 'without a write base too');
   // Scenes this tab painted or lifted and saved itself are its choices: an older stored save with scenes does not undo them.
   // The fourth argument is the scenes this tab last read from the shared save (its own writes do not change it).
@@ -425,4 +426,84 @@ test('combining decides mural scenes slot by slot: a slot this tab painted wins,
   assert.deepEqual(out.loadedScenes, { left: 'garden' });
   const again = loadEnv(openedEnvelope({ save_seq: 120, mural_scenes: { left: 'sharing' } }));
   assert.deepEqual(combineSaves(again.envelope, out.state, out.envelope, out.loadedScenes).state.muralScenes, { left: 'sharing', right: 'music' }, 'a second stale save is followed on the left again');
+});
+
+// --- Keep and the values only Godot cleans (hardening review, November 1, 2026). ---
+const notOpened = { visited_neighbors: ['bea'], rook_soundcheck_done: false, block_opened: false, mural_placements: {}, gathering_layout: '' };
+test("combining keeps a newer Godot's surprise ids that only this tab's write base still holds, as a find keeps them", () => {
+  // A newer Godot found future_x. This tab loaded that save and saved a find over it, which keeps the id (withSurprises).
+  const newer = loadEnv(openedEnvelope({ save_seq: 10, discovered_surprises: ['future_x', 'cutesy_dino'] }));
+  const mine = act(newer.state, { type: 'surprise', id: 'jeffrey_record' }), myWrite = wrote(newer, mine);
+  assert.deepEqual(myWrite.envelope.discovered_surprises, ['cutesy_dino', 'future_x', 'jeffrey_record']);
+  // A stale older 3D tab then saves its own state over it, without future_x, and the player presses Keep.
+  const stale = loadEnv(openedEnvelope({ save_seq: 12, ...notOpened, discovered_surprises: ['cutesy_dino'] }));
+  assert.equal(lostProgress(myWrite.envelope, stale.envelope), 'visited_neighbors');
+  const out = combineSaves(stale.envelope, mine, myWrite.envelope);
+  assert.equal(out.ok, true, `${out.reason} ${out.detail}`);
+  assert.deepEqual(JSON.parse(out.raw).discovered_surprises, ['cutesy_dino', 'future_x', 'jeffrey_record'], "the write base's id no Godot knows yet survives Keep");
+  assert.deepEqual([out.state.surprises, parseGodotSave(out.raw).state.surprises], [['cutesy_dino', 'jeffrey_record'], ['cutesy_dino', 'jeffrey_record']], 'and no known one is dropped');
+  assert.deepEqual([lostProgress(myWrite.envelope, out.envelope), lostProgress(stale.envelope, out.envelope)], ['', '']);
+  // Both sides' strings that are not known ids come back once, sorted by code point beside the found ids; nothing else does.
+  const odd = { ...myWrite.envelope, discovered_surprises: ['future_x', 'Cutesy_Dino', 'éclair', 7, null, ['future_y'], { id: 'future_z' }, 'jeffrey_record', 'cutesy_dino', 'future_x'] };
+  const theirs = loadEnv(openedEnvelope({ save_seq: 12, ...notOpened, discovered_surprises: ['zz_stored', 'cutesy_dino', 'future_x', 3] }));
+  assert.deepEqual(JSON.parse(combineSaves(theirs.envelope, mine, odd).raw).discovered_surprises, ['Cutesy_Dino', 'cutesy_dino', 'future_x', 'jeffrey_record', 'zz_stored', 'éclair']);
+  // A write base with no id the stored save lacks changes nothing: a stored value the state adds no find to stays verbatim.
+  const same = loadEnv(openedEnvelope({ save_seq: 12, ...notOpened, discovered_surprises: ['jeffrey_record', 'cutesy_dino', 'cutesy_dino', 'future_x'] }));
+  assert.deepEqual(JSON.parse(combineSaves(same.envelope, mine, myWrite.envelope).raw).discovered_surprises, ['jeffrey_record', 'cutesy_dino', 'cutesy_dino', 'future_x']);
+  assert.deepEqual(JSON.parse(combineSaves(stale.envelope, mine).raw).discovered_surprises, ['cutesy_dino', 'jeffrey_record'], 'without a write base there is nothing to bring back');
+});
+
+test('combining near the budget cleans the values Godot cleans on load rather than refuse Keep', () => {
+  // This tab played the full run and found a surprise; an older 3D tab then saved two neighbors and 80 ids no Godot knows.
+  const full = loadEnv(GODOT_WRITTEN.fullRun), mine = act(full.state, { type: 'surprise', id: 'cutesy_dino' }), myWrite = wrote(full, mine);
+  const ids = Array.from({ length: 80 }, (_, i) => `future_surprise_id_${String(i).padStart(3, '0')}_abcdef`);
+  const old = loadEnv(openedEnvelope({ save_seq: 200, visited_neighbors: ['bea', 'celeste'], rook_soundcheck_done: false, block_opened: false, gathering_layout: '', discovered_surprises: ids }));
+  assert.ok(utf8Bytes(canonicalStringify(old.envelope)) <= SAVE_BUDGET, 'the stored save itself fits');
+  assert.equal(lostProgress(myWrite.envelope, old.envelope), 'visited_neighbors');
+  const out = combineSaves(old.envelope, mine, myWrite.envelope);
+  assert.equal(out.ok, true, `${out.reason} ${out.detail} ${out.bytes} B`);
+  assert.deepEqual(JSON.parse(out.raw).discovered_surprises, ['cutesy_dino'], "as Godot's next write holds them: known ids only");
+  assert.ok(out.bytes <= SAVE_BUDGET); assert.equal(parseGodotSave(out.raw).status, 'loaded');
+  assert.deepEqual([lostProgress(myWrite.envelope, out.envelope), lostProgress(old.envelope, out.envelope)], ['', '']);
+  // The write base's scenes come back as they were stored, so a later Godot's slot survives (Godot itself reads them through
+  // clean()); only a combined save that would not fit gets them cleaned as well.
+  const stale = loadEnv(godotEnvelope({ save_seq: 200, visited_neighbors: ['bea'] }));
+  for (const [scenes, written] of [[{ left: 'music', right: 'garden', later_slot: 'dancing' }, { left: 'music', right: 'garden', later_slot: 'dancing' }], [{ left: 'music', right: 'garden', junk: 'y'.repeat(2600) }, { left: 'music', right: 'garden' }]]) {
+    const base = loadEnv({ ...JSON.parse(GODOT_WRITTEN.fullRun), mural_scenes: scenes }), own = act(base.state, { type: 'surprise', id: 'cutesy_dino' });
+    assert.equal(lostProgress(base.envelope, stale.envelope), 'visited_neighbors');
+    const keep = combineSaves(stale.envelope, own, base.envelope);
+    assert.equal(keep.ok, true, `${keep.reason} ${keep.detail} ${keep.bytes} B`);
+    assert.deepEqual([JSON.parse(keep.raw).mural_scenes, keep.state.muralScenes, parseGodotSave(keep.raw).state.muralScenes], [written, { left: 'music', right: 'garden' }, { left: 'music', right: 'garden' }]);
+    assert.ok(keep.bytes <= SAVE_BUDGET);
+  }
+});
+
+test("the write base's surprise ids come back only where they fit: Keep never cleans away an id the stored save alone keeps", () => {
+  // This tab's write base holds two ids no Godot knows yet; an older 3D tab then saved two neighbors fewer and a 2304-character id.
+  const big = `big_${'b'.repeat(2300)}`, later = n => `later_${'l'.repeat(n)}`;
+  const stale = loadEnv(godotEnvelope({ save_seq: 200, visited_neighbors: ['bea'], discovered_surprises: [big, 'cutesy_dino'] }));
+  // Room for both: every id survives. No room for the write base's: the combined save is the one the stored save alone allows,
+  // which keeps its own long id, rather than one cleaned of every id no Godot knows.
+  for (const [n, written] of [[10, [big, 'cutesy_dino', 'future_x', 'jeffrey_record', later(10)]], [600, [big, 'cutesy_dino', 'jeffrey_record']]]) {
+    const base = loadEnv({ ...JSON.parse(GODOT_WRITTEN.fullRun), discovered_surprises: ['cutesy_dino', 'future_x', later(n)] }), mine = act(base.state, { type: 'surprise', id: 'jeffrey_record' });
+    assert.equal(lostProgress(base.envelope, stale.envelope), 'visited_neighbors');
+    const out = combineSaves(stale.envelope, mine, base.envelope);
+    assert.equal(out.ok, true, `${out.reason} ${out.detail} ${out.bytes} B`);
+    assert.deepEqual(JSON.parse(out.raw).discovered_surprises, written, `write base id of ${n + 6} characters`);
+    assert.ok(out.bytes <= SAVE_BUDGET); assert.deepEqual([lostProgress(base.envelope, out.envelope), lostProgress(stale.envelope, out.envelope)], ['', '']);
+  }
+});
+
+test("the write base's surprise ids never cost a key no Godot writes that the stored save alone keeps", () => {
+  // The stored save carries a 2400-character key no Godot writes; this tab's write base, two ids no Godot knows yet.
+  const later = n => `later_${'l'.repeat(n)}`;
+  const stale = loadEnv(godotEnvelope({ save_seq: 200, visited_neighbors: ['bea'], discovered_surprises: ['cutesy_dino'], zz_later: 'k'.repeat(2400) }));
+  for (const [n, written] of [[10, ['cutesy_dino', 'future_x', 'jeffrey_record', later(10)]], [600, ['cutesy_dino', 'jeffrey_record']]]) {
+    const base = loadEnv({ ...JSON.parse(GODOT_WRITTEN.fullRun), discovered_surprises: ['cutesy_dino', 'future_x', later(n)] }), mine = act(base.state, { type: 'surprise', id: 'jeffrey_record' });
+    const out = combineSaves(stale.envelope, mine, base.envelope);
+    assert.equal(out.ok, true, `${out.reason} ${out.detail} ${out.bytes} B`);
+    const env = JSON.parse(out.raw);
+    assert.deepEqual([env.zz_later?.length, env.discovered_surprises], [2400, written], `write base id of ${n + 6} characters`);
+    assert.ok(out.bytes <= SAVE_BUDGET);
+  }
 });

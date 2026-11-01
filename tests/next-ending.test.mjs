@@ -718,3 +718,119 @@ test("ending sync: a screen an adopted save's new copies close is reported, so g
   state = flip(state);
   assert.deepEqual(ending.sync({ adopted: true }), { reset: true, closed: false }, 'with no screen open there is nothing to close');
 });
+
+// ---------- Mural Stories admission sizes the save as Godot holds it (hardening review, November 1, 2026) ----------
+import { SAVE_BUDGET, MOTIFS, freshEnvelope, cleanSurprises, utf8Bytes, canonicalStringify } from '../browser-next/godot-save.js';
+// Godot's own admission (main.gd edit_mural_scene) over the save as Godot holds it once apply_save_envelope loaded it: only the
+// keys build_save_envelope writes, with the ones it always writes added, the lenient values cleaned, save_seq one higher and the
+// scenes in memory. Worked out here without godot-save.js's own sizing.
+function godotHeldBytes(text, scenes) {
+  const env = load(text).envelope, out = { active_motif: 'sun', discovered_surprises: [], district_boundary_visible: true };
+  for (const key of Object.keys(freshEnvelope())) if (Object.hasOwn(env, key)) out[key] = env[key];
+  if (!MOTIFS.includes(out.active_motif)) out.active_motif = 'sun';
+  out.discovered_surprises = cleanSurprises(out.discovered_surprises);
+  if (Object.keys(scenes).length) out.mural_scenes = scenes;
+  return utf8Bytes(canonicalStringify({ ...out, save_seq: env.save_seq + 1 }));
+}
+const godotAdmits = (text, state, next) => { const current = godotHeldBytes(text, state.muralScenes), candidate = godotHeldBytes(text, next.muralScenes); return !(candidate > SAVE_BUDGET && candidate > current); };
+const sceneEdit = (state, id, slot) => applyAction(state, { type: 'mural-scene', id, slot });
+const fullRunWith = change => { const env = JSON.parse(GODOT_WRITTEN.fullRun); change(env); return JSON.stringify(env); };
+const futureIds = n => Array.from({ length: n }, (_, i) => `future_surprise_id_${String(i).padStart(3, '0')}_abcdef`);
+const motifAndPad = pad => fullRunWith(env => { env.active_motif = 'z'.repeat(2520); env.optional.pad = 'x'.repeat(pad); });
+
+test('Mural Stories admission sizes the save as Godot holds it: what Godot cleans on load never refuses a paint the write saves', () => {
+  inOrder(gdLines(gdFunc('main.gd', 'edit_mural_scene')), ['var current := build_save_envelope()', 'current["save_seq"] = save_seq + 1', 'var current_bytes := JSON.stringify(current).to_utf8_buffer().size()',
+    'var candidate := build_save_envelope()', 'candidate["save_seq"] = save_seq + 1', 'var candidate_bytes := JSON.stringify(candidate).to_utf8_buffer().size()',
+    'if candidate_bytes > SAVE_BUDGET_MAX_BYTES and candidate_bytes > current_bytes:'], 'main.gd edit_mural_scene sizes the save Godot holds');
+  // Near or over the budget only through what Godot's load cleans or drops: Godot admits the paint and the write saves it.
+  const admitted = {
+    'an active_motif of 2520 characters': env => { env.active_motif = 'z'.repeat(2520); },
+    'discovered_surprises of 100 ids no Godot knows': env => { env.discovered_surprises = futureIds(100); },
+    'discovered_surprises that is not an Array': env => { env.discovered_surprises = 'x'.repeat(2512); },
+    'a key no Godot writes beside an active_motif of 2520 characters': env => { env.zz_future = 'q'.repeat(100); env.active_motif = 'z'.repeat(2520); },
+    'a 2500-character key no Godot writes': env => { env.zz_future = 'q'.repeat(2500); },
+    'an active_motif of 2520 characters beside 2500 characters of optional': env => { env.active_motif = 'z'.repeat(2520); env.optional.pad = 'x'.repeat(2500); },
+    // A paint rewrites mural_scenes by Godot's rules, so junk there never refused one.
+    'mural_scenes with a 2490-byte junk key': env => { env.mural_scenes = { left: 'music', right: 'garden', junk: 'y'.repeat(2490) }; },
+  };
+  for (const [label, change] of Object.entries(admitted)) {
+    const text = fullRunWith(change), r = load(text);
+    for (const id of ['painting', 'cooking']) {
+      const next = sceneEdit(r.state, id, 'right'), out = buildGodotSave(r.envelope, next);
+      assert.deepEqual([godotAdmits(text, r.state, next), out.ok], [true, true], `${label}, ${id}: Godot admits and the write saves (${out.reason} ${out.bytes} B)`);
+      assert.equal(sceneAdmission(r.envelope, r.state, next), true, `${label}, ${id}`);
+    }
+  }
+  // Still over the budget once Godot cleaned it: refused, as Godot refuses it; a lift there is admitted, as Godot admits it.
+  for (const pad of [2505, 2510]) {
+    const text = motifAndPad(pad), r = load(text), next = sceneEdit(r.state, 'painting', 'right');
+    assert.deepEqual([godotAdmits(text, r.state, next), buildGodotSave(r.envelope, next).reason, sceneAdmission(r.envelope, r.state, next)], [false, 'full', false], `optional ${pad}`);
+    assert.equal(sceneAdmission(r.envelope, r.state, sceneEdit(r.state, '', 'right')), true, `optional ${pad}: a lift`);
+  }
+});
+
+test("Mural Stories: a paint the cleaned save fits is painted; one Godot's budget refuses says Godot's line and changes nothing", () => {
+  assert.ok(gdStrings(gdFunc('main.gd', 'edit_mural_scene')).includes(MU.sceneRefusal()), "the refusal is edit_mural_scene's own line");
+  for (const [pad, painted] of [[2500, true], [2505, false]]) {
+    const r = load(motifAndPad(pad)), acts = [], said = [], dialog = fakeDialog();
+    const ending = createEnding(endingHost(dialog, r.state, { status: line => said.push(line), act: action => acts.push(action), sceneAdmission: next => sceneAdmission(r.envelope, r.state, next) }));
+    assert.equal(ending.open('stories'), true);
+    dialog.click('scene-choice-2'); dialog.click('scene-target-1');
+    assert.deepEqual(acts, painted ? [{ type: 'mural-scene', id: 'painting', slot: 'right' }] : [], `optional ${pad}`);
+    assert.equal(said.at(-1) === MU.sceneRefusal(), !painted, `optional ${pad}: ${said.at(-1)}`);
+  }
+});
+
+test("Mural Stories admission agrees with the write over random saves: a paint the write saves is admitted, and the admission is Godot's own", () => {
+  let seed = 20261101;
+  const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32, pick = list => list[Math.floor(rnd() * list.length)], int = n => Math.floor(rnd() * n);
+  const bases = [GODOT_WRITTEN.fullRun, GODOT_WRITTEN.fullRunScenes, GODOT_WRITTEN.firstMeeting, raw(openedEnvelope()), raw(hostedEnvelope()), raw(filmDoneEnvelope())];
+  const tally = { saved: 0, refused: 0, visitOnlyReserve: 0, visitOnlyShrink: 0, savedAtBudget: 0 };
+  for (let n = 0; n < 1000; n++) {
+    const env = JSON.parse(pick(bases)), junk = 1500 + int(2000), split = rnd();
+    env.save_seq = pick([8, 9, 98, 99, 113, 999, int(300)]);
+    if (rnd() < 0.4) env.active_motif = pick(['wave', '', 5, null, 'z'.repeat(Math.round(junk * split))]);
+    if (rnd() < 0.4) env.discovered_surprises = pick([futureIds(Math.round(junk * split / 32)), 'x'.repeat(Math.round(junk * split)), [...cleanSurprises(env.discovered_surprises), 'cutesy_dino', 'cutesy_dino', 7]]);
+    if (rnd() < 0.3) env.mural_scenes = pick([{ left: 'music', right: 'music' }, { left: 'garden', junk: 'y'.repeat(Math.round(junk * split)) }, { right: 'sharing' }, {}]);
+    if (rnd() < 0.3) env[pick(['zz_future', 'later_key'])] = 'q'.repeat(Math.round(junk * (1 - split)));
+    if (rnd() < 0.5) env.optional = { ...env.optional, pad: 'x'.repeat(rnd() < 0.5 ? Math.round(junk * (1 - split)) + int(400) : 1500 + int(2400)) };
+    const text = JSON.stringify(env), r = parseGodotSave(text, { initialState });
+    if (r.status !== 'loaded') continue;
+    const next = sceneEdit(r.state, pick(['cooking', 'sharing', 'painting', 'music', 'garden', '']), pick(['left', 'right']));
+    if (next === r.state) continue;
+    const out = buildGodotSave(r.envelope, next), admits = sceneAdmission(r.envelope, r.state, next), label = `case ${n}: ${out.ok ? 'saved' : out.reason} ${out.bytes} B`;
+    assert.ok(!out.ok || admits, `${label}: a paint the write saves is admitted`);
+    assert.equal(admits, godotAdmits(text, r.state, next), `${label}: the admission is Godot's own, over the save as Godot holds it`);
+    assert.ok(!admits || out.ok || out.reason === 'full', `${label}: an admitted paint that is not saved is visit-only for the budget alone`);
+    // Admitted but visit-only, as Godot admits it too: within Godot's 4096 bytes but not the fork's room for Godot's next write, or
+    // a paint that does not grow a save already over the budget.
+    const visitOnly = godotHeldBytes(text, next.muralScenes) <= SAVE_BUDGET ? 'visitOnlyReserve' : 'visitOnlyShrink';
+    tally[out.ok ? 'saved' : admits ? visitOnly : 'refused']++;
+    if (out.ok && utf8Bytes(canonicalStringify(r.envelope)) > SAVE_BUDGET - 40) tally.savedAtBudget++;
+  }
+  assert.ok(tally.saved > 300 && tally.refused > 40 && tally.visitOnlyShrink > 10 && tally.savedAtBudget > 100, JSON.stringify(tally));
+});
+
+test("Mural Stories admission is Godot's own on what the stored save hides: a paint Godot refuses is refused with its line", () => {
+  // Each looked as if it fits only through what Godot's load rewrites, and each write is visit-only: mural_scenes junk the paint
+  // drops (a shrink as stored), an older save without two keys Godot always writes, and an active_motif Godot reloads as "sun".
+  const hidden = {
+    'mural_scenes junk beside 2505 characters of optional': env => { env.optional.pad = 'x'.repeat(2505); env.mural_scenes = { left: 'music', right: 'garden', junk: 'y'.repeat(100) }; },
+    'an older save without active_motif and district_boundary_visible': env => { delete env.active_motif; delete env.district_boundary_visible; env.optional.pad = 'x'.repeat(2510); },
+    'an active_motif of 5': env => { env.active_motif = 5; env.optional.pad = 'x'.repeat(2503); },
+  };
+  for (const [label, change] of Object.entries(hidden)) {
+    const text = fullRunWith(change), r = load(text), next = sceneEdit(r.state, 'painting', 'right');
+    assert.deepEqual([godotAdmits(text, r.state, next), buildGodotSave(r.envelope, next).reason, sceneAdmission(r.envelope, r.state, next)], [false, 'full', false], label);
+    const acts = [], said = [], dialog = fakeDialog();
+    const ending = createEnding(endingHost(dialog, r.state, { status: line => said.push(line), act: action => acts.push(action), sceneAdmission: edit => sceneAdmission(r.envelope, r.state, edit) }));
+    assert.equal(ending.open('stories'), true);
+    dialog.click('scene-choice-2'); dialog.click('scene-target-1');
+    assert.deepEqual([acts, said.at(-1)], [[], MU.sceneRefusal()], `${label}: Godot's line, and nothing is painted`);
+  }
+  // One byte short of Godot's budget the same saves are admitted, and the write saves them: admission and write meet at 4096.
+  for (const change of [env => { delete env.active_motif; delete env.district_boundary_visible; env.optional.pad = 'x'.repeat(2501); }, env => { env.active_motif = 5; env.optional.pad = 'x'.repeat(2501); }]) {
+    const text = fullRunWith(change), r = load(text), next = sceneEdit(r.state, 'painting', 'right');
+    assert.deepEqual([godotHeldBytes(text, next.muralScenes), sceneAdmission(r.envelope, r.state, next), buildGodotSave(r.envelope, next).ok], [SAVE_BUDGET, true, true]);
+  }
+});

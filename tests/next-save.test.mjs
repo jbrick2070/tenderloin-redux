@@ -12,6 +12,7 @@ import {
   GODOT_WRITTEN, EDITED_PARTIAL_ART, EDITED_PARTIAL_ART_GODOT_BYTES, SURPRISES, FULL_MURAL, NEIGHBORS, HOSTED_RESULTS, parseRaw, raw,
   godotEnvelope, minimalEnvelope, readyEnvelope, openedEnvelope, hostedEnvelope, civicDoneEnvelope, filmDoneEnvelope,
 } from './next-fixtures.mjs';
+import { cleanMuralScenes } from '../browser-next/godot-save.js';
 
 const load = text => parseGodotSave(text);
 const loaded = text => { const result = load(text); assert.equal(result.status, 'loaded', result.reason); return result; };
@@ -804,4 +805,77 @@ test('celeste_talk_count stays within the whole numbers JavaScript holds exactly
   const max = loaded(talks(String(Number.MAX_SAFE_INTEGER)));
   assert.equal(save(max.envelope, max.state).envelope.celeste_talk_count, Number.MAX_SAFE_INTEGER);
   assert.deepEqual(why(max.envelope, { ...max.state, celesteTalks: 2 ** 53 }), ['self-check', 'celeste_talk_count']);
+});
+
+// --- A lenient value Godot cleans on load never locks the fork out of saving (hardening review, November 1, 2026). ---
+// Godot's own next write after it loads a save (apply_save_envelope, then save_godot_state): only the keys build_save_envelope
+// writes, with the ones it always writes added, the lenient values cleaned as it cleans them, and save_seq one higher.
+function godotNextWrite(text) {
+  const env = loaded(text).envelope, out = { active_motif: 'sun', discovered_surprises: [], district_boundary_visible: true };
+  for (const key of Object.keys(freshEnvelope())) if (Object.hasOwn(env, key)) out[key] = env[key];
+  if (!MOTIFS.includes(out.active_motif)) out.active_motif = 'sun';
+  out.discovered_surprises = cleanSurprises(out.discovered_surprises);
+  const scenes = cleanMuralScenes(env.mural_scenes);
+  if (Object.keys(scenes).length) out.mural_scenes = scenes;
+  return canonicalStringify({ ...out, save_seq: env.save_seq + 1 });
+}
+const futureIds = n => Array.from({ length: n }, (_, i) => `future_surprise_id_${String(i).padStart(3, '0')}_abcdef`);
+const talked = text => edit(text, env => { env.celeste_talk_count += 1; });
+const talk = text => { const r = loaded(text); return buildGodotSave(r.envelope, { ...structuredClone(r.state), celesteTalks: r.state.celesteTalks + 1 }); };
+
+test("a write full only because of a lenient value Godot cleans is retried once with them cleaned as Godot's next write cleans them", () => {
+  const apply = funcBody('apply_save_envelope'), stories = readFileSync(new URL('../godot/mural_stories.gd', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  assert.match(apply, /\tvar act_id := String\(env\.get\("active_motif", "sun"\)\)\n\tactive_motif = act_id if act_id in MURAL_MOTIFS else "sun"\n/);
+  assert.match(apply, /\tmural_scenes = preload\("res:\/\/mural_stories\.gd"\)\.clean\(env\.get\("mural_scenes",\{\}\)\)\n/);
+  assert.match(stories, /static func clean\(raw: Variant\) -> Dictionary:\n\tvar out := \{\}\n\tif not raw is Dictionary: return out\n\tfor slot in SLOTS:\n\t\tvar id: Variant = raw\.get\(slot, ""\)\n\t\tif id is String and id in IDS and not id in out\.values\(\): out\[slot\] = id\n\treturn out\n/);
+  // The review's three reproductions, a value that is not an Array, junk in all three at once, and a key no Godot writes whose
+  // drop alone is not enough. Godot loads each (it has no size check) and its own next write is 1584 bytes, but every fork write
+  // here was refused as full, and only Start fresh (which also resets the 3D edition) got out.
+  const find = [s => ({ ...s, surprises: cleanSurprises([...s.surprises, 'jeffrey_record']) }), env => { env.discovered_surprises = [...cleanSurprises(env.discovered_surprises), 'jeffrey_record']; }];
+  const palette = [s => ({ ...s, palette: 'garden' }), env => { env.mural_palette = 'garden'; }];
+  const wedges = [
+    ['mural_scenes with a 2490-byte junk key', env => { env.mural_scenes = { left: 'music', right: 'garden', junk: 'y'.repeat(2490) }; }, [find]],
+    ['an active_motif of 2520 characters', env => { env.active_motif = 'z'.repeat(2520); }, [find, palette]],
+    ['discovered_surprises of 100 ids no Godot knows', env => { env.discovered_surprises = futureIds(100); }, [find, palette]],
+    ['discovered_surprises that is not an Array', env => { env.discovered_surprises = 'x'.repeat(2512); }, [palette]],
+    ['junk in all three at once', env => { env.mural_scenes = { left: 'music', right: 'music', junk: 'y'.repeat(800) }; env.active_motif = 'z'.repeat(800); env.discovered_surprises = [...futureIds(30), 'cutesy_dino', 'cutesy_dino', 7]; }, [find, palette]],
+    ['a key no Godot writes beside an active_motif of 2520 characters', env => { env.zz_future = 'q'.repeat(100); env.active_motif = 'z'.repeat(2520); }, [find, palette]],
+  ];
+  for (const [label, mutate, actions] of wedges) {
+    const text = edit(GODOT_WRITTEN.fullRun, mutate), r = loaded(text);
+    assert.ok(utf8Bytes(canonicalStringify(r.envelope)) > SAVE_BUDGET - 20, `${label}: the stored save is at the budget (${utf8Bytes(canonicalStringify(r.envelope))} B)`);
+    assert.ok(utf8Bytes(godotNextWrite(text)) <= 1584, `${label}: Godot's own next write is at most the full run's (${utf8Bytes(godotNextWrite(text))} B)`);
+    for (const [change, godotDoes] of actions) {
+      const next = change(structuredClone(r.state)), out = save(r.envelope, next), back = loaded(out.raw);
+      for (const key of FORK_FIELDS) assert.deepEqual(back.state[key], next[key], `${label}: ${key} loads under the fork's Godot rules`);
+      assert.equal(out.raw, godotNextWrite(edit(text, godotDoes)), `${label}: the write is Godot's own next write of the same change, byte for byte`);
+      assert.ok(out.bytes <= SAVE_BUDGET && utf8Bytes(godotNextWrite(out.raw)) <= SAVE_BUDGET, `${label}: ${out.bytes} B, and Godot's next write ${utf8Bytes(godotNextWrite(out.raw))} B`);
+      assert.equal(buildGodotSave(back.envelope, { ...structuredClone(back.state), celesteTalks: 30 }).ok, true, `${label}: and the next write is an ordinary one`);
+    }
+  }
+});
+
+test('the retry never changes a write that fits: lenient values stay verbatim to the byte, and keys no Godot writes go first', () => {
+  // Rule 2: the largest junk active_motif whose write fits is written exactly as it was stored, beside mural_scenes junk and stored
+  // surprise duplicates; one more character and the write is Godot's next one instead.
+  const junk = n => edit(GODOT_WRITTEN.fullRun, env => { env.active_motif = 'z'.repeat(n); env.mural_scenes = { left: 'music', right: 'garden', junk: 'y' }; env.discovered_surprises = ['future_x', 'cutesy_dino', 'cutesy_dino', 7]; });
+  const most = SAVE_BUDGET - utf8Bytes(withSeq(talked(junk(0)), 114));
+  const fits = talk(junk(most));
+  assert.equal(fits.ok, true, fits.reason);
+  assert.deepEqual([fits.raw, fits.bytes], [withSeq(talked(junk(most)), 114), SAVE_BUDGET], 'the stored values, junk included, byte for byte');
+  const over = talk(junk(most + 1));
+  assert.equal(over.ok, true, `${over.reason} ${over.bytes} B`);
+  assert.equal(over.raw, godotNextWrite(talked(junk(most + 1))));
+  assert.deepEqual([over.envelope.active_motif, over.envelope.mural_scenes, over.envelope.discovered_surprises], ['sun', { left: 'music', right: 'garden' }, ['cutesy_dino']]);
+  // Keys no Godot writes still go first: when dropping them is enough, the lenient values stay as they were stored.
+  const keyed = loaded(edit(GODOT_WRITTEN.fullRun, env => { env.zz_future = 'q'.repeat(2500); env.active_motif = 'moon'.repeat(25); env.discovered_surprises = ['future_x', 'cutesy_dino', 'cutesy_dino']; }));
+  const dropped = save(keyed.envelope, { ...structuredClone(keyed.state), celesteTalks: 18 });
+  assert.deepEqual([Object.hasOwn(dropped.envelope, 'zz_future'), dropped.envelope.active_motif, dropped.envelope.discovered_surprises], [false, 'moon'.repeat(25), ['future_x', 'cutesy_dino', 'cutesy_dino']]);
+  // A normal save at the budget is unaffected: written byte for byte, and one byte over is refused as before, with the same bytes,
+  // when cleaning frees none (all ten ids, stored unsorted, only sort).
+  const padded = n => edit(GODOT_WRITTEN.fullRun, env => { env.discovered_surprises = [...SURPRISES].reverse(); env.optional.pad = 'x'.repeat(n); });
+  const room = SAVE_BUDGET - utf8Bytes(withSeq(talked(padded(0)), 114));
+  assert.deepEqual([talk(padded(room)).raw, talk(padded(room)).bytes], [withSeq(talked(padded(room)), 114), SAVE_BUDGET]);
+  const full = talk(padded(room + 1));
+  assert.deepEqual([full.ok, full.reason, full.bytes, full.raw, full.envelope], [false, 'full', SAVE_BUDGET + 1, null, null]);
 });
