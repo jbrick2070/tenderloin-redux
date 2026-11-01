@@ -125,6 +125,28 @@ function labelTexts() {
   };
 }
 
+// --- what is on screen ---
+// A scene part draws only when its box (map px: all it can paint, its shadow, strokes, a beacon's lift, a tree's sway), grown by
+// CULL map px and CULL screen px for anti-aliasing and the canvas's rounding, meets the visible map. A part partly in view draws
+// whole, so what is on screen draws exactly as before; a part off it records nothing. Without a camera to say, everything draws.
+const CULL = 4;
+const cullPad = world => CULL + CULL / world.scale;
+function cullView(world) {
+  const v = visibleMap(world);
+  if (!v) return null;
+  const pad = cullPad(world);
+  return { left: v.left - pad, right: v.right + pad, top: v.top - pad, bottom: v.bottom + pad };
+}
+// A box that is not proven to miss the view (one that is not a number draws).
+const meets = (view, b) => !view || !b || !(b.right <= view.left || b.left >= view.right || b.bottom <= view.top || b.top >= view.bottom);
+function bounds(points, pad = 0) {
+  let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+  for (const p of points) { left = Math.min(left, p.x); right = Math.max(right, p.x); top = Math.min(top, p.y); bottom = Math.max(bottom, p.y); }
+  return { left: left - pad, top: top - pad, right: right + pad, bottom: bottom + pad };
+}
+const around = (p, r) => ({ left: p.x - r, top: p.y - r, right: p.x + r, bottom: p.y + r });
+const union = boxes => boxes.filter(Boolean).reduce((a, b) => ({ left: Math.min(a.left, b.left), top: Math.min(a.top, b.top), right: Math.max(a.right, b.right), bottom: Math.max(a.bottom, b.bottom) }), { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity });
+
 // --- ground ---
 // Boeddeker Park (build_boeddeker_park): fence runs open at the gate, gate posts, benches and the
 // play structure, from the ring and path the scene gives (2D pixels; ratios match Godot's metres).
@@ -170,6 +192,25 @@ function treeGeometry(trees) {
     return { x: t.x, y: t.y, r, trunk: 2.2 * scale * M, lower: LEAVES[seed % 3], upper: LEAVES[(seed + 1) % 3], phase: i * 1.37, scale };
   });
 }
+// The box of all drawPark draws but the trees: the lawn and its fence, the path's stroke, the gate, the benches, the play structure.
+function parkBox(park, geometry) {
+  return union([
+    bounds(park.ring, 1), geometry.path.length ? bounds(geometry.path, 1.2 * M + 1) : null, geometry.gate ? bounds(geometry.gate, 2.5) : null,
+    ...geometry.benches.map(bench => bounds(bench, 2.5)), geometry.play ? around(PLAY, Math.hypot(3.4, 3) * M + 1) : null,
+  ]);
+}
+// The trees' box at any sway (drawPark's |sway| <= 0.045): each tree's shadow, trunk and two canopy discs.
+function treeBox(trees) {
+  return union(trees.map(tree => {
+    const k = tree.scale * M, top = tree.y - tree.trunk * 0.9;
+    return union([
+      { left: tree.x - 0.7 * tree.r, right: tree.x + 1.3 * tree.r, top: tree.y + 1 - 0.45 * tree.r, bottom: tree.y + 1 + 0.45 * tree.r },
+      { left: tree.x - 0.8, right: tree.x + 0.8, top, bottom: tree.y },
+      around({ x: tree.x, y: top - 0.85 * k * 0.9 }, tree.r * 0.95 + 0.85 * k * 0.045 + 1),
+      around({ x: tree.x + 0.28 * k, y: top - 1.75 * k }, tree.r * 0.66 + 1.75 * k * 0.045 + 1),
+    ]);
+  }));
+}
 function drawPark(c, park, geometry, trees, t) {
   c.save();
   polygon(c, park.ring, PARK.lawn);
@@ -212,6 +253,13 @@ function drawLarkin(c, ring) {
   polygon(c, ring, LARKIN.roof);
   c.restore();
 }
+// The Larkin ring (three points or more) and its box, the shadow 12 px right and 19 px down.
+function larkinPart(larkin) {
+  const ring = list(larkin?.exterior).filter(point);
+  if (ring.length < 3) return null;
+  const b = bounds(ring, 1);
+  return { ring, box: { ...b, right: b.right + 12, bottom: b.bottom + 19 } };
+}
 // The museum at the Cadillac Hotel (build_street_life_decor, scale 1.75): gallery windows under
 // the marquee, the blade sign and the kiosk.
 function drawMuseum(c, m) {
@@ -240,6 +288,14 @@ function drawSoWhat(c, s) {
   }
   c.restore();
 }
+// The So What box: the 361 Turk canopy under its tallest chord bar, the 145 Leavenworth canopy under the lit window.
+function soWhatBox(s) {
+  const a = point(s.awning) ? s.awning : null, f = point(s.floor) ? s.floor : null;
+  return union([
+    a && { left: a.x - 3.2 * M - 1, right: a.x + 3.2 * M + 1, top: a.y - 4.5 - Math.max(...SO_WHAT_CHORDS) * 2 * M - 1, bottom: a.y + 0.9 * M + 1 },
+    f && { left: f.x - 0.8 * M - 1, right: f.x + 0.9 * M + 1, top: f.y - 2.1 * M - 21, bottom: f.y + 2.1 * M + 1 },
+  ]);
+}
 // An eatery front (build_street_life_decor): canopy_color awning over the label_color window glow.
 function drawAwning(c, at, colors) {
   c.save(); c.translate(at.x, at.y); c.rotate(MAP_ANGLE);
@@ -249,14 +305,23 @@ function drawAwning(c, at, colors) {
 }
 // Shared dishes (shared_meal.gd update_world) on the 2D gathering table: the Long Table slots, or a
 // 2 x 2 grid on the serving cloth beside the Open Floor table; the far edge shifts as Godot's does.
-function drawDishes(c, items, table) {
+// dishSpots: where drawDishes puts them (the table's corner, each dish's centre) and the box of the cloth and the plates.
+function dishSpots(items, table) {
   const tx = 166 + table.cell.col * 53, ty = -28 + table.cell.row * 12; // world.js gathering item placement
-  c.save();
-  if (table.floor) rect(c, tx + CLOTH.x, ty + CLOTH.y, CLOTH.w, CLOTH.h, MEAL.cloth, 1);
-  for (const d of items) {
+  const spots = items.map(d => {
     const slot = ok(d.slot) ? d.slot : TABLE_SLOTS[d.index];
     const x = table.floor ? tx + CLOTH.x + (-2.7 + (d.index % 2) * 1.4 + (d.other ? 0.2 : 0) + 3.2) * 10 : tx + 37.5 + (slot + (d.other ? 0.11 : 0)) * TABLE_PX;
     const y = table.floor ? ty + CLOTH.y + (0.3 + Math.trunc(d.index / 2) * 0.6 + (d.other ? -0.07 : 0) + 0.05) * 10 : ty + 4 + (d.other ? 0.15 : -0.18) * 12 / 0.9;
+    return { d, x, y };
+  });
+  const cloth = table.floor ? { left: tx + CLOTH.x, top: ty + CLOTH.y, right: tx + CLOTH.x + CLOTH.w, bottom: ty + CLOTH.y + CLOTH.h } : null;
+  return { tx, ty, spots, box: union([cloth, ...spots.map(s => around(s, 4.5))]) };
+}
+function drawDishes(c, at, table) {
+  const { tx, ty } = at;
+  c.save();
+  if (table.floor) rect(c, tx + CLOTH.x, ty + CLOTH.y, CLOTH.w, CLOTH.h, MEAL.cloth, 1);
+  for (const { d, x, y } of at.spots) {
     const food = FOOD[d.index];
     if (d.serving === 1) for (const dx of [-1.6, 1.6]) { ellipse(c, x + dx, y, 1.6, 1.2, MEAL.rim); ellipse(c, x + dx, y, 1.2, 0.85, MEAL.plate); ellipse(c, x + dx, y - 0.1, 0.7, 0.45, food); }
     else { ellipse(c, x, y, 3, 2, MEAL.rim); ellipse(c, x, y, 2.3, 1.4, MEAL.plate); ellipse(c, x, y - 0.2, 1.4, 0.8, food); }
@@ -265,8 +330,10 @@ function drawDishes(c, items, table) {
 }
 
 // --- actors ---
-const actor = (y, draw) => ({ y, draw: (c, world) => { c.save(); draw(c, world); c.restore(); } });
+// An actor draws itself only when its box (map px) meets the visible map.
+const actor = (y, draw, box) => ({ y, draw: (c, world) => { if (!meets(cullView(world), box)) return; c.save(); draw(c, world); c.restore(); } });
 const person = (world, x, y, coat, skin, hair) => world.person?.({ x, y, coat, skin, hair }, false);
+const personBox = (x, y) => box(x, y, PERSON);
 // A surprise beacon (update_neighborhood_surprises_3d): the accent at 1.25x when found, else darkened 28%.
 function beaconActors(markers) {
   return list(markers).filter(m => point(m) && typeof m.accent === 'string').map(m => {
@@ -276,7 +343,7 @@ function beaconActors(markers) {
       stroke(c, [{ x: m.x, y: m.y }, { x: m.x, y: m.y - BEACON.lift }], SURPRISE.beacon, 1.2);
       circle(c, m.x, m.y - BEACON.lift, r, color);
       circle(c, m.x - r * 0.35, m.y - BEACON.lift - r * 0.35, r * 0.28, shine);
-    });
+    }, { left: m.x - 7, right: m.x + 7, top: m.y - BEACON.lift - r - 1, bottom: m.y + 4 });
   });
 }
 // Keepsakes on the paired neighbor (attach_neighbor_signature_prop, build_mural_board, build_rook_speaker), as small icons at the neighbor's side.
@@ -297,7 +364,7 @@ function keepsakeActors(items) {
     const n = neighbor(k?.neighbor), icon = ICONS[k?.id];
     if (!n || !icon) return [];
     const slot = Math.max(0, (PAIRS[n.id] ?? []).indexOf(k.id));
-    return [actor(n.y + 0.01 + slot * 0.001, c => icon(c, n.x + 17, n.y - 21 + slot * 12))];
+    return [actor(n.y + 0.01 + slot * 0.001, c => icon(c, n.x + 17, n.y - 21 + slot * 12), around({ x: n.x + 17, y: n.y - 21 + slot * 12 }, 6.5))]; // an icon spans 5.4 px
   });
 }
 // The docent, and the Time-Portal standing at museum-local (2.3, 0.8): three discs that turn
@@ -309,8 +376,8 @@ function museumActors(m) {
   out.push(actor(base, c => {
     RINGS.forEach(([r, color], i) => ellipse(c, x, y, widths[i], r * MUSEUM_SCALE, color));
     circle(c, x, y, 0.72 * MUSEUM_SCALE, lens);
-  }));
-  if (point(m.docent)) { const { x: dx, y: dy } = m.docent; out.push(actor(dy, (c, world) => person(world, dx, dy, DECOR.docentCoat, DECOR.docentSkin, DECOR.docentHair))); }
+  }, around({ x, y }, RINGS[0][0] * MUSEUM_SCALE + 1)));
+  if (point(m.docent)) { const { x: dx, y: dy } = m.docent; out.push(actor(dy, (c, world) => person(world, dx, dy, DECOR.docentCoat, DECOR.docentSkin, DECOR.docentHair), personBox(dx, dy))); }
   return out;
 }
 // An open counter (build_eatery_counters, scale 1.4): the menu board on its posts and the host
@@ -325,13 +392,13 @@ function counterActors(eateries) {
         for (const px of [-0.95, 0.95]) rect(c, x + px * K - 0.5, y - 44, 1, 38, COUNTER.stool);
         rect(c, x - 1.05 * K, y - 47, 2.1 * K, 6, COUNTER.board, 1);
         person(world, x, y - 3, colors.host, host.skin, host.hair);
-      }),
+      }, union([personBox(x, y - 3), { left: x - 1.05 * K - 1, right: x + 1.05 * K + 1, top: y - 48, bottom: y - 5 }])),
       actor(y, c => {
         rect(c, x - 1.3 * K, y - 7, 2.6 * K, 7, COUNTER.counter, 1);
         rect(c, x - 1.42 * K, y - 8.2, 2.84 * K, 2, colors.top, 1);
         rect(c, x - 1.3 * K, y - 3, 2.6 * K, 1.4, colors.canopy);
         for (const sx of [-0.8, 0, 0.8]) circle(c, x + sx * K, y + 2.5, 1.4, colors.seat);
-      }),
+      }, { left: x - 1.42 * K - 1, right: x + 1.42 * K + 1, top: y - 9.2, bottom: y + 5 }),
     ];
   });
 }
@@ -355,8 +422,10 @@ function drawDog(c, x, y, look, colors, facing) {
 const DOG_COLORS = DOG_LOOKS.map(look => ({ muzzle: lighten(look.coat, 0.15), ear: darken(look.coat, 0.2) }));
 function dogActors(part) {
   const owners = list(part?.owners).filter(o => point(o) && typeof o.coat === 'string');
-  const dogs = list(part?.dogs).filter(d => point(d) && DOG_LOOKS[d.index]).map(d => actor(d.y, c => drawDog(c, d.x, d.y, DOG_LOOKS[d.index], DOG_COLORS[d.index], owners.length && d.index === 1 ? -1 : 1)));
-  return [...dogs, ...owners.map(o => actor(o.y, (c, world) => person(world, o.x, o.y, o.coat, DOG.ownerSkin, DOG.ownerHair)))];
+  // A dog reaches 0.75 m ahead (its nose) and the ear tip 0.6 m above its height, either way it faces; its shadow 10 px aside.
+  const dogs = list(part?.dogs).filter(d => point(d) && DOG_LOOKS[d.index]).map(d => actor(d.y, c => drawDog(c, d.x, d.y, DOG_LOOKS[d.index], DOG_COLORS[d.index], owners.length && d.index === 1 ? -1 : 1),
+    { left: d.x - 0.75 * ACTOR - 1, right: d.x + 0.75 * ACTOR + 1, top: d.y - (DOG_LOOKS[d.index].height + 0.6) * ACTOR - 1, bottom: d.y + 4 }));
+  return [...dogs, ...owners.map(o => actor(o.y, (c, world) => person(world, o.x, o.y, o.coat, DOG.ownerSkin, DOG.ownerHair), personBox(o.x, o.y)))];
 }
 // The paper costume (lantern_procession.gd build_costumes): a cape behind the 2D person (Godot's
 // shoulders 1.35 m, hem 0.64 m bat / 0.72 m star, centre 0.83 m), a paper lantern at the right hand.
@@ -376,29 +445,30 @@ function drawLantern(c, x, y, lantern) {
 }
 function visitorActors(part) {
   if (!part?.cape || !part.lantern) return [];
+  // The cape (14 px aside), the lantern (to 14.5 px) and the boat lie within the person's own box.
   return list(part.visitors).filter(point).map(v => actor(v.y, (c, world) => {
     c.save(); drawCape(c, v.x, v.y, part.cape); c.restore();
     person(world, v.x, v.y, typeof v.coat === 'string' ? v.coat : part.cape.color, PARADE.visitorSkin, PARADE.visitorHair);
     c.save(); drawLantern(c, v.x, v.y, part.lantern); c.restore();
     if (typeof v.boat === 'string') { c.translate(v.x, v.y); shape(c, [[-8, height(0.78)], [3.2, height(0.78)], [1, height(0.62)], [-5.8, height(0.62)]], v.boat); }
-  }));
+  }, personBox(v.x, v.y)));
 }
 // The player's costume and the election folio (voting_story.gd: 0.32 x 0.23 m at the chest), at
 // the position the World draws the player.
 function playerActors(world, scene) {
   const p = world.getState?.()?.player ?? scene.player;
   if (!point(p)) return [];
-  const out = [], lantern = scene.lantern, election = scene.election;
+  const out = [], lantern = scene.lantern, election = scene.election, at = (left, right, top, bottom) => ({ left: p.x + left, right: p.x + right, top: p.y + top, bottom: p.y + bottom });
   if (lantern?.cape && lantern.lantern) {
-    out.push(actor(p.y - 0.001, c => drawCape(c, p.x, p.y, lantern.cape)));
-    out.push(actor(p.y + 0.001, c => drawLantern(c, p.x, p.y, lantern.lantern)));
+    out.push(actor(p.y - 0.001, c => drawCape(c, p.x, p.y, lantern.cape), at(-15, 15, -20, -5)));      // the cape and its star
+    out.push(actor(p.y + 0.001, c => drawLantern(c, p.x, p.y, lantern.lantern), at(9, 15, -17, -6))); // the handle and the paper
   }
   if (election?.folio) out.push(actor(p.y + 0.002, c => {
     c.translate(p.x, p.y);
     rect(c, -2.5, -17.5, 9, 6.5, election.palette === 1 ? FOLIO.cool : FOLIO.warm, 0.8);
     c.strokeStyle = FOLIO.ink; c.lineWidth = 0.8; c.strokeRect(-2.5, -17.5, 9, 6.5);
     stroke(c, [{ x: -1.5, y: -13 }, { x: 2, y: -15.5 }, { x: 5.5, y: -14.5 }], FOLIO.street, 1);
-  }));
+  }, at(-3.5, 7.5, -18.5, -10)));
   return out;
 }
 // Power Story (power_story.gd setup, update_world): each relay's street lamp with its portable kit,
@@ -418,7 +488,7 @@ function powerActors(power) {
       rect(c, r.x - 1, r.y - POLE, 2, POLE, DECOR.lampPole);
       circle(c, r.x, r.y - POLE - 3, 3.5, globe);
       if (kit) { rect(c, r.x - 3.5, r.y - 26, 7, 9, POWER.relay, 1.5); circle(c, r.x, r.y - 22.5, 1.8, kit); }
-    }));
+    }, { left: r.x - 4.5, right: r.x + 8, top: r.y - POLE - 7.5, bottom: r.y + 4.5 }));
   });
   const stand = power.batteryStand;
   if (point(stand)) out.push(actor(stand.y, c => {
@@ -427,7 +497,7 @@ function powerActors(power) {
     rect(c, stand.x - 1, stand.y - 20, 2, 19, POWER.battery);
     rect(c, stand.x - 6, stand.y - 28, 12, 8, POWER.battery, 1.5);
     circle(c, stand.x, stand.y - 34, 5, stand.lit ? POWER.warm : POWER.dark);
-  }));
+  }, { left: stand.x - 9, right: stand.x + 12, top: stand.y - 40, bottom: stand.y + 5 }));
   return out;
 }
 
@@ -482,7 +552,7 @@ export const BEACON_LIFT = BEACON.lift;
 // inside it with a small margin. A beacon's label is also a tap target (chipTargets), so its middle line keeps at least
 // NEARBY px from the player's feet: none of its hit points is ever what world.js nearest() finds for E/Enter and the Nearby
 // hint. Map px; the sizes below are chip px, which the chip's zoom scaling k turns into map px.
-const CHIP = { top: 19, bottom: 4, gap: 3, steps: 3, margin: 6, focus: 40, spacing: 16 };
+const CHIP = { top: 19, bottom: 4, gap: 3, steps: 3, margin: 6, focus: 40, spacing: 16, cell: 8 };
 const CHIP_STEP = CHIP.top + CHIP.bottom + CHIP.gap, CHIP_MIDDLE = (CHIP.top - CHIP.bottom) / 2;
 const TIER = { focus: 0, beacon: 1, landmark: 2, menu: 3 };
 const NEARBY = 40;    // world.js nearest(): within 40 map px of the player's feet
@@ -530,6 +600,39 @@ function visibleMap(world) {
   if (!ok(o?.x) || !ok(o?.y) || !ok(world.width) || !ok(world.height) || !(s > 0)) return null;
   return { left: -o.x / s, right: (world.width - o.x) / s, top: -o.y / s, bottom: (world.height - o.y) / s, margin: CHIP.margin / s };
 }
+// A chip's point x and span in x (map px, w chip px wide): at its anchor, or for one that reaches into the visible map, clamped
+// inside it. Fixed before any row is chosen, by the chip alone.
+function chipSpan(s, w, k, view) {
+  const half = w * k / 2;
+  let x = s.x;
+  if (view && x + half > view.left && x - half < view.right) {
+    const low = view.left + view.margin + half, high = view.right - view.margin - half;
+    x = low <= high ? Math.min(Math.max(x, low), high) : (view.left + view.right) / 2;
+  }
+  return { x, left: x - half, right: x + half };
+}
+// The chips that can matter to a frame: a chip is in another's way only beside it in x (placeChips' beside(), on the spans that
+// chipSpan fixes), so the chips fall into runs whose spans overlap one another (within the gap and a pixel more). Each run is laid
+// out as among all the chips, alone; a run that reaches the visible map (grown by pad) is kept whole, the others left out.
+function reachable(sources, width, k, view, pad) {
+  const gap = CHIP.gap * k, spans = [];
+  for (const s of sources) {
+    const w = width(s.text);
+    if (ok(w)) { const { left, right } = chipSpan(s, w, k, view); spans.push({ s, left, right }); }
+  }
+  spans.sort((a, b) => a.left - b.left);
+  const out = [];
+  for (let i = 0; i < spans.length;) {
+    let j = i, right = spans[i].right;
+    while (j + 1 < spans.length && spans[j + 1].left - gap - 1 < right) right = Math.max(right, spans[++j].right);
+    if (right + k > view.left - pad && spans[i].left < view.right + pad) {
+      if (i === 0 && j === spans.length - 1) return sources; // one run, and it reaches the view: every chip
+      for (let n = i; n <= j; n++) out.push(spans[n].s);
+    }
+    i = j + 1;
+  }
+  return out;
+}
 // The declutter of one frame. width(text): chip px, or not a number for a chip that could not be measured (not placed); blocks:
 // the boxes no chip may cover; player: the player's feet (or null). Returns the placed chips in priority order: { id, text, ink,
 // tier, shift (chip heights from its natural point, above < 0), x, y (chip()'s point), k, left, right, top, bottom }.
@@ -542,13 +645,8 @@ function placeChips(sources, width, k, view, focus, blocks, player) {
     if (!ok(w)) continue;
     // A beacon's label: its point never below the row whose bottom clears its globe by the gap, and its natural point there at most.
     const beacon = ok(s.clear), ceiling = beacon ? s.clear - gap - CHIP.bottom * k : Infinity;
-    const half = w * k / 2, natural = Math.min(s.y - s.rise - s.lift * k, ceiling);
-    let x = s.x;
-    if (view && x + half > view.left && x - half < view.right) {
-      const low = view.left + view.margin + half, high = view.right - view.margin - half;
-      x = low <= high ? Math.min(Math.max(x, low), high) : (view.left + view.right) / 2;
-    }
-    const left = x - half, right = x + half;
+    const natural = Math.min(s.y - s.rise - s.lift * k, ceiling);
+    const { x, left, right } = chipSpan(s, w, k, view);
     // Only what is beside it in x can be in its way; a beacon's label also keeps its middle line out of the player's nearby radius.
     const beside = r => r.left - gap < right - EPSILON && left - gap < r.right - EPSILON;
     const across = [...placed.filter(beside), ...blocks.filter(beside)];
@@ -579,8 +677,11 @@ export function createSprites({ reducedMotion = () => false } = {}) {
   const motion = world => (reduced() ? 0 : (ok(world.time) ? world.time : 0));
   let labels = null;
   const text = () => (labels ??= labelTexts());
-  // The chips: each text measured once in chip()'s font; the sources once per set of scene parts; the layout once per frame
-  // (the scene's chip parts, the view and the focus points), shared by the overlay that draws it and the hit points of a tap.
+  // The chips: each text measured once in chip()'s font; the sources once per set of scene parts; the layout of the chips that can
+  // reach the view (reachable) once per key: the scene's chip parts, the zoom, the view to the whole CSS pixel, the player's
+  // CHIP.cell px cell and the tour stop. A new key lays the frame out from its own view and player, exactly as afresh; a frame with
+  // the same key keeps that layout (a chip clamped to the map's edge then lags the view by under a pixel, and the player's block,
+  // focus and nearby radius stay where it stood in its cell). The overlay that draws it and the hit points of a tap share it.
   const widths = new Map();
   function measure(c, texts) {
     const missing = texts.filter(t => !widths.has(t));
@@ -590,6 +691,7 @@ export function createSprites({ reducedMotion = () => false } = {}) {
     c.restore();
   }
   let sourced = null, laid = null;
+  const whole = v => (ok(v) ? Math.round(v) : null), cell = v => Math.floor(v / CHIP.cell);
   // Called for each draw and for each beacon of each hit test: an unchanged frame is found without allocating anything.
   function chips(world, scene, c = world?.ctx) {
     if (!world || !scene || typeof scene !== 'object' || !(world.scale >= CHIP_ZOOM)) return NONE;
@@ -599,8 +701,9 @@ export function createSprites({ reducedMotion = () => false } = {}) {
     }
     const sources = sourced.list, o = world.offset, player = world.getState?.()?.player ?? s.player, marker = s.tourMarker;
     const p = point(player) ? player : null, m = point(marker) ? marker : null, at = laid?.at;
-    if (at && at[0] === sources && at[1] === world.scale && at[2] === o?.x && at[3] === o?.y && at[4] === world.width && at[5] === world.height
-      && at[6] === p?.x && at[7] === p?.y && at[8] === m?.x && at[9] === m?.y) return laid.chips;
+    const ox = whole(o?.x), oy = whole(o?.y), wide = whole(world.width), high = whole(world.height), px = p ? cell(p.x) : null, py = p ? cell(p.y) : null;
+    if (at && at[0] === sources && at[1] === world.scale && at[2] === ox && at[3] === oy && at[4] === wide && at[5] === high
+      && at[6] === px && at[7] === py && at[8] === m?.x && at[9] === m?.y) return laid.chips;
     const k = Math.max(1, 1 / world.scale), names = sources.length ? worldChips(world.scale) : [];
     measure(c, [...sources.map(t => t.text), ...names.map(n => n.text)]);
     // The frame's blocks: the scene's, the player as drawn, and world.js's name chips (measured as world.chip measures them).
@@ -608,10 +711,11 @@ export function createSprites({ reducedMotion = () => false } = {}) {
       const half = widths.get(n.text) * k / 2;
       return { left: n.x - half, right: n.x + half, top: n.y - CHIP.top * k, bottom: n.y + CHIP.bottom * k };
     })];
-    const view = visibleMap(world), focus = [p, m].filter(Boolean);
+    const view = visibleMap(world), focus = [p, m].filter(Boolean), measured = t => widths.get(t);
+    const reach = view ? reachable(sources, measured, k, view, cullPad(world)) : sources;
     laid = {
-      at: [sources, world.scale, o?.x, o?.y, world.width, world.height, p?.x, p?.y, m?.x, m?.y], view, player: p, targets: new Map(),
-      chips: sources.length ? placeChips(sources, t => widths.get(t), k, view, focus, blocks, p) : NONE,
+      at: [sources, world.scale, ox, oy, wide, high, px, py, m?.x, m?.y], view, targets: new Map(),
+      chips: reach.length ? placeChips(reach, measured, k, view, focus, blocks, p) : NONE,
     };
     return laid.chips;
   }
@@ -634,17 +738,24 @@ export function createSprites({ reducedMotion = () => false } = {}) {
     return tables.get(state);
   };
   return {
+    // Each part only when its box (built once per part object) meets the view; the dishes' box follows the table each frame.
     ground(c, world, scene) {
       if (!scene || typeof scene !== 'object') return;
-      const larkin = list(scene.larkin?.exterior).filter(point);
-      if (larkin.length >= 3) drawLarkin(c, larkin);
+      const view = cullView(world);
+      const larkin = once('larkin', scene.larkin, larkinPart);
+      if (larkin && meets(view, larkin.box)) drawLarkin(c, larkin.ring);
       const park = scene.park;
-      if (park && list(park.ring).length >= 3 && park.ring.every(point)) drawPark(c, park, once('park', park, parkGeometry), once('trees', park.trees, treeGeometry), motion(world));
-      if (point(scene.museum)) drawMuseum(c, scene.museum);
-      if (scene.soWhat && (point(scene.soWhat.awning) || point(scene.soWhat.floor))) drawSoWhat(c, scene.soWhat);
-      for (const e of list(scene.eateries)) if (EATERY[e?.index] && point(e.awning)) drawAwning(c, e.awning, EATERY[e.index]);
+      if (park && list(park.ring).length >= 3 && park.ring.every(point)) {
+        const geometry = once('park', park, parkGeometry), trees = once('trees', park.trees, treeGeometry);
+        if (meets(view, once('parkBox', park, () => parkBox(park, geometry))) || meets(view, once('treeBox', trees, treeBox))) drawPark(c, park, geometry, trees, motion(world));
+      }
+      // The museum's farthest corner from its centre is the marquee's (5.8 x 1.8 at scale 1.75), an awning's its canopy's (3.8 x 1.4 m).
+      if (point(scene.museum) && meets(view, once('museumBox', scene.museum, m => around(m, Math.hypot(2.9, 0.9) * MUSEUM_SCALE + 1)))) drawMuseum(c, scene.museum);
+      if (scene.soWhat && (point(scene.soWhat.awning) || point(scene.soWhat.floor)) && meets(view, once('soWhat', scene.soWhat, soWhatBox))) drawSoWhat(c, scene.soWhat);
+      const awnings = once('awnings', scene.eateries, eateries => list(eateries).map(e => (EATERY[e?.index] && point(e.awning) ? around(e.awning, Math.hypot(1.9, 0.7) * M + 1) : null)));
+      list(scene.eateries).forEach((e, i) => { if (awnings[i] && meets(view, awnings[i])) drawAwning(c, e.awning, EATERY[e.index]); });
       const dishes = list(scene.dishes).filter(d => d && Number.isInteger(d.index) && d.index >= 0 && d.index < FOOD.length);
-      if (dishes.length) { const at = table(world.getState?.()); if (at) drawDishes(c, dishes, at); }
+      if (dishes.length) { const at = table(world.getState?.()); if (at) { const spots = dishSpots(dishes, at); if (meets(view, spots.box)) drawDishes(c, spots, at); } }
     },
     actors(world, scene) {
       if (!scene || typeof scene !== 'object') return [];
@@ -658,9 +769,13 @@ export function createSprites({ reducedMotion = () => false } = {}) {
     overlay(c, world, scene) {
       if (!scene || typeof scene !== 'object') return;
       if (scene.power?.afterDark) drawAfterDark(c, world, scene.power);
-      // Lowest priority first, so a beacon's label drawn over another chip (no free slot) is the one on top.
-      const placed = chips(world, scene, c);
-      for (let i = placed.length - 1; i >= 0; i--) chip(c, world, placed[i].text, placed[i].x, placed[i].y, placed[i].ink);
+      // Lowest priority first, so a beacon's label drawn over another chip (no free slot) is the one on top. A chip off the map (its
+      // body, and the shadow a chip px right and two down) is not drawn.
+      const placed = chips(world, scene, c), view = cullView(world);
+      for (let i = placed.length - 1; i >= 0; i--) {
+        const p = placed[i];
+        if (!view || !(p.right + p.k <= view.left || p.left >= view.right || p.bottom + 2 * p.k <= view.top || p.top >= view.bottom)) chip(c, world, p.text, p.x, p.y, p.ink);
+      }
       if (point(scene.tourMarker)) drawTourMarker(c, world, scene.tourMarker, motion(world));
     },
     chips: (world, scene) => chips(world, scene),
@@ -668,22 +783,24 @@ export function createSprites({ reducedMotion = () => false } = {}) {
     // the label's middle line, end to end at most CHIP.spacing chip px apart, so the World's hit radius (28 map px, more when
     // zoomed out) covers the whole label and a tap on it is nearer its own points than a neighbouring label's. None for any
     // other object, nor for a label this frame does not draw (below the chip zoom, or dropped) or draws out of view, nor within
-    // NEARBY px of the player (the declutter keeps a placed label out of that radius; this holds for a forced one too), so
-    // world.js nearest(), which reads the same objects for E/Enter and the Nearby hint, never finds one.
+    // NEARBY px of the player where it stands now (the declutter keeps a placed label out of that radius; this holds for a forced
+    // one, and for a layout kept from where the player stood elsewhere in its cell), so world.js nearest(), which reads the same
+    // objects for E/Enter and the Nearby hint, never finds one.
     chipTargets(world, scene, object) {
       const id = typeof object?.id === 'string' ? object.id : '';
       if (!id.startsWith('surprise:')) return NONE;
       const placed = chips(world, scene);
       if (!placed.length) return NONE;
-      if (laid.targets.has(object)) return laid.targets.get(object);
-      const at = placed.find(p => p.id === id), view = laid.view, me = laid.player;
+      const now = world.getState?.()?.player ?? scene.player, me = point(now) ? now : null, kept = laid.targets.get(object);
+      if (kept && kept.x === me?.x && kept.y === me?.y) return kept.out;
+      const at = placed.find(p => p.id === id), view = laid.view;
       let out = NONE;
       if (at && (!view || (at.right > view.left && at.left < view.right && at.bottom > view.top && at.top < view.bottom))) {
         const span = at.right - at.left, n = Math.max(1, Math.ceil(span / (CHIP.spacing * at.k))), y = (at.top + at.bottom) / 2;
         const points = Array.from({ length: n + 1 }, (_, i) => ({ ...object, x: i === n ? at.right : at.left + span * i / n, y }));
         out = Object.freeze(points.filter(t => !me || Math.hypot(t.x - me.x, t.y - me.y) >= NEARBY).map(t => Object.freeze(t)));
       }
-      laid.targets.set(object, out);
+      laid.targets.set(object, { x: me?.x, y: me?.y, out });
       return out;
     },
   };

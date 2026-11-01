@@ -92,19 +92,23 @@ test('findPath: every walkTargets() entry routes, and the per-ways cell cache gi
 
 test('findPath caches cells per ways array: a repeat route reads no street geometry, another array starts cold', () => {
   let scans = 0;
-  // streetDistance iterates the ways array once per call, so counting iterator reads counts street scans.
-  const counted = list => new Proxy(list, { get(target, key, receiver) { if (key === Symbol.iterator) scans++; return Reflect.get(target, key, receiver); } });
-  const ways = counted([...WAYS]);
+  // Street points that count every read of their coordinates: whether streetDistance scans every segment or indexes them
+  // (tests/next-router.test.mjs), each cell a route measures reads some, and a cell it has cached reads none.
+  const counted = () => WAYS.map(way => ({ ...way, points: way.points.map(p => new Proxy(p, { get(target, key, receiver) { if (key === 'x' || key === 'y') scans++; return Reflect.get(target, key, receiver); } })) }));
+  const ways = counted();
   const first = core.findPath(P.START, P.MUSEUM, ways), cold = scans;
-  assert.ok(first.length > 0 && cold > 1000, `${cold} street scans for the first route`);
+  assert.ok(first.length > 0 && cold > 1000 * 8, `${cold} street coordinate reads for the first route`);
+  scans = 0;
+  core.walkable(P.MUSEUM, ways);
+  const goal = scans;
   scans = 0;
   assert.equal(text(core.findPath(P.START, P.MUSEUM, ways)), text(first));
-  assert.equal(scans, 1, 'a repeat route scans the streets only for its own goal');
+  assert.equal(scans, goal, 'a repeat route reads the streets only for its own goal');
   scans = 0;
   assert.ok(core.findPath(P.START, P.LARKIN_JUNCTION, ways).length > 0);
   assert.ok(scans < cold, 'a longer route reuses the cells the first one computed');
   scans = 0;
-  assert.equal(text(core.findPath(P.START, P.MUSEUM, counted([...WAYS]))), text(first));
+  assert.equal(text(core.findPath(P.START, P.MUSEUM, counted())), text(first));
   assert.equal(scans, cold, 'another ways array, even with the same streets, has cells of its own');
   assert.deepEqual(core.findPath(P.START, P.MUSEUM, []), [], 'no streets, nothing walkable inside BOUNDS');
 });

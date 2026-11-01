@@ -75,6 +75,9 @@ const texts = calls => shapes(calls).filter(s => s.kind === 'text');
 globalThis.ResizeObserver ??= class { observe() {} disconnect() {} };
 globalThis.window ??= { devicePixelRatio: 1 };
 const OPENED = () => ({ ...initialState(), opened: true, layout: 'table' });
+// A canvas that shows the whole side-story map (Larkin to Mason, Boeddeker Park to 145 Leavenworth) at every zoom these tests
+// set with zoom(): sprites.js draws only what is on screen.
+const WHOLE = { width: 10400, height: 3000 };
 function makeWorld({ layers, state = initialState(), width = 1024, height = 768 } = {}) {
   const ctx = recorder();
   const canvas = { width: 0, height: 0, style: {}, getContext: () => ctx, addEventListener() {}, getBoundingClientRect: () => ({ left: 0, top: 0, width, height }), setPointerCapture() {}, focus() {} };
@@ -251,7 +254,7 @@ test('sprites: an empty scene draws nothing, and broken parts never throw', asyn
 
 test('sprites: each scene part draws in its own layer, and every layer leaves the context as it found it', async () => {
   const { createSprites } = await loadSprites();
-  const sprites = createSprites({ reducedMotion: () => false }), w = makeWorld({ state: OPENED() });
+  const sprites = createSprites({ reducedMotion: () => false }), w = makeWorld({ state: OPENED(), ...WHOLE });
   zoom(w.world, 1);
   const full = fullScene();
   const expected = {
@@ -277,7 +280,8 @@ test('sprites: each scene part draws in its own layer, and every layer leaves th
 
 test('sprites: surprise markers are the accent at 1.25x when found and darkened 28% otherwise', async () => {
   const { createSprites } = await loadSprites();
-  const sprites = createSprites({ reducedMotion: () => false }), w = makeWorld({ state: OPENED() });
+  const sprites = createSprites({ reducedMotion: () => false }), w = makeWorld({ state: OPENED(), ...WHOLE });
+  zoom(w.world, 1);
   const list = markers(['jeffrey_record', 'cutesy_dino']);
   const r = layerCalls(sprites, w, { ...emptyScene(), surprises: list });
   const fills = shapes(r.actorCalls).filter(s => s.kind === 'fill' && s.path.length === 1 && s.path[0][0] === 'arc');
@@ -376,7 +380,7 @@ const contrast = (a, b) => { const [x, y] = [luminance(a), luminance(b)].sort((p
 
 test('sprites: Label3D chips say visits/text.js text in Godot\'s tint, at the neighbor-name zoom', async () => {
   const { createSprites } = await loadSprites();
-  const sprites = createSprites({ reducedMotion: () => false }), w = makeWorld({ state: OPENED() });
+  const sprites = createSprites({ reducedMotion: () => false }), w = makeWorld({ state: OPENED(), ...WHOLE });
   const scene = fullScene();
   zoom(w.world, 1);
   const chips = texts(layerCalls(sprites, w, scene).overlay);
@@ -411,7 +415,7 @@ test('sprites: Label3D chips say visits/text.js text in Godot\'s tint, at the ne
 
 test('sprites: a chip has world.chip\'s geometry and zoom scaling, with Godot\'s label colours', async () => {
   const { createSprites } = await loadSprites();
-  const sprites = createSprites({ reducedMotion: () => false }), w = makeWorld({ state: OPENED() });
+  const sprites = createSprites({ reducedMotion: () => false }), w = makeWorld({ state: OPENED(), ...WHOLE });
   const park = fullScene().park;
   for (const scale of [0.4, 1, 1.6]) {
     zoom(w.world, scale);
@@ -479,10 +483,13 @@ function drawnBounds(calls) {
 // largest (the player's ring, a hat, headphones and a rollator): the player, the neighbors, the docent and an open counter's host.
 function mustShow(w, scene, sprites) {
   const out = [];
-  const actors = sprites.actors(w.world, { surprises: scene.surprises });
+  // Each globe where a canvas showing the whole map draws it (sprites.js draws a beacon only on screen).
+  const whole = makeWorld({ state: OPENED(), ...WHOLE });
+  zoom(whole.world, 1);
+  const actors = sprites.actors(whole.world, { surprises: scene.surprises });
   for (const [i, m] of list(scene.surprises).entries()) {
-    w.ctx.calls.length = 0; actors[i].draw(w.ctx, w.world);
-    const globe = shapes(w.ctx.calls.splice(0)).find(s => s.kind === 'fill' && s.path[0]?.[0] === 'arc' && s.color === (m.found ? m.accent : darken(m.accent, 0.28)));
+    whole.ctx.calls.length = 0; actors[i].draw(whole.ctx, whole.world);
+    const globe = shapes(whole.ctx.calls.splice(0)).find(s => s.kind === 'fill' && s.path[0]?.[0] === 'arc' && s.color === (m.found ? m.accent : darken(m.accent, 0.28)));
     const [, x, y, r] = globe.path[0];
     out.push({ what: `the globe of ${m.id}`, id: m.id, left: x - r, right: x + r, top: y - r, bottom: y + r });
   }
@@ -507,7 +514,7 @@ const lookAt = (w, p, scale) => { w.world.camera.lookAt(p, scale); return viewOf
 test("sprites: BEACON_LIFT is the drawn globe's height above its beacon's foot, found or not, at every zoom; the foot, half way and the globe cover the drawing", async () => {
   const { createSprites, BEACON_LIFT } = await loadSprites();
   assert.equal(typeof BEACON_LIFT, 'number');
-  const sprites = createSprites({ reducedMotion: () => true }), w = makeWorld({ state: OPENED() });
+  const sprites = createSprites({ reducedMotion: () => true }), w = makeWorld({ state: OPENED(), ...WHOLE });
   const list = markers(['jeffrey_record']);
   for (const scale of [0.3, 0.85, 1.6]) {
     zoom(w.world, scale);
@@ -561,9 +568,14 @@ test('sprites: the chip declutter keeps the museum corner and the 361 Turk clust
         }
         const margin = 6 / scale - 1e-9;
         for (const c of near) if (c.right - c.left <= view.right - view.left - 2 * margin) assert.ok(c.left >= view.left + margin && c.right <= view.right - margin, `${where}: ${c.text} is inside the map`);
-        // Every beacon label in view is drawn (a beacon label is never dropped), and each chip text at most once.
+        // Every beacon label in view is laid out (a beacon label is never dropped) and drawn when on screen (one pushed up past the
+        // map's top edge is not); each chip text at most once.
+        const laidOut = sprites.chips(w.world, scene);
         for (const m of scene.surprises) {
-          if (m.x > view.left && m.x < view.right && m.y > view.top && m.y < view.bottom) assert.ok(chips.some(c => c.text === surpriseLabel(m.id)), `${where}: ${m.id}'s label`);
+          if (!(m.x > view.left && m.x < view.right && m.y > view.top && m.y < view.bottom)) continue;
+          const own = laidOut.find(c => c.id === `surprise:${m.id}`);
+          assert.ok(own, `${where}: ${m.id}'s label is laid out`);
+          if (own.right + own.k > view.left && own.left < view.right && own.bottom + 2 * own.k > view.top && own.top < view.bottom) assert.ok(chips.some(c => c.text === surpriseLabel(m.id)), `${where}: ${m.id}'s label`);
         }
         assert.equal(new Set(chips.map(c => c.text)).size, chips.length);
         // Every beacon label of the cluster is drawn at every width and zoom (a landmark or a menu with no room is dropped).
@@ -577,12 +589,17 @@ test('sprites: the chip declutter keeps the museum corner and the 361 Turk clust
   const placed = sprites.chips(w.world, scene).filter(c => ['surprise:mayor_pomp_event', 'surprise:magic_carpet_chef', 'museum', 'portal', 'eatery:2'].includes(c.id));
   assert.deepEqual(placed.filter(c => c.id.startsWith('surprise:')).map(c => c.id).sort(), ['surprise:magic_carpet_chef', 'surprise:mayor_pomp_event'], 'both beacon labels');
   assert.ok(placed.some(c => c.shift !== 0), 'some of them moved off their natural place');
-  // What the overlay draws is chips(): the layout game.js's beacon label hit points come from (chip text width + 20, 23 tall).
+  // What the overlay draws is chips() on screen: the layout game.js's beacon label hit points come from (chip text width + 20,
+  // 23 tall). A chip off the map is not drawn; one within a few pixels of its edge (anti-aliasing) may be.
   const box = c => [c.text, ...[c.left, c.top, c.right, c.bottom].map(v => Math.round(v * 1e6))].join(' ');
-  assert.deepEqual(overlayChips(sprites, w, scene).map(box).sort(), sprites.chips(w.world, scene).map(box).sort());
+  const view = viewOf(w.world), drawn = overlayChips(sprites, w, scene).map(box), laidOut = sprites.chips(w.world, scene);
+  const within = d => c => c.right + c.k > view.left - d && c.left < view.right + d && c.bottom + 2 * c.k > view.top - d && c.top < view.bottom + d;
+  assert.ok(laidOut.filter(within(0)).length >= 5, 'the museum corner is on screen');
+  for (const c of laidOut.filter(within(0))) assert.ok(drawn.includes(box(c)), `${c.id} is on screen and drawn`);
+  for (const d of drawn) assert.ok(laidOut.filter(within(24 / 0.85)).map(box).includes(d), `${d} is a chip of the layout at the map`);
 });
 
-test('sprites: a chip that reaches into the map is clamped inside it with a small margin; one wholly outside it is left where it is', async () => {
+test('sprites: a chip that reaches into the map is clamped inside it with a small margin; one wholly outside it is neither moved into it, drawn nor laid out', async () => {
   const { createSprites } = await loadSprites();
   const park = { ...emptyScene(), park: fullScene().park }, at = P.PARK_ENTRANCE, label = T.build_boeddeker_park.label;
   const sprites = createSprites({ reducedMotion: () => true });
@@ -596,10 +613,10 @@ test('sprites: a chip that reaches into the map is clamped inside it with a smal
       if (side < 0) assert.ok(Math.abs(chip.left - (view.left + margin)) < 1e-6, `clamped to the left margin at ${scale}`);
       else assert.ok(Math.abs(chip.right - (view.right - margin)) < 1e-6, `clamped to the right margin at ${scale}`);
     }
-    // Wholly outside the map: drawn at its natural place, centred on the entrance.
+    // Wholly outside the map (400 screen px past its left edge): never pulled into view; not drawn, and not laid out at all.
     lookAt(w, { x: at.x + half + 400 / scale, y: at.y + 25 }, scale);
-    const [away] = overlayChips(sprites, w, park).filter(c => c.text === label);
-    assert.ok(Math.abs((away.left + away.right) / 2 - at.x) < 1e-6, `not moved into view at ${scale}`);
+    assert.deepEqual(overlayChips(sprites, w, park).filter(c => c.text === label), [], `not drawn at ${scale}`);
+    assert.deepEqual(sprites.chips(w.world, park).map(c => c.id), [], `not laid out at ${scale}`);
   }
   // A chip wider than the map is centred on it.
   const narrow = makeWorld({ state: OPENED(), width: 120, height: 500 }), view = lookAt(narrow, at, 1.6);
@@ -634,6 +651,183 @@ test('sprites: the declutter is deterministic and stable: the same scene and vie
     v.holder.state = { ...v.holder.state, player: { x: p.x + dx, y: p.y + dy } };
     v.world.camera.track(v.holder.state.player);
     assert.deepEqual(slots(), before, `a one-pixel move (${dx}, ${dy})`);
+  }
+});
+
+// ---------------------------------------------------------------- only what is on screen
+// A layer's calls split into its parts: each balanced save ... restore at the top level (every sprites.js part is one).
+function topParts(calls) {
+  const out = [];
+  let depth = 0, start = 0;
+  calls.forEach((call, i) => {
+    if (call[0] === 'save') { if (depth++ === 0) start = i; }
+    else if (call[0] === 'restore' && --depth === 0) out.push(calls.slice(start, i + 1));
+  });
+  assert.equal(depth, 0, 'save and restore balance');
+  assert.equal(out.flat().length, calls.length, 'every call is inside a part');
+  return out;
+}
+// The map box of everything a call list paints, through its transforms: rectangle corners, arcs and ellipses by their radii (as
+// discs of the larger one under a rotation), path points, and half the line width around what a stroke paints (no cap or join
+// reaches further).
+function extent(calls) {
+  const b = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity }, stack = [];
+  let m = [1, 0, 0, 1, 0, 0], width = 1, path = [];
+  const scaleOf = () => Math.max(Math.hypot(m[0], m[1]), Math.hypot(m[2], m[3]));
+  const add = (x, y, rx = 0, ry = rx) => {
+    const turned = m[1] !== 0 || m[2] !== 0, r = Math.max(rx, ry) * scaleOf();
+    path.push([m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5], turned ? r : rx * Math.abs(m[0]), turned ? r : ry * Math.abs(m[3])]);
+  };
+  const corners = (x, y, w, h) => { add(x, y); add(x + w, y); add(x, y + h); add(x + w, y + h); };
+  const paint = pad => { for (const [x, y, rx, ry] of path) { b.left = Math.min(b.left, x - rx - pad); b.right = Math.max(b.right, x + rx + pad); b.top = Math.min(b.top, y - ry - pad); b.bottom = Math.max(b.bottom, y + ry + pad); } };
+  for (const call of calls) {
+    const [name] = call;
+    if (name === 'save') stack.push([m, width]);
+    else if (name === 'restore') [m, width] = stack.pop() ?? [m, width];
+    else if (name === 'translate') m = multiply(m, [1, 0, 0, 1, call[1], call[2]]);
+    else if (name === 'scale') m = multiply(m, [call[1], 0, 0, call[2], 0, 0]);
+    else if (name === 'rotate') { const c = Math.cos(call[1]), s = Math.sin(call[1]); m = multiply(m, [c, s, -s, c, 0, 0]); }
+    else if (name === 'set' && call[1] === 'lineWidth') width = call[2];
+    else if (name === 'beginPath') path = [];
+    else if (name === 'rect' || name === 'roundRect') corners(call[1], call[2], call[3], call[4]);
+    else if (name === 'arc') add(call[1], call[2], call[3]);
+    else if (name === 'ellipse') { assert.equal(call[5], 0, 'an ellipse turned by its own rotation'); add(call[1], call[2], call[3], call[4]); }
+    else if (name === 'moveTo' || name === 'lineTo') add(call[1], call[2]);
+    else if (name === 'fill') paint(0);
+    else if (name === 'stroke') paint(width / 2 * scaleOf());
+    else if (name === 'strokeRect') { const kept = path; path = []; corners(call[1], call[2], call[3], call[4]); paint(width / 2 * scaleOf()); path = kept; }
+    else assert.ok(!['fillRect', 'fillText', 'strokeText', 'drawImage', 'setTransform'].includes(name), `${name} in a map part`);
+  }
+  return b;
+}
+// The camera at a map point (the view's top-left corner) and a zoom, unclamped.
+const setView = (w, left, top, scale) => { w.world.camera.scale = scale; w.world.camera.offset = { x: -left * scale, y: -top * scale }; return viewOf(w.world); };
+const reaches = (b, v, d = 0) => b.right > v.left - d && b.left < v.right + d && b.bottom > v.top - d && b.top < v.bottom + d;
+const chipBox = c => ({ left: c.left, right: c.right + c.k, top: c.top, bottom: c.bottom + 2 * c.k }); // the body and its shadow
+
+test('sprites: only what is on screen draws, each part whole and exactly as before; a part off screen records nothing', async () => {
+  const { createSprites } = await loadSprites();
+  const scene = { ...fullScene(), ...realScene({ found: [...SURPRISE_IDS], eateries: true }), power: powerPart(LARKIN) };
+  const sprites = createSprites({ reducedMotion: () => false });
+  const far = scale => 24 + 12 / scale; // map px: a part this far off the view never draws (past every anti-aliasing margin)
+  const key = c => `${c.text} ${Math.round(c.left * 1e6)} ${Math.round(c.top * 1e6)}`;
+  for (const time of [0, 2.6]) {
+    // The reference: each part as a canvas showing the whole map records it, which is what every frame drew of it before.
+    const whole = makeWorld({ state: OPENED(), ...WHOLE });
+    zoom(whole.world, 1); whole.world.time = time;
+    const ref = layerCalls(sprites, whole, scene), grounds = topParts(ref.ground);
+    const actorCalls = ref.actors.map(a => { whole.ctx.calls.length = 0; a.draw(whole.ctx, whole.world); return whole.ctx.calls.splice(0); });
+    const groundBoxes = grounds.map(extent), actorBoxes = actorCalls.map(extent);
+    assert.ok(grounds.length >= 10 && actorCalls.length >= 30, `${grounds.length} ground parts and ${actorCalls.length} actors`);
+    assert.ok(actorCalls.every(calls => calls.length), 'the whole map draws every actor');
+    const tally = { ground: 0, actors: 0, chips: 0, frames: 0 };
+    // One frame: each ground part and each actor draws whole and as before, or records nothing. One that reaches into the view
+    // draws; none farther than far() off it does. The chips drawn are the layout's on screen, lowest priority first.
+    const check = (w, where) => {
+      const v = viewOf(w.world), d = far(w.world.scale), r = layerCalls(sprites, w, scene), got = topParts(r.ground);
+      let j = 0;
+      grounds.forEach((g, i) => {
+        if (j < got.length && JSON.stringify(got[j]) === JSON.stringify(g)) { assert.ok(reaches(groundBoxes[i], v, d), `${where}: ground part ${i} drawn off screen`); j++; }
+        else assert.ok(!reaches(groundBoxes[i], v), `${where}: ground part ${i} reaches into the view and is not drawn whole`);
+      });
+      assert.equal(j, got.length, `${where}: the ground is whole parts, in order`);
+      assert.equal(r.actors.length, actorCalls.length, `${where}: the same actors`);
+      r.actors.forEach((a, i) => {
+        w.ctx.calls.length = 0; a.draw(w.ctx, w.world);
+        const calls = w.ctx.calls.splice(0);
+        if (calls.length) { assert.equal(JSON.stringify(calls), JSON.stringify(actorCalls[i]), `${where}: actor ${i} as before`); assert.ok(reaches(actorBoxes[i], v, d), `${where}: actor ${i} drawn off screen`); tally.actors++; }
+        else assert.ok(!reaches(actorBoxes[i], v), `${where}: actor ${i} reaches into the view and is not drawn`);
+      });
+      const placed = sprites.chips(w.world, scene), drawn = drawnChips(r.overlay).map(key);
+      for (const c of placed.filter(c => reaches(chipBox(c), v))) assert.ok(drawn.includes(key(c)), `${where}: ${c.id} on screen is drawn`);
+      const allowed = placed.filter(c => reaches(chipBox(c), v, d)).map(key);
+      for (const c of drawn) assert.ok(allowed.includes(c), `${where}: ${c} is drawn off screen`);
+      assert.deepEqual(drawn, placed.map(key).filter(c => drawn.includes(c)).reverse(), `${where}: lowest priority first`);
+      tally.ground += got.length; tally.chips += drawn.length; tally.frames++;
+    };
+    // Cameras over the side-story map on a phone and a desk, from below the chip zoom to the closest.
+    for (const [width, height] of [[358, 518], [1036, 608]]) {
+      const w = makeWorld({ state: OPENED(), width, height });
+      w.world.time = time;
+      for (const scale of [0.2, 0.5, 0.85, 1.6]) {
+        for (const c of [P.START, P.MUSEUM, P.PARK_ENTRANCE, P.LARKIN_JUNCTION, P.SO_WHAT_AWNING, P.SO_WHAT_LEAVENWORTH, P.EATERY_AWNINGS[1], { x: -1000, y: -300 }, { x: -2200, y: -420 }, { x: 420, y: 120 }]) {
+          setView(w, c.x - width / 2 / scale, c.y - height / 2 / scale, scale);
+          check(w, `${width} px at ${scale} on (${Math.round(c.x)}, ${Math.round(c.y)}) at ${time}`);
+        }
+      }
+    }
+    // Each part at each edge of a phone's view: reaching half a map pixel into it (drawn whole), or just past far() (nothing).
+    const w = makeWorld({ state: OPENED(), width: 358, height: 518 }), scale = 0.85, W = 358 / scale, H = 518 / scale;
+    w.world.time = time;
+    [...groundBoxes, ...actorBoxes].forEach((b, n) => {
+      const cx = (b.left + b.right - W) / 2, cy = (b.top + b.bottom - H) / 2;
+      for (const d of [-0.5, far(scale) + 0.5]) {
+        for (const [left, top, side] of [[b.right + d, cy, 'left'], [b.left - W - d, cy, 'right'], [cx, b.bottom + d, 'top'], [cx, b.top - H - d, 'bottom']]) {
+          setView(w, left, top, scale);
+          check(w, `part ${n} ${d < 0 ? 'half a pixel inside' : 'just past far() off'} the ${side} edge at ${time}`);
+        }
+      }
+    });
+    // Off-screen parts were skipped, on-screen ones drawn.
+    assert.ok(tally.ground > 0 && tally.ground < tally.frames * grounds.length / 2, JSON.stringify(tally));
+    assert.ok(tally.actors > 0 && tally.actors < tally.frames * actorCalls.length / 2, JSON.stringify(tally));
+    assert.ok(tally.chips > 0, JSON.stringify(tally));
+  }
+});
+
+test('sprites: the chip layout is kept while the view moves less than a whole pixel and the player stays in its 8 px cell; laid out afresh, exactly, when either moves on', async () => {
+  const { createSprites } = await loadSprites();
+  const scene = realScene({ found: ['jeffrey_record', 'mayor_pomp_event'], eateries: true });
+  // The player 2.5 px into an 8 px cell below the museum, the camera a tenth of a pixel past a whole one.
+  const player = { x: Math.floor(P.MUSEUM.x / 8) * 8 + 2.5, y: Math.floor(P.MUSEUM.y / 8) * 8 + 64 + 2.5 };
+  const w = makeWorld({ state: { ...OPENED(), player }, width: 1036, height: 608 });
+  const sprites = createSprites({ reducedMotion: () => true }), fresh = (s = scene) => createSprites({ reducedMotion: () => true }).chips(w.world, s);
+  const at = (ox, oy, scale = 0.85) => { w.world.camera.scale = scale; w.world.camera.offset = { x: ox, y: oy }; };
+  const walk = (dx, dy) => { const p = w.holder.state.player; w.holder.state = { ...w.holder.state, player: { x: p.x + dx, y: p.y + dy } }; };
+  const ox = Math.round(518 - P.MUSEUM.x * 0.85) + 0.1, oy = Math.round(281.5 - P.MUSEUM.y * 0.85) + 0.1;
+  at(ox, oy);
+  const first = sprites.chips(w.world, scene);
+  assert.ok(first.length >= 5, String(first.length));
+  assert.deepEqual(first, fresh());
+  // Less than a whole pixel of pan, and steps within the player's cell: the very same layout, not laid out again.
+  for (const [dx, dy] of [[0.3, 0], [0, 0.35], [-0.55, -0.55]]) { at(ox + dx, oy + dy); assert.equal(sprites.chips(w.world, scene), first, `a pan of (${dx}, ${dy})`); }
+  at(ox, oy);
+  for (const [dx, dy] of [[3, 0], [0, 4], [-5.5, -6]]) { walk(dx, dy); assert.equal(sprites.chips(w.world, scene), first, `a step of (${dx}, ${dy}) within the cell`); }
+  // A whole pixel of pan: laid out again, exactly as a fresh sprite set lays out this frame; then kept while it stays.
+  at(ox + 1, oy);
+  const panned = sprites.chips(w.world, scene);
+  assert.notEqual(panned, first);
+  assert.deepEqual(panned, fresh());
+  assert.equal(sprites.chips(w.world, scene), panned);
+  // The player into the next cell, another zoom, another canvas size and a tour stop: each laid out afresh, exactly.
+  let last = panned;
+  const changed = (what, s = scene) => { const now = sprites.chips(w.world, s); assert.notEqual(now, last, what); assert.deepEqual(now, fresh(s), what); assert.equal(sprites.chips(w.world, s), now, what); last = now; };
+  walk(8, 0); changed('the next cell');
+  at(ox + 1, oy, 0.9); changed('a zoom');
+  w.world.width = 1000; changed('a narrower canvas');
+  changed('a tour stop', { ...scene, tourMarker: { x: P.MUSEUM.x, y: P.MUSEUM.y } });
+  // And what the overlay draws and the beacon labels' hit points follow the layout of the frame.
+  const object = { id: 'surprise:mayor_pomp_event', kind: 'visit', name: 'Mayor', x: P.SURPRISE_SITES.mayor_pomp_event.x, y: P.SURPRISE_SITES.mayor_pomp_event.y };
+  const targets = sprites.chipTargets(w.world, scene, object);
+  assert.ok(targets.length >= 2);
+  assert.deepEqual(targets, createSprites({ reducedMotion: () => true }).chipTargets(w.world, scene, object));
+});
+
+test('sprites: the declutter lays out only the chips that can reach the view: never one from across the map', async () => {
+  const { createSprites } = await loadSprites();
+  const scene = realScene({ found: [...SURPRISE_IDS], eateries: true });
+  const everything = makeWorld({ state: OPENED(), ...WHOLE });
+  zoom(everything.world, 0.85);
+  const all = createSprites().chips(everything.world, scene);
+  assert.ok(all.length >= 20, `a whole-map view lays out ${all.length} chips`);
+  // The phone at the start (the stability review's case) and at the museum corner: of the scene's chips only a few are laid out,
+  // every one on screen among them, and none whose span lies hundreds of pixels off the view.
+  for (const at of [P.START, P.MUSEUM, P.SO_WHAT_AWNING]) {
+    const w = makeWorld({ state: OPENED(), width: 358, height: 518 }), v = lookAt(w, at, 0.85);
+    const placed = createSprites().chips(w.world, scene), shown = overlayChips(createSprites(), w, scene);
+    assert.ok(placed.length > 0 && placed.length <= all.length / 2, `${placed.length} of ${all.length} chips laid out at (${at.x}, ${at.y})`);
+    assert.ok(placed.every(c => c.right > v.left - 600 && c.left < v.right + 600), `none from across the map at (${at.x}, ${at.y})`);
+    assert.ok(shown.length >= 1 && shown.every(d => placed.some(c => c.text === d.text)), `what is drawn is laid out at (${at.x}, ${at.y})`);
   }
 });
 

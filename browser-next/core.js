@@ -179,10 +179,89 @@ export function distanceToSegment(point, a, b) {
   const t = Math.max(0, Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / (dx * dx + dy * dy || 1)));
   return Math.hypot(point.x - a.x - t * dx, point.y - a.y - t * dy);
 }
+// The distance from a point to the nearest street centreline: the least distanceToSegment over the segments of ways. On first
+// use a ways array of finite street points is read once into square buckets (STREET_BUCKET px) of the segments that pass
+// through them: the streets never change once loaded (world.js makeWays), as the cell cache below also holds. A point inside
+// the buckets then measures the segments of the buckets around it, ring by ring, until none outside the rings can be nearer
+// than the nearest found: the very distance the scan of every segment gives. Any other point (outside the buckets, not a
+// finite number) or list (a short, malformed or unbounded one, or not an array) is scanned.
 export function streetDistance(point, ways) {
+  const index = streetIndex(ways);
+  return index ? indexedDistance(point, index) : scanDistance(point, ways);
+}
+// Whether streetDistance(point, ways) < limit, measuring no further than it takes to know.
+function nearStreet(point, ways, limit) {
+  const index = streetIndex(ways);
+  return (index ? indexedDistance(point, index, limit) : scanDistance(point, ways)) < limit;
+}
+function scanDistance(point, ways) {
   let best = Infinity;
   for (const way of ways) for (let i = 1; i < way.points.length; i++) best = Math.min(best, distanceToSegment(point, way.points[i - 1], way.points[i]));
   return best;
+}
+// Bucket size and the rings measured before a scan (px); the slack covers rounding where a segment meets a ring's edge; lists of
+// fewer segments, or spread over more buckets, are scanned.
+const STREET_BUCKET = 64, STREET_RINGS = 4, STREET_SLACK = 1e-6, STREET_INDEXED = 24, STREET_BUCKETS = 2 ** 20;
+const streetIndexes = new WeakMap();
+function streetIndex(ways) {
+  if (!Array.isArray(ways)) return null;
+  let index = streetIndexes.get(ways);
+  if (index === undefined) streetIndexes.set(ways, index = buildStreetIndex(ways));
+  return index;
+}
+const finite = p => p !== null && typeof p === 'object' && typeof p.x === 'number' && typeof p.y === 'number' && Number.isFinite(p.x) && Number.isFinite(p.y);
+function buildStreetIndex(ways) {
+  const from = [], to = [];
+  for (const way of ways) for (let i = 1; i < way.points.length; i++) { from.push(way.points[i - 1]); to.push(way.points[i]); }
+  if (from.length < STREET_INDEXED || !from.every(finite) || !to.every(finite)) return null;
+  const S = STREET_BUCKET, n = from.length;
+  let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+  for (const p of [...from, ...to]) { left = Math.min(left, p.x); right = Math.max(right, p.x); top = Math.min(top, p.y); bottom = Math.max(bottom, p.y); }
+  const x0 = Math.floor(left / S) * S, y0 = Math.floor(top / S) * S, cols = Math.floor((right - x0) / S) + 1, rows = Math.floor((bottom - y0) / S) + 1;
+  if (!(cols * rows <= STREET_BUCKETS)) return null;
+  // A segment joins each bucket it passes through or touches: its distance from the bucket's centre is within half the diagonal.
+  const reach = S * Math.SQRT1_2 + STREET_SLACK, hits = [], first = new Int32Array(cols * rows + 1);
+  for (let k = 0; k < n; k++) {
+    const a = from[k], b = to[k], cell = v => Math.floor(v / S);
+    const i0 = Math.max(0, cell(Math.min(a.x, b.x) - x0) - 1), i1 = Math.min(cols - 1, cell(Math.max(a.x, b.x) - x0) + 1);
+    const j0 = Math.max(0, cell(Math.min(a.y, b.y) - y0) - 1), j1 = Math.min(rows - 1, cell(Math.max(a.y, b.y) - y0) + 1);
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+      if (distanceToSegment({ x: x0 + (i + 0.5) * S, y: y0 + (j + 0.5) * S }, a, b) <= reach) { hits.push(j * cols + i, k); first[j * cols + i + 1]++; }
+    }
+  }
+  for (let c = 0; c < cols * rows; c++) first[c + 1] += first[c];
+  const next = first.slice(), ids = new Int32Array(hits.length / 2);
+  for (let h = 0; h < hits.length; h += 2) ids[next[hits[h]]++] = hits[h + 1];
+  return { ways, from, to, first, ids, cols, rows, left: x0, top: y0, right: x0 + cols * S, bottom: y0 + rows * S };
+}
+// The least of best and the distances from a point to the segments of bucket c.
+function bucketDistance(point, index, c, best) {
+  const { from, to, first, ids } = index;
+  for (let m = first[c], end = first[c + 1]; m < end; m++) best = Math.min(best, distanceToSegment(point, from[ids[m]], to[ids[m]]));
+  return best;
+}
+// With a limit, it stops once a segment is nearer than limit or none left can be: the result is then only right about < limit.
+function indexedDistance(point, index, limit = NaN) {
+  const x = point.x, y = point.y;
+  if (typeof x !== 'number' || typeof y !== 'number' || !(x >= index.left && x < index.right && y >= index.top && y < index.bottom)) return scanDistance(point, index.ways);
+  const S = STREET_BUCKET, { cols, rows } = index;
+  const ci = Math.min(cols - 1, Math.floor((x - index.left) / S)), cj = Math.min(rows - 1, Math.floor((y - index.top) / S));
+  let best = Infinity;
+  for (let r = 0; r <= STREET_RINGS; r++) {
+    const i0 = ci - r, i1 = ci + r, j0 = cj - r, j1 = cj + r;
+    // The buckets of ring r within the grid: its top and bottom rows whole, the rows between at its two sides.
+    for (let j = Math.max(0, j0); j <= Math.min(rows - 1, j1); j++) {
+      if (j === j0 || j === j1) for (let i = Math.max(0, i0); i <= Math.min(cols - 1, i1); i++) best = bucketDistance(point, index, j * cols + i, best);
+      else {
+        if (i0 >= 0) best = bucketDistance(point, index, j * cols + i0, best);
+        if (i1 < cols) best = bucketDistance(point, index, j * cols + i1, best);
+      }
+    }
+    // A segment outside the rings measured so far is at least this far from the point.
+    const clear = Math.min(x - (index.left + i0 * S), index.left + (i1 + 1) * S - x, y - (index.top + j0 * S), index.top + (j1 + 1) * S - y);
+    if (best < clear - STREET_SLACK || best < limit || limit <= clear - STREET_SLACK || (i0 <= 0 && j0 <= 0 && i1 >= cols - 1 && j1 >= rows - 1)) return best;
+  }
+  return scanDistance(point, index.ways);
 }
 export const OPENING_BOUNDS = { left: -300, right: 850, top: -460, bottom: 220 };
 // Turk from Taylor west to Hyde: the route overview and the zoom-out minimum (camera.js).
@@ -207,7 +286,7 @@ export function eddyDistance(point) {
   return best;
 }
 const inside = (point, b) => point.x >= b.left && point.x <= b.right && point.y >= b.top && point.y <= b.bottom;
-export const walkable = (point, ways) => inside(point, BOUNDS) ? streetDistance(point, ways) < STREET_CORRIDOR
+export const walkable = (point, ways) => inside(point, BOUNDS) ? nearStreet(point, ways, STREET_CORRIDOR)
   : point.x >= WALK_EXTENT.left && point.x < BOUNDS.left && point.y >= BOUNDS.top && point.y <= BOUNDS.bottom && eddyDistance(point) < STREET_CORRIDOR;
 
 // walkable() of each grid cell, kept per ways array: the streets never change once loaded (world.js makeWays), so a
@@ -219,29 +298,37 @@ function cellsFor(ways) {
   if (!cells) cellCache.set(ways, cells = new Map());
   return cells;
 }
+// A cell's key: one number for each cell of the 10 px lattice within CELL_SPAN cells of the origin, else (a far or not finite
+// point) its "x,y" text as before. x / 10 is a whole number only for x a multiple of 10, so no two cells share a key.
+const CELL_SPAN = 2 ** 14;
 // A small grid search routes clicks around blocks rather than through buildings.
 export function findPath(start, goal, ways) {
   if (!walkable(goal, ways)) return [];
-  const step = 10, key = p => `${p.x},${p.y}`;
+  const step = 10, key = (x, y) => {
+    const i = x / step, j = y / step;
+    return Number.isInteger(i) && Number.isInteger(j) && Math.abs(i) < CELL_SPAN && Math.abs(j) < CELL_SPAN ? (i + CELL_SPAN) * 2 * CELL_SPAN + j + CELL_SPAN : `${x},${y}`;
+  };
   const limit = Math.ceil((WALK_EXTENT.right - WALK_EXTENT.left) / step + 1) * Math.ceil((WALK_EXTENT.bottom - WALK_EXTENT.top) / step + 1);
-  const cells = cellsFor(ways);
-  const passable = p => {
-    const id = key(p);
-    if (!cells.has(id)) cells.set(id, walkable(p, ways));
-    return cells.get(id);
+  const cells = cellsFor(ways), moves = [[step, 0], [-step, 0], [0, step], [0, -step]];
+  const passable = (id, p) => {
+    let open = cells.get(id);
+    if (open === undefined) cells.set(id, open = walkable(p, ways));
+    return open;
   };
   const snap = p => ({ x: Math.round(p.x / step) * step, y: Math.round(p.y / step) * step });
-  const s = snap(start), g = snap(goal), queue = [s], seen = new Map([[key(s), null]]);
+  const s = snap(start), g = snap(goal), queue = [s], seen = new Map([[key(s.x, s.y), null]]);
   for (let i = 0; i < queue.length && i < limit; i++) {
     const current = queue[i];
     if (Math.hypot(current.x - g.x, current.y - g.y) < 12) {
       const path = [{ x: goal.x, y: goal.y }]; let cursor = current;
-      while (cursor) { path.unshift(cursor); cursor = seen.get(key(cursor)); }
+      while (cursor) { path.unshift(cursor); cursor = seen.get(key(cursor.x, cursor.y)); }
       return path;
     }
-    for (const [dx, dy] of [[step, 0], [-step, 0], [0, step], [0, -step]]) {
-      const p = { x: current.x + dx, y: current.y + dy };
-      if (!seen.has(key(p)) && passable(p)) { seen.set(key(p), current); queue.push(p); }
+    for (const [dx, dy] of moves) {
+      const x = current.x + dx, y = current.y + dy, id = key(x, y);
+      if (seen.has(id)) continue;
+      const p = { x, y };
+      if (passable(id, p)) { seen.set(id, current); queue.push(p); }
     }
   }
   return [];
