@@ -1,6 +1,13 @@
 import { MusicSketch } from './audio.js';
 import { DEFAULT_VOLUME, MAX_VOLUME } from './sketch-core.js';
-const DECODE_ERROR = 'This file could not play. Try another MP3/WAV or return to the sketch.';
+import { t } from './i18n.js';
+// The player's messages, shown as they are set (a later language switch shows the new language from the next message on).
+export const SOUNDTRACK_TEXT = {
+  decode: 'This file could not play. Try another MP3/WAV or return to the sketch.',
+  choose: 'Choose an MP3 or WAV file up to 100 MB.',
+  unavailable: 'Audio is unavailable in this browser. All activities still work.',
+  playback: 'Playback could not start. Try Play again, or choose another file.',
+};
 
 // User-selected audio stays in a browser object URL for this tab, never in game saves.
 export class Soundtrack {
@@ -13,14 +20,14 @@ export class Soundtrack {
   get starting() { return this.audio ? this.localStarting : this.sketch.starting; }
   get position() { return this.audio?.currentTime ?? null; }
   loadFile(file) {
-    if (!file || !/\.(mp3|wav)$/i.test(file.name) || file.size <= 0 || file.size > 100 * 1024 * 1024) throw Error('Choose an MP3 or WAV file up to 100 MB.');
+    if (!file || !/\.(mp3|wav)$/i.test(file.name) || file.size <= 0 || file.size > 100 * 1024 * 1024) throw Error(t(SOUNDTRACK_TEXT.choose));
     const url = this.urls.createObjectURL(file);
     let audio;
     try { audio = this.makeAudio(); audio.preload = 'metadata'; audio.loop = true; audio.volume = this.volume; }
     catch (error) { this.urls.revokeObjectURL(url); throw error; }
     this.halt(); this.releaseLocal();
     this.audio = audio; this.url = url; this.fileName = file.name; this.error = '';
-    audio.addEventListener('error', () => { if (this.audio !== audio) return; this.failed = true; this.error = DECODE_ERROR; this.stop(); });
+    audio.addEventListener('error', () => { if (this.audio !== audio) return; this.failed = true; this.error = t(SOUNDTRACK_TEXT.decode); this.stop(); });
     audio.addEventListener('pause', () => { if (this.audio !== audio || !audio.paused || this.localStarting || !this.localEnabled) return; this.localEnabled = false; this.onChange(); });
     audio.src = url;
     this.onChange();
@@ -34,10 +41,10 @@ export class Soundtrack {
       const result = await pending;
       if (generation !== this.generation) return null;
       if (this.hidden()) { this.stop(); return null; }
-      if (result === false) this.error = 'Audio is unavailable in this browser. All activities still work.';
+      if (result === false) this.error = t(SOUNDTRACK_TEXT.unavailable);
       this.onChange(); return result;
     }
-    if (this.failed || audio.error) { this.failed = true; this.error = DECODE_ERROR; this.onChange(); return false; }
+    if (this.failed || audio.error) { this.failed = true; this.error = t(SOUNDTRACK_TEXT.decode); this.onChange(); return false; }
     const generation = ++this.generation; this.sketch.stop(); this.localStarting = true; this.error = ''; this.onChange();
     try {
       await audio.play();
@@ -49,8 +56,8 @@ export class Soundtrack {
       if (audio.paused) return null;
       this.localEnabled = true; return true;
     } catch {
-      if (this.audio === audio && (this.failed || audio.error)) { this.error = DECODE_ERROR; return false; }
-      if (generation === this.generation) { audio.pause(); this.localEnabled = false; this.error = 'Playback could not start. Try Play again, or choose another file.'; }
+      if (this.audio === audio && (this.failed || audio.error)) { this.error = t(SOUNDTRACK_TEXT.decode); return false; }
+      if (generation === this.generation) { audio.pause(); this.localEnabled = false; this.error = t(SOUNDTRACK_TEXT.playback); }
       return generation === this.generation ? false : null;
     } finally { if (generation === this.generation) this.localStarting = false; this.onChange(); }
   }
