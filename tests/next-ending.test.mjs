@@ -627,6 +627,84 @@ test('ending: a redraw that waits draws only the stage still on screen', async t
     assert.deepEqual([dialog.heading(), dialog.has('recover-save'), ending.snapshot().moving], ['Some progress went back.', true, false], 'the walk halts under the offer and draws nothing over it');
   });
 });
+// Chrome closes a <dialog> at once but delivers its close event as a later task. When a screen opens the dialog again in the frame
+// between (an automated tester, a held key, a hand-off in code), that late event reaches every close listener while the dialog
+// shows the new screen. modalEvents(dialog), called before the module adds its listeners, keeps them: closeLater() closes the
+// stand-in without its event and returns the late delivery; escape() is the browser's Escape: the cancel event, then the close
+// unless a listener prevented it.
+function modalEvents(dialog) {
+  const listeners = { close: [], cancel: [] }, add = dialog.modal.addEventListener;
+  dialog.modal.addEventListener = (type, fn) => { listeners[type]?.push(fn); add(type, fn); };
+  return {
+    closeLater() { dialog.modal.open = false; return () => { for (const fn of listeners.close) fn({ type: 'close' }); }; },
+    escape() {
+      const event = { defaultPrevented: false, preventDefault() { this.defaultPrevented = true; } };
+      for (const fn of listeners.cancel) fn(event);
+      if (!event.defaultPrevented) dialog.close();
+      return event.defaultPrevented;
+    },
+  };
+}
+test("ending: an earlier dialog's late close event leaves the screen opened since alone; a real close still ends it", async t => {
+  function setup() {
+    const dialog = fakeDialog(), events = modalEvents(dialog), toasts = [], said = [], io = { state: full() };
+    const ending = createEnding(endingHost(dialog, io.state, { getState: () => io.state, status: text => said.push(text), toast: text => toasts.push(text) }));
+    return { dialog, events, toasts, said, io, ending };
+  }
+  // The habitat room to the orbital commons, and a walk to the first destination under way.
+  function walking() {
+    const e = setup();
+    assert.equal(e.ending.open('room'), true); for (const id of TO_ORBIT) e.dialog.click(id);
+    e.dialog.click('orbit-0'); e.dialog.frames(3);
+    assert.deepEqual([e.ending.stage, e.ending.snapshot().moving], ['orbit', true]);
+    return e;
+  }
+  await t.test('the screening, closed and opened again in one frame: the late close keeps the stage, its frame and its Escape', () => {
+    const e = setup();
+    assert.equal(e.ending.open('screening'), true); e.dialog.click('screen-frame-2');
+    const deliver = e.events.closeLater(); // ×: the dialog closes at once, its close event a task later
+    assert.equal(e.ending.open('screening'), true); // and the screening opens again before that event arrives
+    deliver();
+    assert.deepEqual([e.ending.stage, e.ending.snapshot().visit.screenFrame, e.dialog.heading()], ['screening', 2, 'The Open Seat | 3 / 3'], 'the late close changes nothing');
+    assert.equal(e.events.escape(), true, "Escape still runs the screening's own Back");
+    assert.deepEqual([e.ending.stage, e.dialog.modal.open, e.toasts], [null, false, [SC.screeningClose()]], "with Godot's words");
+  });
+  await t.test("Mural Stories, opened over another dialog's close in the same frame: Escape still goes back to the mural workshop", () => {
+    const e = setup();
+    e.dialog.show(RECOVERY);
+    const deliver = e.events.closeLater();
+    assert.equal(e.ending.open('stories'), true);
+    deliver();
+    assert.equal(e.ending.stage, 'stories', 'the late close changes nothing');
+    assert.equal(e.events.escape(), true, 'Escape runs Back to Mural');
+    assert.deepEqual([e.ending.stage, e.dialog.heading(), e.said.at(-1)], [null, 'Many hands. One mural.', MU.closeStoriesAnnouncement(full().muralScenes)]);
+  });
+  await t.test('the orbital commons: a walk under way keeps walking through the late close; a real close afterwards halts it as before', () => {
+    const e = walking();
+    const deliver = e.events.closeLater();
+    assert.equal(e.ending.open('room'), true); // the room opens again on the commons, the walk still under way
+    deliver();
+    const kept = e.ending.snapshot();
+    assert.deepEqual([e.ending.stage, kept.moving], ['orbit', true], 'the late close neither halts the walk nor ends the stage');
+    e.dialog.frames(3);
+    const before = e.ending.snapshot();
+    assert.notDeepEqual(before.visit.orbit.player, kept.visit.orbit.player, 'the walker goes on frame by frame');
+    e.dialog.close(); // ×, its close event on time
+    const after = e.ending.snapshot();
+    assert.deepEqual([after.stage, after.moving, after.visit.orbit], [null, false, O.halt(before.visit.orbit).orbit], 'the real close halts the walk as halt() does and ends the stage');
+    e.dialog.frames(600);
+    assert.deepEqual(e.ending.snapshot(), after, 'and no frame moves anyone after it');
+  });
+  await t.test('a late close that arrives under another screen still ends the stage, as on time: no stage is left open behind it', () => {
+    const e = walking();
+    const deliver = e.events.closeLater(); // × closes the commons
+    e.dialog.show(RECOVERY); // and the recovery offer opens the dialog before the close event arrives
+    deliver();
+    assert.deepEqual([e.ending.stage, e.ending.snapshot().moving, e.dialog.heading()], [null, false, 'Some progress went back.']);
+    e.io.state = stateOf(hostedEnvelope());
+    assert.deepEqual([e.ending.sync({ adopted: true }).closed, e.dialog.heading()], [false, 'Some progress went back.'], 'so a later sync() cannot take the offer away for a stage that is gone');
+  });
+});
 test("ending sync: a screen an adopted save's new copies close is reported, so game.js can say why; this tab's own change keeps it", () => {
   const s = full(), dialog = fakeDialog(), flip = st => { const next = structuredClone(st); next.film.result.framing = next.film.result.framing === 'wide' ? 'close' : 'wide'; return next; };
   let state = s;

@@ -768,6 +768,81 @@ test('Rhythm Circle: a redraw that waits draws nothing once the circle is closed
     assert.deepEqual([dialog.heading(), dialog.has('recover-save'), c.circle.auditioning, muted], ['Some progress went back.', true, false, [true, false]]);
   });
 });
+// Chrome closes a <dialog> at once but delivers its close event as a later task. When a screen opens the dialog again in the frame
+// between (an automated tester, a held key, a hand-off in code), that late event reaches every close listener while the dialog
+// shows the new screen. modalEvents(dialog), called before the module adds its listeners, keeps them: closeLater() closes the
+// stand-in without its event and returns the late delivery; escape() is the browser's Escape: the cancel event, then the close
+// unless a listener prevented it.
+function modalEvents(dialog) {
+  const listeners = { close: [], cancel: [] }, add = dialog.modal.addEventListener;
+  dialog.modal.addEventListener = (type, fn) => { listeners[type]?.push(fn); add(type, fn); };
+  return {
+    closeLater() { dialog.modal.open = false; return () => { for (const fn of listeners.close) fn({ type: 'close' }); }; },
+    escape() {
+      const event = { defaultPrevented: false, preventDefault() { this.defaultPrevented = true; } };
+      for (const fn of listeners.cancel) fn(event);
+      if (!event.defaultPrevented) dialog.close();
+      return event.defaultPrevented;
+    },
+  };
+}
+test("Rhythm Circle: an earlier dialog's late close event leaves the circle opened since alone; a real close still ends it", async t => {
+  const CLOSED = { open: false, practice: false, pattern: null, stepCues: false, auditioning: false, message: '' };
+  const BACK = 'Back to the block. Hosted rhythm restored; practice was not saved.';
+  // The circle in practice (beats hosted) with a drum bar that can play; left records where Back, Escape or sync() leave to.
+  function practiceCircle() {
+    const dialog = fakeDialog(), events = modalEvents(dialog), sources = [], muted = [], left = [], io = { state: hostedState(3) };
+    const ctx = { currentTime: 0, destination: {}, createBuffer: (channels, length) => ({ getChannelData: () => new Float32Array(length) }), createGain: () => ({ gain: { value: 1 }, connect() {}, disconnect() {} }),
+      createBufferSource: () => { const source = { stopped: false, connect() {}, disconnect() {}, start() {}, stop() { this.stopped = true; } }; sources.push(source); return source; } };
+    const c = circleHost(dialog, { getState: () => io.state, music: { enabled: true, starting: false, fileName: '', sketch: { ensureContext: () => ctx, mute: on => muted.push(on), position: () => 0 } },
+      afterClose: (origin, text) => { left.push([origin, text]); dialog.close(); } });
+    return { ...c, dialog, events, sources, muted, left, io };
+  }
+  await t.test('closed and opened again in one frame: the late close keeps the circle, its practice copy, its pads and its Back', () => {
+    const c = practiceCircle();
+    assert.equal(c.circle.open('block'), true);
+    const deliver = c.events.closeLater(); // ×: the dialog closes at once, its close event a task later
+    assert.equal(c.circle.open('block'), true); // and the circle opens again before that event arrives
+    const opened = c.circle.snapshot();
+    deliver();
+    assert.deepEqual([c.circle.snapshot(), c.dialog.modal.open, c.dialog.has('rhythm-reader')], [opened, true, true], 'the late close changes nothing');
+    c.dialog.click('rhythm-pad-1');
+    assert.equal(c.circle.snapshot().pattern, 87, 'the practice pads still answer');
+    c.dialog.click('rhythm-back');
+    assert.deepEqual(c.left, [['block', BACK]], "Back still leaves with Godot's words");
+  });
+  await t.test("opened over another dialog's close in the same frame: the late close keeps the circle and its Escape", () => {
+    const c = practiceCircle();
+    c.dialog.show(RECOVERY);
+    const deliver = c.events.closeLater();
+    assert.equal(c.circle.open('block'), true);
+    const opened = c.circle.snapshot();
+    deliver();
+    assert.deepEqual(c.circle.snapshot(), opened, 'the late close changes nothing');
+    assert.equal(c.events.escape(), true, "Escape still runs the circle's Back");
+    assert.deepEqual([c.left, c.dialog.modal.open], [[['block', BACK]], false]);
+  });
+  await t.test('a real close afterwards still ends the circle as before: practice gone, the bar stopped, the sketch unmuted', () => {
+    const c = practiceCircle();
+    c.circle.open('block');
+    const deliver = c.events.closeLater();
+    c.circle.open('block'); c.dialog.click('rhythm-pad-1'); c.dialog.click('rhythm-play-bar');
+    deliver();
+    assert.deepEqual([c.circle.auditioning, c.sources[0].stopped, c.muted], [true, false, [true]], 'the late close leaves the bar playing');
+    c.dialog.close(); // ×, its close event on time
+    assert.deepEqual([c.circle.snapshot(), c.sources[0].stopped, c.muted, c.left], [CLOSED, true, [true, false], []], 'practice is gone, the bar stopped, the sketch back, nothing said');
+  });
+  await t.test('a late close that arrives under another screen still ends the circle, as on time: nothing is left half open behind it', () => {
+    const c = practiceCircle();
+    c.circle.open('block'); c.dialog.click('rhythm-pad-1'); c.dialog.click('rhythm-play-bar');
+    const deliver = c.events.closeLater(); // × closes the circle
+    c.dialog.show(RECOVERY); // and the recovery offer opens the dialog before the close event arrives
+    deliver();
+    assert.deepEqual([c.circle.snapshot(), c.sources[0].stopped, c.muted, c.dialog.heading()], [CLOSED, true, [true, false], 'Some progress went back.']);
+    c.io.state = initialState(); c.circle.sync();
+    assert.deepEqual([c.left, c.dialog.heading()], [[], 'Some progress went back.'], 'so a later sync() cannot take the offer away for a circle that is gone');
+  });
+});
 test("Rhythm Circle: a pad's message is Godot's, built after the write: that write's receipt, and none for a press act() refused", () => {
   // tests/next-save: a save padded so that a two-digit beats pattern fits Godot's budget and a three-digit one does not.
   let state = hostedState(2);

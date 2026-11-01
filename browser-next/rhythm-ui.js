@@ -148,8 +148,10 @@ export function createRhythm(host) {
     if (!open || !modal.contains($('rhythm-reader'))) return;
     event.preventDefault(); leave(true);
   });
-  // × or any other close keeps nothing: practice is gone and the hosted draft is already saved.
-  modal.addEventListener('close', () => { if (open) { stopAudition(false); session = closedSession(); open = false; stopLoop(); } });
+  // × or any other close keeps nothing: practice is gone and the hosted draft is already saved. Chrome delivers a dialog's close
+  // event as a later task: one that finds the circle holding the dialog again is an earlier dialog's, closed in the frame before
+  // the circle opened in its place, and changes nothing. Under another screen it still ends the circle, as it would have on time.
+  modal.addEventListener('close', () => { if (onScreen()) return; if (open) { stopAudition(false); session = closedSession(); open = false; stopLoop(); } });
   let musicKey = '';
   const musicState = () => JSON.stringify([musicPlaying(), mode(), host.music.fileName]);
 

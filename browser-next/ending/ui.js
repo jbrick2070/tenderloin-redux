@@ -307,7 +307,10 @@ export function createEnding(host) {
     else if (stage === 'room' || stage === 'orbit') closeRoom();
     else if (stage === 'stories') closeStories();
   });
-  modal.addEventListener('close', () => { stopLoop(); if (stage === 'orbit' || stage === 'room') visit.orbit = halt(visit.orbit).orbit; stage = null; });
+  // × or any other close ends the stage. Chrome delivers a dialog's close event as a later task: one that finds an ending screen
+  // holding the dialog again is an earlier dialog's, closed in the frame before that screen opened in its place, and changes
+  // nothing. Under another screen it still ends the stage, as it would have on time.
+  modal.addEventListener('close', () => { if (stage && holds(stage)) return; stopLoop(); if (stage === 'orbit' || stage === 'room') visit.orbit = halt(visit.orbit).orbit; stage = null; });
 
   return {
     // Opens a stage from its entry point; returns false (with Godot's refusal announced) when it is not available.
