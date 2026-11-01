@@ -434,7 +434,7 @@ export const capitalize = text => String(text).split(/[\s_]+/).filter(Boolean).m
 // Fork-only text: what 2D says where Godot has no matching moment.
 export const FORK_TEXT = {
   copiesChanged: 'The shared save changed, so this visit\'s ending started fresh. Your saved film, gathering and Listening Hour are kept.',
-  restart: 'This clears the save this browser shares with the 3D edition, so it also resets the 3D edition: the neighbors you met, the gathering, mural, mural scenes, chapters and history discoveries, and the neighborhood surprises found only in 3D.',
+  restart: 'This clears the save this browser shares with the 3D edition, so it also resets the 3D edition: the neighbors you met, the gathering, mural, mural scenes, chapters and history discoveries, and the neighborhood surprises.',
 };
 
 const G = GODOT;

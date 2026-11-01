@@ -682,7 +682,8 @@ test('a click without pointerType takes the radius of the pointer that made it',
 
 // The whole rapid set, both sides. A fork control marked rapid (a data-rapid attribute, or rapid: true on the view a renderer
 // reads) ports a Godot Button marked set_meta("rapid", true), or is declared fork-only; a Godot rapid Button is ported or declared
-// not ported. A rapid mark added or dropped on either side fails here. browser-next/visits/ is not part of the fork yet (untracked).
+// not ported. A rapid mark added or dropped on either side fails here. The walk reads every fork file but data/; the pure modules in
+// browser-next/visits/ carry no mark (the visits screens draw them).
 const RAPID_SET = [
   // [fork sites as file#id, Godot owners as file:receiver, what they are]
   [['index.html#zoom-in', 'index.html#zoom-out'], ['main.gd:zoom_control'], 'the map zoom'],
@@ -696,11 +697,13 @@ const RAPID_SET = [
   [['game.js#volume', 'game.js#soundtrack-volume'], [], "fork only: the volume sliders (Godot steps the volume with Rook's Volume)"],
   [[], ['main.gd:mural_palette_btn'], "not ported: Celeste's panel Palette (2D's Celeste opens the mural workshop)"],
   [[], ['main.gd:nav'], 'not ported: the block panel pager (2D has no paged block panel)'],
-  [[], ['power_story.gd:pad', 'shared_meal.gd:previous', 'shared_meal.gd:next', 'story_picker.gd:earlier', 'story_picker.gd:later'], 'not ported: the visit stories'],
+  [['visits-ui.js#meal-previous', 'visits-ui.js#meal-next'], ['shared_meal.gd:previous', 'shared_meal.gd:next'], "Cook & Share's Previous and Next cook"],
+  [['visits-ui.js#picker-earlier', 'visits-ui.js#picker-later'], ['story_picker.gd:earlier', 'story_picker.gd:later'], "the story picker's Earlier and Later"],
+  [['visits-episodes.js#power-pad-${i}'], ['power_story.gd:pad'], "Power Story's connector pads: each press turns one a quarter"],
 ];
 test("the rapid set: every fork rapid mark ports a Godot set_meta(\"rapid\", true) Button or is declared, and every Godot one is", () => {
   const forkRoot = new URL('../browser-next/', import.meta.url), files = [];
-  const walk = dir => { for (const entry of readdirSync(new URL(dir, forkRoot), { withFileTypes: true })) { const rel = dir + entry.name; if (entry.isDirectory()) { if (!['visits', 'data'].includes(entry.name)) walk(rel + '/'); } else if (/\.(js|html)$/.test(entry.name)) files.push(rel); } };
+  const walk = dir => { for (const entry of readdirSync(new URL(dir, forkRoot), { withFileTypes: true })) { const rel = dir + entry.name; if (entry.isDirectory()) { if (entry.name !== 'data') walk(rel + '/'); } else if (/\.(js|html)$/.test(entry.name)) files.push(rel); } };
   walk('');
   const sites = [], conduits = [];
   for (const rel of files) {
@@ -714,7 +717,7 @@ test("the rapid set: every fork rapid mark ports a Godot set_meta(\"rapid\", tru
     assert.deepEqual(text.match(/\brapid: (?!true\b|false\b)[^,}]+/g), null, `${rel}: a view says rapid: true or rapid: false, never a computed mark`);
     sites.push(...tags, ...views); conduits.push(...renders);
   }
-  assert.deepEqual(conduits.sort(), ['ending/ui.js', 'game.js'], 'two renderers turn a view\'s rapid: true into data-rapid: the ending\'s btn() and the conversation controls');
+  assert.deepEqual(conduits.sort(), ['ending/ui.js', 'game.js', 'visits-kit.js'], 'three renderers turn a view\'s rapid: true into data-rapid: the ending\'s btn(), the conversation controls and the visits kit\'s btn()');
   const owners = [];
   for (const name of readdirSync(new URL('../godot/', import.meta.url)).filter(n => n.endsWith('.gd'))) {
     // Whole-line comments only describe marks (main.gd's press-settle notes).

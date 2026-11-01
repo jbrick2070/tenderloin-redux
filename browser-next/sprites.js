@@ -457,6 +457,9 @@ function drawTourMarker(c, world, m, t) {
   shape(c, [[m.x - w, y], [m.x + w, y], [m.x, y + 0.5 * s]], GOLD_LOW);
   c.restore();
 }
+// Where drawTourMarker draws the diamond's centre above its stop, in map px at a world scale: the foot 70 screen px up (at least
+// 70 map px), then half the 30 screen px diamond. game.js hit-tests the marker there, so a tap on the drawn diamond finds it.
+export const tourMarkerLift = scale => 70 * Math.max(1, 1 / scale) + 0.5 * (30 / scale);
 
 // createSprites({ reducedMotion }) -> { ground(ctx, world, scene), actors(world, scene) -> [{ y, draw(ctx, world) }], overlay(ctx, world, scene) }.
 export function createSprites({ reducedMotion = () => false } = {}) {

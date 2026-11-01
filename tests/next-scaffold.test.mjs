@@ -56,14 +56,13 @@ test('the fork declares its Content-Security-Policy first in <head>, with no inl
 });
 
 // Line endings: the files the fork copied from classic keep classic's CRLF, every other fork file is LF, and none is mixed.
-// browser-next/visits/ is untracked work that is not part of the fork yet, so it is skipped.
 const CRLF_FILES = ['camera.js', 'core.js', 'data/streets.osm.json', 'game.js', 'index.html', 'style.css', 'world.js'];
 test('every fork file is uniformly LF or uniformly CRLF, and only the files copied from classic are CRLF', () => {
   const root = new URL('../browser-next/', import.meta.url), crlf = [], seen = [];
   const walk = dir => {
     for (const entry of readdirSync(new URL(dir, root), { withFileTypes: true })) {
       const rel = dir + entry.name;
-      if (entry.isDirectory()) { if (rel !== 'visits') walk(rel + '/'); continue; }
+      if (entry.isDirectory()) { walk(rel + '/'); continue; }
       const bytes = readFileSync(new URL(rel, root)), lf = bytes.filter(b => b === 10).length, cr = bytes.filter(b => b === 13).length;
       let pairs = 0;
       for (let i = 1; i < bytes.length; i++) if (bytes[i] === 10 && bytes[i - 1] === 13) pairs++;

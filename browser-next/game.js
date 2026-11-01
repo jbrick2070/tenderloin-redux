@@ -7,12 +7,12 @@ import { BLACK_HAWK } from './history.js';
 import { districtGeometry } from './district.js';
 import { Soundtrack } from './soundtrack.js';
 import { stemMask, stemSummary, cleanVolume, nextVolume, volumeAnnouncement, playingAnnouncement, switchedAnnouncement, MUSIC_TEXT, MAX_VOLUME } from './sketch-core.js';
-import { RewardPlayer, progressCues, rewardFor, soundsLabel, soundsAnnouncement, cleanRewardSounds, SOUNDS_TEXT } from './rewards.js';
+import { RewardPlayer, progressCues, rewardFor, visitCue, soundsLabel, soundsAnnouncement, cleanRewardSounds, SOUNDS_TEXT } from './rewards.js';
 import { PHOTO_RESPONSES, postcardSVG } from './keepsake.js';
 import { gatheringScene, gatheringPlanSVG } from './gathering.js';
 import { SEGMENTS, segment, programmeIssue, programmeTitle, programmeSVG, programmeResponse } from './programme.js';
 import { currentActivity, tilePanelSVG, STORY_CHOICES, QUIET_CHOICES } from './hosting.js';
-import { godotExtras, freshTalk, arriveTalk, chatTalk, confirmLoan, conversationView, arrivalCaption, talkAnnouncement, goodbyeLines, whatsNext, whatsNextAnnouncement, rookMusicDetail, narrowLabel, sparkCount, ACTION_LABELS, BUTTON_TEXT, HUB_LABELS, gdFormat } from './characters.js';
+import { freshTalk, arriveTalk, chatTalk, confirmLoan, conversationView, arrivalCaption, talkAnnouncement, goodbyeLines, whatsNext, whatsNextAnnouncement, rookMusicDetail, narrowLabel, sparkCount, ACTION_LABELS, BUTTON_TEXT, HUB_LABELS, gdFormat } from './characters.js';
 import { showBubble, stepBubble, spokenText, speechNotice, BUBBLE, BUBBLE_TEXT, FORK_BUBBLE } from './bubble.js';
 import { HOSTING_FORK_TEXT, invitationHubText, invitationSVG, quietHubText, loanReply, loanRefusal, loanReturnAnnouncement, LOAN_COMPLETION_NOTICE, hostedCompletion } from './hosted-text.js';
 import { ExperimentHost } from './experimental-host.js';
@@ -24,6 +24,11 @@ import { GODOT, FORK_TEXT, gdf } from './ending/text.js';
 import { sceneReceipt } from './ending/mural.js';
 import { hostedDetail, postedGatherLine } from './ending/hosted.js';
 import { createRhythm } from './rhythm-ui.js';
+import { createVisits } from './visits-ui.js';
+import { createEpisodeScreens } from './visits-episodes.js';
+import { createWorldVisits } from './visits-world.js';
+import { VISITS_FORK_TEXT } from './visits-kit.js';
+import { createSprites, tourMarkerLift } from './sprites.js';
 
 const $ = selector => document.querySelector(selector);
 const modal = $('#modal'), body = $('#modal-body'), canvas = $('#world');
@@ -54,7 +59,8 @@ music.setVolume(settings.volume); rewards.setEnabled(settings.rewardSounds);
 document.documentElement.classList.toggle('reduced-motion', settings.reducedMotion);
 const settle = installPressSettle(document, window);
 let world, ways, toastTimeout, activeTool = 'table', activeMotif = 'sun', lastFrame = 0, lastHint = 0;
-let walkTarget = null, walkPath = [], keys = new Set(), arrivedAt = null, nearAt = null, lastChapter = -1, cardQueued = false;
+// walkOwner is 'visit' while a side story owns the walk (its arrival goes to visits.walkEnded); walkName is where the walk goes.
+let walkTarget = null, walkPath = [], walkOwner = null, walkName = '', keys = new Set(), arrivedAt = null, nearAt = null, lastChapter = -1, cardQueued = false;
 let districtStatus = 'idle', districtPromise;
 // startupContinue: the open startup card's continue; walkOnClose: the movement key that dismissed it, walking once it closes.
 let startupContinue = null, walkOnClose = null;
@@ -75,13 +81,35 @@ const ending = createEnding({ doc: document, win: window, modal, settle, getStat
 const rhythm = createRhythm({ doc: document, win: window, modal, getState: () => state, show, status: modalStatus, toast, act, music, volume: () => settings.volume, unlocked: () => rewards.unlocked, toggleMusic, stopWalk,
   receipt: () => sceneReceipt(saveReason()), objective: () => nextObjective(state, storyWorld()).text, sparks: () => sparkCount(state, talkExtras()), lastChapter: () => !chapterCardDue(lastChapter, state),
   afterClose: (origin, text, notice = '') => { if (notice) chapterNotice = notice; if (origin === 'hosting' && state.hosting.order.length) return hostingScreen(text, 'host-rhythm'); close($('#rhythm-circle') || canvas); if (text) toast(text); } });
+// The side stories (visits-ui.js with the episode screens and the neighborhood part): one visit-only session over the saved state,
+// never saved itself; the one saved field, state.surprises, changes through act(). Their host is spec 3.2's.
+const visitsHost = {
+  doc: document, win: window, modal, settle, show, close: target => close(typeof target === 'string' ? document.getElementById(target) || canvas : target),
+  returnTo: id => { modalReturnTarget = document.getElementById(id) || canvas; }, status: modalStatus, announce, toast, getState: () => state, act, saveReason,
+  chime: (id, reason) => { try { rewards.play(rewardFor([visitCue(id, reason)], { enabled: settings.rewardSounds, unlocked: rewards.unlocked })); } catch { /* a chime never holds up a visit */ } },
+  walk: (goal, options) => visitWalk(goal, options), stopWalk: () => stopWalk(), walking: () => walkPath.length > 0, player: () => ({ ...state.player }),
+  lookAt: point => { if (!world) return; world.camera.lookAt(point); cameraUI(); }, speak: (id, text, name) => speak(id, text, name),
+  music: { label: () => music.enabled || music.starting ? STUDIO.musicOn : STUDIO.musicOff, on: () => music.enabled || music.starting, toggle: toggleMusic },
+  reducedMotion: () => settings.reducedMotion, sparks: () => sparkCount(state, talkExtras()), objective: () => nextObjective(state, storyWorld()), openNeighborId: () => openConversation(),
+  cards: () => { const card = chapterCardOpen(); return { startup: card && !!body.querySelector('[data-chapter-card] #begin'), story: card }; }, dialogOpen: () => modal.open,
+  hostingInProgress: () => state.hosting.order.length > 0 && state.hosting.results.length < 4, restoreStartupCard: text => showChapterCard(true, { announce: text }), load: name => loadVisitData(name),
+};
+const visits = createVisits(visitsHost, { createEpisodeScreens, createWorldVisits });
+const sprites = createSprites({ reducedMotion: () => settings.reducedMotion });
+// The side stories on the map: their objects for hit tests (the tour marker where sprites.js draws its diamond), and their ground,
+// actors and overlay layers, all drawn from visits.scene().
+const mapLayers = {
+  objects: w => visits.objects(w).map(o => o.id === 'tour-marker' ? { ...o, y: o.y - tourMarkerLift(w.scale) } : o),
+  ground: (c, w) => sprites.ground(c, w, visits.scene()), actors: w => sprites.actors(w, visits.scene()), overlay: (c, w) => sprites.overlay(c, w, visits.scene()),
+};
 // Godot's session-only talk counters (characters.js freshTalk; Celeste's is the saved celesteTalks) and the one shared
 // speech bubble with its live-region mirror (routeSpeech, read by hint()).
 let talks = freshTalk(), bubble = null, routeSpeech = null;
-// This visit's session-only state: talk turns, the last arrival, a pending chapter notice and the speech bubble. Start fresh
-// starts it over, and so does a stored save that replaces this tab's state (from another tab or edition, or Use the shared
-// save), as Godot's load does. An action rebased onto a newer save keeps it.
-function resetSession() { talks = freshTalk(); arrivedAt = nearAt = null; chapterNotice = ''; bubble = null; routeSpeech = null; }
+// This visit's session-only state: talk turns, the last arrival, a pending chapter notice, the speech bubble and the side stories
+// (visits-ui.js). Start fresh starts it over, and so does a stored save that replaces this tab's state (from another tab or
+// edition, or Use the shared save), as Godot's load does. An action rebased onto a newer save keeps it. Returns the side
+// stories' sync: closed when one of their screens held the dialog.
+function resetSession() { talks = freshTalk(); arrivedAt = nearAt = null; chapterNotice = ''; bubble = null; routeSpeech = null; return visits.sync({ adopted: true }); }
 let voicesModulePromise, voicesImportAttempt = 0;
 const voicesHost = new ExperimentHost({
   load: async scope => {
@@ -147,7 +175,8 @@ function adoptSave(result, raw, keep) {
 // A save that lost forward-only progress (a 3D tab opened earlier, or a restart there) is offered back: this tab keeps showing
 // its own progress until the player chooses. The offer is withdrawn when the stored save is cleared (someone started over),
 // becomes unreadable, or holds this tab's progress again. A stored save that replaces this tab's state starts the session
-// over, unless an action is about to be rebased onto it (rebase). closed: an open ending screen the stored save's new copies closed.
+// over, unless an action is about to be rebased onto it (rebase). closed: an open ending screen the stored save's new copies closed;
+// visitsClosed: a side-story screen that starting the session over closed.
 function reread({ rebase = false } = {}) {
   let raw;
   try { raw = localStorage.getItem(SAVE_KEY); } catch { storageAvailable = false; return null; }
@@ -156,15 +185,17 @@ function reread({ rebase = false } = {}) {
   adoptSave(result, raw, before);
   if (recovery && (!loaded || !lostProgress(ownEnvelope(before), result.envelope))) { recovery = null; if (modal.open && body.querySelector('[data-recovery]')) close(); }
   else if (!recovery && loaded && lostProgress(base, result.envelope)) recovery = { envelope: base, scenes };
+  let visitsClosed = false;
   if (recovery) state = before;
-  else if (state !== before && !rebase) resetSession();
+  else if (state !== before && !rebase) visitsClosed = resetSession().closed;
   const closed = ending.sync({ adopted: true }).closed;
-  return { result, before, closed };
+  return { result, before, closed, visitsClosed };
 }
 // This tab's progress as a save over its own write base, for comparing with a newer stored save.
 const ownEnvelope = s => buildGodotSave(recovery.envelope, s, { reset: true }).envelope || recovery.envelope;
 // An ending screen the new copies closed says why: this visit's ending started fresh, and the saved progress stays (FORK_TEXT).
-const syncNotice = changed => held ? SAVE_TEXT.held : changed.result.status === 'fresh' ? 'The shared save was cleared in another tab. A fresh afternoon is ready.' : changed.closed ? FORK_TEXT.copiesChanged : 'Progress saved in another tab or edition is here now.';
+// Otherwise a side-story screen the restarted session closed says the visit's side stories started fresh (VISITS_FORK_TEXT).
+const syncNotice = changed => held ? SAVE_TEXT.held : changed.result.status === 'fresh' ? 'The shared save was cleared in another tab. A fresh afternoon is ready.' : changed.closed ? FORK_TEXT.copiesChanged : changed.visitsClosed ? VISITS_FORK_TEXT.adopted : 'Progress saved in another tab or edition is here now.';
 function syncStored() {
   const changed = reread();
   if (!changed) return;
@@ -280,29 +311,33 @@ function updateUI() {
   if (state.layout === 'floor') { $('#neighbor-quote').textContent = state.opened ? '“Turns out a little room was all we needed to find the rhythm.”' : '“Leave a little open space. You never know who might start dancing.”'; $('#neighbor-credit').textContent = '— Dez, your neighbor'; }
   else { $('#neighbor-quote').textContent = state.opened ? '“See? We already had what mattered. Each other.”' : '“A long table, a few good stories. That’s my kind of afternoon.”'; $('#neighbor-credit').textContent = '— Bea, your neighbor'; }
   saveUI(); chapterUI();
-  updateAfterglow(); ending.sync(); rhythm.sync();
+  updateAfterglow(); ending.sync(); rhythm.sync(); visits.sync();
   soundUI();
   queueChapterCard();
 }
 const PLACE_BY_ID = Object.fromEntries(PLACES.map(place => [place.id, place]));
-const storyWorld = () => ({ player: state.player, neighbors: NEIGHBORS, places: PLACE_BY_ID });
+// The objective's world: the map, the side stories' active episode, tour and last hint, and the open conversation.
+const storyWorld = () => ({ player: state.player, neighbors: NEIGHBORS, places: PLACE_BY_ID, ...visits.objectiveInputs(), openNeighborId: openConversation() });
 function chapterUI() {
   const text = chapterLine(state, { narrow: isNarrow(innerWidth), world: storyWorld() });
   if ($('#chapter-text').textContent !== text) $('#chapter-text').textContent = text;
 }
 const chapterCardOpen = () => modal.open && !!body.querySelector('[data-chapter-card]');
 // Godot show_story_card: on every load, then whenever the chapter number differs from the last card, once no dialog is open.
-function showChapterCard(startup = false) {
+// announce: the status line in place of the chapter's announcement (Before These Streets' close line when it comes back here).
+function showChapterCard(startup = false, { announce } = {}) {
   const card = chapterCard(state, { startup, notice: chapterNotice }), id = startup ? 'begin' : 'chapter-continue';
   chapterNotice = '';
   lastChapter = card.num;
-  show(`<section data-chapter-card>${startup ? '<div class="welcome-art" aria-hidden="true"><span></span><span></span><span></span><span></span></div>' : ''}<span class="eyebrow">${startup ? 'WELCOME TO YOUR AFTERNOON' : 'A NEW CHAPTER ON THE BLOCK'}</span><h2 id="modal-title">${card.title}</h2><p>${card.body}</p><div class="button-row">${button(id, card.button, true)}</div>${startup ? '<div class="dialog-controls"><span><kbd>WASD</kbd> or arrows to walk</span><span><kbd>E</kbd> to talk / help</span></div><p class="footnote">Tap people or objects, choose a preparation, or use Meet the neighbors to walk over. Use + / − to zoom, drag to look around, and Follow me to find yourself. A fictional gathering on real street centerlines; scenery is an early approximation. Music is optional.</p>' : ''}</section>`);
-  $('#modal-status').textContent = card.announcement;
+  show(`<section data-chapter-card>${startup ? '<div class="welcome-art" aria-hidden="true"><span></span><span></span><span></span><span></span></div>' : ''}<span class="eyebrow">${startup ? 'WELCOME TO YOUR AFTERNOON' : 'A NEW CHAPTER ON THE BLOCK'}</span><h2 id="modal-title">${card.title}</h2><p>${card.body}</p>${startup ? `<div class="button-row">${visits.entryHTML('before')}</div>` : ''}<div class="button-row">${button(id, card.button, true)}</div>${startup ? '<div class="dialog-controls"><span><kbd>WASD</kbd> or arrows to walk</span><span><kbd>E</kbd> to talk / help</span></div><p class="footnote">Tap people or objects, choose a preparation, or use Meet the neighbors to walk over. Use + / − to zoom, drag to look around, and Follow me to find yourself. A fictional gathering on real street centerlines; scenery is an early approximation. Music is optional.</p>' : ''}</section>`);
+  $('#modal-status').textContent = announce ?? card.announcement;
   const returning = state.visited.length || Object.keys(state.mural).length;
   // Godot continue_story(true): the startup card's button, or W/A/S/D or an arrow key on it, starts the music unless it is
   // playing. Escape and × stay silent.
   const go = () => { close(); if (startup && !music.enabled && !music.starting) music.start(); if (startup) toast(held ? savedMessage : returning && savedMessage ? savedMessage : 'Bea is just ahead. Tap her, or choose Meet the neighbors.'); };
   bind(id, go); startupContinue = startup ? go : null;
+  // Godot's optional opening sits above Start Exploring, which keeps the focus (story_continue_btn.grab_focus).
+  if (startup) { visits.bindEntry('before'); $('#begin').focus({ preventScroll: true }); }
 }
 function queueChapterCard() {
   if (cardQueued) return;
@@ -390,6 +425,8 @@ function updateAfterglow() {
     bind('host-afternoon', () => hostingScreen());
   }
   if (rhythm.available()) { panel.querySelector('.afterglow-actions').insertAdjacentHTML('beforeend', `<button id="rhythm-circle" class="secondary-button" aria-label="${esc(rhythm.entryLabel().replace(/\n/g, ' '))}">${esc(rhythm.entryLabel()).replace(/\n/g, '<br>')}</button>`); bind('rhythm-circle', () => rhythm.open('block')); }
+  // The side stories on the block (visits-ui.js): Neighborhood Stories and Cook & Share.
+  panel.querySelector('.afterglow-actions').insertAdjacentHTML('beforeend', visits.entryHTML('story') + visits.entryHTML('meal')); visits.bindEntry('story'); visits.bindEntry('meal');
   if (civicAvailable(state)) {
     panel.querySelector('.afterglow-actions').insertAdjacentHTML('beforeend', `<div class="civic-invitation"><p>${state.civic.phase === 'done' ? 'Later on the block: a tenant listening hour, kept as a shared memory.' : 'A later afternoon: the neighbors want to talk about staying and thriving here. A peaceful tenant listening hour is ready whenever you are.'}</p>${button('civic-hour', state.civic.phase === 'done' ? 'Remember our listening hour ↗' : state.civic.phase === 'idle' ? 'A tenant listening hour ↗' : 'Continue our listening hour ↗')}</div>`);
     bind('civic-hour', () => civicScreen());
@@ -560,8 +597,8 @@ function packingChoice() {
 const esc = text => String(text ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const neighborById = id => NEIGHBORS.find(n => n.id === id);
 const muralPlace = () => PLACES.find(p => p.id === 'mural');
-// Godot-only fields, cleaned as Godot cleans them: surprises from the shared save (read-only) and the fork's own mural scenes.
-const talkExtras = () => ({ surprises: godotExtras(envelope ?? recovery?.envelope).surprises, muralScenes: state.muralScenes ?? {} });
+// The neighborhood surprises and the mural scenes, the fork's own (written as Godot's discovered_surprises and mural_scenes).
+const talkExtras = () => ({ surprises: state.surprises, muralScenes: state.muralScenes ?? {} });
 const musicView = () => ({ playing: music.enabled || music.starting, mode: music.fileName ? 'local' : 'sketch', localName: music.fileName, volume: settings.volume });
 const openConversation = () => modal.open ? body.querySelector('[data-conversation]')?.dataset.conversation ?? null : null;
 // The ids the fork's screens and tests already use for these actions; the rest are talk-<Godot action id>.
@@ -571,6 +608,9 @@ function actionDom(action) {
   if (action.id.startsWith('return_owner:')) return state.epilogue.returned.includes(action.id.slice('return_owner:'.length)) ? 'loan-receipt' : 'return-event-loan';
   return `talk-${action.id.replace(/[^a-z0-9]+/gi, '-')}`;
 }
+// One control per id: Godot's chain can name an action twice (Rook in chapter 6 after his speaker's return: Spot Surprise for the
+// goal, then again as the someone-else step), and a page has one element per id, so the first stays.
+const uniqueById = controls => { const seen = new Set(); return controls.filter(control => !seen.has(control.dom) && seen.add(control.dom)); };
 // The live region for speech and conversation steps while no dialog shows them (hint() keeps it until it expires).
 function routeSay(text, seconds = 6) { routeSpeech = { text, until: performance.now() + seconds * 1000 }; $('#route-status').textContent = text; }
 // Godot announce_a11y_status: the open dialog's status line (the music panel's own, so the panel speaks one line), else the
@@ -587,6 +627,12 @@ function say(id, line) {
   bubble = showBubble(id, text);
   if (bubble && !modal.open) routeSay(`${neighborById(id)?.name ?? ''}: ${text}`, bubble.timer);
 }
+// The side stories' speakers (host.speak): the same bubble at a visits anchor (a surprise, an eatery counter, the museum docent).
+function speak(id, line, name = '') {
+  const text = spokenText(line);
+  bubble = showBubble(id, text);
+  if (bubble && !modal.open) routeSay(name ? `${name}: ${text}` : text, bubble.timer);
+}
 // custom is Godot's last_panel_dialogue (a What's Next? line, a loan reply or refusal); announce is the a11y line.
 function conversation(id, { custom = '', announce = '', speak = true } = {}) {
   const n = neighborById(id);
@@ -594,11 +640,12 @@ function conversation(id, { custom = '', announce = '', speak = true } = {}) {
   const narrow = isNarrow(innerWidth), m = musicView(), goal = nextObjective(state, storyWorld());
   const view = conversationView(state, talkExtras(), talks, id, goal, { narrow, music: m, custom });
   const label = text => narrow ? narrowLabel(text) : text;
-  const actions = view.actions.map(a => ({ ...a, dom: actionDom(a), pressed: a.id === 'layout_table' ? state.layout === 'table' : a.id === 'layout_floor' ? state.layout === 'floor' : null }));
+  const listed = view.actions.map(a => ({ ...a, dom: actionDom(a), pressed: a.id === 'layout_table' ? state.layout === 'table' : a.id === 'layout_floor' ? state.layout === 'floor' : null }));
   // Bea holds the layout until the block opens, so its choice stays in her conversation (Godot keeps it in the block hub).
-  if (id === 'bea' && !state.opened && !actions.some(a => a.id === 'layout_table')) for (const [aid, text, value] of [['layout_table', ACTION_LABELS.layoutTable, 'table'], ['layout_floor', ACTION_LABELS.layoutFloor, 'floor']]) actions.push({ id: aid, label: label(text), dom: ACTION_DOM[aid], pressed: state.layout === value });
+  if (id === 'bea' && !state.opened && !listed.some(a => a.id === 'layout_table')) for (const [aid, text, value] of [['layout_table', ACTION_LABELS.layoutTable, 'table'], ['layout_floor', ACTION_LABELS.layoutFloor, 'floor']]) listed.push({ id: aid, label: label(text), dom: ACTION_DOM[aid], pressed: state.layout === value });
   // Celeste's easel panel opens the mural (Godot's two-line Compose Mural button).
-  if (id === 'celeste') actions.push({ id: 'compose', label: BUTTON_TEXT.compose, dom: 'start-mural', pressed: null });
+  if (id === 'celeste') listed.push({ id: 'compose', label: BUTTON_TEXT.compose, dom: 'start-mural', pressed: null });
+  const actions = uniqueById(listed);
   // Rook's panel in Godot's order, Load Local Track after the soundcheck; rookButtons marks Volume rapid, as Godot does.
   const controls = id === 'rook'
     ? view.music.flatMap(b => [{ ...b, dom: b.id === 'soundcheck' ? 'soundcheck' : `talk-${b.id}` }, ...b.id === 'soundcheck' ? [{ id: 'load', label: BUTTON_TEXT.load, dom: 'talk-load', rapid: false }] : []])
@@ -640,13 +687,19 @@ function runConversationAction(partner, action) {
     case 'blackhawk': return state.blackhawk ? blackhawk() : goTo(BLACK_HAWK);
     case 'shared_panel': close(); return goTo(muralPlace());
     case 'hub': return neighbors();
+    // The side stories (visits-world.js): Spot Surprise, Visit the Museum, Visit Eateries and the landmark tour's next stop.
+    case 'surprise': case 'museum': case 'eateries': case 'landmark_tour': return visits.conversationAction(kind, partner);
   }
 }
 // Godot ask_whats_next: the partner says the hint. With somewhere to go, the fork walks there (Godot's gold marker);
 // otherwise the line stays in the conversation.
 function askWhatsNext(id) {
-  const goal = nextObjective(state, storyWorld()), line = whatsNext(goal, id), announce = whatsNextAnnouncement(goal, id);
-  const target = goal.id === 'blackhawk' ? goal.target || BLACK_HAWK : goal.target;
+  const goal = nextObjective(state, storyWorld()), line = whatsNext(goal, id);
+  let after = goal, announce = whatsNextAnnouncement(goal, id);
+  // On the explore objective the neighbor's hint names a surprise, which Godot remembers (last_hinted_surprise_id) before it works
+  // out the objective again for its announcement and its marker.
+  if (goal.id === 'explore') { visits.hinted(goal.speakerHints?.[id]?.lastHinted ?? ''); after = nextObjective(state, storyWorld()); announce = whatsNextAnnouncement({ ...goal, text: after.text }, id); }
+  const target = goal.id === 'blackhawk' ? goal.target || BLACK_HAWK : after.target;
   if (target && target.id !== id && Math.hypot(state.player.x - target.x, state.player.y - target.y) >= 35) { goTo(target); say(id, line); routeSay(announce); return; }
   conversation(id, { custom: line, announce });
 }
@@ -736,7 +789,8 @@ const measureContext = document.createElement('canvas').getContext('2d');
 function measureText(text) { measureContext.font = `${BUBBLE.font}px "Segoe UI", sans-serif`; return measureContext.measureText(text).width; }
 function stepSpeech(dt) {
   if (!world) return;
-  const n = bubble && neighborById(bubble.id);
+  // A neighbor, or a side story's speaker at its map anchor (visits.anchor: a surprise, an eatery counter, the museum docent).
+  const n = bubble && (neighborById(bubble.id) ?? visits.anchor(bubble.id));
   if (!n) { bubble = null; world.bubble = null; return; }
   const s = world.scale, size = Math.max(1, 1 / s), o = world.offset, chip = objectLabel(n, s), k = Math.max(1, s), p = state.player;
   // The tail tip sits just above the name chip (Godot: 5 m above the speaker); without a chip, a fixed lift.
@@ -778,6 +832,10 @@ function journal() {
   bind('journal-history', () => { if (state.history) history(); else { close(); goTo(PLACES.find(p => p.id === 'history')); } }); bind('journal-map', mapInfo); bind('journal-district', livingDistrict); bind('journal-walk', historyWalk);
   if (civicAvailable(state)) { body.insertAdjacentHTML('beforeend', `<div class="history-entry"><span class="eyebrow">A LATER AFTERNOON · FICTIONAL CIVIC EVENT</span><h3>A tenant listening hour</h3><p>Neighbors bring different priorities about repairs, staying put and shared-space access. ${state.civic.phase === 'done' ? 'Your agreed setup and their responses are remembered.' : 'The conversation can wait for you.'}</p>${button('journal-civic', state.civic.phase === 'done' ? 'Remember our listening hour' : 'Visit the listening hour')}</div>`); bind('journal-civic', () => civicScreen()); }
   if (filmAvailable(state)) { body.insertAdjacentHTML('beforeend', `<div class="history-entry"><span class="eyebrow">A LATER DAY · FICTIONAL FILM PROJECT</span><h3>The Open Seat</h3><p>An original three-shot illustrated short, made around neighbors’ permission, quiet and access.</p>${button('journal-film', state.film.phase === 'done' ? 'Screen our little film' : 'Visit our little film project')}</div>`); bind('journal-film', () => filmScreen()); }
+  // The side stories in the 2D Info column (visits-ui.js): Before These Streets while it can be revisited, then the neighborhood
+  // surprises and stops.
+  const revisit = visits.entryHTML('revisit');
+  body.insertAdjacentHTML('beforeend', (revisit ? `<div class="history-entry">${revisit}</div>` : '') + visits.entryHTML('notes')); visits.bindEntry('revisit'); visits.bindEntry('notes');
   bind('journal-programme', () => programmeEditor());
   bind('journal-host', () => hostingScreen());
   bind('journal-keepsake', viewKeepsake);
@@ -809,6 +867,16 @@ async function requestDistrict() {
     })();
   }
   districtUI(); await districtPromise; districtUI();
+}
+// host.load of the side stories: one of their two place files, same-origin and parsed, within 10 s (as requestDistrict).
+async function loadVisitData(name) {
+  if (!['power_place.json', 'voting_places.json'].includes(name)) throw Error('Not a story data file');
+  const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 10000);
+  try {
+    const response = await fetch('./data/' + name, { signal: controller.signal });
+    if (!response.ok) throw Error('Story data unavailable');
+    return await response.json();
+  } finally { clearTimeout(timeout); }
 }
 function livingDistrict() {
   if (!world) { toast('The street scene is still loading.'); return; }
@@ -858,6 +926,7 @@ function restart() {
 }
 function interact(object, how = 'tap') {
   if (!object) return;
+  if (object.kind === 'visit') return visits.interact(object, how);
   if (NEIGHBORS.some(n => n.id === object.id)) return talk(object.id, how);
   if (LITTER.some(n => n.id === object.id)) return tidy(LITTER.find(n => n.id === object.id));
   if (object.id === 'layout') return layoutEditor();
@@ -865,14 +934,33 @@ function interact(object, how = 'tap') {
   if (object.id === 'history') return history();
   if (object.id === 'blackhawk') return blackhawk();
 }
+// A walking route from the player to goal, once the walk before it stops: target is interacted with on arrival, and owner 'visit'
+// hands the arrival to the side stories instead (visits.walkEnded). keepCamera keeps a camera that was not following, as Godot's
+// story walks keep a manual camera (lantern_procession.gd and voting_story.gd walk_route). False, changing nothing, when no route
+// reaches goal.
+function startWalk(goal, { target = null, name = '', announce = '', owner = null, keepCamera = false } = {}) {
+  const path = findPath(state.player, goal, ways);
+  if (!path.length) return false;
+  stopWalk();
+  arrivedAt = null; walkPath = path; world.path = path; walkTarget = target; walkOwner = owner; walkName = name;
+  if (!keepCamera || world.camera.following) world.camera.follow(state.player);
+  cameraUI(); hint(); toast(announce || (name ? `Walking to ${name}. Choose Stop walking to cancel.` : 'Walking to your stop. Choose Stop walking to cancel.'));
+  return true;
+}
 function goTo(object) {
   if (!world) { toast('The street scene is still loading. Try again when the map is ready.'); return; }
   if (Math.hypot(state.player.x - object.x, state.player.y - object.y) < 35) { stopWalk(); world.camera.follow(state.player); cameraUI(); interact(object); return; }
-  const path = findPath(state.player, object, ways);
-  if (!path.length) { closeIfOpen(); toast('A route to that stop is unavailable in this scene. Try a nearby neighbor.'); return; }
-  arrivedAt = null; walkPath = path; world.path = path; walkTarget = object; world.camera.follow(state.player); cameraUI(); hint(); toast(`Walking to ${object.name || object.label}. Choose Stop walking to cancel.`); closeIfOpen(); canvas.focus({ preventScroll: true });
+  if (!startWalk(object, { target: object, name: object.name || object.label })) { closeIfOpen(); toast('A route to that stop is unavailable in this scene. Try a nearby neighbor.'); return; }
+  closeIfOpen(); canvas.focus({ preventScroll: true });
 }
-function stopWalk() { walkPath = []; walkTarget = null; if (world) { world.path = []; hint(); } }
+// host.walk of the side stories (visits-kit.js startWalk): any walk stops first, then a route they own. A refused route says
+// nothing here (the story says Godot's blocked line), and no dialog opens or closes.
+function visitWalk(goal, { name = '', announce = '', keepCamera = false } = {}) {
+  stopWalk();
+  return world && startWalk(goal, { name, announce, owner: 'visit', keepCamera }) ? 'walking' : 'blocked';
+}
+// A side story's walk hears that it stopped (visits.walkCancelled) once the walk is gone.
+function stopWalk() { const visit = walkOwner === 'visit'; walkPath = []; walkTarget = null; walkOwner = null; walkName = ''; if (world) { world.path = []; hint(); } if (visit) visits.walkCancelled(); }
 function closeIfOpen() { if (modal.open) close(); }
 function neighbors() {
   if (!world) { toast('The street scene is still loading.'); return; }
@@ -894,7 +982,7 @@ function cameraUI() {
 function moveTo(point) {
   const path = findPath(state.player, point, ways);
   if (!path.length) { toast('Keep to the streets and sidewalks. Click a neighbor to find a route over.'); return; }
-  arrivedAt = null; walkPath = path; world.path = path; walkTarget = null; world.camera.follow(state.player); cameraUI(); hint();
+  stopWalk(); arrivedAt = null; walkPath = path; world.path = path; world.camera.follow(state.player); cameraUI(); hint();
 }
 const distanceTo = id => { const n = NEIGHBORS.find(n => n.id === id); return Math.hypot(n.x - state.player.x, n.y - state.player.y); };
 // Godot's key-walk arrival: within ARRIVAL_DISTANCE_M (1.35 m) of a neighbor, again only after leaving by 0.75 m more.
@@ -907,12 +995,21 @@ function arriveNearby() {
   if (act({ type: 'meet', id: n.id })) toast(arrivalCaption(state, talkExtras(), talks, n.id, musicView()));
 }
 function hint() {
-  const nearest = world.nearest(), text = walkPath.length ? `Walking${walkTarget ? ` to ${walkTarget.name || walkTarget.label}` : ''}…` : nearest ? NEIGHBORS.some(n => n.id === nearest.id) ? `Talk with ${nearest.name}` : nearest.name : 'Explore the block';
+  const nearest = world.nearest(), text = walkPath.length ? `Walking${walkName ? ` to ${walkName}` : ''}…` : nearest ? NEIGHBORS.some(n => n.id === nearest.id) ? `Talk with ${nearest.name}` : nearest.name : 'Explore the block';
   $('#world-prompt span').textContent = text; $('#world-prompt kbd').textContent = walkPath.length ? '↑↓←→' : 'E';
-  $('#stop-walking').disabled = !walkPath.length;
+  $('#stop-walking').disabled = !walkPath.length; storyResumeUI();
   if (routeSpeech && performance.now() > routeSpeech.until) routeSpeech = null;
   const status = routeSpeech ? routeSpeech.text : walkPath.length ? `${text} Choose Stop walking to cancel.` : nearest ? `Nearby: ${nearest.name}. Use Talk / help or choose a neighbor.` : 'Choose a neighbor for a walking route.';
   if ($('#route-status').textContent !== status) $('#route-status').textContent = status;
+}
+// The walk control of an active side story (Godot update_walk_control): its label, its tip as the title and the description, shown
+// while the player is not walking. Hidden under focus, it gives the focus to the map.
+function storyResumeUI() {
+  const control = $('#story-resume'), entry = visits.entries().resume;
+  if (!control || !entry) return;
+  if (control.textContent !== entry.label) control.textContent = entry.label;
+  if (control.title !== entry.description) { control.title = entry.description; $('#story-resume-tip').textContent = entry.description; }
+  if (control.hidden !== !entry.visible) { control.hidden = !entry.visible; if (control.hidden && document.activeElement === control) canvas.focus({ preventScroll: true }); }
 }
 function renderFrame(ms) {
   const delta = Math.min((ms - lastFrame) / 1000 || 0, .045); lastFrame = ms;
@@ -935,9 +1032,11 @@ function renderFrame(ms) {
       if (distance <= speed + .1) { state.player = { x: next.x, y: next.y }; walkPath.shift(); }
       else { state.player.x += (next.x - state.player.x) / distance * speed; state.player.y += (next.y - state.player.y) / distance * speed; }
       moving = true;
-      if (!walkPath.length) { hint(); if (walkTarget) { const target = walkTarget; walkTarget = null; interact(target, 'walk'); } }
+      if (!walkPath.length) { hint(); if (walkOwner === 'visit') { walkOwner = null; visits.walkEnded(); } else if (walkTarget) { const target = walkTarget; walkTarget = null; interact(target, 'walk'); } }
     }
   }
+  // The side stories each frame: the lantern march while it travels, then the landmark tour's completion.
+  visits.tick(ms, world);
   stepSpeech(delta); world.motion = moving; world.draw(ms / 1000, settings.reducedMotion);
   if (ms - lastHint > 150) { if (arrivedAt && distanceTo(arrivedAt) > 40) arrivedAt = null; hint(); chapterUI(); lastHint = ms; }
   requestAnimationFrame(frame);
@@ -996,12 +1095,15 @@ async function init() {
     const response = await fetch('./data/streets.osm.json'); if (!response.ok) throw Error(`Street data: HTTP ${response.status}`);
     const data = await response.json(); ways = makeWays(data);
     if (!walkable(state.player, ways)) state.player = initialState().player;
-    world = new World(canvas, ways, () => state, { click: (point, object) => object ? goTo(object) : moveTo(point), tap: event => settle.tap(event), camera: cameraUI, reducedMotion: settings.reducedMotion });
+    // The walk control of an active side story, before Stop walking (Godot update_walk_control relabels its walk control).
+    $('#stop-walking').insertAdjacentHTML('beforebegin', '<button id="story-resume" class="secondary-button" aria-describedby="story-resume-tip" hidden></button><span id="story-resume-tip" class="sr-only"></span>'); visits.bindEntry('resume');
+    // A tap on a visit object opens it where it stands and never walks there (settle.tap claims the tap that opened its card).
+    world = new World(canvas, ways, () => state, { click: (point, object) => object ? object.kind === 'visit' ? interact(object, 'tap') : goTo(object) : moveTo(point), tap: event => settle.tap(event), camera: cameraUI, reducedMotion: settings.reducedMotion, layers: mapLayers });
     cameraUI();
     updateUI();
     showChapterCard(true); $('#loading').remove(); requestAnimationFrame(frame);
     // Read-only inspection for diagnostics; no production bypass for quest actions.
-    window.tenderloin = Object.freeze({ snapshot: () => structuredClone(state), location: () => ({ ...world.offset, scale: world.scale }), sound: () => ({ mode: music.fileName ? 'local' : 'sketch', enabled: music.enabled, starting: music.starting, fileName: music.fileName, volume: music.volume, position: music.position, error: music.error, mask: music.sketch.mask, summary: stemSummary(music.sketch.mask), frames: music.sketch.position(), engine: music.sketch.engine, rate: music.sketch.context?.sampleRate ?? null, muted: music.sketch.muted, rewardsEnabled: settings.rewardSounds, rewardsUnlocked: rewards.unlocked, rewardCount: rewards.count, rewardLastCue: rewards.lastCue, audition: rhythm.auditioning }), ending: () => ending.snapshot(), rhythm: () => rhythm.snapshot(), experiment: () => voicesHost.snapshot(), version: VERSION, edition: EDITION,
+    window.tenderloin = Object.freeze({ snapshot: () => structuredClone(state), location: () => ({ ...world.offset, scale: world.scale }), sound: () => ({ mode: music.fileName ? 'local' : 'sketch', enabled: music.enabled, starting: music.starting, fileName: music.fileName, volume: music.volume, position: music.position, error: music.error, mask: music.sketch.mask, summary: stemSummary(music.sketch.mask), frames: music.sketch.position(), engine: music.sketch.engine, rate: music.sketch.context?.sampleRate ?? null, muted: music.sketch.muted, rewardsEnabled: settings.rewardSounds, rewardsUnlocked: rewards.unlocked, rewardCount: rewards.count, rewardLastCue: rewards.lastCue, audition: rhythm.auditioning }), ending: () => ending.snapshot(), rhythm: () => rhythm.snapshot(), visits: () => visits.snapshot(), experiment: () => voicesHost.snapshot(), version: VERSION, edition: EDITION,
       story: () => { chapterUI(); const goal = nextObjective(state, storyWorld()); return { chapter: currentChapter(state), line: $('#chapter-text').textContent, objective: { id: goal.id, text: goal.text }, card: chapterCardOpen() }; },
       save: () => ({ status: saveInfo.status, reason: saveInfo.reason, bytes: saveInfo.bytes, seq: saveSeq() }), pressSettle: () => settle.snapshot(),
       // The open conversation and the speech bubble on the frame clock (visible: drawn this frame).
