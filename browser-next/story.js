@@ -15,6 +15,7 @@
 import { ORIGIN, PIXELS_PER_METRE, project, initialState } from './core.js';
 import { exploreObjective, initialTour } from './visits/landmarks.js';
 import { SURPRISE_IDS, neighborHint } from './visits/surprises.js';
+import { format, L, FLAVORS } from './i18n.js';
 
 export const STORY_CHAPTERS = [
   { num: 1, title: 'Get the Block Ready', intro: 'An afternoon at Turk & Taylor. You live on this block, and your neighbors have already started planning a small gathering. Bea has a plan, Celeste brought paint, Rook knows sound, Dez has a beat, and Thanh is lending supplies. Help them get the block ready. The gathering and the neighbors are fictional; the streets and the history are real.' },
@@ -99,6 +100,24 @@ export const WEB_OVERRIDES = {
 };
 // Fork-only text: the compass phrase when a point is missing.
 export const FORK_TEXT = { nearby: 'nearby' };
+// Fork composites (docs/I18N_PLAN.md 2.7): compass_phrase's templates with each direction written in, where Godot inserts the
+// direction word, so a translator writes the whole phrase. 'about %d blocks …' may be a plural object in a catalog; Godot's
+// blocks <= 1 branch keeps choosing 'about a block …'. Each equals Godot's template filled with the direction
+// (tests/next-i18n-dialogue.test.mjs).
+export const COMPASS_TEXT = {
+  metres: {
+    east: 'about %d m east', northeast: 'about %d m northeast', north: 'about %d m north', northwest: 'about %d m northwest',
+    west: 'about %d m west', southwest: 'about %d m southwest', south: 'about %d m south', southeast: 'about %d m southeast',
+  },
+  block: {
+    east: 'about a block east', northeast: 'about a block northeast', north: 'about a block north', northwest: 'about a block northwest',
+    west: 'about a block west', southwest: 'about a block southwest', south: 'about a block south', southeast: 'about a block southeast',
+  },
+  blocks: {
+    east: 'about %d blocks east', northeast: 'about %d blocks northeast', north: 'about %d blocks north', northwest: 'about %d blocks northwest',
+    west: 'about %d blocks west', southwest: 'about %d blocks southwest', south: 'about %d blocks south', southeast: 'about %d blocks southeast',
+  },
+};
 
 const T = GODOT_TEMPLATES.current_objective;
 const list = value => Array.isArray(value) ? value : [];
@@ -123,28 +142,35 @@ function forkState(state) {
   return state ?? {};
 }
 
-export function fmt(template, ...args) {
+// Godot % for %s and %d (%% is left as it is). In a locale the template is looked up first (i18n.js format); English is this
+// function's own result. Table values passed as arguments are localized by the caller (L), never here.
+function legacyFmt(template, args) {
   let i = 0;
   return template.replace(/%[sd]/g, spec => { const v = args[i++]; return spec === '%d' ? String(Math.trunc(Number(v))) : String(v); });
 }
+const FMT = { ...FLAVORS.story, legacy: legacyFmt };
+export function fmt(template, ...args) {
+  return format(template, args, FMT);
+}
 export const webText = template => Object.hasOwn(WEB_OVERRIDES, template) ? WEB_OVERRIDES[template] : template;
 const say = (template, ...args) => fmt(webText(template), ...args);
-// Godot programme_title: a segment's name. programme.js programmeTitle(order) is the poster headline.
-export const segmentTitle = id => Object.hasOwn(PROGRAMME_TITLES, id) ? PROGRAMME_TITLES[id] : String(id);
+// Godot programme_title: a segment's name, in the active language. programme.js programmeTitle(order) is the poster headline.
+export const segmentTitle = id => Object.hasOwn(PROGRAMME_TITLES, id) ? L(PROGRAMME_TITLES[id]) : String(id);
 export const isNarrow = width => Number.isFinite(width) && width < NARROW_WIDTH;
 
-// Godot's plain-language direction, from 2D pixels: undo the map rotation, then +x east, -y north.
+// Godot's plain-language direction, from 2D pixels: undo the map rotation, then +x east, -y north. The phrase is
+// COMPASS_TEXT's whole template for the direction (Godot's compass_phrase template with the direction filled in).
 export function compassPhrase(from, to) {
   const C = GODOT_TEMPLATES.compass_phrase;
-  if (!isPoint(from) || !isPoint(to)) return FORK_TEXT.nearby;
+  if (!isPoint(from) || !isPoint(to)) return L(FORK_TEXT.nearby);
   const { rotation, scale } = mapFrame(), dx = to.x - from.x, dy = to.y - from.y, c = Math.cos(rotation), s = Math.sin(rotation);
   const east = (dx * c + dy * s) / scale, north = (dx * s - dy * c) / scale, dist = Math.hypot(east, north);
-  if (!Number.isFinite(dist)) return FORK_TEXT.nearby;
-  if (dist < 10) return C.here;
+  if (!Number.isFinite(dist)) return L(FORK_TEXT.nearby);
+  if (dist < 10) return L(C.here);
   const dir = COMPASS_SECTORS[((roundHalfAway(Math.atan2(north, east) / (Math.PI / 4)) % 8) + 8) % 8];
-  if (dist < 100) return fmt(C.metres, Math.round(dist / 10) * 10, dir);
+  if (dist < 100) return fmt(COMPASS_TEXT.metres[dir], Math.round(dist / 10) * 10);
   const blocks = Math.round(dist / 145);
-  return blocks <= 1 ? fmt(C.block, dir) : fmt(C.blocks, blocks, dir);
+  return blocks <= 1 ? L(COMPASS_TEXT.block[dir]) : fmt(COMPASS_TEXT.blocks[dir], blocks);
 }
 
 export const isEpilogueDone = state => state?.opened === true && state.epilogue?.packing === true && LOAN_IDS.every(id => list(state.epilogue.returned).includes(id));
@@ -188,7 +214,7 @@ function exploreGoal(found, world, p) {
 export function nextObjective(state, world = {}) {
   const s = forkState(state), p = isPoint(world?.player) ? world.player : isPoint(s.player) ? s.player : mapFrame().start;
   const person = id => list(world?.neighbors).find(n => n?.id === id) ?? null;
-  const nameOf = id => person(id)?.name ?? NEIGHBOR_NAMES[id];
+  const nameOf = id => L(person(id)?.name ?? NEIGHBOR_NAMES[id]);
   const place = id => (Array.isArray(world?.places) ? world.places.find(item => item?.id === id) : world?.places?.[id]) ?? null;
   const where = target => compassPhrase(p, target);
   const goal = (id, text, hint, target, neighbor = null) => ({ id, text, hint, target: target ?? null, neighbor });
@@ -214,7 +240,7 @@ export function nextObjective(state, world = {}) {
   if (!isEpilogueDone(s)) {
     if (epilogue.packing !== true) return goal('pack', say(T.pack), say(T.packHint), person('thanh'), 'thanh');
     const loan = LOAN_IDS.find(id => !returned.includes(id)), owner = LOAN_OWNERS[loan];
-    return goal('return', say(T.return, LOAN_TITLES[loan], returned.length), say(T.returnHint, LOAN_TITLES[loan], nameOf(owner), where(person(owner))), person(owner), owner);
+    return goal('return', say(T.return, L(LOAN_TITLES[loan]), returned.length), say(T.returnHint, L(LOAN_TITLES[loan]), nameOf(owner), where(person(owner))), person(owner), owner);
   }
   if (!isHostingDone(s)) {
     const published = list(s.programme?.published), order = list(s.hosting?.order);
@@ -234,15 +260,15 @@ export function nextObjective(state, world = {}) {
 // on the explore objective a neighbor names the next surprise of their own pair first.
 export function hintFor(goal, speakerId = null) {
   const A = GODOT_TEMPLATES.ask_whats_next;
-  if (goal?.id === 'layout' && speakerId === 'bea') return A.layoutBea;
-  if (goal?.id === 'layout' && (speakerId === 'dez' || speakerId === 'celeste')) return A.layoutOpenFloor;
+  if (goal?.id === 'layout' && speakerId === 'bea') return L(A.layoutBea);
+  if (goal?.id === 'layout' && (speakerId === 'dez' || speakerId === 'celeste')) return L(A.layoutOpenFloor);
   const hints = goal?.id === 'explore' && Object.hasOwn(NEIGHBOR_NAMES, speakerId) ? goal.speakerHints : null;
   const spoken = hints && Object.hasOwn(hints, speakerId) ? hints[speakerId] : null;
   return typeof spoken?.hint === 'string' ? spoken.hint : String(goal?.hint ?? '');
 }
 export function whatsNextLine(goal, speakerId = null) {
   const hint = hintFor(goal, speakerId);
-  return Object.hasOwn(NEIGHBOR_NAMES, speakerId) ? fmt(GODOT_TEMPLATES.conversation_partner_line.line, NEIGHBOR_NAMES[speakerId], hint) : hint;
+  return Object.hasOwn(NEIGHBOR_NAMES, speakerId) ? fmt(GODOT_TEMPLATES.conversation_partner_line.line, L(NEIGHBOR_NAMES[speakerId]), hint) : hint;
 }
 
 // 'Chapter N: Title · Next: …' at NARROW_WIDTH and wider, 'Ch. N · Next: …' below it. A boolean
@@ -250,7 +276,7 @@ export function whatsNextLine(goal, speakerId = null) {
 export function chapterLine(state, opts) {
   const o = opts ?? {}, narrow = typeof o.narrow === 'boolean' ? o.narrow : isNarrow(o.width);
   const chapter = storyChapter(state), next = nextObjective(state, o.world).text, U = GODOT_TEMPLATES.update_objective_ui;
-  return narrow ? fmt(U.narrow, chapter.num, next) : fmt(U.wide, chapter.num, chapter.title, next);
+  return narrow ? fmt(U.narrow, chapter.num, next) : fmt(U.wide, chapter.num, L(chapter.title), next);
 }
 
 // The startup card shows on every load. After it, a card is due whenever the chapter number differs
@@ -261,15 +287,15 @@ export const chapterCardDue = (lastShown, state) => Number.isInteger(lastShown) 
 // the loan notice off the startup card.
 export function chapterAnnouncement(state, notice = '') {
   const chapter = storyChapter(state);
-  return (typeof notice === 'string' ? notice : '') + fmt(GODOT_TEMPLATES.consume_chapter_announcement.announcement, chapter.num, chapter.title, chapter.intro);
+  return (typeof notice === 'string' ? notice : '') + fmt(GODOT_TEMPLATES.consume_chapter_announcement.announcement, chapter.num, L(chapter.title), L(chapter.intro));
 }
 export function chapterCard(state, opts) {
   const { startup = false, notice = '' } = opts ?? {}, chapter = storyChapter(state), C = GODOT_TEMPLATES.show_story_card;
   return {
     num: chapter.num,
-    title: fmt(C.title, chapter.num, chapter.title),
-    body: chapter.intro,
-    button: startup === true ? C.startup : C.resume,
+    title: fmt(C.title, chapter.num, L(chapter.title)),
+    body: L(chapter.intro),
+    button: L(startup === true ? C.startup : C.resume),
     announcement: chapterAnnouncement(state, notice),
   };
 }

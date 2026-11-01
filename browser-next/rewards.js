@@ -11,6 +11,7 @@
 // volume, and they play with the music off. Loading a save never replays a cue.
 import { NEIGHBOR_NAMES } from './story.js';
 import { SURPRISE_IDS } from './godot-save.js';
+import { L } from './i18n.js';
 
 export const REWARD_RATE = 22050;
 // trigger_progress_cue's first match, arm by arm. reasons: the surprise_discovery / rook_soundcheck arm.
@@ -37,8 +38,11 @@ export const cueSounds = id => AUDIBLE_CUES.includes(id) || EXTRA_SOUND_CUES.inc
 
 // Godot text for the Sounds toggle (set_reward_sounds_enabled, toggle_reward_sounds, the button tooltip).
 export const SOUNDS_TEXT = { on: 'Sounds: On', off: 'Sounds: Off', tooltip: 'Gentle reward sounds. Music has separate controls with Rook.', announce: 'Reward sounds %s. Music has its own controls.' };
-export const soundsLabel = enabled => enabled ? SOUNDS_TEXT.on : SOUNDS_TEXT.off;
-export const soundsAnnouncement = enabled => SOUNDS_TEXT.announce.replace('%s', enabled ? 'on' : 'off');
+// Fork composites (docs/I18N_PLAN.md 2.7): Godot fills announce with the word on or off; each whole sentence equals that
+// (tests/next-i18n-dialogue.test.mjs), so a translator writes both.
+export const SOUNDS_COMPOSE = { announceOn: 'Reward sounds on. Music has its own controls.', announceOff: 'Reward sounds off. Music has its own controls.' };
+export const soundsLabel = enabled => L(enabled ? SOUNDS_TEXT.on : SOUNDS_TEXT.off);
+export const soundsAnnouncement = enabled => L(enabled ? SOUNDS_COMPOSE.announceOn : SOUNDS_COMPOSE.announceOff);
 // The fork settings field (tenderloin-redux.browser-next.settings.v1): a stored boolean is kept, else on.
 export const cleanRewardSounds = stored => typeof stored === 'boolean' ? stored : true;
 

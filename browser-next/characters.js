@@ -22,6 +22,7 @@ import { FILM_SHOTS } from './film.js';
 import { loanMemory, conversationLoan } from './hosted-text.js';
 import { spokenText } from './bubble.js';
 import { GODOT_TEXT } from './visits/text.js';
+import { format, L, narrow, isEnglish, isolate, list as joinList, FLAVORS } from './i18n.js';
 
 export { spokenText };
 // godot/main.gd neighbors (positions are 2D's own, in world.js) and NEIGHBOR_STORY_BADGES.
@@ -312,9 +313,25 @@ export const CHARACTER_WEB_OVERRIDES = {
   [BUTTON_TEXT.chat]: 'Keep Chatting',
 };
 export const webLine = text => Object.hasOwn(CHARACTER_WEB_OVERRIDES, text) ? CHARACTER_WEB_OVERRIDES[text] : text;
+// Fork composites and display names (docs/I18N_PLAN.md 2.7 and 1.3.12 #11): whole templates for the labels and lines Godot builds
+// from a fragment and a value, or from an id, so a translator sees one phrase and a locale never title-cases or lowercases
+// text. Each equals Godot's English for every input (tests/next-i18n-dialogue.test.mjs): returned and return are
+// ACTION_LABELS.returned / .return + the loan's title; sceneAt is COMPOSITION.scene with the slot id; filmEnded is
+// PROJECT_MEMORY.film.dez with the last shot's label lowercased; palettes is capitalize(palette id) in panelHeader.
+export const CHARACTER_COMPOSE = {
+  returned: 'Returned %s', return: 'Return %s',
+  sceneAt: { left: '%s on the left', right: '%s on the right' },
+  filmEnded: {
+    seat: '“We ended on an empty seat. A different order would tell a different little story.”',
+    paint: '“We ended on a shared motif. A different order would tell a different little story.”',
+    welcome: '“We ended on room for one more. A different order would tell a different little story.”',
+  },
+  palettes: { garden: 'Garden', sunset: 'Sunset', ocean: 'Ocean' },
+};
 
-// GDScript % formatting for %s, %d and %%.
-export function gdFormat(template, ...args) {
+// GDScript % formatting for %s, %d and %%. In a locale the template is looked up first (i18n.js format, the characters
+// flavor); English is this function's own result. Table values passed as arguments are localized by the caller (L).
+function legacyFormat(template, args) {
   let i = 0;
   return String(template).replace(/%%|%[sd]/g, spec => {
     if (spec === '%%') return '%';
@@ -322,16 +339,27 @@ export function gdFormat(template, ...args) {
     return spec === '%d' ? String(Math.trunc(Number(v))) : String(v);
   });
 }
+const FORMAT = { ...FLAVORS.characters, legacy: legacyFormat };
+export function gdFormat(template, ...args) {
+  return format(template, args, FORMAT);
+}
 const say = (template, ...args) => gdFormat(webLine(template), ...args);
+// A table line as the 2D edition shows it, in the active language: its 2D override, then the catalog.
+const shown = line => L(webLine(line));
 const list = value => Array.isArray(value) ? value : [];
 const posmod = (a, n) => ((a % n) + n) % n;
 const trimPrefix = (s, p) => s.startsWith(p) ? s.slice(p.length) : s;
 const trimSuffix = (s, p) => p && s.endsWith(p) ? s.slice(0, -p.length) : s;
 const unquote = memory => trimSuffix(trimPrefix(memory, '“'), '”');
+// A memory's quotes off, in the active language. A translation keeps one pair of quotes (the validator's quote parity), in
+// whichever marks its language uses: “…”, «…» or „…“.
+const unquoteShown = memory => isEnglish() ? unquote(memory) : String(memory).replace(/^[“«„]/, '').replace(/[”»“]$/, '');
 const capitalize = word => String(word).split(/[_\s]+/).filter(Boolean).map(w => w[0].toUpperCase() + w.slice(1).toLowerCase()).join(' ');
 const person = id => CHARACTER_PEOPLE.find(p => p.id === id) ?? null;
-// A neighbor's surprise memory as their line: Name: "memory".
-const quoted = (id, memory) => gdFormat(PANEL_TEXT.quoted, person(id)?.name ?? capitalize(id), unquote(memory));
+// A neighbor's surprise memory (the English table value) as their line, Name: "memory", in the active language.
+const quoted = (id, memory) => gdFormat(PANEL_TEXT.quoted, L(person(id)?.name ?? capitalize(id)), unquoteShown(L(memory)));
+// panelHeader's palette name: Godot capitalizes the id, which CHARACTER_COMPOSE.palettes spells out.
+const paletteName = id => Object.hasOwn(CHARACTER_COMPOSE.palettes, id) ? L(CHARACTER_COMPOSE.palettes[id]) : capitalize(id);
 const placedMotifs = state => MURAL_MOTIFS.filter(id => state?.mural?.[id]).length;
 const muralCompleted = state => placedMotifs(state) === MURAL_MOTIFS.length;
 const hostedValue = (state, id) => list(state?.hosting?.results).find(entry => entry?.id === id)?.value ?? null;
@@ -387,6 +415,7 @@ export function talkCount(state, talk, id) {
 export const lineIndex = (count, size = 5) => posmod(Math.max(1, Math.trunc(Number(count) || 0)) - 1, size);
 export const turnNumber = count => lineIndex(count, 5) + 1;
 
+// The English table line (or ''): callers show it in the active language.
 export function layoutMemory(state, id) {
   const s = forkState(state);
   if (!GATHERING_LAYOUTS.includes(s.layout)) return '';
@@ -402,56 +431,65 @@ export function surpriseMemory(extras, id) {
 }
 const validFilm = film => film?.phase === 'done' && film.result && ['close', 'wide'].includes(film.result.framing) && ['quiet', 'later'].includes(film.result.plan) && Array.isArray(film.result.order);
 const validCivic = civic => civic?.phase === 'done' && civic.result && typeof civic.result === 'object';
-export function projectMemory(state, extras, id) {
+// neighbor_project_memory_line's two parts, each in the active language: base (the project or loan memory) and surp (the
+// surprise memory). Kept apart so the tail never has to find one inside the joined text.
+function memoryParts(state, extras, id) {
   const s = forkState(state), surp = surpriseMemory(extras, id), F = PROJECT_MEMORY.film, C = PROJECT_MEMORY.civic;
   let base = '';
   if (validFilm(s.film)) {
-    const order = s.film.result.order, last = (FILM_SHOTS[order.length >= 3 ? String(order[2]) : 'welcome']?.label ?? String(order[2])).toLowerCase();
-    base = ({ rook: F.rook, celeste: s.film.result.framing === 'wide' ? F.celesteWide : F.celesteClose, thanh: F.thanh, bea: s.film.result.plan === 'later' ? F.beaLater : F.beaQuiet, dez: gdFormat(F.dez, last) })[id] ?? '';
+    const order = s.film.result.order, lastId = order.length >= 3 ? String(order[2]) : 'welcome';
+    // The last shot's label, lowercased into Dez's line: CHARACTER_COMPOSE.filmEnded writes it out for each shot.
+    const dez = () => Object.hasOwn(CHARACTER_COMPOSE.filmEnded, lastId) && FILM_SHOTS[lastId] ? CHARACTER_COMPOSE.filmEnded[lastId] : gdFormat(F.dez, (FILM_SHOTS[lastId]?.label ?? String(order[2])).toLowerCase());
+    base = ({ rook: F.rook, celeste: s.film.result.framing === 'wide' ? F.celesteWide : F.celesteClose, thanh: F.thanh, bea: s.film.result.plan === 'later' ? F.beaLater : F.beaQuiet, dez: id === 'dez' ? dez() : '' })[id] ?? '';
   } else if (validCivic(s.civic)) {
     const topic = String(s.civic.result.topic ?? 'repairs'), format = String(s.civic.result.format ?? 'circle'), notes = String(s.civic.result.notes ?? 'themes');
     base = ({ bea: topic === 'repairs' ? C.beaRepairs : C.beaAccess, thanh: format === 'dropin' ? C.thanhDropin : C.thanhCircle, celeste: notes === 'themes' ? C.celesteThemes : C.celesteNone, rook: C.rook, dez: C.dez })[id] ?? '';
   }
   if (!base && id === 'bea' && hasHosted(s, 'stories')) base = hostedValue(s, 'stories') === 'memory' ? PROJECT_MEMORY.stories.memory : PROJECT_MEMORY.stories.future;
   if (!base && id === 'thanh' && hasHosted(s, 'pause')) base = hostedValue(s, 'pause') === 'arc' ? PROJECT_MEMORY.pause.arc : PROJECT_MEMORY.pause.pairs;
-  if (!base) base = loanMemory(s, id);
+  // loanMemory is already in the active language; every other base is a table line.
+  base = base ? L(base) : loanMemory(s, id);
+  return { base, surp: surp ? L(surp) : '' };
+}
+export function projectMemory(state, extras, id) {
+  const { base, surp } = memoryParts(state, extras, id);
   if (base && surp) return gdFormat(PANEL_TEXT.spokenJoin, base, surp);
   return base || surp;
 }
 // neighbor_memory_tail: what follows the spoken line. A surprise memory already spoken is not
 // repeated; with both a project memory and a surprise memory, even turns show the surprise.
 export function memoryTail(state, extras, id, spoken, turnCount = 1) {
-  const surp = surpriseMemory(extras, id), full = projectMemory(state, extras, id);
-  if (!full) return '';
-  const clean = unquote(surp);
-  if (clean && String(spoken ?? '').includes(clean)) return full !== surp ? trimSuffix(full, ' · ' + surp) : '';
-  if (surp && full !== surp) {
-    const base = trimSuffix(full, ' · ' + surp);
-    return Math.max(1, Math.trunc(Number(turnCount) || 0)) % 2 === 0 ? surp : base;
-  }
-  return full;
+  const { base, surp } = memoryParts(state, extras, id);
+  if (!base && !surp) return '';
+  const clean = surp ? unquoteShown(surp) : '';
+  if (clean && String(spoken ?? '').includes(clean)) return base;
+  if (surp && base) return Math.max(1, Math.trunc(Number(turnCount) || 0)) % 2 === 0 ? surp : base;
+  return base || surp;
 }
+// The art tail in the active language, or ''.
 export function muralNeighborReply(extras, id) {
   const scenes = Object.values(extrasOf(extras).muralScenes), reply = MURAL_REPLY[id];
-  return reply && scenes.includes(reply.scene) ? reply.text : '';
+  return reply && scenes.includes(reply.scene) ? L(reply.text) : '';
 }
 export function muralSceneReply(extras) {
   const scenes = extrasOf(extras).muralScenes;
-  if (!Object.keys(scenes).length) return COMPOSITION.noScenes;
-  const names = MURAL_SCENE_SLOTS.filter(slot => Object.hasOwn(scenes, slot)).map(slot => gdFormat(COMPOSITION.scene, MURAL_SCENE_NAMES[scenes[slot]], slot));
-  return names.join(', ') + COMPOSITION.scenesClose;
+  if (!Object.keys(scenes).length) return L(COMPOSITION.noScenes);
+  const names = MURAL_SCENE_SLOTS.filter(slot => Object.hasOwn(scenes, slot)).map(slot => gdFormat(CHARACTER_COMPOSE.sceneAt[slot], L(MURAL_SCENE_NAMES[scenes[slot]])));
+  return joinList(names, items => items.join(', ')) + L(COMPOSITION.scenesClose);
 }
 export function muralCompositionReply(state, extras) {
   const s = forkState(state);
-  if (placedMotifs(s) < 3) return COMPOSITION.incomplete;
+  if (placedMotifs(s) < 3) return L(COMPOSITION.incomplete);
   const { sun, wave, rise } = s.mural, row = p => Math.trunc(Number(p.row)), col = p => Math.trunc(Number(p.col));
   let line = COMPOSITION.horizon;
   if (row(sun) < row(wave)) line = COMPOSITION.sunAbove;
   else if (row(sun) > row(wave)) line = COMPOSITION.waveAbove;
-  if (col(rise) < Math.min(col(sun), col(wave))) line += COMPOSITION.riseLeft;
-  else if (col(rise) > Math.max(col(sun), col(wave))) line += COMPOSITION.riseRight;
-  else line += COMPOSITION.riseLinks;
-  return line + COMPOSITION.close + (Object.keys(extrasOf(extras).muralScenes).length ? ' ' + muralSceneReply(extras) : '');
+  // Whole sentences joined: where the shapes are, where Rise sits, then the close.
+  line = L(line);
+  if (col(rise) < Math.min(col(sun), col(wave))) line += L(COMPOSITION.riseLeft);
+  else if (col(rise) > Math.max(col(sun), col(wave))) line += L(COMPOSITION.riseRight);
+  else line += L(COMPOSITION.riseLinks);
+  return line + L(COMPOSITION.close) + (Object.keys(extrasOf(extras).muralScenes).length ? ' ' + muralSceneReply(extras) : '');
 }
 // active_stem_summary over core.js musicLayers (Godot recompute_music_stems).
 export function activeStemSummary(state) {
@@ -482,43 +520,49 @@ export function neighborLines(state, id) {
   if (forkState(state).opened === true) return [...lines.open];
   return lines.before.map(line => line.includes('%s') ? gdFormat(line, BOEDDEKER_FROM_BEA) : line);
 }
+// The lines below are built in the active language: each table line through shown() (its 2D override, then the catalog), and
+// each line Godot fills (Bea's Boeddeker line, Celeste's composition, Rook's stems, a quoted memory) through gdFormat.
 // neighbor_greeting_line for Bea, Dez and Thanh.
 export function greetingLine(state, extras, talk, id) {
-  const s = forkState(state), options = neighborLines(s, id), memory = s.opened === true ? layoutMemory(s, id) : '';
-  if (memory && options.length >= 4) options[3] = memory;
+  const s = forkState(state), lines = NEIGHBOR_LINES[id];
+  if (!lines) return L(PANEL_TEXT.fallback);
+  const options = s.opened === true ? lines.open.map(shown) : lines.before.map(line => line.includes('%s') ? say(line, L(BOEDDEKER_FROM_BEA)) : shown(line));
+  const memory = s.opened === true ? layoutMemory(s, id) : '';
+  if (memory && options.length >= 4) options[3] = shown(memory);
   const surp = surpriseMemory(extras, id);
   if (surp && options.length >= 5) options[4] = quoted(id, surp);
-  if (!options.length) return PANEL_TEXT.fallback;
-  const line = webLine(options[lineIndex(talkCount(s, talk, id), options.length)]), art = muralNeighborReply(extras, id);
+  const line = options[lineIndex(talkCount(s, talk, id), options.length)], art = muralNeighborReply(extras, id);
+  // The art tail is a sentence of its own, said inside the speaker's quotes: every speech line ends with its closing quote, in
+  // every language (the speech envelope rule).
   return art && line.endsWith('"') ? line.slice(0, -1) + art + '"' : line + art;
 }
 export function celesteLine(state, extras) {
   const s = forkState(state), surp = surpriseMemory(extras, 'celeste'), count = talkCount(s, null, 'celeste');
   if (muralCompleted(s)) {
-    const options = [gdFormat(CELESTE_LINES.completed[0], muralCompositionReply(s, extras)), ...CELESTE_LINES.completed.slice(1)];
+    const options = [say(CELESTE_LINES.completed[0], muralCompositionReply(s, extras)), ...CELESTE_LINES.completed.slice(1).map(shown)];
     const lay = s.opened === true ? layoutMemory(s, 'celeste') : '';
-    if (lay) options[3] = lay;
+    if (lay) options[3] = shown(lay);
     if (surp) options[4] = quoted('celeste', surp);
-    return webLine(options[lineIndex(count, options.length)]);
+    return options[lineIndex(count, options.length)];
   }
-  const options = [...CELESTE_LINES.before];
+  const options = CELESTE_LINES.before.map(shown);
   if (surp) options[4] = quoted('celeste', surp);
-  return webLine(options[lineIndex(count, options.length)]);
+  return options[lineIndex(count, options.length)];
 }
 // music: {mode: 'sketch' | 'local', localName}. A loaded local track replaces every line.
 export function rookLine(state, extras, talk, music = {}) {
   const s = forkState(state);
-  if (music?.mode === 'local' && music.localName) return gdFormat(ROOK_LINES.local, music.localName);
+  if (music?.mode === 'local' && music.localName) return say(ROOK_LINES.local, music.localName);
   const surp = surpriseMemory(extras, 'rook'), count = talkCount(s, talk, 'rook');
   if (muralCompleted(s)) {
-    const options = [...ROOK_LINES.completed], lay = s.opened === true ? layoutMemory(s, 'rook') : '';
-    if (lay) options[3] = lay;
+    const options = ROOK_LINES.completed.map(shown), lay = s.opened === true ? layoutMemory(s, 'rook') : '';
+    if (lay) options[3] = shown(lay);
     if (surp) options[4] = quoted('rook', surp);
-    return webLine(options[lineIndex(count, options.length)]);
+    return options[lineIndex(count, options.length)];
   }
-  const options = [gdFormat(ROOK_LINES.before[0], activeStemSummary(s)), ...ROOK_LINES.before.slice(1)];
+  const options = [say(ROOK_LINES.before[0], activeStemSummary(s)), ...ROOK_LINES.before.slice(1).map(shown)];
   if (surp) options[4] = quoted('rook', surp);
-  return webLine(options[lineIndex(count, options.length)]);
+  return options[lineIndex(count, options.length)];
 }
 // The line a neighbor says at their current turn (talk_with_neighbor routing).
 export function spokenLine(state, extras, talk, id, music = {}) {
@@ -534,17 +578,20 @@ export function panelHeader(state, extras, talk, id, opts = {}) {
   const s = forkState(state), narrow = opts.narrow === true, P = PANEL_TEXT, sparks = sparkCount(s, extras), turn = turnNumber(talkCount(s, talk, id)), p = person(id);
   if (!p) return '';
   if (id === 'celeste') {
-    const tag = muralCompleted(s) ? P.easelComplete : gdFormat(P.easelCount, placedMotifs(s));
-    return narrow ? gdFormat(P.celesteNarrow, turn, sparks) : gdFormat(P.celesteHeader, NEIGHBOR_BADGES.celeste, turn, tag, capitalize(s.palette ?? 'garden'), sparks);
+    const tag = muralCompleted(s) ? L(P.easelComplete) : gdFormat(P.easelCount, placedMotifs(s));
+    return narrow ? gdFormat(P.celesteNarrow, turn, sparks) : gdFormat(P.celesteHeader, L(NEIGHBOR_BADGES.celeste), turn, tag, paletteName(s.palette ?? 'garden'), sparks);
   }
   if (id === 'rook') {
-    const m = opts.music ?? {}, mode = m.mode === 'local' ? gdFormat(P.local, m.localName ?? '') : P.sketch;
-    return narrow ? gdFormat(P.rookNarrow, turn, sparks) : gdFormat(P.rookHeader, NEIGHBOR_BADGES.rook, turn, m.playing ? P.playing : P.paused, mode, s.soundcheck === true ? P.scReady : P.scPending, sparks);
+    const m = opts.music ?? {}, mode = m.mode === 'local' ? gdFormat(P.local, m.localName ?? '') : L(P.sketch);
+    return narrow ? gdFormat(P.rookNarrow, turn, sparks) : gdFormat(P.rookHeader, L(NEIGHBOR_BADGES.rook), turn, L(m.playing ? P.playing : P.paused), mode, L(s.soundcheck === true ? P.scReady : P.scPending), sparks);
   }
-  const tag = s.opened === true ? P.openTag : blockReady(s) ? P.readyTag : P.prepareTag, met = list(s.visited).filter(i => NEIGHBOR_IDS.includes(i)).length;
-  const mural = muralCompleted(s) ? P.muralReady : gdFormat(P.muralCount, placedMotifs(s));
-  return narrow ? gdFormat(P.headerNarrow, p.name, turn, sparks) : gdFormat(P.header, p.name, p.role, NEIGHBOR_BADGES[id], turn, tag, met, NEIGHBOR_IDS.length, mural, sparks);
+  const tag = L(s.opened === true ? P.openTag : blockReady(s) ? P.readyTag : P.prepareTag), met = list(s.visited).filter(i => NEIGHBOR_IDS.includes(i)).length;
+  const mural = muralCompleted(s) ? L(P.muralReady) : gdFormat(P.muralCount, placedMotifs(s));
+  return narrow ? gdFormat(P.headerNarrow, L(p.name), turn, sparks) : gdFormat(P.header, L(p.name), L(p.role), L(NEIGHBOR_BADGES[id]), turn, tag, met, NEIGHBOR_IDS.length, mural, sparks);
 }
+// A speech line without its speaker's name (Celeste's and Rook's narrow detail). English trims the English name, as Godot does;
+// a locale trims the line's own speaker envelope, whatever the name is in that language.
+const afterSpeaker = (line, name) => isEnglish() ? trimPrefix(line, `${name}: `) : String(line).replace(/^[^\n:"]{1,40}: (?=")/, '');
 // The conversation's spoken detail: the line (or a custom line, Godot last_panel_dialogue) plus its
 // memory tail. Celeste and Rook lead with the tail when narrow, as Godot does.
 export function panelDetail(state, extras, talk, id, opts = {}) {
@@ -554,62 +601,80 @@ export function panelDetail(state, extras, talk, id, opts = {}) {
   const tail = memoryTail(s, extras, id, line, count);
   if (id === 'celeste' || id === 'rook') {
     if (!tail) return line;
-    return narrow && !custom ? gdFormat(id === 'celeste' ? PANEL_TEXT.celesteNarrowSpoken : PANEL_TEXT.rookNarrowSpoken, tail, trimPrefix(line, `${name}: `)) : gdFormat(PANEL_TEXT.spokenJoin, line, tail);
+    return narrow && !custom ? gdFormat(id === 'celeste' ? PANEL_TEXT.celesteNarrowSpoken : PANEL_TEXT.rookNarrowSpoken, tail, afterSpeaker(line, name)) : gdFormat(PANEL_TEXT.spokenJoin, line, tail);
   }
   const spoken = tail ? gdFormat(PANEL_TEXT.spokenJoin, line, tail) : line;
-  return narrow ? spoken : say(PANEL_TEXT.detail, spoken, name);
+  return narrow ? spoken : say(PANEL_TEXT.detail, spoken, L(name));
 }
 // Rook's music detail line (update_music_ui), around panelDetail's spoken text.
 export function rookMusicDetail(state, spoken, music = {}) {
   const s = forkState(state);
   if (music?.mode === 'local') return gdFormat(PANEL_TEXT.rookLocalDetail, music.localName ?? '', spoken);
-  return gdFormat(PANEL_TEXT.rookSketchDetail, s.soundcheck === true ? PANEL_TEXT.scReady : PANEL_TEXT.scPending, activeStemSummary(s), spoken);
+  return gdFormat(PANEL_TEXT.rookSketchDetail, L(s.soundcheck === true ? PANEL_TEXT.scReady : PANEL_TEXT.scPending), activeStemSummary(s), spoken);
 }
 // The three fixed conversation buttons, with Godot's narrow labels. Keep Chatting is rapid.
 export function conversationButtons(narrow = false) {
   const B = BUTTON_TEXT;
   return [
-    { id: 'chat', label: narrow ? B.chatNarrow : webLine(B.chat), rapid: true },
-    { id: 'next', label: narrow ? B.nextNarrow : B.next, rapid: false },
-    { id: 'bye', label: narrow ? B.byeNarrow : B.bye, rapid: false },
+    { id: 'chat', label: narrow ? L(B.chatNarrow) : shown(B.chat), rapid: true },
+    { id: 'next', label: L(narrow ? B.nextNarrow : B.next), rapid: false },
+    { id: 'bye', label: L(narrow ? B.byeNarrow : B.bye), rapid: false },
   ];
 }
 // Rook's music panel buttons (update_music_ui). music: {playing, mode, volume 0..1}. Volume is rapid, as Godot marks music_vol_btn.
 export function rookButtons(state, music = {}, narrow = false) {
   const s = forkState(state), B = BUTTON_TEXT, done = s.soundcheck === true, sketch = music?.mode !== 'local';
   return [
-    { id: 'play', label: music?.playing ? B.pause : B.play },
+    { id: 'play', label: L(music?.playing ? B.pause : B.play) },
     { id: 'volume', label: gdFormat(B.volume, Math.round(Math.max(0, Math.min(1, Number(music?.volume) || 0)) * 100)), rapid: true },
-    { id: 'soundcheck', label: narrow ? (done ? B.rookDoneNarrow : B.rookCheckNarrow) : (done ? B.rookDone : B.rookCheck) },
-    { id: 'sketch', label: narrow ? (sketch ? B.sketchActiveNarrow : B.sketchUseNarrow) : (sketch ? B.sketchActive : B.sketchUse) },
-    { id: 'next', label: narrow ? B.hint : B.next },
-    { id: 'bye', label: narrow ? B.close : B.bye },
+    { id: 'soundcheck', label: L(narrow ? (done ? B.rookDoneNarrow : B.rookCheckNarrow) : (done ? B.rookDone : B.rookCheck)) },
+    { id: 'sketch', label: L(narrow ? (sketch ? B.sketchActiveNarrow : B.sketchUseNarrow) : (sketch ? B.sketchActive : B.sketchUse)) },
+    { id: 'next', label: L(narrow ? B.hint : B.next) },
+    { id: 'bye', label: L(narrow ? B.close : B.bye) },
   ];
 }
 
+// A label in the active language with the template and arguments it came from, so narrowLabel can find a locale's narrow
+// variant: a fixed label through the catalog, or the template filled (gdFormat looks it up).
+const labelOf = (template, ...args) => ({ label: args.length ? gdFormat(template, ...args) : template ? L(template) : template, template, args });
 // The hub labels conversation_actions borrows for programme, civic and film.
-export function programmeLabel(state) {
-  const s = forkState(state), H = HUB_LABELS;
-  if (isHostingDone(s)) return H.programmeDone;
-  if (list(s.hosting?.order).length) return gdFormat(H.programmeHost, list(s.hosting?.results).length);
-  if (list(s.programme?.published).length === PROGRAMME_SEGMENTS.length) return H.programmeStart;
-  if (list(s.programme?.order).length) return gdFormat(H.programmeDraft, list(s.programme.order).length);
-  return H.programme;
+function programmeParts(s) {
+  const H = HUB_LABELS;
+  if (isHostingDone(s)) return labelOf(H.programmeDone);
+  if (list(s.hosting?.order).length) return labelOf(H.programmeHost, list(s.hosting?.results).length);
+  if (list(s.programme?.published).length === PROGRAMME_SEGMENTS.length) return labelOf(H.programmeStart);
+  if (list(s.programme?.order).length) return labelOf(H.programmeDraft, list(s.programme.order).length);
+  return labelOf(H.programme);
 }
-export function civicLabel(state) {
-  const phase = forkState(state).civic?.phase, H = HUB_LABELS;
-  return phase === 'done' ? H.civicDone : phase === 'meeting' ? H.civicMeeting : phase === 'planning' ? H.civicPlanning : H.civic;
+function civicParts(s) {
+  const phase = s.civic?.phase, H = HUB_LABELS;
+  return labelOf(phase === 'done' ? H.civicDone : phase === 'meeting' ? H.civicMeeting : phase === 'planning' ? H.civicPlanning : H.civic);
 }
+function filmParts(s, screenFrame = 0) {
+  const film = s.film ?? {}, H = HUB_LABELS;
+  if (film.phase === 'done') return labelOf(H.filmDone, Math.trunc(Number(screenFrame) || 0) + 1);
+  if (film.phase === 'shooting') return labelOf(H.filmShooting, list(film.captured).length);
+  if (film.phase === 'hold') return labelOf(H.filmHold);
+  if (film.phase === 'planning') return labelOf(H.filmPlanning);
+  return labelOf(H.film);
+}
+export const programmeLabel = state => programmeParts(forkState(state)).label;
+export const civicLabel = state => civicParts(forkState(state)).label;
 // screenFrame: the film screening frame being watched (session-only), 0-based.
-export function filmLabel(state, screenFrame = 0) {
-  const film = forkState(state).film ?? {}, H = HUB_LABELS;
-  if (film.phase === 'done') return gdFormat(H.filmDone, Math.trunc(Number(screenFrame) || 0) + 1);
-  if (film.phase === 'shooting') return gdFormat(H.filmShooting, list(film.captured).length);
-  if (film.phase === 'hold') return H.filmHold;
-  if (film.phase === 'planning') return H.filmPlanning;
-  return H.film;
+export const filmLabel = (state, screenFrame = 0) => filmParts(forkState(state), screenFrame).label;
+// A narrow variant filled as i18n.js format fills a translation: %s and %d in order or by position (%2$s), %% as %, each value
+// isolated in RTL.
+const fillVariant = (text, args) => { let i = 0; return String(text).replace(/%%|%(?:(\d+)\$)?([sd])/g, (spec, pos, kind) => { if (spec === '%%') return '%'; const v = args[pos ? Number(pos) - 1 : i++]; return isolate(kind === 'd' ? String(Math.trunc(Number(v))) : String(v)); }); };
+// apply_block_panel_mode's narrow labels. English runs Godot's .replace chain on the label. A locale shows the catalog's narrow
+// variant of the label's template (its narrow section is keyed by the wide English template, docs/I18N_PLAN.md 2.4), filled
+// with the same arguments, else the wide label: the English rewrites never run on translated text. A label given alone is its
+// own template (a fixed table label, as game.js passes one).
+export function narrowLabel(label, template = label, args = []) {
+  if (isEnglish()) return NARROW_LABEL_REWRITES.reduce((text, [from, to]) => text.split(from).join(to), String(label));
+  const variant = narrow(template);
+  if (variant !== undefined) return fillVariant(variant, Array.isArray(args) ? args : []);
+  return template === label && label ? L(label) : String(label);
 }
-export const narrowLabel = label => NARROW_LABEL_REWRITES.reduce((text, [from, to]) => text.split(from).join(to), String(label));
 
 // conversation_actions for the neighbor being talked to: up to three context actions, then (Godot's
 // last slot) All Block Actions. goal is story.js nextObjective(state, world); ids are Godot's, with
@@ -617,32 +682,34 @@ export const narrowLabel = label => NARROW_LABEL_REWRITES.reduce((text, [from, t
 export function conversationActions(state, extras, talk, partner, goal, opts = {}) {
   const s = forkState(state), e = extrasOf(extras), A = ACTION_LABELS, visited = new Set(list(s.visited));
   const g = goal ?? nextObjective(s), acts = [];
-  const done = () => opts.narrow === true ? acts.map(a => ({ ...a, label: narrowLabel(a.label) })) : acts;
+  // Each action keeps its label's template and arguments (labelOf) for narrowLabel; the result holds only id and label.
+  const add = (id, parts) => acts.push({ id, ...parts });
+  const done = () => acts.map(({ id, label, template, args }) => ({ id, label: opts.narrow === true ? narrowLabel(label, template, args) : label }));
   if (g.id === 'layout') {
-    acts.push({ id: 'layout_table', label: A.layoutTable }, { id: 'layout_floor', label: A.layoutFloor }, { id: 'hub', label: A.hub });
+    add('layout_table', labelOf(A.layoutTable)); add('layout_floor', labelOf(A.layoutFloor)); add('hub', labelOf(A.hub));
     return done();
   }
   const loan = conversationLoan(s, partner, talk?.confirmedLoan ?? '');
-  if (loan) acts.push({ id: `return_owner:${loan}`, label: (list(s.epilogue?.returned).includes(loan) ? A.returned : A.return) + LOAN_TITLES[loan] });
-  const surprisesLeft = e.surprises.size < SURPRISE_IDS.length, spot = () => ({ id: 'surprise', label: gdFormat(A.surprise, e.surprises.size, SURPRISE_IDS.length) });
+  if (loan) add(`return_owner:${loan}`, labelOf(list(s.epilogue?.returned).includes(loan) ? CHARACTER_COMPOSE.returned : CHARACTER_COMPOSE.return, L(LOAN_TITLES[loan])));
+  const surprisesLeft = e.surprises.size < SURPRISE_IDS.length, spot = () => add('surprise', labelOf(A.surprise, e.surprises.size, SURPRISE_IDS.length));
   switch (g.id) {
-    case 'meet': acts.push({ id: `walk_neighbor:${g.neighbor}`, label: gdFormat(A.meet, NEIGHBOR_NAMES[g.neighbor]) }); break;
-    case 'mural': acts.push({ id: 'mural', label: A.mural }); break;
-    case 'soundcheck': acts.push({ id: 'soundcheck', label: A.soundcheck }); break;
-    case 'open': acts.push({ id: 'open', label: A.open }); break;
-    case 'photo': acts.push({ id: 'epilogue', label: A.photo }); break;
-    case 'pack': case 'return': if (!loan) acts.push({ id: 'epilogue', label: g.id === 'pack' ? A.pack : gdFormat(A.returnGear, list(s.epilogue?.returned).length) }); break;
-    case 'programme': acts.push({ id: 'programme', label: programmeLabel(s) }); break;
-    case 'civic': acts.push({ id: 'civic', label: civicLabel(s) }); break;
-    case 'film': acts.push({ id: 'film', label: filmLabel(s, opts.screenFrame) }); break;
-    case 'comptons': acts.push({ id: 'comptons', label: A.comptons }); break;
-    case 'blackhawk': acts.push({ id: 'blackhawk', label: A.blackhawk }); break;
+    case 'meet': add(`walk_neighbor:${g.neighbor}`, labelOf(A.meet, L(NEIGHBOR_NAMES[g.neighbor]))); break;
+    case 'mural': add('mural', labelOf(A.mural)); break;
+    case 'soundcheck': add('soundcheck', labelOf(A.soundcheck)); break;
+    case 'open': add('open', labelOf(A.open)); break;
+    case 'photo': add('epilogue', labelOf(A.photo)); break;
+    case 'pack': case 'return': if (!loan) add('epilogue', g.id === 'pack' ? labelOf(A.pack) : labelOf(A.returnGear, list(s.epilogue?.returned).length)); break;
+    case 'programme': add('programme', programmeParts(s)); break;
+    case 'civic': add('civic', civicParts(s)); break;
+    case 'film': add('film', filmParts(s, opts.screenFrame)); break;
+    case 'comptons': add('comptons', labelOf(A.comptons)); break;
+    case 'blackhawk': add('blackhawk', labelOf(A.blackhawk)); break;
     // Godot's _: the explore goal, or an active story episode's: Spot Surprise while any is left, else the
     // landmark tour's next stop under its tour_action when the goal has one, else Visit the Museum.
-    default: acts.push(surprisesLeft ? spot() : g.tourId ? { id: 'landmark_tour', label: String(g.tourAction ?? '') } : { id: 'museum', label: A.museum });
+    default: if (surprisesLeft) spot(); else if (g.tourId) add('landmark_tour', labelOf(String(g.tourAction ?? ''))); else add('museum', labelOf(A.museum));
   }
   if (hasHosted(s, 'art') && partner === 'dez') {
-    acts.push({ id: 'shared_panel', label: A.sharedPanel }, { id: 'hub', label: A.hub });
+    add('shared_panel', labelOf(A.sharedPanel)); add('hub', labelOf(A.hub));
     return done();
   }
   const n = NEIGHBOR_IDS.length, at = Math.max(0, NEIGHBOR_IDS.indexOf(partner)), first = acts[0]?.id ?? '';
@@ -651,14 +718,14 @@ export function conversationActions(state, extras, talk, partner, goal, opts = {
   if (other < 0) other = posmod(at + 1, Math.max(1, n));
   for (let i = 0; i < n; i++) { const c = posmod(at + 1 + i, n); if (c !== at && `walk_neighbor:${NEIGHBOR_IDS[c]}` !== first && !visited.has(NEIGHBOR_IDS[c])) { other = c; break; } }
   const otherId = `walk_neighbor:${NEIGHBOR_IDS[other]}`;
-  if (first !== otherId && other !== at && !visited.has(NEIGHBOR_IDS[other])) acts.push({ id: otherId, label: gdFormat(A.talkTo, NEIGHBOR_NAMES[NEIGHBOR_IDS[other]]) });
-  else if (s.history !== true && first !== 'comptons') acts.push({ id: 'comptons', label: A.plaque });
-  else if (s.blackhawk !== true && first !== 'blackhawk') acts.push({ id: 'blackhawk', label: A.blackhawk });
-  else if (surprisesLeft && first !== 'surprise') acts.push(spot());
-  else if (g.id === 'explore' && !surprisesLeft) acts.push({ id: 'eateries', label: A.eateries });
-  else if (first !== otherId && other !== at) acts.push({ id: otherId, label: gdFormat(A.talkTo, NEIGHBOR_NAMES[NEIGHBOR_IDS[other]]) });
-  else acts.push({ id: 'museum', label: A.museum });
-  acts.push({ id: 'hub', label: A.hub });
+  if (first !== otherId && other !== at && !visited.has(NEIGHBOR_IDS[other])) add(otherId, labelOf(A.talkTo, L(NEIGHBOR_NAMES[NEIGHBOR_IDS[other]])));
+  else if (s.history !== true && first !== 'comptons') add('comptons', labelOf(A.plaque));
+  else if (s.blackhawk !== true && first !== 'blackhawk') add('blackhawk', labelOf(A.blackhawk));
+  else if (surprisesLeft && first !== 'surprise') spot();
+  else if (g.id === 'explore' && !surprisesLeft) add('eateries', labelOf(A.eateries));
+  else if (first !== otherId && other !== at) add(otherId, labelOf(A.talkTo, L(NEIGHBOR_NAMES[NEIGHBOR_IDS[other]])));
+  else add('museum', labelOf(A.museum));
+  add('hub', labelOf(A.hub));
   return done();
 }
 
@@ -675,13 +742,13 @@ export function arrivalCaption(state, extras, talk, id, music = {}) {
   const s = forkState(state), p = person(id);
   if (!p) return '';
   const line = spokenLine(s, extras, talk, id, music), tail = memoryTail(s, extras, id, line, talkCount(s, talk, id)), more = tail ? ' ' + tail : '';
-  if (id === 'celeste') return gdFormat(CAPTION_TEXT.arrivedCeleste, p.name, p.role, placedMotifs(s), more);
-  if (id === 'rook') return gdFormat(CAPTION_TEXT.arrivedRook, p.name, p.role, s.soundcheck === true ? CAPTION_TEXT.soundReady : CAPTION_TEXT.soundTap, more);
-  return gdFormat(CAPTION_TEXT.arrived, p.name, p.role, list(s.visited).filter(i => NEIGHBOR_IDS.includes(i)).length, more);
+  if (id === 'celeste') return gdFormat(CAPTION_TEXT.arrivedCeleste, L(p.name), L(p.role), placedMotifs(s), more);
+  if (id === 'rook') return gdFormat(CAPTION_TEXT.arrivedRook, L(p.name), L(p.role), L(s.soundcheck === true ? CAPTION_TEXT.soundReady : CAPTION_TEXT.soundTap), more);
+  return gdFormat(CAPTION_TEXT.arrived, L(p.name), L(p.role), list(s.visited).filter(i => NEIGHBOR_IDS.includes(i)).length, more);
 }
-export const talkingSubline = id => { const p = person(id); return p ? gdFormat(CAPTION_TEXT.talking, p.name, p.role, p.name) : ''; };
+export const talkingSubline = id => { const p = person(id); return p ? gdFormat(CAPTION_TEXT.talking, L(p.name), L(p.role), L(p.name)) : ''; };
 export function goodbyeLines(id, goal) {
-  const who = person(id)?.name ?? CAPTION_TEXT.goodbyeNobody;
+  const who = L(person(id)?.name ?? CAPTION_TEXT.goodbyeNobody);
   return { text: gdFormat(CAPTION_TEXT.goodbye, who), announcement: gdFormat(CAPTION_TEXT.goodbyeA11y, who, goal?.text ?? '') };
 }
 // Godot draws each character's panel border in coat.lightened(0.24).
@@ -697,7 +764,7 @@ export function conversationView(state, extras, talk, id, goal, opts = {}) {
   if (!p) return null;
   const count = talkCount(s, talk, id), line = spokenLine(s, extras, talk, id, opts.music);
   return {
-    id, name: p.name, role: p.role, badge: NEIGHBOR_BADGES[id], turn: turnNumber(count), border: panelBorder(id),
+    id, name: L(p.name), role: L(p.role), badge: L(NEIGHBOR_BADGES[id]), turn: turnNumber(count), border: panelBorder(id),
     header: panelHeader(s, extras, talk, id, opts), line, tail: memoryTail(s, extras, id, line, count),
     detail: panelDetail(s, extras, talk, id, opts), spoken: spokenText(line),
     buttons: conversationButtons(opts.narrow === true), actions: conversationActions(s, extras, talk, id, goal, opts),

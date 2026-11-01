@@ -8,6 +8,7 @@
 // - only the brush has an envelope, re-struck every step;
 // - pausing never resets the clock (stop_music_playback leaves sketch_frames_pushed alone);
 // - the peak pre-gain sum is 0.72, so the 0.95 clamp never engages.
+import { format, FLAVORS } from './i18n.js';
 
 // Godot MUSIC_STEM_ORDER, MUSIC_VOL_STEPS, MUSIC_MIX_RATE, MUSIC_STEP_SEC (main.gd 168-171).
 export const STEM_ORDER = ['bass', 'brush', 'chords', 'lead'];
@@ -46,6 +47,13 @@ export const MUSIC_TEXT = {
   volume: 'Music volume %d%%.',
   switched: "Switched Rook's Speaker to 80 BPM Synth Sketch (%s).",
 };
+// Fork composites (docs/I18N_PLAN.md 2.7): Godot's "Music playing: %s." with its tag joined in, one sentence per mode. Each
+// equals playing filled with sketchTag + summary + ')' or localTag + name (tests/next-i18n-dialogue.test.mjs).
+export const MUSIC_COMPOSE = { playingSketch: 'Music playing: 80 BPM Sketch (%s).', playingLocal: 'Music playing: Local: %s.' };
+// The text below is looked up in a locale before it is filled (i18n.js format); English is each function's own replace chain.
+// Values are inserted with a function replacement, so a file name's "$&" stays "$&".
+const one = (template, args) => template.replace('%s', () => args[0]);
+const ONE = { ...FLAVORS.story, legacy: one };
 
 const TAU = Math.PI * 2;
 const INV_RATE = 1.0 / MIX_RATE;
@@ -69,7 +77,7 @@ export const stemMask = layers => 1 | (layers?.tidy ? 2 : 0) | (layers?.mural ? 
 export const unlockedStems = mask => STEM_ORDER.filter((_, i) => (mask & (1 << i)) !== 0);
 export function stemSummary(mask) {
   const stems = unlockedStems(mask);
-  return MUSIC_TEXT.stemSummary.replace('%s', stems.join('+')).replace('%d', stems.length).replace('%d', STEM_ORDER.length);
+  return format(MUSIC_TEXT.stemSummary, [stems.join('+'), stems.length, STEM_ORDER.length], { ...FLAVORS.story, legacy: (template, [list, count, total]) => template.replace('%s', list).replace('%d', count).replace('%d', total) });
 }
 
 // One pre-gain sample. n is the Godot sample index (step and brush clock); t defaults to n / 22050.
@@ -128,12 +136,12 @@ export const cleanVolume = stored => typeof stored === 'number' && Number.isFini
 // Godot apply_music_volume_db: linear_to_db(v), or -80 dB at (near) zero.
 export const volumeDb = v => v <= 0.0001 ? -80.0 : 20 * Math.log10(v);
 // Godot "Music volume %d%%.": int(round(v * 100)).
-export const volumeAnnouncement = v => MUSIC_TEXT.volume.replace('%d', Math.round(v * 100)).replace('%%', '%');
+export const volumeAnnouncement = v => format(MUSIC_TEXT.volume, [Math.round(v * 100)], { ...FLAVORS.characters, legacy: (template, [n]) => template.replace('%d', n).replace('%%', '%') });
 // Godot start_music_playback: "Music playing: Local: <name>." with a local track, else "Music playing: 80 BPM Sketch (<summary>)."
 // with active_stem_summary. A file name is inserted as written (a function replacement, so "$&" stays "$&").
-export const playingAnnouncement = ({ mode = 'sketch', localName = '', summary = '' } = {}) => MUSIC_TEXT.playing.replace('%s', () => mode === 'local' ? MUSIC_TEXT.localTag + localName : MUSIC_TEXT.sketchTag + summary + ')');
+export const playingAnnouncement = ({ mode = 'sketch', localName = '', summary = '' } = {}) => mode === 'local' ? format(MUSIC_COMPOSE.playingLocal, [localName], ONE) : format(MUSIC_COMPOSE.playingSketch, [summary], ONE);
 // Godot use_synth_sketch: "Switched Rook's Speaker to 80 BPM Synth Sketch (<active_stem_summary>)."
-export const switchedAnnouncement = summary => MUSIC_TEXT.switched.replace('%s', () => summary);
+export const switchedAnnouncement = summary => format(MUSIC_TEXT.switched, [summary], ONE);
 
 // Rhythm Circle step clock (rhythm_circle.gd update_world): the sketch position minus what is still
 // queued, in 8268.75-frame steps. The fork passes the worklet position and its output latency in frames.

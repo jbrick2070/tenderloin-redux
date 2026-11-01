@@ -8,6 +8,8 @@
 // Units: "label px" are Godot's bubble units (24 px font, 3 px border); multiply by screenScale()
 // for CSS pixels. Godot builds the bubble with y up and its tail tip at the anchor; layout() returns
 // screen points with y down.
+import { L, isEnglish } from './i18n.js';
+import { NEIGHBOR_NAMES } from './story.js';
 
 export const BUBBLE = {
   pixel: 0.0024, // SPEECH_BUBBLE_PIXEL: metres per label px in 3D, kept for the record
@@ -37,10 +39,21 @@ const num = (v, fallback = 0) => Number.isFinite(v) ? v : fallback;
 // Godot String.length() counts code points, not UTF-16 units.
 export const textLength = text => [...String(text ?? '')].length;
 
+// Godot strips a speaker envelope only when the name before ': "' is at most 12 UTF-16 code units, which every English speaker
+// name fits. A locale's names can be longer (an Arabic or Thai transliteration), so there the limit is the longest of the speakers'
+// names in that language, never under 12. names: the English speaker names (the five neighbors by default). English is 12.
+export const SPEAKER_LIMIT = 12;
+const SPEAKERS = Object.values(NEIGHBOR_NAMES);
+export function speakerLimit(names = SPEAKERS) {
+  if (isEnglish()) return SPEAKER_LIMIT;
+  let limit = SPEAKER_LIMIT;
+  for (const name of names) limit = Math.max(limit, String(L(String(name))).length);
+  return limit;
+}
 // 'Bea: "Welcome..."' -> 'Welcome...' (the nameplate already says who is talking).
-export function spokenText(line) {
+export function spokenText(line, names = SPEAKERS) {
   const s = String(line ?? ''), at = s.indexOf(': "');
-  if (at >= 0 && at <= 12 && s.endsWith('"') && s.length > at + 4) return s.substr(at + 3, s.length - at - 4);
+  if (at >= 0 && at <= speakerLimit(names) && s.endsWith('"') && s.length > at + 4) return s.substr(at + 3, s.length - at - 4);
   return s;
 }
 export const holdSeconds = text => clamp(BUBBLE.hold.base + textLength(String(text ?? '').trim()) * BUBBLE.hold.perChar, BUBBLE.hold.min, BUBBLE.hold.max);

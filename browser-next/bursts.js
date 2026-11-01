@@ -10,8 +10,9 @@
 // activity (in 2D any open dialog) or no room around the player holds it, with its full reading time. The overview ends it.
 import { gdf, gdCapitalize } from './visits/format.js';
 import { sparkCount, activeStemSummary, CHARACTER_PEOPLE } from './characters.js';
-import { NEIGHBOR_IDS, NEIGHBOR_NAMES, MURAL_MOTIFS, GATHERING_LAYOUT_TITLES } from './story.js';
+import { NEIGHBOR_IDS, NEIGHBOR_NAMES, MURAL_MOTIFS, GATHERING_LAYOUT_TITLES, LOAN_TITLES, segmentTitle } from './story.js';
 import { FILM_SHOTS } from './film.js';
+import { format, L, isEnglish, FLAVORS } from './i18n.js';
 
 // trigger_feel_good_burst, update_celebration_burst and layout_reward_banner numbers. coatLift: the neighbor_visit accent.
 export const BANNER = { seconds: 3.2, fade: 0.45, finale: 4.5, keepFinale: 1.0, finalePrefix: '10/10', titleFormat: '* %s', borderLift: 0.15, coatLift: 0.28, width: { max: 460, min: 180, inset: 16 }, top: 4 };
@@ -54,6 +55,19 @@ export const BURST_WEB_OVERRIDES = {
   "Every neighbor heard · 'The Open Seat' film short (.) unlocked · Sparks: %d": "Every neighbor heard · 'The Open Seat' film short unlocked · Sparks: %d",
 };
 const web = text => (Object.hasOwn(BURST_WEB_OVERRIDES, text) ? BURST_WEB_OVERRIDES[text] : text);
+// A title or detail as the 2D edition shows it, in the active language ('' stays '').
+const shown = text => { const w = web(text); return w ? L(w) : w; };
+// gdf, with the template looked up in a locale first (i18n.js format); table values passed as arguments are localized here.
+const GDF = { ...FLAVORS.visits, legacy: gdf };
+const fill = (template, args) => format(web(template), args, GDF);
+// Fork display names (docs/I18N_PLAN.md 1.3.12 #11) for the motif ids Godot's String.capitalize turns into mural_motif's title.
+// English equals gdCapitalize (tests/next-i18n-dialogue.test.mjs); a locale never title-cases an id.
+export const BURST_DISPLAY = { motifs: { sun: 'Sun', wave: 'Wave', rise: 'Rise' } };
+const motifName = id => Object.hasOwn(BURST_DISPLAY.motifs, id) ? L(BURST_DISPLAY.motifs[id]) : isEnglish() ? gdCapitalize(id) : id;
+// loan_returned's title: Godot capitalizes the loan id ("Paint-case"), which English keeps; a locale names the loan by its title.
+const loanName = id => isEnglish() ? gdCapitalize(id) : Object.hasOwn(LOAN_TITLES, id) ? L(LOAN_TITLES[id]) : id;
+// hosting_segment's title: Godot shows the raw activity id ("beats"), which English keeps; a locale shows the activity's title.
+const segmentName = id => isEnglish() ? id : segmentTitle(id);
 // choose_gathering_layout's direct burst.
 export const LAYOUT_BURST = { title: 'Gathering Layout: %s', detail: 'Curb lane set up · Sidewalk route stays clear · Sparks: %d', accents: { table: 'f8cc58', floor: '5fd4ba' } };
 
@@ -80,6 +94,8 @@ export function cueValues(state) {
 }
 const coat = name => CHARACTER_PEOPLE.find(p => p.name === name)?.coat ?? null;
 const burst = (title, detail, accent, id) => ({ title, detail: web(detail), accent: lightened(accent, []), milestone: MILESTONE_CUES.includes(id) });
+// Each arm below builds its title and detail already in the active language: fill() for templates, shown() for fixed text,
+// with the reason localized as a name (L), a display name or a title. The cue's reason itself stays Godot's English data.
 
 // A cue's banner {title, detail, accent, milestone}, or null: a suppressed cue, a cue without a burst title, or a visit value
 // that is missing (the fork never invents one).
@@ -90,32 +106,33 @@ export function cueBurst(cue, v = {}) {
   switch (id) {
     case 'neighbor_visit': {
       // Godot lifts the coat, then the border lifts that again, on unrounded channels: lift keeps the first lift for trigger().
-      const c = coat(reason), b = make(gdf(T.title, [reason]), gdf(T.detail, [v.met, v.total, v.stems]), c ?? CUE_ACCENT);
+      const c = coat(reason), b = make(fill(T.title, [L(reason)]), fill(T.detail, [v.met, v.total, v.stems]), c ?? CUE_ACCENT);
       return c ? { ...b, lift: [BANNER.coatLift] } : b;
     }
-    case 'celeste_talk': return make(T.title, gdf(T.detail, [v.met, v.total]));
-    case 'mural_motif': return make(gdf(T.title, [gdCapitalize(reason)]), gdf(T.detail, [v.motifs, v.stems]));
-    case 'mural_complete': case 'rook_soundcheck': return make(T.title, gdf(T.detail, [v.stems]));
-    case 'loan_returned': return make(gdf(T.title, [gdCapitalize(reason)]), gdf(T.detail, [v.returned]));
-    case 'programme_published': return v.futureProgramme ? make(T.futureTitle, T.futureDetail) : make(T.title, T.detail);
-    case 'hosting_segment': return make(gdf(T.title, [reason]), gdf(T.detail, [v.hosted]));
-    case 'civic_complete': case 'film_complete': return make(T.title, gdf(web(T.detail), [v.sparks]));
-    case 'film_shot': return make(gdf(T.title, [FILM_SHOTS[reason]?.label ?? reason]), gdf(T.detail, [v.frames]));
-    case 'history_comptons': case 'history_blackhawk': return make(gdf(T.title, [reason]), gdf(T.detail, [v.sparks]));
-    case 'museum_portal': return count(v.eras) === null ? null : make(gdf(T.title, [reason]), gdf(T.detail, [v.eras]));
-    case 'tour_complete': return count(v.tourCount) === null || count(v.tourTotal) === null ? null : make(T.title, gdf(T.detail, [v.tourCount, v.tourTotal]));
-    case 'boeddeker_park': return count(v.trees) === null ? null : make(T.title, gdf(T.detail, [v.trees]));
-    default: return make(T.title, T.detail);
+    case 'celeste_talk': return make(shown(T.title), fill(T.detail, [v.met, v.total]));
+    case 'mural_motif': return make(fill(T.title, [motifName(reason)]), fill(T.detail, [v.motifs, v.stems]));
+    case 'mural_complete': case 'rook_soundcheck': return make(shown(T.title), fill(T.detail, [v.stems]));
+    case 'loan_returned': return make(fill(T.title, [loanName(reason)]), fill(T.detail, [v.returned]));
+    case 'programme_published': return v.futureProgramme ? make(shown(T.futureTitle), shown(T.futureDetail)) : make(shown(T.title), shown(T.detail));
+    case 'hosting_segment': return make(fill(T.title, [segmentName(reason)]), fill(T.detail, [v.hosted]));
+    case 'civic_complete': case 'film_complete': return make(shown(T.title), fill(T.detail, [v.sparks]));
+    case 'film_shot': return make(fill(T.title, [L(FILM_SHOTS[reason]?.label) ?? reason]), fill(T.detail, [v.frames]));
+    case 'history_comptons': case 'history_blackhawk': return make(fill(T.title, [L(reason)]), fill(T.detail, [v.sparks]));
+    case 'museum_portal': return count(v.eras) === null ? null : make(fill(T.title, [L(reason)]), fill(T.detail, [v.eras]));
+    case 'tour_complete': return count(v.tourCount) === null || count(v.tourTotal) === null ? null : make(shown(T.title), fill(T.detail, [v.tourCount, v.tourTotal]));
+    case 'boeddeker_park': return count(v.trees) === null ? null : make(shown(T.title), fill(T.detail, [v.trees]));
+    default: return make(shown(T.title), shown(T.detail));
   }
 }
 // choose_gathering_layout's burst; sparks is spark_count() after the choice.
 export function layoutBurst(layoutId, sparks) {
   if (!Object.hasOwn(GATHERING_LAYOUT_TITLES, layoutId)) return null;
-  return burst(gdf(LAYOUT_BURST.title, [GATHERING_LAYOUT_TITLES[layoutId]]), gdf(LAYOUT_BURST.detail, [sparks]), LAYOUT_BURST.accents[layoutId], '');
+  return burst(fill(LAYOUT_BURST.title, [L(GATHERING_LAYOUT_TITLES[layoutId])]), fill(LAYOUT_BURST.detail, [sparks]), LAYOUT_BURST.accents[layoutId], '');
 }
 // A direct trigger_feel_good_burst whose text a side story already built (a find's heading and burst line, an eatery's Order Up).
-export function directBurst({ title, detail = '', accent = DEFAULT_ACCENT } = {}) {
-  return title ? { title: String(title), detail: String(detail), accent: lightened(accent, []), milestone: false } : null;
+// finale (the 10/10 find, visits-world.js) is passed on when given, so keep_finale never reads a translated title.
+export function directBurst({ title, detail = '', accent = DEFAULT_ACCENT, finale } = {}) {
+  return title ? { title: String(title), detail: String(detail), accent: lightened(accent, []), milestone: false, ...(typeof finale === 'boolean' ? { finale } : {}) } : null;
 }
 // layout_reward_banner's wanted rect in the play area, for a banner of the given height.
 export function bannerRect(area, height) {
@@ -127,7 +144,7 @@ export function bannerRect(area, height) {
 // update_celebration_burst with env = { focused, overview, fits } (fits: fit_overlay_around_player found room). The caller
 // lays the banner out right after a trigger, as Godot does, so the next trigger's keep_finale reads where it stands.
 export function createBanner() {
-  const fresh = () => ({ timer: 0, visible: false, milestone: false, lastTitle: '', title: '', detail: '', border: lightened(DEFAULT_ACCENT, BANNER.borderLift), opacity: 1, count: 0 });
+  const fresh = () => ({ timer: 0, visible: false, milestone: false, lastTitle: '', lastFinale: false, title: '', detail: '', border: lightened(DEFAULT_ACCENT, BANNER.borderLift), opacity: 1, count: 0 });
   let b = fresh();
   const view = () => ({ visible: b.visible, title: b.title, detail: b.detail, border: b.border, opacity: b.opacity, timer: b.timer, milestone: b.milestone, lastTitle: b.lastTitle, count: b.count });
   function layout({ focused = false, overview = false, fits = true } = {}) {
@@ -135,13 +152,15 @@ export function createBanner() {
     return b.visible;
   }
   return {
-    trigger({ title, detail = '', accent = DEFAULT_ACCENT, lift = [], milestone = false }) {
-      const t = String(title);
+    // finale: the burst is the 10/10 finale. Godot reads that from the title's "10/10" (begins_with); a burst that says so itself
+    // (directBurst's finale) is read by its flag, so a translated title cannot change the rule.
+    trigger({ title, detail = '', accent = DEFAULT_ACCENT, lift = [], milestone = false, finale }) {
+      const t = String(title), isFinale = typeof finale === 'boolean' ? finale : t.startsWith(BANNER.finalePrefix);
       b.count++;
-      let keep = b.lastTitle.startsWith(BANNER.finalePrefix) && b.timer > BANNER.keepFinale && !t.startsWith(BANNER.finalePrefix);
+      let keep = b.lastFinale && b.timer > BANNER.keepFinale && !isFinale;
       keep = keep || (b.timer > 0 && !b.visible && b.milestone && !milestone);
       if (keep) return false;
-      Object.assign(b, { lastTitle: t, milestone: !!milestone, border: lightened(accent, [...[].concat(lift), BANNER.borderLift]), title: gdf(BANNER.titleFormat, [t]), detail: String(detail), opacity: 1, visible: true, timer: BANNER.seconds });
+      Object.assign(b, { lastTitle: t, lastFinale: isFinale, milestone: !!milestone, border: lightened(accent, [...[].concat(lift), BANNER.borderLift]), title: gdf(BANNER.titleFormat, [t]), detail: String(detail), opacity: 1, visible: true, timer: BANNER.seconds });
       return true;
     },
     // Godot sets reward_banner_timer itself after the 10/10 finale (4.5 s).
