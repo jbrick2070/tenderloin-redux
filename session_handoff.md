@@ -1,6 +1,10 @@
 # Session Handoff - Tenderloin Redux - October 24, 2026 UTC
 
-## Current: 2D fork Phase 1 in browser-next/ - October 31, 2026 UTC
+## Current: 2D fork Phase 2 (music, neighbors, ending) - October 31, 2026 UTC
+
+Constraints as below. Phase 2 adds `sketch-core.js`, `sketch-player.js` and `sketch-worklet.js` (the Godot music sketch), `rewards.js` (chimes and the Sounds setting), `rhythm.js` and `rhythm-ui.js` (the Rhythm Circle), `characters.js` and `bubble.js` (neighbor lines and speech bubbles), `hosted-text.js`, and `ending/` (the full ending chain). The drift tests `tests/next-music`, `next-characters` and `next-ending.test.mjs` parse the Godot sources, so a Godot text change shows up as a failing test that names the line. `game.js`, `core.js`, `world.js` and `style.css` stay CRLF; every new file is LF. Evidence: 336 Node tests and `npm run next:browser` PASS 124 steps. Next: wire the Phase 3 side-story modules in `browser-next/visits/`; the wiring checklist is in the commit that adds them.
+
+## 2D fork Phase 1 in browser-next/ - October 31, 2026 UTC
 
 Standing constraints are unchanged: the `build-tenderloin-redux` automation stays PAUSED, no paid reviews, `public/` (browser 0.12.0) frozen, `[skip ci]` commits, no deployment without the creator's authorization, the 2 MiB PCK cap unchanged. 2D work now happens in the fork, `browser-next/`, never in `public/`.
 

@@ -3,6 +3,7 @@ import { initialHosting, changeHosting } from './hosting.js';
 import { initialCivic, changeCivic, civicAvailable } from './civic.js';
 import { initialFilm, changeFilm, filmAvailable } from './film.js';
 import { GODOT_SAVE_KEY, NEIGHBOR_IDS } from './godot-save.js';
+import { editScene } from './ending/mural.js';
 
 // The fork shares the Godot edition's save (godot-save.js); classic's two keys are never touched.
 export const SAVE_KEY = GODOT_SAVE_KEY;
@@ -31,7 +32,7 @@ export function initialEpilogue() {
 }
 // Player and litter are session-only; visited and celesteTalks are Godot's visited_neighbors and celeste_talk_count.
 export function initialState() {
-  return { greeted: false, layout: null, furniture: {}, litter: [], mural: {}, palette: 'garden', soundcheck: false, opened: false, history: false, blackhawk: false, player: { x: 95, y: -47 }, epilogue: initialEpilogue(), programme: restoreProgramme(null, false), hosting: initialHosting(), civic: initialCivic(), film: initialFilm(), optional: {}, visited: [], celesteTalks: 0 };
+  return { greeted: false, layout: null, furniture: {}, litter: [], mural: {}, palette: 'garden', soundcheck: false, opened: false, history: false, blackhawk: false, player: { x: 95, y: -47 }, epilogue: initialEpilogue(), programme: restoreProgramme(null, false), hosting: initialHosting(), civic: initialCivic(), film: initialFilm(), optional: {}, visited: [], celesteTalks: 0, muralScenes: {} };
 }
 export function occupiedCells(id, position, layout) {
   const vertical = id === 'table' && layout === 'floor';
@@ -87,6 +88,8 @@ export function applyAction(state, action) {
       if (Object.entries(next.mural).some(([id, p]) => id !== action.id && p.col === action.col && p.row === action.row)) return state;
       next.mural[action.id] = { col: action.col, row: action.row }; break;
     case 'palette': if (!PALETTES.includes(action.value)) return state; next.palette = action.value; break;
+    // Godot edit_mural_scene: '' lifts a slot; a scene moves rather than repeats. Budget admission is the host's.
+    case 'mural-scene': { const out = editScene(next.muralScenes, typeof action.id === 'string' ? action.id : '', action.slot); if (!out.changed) return state; next.muralScenes = out.scenes; break; }
     case 'discover-blackhawk': next.blackhawk = true; break;
     case 'history': next.history = true; break;
     // Godot open_block_gathering: the Long Table when no layout was chosen.

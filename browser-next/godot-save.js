@@ -10,7 +10,7 @@ export const OPTIONAL_MAX_CHARS = 8192;
 export const MAX_JSON_DEPTH = 512;
 export const FORK_OPTIONAL_KEY = 'browser-next';
 export const NEIGHBOR_IDS = ['bea', 'celeste', 'rook', 'dez', 'thanh'];
-export const FORK_FIELDS = ['greeted', 'visited', 'celesteTalks', 'layout', 'furniture', 'mural', 'palette', 'soundcheck', 'opened', 'history', 'blackhawk', 'epilogue', 'programme', 'hosting', 'civic', 'film'];
+export const FORK_FIELDS = ['greeted', 'visited', 'celesteTalks', 'layout', 'furniture', 'mural', 'palette', 'soundcheck', 'opened', 'history', 'blackhawk', 'epilogue', 'programme', 'hosting', 'civic', 'film', 'muralScenes'];
 export const MURAL_COLS = 6, MURAL_ROWS = 3;
 export const MOTIFS = ['sun', 'wave', 'rise'];
 export const PALETTES = ['garden', 'sunset', 'ocean'];
@@ -29,11 +29,24 @@ export const FILM_SHOTS = ['seat', 'paint', 'welcome'], FILM_FRAMING = ['close',
 export const FILM_PHASES = ['idle', 'planning', 'hold', 'shooting', 'done'];
 export const FLAGS = [['rook_soundcheck_done', false], ['block_opened', false], ['history_read', false], ['blackhawk_discovered', false], ['district_boundary_visible', true]];
 // Godot-only: the neighborhood surprises it finds in 3D (NEIGHBORHOOD_SURPRISE_IDS). The fork only carries them.
+// Godot mural_stories.gd IDS and SLOTS: the Living Mural scenes, which the fork paints too.
+export const MURAL_SCENE_IDS = ['cooking', 'sharing', 'painting', 'music', 'garden'], MURAL_SCENE_SLOTS = ['left', 'right'];
 export const SURPRISE_IDS = ['jeffrey_record', 'hidden_mural_145', 'impromptu_drag_show', 'viking_dirt_biker', 'cutesy_dino', 'magic_carpet_chef', 'bite_size_nachos', 'good_donut_and_bagel', 'clown_horn_walker', 'mayor_pomp_event'];
 const LOADED = 'Your afternoon is right where you left it.';
 const HELD = 'The shared save could not be read. A fresh afternoon is ready; the stored save is kept until you choose to start over.';
 
 const isDict = v => v !== null && typeof v === 'object' && !Array.isArray(v);
+// Godot mural_stories.gd clean(raw), as apply_save_envelope applies it: slots in order, a known id at most once,
+// anything else dropped. It never resets a save.
+export function cleanMuralScenes(raw) {
+  const out = {};
+  if (!isDict(raw)) return out;
+  for (const slot of MURAL_SCENE_SLOTS) {
+    const id = Object.hasOwn(raw, slot) ? raw[slot] : '';
+    if (typeof id === 'string' && MURAL_SCENE_IDS.includes(id) && !Object.values(out).includes(id)) out[slot] = id;
+  }
+  return out;
+}
 const get = (o, key, fallback) => Object.hasOwn(o, key) ? o[key] : fallback;
 const isIn = (list, v) => typeof v === 'string' && list.includes(v);
 const copy = v => structuredClone(v);
@@ -136,7 +149,7 @@ export function freshState() {
   return {
     greeted: false, layout: null, furniture: {}, litter: [], mural: {}, palette: 'garden', soundcheck: false, opened: false, history: false, blackhawk: false,
     player: { x: 95, y: -47 }, epilogue: { packing: false, returned: [], photo: { status: 'unasked' } }, programme: { order: [], published: [] },
-    hosting: { order: [], results: [], draft: defaultDraft() }, civic: defaultCivic(), film: defaultFilm(), optional: {}, visited: [], celesteTalks: 0,
+    hosting: { order: [], results: [], draft: defaultDraft() }, civic: defaultCivic(), film: defaultFilm(), optional: {}, visited: [], celesteTalks: 0, muralScenes: {},
   };
 }
 
@@ -354,7 +367,7 @@ const classicPhoto = p => p.status === 'taken' ? { status: 'taken', participants
 // initialState may be classic-shaped (public/core.js); the fork-only fields are defaulted on it.
 export function parseGodotSave(raw, { initialState = freshState } = {}) {
   const state = initialState();
-  state.visited ??= []; state.celesteTalks ??= 0;
+  state.visited ??= []; state.celesteTalks ??= 0; state.muralScenes ??= {};
   const fresh = { status: 'fresh', envelope: freshEnvelope(), state, message: '', reason: '' };
   const invalid = reason => ({ status: 'invalid', envelope: null, state, message: HELD, reason });
   if (raw === null || raw === undefined) return fresh;
@@ -368,14 +381,15 @@ export function parseGodotSave(raw, { initialState = freshState } = {}) {
   try {
     m = readEnvelope(env);
     if (typeof m === 'string') return invalid(m);
-    // Lenient Godot-owned values (active_motif, discovered_surprises, mural_scenes) stay verbatim:
-    // Godot cleans them on its own load, and a newer Godot's ids survive an older fork's write.
+    // Lenient Godot-owned values (active_motif, discovered_surprises, mural_scenes) stay verbatim in the envelope:
+    // Godot cleans them on its own load, and a newer Godot's ids survive an older fork's write. The fork's own view of
+    // mural_scenes is Godot's cleaned one; a write replaces the stored value only when the fork changed that view.
     envelope = { ...copy(env), schema: GODOT_SAVE_SCHEMA, version: GODOT_SAVE_VERSION, ...godotFields(m), optional: copy(m.optional) };
     loaded = {
       greeted: m.visited.includes('bea'), visited: [...m.visited], celesteTalks: m.talks, layout: m.layout || null, palette: m.palette, mural: copy(m.placements),
       soundcheck: m.soundcheck, opened: m.opened, history: m.history, blackhawk: m.blackhawk, furniture: readFurniture(m.optional, m.layout),
       epilogue: { packing: m.epilogue.packing, returned: [...m.epilogue.returned], photo: classicPhoto(m.epilogue.photo) },
-      programme: copy(m.programme), hosting: copy(m.hosting), civic: copy(m.civic), film: copy(m.film),
+      programme: copy(m.programme), hosting: copy(m.hosting), civic: copy(m.civic), film: copy(m.film), muralScenes: cleanMuralScenes(get(env, 'mural_scenes', {})),
     };
   } catch { return invalid('json'); }
   Object.assign(state, loaded);
@@ -438,16 +452,32 @@ function regression(was, now, reach = false) {
 
 // Refusals: 'self-check' (Godot would reset or demote the write), 'regress' (it would lose progress the
 // base holds; Restart passes reset: true) and 'full' (Godot could not write it again within budget).
+// mural_scenes as Godot's build_save_envelope writes them (only when non-empty, slots in order), once the fork changed
+// its cleaned view of the stored value; otherwise the stored value stays verbatim.
+function withScenes(envelope, base, s) {
+  const scenes = isDict(s.muralScenes) ? s.muralScenes : {};
+  if (sameValue(cleanMuralScenes(get(base, 'mural_scenes', {})), scenes)) return envelope;
+  delete envelope.mural_scenes;
+  const ordered = {};
+  for (const slot of MURAL_SCENE_SLOTS) if (Object.hasOwn(scenes, slot)) ordered[slot] = scenes[slot];
+  if (Object.keys(ordered).length) envelope.mural_scenes = ordered;
+  return envelope;
+}
+// The envelope buildGodotSave writes for this state over this base, before any check.
+function assemble(base, state) {
+  const version = isWholeNumber(base.version) && toInt(base.version) === GODOT_SAVE_VERSION ? base.version : GODOT_SAVE_VERSION;
+  const envelope = { ...base, schema: GODOT_SAVE_SCHEMA, version, ...godotFields(fromState(state, base)) };
+  envelope.save_seq = (isWholeNumber(base.save_seq) ? Math.max(0, toInt(base.save_seq)) : 0) + 1;
+  envelope.optional = withFurniture(base.optional, state);
+  return withScenes(envelope, base, state);
+}
 export function buildGodotSave(baseEnvelope, state, { reset = false } = {}) {
   const refuse = (reason, detail, bytes = 0) => ({ ok: false, raw: null, bytes, envelope: null, reason, detail });
   let was, envelope, raw;
   try {
     const base = isDict(baseEnvelope) ? copy(baseEnvelope) : freshEnvelope();
     was = reset ? '' : readEnvelope(base);
-    const version = isWholeNumber(base.version) && toInt(base.version) === GODOT_SAVE_VERSION ? base.version : GODOT_SAVE_VERSION;
-    envelope = { ...base, schema: GODOT_SAVE_SCHEMA, version, ...godotFields(fromState(state, base)) };
-    envelope.save_seq = (isWholeNumber(base.save_seq) ? Math.max(0, toInt(base.save_seq)) : 0) + 1;
-    envelope.optional = withFurniture(base.optional, state);
+    envelope = assemble(base, state);
     raw = canonicalStringify(envelope);
   } catch { return refuse('self-check', 'state'); }
   const bytes = utf8Bytes(raw);
@@ -459,6 +489,17 @@ export function buildGodotSave(baseEnvelope, state, { reset = false } = {}) {
   if (lost) return refuse('regress', lost, bytes);
   if (bytes + godotGrowth(envelope) > SAVE_BUDGET) return refuse('full', '', bytes);
   return { ok: true, raw, bytes, envelope, reason: '', detail: '' };
+}
+
+// main.gd edit_mural_scene's admission: a scene edit is refused only when the next save would exceed Godot's budget and
+// grow past the current one, so a lift is allowed on an oversized save. The fork's stricter budget (buildGodotSave 'full',
+// which leaves room for Godot's next write) then decides between saving and visit-only.
+export function sceneAdmission(baseEnvelope, state, next) {
+  try {
+    const base = isDict(baseEnvelope) ? copy(baseEnvelope) : freshEnvelope();
+    const current = utf8Bytes(canonicalStringify(assemble(base, state))), candidate = utf8Bytes(canonicalStringify(assemble(base, next)));
+    return !(candidate > SAVE_BUDGET && candidate > current);
+  } catch { return false; }
 }
 
 // The forward-only field a stored save lost against an earlier one, or '': a 3D tab opened earlier saved over newer
@@ -496,28 +537,39 @@ function mergeState(c, o) {
   if (FILM_PHASES.indexOf(e.phase) > FILM_PHASES.indexOf(f.phase) || e.phase === 'shooting' && f.phase === 'shooting' && e.captured.length > f.captured.length) c.film = copy(e);
   return c;
 }
-// Godot-only discoveries in this tab's write base: the stored save keeps its own, gains the base's known surprise ids
-// (sorted, as build_save_envelope writes them) and takes the base's mural scenes when it has none. Godot reads both leniently.
+// Godot-only discoveries in this tab's write base: the stored save keeps its own and gains the base's known surprise ids
+// (sorted, as build_save_envelope writes them). Godot reads them leniently. Mural scenes are fork-owned too (withScenesFrom).
 function withGodotOnly(stored, base) {
   const out = copy(stored);
   if (!isDict(base)) return out;
   const have = Array.isArray(out.discovered_surprises) ? out.discovered_surprises : [];
   const extra = Array.isArray(base.discovered_surprises) ? base.discovered_surprises.filter(id => isIn(SURPRISE_IDS, id) && !have.includes(id)) : [];
   if (extra.length) out.discovered_surprises = [...new Set([...have.filter(id => typeof id === 'string'), ...extra])].sort(byCodePoint);
-  const painted = v => isDict(v) && Object.keys(v).length > 0;
-  if (!painted(out.mural_scenes) && painted(base.mural_scenes)) out.mural_scenes = copy(base.mural_scenes);
   return out;
+}
+// Mural scenes are not forward-only. Scenes this tab painted or lifted win (mergeState keeps them), saved or not: "changed"
+// is against loadedScenes, the scenes this tab last read from the shared save (its own writes do not move it), or against
+// the write base when the caller has no such record. Scenes it left alone follow the stored save, or come back from the
+// write base when the stored save has none that Godot's clean() keeps.
+function withScenesFrom(state, base, mine, mineBase, stored, loadedScenes) {
+  const origin = loadedScenes === undefined ? get(isDict(mineBase) ? mineBase : {}, 'mural_scenes', {}) : loadedScenes;
+  if (!isDict(mineBase) || !sameValue(mine.muralScenes, cleanMuralScenes(origin))) return;
+  const painted = v => Object.keys(cleanMuralScenes(v)).length > 0;
+  if (!painted(stored.mural_scenes) && painted(mineBase.mural_scenes)) base.mural_scenes = copy(mineBase.mural_scenes);
+  state.muralScenes = cleanMuralScenes(get(base, 'mural_scenes', {}));
 }
 // This tab's state (mine, written over mineBase) combined with a stored save that lost some of it: mergeState's progress on
 // the stored save, plus mineBase's Godot-only discoveries. The result passes buildGodotSave's self-check and budget, and is
 // refused unless it keeps how far both the stored save and this tab got, so a mix Godot would reset is never written.
-export function combineSaves(storedEnvelope, mine, mineBase = null) {
+// loadedScenes (optional) is the mural scenes this tab last read from the shared save (withScenesFrom).
+export function combineSaves(storedEnvelope, mine, mineBase = null, loadedScenes = undefined) {
   const refuse = (reason, detail, bytes = 0) => ({ ok: false, raw: null, bytes, envelope: null, reason, detail, state: null });
   const stored = parseGodotSave(isDict(storedEnvelope) ? canonicalStringify(storedEnvelope) : null);
   if (stored.status === 'invalid') return refuse('self-check', stored.reason);
   let state, base, ours;
   try {
     state = mergeState(copy(mine), stored.state); base = withGodotOnly(stored.envelope, mineBase);
+    withScenesFrom(state, base, mine, mineBase, stored.envelope, loadedScenes);
     ours = fromState(mine, isDict(mineBase) ? mineBase : stored.envelope);
   } catch { return refuse('self-check', 'state'); }
   const out = buildGodotSave(base, state, { reset: true });

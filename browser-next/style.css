@@ -1328,3 +1328,13 @@ dialog .button-row button {
 .placement-scroll.more-left.more-right { -webkit-mask-image:linear-gradient(to right,transparent,#000 32px,#000 calc(100% - 32px),transparent); mask-image:linear-gradient(to right,transparent,#000 32px,#000 calc(100% - 32px),transparent); }
 /* A source link on its own line is a control, so it gets a 44 px row. */
 .history-entry a.source-link { display:inline-flex; align-items:center; min-height:44px; }
+/* Conversations: Godot draws each neighbor's panel border in their coat colour, lightened 24%. */
+.conversation { border-left:4px solid var(--talk-border, #b6c3ac); padding-left:14px; }
+.conversation .character-heading { padding-right:44px; margin-bottom:10px; }
+.talk-badge { display:inline-block; margin:0 0 6px; padding:2px 10px; border-radius:999px; background:var(--talk-border, #e1e8d6); color:#26372e!important; font-size:11px!important; line-height:1.7!important; }
+.talk-header { margin:0 0 10px; font-size:11px!important; line-height:1.6!important; color:var(--muted)!important; overflow-wrap:anywhere; }
+.talk-line { font-size:15px!important; color:var(--ink)!important; overflow-wrap:anywhere; }
+dialog .talk-actions, dialog .talk-controls { margin-top:14px; }
+dialog .talk-actions button, dialog .talk-controls button { flex:1 1 140px; white-space:normal; }
+.hosted-review article { border:1px solid #c9cfbc; border-radius:8px; padding:10px 14px; margin:10px 0; }
+.hosted-review p { margin:4px 0; overflow-wrap:anywhere; }

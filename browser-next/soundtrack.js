@@ -1,11 +1,12 @@
 import { MusicSketch } from './audio.js';
+import { DEFAULT_VOLUME, MAX_VOLUME } from './sketch-core.js';
 const DECODE_ERROR = 'This file could not play. Try another MP3/WAV or return to the sketch.';
 
 // User-selected audio stays in a browser object URL for this tab, never in game saves.
 export class Soundtrack {
   constructor({ sketch = new MusicSketch(), makeAudio = () => new Audio(), urls = URL, hidden = () => document.hidden, onChange = () => {} } = {}) {
     this.sketch = sketch; this.makeAudio = makeAudio; this.urls = urls; this.hidden = hidden; this.onChange = onChange;
-    this.audio = null; this.url = null; this.fileName = ''; this.error = ''; this.volume = .35;
+    this.audio = null; this.url = null; this.fileName = ''; this.error = ''; this.volume = DEFAULT_VOLUME;
     this.localEnabled = false; this.localStarting = false; this.generation = 0; this.failed = false;
   }
   get enabled() { return this.audio ? this.localEnabled : this.sketch.enabled; }
@@ -55,7 +56,7 @@ export class Soundtrack {
   }
   halt() { this.generation++; this.localStarting = false; this.localEnabled = false; this.audio?.pause(); this.sketch.stop(); }
   stop() { this.halt(); this.onChange(); }
-  setVolume(value) { this.volume = Math.max(0, Math.min(.8, Number.isFinite(value) ? value : 0)); this.sketch.setVolume(this.volume); if (this.audio) this.audio.volume = this.volume; }
+  setVolume(value) { this.volume = Math.max(0, Math.min(MAX_VOLUME, Number.isFinite(value) ? value : 0)); this.sketch.setVolume(this.volume); if (this.audio) this.audio.volume = this.volume; }
   update(layers) { this.sketch.update(layers); }
   releaseLocal() {
     const audio = this.audio, url = this.url;

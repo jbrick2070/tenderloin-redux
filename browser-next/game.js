@@ -1,44 +1,80 @@
 import { SAVE_KEY, SETTINGS_KEY, PIXELS_PER_METRE, LITTER, MOTIFS, FURNITURE, PALETTES, SIGNS, LOANS, PHOTO_GUESTS, BLOCK_TEXT, initialState, applyAction, progress, ready, arranged, metCount, blockMissing, musicLayers, canPlaceFurniture, occupiedCells, walkable, findPath } from './core.js';
-import { parseGodotSave, buildGodotSave, freshEnvelope, utf8Bytes, isWholeNumber, lostProgress, combineSaves, FORK_FIELDS } from './godot-save.js';
-import { currentChapter, chapterLine, chapterCard, chapterCardDue, nextObjective, isNarrow, fmt, GATHERING_LAYOUT_TITLES } from './story.js';
+import { parseGodotSave, buildGodotSave, freshEnvelope, utf8Bytes, isWholeNumber, lostProgress, combineSaves, sceneAdmission, FORK_FIELDS } from './godot-save.js';
+import { currentChapter, chapterLine, chapterCard, chapterCardDue, chapterAnnouncement, storyChapter, nextObjective, isNarrow, fmt, GATHERING_LAYOUT_TITLES } from './story.js';
 import { installPressSettle } from './press-settle.js';
-import { World, makeWays, NEIGHBORS, PLACES, PALETTE_COLORS } from './world.js';
+import { World, makeWays, objectLabel, NEIGHBORS, PLACES, PALETTE_COLORS } from './world.js';
 import { BLACK_HAWK } from './history.js';
 import { districtGeometry } from './district.js';
 import { Soundtrack } from './soundtrack.js';
+import { stemMask, stemSummary, cleanVolume, nextVolume, volumeAnnouncement, MAX_VOLUME } from './sketch-core.js';
+import { RewardPlayer, progressCues, rewardFor, soundsLabel, soundsAnnouncement, cleanRewardSounds, SOUNDS_TEXT } from './rewards.js';
 import { PHOTO_RESPONSES, postcardSVG } from './keepsake.js';
 import { gatheringScene, gatheringPlanSVG } from './gathering.js';
 import { SEGMENTS, segment, programmeIssue, programmeTitle, programmeSVG, programmeResponse } from './programme.js';
-import { currentActivity, hostedResult, hostingResponse, activitySummary, tilePanelSVG, STORY_CHOICES, QUIET_CHOICES } from './hosting.js';
+import { currentActivity, hostedResult, tilePanelSVG, STORY_CHOICES, QUIET_CHOICES } from './hosting.js';
+import { godotExtras, freshTalk, arriveTalk, chatTalk, confirmLoan, conversationView, arrivalCaption, talkAnnouncement, goodbyeLines, whatsNext, whatsNextAnnouncement, rookMusicDetail, narrowLabel, sparkCount, ACTION_LABELS, HUB_LABELS, gdFormat } from './characters.js';
+import { showBubble, stepBubble, spokenText, speechNotice, BUBBLE, BUBBLE_TEXT, FORK_BUBBLE } from './bubble.js';
+import { HOSTING_FORK_TEXT, invitationHubText, invitationSVG, quietHubText, loanReply, loanRefusal, loanReturnAnnouncement, LOAN_COMPLETION_NOTICE, hostedReview, hostedDetail, hostedInvitation, hostedInvitationAvailable, hostedCompletion } from './hosted-text.js';
 import { ExperimentHost } from './experimental-host.js';
 import { VERSION, EDITION } from './version.js';
-import { CIVIC_TOPICS, CIVIC_FORMATS, CIVIC_NOTES, civicAvailable, civicResponse, civicConversation, civicPlanSVG } from './civic.js';
-import { FILM_SHOTS, FILM_FRAMING, FILM_PLANS, filmAvailable, filmResponse, filmCaption, filmFrameSVG } from './film.js';
+import { CIVIC_TOPICS, CIVIC_FORMATS, CIVIC_NOTES, civicAvailable, civicConversation, civicPlanSVG } from './civic.js';
+import { FILM_SHOTS, FILM_FRAMING, FILM_PLANS, filmAvailable, filmCaption, filmFrameSVG } from './film.js';
+import { createEnding } from './ending/ui.js';
+import { GODOT, FORK_TEXT, gdf } from './ending/text.js';
+import { sceneReceipt } from './ending/mural.js';
+import { createRhythm } from './rhythm-ui.js';
 
 const $ = selector => document.querySelector(selector);
 const modal = $('#modal'), body = $('#modal-body'), canvas = $('#world');
 let modalReturnTarget = canvas;
 const music = new Soundtrack({ onChange: soundUI });
+// Godot's RewardAudioPlayer: one chime at a time on the sketch's shared context, at a fixed gain, with music on or off.
+const rewards = new RewardPlayer(() => music.sketch.ensureContext());
 // envelope is the write base: the Godot save as last loaded or written. An unreadable save is held: no writes until Start over.
-// recovery: the write base this tab had when a stored save lost some of its progress. Until the player keeps it or declines,
+// recovery: the write base this tab had when a stored save lost some of its progress (envelope), with the mural scenes it had
+// last read (scenes). Until the player keeps it or declines,
 // state stays this tab's own progress, envelope is the stored save and nothing is written.
-let state = initialState(), held = false, storageAvailable = true, savedMessage = '', envelope = freshEnvelope(), lastRaw = null, saveInfo = { status: 'fresh', reason: null, bytes: 0 }, recovery = null;
-let settings = { volume: .35, reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches, experimental: { neighborhoodVoices: false } };
+// loadedScenes: the mural scenes this tab last read from the shared save; its own writes do not change it, so scenes it
+// painted or lifted stay its own choices when a recovery offer combines saves.
+let state = initialState(), held = false, storageAvailable = true, savedMessage = '', envelope = freshEnvelope(), lastRaw = null, saveInfo = { status: 'fresh', reason: null, bytes: 0 }, recovery = null, loadedScenes = {};
+let settings = { volume: cleanVolume(undefined), rewardSounds: true, reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches, experimental: { neighborhoodVoices: false } };
 try { const raw = localStorage.getItem(SAVE_KEY), loaded = parseGodotSave(raw, { initialState }); adoptSave(loaded, raw); savedMessage = loaded.message; }
 catch { storageAvailable = false; }
 try {
   const parsed = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
   const stored = parsed && typeof parsed === 'object' ? parsed : {};
   if (typeof stored.reducedMotion === 'boolean') settings.reducedMotion = stored.reducedMotion;
-  if (Number.isFinite(stored.volume)) settings.volume = Math.max(0, Math.min(.8, stored.volume));
+  // Godot's music_volume: 0.70 for a new player, range 0-1.0; a stored preference is kept (clamped). Reward Sounds default on.
+  settings.volume = cleanVolume(stored.volume);
+  settings.rewardSounds = cleanRewardSounds(stored.rewardSounds);
   settings.experimental.neighborhoodVoices = stored.experimental?.neighborhoodVoices === true;
 } catch { /* Invalid preferences do not make a valid game save unavailable. */ }
-music.setVolume(settings.volume);
+music.setVolume(settings.volume); rewards.setEnabled(settings.rewardSounds);
 document.documentElement.classList.toggle('reduced-motion', settings.reducedMotion);
 const settle = installPressSettle(document, window);
 let world, ways, toastTimeout, activeTool = 'table', activeMotif = 'sun', lastFrame = 0, lastHint = 0;
 let walkTarget = null, walkPath = [], keys = new Set(), arrivedAt = null, nearAt = null, lastChapter = -1, cardQueued = false;
 let districtStatus = 'idle', districtPromise;
+// startupContinue: the open startup card's continue; walkOnClose: the movement key that dismissed it, walking once it closes.
+let startupContinue = null, walkOnClose = null;
+const MOVE_KEYS = ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'];
+// The ending chain (ending/ui.js) and Dez's Rhythm Circle (rhythm-ui.js): visit-only screens over the saved state.
+// Godot save_receipt's reason in Godot's words, '' when the last write went through. A held save or a pending recovery
+// offer writes nothing, so its receipt is visit-only too.
+const saveReason = () => held || recovery ? 'not saved' : saveInfo.status === 'refused' ? saveInfo.reason === 'full' ? 'save full' : saveInfo.reason === 'storage' ? 'storage unavailable' : 'not saved' : !storageAvailable && !held ? 'storage unavailable' : '';
+// Godot consume_chapter_announcement: Follow takes a due chapter announcement, with the Rhythm Circle's completion notice.
+let chapterNotice = '';
+const chapterText = () => { if (!chapterCardDue(lastChapter, state)) return ''; lastChapter = storyChapter(state).num; const text = chapterAnnouncement(state, chapterNotice) + ' '; chapterNotice = ''; return text; };
+const modalStatus = text => { $('#modal-status').textContent = text; }, STUDIO = GODOT['programme_studio.gd'].refresh;
+const ending = createEnding({ doc: document, win: window, modal, settle, getState: () => state, show, close: target => close(target), status: modalStatus, toast, stopWalk, reducedMotion: () => settings.reducedMotion, chapterText, act,
+  sceneAdmission: next => sceneAdmission(envelope ?? recovery?.envelope, state, next), saveReason, music: { label: () => music.enabled || music.starting ? STUDIO.musicOn : STUDIO.musicOff, on: () => music.enabled || music.starting, toggle: toggleMusic },
+  filmButtonLabel: () => $('#film-shoot')?.textContent.replace(/\s*↗\s*$/, '') ?? '', openDraft: () => programmeEditor(), openPosted: () => programmePoster(), openMural: () => muralEditor() });
+const rhythm = createRhythm({ doc: document, win: window, modal, getState: () => state, show, status: modalStatus, toast, act, music, volume: () => settings.volume, unlocked: () => rewards.unlocked, toggleMusic, stopWalk,
+  receipt: () => sceneReceipt(saveReason()), objective: () => nextObjective(state, storyWorld()).text, sparks: () => sparkCount(state, talkExtras()), lastChapter: () => !chapterCardDue(lastChapter, state),
+  afterClose: (origin, text, notice = '') => { if (notice) chapterNotice = notice; if (origin === 'hosting' && state.hosting.order.length) return hostingScreen(text); close($('#rhythm-circle') || canvas); if (text) toast(text); } });
+// Godot's session-only talk counters (characters.js freshTalk; Celeste's is the saved celesteTalks) and the one shared
+// speech bubble with its live-region mirror (routeSpeech, read by hint()).
+let talks = freshTalk(), bubble = null, routeSpeech = null;
 let voicesModulePromise, voicesImportAttempt = 0;
 const voicesHost = new ExperimentHost({
   load: async scope => {
@@ -94,7 +130,7 @@ function releaseNotice() { const text = notice.textContent; if (!text || modal.o
 const notify = text => queueMicrotask(() => toast(text));
 // Adopt a parsed Godot save, keeping this visit's walk and tidying when `keep` is the current state; hold an unreadable one.
 function adoptSave(result, raw, keep) {
-  lastRaw = raw;
+  lastRaw = raw; loadedScenes = result.state.muralScenes;
   if (result.status === 'invalid') { held = true; envelope = null; saveInfo = { status: 'held', reason: result.reason, bytes: utf8Bytes(raw ?? '') }; if (!keep) state = result.state; return false; }
   held = false; envelope = result.envelope; saveInfo = { status: result.status, reason: null, bytes: raw ? utf8Bytes(raw) : 0 };
   state = keep ? { ...result.state, player: keep.player, litter: keep.litter } : result.state;
@@ -108,11 +144,12 @@ function reread() {
   let raw;
   try { raw = localStorage.getItem(SAVE_KEY); } catch { storageAvailable = false; return null; }
   if (raw === lastRaw) return null;
-  const result = parseGodotSave(raw, { initialState }), before = state, base = envelope, loaded = result.status === 'loaded';
+  const result = parseGodotSave(raw, { initialState }), before = state, base = envelope, loaded = result.status === 'loaded', scenes = loadedScenes;
   adoptSave(result, raw, before);
   if (recovery && (!loaded || !lostProgress(ownEnvelope(before), result.envelope))) { recovery = null; if (modal.open && body.querySelector('[data-recovery]')) close(); }
-  else if (!recovery && loaded && lostProgress(base, result.envelope)) recovery = { envelope: base };
+  else if (!recovery && loaded && lostProgress(base, result.envelope)) recovery = { envelope: base, scenes };
   if (recovery) state = before;
+  ending.sync({ adopted: true });
   return { result, before };
 }
 // This tab's progress as a save over its own write base, for comparing with a newer stored save.
@@ -162,8 +199,10 @@ const KEEP_REFUSED = { full: 'Together they would not fit in the shared save, so
 function recover() {
   const changed = reread();
   if (!recovery) { if (changed) notify(syncNotice(changed)); return; }
-  const out = combineSaves(envelope, state, recovery.envelope);
+  const out = combineSaves(envelope, state, recovery.envelope, recovery.scenes);
   if (!out.ok || !commit(out)) { offerRecovery(KEEP_REFUSED[out.ok ? 'storage' : out.reason] || KEEP_REFUSED.other); return; }
+  // Scenes this tab had only adopted now follow the combined save; scenes it painted or lifted stay its own.
+  loadedScenes = JSON.stringify(state.muralScenes) === JSON.stringify(recovery.scenes) ? out.state.muralScenes : recovery.scenes;
   recovery = null; state = { ...out.state, player: state.player, litter: state.litter }; close(); updateUI();
   notify('This tab’s progress is back, combined with the shared save. Reload the other edition before you play it again.');
 }
@@ -183,6 +222,8 @@ function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringif
 // changed nothing, or no longer applied to a save another tab or edition wrote first.
 function act(action) {
   const before = state, next = applyAction(state, action);
+  // Godot trigger_progress_cue: this action's chime, under the Sounds setting and the first-press unlock. Loads never chime.
+  rewards.play(rewardFor(progressCues(before, next, action), { enabled: settings.rewardSounds, unlocked: rewards.unlocked }));
   if (next === state) return false;
   state = next; updateUI();
   return savedFields(next) === savedFields(before) || persist(action);
@@ -203,7 +244,6 @@ function focusReturn() { const target = returnFocus(); target.focus({ preventScr
 function close(target = canvas) { voicesHost.dismiss(); modalReturnTarget = target instanceof HTMLElement ? target : canvas; modal.close(); focusReturn(); releaseNotice(); }
 function bind(id, callback) { document.getElementById(id)?.addEventListener('click', callback); }
 function button(id, label, primary = false, disabled = false) { return `<button id="${id}" class="${primary ? 'primary-button' : 'secondary-button'}" ${disabled ? 'disabled' : ''}>${label}</button>`; }
-function characterHeader(id) { const n = NEIGHBORS.find(n => n.id === id), film = filmResponse(id, state.film), civic = civicResponse(id, state.civic), response = film || civic || hostingResponse(id, state.hosting) || programmeResponse(id, state.programme.published); return `<div class="character-heading"><span class="portrait" style="background:${n.coat}55">${n.name[0]}</span><div><h2 id="modal-title">${n.name}</h2><span class="eyebrow">${n.role.toUpperCase()}</span></div></div>${response ? `<div class="programme-response"><span class="eyebrow">${film ? 'AFTER OUR LITTLE FILM' : civic ? 'AFTER OUR LISTENING HOUR' : state.hosting.order.length ? 'OUR SHARED AFTERNOON' : 'ABOUT OUR NEXT AFTERNOON'}</span><p>${response}</p></div>` : ''}`; }
 function updateUI() {
   const p = progress(state), count = Object.values(p).filter(Boolean).length, met = metCount(state), placed = MOTIFS.filter(id => state.mural[id]).length;
   $('#progress-label').textContent = `${count} of 3 preparations`; $('#progress-percent').textContent = `${Math.round(count / 3 * 100)}%`; $('#progress-fill').style.width = `${count / 3 * 100}%`;
@@ -221,14 +261,14 @@ function updateUI() {
   bind('task-mural', () => goTo(PLACES.find(p => p.id === 'mural')));
   bind('task-sound', () => goTo(NEIGHBORS.find(n => n.id === 'rook')));
   $('#open-gathering').disabled = !ready(state); $('#open-gathering').innerHTML = state.opened ? 'Enjoy the gathering <span>↗</span>' : 'Open the gathering <span>↗</span>';
-  const stems = [['layout', 'Bass'], ['tidy', 'Brushes'], ['mural', 'Piano'], ['opened', 'Trumpet']], layers = musicLayers(state);
+  // Godot's MUSIC_STEM_ORDER names: bass, brush, chords, lead.
+  const stems = [['layout', 'Bass'], ['tidy', 'Brush'], ['mural', 'Chords'], ['opened', 'Lead']], layers = musicLayers(state);
   $('#stems').innerHTML = stems.map(([key, label]) => `<span class="stem ${layers[key] ? 'active' : ''}"><i></i>${label}</span>`).join('');
-  $('#sound-caption').textContent = state.epilogue.packing ? 'A shared afternoon, kept in your field notes.' : state.opened ? 'All four parts are ready. Stay a little longer.' : count ? `${count} preparations made. The music is taking shape.` : 'A quiet beginning. Each contribution adds a layer.';
   music.update(layers);
   if (state.layout === 'floor') { $('#neighbor-quote').textContent = state.opened ? '“Turns out a little room was all we needed to find the rhythm.”' : '“Leave a little open space. You never know who might start dancing.”'; $('#neighbor-credit').textContent = '— Dez, your neighbor'; }
   else { $('#neighbor-quote').textContent = state.opened ? '“See? We already had what mattered. Each other.”' : '“A long table, a few good stories. That’s my kind of afternoon.”'; $('#neighbor-credit').textContent = '— Bea, your neighbor'; }
   saveUI(); chapterUI();
-  updateAfterglow();
+  updateAfterglow(); ending.sync(); rhythm.sync();
   soundUI();
   queueChapterCard();
 }
@@ -241,12 +281,16 @@ function chapterUI() {
 const chapterCardOpen = () => modal.open && !!body.querySelector('[data-chapter-card]');
 // Godot show_story_card: on every load, then whenever the chapter number differs from the last card, once no dialog is open.
 function showChapterCard(startup = false) {
-  const card = chapterCard(state, { startup }), id = startup ? 'begin' : 'chapter-continue';
+  const card = chapterCard(state, { startup, notice: chapterNotice }), id = startup ? 'begin' : 'chapter-continue';
+  chapterNotice = '';
   lastChapter = card.num;
   show(`<section data-chapter-card>${startup ? '<div class="welcome-art" aria-hidden="true"><span></span><span></span><span></span><span></span></div>' : ''}<span class="eyebrow">${startup ? 'WELCOME TO YOUR AFTERNOON' : 'A NEW CHAPTER ON THE BLOCK'}</span><h2 id="modal-title">${card.title}</h2><p>${card.body}</p><div class="button-row">${button(id, card.button, true)}</div>${startup ? '<div class="dialog-controls"><span><kbd>WASD</kbd> or arrows to walk</span><span><kbd>E</kbd> to talk / help</span></div><p class="footnote">Tap people or objects, choose a preparation, or use Meet the neighbors to walk over. Use + / − to zoom, drag to look around, and Follow me to find yourself. A fictional gathering on real street centerlines; scenery is an early approximation. Music is optional.</p>' : ''}</section>`);
   $('#modal-status').textContent = card.announcement;
   const returning = state.visited.length || Object.keys(state.mural).length;
-  bind(id, () => { close(); if (startup) toast(held ? savedMessage : returning && savedMessage ? savedMessage : 'Bea is just ahead. Tap her, or choose Meet the neighbors.'); });
+  // Godot continue_story(true): the startup card's button, or W/A/S/D or an arrow key on it, starts the music unless it is
+  // playing. Escape and × stay silent.
+  const go = () => { close(); if (startup && !music.enabled && !music.starting) music.start(); if (startup) toast(held ? savedMessage : returning && savedMessage ? savedMessage : 'Bea is just ahead. Tap her, or choose Meet the neighbors.'); };
+  bind(id, go); startupContinue = startup ? go : null;
 }
 function queueChapterCard() {
   if (cardQueued) return;
@@ -264,10 +308,14 @@ function soundUI() {
   $('#sound-disclosure').textContent = local ? 'Local audio · this tab only' : 'Original synth sketch\nRecorded jazz to come';
   if (local) $('#sound-caption').textContent = music.error || `${music.enabled ? 'Playing' : music.starting ? 'Starting' : 'Ready'}: ${music.fileName}`;
   else {
-    const count = Object.values(progress(state)).filter(Boolean).length;
-    $('#sound-caption').textContent = state.epilogue.packing ? 'A shared afternoon, kept in your field notes.' : state.opened ? 'All four parts are ready. Stay a little longer.' : count ? `${count} preparations made. The music is taking shape.` : 'A quiet beginning. Each contribution adds a layer.';
+    const count = Object.values(progress(state)).filter(Boolean).length, line = state.epilogue.packing ? 'A shared afternoon, kept in your field notes.' : state.opened ? 'All four parts are ready. Stay a little longer.' : count ? `${count} preparations made. The music is taking shape.` : 'A quiet beginning. Each contribution adds a layer.';
+    // Godot active_stem_summary, for example "bass+brush (2/4 stems)".
+    $('#sound-caption').textContent = `${line} · ${stemSummary(stemMask(musicLayers(state)))}`;
   }
   if (music.error) $('#sound-caption').textContent = music.error;
+  // Rook's open music panel follows the player's play and pause.
+  rhythm.musicChanged();
+  if ($('#talk-play')) $('#talk-play').textContent = music.enabled || music.starting ? 'Pause Groove' : 'Play Groove';
   if ($('#soundtrack-status')) {
     const sketchStatus = music.starting ? 'Starting the synth sketch…' : music.enabled ? 'Synth sketch playing.' : 'Original synth sketch selected. Press Play to listen.';
     $('#soundtrack-status').textContent = music.error || (local ? `${music.fileName} — ${music.enabled ? 'playing on repeat' : music.starting ? 'starting' : 'ready; press Play'}.` : sketchStatus);
@@ -283,7 +331,7 @@ async function toggleMusic() {
   soundUI();
 }
 function showMusic() {
-  show(`<span class="eyebrow">SET THE MOOD</span><h2 id="modal-title">Your block. Your music.</h2><p>Bring a jazz track you made in Suno, or any MP3/WAV you want to try here. It plays on repeat while you explore.</p><label class="file-picker" for="soundtrack-file">Choose an MP3 or WAV<input id="soundtrack-file" type="file" accept=".mp3,.wav,audio/mpeg,audio/wav"></label><p id="soundtrack-status" class="track-status" role="status" aria-live="polite"></p><label class="settings-row" for="soundtrack-volume"><span>Music volume <span id="track-volume-number">${Math.round(settings.volume * 100)}%</span></span><input id="soundtrack-volume" data-rapid type="range" min="0" max="80" value="${settings.volume * 100}"></label><div class="button-row">${button('track-play', 'Play music', true)}${button('use-sketch', 'Return to synth sketch')}${button('music-close', 'Back to the block')}</div><p class="footnote">The file stays on your device and is not uploaded or saved with your game. Choose it again after a reload. Up to 100 MB. Sound is always optional.</p>`);
+  show(`<span class="eyebrow">SET THE MOOD</span><h2 id="modal-title">Your block. Your music.</h2><p>Bring a jazz track you made in Suno, or any MP3/WAV you want to try here. It plays on repeat while you explore.</p><label class="file-picker" for="soundtrack-file">Choose an MP3 or WAV<input id="soundtrack-file" type="file" accept=".mp3,.wav,audio/mpeg,audio/wav"></label><p id="soundtrack-status" class="track-status" role="status" aria-live="polite"></p><label class="settings-row" for="soundtrack-volume"><span>Music volume <span id="track-volume-number">${Math.round(settings.volume * 100)}%</span></span><input id="soundtrack-volume" data-rapid type="range" min="0" max="${MAX_VOLUME * 100}" value="${Math.round(settings.volume * 100)}"></label><div class="button-row">${button('track-play', 'Play music', true)}${button('use-sketch', 'Return to synth sketch')}${button('music-close', 'Back to the block')}</div><p class="footnote">The file stays on your device and is not uploaded or saved with your game. Choose it again after a reload. Up to 100 MB. Sound is always optional.</p>`);
   $('#soundtrack-file').addEventListener('change', event => {
     const file = event.target.files?.[0]; if (!file) return;
     try { music.loadFile(file); } catch (error) { music.error = error.message; soundUI(); }
@@ -307,6 +355,7 @@ function updateAfterglow() {
     panel.querySelector('.afterglow-actions').insertAdjacentHTML('beforeend', button('host-afternoon', state.hosting.results.length === 4 ? 'Remember our second gathering ↗' : state.hosting.order.length ? 'Continue our second gathering ↗' : 'Host the posted programme ↗', true));
     bind('host-afternoon', () => hostingScreen());
   }
+  if (rhythm.available()) { panel.querySelector('.afterglow-actions').insertAdjacentHTML('beforeend', `<button id="rhythm-circle" class="secondary-button" aria-label="${esc(rhythm.entryLabel().replace(/\n/g, ' '))}">${esc(rhythm.entryLabel()).replace(/\n/g, '<br>')}</button>`); bind('rhythm-circle', () => rhythm.open('block')); }
   if (civicAvailable(state)) {
     panel.querySelector('.afterglow-actions').insertAdjacentHTML('beforeend', `<div class="civic-invitation"><p>${state.civic.phase === 'done' ? 'Later on the block: a tenant listening hour, kept as a shared memory.' : 'A later afternoon: the neighbors want to talk about staying and thriving here. A peaceful tenant listening hour is ready whenever you are.'}</p>${button('civic-hour', state.civic.phase === 'done' ? 'Remember our listening hour ↗' : state.civic.phase === 'idle' ? 'A tenant listening hour ↗' : 'Continue our listening hour ↗')}</div>`);
     bind('civic-hour', () => civicScreen());
@@ -319,8 +368,10 @@ function updateAfterglow() {
   if (packing) { $('#open-gathering').innerHTML = 'Your afternoon <span>↗</span>'; $('#neighbor-quote').textContent = allReturned ? '“Everything borrowed is back. That makes next time easier.”' : '“I’ll fold the seats. You catch up with the others.”'; $('#neighbor-credit').textContent = '— Bea, your neighbor'; }
   if (state.hosting.order.length) { if (!packing) panel.querySelector('.afterglow-heading h2').textContent = 'Your opening afternoon.'; panel.querySelector('.gathering-caption').textContent = 'Opening chapter: ' + scene.caption; $('#open-gathering').innerHTML = 'Remember the opening <span>↗</span>'; }
 }
+const FILM_DONE = GODOT['main.gd'].film_capture_shot;
 function filmScreen(message = '', focusId = '', viewIndex = 0) {
   if (!filmAvailable(state)) return;
+  if (state.film.phase === 'done') { if (ending.open('screening')) { modalReturnTarget = $('#film-shoot'); if (message) toast(message); } return; }
   const film = state.film, plan = film.result || film.draft;
   const index = Math.max(0, Math.min(2, viewIndex)), id = film.phase === 'shooting' ? plan.order[film.captured.length] : plan.order[index];
   const scroll = modal.open && !!$('#film-view') ? modal.scrollTop : 0;
@@ -335,7 +386,7 @@ function filmScreen(message = '', focusId = '', viewIndex = 0) {
   modalReturnTarget = $('#film-shoot');
   const step = (type,extra={}) => () => { act({type,...extra}); filmScreen(); };
   for(const type of ['start','roll','clear'])bind(`film-${type}`,step(`film-${type}`));
-  bind('film-capture',()=>{const before=state.film.captured.length;act({type:'film-capture',id});filmScreen(state.film.captured.length===before?'This shot is already kept. Here is the current take.':state.film.phase==='done'?'All three shots kept. Your screening is ready.':`Shot ${state.film.captured.length} kept. Next: shot ${state.film.captured.length+1} of 3.`);});
+  bind('film-capture',()=>{const before=state.film.captured.length;act({type:'film-capture',id});filmScreen(state.film.captured.length===before?'This shot is already kept. Here is the current take.':state.film.phase==='done'?gdf(FILM_DONE.summary,FILM_SHOTS[id].label,3,FILM_DONE.complete)+' '+FILM_DONE.invitation:`Shot ${state.film.captured.length} kept. Next: shot ${state.film.captured.length+1} of 3.`);});
   for(const [key,options] of [['framing',FILM_FRAMING],['plan',FILM_PLANS]])for(const [value,item] of Object.entries(options))bind(`film-${key}-${value}`,()=>{act({type:'film-choice',key,value});filmScreen(`${item.label} selected.`,`film-${key}-${value}`);});
   for(const shot of plan.order)for(const [direction,delta] of [['up',-1],['down',1]])bind(`film-${direction}-${shot}`,()=>{act({type:'film-move',id:shot,direction:delta});const pos=state.film.draft.order.indexOf(shot),canRepeat=direction==='up'?pos>0:pos<2;filmScreen(`${FILM_SHOTS[shot].label} is now ${pos+1} of 3.`,`film-${canRepeat?direction:direction==='up'?'down':'up'}-${shot}`);});
   for(let i=0;i<3;i++)bind(`film-frame-${i}`,()=>{filmScreen(`Frame ${i+1} of 3.`,`film-frame-${i}`,i);});
@@ -353,14 +404,14 @@ function civicScreen(message = '', focusId = '') {
     const groups = [['topic', 'A shared question', CIVIC_TOPICS], ['format', 'Make room for the conversation', CIVIC_FORMATS], ['notes', 'Agree what to keep', CIVIC_NOTES]];
     content = `<p>Choose where this conversation begins. The other priority stays part of what neighbors want to discuss next time. Both setups preserve a through-route without a microphone.</p>${groups.map(([key, label, options]) => `<fieldset class="civic-options"><legend>${label}</legend><div class="button-row">${Object.entries(options).map(([value, item]) => `<button id="civic-${key}-${value}" class="secondary-button" aria-pressed="${plan[key] === value}">${item.label}</button>`).join('')}</div><p>${key === 'topic' ? CIVIC_TOPICS[plan.topic].request : options[plan[key]].detail}</p></fieldset>`).join('')}<img class="civic-plan" alt="Schematic plan: seats and notice table stay beside an uninterrupted through-route. The selected format is described above." src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(civicPlanSVG(plan))}"><p class="footnote">Original fictional event setup, not a real street closure, permit or surveyed access plan. No map coordinates, main supplies or soundtrack are changed.</p>${button('civic-open', 'Welcome the listening hour', true)}`;
   } else {
-    content = `<p><strong>${CIVIC_TOPICS[plan.topic].label}</strong> · ${CIVIC_FORMATS[plan.format].label} · ${CIVIC_NOTES[plan.notes].label}</p><img class="civic-plan" alt="The agreed fictional shared-space plan, with a clear through-route." src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(civicPlanSVG(plan))}"><p>${CIVIC_FORMATS[plan.format].detail}</p><div class="civic-voices">${civicConversation(plan).map(v => `<p><strong>${v.name}:</strong> ${v.text}</p>`).join('')}</div><p>${CIVIC_NOTES[plan.notes].detail}</p>${plan.notes === 'themes' ? `<div class="history-entry"><h3>Our shared request</h3><p>${CIVIC_TOPICS[plan.topic].request}</p><p>This authored draft stays in the game. It has not been sent to anyone.</p></div>` : '<p>No shared-request note was kept. The scripted scene can be revisited as a fictional game memory, not a transcript of real people.</p>'}${c.phase === 'meeting' ? `<p>The neighbors hold the conversation with your agreed setup. A disagreement stays open; no chore or meeting solves housing insecurity. Listening, passing and leaving are welcome.</p>${button('civic-close', 'Close the listening hour together', true)}` : '<p id="civic-memory">The listening hour is complete. Your setup and the neighbors’ differing responses are remembered; the other priority remains for another day. You can still explore and revisit either gathering.</p>'}`;
+    content = `<p><strong>${CIVIC_TOPICS[plan.topic].label}</strong> · ${CIVIC_FORMATS[plan.format].label} · ${CIVIC_NOTES[plan.notes].label}</p><img class="civic-plan" alt="The agreed fictional shared-space plan, with a clear through-route." src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(civicPlanSVG(plan))}"><p>${CIVIC_FORMATS[plan.format].detail}</p><div class="civic-voices">${civicConversation(plan).map(v => `<p><strong>${v.name}:</strong> ${v.text}</p>`).join('')}</div><p>${CIVIC_NOTES[plan.notes].detail}</p>${plan.notes === 'themes' ? `<div class="history-entry"><h3>Our shared request</h3><p>${CIVIC_TOPICS[plan.topic].request}</p><p>This authored draft stays in the game. It has not been sent to anyone.</p></div>` : '<p>No shared-request note was kept. The scripted scene can be revisited as a fictional game memory, not a transcript of real people.</p>'}${c.phase === 'meeting' ? `<p>The neighbors hold the conversation with your agreed setup. A disagreement stays open; no chore or meeting solves housing insecurity. Listening, passing and leaving are welcome.</p>${button('civic-close', 'Close the listening hour together', true)}` : '<p id="civic-memory">The listening hour is complete. Your setup and the neighbors’ differing responses are remembered; the other priority remains for another day. You can still explore and revisit either gathering.</p>' + ending.civicOfferHTML()}`;
   }
   show(`<section id="civic-view"><span class="eyebrow">TENANT LISTENING HOUR · FICTIONAL</span><h2 id="modal-title" tabindex="-1">${c.phase === 'done' ? 'We made room to be heard.' : c.phase === 'meeting' ? 'A conversation, held together.' : 'Neighbors staying and thriving.'}</h2>${content}<p id="civic-message" class="grid-message">${message}</p><div class="button-row">${button('civic-back', ['idle', 'done'].includes(c.phase) ? 'Back to the block' : 'Keep our place & return')}</div><p class="footnote">All speakers and dialogue are fictional. No personal input, attendee list, recording, sign-up, real organization position or outbound message. The game remembers setup choices locally.</p></section>`);
   modalReturnTarget = $('#civic-hour');
   const step = type => () => { act({ type }); civicScreen(); };
   bind('civic-start', step('civic-start')); bind('civic-open', step('civic-open')); bind('civic-close', step('civic-close'));
   for (const [key, options] of [['topic', CIVIC_TOPICS], ['format', CIVIC_FORMATS], ['notes', CIVIC_NOTES]]) for (const [value, item] of Object.entries(options)) bind(`civic-${key}-${value}`, () => { act({ type: 'civic-choice', key, value }); civicScreen(`${item.label} selected.`, `civic-${key}-${value}`); });
-  bind('civic-back', () => close($('#civic-hour')));
+  bind('civic-back', () => close($('#civic-hour'))); ending.bindCivicOffer();
   if (focusId) { modal.scrollTop = scroll; const target = document.getElementById(focusId); target?.focus({ preventScroll: true }); target?.scrollIntoView({ block: 'nearest' }); }
   else { modal.scrollTop = 0; $('#modal-title').focus({ preventScroll: true }); }
 }
@@ -375,13 +426,15 @@ function hostingScreen(message = '', focusId = '') {
     bind('host-begin', () => { stopWalk(); act({ type: 'host-start' }); hostingScreen('The neighbors are here. Take your time.'); });
     bind('host-close', () => close($('#host-afternoon'))); return;
   }
+  if (!id && ending.open('hosted')) { modalReturnTarget = $('#host-afternoon'); if (message) toast(message); return; }
   const finished = !id, art = hostedResult(host, 'art'), previousScroll = $('#hosting-order') ? modal.scrollTop : 0;
   let activity = '';
-  if (id === 'stories') activity = `<p>“An invitation, not an obligation,” says Bea. “Choose an opening question. I’ll offer the first story; anyone can pass or just listen.”</p><div class="host-choices">${Object.entries(STORY_CHOICES).map(([key, label]) => `<button id="host-story-${key}" class="secondary-button" aria-pressed="${draft.story === key}">${label}</button>`).join('')}</div><p>Bea’s opening: ${draft.story === 'memory' ? '“I remember a neighbor saving a chair for me when I was new here. A small thing that stayed.”' : '“I’d like a garden in a box, something we could tend together. Maybe someone has seeds.”'}</p>`;
-  if (id === 'beats') activity = `<p>“Leave spaces as well as taps,” says Dez. Shape eight steps with him. Selected steps are taps; the others are rests. You can leave every step quiet and share a listening round.</p><div class="host-beats" aria-label="Eight-step visual rhythm">${Array.from({ length: 8 }, (_, i) => `<button id="host-beat-${i}" aria-label="Step ${i + 1}: ${draft.pattern & 1 << i ? 'tap' : 'rest'}" aria-pressed="${!!(draft.pattern & 1 << i)}">${i + 1}<small>${draft.pattern & 1 << i ? 'TAP' : 'rest'}</small></button>`).join('')}</div><p>This is a visual rhythm you can tap along with. It does not add a recording or change your optional soundtrack. ${draft.pattern ? 'Dez traces your pattern with a hand in the air.' : 'Dez lowers his hands. “We can listen together too.”'}</p>`;
+  if (id === 'stories') activity = `<p>${esc(invitationHubText(draft.story))}</p><img class="host-art" alt="Original folded-paper invitation for ${esc(STORY_CHOICES[draft.story])}." src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(invitationSVG(draft.story))}"><div class="host-choices">${Object.entries(STORY_CHOICES).map(([key, label]) => `<button id="host-story-${key}" class="secondary-button" aria-pressed="${draft.story === key}">${label}</button>`).join('')}</div>`;
+  const BEATS = HOSTING_FORK_TEXT.beats;
+  if (id === 'beats') activity = `<p>${esc(BEATS.intro)}</p><div class="host-beats" aria-label="Eight-step visual rhythm">${Array.from({ length: 8 }, (_, i) => `<button id="host-beat-${i}" aria-label="Step ${i + 1}: ${draft.pattern & 1 << i ? 'tap' : 'rest'}" aria-pressed="${!!(draft.pattern & 1 << i)}">${i + 1}<small>${draft.pattern & 1 << i ? 'TAP' : 'rest'}</small></button>`).join('')}</div><p>${esc(BEATS.tail)} ${esc(draft.pattern ? BEATS.traced : BEATS.quiet)}</p>${button('host-rhythm', esc(rhythm.entryLabel()).replace(/\n/g, '<br>'))}`;
   if (id === 'art') activity = `<p>Celeste brings six prepared tiles: circles, waves and rising triangles. Change each tile with a tap, or keep her starting arrangement. These are original portable panels, away from real buildings and existing art.</p><img class="host-art" alt="Your original six-tile panel; matching numbered controls are below." src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(tilePanelSVG(draft))}"><div class="host-tiles" aria-label="Six tiles, left to right, top to bottom">${draft.tiles.map((tile, i) => `<button id="host-tile-${i}" data-rapid aria-label="Tile ${i + 1}: ${['circle', 'wave', 'triangle'][tile]}. Change shape." class="secondary-button">${i + 1} · ${['Circle', 'Wave', 'Triangle'][tile]}</button>`).join('')}</div><div class="host-choices">${['warm', 'cool'].map(key => `<button id="host-palette-${key}" class="secondary-button" aria-pressed="${draft.palette === key}">${key === 'warm' ? 'Warm' : 'Cool'} palette</button>`).join('')}</div>`;
-  if (id === 'pause') activity = `<p>Thanh has brought three stools. “Keep the through-route open. An open arc, or a pair with a place someone can join?” Try both; the visitors on the block follow your choice. Nobody has to sit or stay.</p><div class="host-choices">${Object.entries(QUIET_CHOICES).map(([key, label]) => `<button id="host-quiet-${key}" class="secondary-button" aria-pressed="${draft.quiet === key}">${label}</button>`).join('')}</div><p>${draft.quiet === 'arc' ? 'The open arc makes a shared place to sit without closing the route.' : 'A pair makes room for a quiet conversation; the open seat leaves an invitation.'} This is an unhurried pause. Continue whenever you want; there is no timer.</p>`;
-  show(`<span class="eyebrow">OUR SECOND AFTERNOON · ${finished ? 'SHARED AND REMEMBERED' : `${host.results.length + 1} OF 4`}</span><h2 id="modal-title">${finished ? 'We made room for another afternoon.' : `${segment(id).name} · ${segment(id).owner}`}</h2><ol id="hosting-order">${host.order.map((key, i) => `<li ${i === host.results.length ? 'aria-current="step"' : ''}>${i < host.results.length ? '✓ ' : ''}${segment(key).name}</li>`).join('')}</ol>${message ? `<p class="grid-message">${message}</p>` : ''}${finished ? `<p>Bea, Dez, Celeste, Rook and Thanh each helped make this gathering. The choices you shared remain in the block and in their conversations. You can keep exploring.</p>${art ? `<img class="host-art" alt="Completed original six-tile panel." src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(tilePanelSVG(art))}">` : ''}` : activity}<div class="button-row">${!finished ? button('host-complete', ({ stories: 'Share this invitation', beats: draft.pattern ? 'Share this pattern' : 'Share a listening round', art: 'Hang our panel', pause: 'Make room for this pause' })[id], true) : ''}${button('host-close', finished ? 'Back to our block' : 'Save & explore the block')}</div>${host.results.length ? `<details class="host-memories" ${finished ? 'open' : ''}><summary>What we shared</summary><ol>${host.results.map(result => `<li>${activitySummary(result)}</li>`).join('')}</ol></details>` : ''}<p class="footnote">This gathering keeps the running order you began with. Future programme edits stay separate. Original fictional neighbors and portable event art; no real event or performance is reproduced.</p>`);
+  if (id === 'pause') activity = `<p>${esc(quietHubText(draft.quiet))}</p><div class="host-choices">${Object.entries(QUIET_CHOICES).map(([key, label]) => `<button id="host-quiet-${key}" class="secondary-button" aria-pressed="${draft.quiet === key}">${label}</button>`).join('')}</div>`;
+  show(`<span class="eyebrow">OUR SECOND AFTERNOON · ${finished ? 'SHARED AND REMEMBERED' : `${host.results.length + 1} OF 4`}</span><h2 id="modal-title">${finished ? 'We made room for another afternoon.' : `${segment(id).name} · ${segment(id).owner}`}</h2><ol id="hosting-order">${host.order.map((key, i) => `<li ${i === host.results.length ? 'aria-current="step"' : ''}>${i < host.results.length ? '✓ ' : ''}${segment(key).name}</li>`).join('')}</ol>${message ? `<p class="grid-message">${message}</p>` : ''}${finished ? `<div class="hosted-review">${hostedReview(state).map(item => `<article><p><strong>${esc(item.lines[0])}</strong></p><p>${item.lines.slice(1).map(esc).join('<br>')}</p></article>`).join('')}</div>${hostedInvitation(state) ? `<p id="hosted-invitation">${esc(hostedInvitation(state))}</p>` : ''}${hostedInvitationAvailable(state) ? button('host-follow', 'Follow this invitation', true) : ''}${art ? `<img class="host-art" alt="Completed original six-tile panel." src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(tilePanelSVG(art))}">` : ''}` : activity}<div class="button-row">${!finished ? button('host-complete', gdFormat(HUB_LABELS.programmeHost, host.results.length), true) : ''}${button('host-close', finished ? 'Back to our block' : 'Save & explore the block')}</div>${host.results.length ? `<details class="host-memories" ${finished ? 'open' : ''}><summary>What we shared</summary><ol>${host.results.map(result => `<li>${esc(hostedDetail(state, result.id).split('\n').at(-1))}</li>`).join('')}</ol></details>` : ''}<p class="footnote">This gathering keeps the running order you began with. Future programme edits stay separate. Original fictional neighbors and portable event art; no real event or performance is reproduced.</p>`);
   modalReturnTarget = $('#host-afternoon');
   const edit = (action, control) => { act(action); hostingScreen('', control); };
   for (const key of Object.keys(STORY_CHOICES)) bind(`host-story-${key}`, () => edit({ type: 'host-story', value: key }, `host-story-${key}`));
@@ -392,9 +445,10 @@ function hostingScreen(message = '', focusId = '') {
   bind('host-complete', () => {
     const previousCount = state.hosting.results.length;
     act({ type: 'host-complete', id });
-    hostingScreen(state.hosting.results.length > previousCount ? activitySummary(state.hosting.results.at(-1)) : 'This part is already recorded. Here is where the gathering is now.');
+    hostingScreen(state.hosting.results.length > previousCount ? hostedCompletion(state, id) : 'This part is already recorded. Here is where the gathering is now.');
   });
   bind('host-close', () => close($('#host-afternoon')));
+  bind('host-follow', () => civicScreen()); bind('host-rhythm', () => rhythm.open('hosting'));
   if (focusId) { const target = document.getElementById(focusId); modal.scrollTop = previousScroll; target?.focus({ preventScroll: true }); target?.scrollIntoView({ block: 'nearest' }); }
   else { modal.scrollTop = 0; $('#modal-title').setAttribute('tabindex', '-1'); $('#modal-title').focus({ preventScroll: true }); }
 }
@@ -421,9 +475,9 @@ function programmeEditor(message = '', focusId = '') {
 function programmePoster() {
   const { published, order } = state.programme, svg = programmeSVG(published);
   if (!svg) return programmeEditor();
-  show(`<span class="eyebrow">OUR POSTED PROGRAMME · FICTIONAL FUTURE GATHERING</span><h2 id="modal-title">${programmeTitle(published)}</h2><img class="programme-poster" alt="Original programme poster. The same running order is listed below." src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}"><ol id="posted-programme">${published.map(id => `<li>${segment(id).name} · proposed by ${segment(id).owner}</li>`).join('')}</ol><p>No real festival, date or performance is announced. ${state.hosting.order.length ? "This is a future plan. The gathering you began keeps its own running order, shown on the portable board. Revisions here do not rewrite it." : "This poster is ready to host as a fictional second afternoon. The portable board beside the mural shows this order."} Your optional soundtrack remains yours to choose.</p><div class="programme-response"><h3>The neighbors answer</h3>${['bea', 'dez', 'celeste', 'thanh'].map(id => `<p><strong>${NEIGHBORS.find(n => n.id === id).name}:</strong> ${programmeResponse(id, published)}</p>`).join('')}</div><p>${JSON.stringify(order) === JSON.stringify(published) ? 'Your draft matches this poster. You can still revise it.' : 'You have an unposted draft. This poster keeps the last programme everyone agreed on.'}</p><div class="button-row">${button('programme-edit', 'Revise the running order', true)}${button('programme-host', state.hosting.order.length ? 'Visit our second gathering' : 'Host the programme')}${button('programme-poster-close', 'Back to the block')}</div><p class="footnote">Original abstract art, no photos or real musician likenesses. Separate from your gathering keepsake and from real history in Field notes.</p>`);
+  show(`<span class="eyebrow">OUR POSTED PROGRAMME · FICTIONAL FUTURE GATHERING</span><h2 id="modal-title">${programmeTitle(published)}</h2><img class="programme-poster" alt="Original programme poster. The same running order is listed below." src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}"><ol id="posted-programme">${published.map(id => `<li>${segment(id).name} · proposed by ${segment(id).owner}</li>`).join('')}</ol><p>No real festival, date or performance is announced. ${state.hosting.order.length ? "This is a future plan. The gathering you began keeps its own running order, shown on the portable board. Revisions here do not rewrite it." : "This poster is ready to host as a fictional second afternoon. The portable board beside the mural shows this order."} Your optional soundtrack remains yours to choose.</p><div class="programme-response"><h3>The neighbors answer</h3>${['bea', 'dez', 'celeste', 'thanh'].map(id => `<p><strong>${NEIGHBORS.find(n => n.id === id).name}:</strong> ${programmeResponse(id, published)}</p>`).join('')}</div><p>${JSON.stringify(order) === JSON.stringify(published) ? 'Your draft matches this poster. You can still revise it.' : 'You have an unposted draft. This poster keeps the last programme everyone agreed on.'}</p><div class="button-row">${button('programme-edit', 'Revise the running order', true)}${state.hosting.results.length === 4 ? button('programme-gather', ending.gatherLabel(), false, !!programmeIssue(published) && !ending.snapshot().visit.gather.order.length) : ''}${button('programme-host', state.hosting.order.length ? 'Visit our second gathering' : 'Host the programme')}${button('programme-poster-close', 'Back to the block')}</div><p class="footnote">Original abstract art, no photos or real musician likenesses. Separate from your gathering keepsake and from real history in Field notes.</p>`);
   bind('programme-edit', () => programmeEditor('', 'programme-order-heading'));
-  bind('programme-host', () => hostingScreen());
+  bind('programme-host', () => hostingScreen()); bind('programme-gather', () => { if (ending.open('gather')) modalReturnTarget = $('#host-afternoon'); });
   modalReturnTarget = $('#next-afternoon');
   $('#modal-title').setAttribute('tabindex', '-1'); $('#modal-title').focus({ preventScroll: true });
   bind('programme-poster-close', () => close($('#next-afternoon')));
@@ -463,19 +517,112 @@ function packingChoice() {
   show(`<span class="eyebrow">WHENEVER YOU’RE READY</span><h2 id="modal-title">An afternoon winds down.</h2><p>“I’ll fold the seats,” says Bea. “Would you bring the table to Thanh, the paint case to Celeste, and the speaker to Rook?”</p><p>You can still explore afterward. This ends the active gathering. ${state.epilogue.photo.status === 'taken' ? 'Your illustrated keepsake is already saved in your field notes.' : 'If you want an illustrated keepsake, make it before packing; you can also leave the afternoon as a story.'}</p><div class="button-row">${button('confirm-pack', 'Let’s pack up together ↗', true)}${button('pack-later', 'Stay a little longer')}</div>`);
   bind('confirm-pack', () => { const done = act({ type: 'pack' }) && state.epilogue.packing; close(); if (done) toast('Bea folds the seats. Return the three borrowed supplies in any order, or take a walk first.'); }); bind('pack-later', close);
 }
-function returnLoan(loan) {
-  if (!state.opened || !state.epilogue.packing || state.epilogue.returned.includes(loan.id)) return;
-  const replies = { table: '“Thanks for bringing it back. It’s seen a lot of afternoons like this. Let’s give it another one soon.”', 'paint-case': '“Still plenty of paint for next time. Keep the panel up a little longer; I like what we made.”', speaker: '“Cable coiled, speaker back. Good crew today. Next time I’ll tell you about the show where the power went out.”' };
-  show(`${characterHeader(loan.owner)}<p>${replies[loan.id]}</p><p>You return ${loan.label}. The gathering is already complete; this is a chance to say thanks.</p><div class="button-row">${button('return-event-loan', 'Return the borrowed supply ↗', true)}${button('return-later', 'Catch you in a bit')}</div>`);
-  bind('return-event-loan', () => { const done = act({ type: 'return-loan', id: loan.id }) && state.epilogue.returned.includes(loan.id); close(); if (done) toast(state.epilogue.returned.length === LOANS.length ? 'All three loans are back. The neighbors are ready for another afternoon.' : 'Returned with thanks. You can keep exploring.'); }); bind('return-later', close);
+// Conversations, ported from Godot (characters.js): one dialog for every neighbor with Godot's rotating lines and memory
+// tails, Keep Chatting, What's Next?, Goodbye and up to three context actions that reuse the fork's own screens and walks.
+const esc = text => String(text ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const neighborById = id => NEIGHBORS.find(n => n.id === id);
+const muralPlace = () => PLACES.find(p => p.id === 'mural');
+// Godot-only fields, cleaned as Godot cleans them: surprises from the shared save (read-only) and the fork's own mural scenes.
+const talkExtras = () => ({ surprises: godotExtras(envelope ?? recovery?.envelope).surprises, muralScenes: state.muralScenes ?? {} });
+const musicView = () => ({ playing: music.enabled || music.starting, mode: music.fileName ? 'local' : 'sketch', localName: music.fileName, volume: settings.volume });
+const openConversation = () => modal.open ? body.querySelector('[data-conversation]')?.dataset.conversation ?? null : null;
+// The ids the fork's screens and tests already use for these actions; the rest are talk-<Godot action id>.
+const ACTION_DOM = { layout_table: 'choose-table', layout_floor: 'choose-floor', shared_panel: 'dez-panel' };
+function actionDom(action) {
+  if (ACTION_DOM[action.id]) return ACTION_DOM[action.id];
+  if (action.id.startsWith('return_owner:')) return state.epilogue.returned.includes(action.id.slice('return_owner:'.length)) ? 'loan-receipt' : 'return-event-loan';
+  return `talk-${action.id.replace(/[^a-z0-9]+/gi, '-')}`;
 }
-
-function layoutChoice() {
-  if (state.epilogue.packing) { show(`${characterHeader('bea')}<p>“Seats are folded. I’m leaving a little room for whoever stops to say goodbye.”</p><p>Today’s ${state.layout === 'table' ? 'Long Table' : 'Open Floor'} is a memory now. We kept the other idea for another afternoon.</p><div class="button-row">${button('back-block', 'Back to the block', true)}</div>`); bind('back-block', close); return; }
-  if (state.opened) { show(`${characterHeader('bea')}<p>“There’s a place for everyone. I’m keeping a seat for whoever wanders over next.”</p><p>Today’s ${state.layout === 'table' ? 'Long Table' : 'Open Floor'} is all set. We kept the other idea in our notes for another afternoon.</p><div class="button-row">${button('back-block', 'Back to the gathering', true)}</div>`); bind('back-block', close); return; }
-  show(`${characterHeader('bea')}<p>“We’ve been wanting an afternoon like this. I’m bringing the table; Dez and Celeste have a different idea for the space. What do you think?”</p><div class="choice-cards"><button id="choose-table" class="choice-card ${state.layout === 'table' ? 'selected' : ''}"><div class="layout-preview"><i></i><i></i></div><strong>Long Table</strong><small>Bea’s idea: seats, stories, and room to linger.</small></button><button id="choose-floor" class="choice-card ${state.layout === 'floor' ? 'selected' : ''}"><div class="layout-preview open"><i></i><i></i><i></i></div><strong>Open Floor</strong><small>Dez & Celeste’s idea: a little room for music and art.</small></button></div><p class="footnote">Everyone is welcome in either layout. The other idea goes into your field notes for another time. You can change your mind before opening.</p>`);
-  for (const value of ['table', 'floor']) bind(`choose-${value}`, () => { act({ type: 'layout', value }); layoutEditor(); });
+// The live region for speech and conversation steps while no dialog shows them (hint() keeps it until it expires).
+function routeSay(text, seconds = 6) { routeSpeech = { text, until: performance.now() + seconds * 1000 }; $('#route-status').textContent = text; }
+// Godot show_neighbor_speech: the shared bubble over the speaker. An open dialog already shows the line, so it is not repeated.
+function say(id, line) {
+  const text = spokenText(line);
+  bubble = showBubble(id, text);
+  if (bubble && !modal.open) routeSay(`${neighborById(id)?.name ?? ''}: ${text}`, bubble.timer);
 }
+// custom is Godot's last_panel_dialogue (a What's Next? line, a loan reply or refusal); announce is the a11y line.
+function conversation(id, { custom = '', announce = '', speak = true } = {}) {
+  const n = neighborById(id);
+  if (!n) return;
+  const narrow = isNarrow(innerWidth), m = musicView(), goal = nextObjective(state, storyWorld());
+  const view = conversationView(state, talkExtras(), talks, id, goal, { narrow, music: m, custom });
+  const label = text => narrow ? narrowLabel(text) : text;
+  const actions = view.actions.map(a => ({ ...a, dom: actionDom(a), pressed: a.id === 'layout_table' ? state.layout === 'table' : a.id === 'layout_floor' ? state.layout === 'floor' : null }));
+  // Bea holds the layout until the block opens, so its choice stays in her conversation (Godot keeps it in the block hub).
+  if (id === 'bea' && !state.opened && !actions.some(a => a.id === 'layout_table')) for (const [aid, text, value] of [['layout_table', ACTION_LABELS.layoutTable, 'table'], ['layout_floor', ACTION_LABELS.layoutFloor, 'floor']]) actions.push({ id: aid, label: label(text), dom: ACTION_DOM[aid], pressed: state.layout === value });
+  // Celeste's easel panel opens the mural (Godot's Compose Mural).
+  if (id === 'celeste') actions.push({ id: 'compose', label: 'Compose Mural', dom: 'start-mural', pressed: null });
+  const controls = id === 'rook'
+    ? view.music.flatMap(b => [{ ...b, dom: b.id === 'soundcheck' ? 'soundcheck' : `talk-${b.id}`, rapid: b.id === 'volume' }, ...b.id === 'soundcheck' ? [{ id: 'load', label: 'Load Local Track', dom: 'talk-load', rapid: false }] : []])
+    : view.buttons.map(b => ({ ...b, dom: `talk-${b.id}` }));
+  const detail = id === 'rook' ? rookMusicDetail(state, view.detail, m) : view.detail;
+  const actionHTML = actions.map((a, i) => `<button id="${a.dom}" class="${i === 0 ? 'primary-button' : 'secondary-button'}"${a.pressed === null ? '' : ` aria-pressed="${a.pressed}"`}>${esc(a.label)}</button>`).join('');
+  const controlHTML = controls.map(b => `<button id="${b.dom}" class="secondary-button"${b.rapid ? ' data-rapid' : ''}>${esc(b.label)}</button>`).join('');
+  show(`<section class="conversation" data-conversation="${id}" style="--talk-border:${view.border}"><div class="character-heading"><span class="portrait" style="background:${n.coat}55" aria-hidden="true">${n.name[0]}</span><div><h2 id="modal-title">${n.name}</h2><span class="eyebrow">${esc(n.role.toUpperCase())}</span></div></div><p class="talk-badge">${esc(view.badge)}</p><p id="talk-header" class="talk-header">${esc(view.header)}</p><p id="talk-line" class="talk-line">${esc(detail)}</p>${actionHTML ? `<div class="button-row talk-actions" role="group" aria-label="Things to do with ${n.name}">${actionHTML}</div>` : ''}<div class="button-row talk-controls" role="group" aria-label="${id === 'rook' ? 'Music and conversation' : 'Conversation'}">${controlHTML}</div></section>`);
+  if (announce) $('#modal-status').textContent = announce;
+  if (speak) say(id, custom || view.line);
+  for (const a of actions) bind(a.dom, () => runConversationAction(id, a));
+  bind('talk-chat', () => talk(id, 'talk'));
+  bind('talk-next', () => askWhatsNext(id));
+  bind('talk-bye', () => goodbye(id));
+  if (id !== 'rook') return;
+  bind('soundcheck', () => talk('rook', 'talk'));
+  bind('talk-play', async () => { await toggleMusic(); if (openConversation() === 'rook') conversation('rook', { speak: false }); });
+  bind('talk-volume', () => { settings.volume = nextVolume(settings.volume); music.setVolume(settings.volume); saveSettings(); conversation('rook', { speak: false, announce: volumeAnnouncement(settings.volume) }); });
+  bind('talk-sketch', () => { music.useSketch(); conversation('rook', { speak: false }); });
+  bind('talk-load', showMusic);
+}
+// Godot run_conversation_action_id, onto the fork's own screens and walking routes.
+function runConversationAction(partner, action) {
+  const [kind, arg] = action.id.split(':');
+  switch (kind) {
+    case 'return_owner': return state.epilogue.returned.includes(arg) ? conversation(partner, { custom: loanReply(arg), announce: loanReply(arg) }) : returnLoan(arg, partner);
+    case 'walk_neighbor': return goTo(neighborById(arg));
+    case 'layout_table': case 'layout_floor': act({ type: 'layout', value: kind === 'layout_table' ? 'table' : 'floor' }); return layoutEditor();
+    case 'compose': return muralEditor();
+    case 'mural': return partner === 'celeste' ? muralEditor() : goTo(muralPlace());
+    case 'soundcheck': return partner === 'rook' ? talk('rook', 'talk') : goTo(neighborById('rook'));
+    case 'open': return finale();
+    case 'epilogue': { const goal = nextObjective(state, storyWorld()); return goal.id === 'photo' ? photoConsent() : goal.id === 'pack' ? packingChoice() : goal.target ? goTo(goal.target) : undefined; }
+    case 'programme': return state.hosting.order.length || state.programme.published.length === SEGMENTS.length ? hostingScreen() : programmeEditor();
+    case 'civic': return civicScreen();
+    case 'film': return filmScreen();
+    case 'comptons': return state.history ? history() : goTo(PLACES.find(p => p.id === 'history'));
+    case 'blackhawk': return state.blackhawk ? blackhawk() : goTo(BLACK_HAWK);
+    case 'shared_panel': close(); return goTo(muralPlace());
+    case 'hub': return neighbors();
+  }
+}
+// Godot ask_whats_next: the partner says the hint. With somewhere to go, the fork walks there (Godot's gold marker);
+// otherwise the line stays in the conversation.
+function askWhatsNext(id) {
+  const goal = nextObjective(state, storyWorld()), line = whatsNext(goal, id), announce = whatsNextAnnouncement(goal, id);
+  const target = goal.id === 'blackhawk' ? goal.target || BLACK_HAWK : goal.target;
+  if (target && target.id !== id && Math.hypot(state.player.x - target.x, state.player.y - target.y) >= 35) { goTo(target); say(id, line); routeSay(announce); return; }
+  conversation(id, { custom: line, announce });
+}
+// Godot end_conversation: "You said goodbye to %s." on screen, and the next step for screen readers.
+function goodbye(id) { const lines = goodbyeLines(id, nextObjective(state, storyWorld())); close(); toast(lines.text); routeSay(lines.announcement); }
+// loan_homecoming.gd return_to_owner: refused, with nothing changed, when the save has no room; otherwise the owner's
+// reply goes in the bubble and the announcement, and the conversation keeps a "Returned" receipt for this visit.
+function returnLoan(id, partner) {
+  if (!state.opened || !state.epilogue.packing || state.epilogue.returned.includes(id)) return;
+  const action = { type: 'return-loan', id };
+  if (!held && !recovery && envelope) {
+    const trial = buildGodotSave(envelope, applyAction(state, action));
+    if (!trial.ok && trial.reason === 'full') { const line = loanRefusal(id); conversation(partner, { custom: line, announce: line }); return; }
+  }
+  const done = act(action) && state.epilogue.returned.includes(id);
+  close();
+  if (!done) return;
+  talks = confirmLoan(talks, id);
+  const count = state.epilogue.returned.length;
+  toast(count === LOANS.length ? LOAN_COMPLETION_NOTICE + loanReply(id) : loanReturnAnnouncement(id, count));
+  say(partner, loanReply(id));
+}
+// Bea's conversation carries the layout choice until the block opens.
+function layoutChoice() { conversation('bea'); }
 function layoutEditor(message = null, scrollLeft = null) {
   if (!state.layout || state.opened) return layoutChoice();
   if (message === null) { activeTool = FURNITURE.find(id => !state.furniture[id]) || activeTool; message = 'Choose a supply, then choose a space. You can move it again.'; }
@@ -512,7 +659,7 @@ function muralEditor(message = null) {
     cells.push(`<button id="mcell-${col}-${row}" class="grid-cell" data-col="${col}" data-row="${row}" style="color:${item ? PALETTE_COLORS[state.palette][MOTIFS.indexOf(item[0])] : '#b79e77'}" aria-label="Panel column ${col + 1}, row ${row + 1}: ${item ? item[0] : 'empty'}">${item ? SIGNS[item[0]] : '·'}</button>`);
   }
   const labels = { sun: 'Lulu’s sun', wave: 'Dez’s rhythm', rise: 'Celeste’s letters' };
-  show(`<span class="eyebrow">ART WITH THE NEIGHBORS</span><h2 id="modal-title">Many hands. One mural.</h2><p>“Lulu brought a sun, Dez brought a rhythm, and I brought some letters,” says Celeste. “Let’s see what they look like together.”</p><div class="tool-picker">${MOTIFS.map(id => `<button id="motif-${id}" aria-pressed="${activeMotif === id}">${labels[id]}${state.mural[id] ? ' ✓' : ''}</button>`).join('')}</div><div class="placement-grid mural-grid" aria-label="Portable mural panel, 6 columns by 3 rows">${cells.join('')}</div><div class="palette">Palette ${PALETTES.map(id => `<button id="palette-${id}" data-rapid class="swatch ${state.palette === id ? 'selected' : ''}" style="background:${PALETTE_COLORS[id][0]}" aria-label="${id} palette" aria-pressed="${state.palette === id}"></button>`).join('')}</div><p class="grid-message" role="status">${message}</p><div class="button-row">${button('mural-done', progress(state).mural ? 'Our panel is ready ↗' : 'Keep working later ↗', true)}</div><p class="footnote">Original motifs on a fictional, permissioned portable panel. Existing public art stays untouched.</p>`);
+  show(`<span class="eyebrow">ART WITH THE NEIGHBORS</span><h2 id="modal-title">Many hands. One mural.</h2><p>“Lulu brought a sun, Dez brought a rhythm, and I brought some letters,” says Celeste. “Let’s see what they look like together.”</p><div class="tool-picker">${MOTIFS.map(id => `<button id="motif-${id}" aria-pressed="${activeMotif === id}">${labels[id]}${state.mural[id] ? ' ✓' : ''}</button>`).join('')}</div><div class="placement-grid mural-grid" aria-label="Portable mural panel, 6 columns by 3 rows">${cells.join('')}</div><div class="palette">Palette ${PALETTES.map(id => `<button id="palette-${id}" data-rapid class="swatch ${state.palette === id ? 'selected' : ''}" style="background:${PALETTE_COLORS[id][0]}" aria-label="${id} palette" aria-pressed="${state.palette === id}"></button>`).join('')}</div><p class="grid-message" role="status">${message}</p><div class="button-row">${button('mural-done', progress(state).mural ? 'Our panel is ready ↗' : 'Keep working later ↗', true)}${button('mural-scenes', ending.paintScenesLabel())}</div><p class="footnote">Original motifs on a fictional, permissioned portable panel. Existing public art stays untouched.</p>`);
   MOTIFS.forEach(id => bind(`motif-${id}`, () => { activeMotif = id; muralEditor(`Place ${labels[id].toLowerCase()} anywhere on the panel. Move it as often as you like.`); }));
   PALETTES.forEach(id => bind(`palette-${id}`, () => { act({ type: 'palette', value: id }); muralEditor('A new palette, the same shared ideas.'); }));
   body.querySelectorAll('.grid-cell').forEach(cell => cell.addEventListener('click', () => {
@@ -520,41 +667,43 @@ function muralEditor(message = null) {
     if (Object.entries(state.mural).some(([id, p]) => id !== activeMotif && p.col === col && p.row === row)) { muralEditor('Another neighbor’s idea is there. Choose a free space, or move that idea first.'); return; }
     act({ type: 'mural', id: activeMotif, col, row }); const next = MOTIFS.find(id => !state.mural[id]); if (next) activeMotif = next;
     muralEditor(progress(state).mural ? '✓ The whole neighborhood has a hand in this one. You can still rearrange it.' : 'That looks good. Add another neighbor’s idea.');
-  })); bind('mural-done', close);
+  })); bind('mural-done', close); bind('mural-scenes', () => ending.open('stories'));
 }
 function tidy(item) {
   if (state.litter.includes(item.id)) return;
   show(`<span class="eyebrow">A LITTLE TIDYING</span><h2 id="modal-title">${item.label}</h2><p>Bea pointed out this discarded litter before setting up. You check that it isn’t something a neighbor is using, then put it in the gathering’s cleanup bag.</p><div class="button-row">${button('collect-litter', 'Pick it up ↗', true)}${button('leave-litter', 'Come back later')}</div><p class="footnote">Only the three marked litter objects can be collected. Nobody’s belongings are cleanup targets.</p>`);
   bind('collect-litter', () => { const done = act({ type: 'tidy', id: item.id }); close(); if (done) toast(state.litter.length === LITTER.length ? 'A little tidier. Bea has already set out the cleanup bag for the next gathering.' : 'One small thing taken care of.'); }); bind('leave-litter', close);
 }
-// Godot: the first contact is an arrival (finish_neighbor_arrival); talking to someone you have arrived beside, or E nearby, is a talk.
+// Godot: the first contact is an arrival (finish_neighbor_arrival); talking to someone you have arrived beside, or E nearby, is a
+// talk (talk_with_neighbor), which turns to the next line. Talking to Rook is the soundcheck (check_sound_with_rook).
 function talk(id, how = 'tap') {
-  const before = state, talking = how === 'talk' || how === 'tap' && arrivedAt === id;
-  arrivedAt = id; act({ type: 'meet', id, talk: talking });
-  const pendingLoan = LOANS.find(loan => loan.owner === id && state.epilogue.packing && !state.epilogue.returned.includes(loan.id));
-  if (pendingLoan) return returnLoan(pendingLoan);
-  if (state.epilogue.packing && LOANS.some(loan => loan.owner === id && state.epilogue.returned.includes(loan.id))) {
-    show(`${characterHeader(id)}<p>${({ thanh: '“Table’s back and I’ve got a new tune in mind. That was a good afternoon.”', celeste: '“Paint’s packed. The panel stays. Take another look whenever you like.”', rook: '“Speaker’s home. Good crew today. Next time, I’ll bring another story.”' }[id])}</p><div class="button-row">${button('return-chat-close', 'See you around ↗', true)}</div>`); bind('return-chat-close', close); return;
-  }
-  if (id === 'bea') return layoutChoice();
-  if (id === 'celeste') {
-    const comment = state.opened ? state.layout === 'table' ? '“Someone reads the panel, then brings a story back to the table. The letters have started a conversation of their own.”' : '“Dez said nobody had to make a big thing of dancing. So I tried a little step. Turns out the room we left matters.”' : '“I’ve been making signs for ages, but it still feels good when somebody stops to look. For this panel, I want everyone to have a hand in it.”';
-    show(`${characterHeader(id)}<p>${comment}</p><p>${state.opened ? 'The shared panel is finished, and there is still room to try another arrangement of its original shapes.' : 'She has already prepared the panel and mixed the colors. Lulu and Dez have contributed shapes. You can help arrange them.'}</p><div class="button-row">${button('start-mural', state.opened ? 'Look at our mural ↗' : 'Compose the mural ↗', true)}${button('talk-close', state.opened ? 'Enjoy the afternoon' : 'Catch you in a bit')}</div>`);
-    bind('start-mural', () => muralEditor()); bind('talk-close', close); return;
-  }
-  if (id === 'rook') {
-    const checked = state.soundcheck, now = checked && !before.soundcheck;
-    show(`${characterHeader(id)}<p>${checked ? '“There we go. A little less gain, a little more room to hear each other.”' : '“I used to work sound. These days I’m between places, but my ears are still good. Let’s get the speaker facing the gathering.”'}</p><p>${now ? 'Rook spots the feedback before you do, turns the speaker away from the microphone, and sets a comfortable level. He gives you a thumbs-up.' : checked ? 'Rook has the speaker ready. The captions and visual progress stay available with the music off.' : '“Want to run a soundcheck? It only takes a minute, layout or no layout.”'}</p><div class="button-row">${button('soundcheck', checked ? 'Back to the block' : 'Ready when you are, Rook ↗', true)}</div><p class="footnote">Sound is optional. This task works with your speakers muted.</p>`);
-    bind('soundcheck', () => { const fresh = act({ type: 'soundcheck' }); close(); if ((fresh || now) && state.soundcheck) toast('Rook has the sound ready. “We make a pretty good crew.”'); }); return;
-  }
-  if (id === 'dez') {
-    const comment = state.epilogue.packing ? '“That was a good rhythm we found. I’m taking it into the next beat I make.”' : state.opened ? state.layout === 'floor' ? '“Celeste found her feet out there. See? A little open space goes a long way.”' : '“Stories sound good over a quiet beat. Bea’s table turned out pretty nice.”' : state.layout === 'floor' ? '“Thanks for leaving an open floor. Celeste said she might dance if nobody makes a big deal of it.”' : '“I’m into the long table too. I’ll bring a quiet beat so people can hear their stories.”';
-    show(`${characterHeader(id)}<p>“I make beats out of things I hear walking around. A gate closing. A bus kneeling. Bea laughing three doors down.”</p><p>${comment}</p><div class="button-row">${button('dez-panel', 'See Dez’s mural idea', true)}${button('talk-close', state.epilogue.packing ? 'See you around' : state.opened ? 'Stay awhile' : 'See you at the gathering')}</div>`);
-    bind('dez-panel', () => { close(); goTo(PLACES.find(p => p.id === 'mural')); }); bind('talk-close', close); return;
-  }
-  if (id === 'thanh') {
-    show(`${characterHeader(id)}<p>${state.opened ? state.layout === 'table' ? '“That table has heard a few good stories today. Bring it back when everyone’s ready. No hurry.”' : '“Turn the table end-on, and suddenly there’s room for a little shuffle. We’ll put it to another use next time.”' : '“The folding table’s already over there. You can borrow it as long as you promise to bring it back after everyone’s had their say.”'}</p><p>${state.opened ? '“I used to play trumpet. Being here with everyone makes me think I might pick it up again.”' : '“I’ve also got a little surprise for the end. Nothing fancy. You’ll hear.”'}</p><div class="button-row">${button('talk-close', 'Thanks, Thanh ↗', true)}</div><p class="footnote">Thanh is a fictional resident. The prototype’s sound is an original synthesized sketch.</p>`); bind('talk-close', close);
-  }
+  const talking = how === 'talk' || how === 'tap' && arrivedAt === id;
+  arrivedAt = id; talks = talking ? chatTalk(talks, id) : arriveTalk(talks, id);
+  act({ type: 'meet', id, talk: talking });
+  const extras = talkExtras(), m = musicView();
+  conversation(id, { announce: talking ? talkAnnouncement(state, extras, talks, id, m) : arrivalCaption(state, extras, talks, id, m) });
+}
+// The speech bubble, one frame on the frame clock (bubble.js stepBubble), drawn by world.js in screen px.
+const measureContext = document.createElement('canvas').getContext('2d');
+function measureText(text) { measureContext.font = `${BUBBLE.font}px "Segoe UI", sans-serif`; return measureContext.measureText(text).width; }
+function stepSpeech(dt) {
+  if (!world) return;
+  const n = bubble && neighborById(bubble.id);
+  if (!n) { bubble = null; world.bubble = null; return; }
+  const s = world.scale, size = Math.max(1, 1 / s), o = world.offset, chip = objectLabel(n, s), k = Math.max(1, s), p = state.player;
+  // The tail tip sits just above the name chip (Godot: 5 m above the speaker); without a chip, a fixed lift.
+  const anchor = chip ? { x: o.x + chip.x * s, y: o.y + (chip.y - 19 * size) * s - 4 } : { x: o.x + n.x * s, y: o.y + n.y * s - FORK_BUBBLE.anchorLiftPx };
+  const out = stepBubble(bubble, {
+    dt, viewport: { w: innerWidth, h: innerHeight }, playArea: { x: 0, y: 0, w: world.width, h: world.height }, anchor,
+    player: { x: o.x + p.x * s - 12 * k, y: o.y + p.y * s - 34 * k, w: 24 * k, h: 40 * k }, reward: null,
+    overview: world.camera.overviewMode, targetDist: Math.hypot(world.camera.center.x - n.x, world.camera.center.y - n.y), pxPerMetre: PIXELS_PER_METRE,
+    activityText: modal.open ? body.textContent : '', reducedMotion: settings.reducedMotion, measure: measureText,
+  });
+  const text = bubble.text;
+  bubble = out.bubble; world.bubble = out.layout;
+  if (out.announce === 'panel') { const line = speechNotice($('#modal-status').textContent, text, BUBBLE_TEXT.panel); if (line) $('#modal-status').textContent = line; }
+  // 2D has no Info panel: a line that cannot be drawn is shown as a notice instead.
+  else if (out.announce === 'info') toast(`${n.name}: ${text}`);
 }
 function history() {
   act({ type: 'history' });
@@ -635,8 +784,10 @@ function finale() {
   bind('stay-block', close); bind('finale-notes', journal);
 }
 function showSettings() {
-  show(`<span class="eyebrow">MAKE YOURSELF COMFORTABLE</span><h2 id="modal-title">Your afternoon.</h2><label class="settings-row" for="volume"><span>Music volume <span id="volume-number">${Math.round(settings.volume * 100)}%</span></span><input id="volume" data-rapid type="range" min="0" max="80" value="${settings.volume * 100}"></label><label class="settings-row" for="motion"><span>Reduce ambient motion</span><input type="checkbox" id="motion" ${settings.reducedMotion ? 'checked' : ''}></label><p>Music is optional. Every preparation, conversation, and completion message works without sound.</p><fieldset class="experiment-settings"><legend>Experimental</legend><label class="settings-row" for="voices-enabled"><span>Neighborhood Voices · text only</span><input id="voices-enabled" type="checkbox" ${settings.experimental.neighborhoodVoices ? 'checked' : ''}></label><p>Three dated organization cards with official links. Off by default. You can turn this off at any time; your gathering stays the same. No TenderVoice code, recordings or interviews are included.</p><p id="voices-settings-status" role="status"></p></fieldset><div class="history-entry"><span class="eyebrow">YOUR SAVED AFTERNOON</span><p>${held ? SAVE_TEXT.held : storageAvailable ? 'Your progress stays in this browser, shared with the 3D edition of this site. After switching editions, reload the other one.' : 'Browser storage is unavailable. Progress will last in this tab.'}</p><button id="restart" class="danger-button">${held ? 'Start over…' : 'Start a new afternoon…'}</button></div>`);
+  show(`<span class="eyebrow">MAKE YOURSELF COMFORTABLE</span><h2 id="modal-title">Your afternoon.</h2><label class="settings-row" for="volume"><span>Music volume <span id="volume-number">${Math.round(settings.volume * 100)}%</span></span><input id="volume" data-rapid type="range" min="0" max="${MAX_VOLUME * 100}" value="${Math.round(settings.volume * 100)}"></label><div class="settings-row"><span id="reward-sounds-label">Reward sounds</span><button id="reward-sounds" class="secondary-button" aria-pressed="${settings.rewardSounds}" aria-describedby="reward-sounds-label" title="${SOUNDS_TEXT.tooltip}">${soundsLabel(settings.rewardSounds)}</button></div><label class="settings-row" for="motion"><span>Reduce ambient motion</span><input type="checkbox" id="motion" ${settings.reducedMotion ? 'checked' : ''}></label><p>Music is optional. Every preparation, conversation, and completion message works without sound.</p><fieldset class="experiment-settings"><legend>Experimental</legend><label class="settings-row" for="voices-enabled"><span>Neighborhood Voices · text only</span><input id="voices-enabled" type="checkbox" ${settings.experimental.neighborhoodVoices ? 'checked' : ''}></label><p>Three dated organization cards with official links. Off by default. You can turn this off at any time; your gathering stays the same. No TenderVoice code, recordings or interviews are included.</p><p id="voices-settings-status" role="status"></p></fieldset><div class="history-entry"><span class="eyebrow">YOUR SAVED AFTERNOON</span><p>${held ? SAVE_TEXT.held : storageAvailable ? 'Your progress stays in this browser, shared with the 3D edition of this site. After switching editions, reload the other one.' : 'Browser storage is unavailable. Progress will last in this tab.'}</p><button id="restart" class="danger-button">${held ? 'Start over…' : 'Start a new afternoon…'}</button></div>`);
   $('#volume').addEventListener('input', event => { settings.volume = Number(event.target.value) / 100; music.setVolume(settings.volume); $('#volume-number').textContent = `${Math.round(settings.volume * 100)}%`; saveSettings(); });
+  // Godot toggle_reward_sounds: Sounds On/Off in the fork's settings key; turning it off stops a chime at once.
+  bind('reward-sounds', () => { settings.rewardSounds = !settings.rewardSounds; rewards.setEnabled(settings.rewardSounds); saveSettings(); const control = $('#reward-sounds'); control.textContent = soundsLabel(settings.rewardSounds); control.setAttribute('aria-pressed', String(settings.rewardSounds)); $('#modal-status').textContent = soundsAnnouncement(settings.rewardSounds); });
   $('#motion').addEventListener('change', event => { settings.reducedMotion = event.target.checked; document.documentElement.classList.toggle('reduced-motion', settings.reducedMotion); saveSettings(); });
   $('#voices-enabled').addEventListener('change', event => setVoicesEnabled(event.target.checked)); voicesUI();
   bind('restart', () => confirmRestart(() => { showSettings(); const restartButton = $('#restart'); restartButton.focus({ preventScroll: true }); restartButton.scrollIntoView({ block: 'nearest' }); }));
@@ -645,13 +796,14 @@ function showSettings() {
 // Keep has focus, and a held Enter never reaches Start fresh: press-settle.js drops every repeated Enter on a control.
 // back returns to wherever the confirmation was opened from.
 function confirmRestart(back) {
-  show(`<span class="eyebrow">A FRESH START</span><h2 id="modal-title">Another afternoon?</h2><p>This clears the save this browser shares with the 3D edition, so it also resets the 3D edition: the neighbors you met, the gathering, mural, chapters and history discoveries, and the neighborhood surprises and mural scenes found only in 3D.${held ? ' The unreadable save is replaced too.' : ''} Reload the 3D edition before you play it again.</p><p>Your sound, motion and experiment settings stay as they are.</p><div class="button-row">${button('confirm-restart', 'Start fresh', true)}${button('cancel-restart', 'Keep my afternoon')}</div>`);
+  show(`<span class="eyebrow">A FRESH START</span><h2 id="modal-title">Another afternoon?</h2><p>${FORK_TEXT.restart}${held ? ' The unreadable save is replaced too.' : ''} Reload the 3D edition before you play it again.</p><p>Your sound, motion and experiment settings stay as they are.</p><div class="button-row">${button('confirm-restart', 'Start fresh', true)}${button('cancel-restart', 'Keep my afternoon')}</div>`);
   bind('confirm-restart', restart); bind('cancel-restart', back);
   $('#cancel-restart').focus({ preventScroll: true });
 }
 function restart() {
   try { localStorage.removeItem(SAVE_KEY); storageAvailable = true; } catch { storageAvailable = false; }
-  state = initialState(); held = false; envelope = freshEnvelope(); lastRaw = null; savedMessage = ''; arrivedAt = nearAt = null; recovery = null; saveInfo = { status: 'fresh', reason: null, bytes: 0 };
+  state = initialState(); held = false; envelope = freshEnvelope(); lastRaw = null; loadedScenes = {}; savedMessage = ''; arrivedAt = nearAt = null; recovery = null; saveInfo = { status: 'fresh', reason: null, bytes: 0 };
+  talks = freshTalk(); bubble = null; routeSpeech = null; ending.reset(); rhythm.stop(); chapterNotice = '';
   stopWalk(); if (world) { world.camera.overview(); if (world.width < 600) world.camera.follow(state.player); cameraUI(); }
   updateUI(); close(); toast('A fresh afternoon. Bea is ready when you are.');
 }
@@ -701,14 +853,16 @@ function arriveNearby() {
   if (nearAt && distanceTo(nearAt) > 2.1 * PIXELS_PER_METRE) nearAt = null;
   const n = NEIGHBORS.find(n => distanceTo(n.id) <= 1.35 * PIXELS_PER_METRE);
   if (!n || n.id === nearAt) return;
-  nearAt = arrivedAt = n.id;
-  if (act({ type: 'meet', id: n.id })) toast(`Arrived at ${n.name} (${n.role}). Visited ${metCount(state)}/5 neighbors.`);
+  nearAt = arrivedAt = n.id; talks = arriveTalk(talks, n.id);
+  // Godot finish_neighbor_arrival's caption, with the neighbor's memory tail.
+  if (act({ type: 'meet', id: n.id })) toast(arrivalCaption(state, talkExtras(), talks, n.id, musicView()));
 }
 function hint() {
   const nearest = world.nearest(), text = walkPath.length ? `Walking${walkTarget ? ` to ${walkTarget.name || walkTarget.label}` : ''}…` : nearest ? NEIGHBORS.some(n => n.id === nearest.id) ? `Talk with ${nearest.name}` : nearest.name : 'Explore the block';
   $('#world-prompt span').textContent = text; $('#world-prompt kbd').textContent = walkPath.length ? '↑↓←→' : 'E';
   $('#stop-walking').disabled = !walkPath.length;
-  const status = walkPath.length ? `${text} Choose Stop walking to cancel.` : nearest ? `Nearby: ${nearest.name}. Use Talk / help or choose a neighbor.` : 'Choose a neighbor for a walking route.';
+  if (routeSpeech && performance.now() > routeSpeech.until) routeSpeech = null;
+  const status = routeSpeech ? routeSpeech.text : walkPath.length ? `${text} Choose Stop walking to cancel.` : nearest ? `Nearby: ${nearest.name}. Use Talk / help or choose a neighbor.` : 'Choose a neighbor for a walking route.';
   if ($('#route-status').textContent !== status) $('#route-status').textContent = status;
 }
 function renderFrame(ms) {
@@ -735,7 +889,7 @@ function renderFrame(ms) {
       if (!walkPath.length) { hint(); if (walkTarget) { const target = walkTarget; walkTarget = null; interact(target, 'walk'); } }
     }
   }
-  world.motion = moving; world.draw(ms / 1000, settings.reducedMotion);
+  stepSpeech(delta); world.motion = moving; world.draw(ms / 1000, settings.reducedMotion);
   if (ms - lastHint > 150) { if (arrivedAt && distanceTo(arrivedAt) > 40) arrivedAt = null; hint(); chapterUI(); lastHint = ms; }
   requestAnimationFrame(frame);
 }
@@ -749,21 +903,29 @@ function frame(ms) {
 }
 
 $('#close-modal').addEventListener('click', () => close(returnFocus()));
+// Godot's Goodbye (Esc): Escape on a conversation says goodbye too.
+modal.addEventListener('cancel', () => { const id = openConversation(); if (id) { const lines = goodbyeLines(id, nextObjective(state, storyWorld())); queueMicrotask(() => { toast(lines.text); routeSay(lines.announcement); }); } });
 bind('voices-button', openVoices);
 // Closing the recovery offer with Escape or × decides nothing: this tab's progress stays, unsaved, and the next action to save asks again.
-modal.addEventListener('close', () => { keys.clear(); if (!modal.open) { const later = recovery && body.querySelector('[data-recovery]'); voicesHost.dismiss(); focusReturn(); modalReturnTarget = canvas; releaseNotice(); if (later) toast('Decide whenever you like. This tab’s progress stays here, unsaved, until you keep it or use the shared save.'); queueChapterCard(); } });
+modal.addEventListener('close', () => { keys.clear(); if (walkOnClose && !modal.open) keys.add(walkOnClose); walkOnClose = null; if (!modal.open) { const later = recovery && body.querySelector('[data-recovery]'); voicesHost.dismiss(); focusReturn(); modalReturnTarget = canvas; releaseNotice(); if (later) toast('Decide whenever you like. This tab’s progress stays here, unsaved, until you keep it or use the shared save.'); queueChapterCard(); } });
+// A held Escape is one Escape: its repeats never close the screen under the one it just left.
+window.addEventListener('keydown', event => { if (event.key === 'Escape' && event.repeat && modal.open) event.preventDefault(); }, { capture: true });
 window.addEventListener('keydown', event => {
+  const key = event.key.toLowerCase();
+  if (modal.open && world && !event.repeat && MOVE_KEYS.includes(key) && startupContinue && body.querySelector('[data-chapter-card] #begin')) { event.preventDefault(); walkOnClose = key; startupContinue(); return; }
   if (modal.open || !world) return;
   if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName) || document.activeElement?.isContentEditable) return;
-  const key = event.key.toLowerCase();
-  if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) { event.preventDefault(); keys.add(key); }
+  // A repeat of a key that is not walking is a key held through a dialog: only a fresh press walks.
+  if (MOVE_KEYS.includes(key)) { event.preventDefault(); if (!event.repeat || keys.has(key)) keys.add(key); }
   if ((key === 'e' || key === 'enter') && !event.repeat && !['BUTTON', 'A'].includes(document.activeElement?.tagName)) { event.preventDefault(); const nearest = world.nearest(); if (nearest) { stopWalk(); interact(nearest, 'talk'); } else toast('Walk a little closer to a neighbor or a marked object.'); }
 });
-window.addEventListener('keyup', event => keys.delete(event.key.toLowerCase()));
+window.addEventListener('keyup', event => { const key = event.key.toLowerCase(); keys.delete(key); if (walkOnClose === key) walkOnClose = null; });
+// Godot reward_audio_unlocked: the first real key, mouse or touch press. Capture, so the press that acts can already chime.
+for (const type of ['keydown', 'mousedown', 'pointerdown', 'pointerup', 'touchend']) window.addEventListener(type, event => rewards.unlock(event), { capture: true, passive: true });
 window.addEventListener('blur', () => keys.clear());
-window.addEventListener('pagehide', () => { music.stop(); if (modal.open && body.querySelector('[data-neighborhood-voices]')) close($('#voices-button')); voicesHost.suspend(); });
+window.addEventListener('pagehide', () => { music.stop(); rewards.stop(); if (modal.open && body.querySelector('[data-neighborhood-voices]')) close($('#voices-button')); voicesHost.suspend(); });
 window.addEventListener('pageshow', event => { if (event.persisted) { voicesHost.resume(); syncStored(); } });
-document.addEventListener('visibilitychange', () => { if (document.hidden) { keys.clear(); music.stop(); voicesHost.silence(); } else syncStored(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { keys.clear(); music.stop(); rewards.stop(); voicesHost.silence(); } else syncStored(); });
 window.addEventListener('storage', event => { if (event.key === SAVE_KEY || event.key === null) syncStored(); });
 window.addEventListener('resize', chapterUI);
 $('#journal-button').addEventListener('click', journal); $('#settings-button').addEventListener('click', showSettings);
@@ -790,9 +952,12 @@ async function init() {
     updateUI();
     showChapterCard(true); $('#loading').remove(); requestAnimationFrame(frame);
     // Read-only inspection for diagnostics; no production bypass for quest actions.
-    window.tenderloin = Object.freeze({ snapshot: () => structuredClone(state), location: () => ({ ...world.offset, scale: world.scale }), sound: () => ({ mode: music.fileName ? 'local' : 'sketch', enabled: music.enabled, starting: music.starting, fileName: music.fileName, volume: music.volume, position: music.position, error: music.error }), experiment: () => voicesHost.snapshot(), version: VERSION, edition: EDITION,
+    window.tenderloin = Object.freeze({ snapshot: () => structuredClone(state), location: () => ({ ...world.offset, scale: world.scale }), sound: () => ({ mode: music.fileName ? 'local' : 'sketch', enabled: music.enabled, starting: music.starting, fileName: music.fileName, volume: music.volume, position: music.position, error: music.error, mask: music.sketch.mask, summary: stemSummary(music.sketch.mask), frames: music.sketch.position(), engine: music.sketch.engine, rate: music.sketch.context?.sampleRate ?? null, muted: music.sketch.muted, rewardsEnabled: settings.rewardSounds, rewardsUnlocked: rewards.unlocked, rewardCount: rewards.count, rewardLastCue: rewards.lastCue, audition: rhythm.auditioning }), ending: () => ending.snapshot(), rhythm: () => rhythm.snapshot(), experiment: () => voicesHost.snapshot(), version: VERSION, edition: EDITION,
       story: () => { chapterUI(); const goal = nextObjective(state, storyWorld()); return { chapter: currentChapter(state), line: $('#chapter-text').textContent, objective: { id: goal.id, text: goal.text }, card: chapterCardOpen() }; },
-      save: () => ({ status: saveInfo.status, reason: saveInfo.reason, bytes: saveInfo.bytes, seq: saveSeq() }), pressSettle: () => settle.snapshot() });
+      save: () => ({ status: saveInfo.status, reason: saveInfo.reason, bytes: saveInfo.bytes, seq: saveSeq() }), pressSettle: () => settle.snapshot(),
+      // The open conversation and the speech bubble on the frame clock (visible: drawn this frame).
+      conversation: () => ({ partner: openConversation(), talks: { ...talks }, header: openConversation() ? $('#talk-header')?.textContent ?? '' : '', line: openConversation() ? $('#talk-line')?.textContent ?? '' : '' }),
+      bubble: () => bubble ? { id: bubble.id, text: bubble.text, visible: !!world.bubble, timer: bubble.timer, deferred: bubble.deferred, matched: bubble.matched } : null });
   } catch (error) {
     let loading = $('#loading'); if (!loading) { loading = document.createElement('div'); loading.id = 'loading'; loading.className = 'loading'; $('.world-panel').append(loading); }
     loading.innerHTML = '<div class="error-box"><strong>This corner could not load.</strong><p>Run the local server with <code>npm run dev</code>, then open its printed address. If the server is running, try again.</p><button class="secondary-button" id="retry-load">Try again</button></div>';

@@ -1,5 +1,13 @@
 # Build status
 
+## Current: 2D fork Phase 2, music, neighbors and the ending - October 31, 2026 UTC
+
+`browser-next/` now plays Godot's synthesized sketch, sample-exact through an AudioWorklet, with Godot's stems, volume range, reward chimes and Sounds setting. It also has the Rhythm Circle (practice never saved), every neighbor line from `godot/main.gd` with speech bubbles, Keep Chatting, What's Next? and Rook's music panel, and the full ending chain: hosted review, film screening, helper bench, habitat room, departure, orbital commons, Chapter 6 and Mural Stories. Mural Stories writes `mural_scenes` by Godot's rules. Copied text, constants and cues are drift-tested against the Godot sources. Design of record: `docs/BROWSER_NEXT.md`.
+
+Evidence: `npm run check`, 336 Node tests, and `npm run next:browser`: PASS, 124 steps at 320 and 390 touch and 1440 mouse. That includes a new phase2 suite with guarded double presses on 40+ controls per width, and Mural Stories scenes loading in the real Godot build at `/godot/`. Three reviews (Sonnet 5.5 QA, save safety and Godot parity, each finding refute-checked) confirmed 11 defects. All 11 were fixed with fail-first tests and checked by a Sonnet QA pass that reverted the fixes; the medium ones were a "Saved" receipt while the save was held, and a held Escape closing two screens. Logs: `artifacts/browser-next/verify-p2/`.
+
+Open: no deploy, Chrome only, no phone or human playtest; chimes are checked by count, not by ear. Next: Phase 3, the side stories (Before These Streets, the shared meal, dogs, the lantern walk, the Power Story, the election, surprises and landmarks), with its pure modules already written.
+
 ## Current: 2D fork Phase 1 at /browser-next/ - October 31, 2026 UTC
 
 The creator allowed a 2D fork of the Godot story beside the frozen classic. It lives in `browser-next/` (version `0.13.0-next.1`, its own fingerprint and `/browser-next/__build`), and `public/` is unchanged: classic `/__build` still reports `0.12.0` / `2a9641a8…f84567`, pinned by `tests/next-scaffold.test.mjs`. Design of record: `docs/BROWSER_NEXT.md`.

@@ -1,6 +1,6 @@
 // The fork's local browser test: node tests/next-browser.mjs. QA tooling, not a game dependency: PLAYWRIGHT_MODULE points at a local
 // Playwright, BROWSER_CHANNEL selects chrome (default), msedge, bundled or firefox, BASE_URL tests a running server and
-// NEXT_BROWSER_WIDTHS (for example 1440) or NEXT_BROWSER_SUITES (journey,guard,tabs,restart,seeded) runs a subset while debugging.
+// NEXT_BROWSER_WIDTHS (for example 1440) or NEXT_BROWSER_SUITES (journey,guard,ending,phase2,tabs,restart,seeded,music,characters) runs a subset while debugging.
 // Screenshots and the receipt go to artifacts/browser-next/.
 import assert from 'node:assert/strict';
 import { mkdir, writeFile, stat } from 'node:fs/promises';
@@ -11,7 +11,13 @@ import { nextBuildInfo } from '../scripts/build-fingerprint-next.mjs';
 import { GODOT_SAVE_KEY, SAVE_BUDGET, parseGodotSave, canonicalStringify, utf8Bytes, combineSaves } from '../browser-next/godot-save.js';
 import { STORY_CHAPTERS, GODOT_TEMPLATES, currentChapter, nextObjective, chapterCard, isNarrow, fmt } from '../browser-next/story.js';
 import { NEIGHBORS, PLACES } from '../browser-next/world.js';
-import { GODOT_WRITTEN, FULL_MURAL, PUBLISHED, godotEnvelope, readyEnvelope, openedEnvelope, hostedEnvelope, civicDoneEnvelope } from './next-fixtures.mjs';
+import { SETTINGS_KEY } from '../browser-next/core.js';
+import { NEIGHBOR_LINES, NEIGHBOR_BADGES, SURPRISE_MEMORY, MURAL_REPLY, neighborLines, webLine, whatsNext, whatsNextAnnouncement, goodbyeLines, spokenText } from '../browser-next/characters.js';
+import { nextVolume, volumeAnnouncement } from '../browser-next/sketch-core.js';
+import { soundsLabel, soundsAnnouncement } from '../browser-next/rewards.js';
+import { LOAN_REPLIES, loanReply, loanReturnAnnouncement } from '../browser-next/hosted-text.js';
+import { LOAN_TITLES } from '../browser-next/story.js';
+import { GODOT_WRITTEN, FULL_MURAL, PUBLISHED, godotEnvelope, readyEnvelope, openedEnvelope, hostedEnvelope, civicDoneEnvelope, filmDoneEnvelope } from './next-fixtures.mjs';
 const { chromium, firefox } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : 'playwright');
 
 const CLASSIC = { version: '0.12.0', fingerprint: '2a9641a83499cdb6ba7f7c43d6cd9c8fa7ce34ce689b3be461b1f21ae5f84567' };
@@ -21,7 +27,7 @@ const WIDTHS = [{ name: '320', viewport: { width: 320, height: 667 }, touch: tru
   .filter(w => !process.env.NEXT_BROWSER_WIDTHS || process.env.NEXT_BROWSER_WIDTHS.split(',').includes(w.name));
 const MET = NEIGHBORS.map(n => n.id).sort(), MURAL = { sun: { col: 0, row: 0 }, wave: { col: 2, row: 1 }, rise: { col: 4, row: 0 } };
 const WORLD = snap => ({ player: snap.player, neighbors: NEIGHBORS, places: PLACES });
-const SUITES = (process.env.NEXT_BROWSER_SUITES || 'journey,guard,tabs,restart,seeded').split(',');
+const SUITES = (process.env.NEXT_BROWSER_SUITES || 'journey,guard,ending,phase2,tabs,restart,seeded,music,characters').split(',');
 const channel = process.env.BROWSER_CHANNEL || 'chrome', isFirefox = channel === 'firefox';
 let ownedServer, browser, base, next, activePage, current = 'server start', failure = null;
 const evidence = [], logs = [], undersized = [], underClose = [], started = Date.now();
@@ -300,7 +306,7 @@ async function notes(w, targets) {
     const screens = [
       ['history-compton', '#history-walk-button', '#read-comptons', 'A corner that remembers.'], ['history-blackhawk', '#history-walk-button', '#read-blackhawk', 'A room full of sound.'],
       ['living-district', '#district-button', null, 'More than a line on a map.'], ['programme', '#next-afternoon', null, 'Make room for next time.'],
-      ['host-finished', '#host-afternoon', null, 'We made room for another afternoon.'], ['film', '#film-shoot', null, 'A little film on the block.'],
+      ['host-finished', '#host-afternoon', null, 'Programme Studio | Afternoon hosted'], ['film', '#film-shoot', null, 'A little film on the block.'],
     ];
     for (const [label, open, then, title] of screens) {
       await press(page, open, w.touch); if (then) await press(page, then, w.touch);
@@ -643,6 +649,16 @@ async function seeded(w) {
     assert.deepEqual(pick(await call(page, 'save'), ['status', 'reason']), { status: 'held', reason: parsed.reason });
     await walkTo(page, w, 'celeste'); await press(page, '#close-modal'); await closed(page);
     assert.equal(await stored(page), bad, 'nothing is written while the save is held');
+    // A scene painted over a held save is not saved, and its receipt says so (Godot save_receipt with a visit-only reason).
+    await walkTo(page, w, 'celeste'); await press(page, '#start-mural'); await press(page, '#mural-scenes');
+    await until(page, () => window.tenderloin.ending().stage === 'stories', null, 'Mural Stories opens over a held save');
+    await press(page, '#scene-target-0');
+    const receipt = 'Visit-only: not saved; reload may lose changes. Cooking Together painted on the left.';
+    assert.ok((await page.locator('#ending-reader').innerText()).startsWith(receipt), 'the reader gives the visit-only receipt');
+    assert.ok((await page.evaluate(() => document.querySelector('#modal-status').textContent)).startsWith(receipt), 'the announcement gives the visit-only receipt');
+    assert.deepEqual((await call(page, 'snapshot')).muralScenes, { left: 'cooking' }, 'the scene shows for this visit');
+    await press(page, '#close-modal'); await closed(page);
+    assert.equal(await stored(page), bad, 'the held save is left byte-identical');
     await press(page, '#save-start-over');
     await until(page, () => document.activeElement?.id === 'cancel-restart', null, 'Start over asks first, with Keep focused');
     await page.keyboard.press('Enter'); await closed(page);
@@ -652,6 +668,20 @@ async function seeded(w) {
     await press(page, '#confirm-restart'); await until(page, () => window.tenderloin.save().status === 'fresh', null, 'Start over clears the held save');
     assert.equal(await stored(page), null); assert.equal(await page.locator('#save-start-over').isHidden(), true);
     return { reason: parsed.reason };
+  });
+  // Godot release_pending: a movement key held while a dialog closes does not walk until it is released and pressed again.
+  await step(`${w.name} a movement key held while a dialog closes does not walk; a fresh press does`, async () => {
+    await start(GODOT_WRITTEN.firstMeeting);
+    const x = async () => (await call(page, 'snapshot')).player.x;
+    await press(page, '#journal-button'); await page.locator('dialog[open] #close-modal').focus();
+    await page.keyboard.down('ArrowRight'); await press(page, '#close-modal'); await closed(page);
+    const before = await x();
+    for (let i = 0; i < 6; i++) { await page.keyboard.down('ArrowRight'); await page.waitForTimeout(50); }
+    await page.waitForTimeout(200);
+    assert.equal(await x(), before, 'repeats of the key held through the close do not walk');
+    await page.keyboard.up('ArrowRight'); await page.keyboard.down('ArrowRight'); await page.waitForTimeout(400); await page.keyboard.up('ArrowRight');
+    assert.ok(await x() > before, 'a fresh press walks');
+    return { walked: Math.round(await x() - before) };
   });
   await step(`${w.name} a save at the budget is refused and kept`, async () => {
     const env = JSON.parse(GODOT_WRITTEN.fullRun), big = canonicalStringify({ ...env, optional: { ...env.optional, budget_probe: 'x'.repeat(5000) } });
@@ -767,6 +797,552 @@ async function seeded(w) {
   });
   clean(log); await context.close();
 }
+// The ending chain and Dez's Rhythm Circle in the real page, from the entry points Godot offers: the hosted view, Follow to
+// the Listening Hour, Gather again from Posted, Dez's film offer, the screening, the helper bench and the habitat room,
+// Mural Stories from the mural, and the circle in practice and hosting modes. Ending steps and practice are visit-only, so
+// the stored save stays byte-identical; hosting toggles and Complete save, and a painted scene writes mural_scenes.
+async function endingSuite(w) {
+  const context = await newContext(w), { page, log } = await newPage(context, `ending-${w.name}`);
+  const start = async raw => { await seed(page, raw); await boot(page); await dismissCard(page, w, await cardCheck(page, true)); };
+  const title = () => page.evaluate(() => document.querySelector('dialog[open] #modal-title')?.textContent);
+  const stage = async () => (await call(page, 'ending')).stage;
+  const focused = () => page.evaluate(() => document.activeElement?.id);
+  const toastText = () => page.evaluate(() => document.querySelector('#toast').textContent);
+  const targets = {};
+  await step(`${w.name} ending: the hosted view, Follow to the Listening Hour and Gather again from Posted keep the save`, async () => {
+    const raw = canonicalStringify(hostedEnvelope({ save_seq: 80 })); await start(raw);
+    await press(page, '#host-afternoon', w.touch);
+    await until(page, () => document.querySelector('dialog[open] #modal-title')?.textContent === 'Programme Studio | Afternoon hosted', null, 'the hosted view opens');
+    assert.equal(await stage(), 'hosted'); assert.equal(await focused(), 'hosted-card-stories', "Godot's first card has focus");
+    targets.hosted = await layoutCheck(page, w, 'ending-hosted');
+    await press(page, '#hosted-card-art', w.touch); assert.equal(await page.locator('#hosted-card-art').getAttribute('aria-pressed'), 'true');
+    await press(page, '#hosted-follow', w.touch); await closed(page);
+    assert.equal(await focused(), 'civic-hour', 'Follow focuses the Listening Hour button');
+    assert.match(await toastText(), /Listening Hour is focused\. Open that button when you are ready; your plan and conversation are unchanged\.$/);
+    assert.equal(await call(page, 'story').then(s => s.card), false, 'no chapter card steals focus');
+    await press(page, '#next-afternoon', w.touch); await press(page, '#programme-view', w.touch);
+    await page.locator('#programme-gather').waitFor(); assert.equal(await page.locator('#programme-gather').textContent(), 'Gather again');
+    await press(page, '#programme-gather', w.touch); await until(page, () => window.tenderloin.ending().stage === 'gather', null, 'Gather again opens');
+    targets.gather = await layoutCheck(page, w, 'ending-gather');
+    await press(page, '#gather-choice-0', w.touch); await page.keyboard.press('Escape'); await closed(page);
+    assert.equal(await focused(), 'host-afternoon', 'Escape returns to the second gathering');
+    await press(page, '#next-afternoon', w.touch); await press(page, '#programme-view', w.touch);
+    assert.equal(await page.locator('#programme-gather').textContent(), 'Resume gathering', 'the visit is kept');
+    await press(page, '#close-modal', w.touch); await closed(page);
+    assert.equal(await stored(page), raw, 'the hosted view and Gather again write nothing');
+    return { targets: targets.hosted + targets.gather };
+  });
+  await step(`${w.name} ending: Dez's offer, the screening, the helper bench and the habitat room keep the save`, async () => {
+    const raw = canonicalStringify(filmDoneEnvelope({ save_seq: 81 })); await start(raw);
+    await press(page, '#civic-hour', w.touch); await page.locator('#civic-follow').waitFor();
+    targets.civic = await layoutCheck(page, w, 'ending-civic');
+    await press(page, '#civic-follow', w.touch); await closed(page);
+    assert.equal(await focused(), 'film-shoot', "Follow focuses Dez's film button");
+    assert.match(await toastText(), /^Dez's invitation: Screen our little film\. Choose this film action when you are ready; your film is unchanged\.$/);
+    await press(page, '#film-shoot', w.touch);
+    await until(page, () => /^The Open Seat \| 1 \/ 3/.test(document.querySelector('dialog[open] #modal-title')?.textContent), null, 'the screening opens on frame 1');
+    assert.equal(await focused(), 'screen-frame-0');
+    targets.screening = await layoutCheck(page, w, 'ending-screening');
+    await press(page, '#screen-frame-2', w.touch); await page.keyboard.press('Escape'); await closed(page);
+    assert.equal(await focused(), 'film-shoot');
+    await press(page, '#film-shoot', w.touch); await until(page, () => /^The Open Seat \| 3 \/ 3/.test(document.querySelector('dialog[open] #modal-title')?.textContent), null, 'the frame is kept for the visit');
+    await press(page, '#screen-helper', w.touch); await until(page, () => window.tenderloin.ending().stage === 'bench', null, 'Helper workshop opens the bench');
+    targets.bench = await layoutCheck(page, w, 'ending-bench');
+    await press(page, '#bench-support-1', w.touch); await press(page, '#bench-support-0', w.touch); await press(page, '#bench-assist', w.touch);
+    assert.equal((await call(page, 'ending')).visit.bench.complete, true, 'the helper lifts the stand');
+    await press(page, '#bench-habitat', w.touch); await until(page, () => window.tenderloin.ending().stage === 'room', null, 'Habitat room opens');
+    targets.room = await layoutCheck(page, w, 'ending-room');
+    await page.keyboard.press('Escape'); await closed(page); assert.equal(await focused(), 'film-shoot');
+    assert.equal(await stored(page), raw, 'every ending step is visit-only');
+    await page.reload(); await until(page, () => !!window.tenderloin, null, 'the fork restarts', 15000);
+    assert.equal((await call(page, 'ending')).visit.bench.complete, false, 'a reload clears the visit');
+    await dismissCard(page, w, await cardCheck(page, true));
+    assert.equal(await stored(page), raw);
+    return { targets: targets.civic + targets.screening + targets.bench + targets.room };
+  });
+  await step(`${w.name} ending: Paint Scenes opens Mural Stories, which writes mural_scenes by Godot's rules`, async () => {
+    const before = await envelope(page);
+    await walkTo(page, w, 'celeste'); await press(page, '#start-mural', w.touch); await page.locator('#mural-scenes').waitFor();
+    assert.equal(await page.locator('#mural-scenes').textContent(), 'Paint Scenes');
+    await press(page, '#mural-scenes', w.touch); await until(page, () => window.tenderloin.ending().stage === 'stories', null, 'Mural Stories opens');
+    targets.stories = await layoutCheck(page, w, 'ending-stories');
+    await press(page, '#scene-target-0', w.touch);
+    const s = await written(page, before.env.save_seq, { mural_scenes: { left: 'cooking' } });
+    // Godot's footer: Palette:\n<Name>, Music:\nOn/Off, Back to\nMural, then the page button.
+    const on = (await call(page, 'sound')).enabled;
+    assert.equal(await page.locator('#ending-music').innerText(), on ? 'Music:\nOn' : 'Music:\nOff', "Godot's two-line Music label");
+    const PAL = ['garden', 'sunset', 'ocean'], snap = await call(page, 'snapshot'), nextPal = PAL[(PAL.indexOf(snap.palette) + 1) % 3], Cap = p => p[0].toUpperCase() + p.slice(1);
+    assert.equal(await page.locator('#scene-palette').innerText(), `Palette:\n${Cap(snap.palette)}`);
+    assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('[data-ending="stories"] .ending-tray > button')].map(b => b.id)), ['scene-lift-0', 'scene-lift-1', 'scene-palette', 'ending-music', 'scene-back', 'scene-page'], "the footer follows Godot's order");
+    await press(page, '#scene-palette', w.touch);
+    const p = await written(page, s.env.save_seq, { mural_palette: nextPal, mural_scenes: { left: 'cooking' } });
+    assert.equal(await page.locator('#scene-palette').innerText(), `Palette:\n${Cap(nextPal)}`);
+    assert.equal(await page.evaluate(() => document.querySelector('#modal-status').textContent), `Portable Mural Board palette set to ${Cap(nextPal)} (${Object.keys(snap.mural).length}/3 motifs).`, "Godot's palette announcement");
+    assert.equal(await page.evaluate(() => window.tenderloin.ending().stage), 'stories', 'the palette changes inside Mural Stories');
+    // A held Escape goes back to the workshop only (Godot checks not event.echo), with Paint Scenes focused (close_stories).
+    await page.keyboard.down('Escape'); await page.keyboard.down('Escape'); await page.keyboard.down('Escape'); await page.keyboard.up('Escape'); await page.waitForTimeout(200);
+    await until(page, () => document.querySelector('dialog[open] #modal-title')?.textContent === 'Many hands. One mural.', null, 'a held Escape returns to the mural and stays there');
+    assert.equal(await focused(), 'mural-scenes', 'Back to the workshop focuses Paint Scenes');
+    await press(page, '#mural-scenes', w.touch); await until(page, () => window.tenderloin.ending().stage === 'stories', null, 'Mural Stories opens again');
+    await press(page, '#scene-back', w.touch); await until(page, () => document.querySelector('dialog[open] #modal-title')?.textContent === 'Many hands. One mural.', null, 'Back returns to the mural');
+    assert.equal(await focused(), 'mural-scenes', 'Back to Mural focuses Paint Scenes');
+    await press(page, '#close-modal', w.touch); await closed(page);
+    return { seq: p.env.save_seq, targets: targets.stories };
+  });
+  await step(`${w.name} rhythm: the afterglow's Rhythm Circle practises without saving; hosting toggles and Complete save`, async () => {
+    const raw = canonicalStringify(filmDoneEnvelope({ save_seq: 82 })); await start(raw);
+    await press(page, '#rhythm-circle', w.touch);
+    await until(page, () => document.querySelector('dialog[open] #modal-title')?.textContent === "Dez's Rhythm Circle - Practice", null, 'the circle opens in practice');
+    assert.equal(await focused(), 'rhythm-pad-0');
+    assert.equal(await page.evaluate(() => document.querySelector('#modal-status').textContent), "Rhythm Circle. Practice copy only. Your hosted result is unchanged. Play Bar optionally auditions your hits and rests. Music must be On; set volume at Rook's speaker.");
+    targets.rhythm = await layoutCheck(page, w, 'rhythm-practice');
+    await press(page, '#rhythm-pad-1', w.touch);
+    assert.deepEqual(pick(await call(page, 'rhythm'), ['open', 'practice', 'pattern']), { open: true, practice: true, pattern: 87 }, 'practice toggles a copy of the hosted 85');
+    // The startup card's button started the sketch, so Play Bar auditions one bar with the sketch muted, and stops it again.
+    await until(page, () => window.tenderloin.sound().enabled, null, 'the sketch plays', 10000);
+    await press(page, '#rhythm-play-bar', w.touch);
+    assert.match(await page.evaluate(() => document.querySelector('#modal-status').textContent), /^Playing one drum bar\. The sketch is quiet until it ends\./);
+    assert.deepEqual(pick(await call(page, 'sound'), ['audition', 'muted']), { audition: true, muted: true }, 'the bar plays while the sketch is muted');
+    assert.equal(await page.locator('#rhythm-play-bar').getAttribute('aria-label'), 'Stop bar audition');
+    await press(page, '#rhythm-play-bar', w.touch);
+    assert.equal(await page.evaluate(() => document.querySelector('#modal-status').textContent), 'Bar stopped. The original sketch continues.');
+    assert.deepEqual(pick(await call(page, 'sound'), ['audition', 'muted']), { audition: false, muted: false }, 'stopping the bar restores the sketch');
+    await press(page, '#rhythm-back', w.touch); await closed(page);
+    assert.equal(await focused(), 'rhythm-circle');
+    assert.equal(await toastText(), 'Back to the block. Hosted rhythm restored; practice was not saved.');
+    assert.equal(await stored(page), raw, 'practice is never saved');
+    const hosting = canonicalStringify(hostedEnvelope({ save_seq: 83, hosting: { ...hostedEnvelope().hosting, results: [{ id: 'stories', value: 'memory' }] } }));
+    await start(hosting); await press(page, '#host-afternoon', w.touch); await press(page, '#host-rhythm', w.touch);
+    await until(page, () => document.querySelector('dialog[open] #modal-title')?.textContent === "Dez's Rhythm Circle - Hosting", null, 'the hosting beats open the circle');
+    await press(page, '#rhythm-pad-0', w.touch);
+    await written(page, 83, {}); assert.equal((await call(page, 'snapshot')).hosting.draft.pattern, 84, 'a hosting toggle saves the draft, as Godot does');
+    // A held Escape leaves the circle for the hosting dialog it came from, and does not close that too.
+    await page.keyboard.down('Escape'); await page.keyboard.down('Escape'); await page.keyboard.down('Escape'); await page.keyboard.up('Escape'); await page.waitForTimeout(200);
+    assert.equal(await page.evaluate(() => !!document.querySelector('dialog[open] #host-rhythm')), true, 'a held Escape stops at the hosting dialog');
+    await press(page, '#host-rhythm', w.touch);
+    await until(page, () => document.querySelector('dialog[open] #modal-title')?.textContent === "Dez's Rhythm Circle - Hosting", null, 'the hosting beats open the circle again');
+    await press(page, '#rhythm-complete', w.touch);
+    await until(page, () => window.tenderloin.snapshot().hosting.results.length === 2 && !window.tenderloin.rhythm().open, null, 'Complete records the beats');
+    assert.deepEqual((await call(page, 'snapshot')).hosting.results[1], { id: 'beats', value: 84 });
+    assert.match(await page.evaluate(() => document.querySelector('dialog[open]')?.innerText ?? ''), /Rhythm Circle complete \(2\/4 hosted\)\. .+ is next\./, 'the hosting dialog shows what is next');
+    await press(page, '#close-modal', w.touch); await closed(page);
+    return { targets: targets.rhythm };
+  });
+  clean(log); await context.close();
+}
+// Music: Godot's sketch on the worklet, started by the startup card's button, and reward chimes on progress cues.
+async function musicSuite(w) {
+  const context = await newContext(w), { page, log } = await newPage(context, `music-${w.name}`);
+  const sound = () => call(page, 'sound');
+  await step(`${w.name} music: Escape on the startup card stays silent; its button starts Godot's sketch`, async () => {
+    await boot(page); let card = await cardCheck(page, true);
+    const fresh = pick(await sound(), ['enabled', 'volume', 'mask', 'summary', 'rewardsEnabled', 'rewardCount']);
+    assert.deepEqual(fresh, { enabled: false, volume: 0.7, mask: 1, summary: 'bass (1/4 stems)', rewardsEnabled: true, rewardCount: 0 }, 'a new player starts at Godot volume 0.70, bass only, Sounds on, nothing played');
+    await page.keyboard.press('Escape'); await closed(page);
+    await page.waitForTimeout(300); assert.equal((await sound()).enabled, false, 'Escape dismisses the card without audio');
+    // Godot continue_story(): a movement key on the startup card dismisses it, starts the music and walks while held.
+    // A page of its own, so the walk leaves this suite's save and first visits alone.
+    const keyContext = await newContext(w), key = await newPage(keyContext, `music-start-key-${w.name}`);
+    await boot(key.page); await cardCheck(key.page, true); const x0 = (await call(key.page, 'snapshot')).player.x;
+    await key.page.keyboard.down('ArrowRight'); await closed(key.page);
+    await until(key.page, () => window.tenderloin.sound().enabled, null, 'a movement key on the startup card starts the music', 10000);
+    await key.page.waitForTimeout(400); await key.page.keyboard.up('ArrowRight');
+    assert.ok((await call(key.page, 'snapshot')).player.x > x0, 'and the held key walks');
+    assert.equal((await call(key.page, 'story')).card, false);
+    clean(key.log); await keyContext.close(); activePage = page;
+    await page.reload(); await until(page, () => !!window.tenderloin, null, 'the fork restarts', 15000);
+    card = await cardCheck(page, true); await press(page, card.button, w.touch); await closed(page);
+    await until(page, () => window.tenderloin.sound().enabled, null, "the startup card's button starts the music", 10000);
+    const on = await sound();
+    assert.deepEqual(pick(on, ['engine', 'rate', 'muted']), { engine: 'worklet', rate: 22050, muted: false }, 'the sketch plays on the AudioWorklet at 22050 Hz');
+    await until(page, () => window.tenderloin.sound().frames > 2205, null, 'the sketch clock advances', 10000);
+    return pick(on, ['engine', 'rate', 'summary']);
+  });
+  await step(`${w.name} music: the worklet renders sketch-core.js sample for sample`, async () => {
+    const diff = await page.evaluate(async () => {
+      const { renderSketch } = await import('./sketch-core.js');
+      const ctx = new OfflineAudioContext(1, 66150, 22050); await ctx.audioWorklet.addModule('./sketch-worklet.js');
+      const node = new AudioWorkletNode(ctx, 'tenderloin-sketch', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [1], processorOptions: { mask: 15, playing: true } });
+      node.connect(ctx.destination);
+      const got = (await ctx.startRendering()).getChannelData(0), want = new Float32Array(66150); renderSketch(want, 0, 15);
+      let max = 0; for (let i = 0; i < want.length; i++) max = Math.max(max, Math.abs(got[i] - want[i]));
+      return max;
+    });
+    assert.ok(diff < 1e-5, `worklet output matches renderSketch at mask 15 (max abs diff ${diff})`);
+    return { diff };
+  });
+  await step(`${w.name} music: pausing keeps the clock, as Godot does`, async () => {
+    await until(page, () => window.tenderloin.sound().frames > 22050, null, 'a second of the sketch has played', 10000);
+    await press(page, '#sound-toggle', w.touch); await until(page, () => !window.tenderloin.sound().enabled, null, 'the toggle pauses');
+    await page.waitForTimeout(300); const paused = (await sound()).frames;
+    await press(page, '#sound-toggle', w.touch); await until(page, () => window.tenderloin.sound().enabled, null, 'the toggle plays again');
+    const resumed = (await sound()).frames;
+    assert.ok(paused > 22050 - 4410 && resumed >= paused && resumed - paused < 4410, `play resumes from the paused position (${paused} -> ${resumed})`);
+    return { paused, resumed };
+  });
+  await step(`${w.name} music: a first visit chimes once; a repeat visit and Sounds Off stay quiet`, async () => {
+    await walkTo(page, w, 'bea');
+    await until(page, () => window.tenderloin.sound().rewardCount === 1, null, 'meeting Bea plays one chime');
+    assert.deepEqual(pick(await sound(), ['rewardLastCue', 'rewardsUnlocked', 'mask']), { rewardLastCue: 'neighbor_visit', rewardsUnlocked: true, mask: 3 }, "Godot's neighbor_visit cue; brush joins the bass");
+    await press(page, '#close-modal', w.touch); await closed(page);
+    await walkTo(page, w, 'bea'); await page.waitForTimeout(300);
+    assert.equal((await sound()).rewardCount, 1, 'a repeat visit is silent'); await press(page, '#close-modal', w.touch); await closed(page);
+    await press(page, '#settings-button', w.touch); await page.locator('#reward-sounds').waitFor();
+    assert.deepEqual(await page.locator('#reward-sounds').evaluate(b => [b.textContent, b.getAttribute('aria-pressed'), b.title]), ['Sounds: On', 'true', 'Gentle reward sounds. Music has separate controls with Rook.']);
+    assert.deepEqual(await page.locator('#volume').evaluate(i => [i.min, i.max, i.value]), ['0', '100', '70'], "the volume slider runs to Godot's 100%");
+    await press(page, '#reward-sounds', w.touch);
+    assert.deepEqual(await page.evaluate(() => [document.querySelector('#reward-sounds').textContent, document.querySelector('#reward-sounds').getAttribute('aria-pressed'), document.querySelector('#modal-status').textContent]), ['Sounds: Off', 'false', 'Reward sounds off. Music has its own controls.']);
+    const saved = await page.evaluate(key => JSON.parse(localStorage.getItem(key)), SETTINGS_KEY);
+    assert.equal(saved.rewardSounds, false, `Sounds Off is kept in ${SETTINGS_KEY}`); await stored(page);
+    await press(page, '#close-modal', w.touch); await closed(page);
+    await walkTo(page, w, 'dez'); await page.waitForTimeout(300);
+    assert.equal((await sound()).rewardCount, 1, 'with Sounds Off a first visit is silent');
+    await press(page, '#close-modal', w.touch); await closed(page);
+    return { count: 1 };
+  });
+  await step(`${w.name} music: a stored volume and Sounds choice are kept on reload`, async () => {
+    await page.evaluate(key => localStorage.setItem(key, JSON.stringify({ ...JSON.parse(localStorage.getItem(key)), volume: 0.5 })), SETTINGS_KEY);
+    await page.reload(); await until(page, () => !!window.tenderloin, null, 'the fork restarts', 15000);
+    assert.deepEqual(pick(await sound(), ['volume', 'rewardsEnabled', 'rewardCount', 'enabled']), { volume: 0.5, rewardsEnabled: false, rewardCount: 0, enabled: false }, 'a stored 50% and Sounds Off are kept; loading plays no chime and no music');
+    await page.keyboard.press('Escape'); await closed(page);
+    return { volume: 0.5 };
+  });
+  clean(log); await context.close();
+}
+// Characters: Godot's conversations (characters.js), the speech bubble on the frame clock and the loan homecoming (hosted-text.js).
+async function charactersSuite(w) {
+  const context = await newContext(w), { page, log } = await newPage(context, `characters-${w.name}`);
+  const talkView = () => call(page, 'conversation'), bubbleView = () => call(page, 'bubble');
+  const start = async raw => { if (raw) await seed(page, raw); await boot(page); await dismissCard(page, w, await cardCheck(page, true)); };
+  await step(`${w.name} characters: Keep Chatting turns Bea's five lines, Turn 1/5 to 5/5, then wraps`, async () => {
+    await start(); await walkTo(page, w, 'bea');
+    const expected = neighborLines({ opened: false }, 'bea').map(webLine), seen = [];
+    for (let turn = 1; turn <= 6; turn++) {
+      if (turn > 1) await press(page, '#talk-chat', w.touch);
+      await until(page, turn => window.tenderloin.conversation().header.includes(`Turn ${turn}/5`), (turn - 1) % 5 + 1, `the header reads Turn ${(turn - 1) % 5 + 1}/5`);
+      const v = await talkView(); seen.push(v.line);
+      assert.equal(v.partner, 'bea'); assert.ok(v.header.includes(NEIGHBOR_BADGES.bea), "the header carries Bea's badge");
+      assert.equal(v.line, expected[(turn - 1) % 5], `turn ${turn} is Godot's line ${(turn - 1) % 5 + 1}`);
+      await until(page, () => window.tenderloin.bubble()?.matched === true, null, 'the next frame finds the bubble line in the open dialog');
+      assert.deepEqual(pick(await bubbleView(), ['id', 'text', 'matched']), { id: 'bea', text: spokenText(expected[(turn - 1) % 5]), matched: true }, 'the bubble says the line the open dialog shows');
+    }
+    assert.equal(new Set(seen.slice(0, 5)).size, 5, 'five distinct lines');
+    assert.ok(!seen.some(line => /Shift\+D/.test(line)), 'no line names a 3D-only key');
+    assert.deepEqual(await page.evaluate(() => ['#talk-chat', '#talk-next', '#talk-bye'].map(s => document.querySelector(s)?.hasAttribute('data-rapid'))), [true, false, false], 'only Keep Chatting is rapid, as in Godot');
+    await layoutCheck(page, w, 'talk-bea');
+    return { lines: seen.length };
+  });
+  await step(`${w.name} characters: What's Next? walks to the objective and the bubble follows the frame clock`, async () => {
+    const snap = await call(page, 'snapshot'), goal = nextObjective(snap, WORLD(snap));
+    await press(page, '#talk-next', w.touch); await closed(page);
+    assert.deepEqual(pick(await bubbleView(), ['id', 'text', 'matched']), { id: 'bea', text: spokenText(whatsNext(goal, 'bea')), matched: false }, "Bea says Godot's What's Next? line");
+    const name = NEIGHBORS.find(n => n.id === goal.neighbor).name; await talkOpen(page, name);
+    assert.equal((await bubbleView())?.id, goal.neighbor, 'arriving, the neighbor speaks');
+    await press(page, '#talk-bye', w.touch); await closed(page);
+    assert.equal(await toastText(page), `You said goodbye to ${name}.`);
+    await until(page, () => window.tenderloin.bubble() === null, null, 'a line the closed dialog showed leaves with it');
+    return { walkedTo: goal.neighbor };
+  });
+  await step(`${w.name} characters: surprise memories and mural scenes from the save; a write keeps them`, async () => {
+    const raw = canonicalStringify(openedEnvelope({ save_seq: 90, discovered_surprises: ['jeffrey_record'], mural_scenes: { left: 'music' } }));
+    assert.equal(parseGodotSave(raw).status, 'loaded'); await start(raw);
+    await walkTo(page, w, 'dez');
+    assert.equal((await talkView()).line, webLine(NEIGHBOR_LINES.dez.open[0]).slice(0, -1) + MURAL_REPLY.dez.text + '"', "Dez's line ends with the painted guitar");
+    await press(page, '#close-modal', w.touch); await closed(page);
+    await walkTo(page, w, 'rook');
+    // Godot leaves rook_talk_count at 0 on arrival, so the first soundcheck is still turn 1.
+    for (let i = 0; i < 5; i++) await press(page, '#soundcheck', w.touch);
+    await until(page, () => window.tenderloin.conversation().header.includes('Turn 5/5'), null, "Rook's fifth turn");
+    assert.ok((await talkView()).line.includes(SURPRISE_MEMORY.rook.first.slice(1, -1)), "Rook's fifth line is the record he was given");
+    await press(page, '#close-modal', w.touch); await closed(page);
+    await walkTo(page, w, 'celeste'); await press(page, '#talk-chat', w.touch);
+    const s = await written(page, 90, { celeste_talk_count: 3 });
+    for (const key of ['discovered_surprises', 'mural_scenes']) assert.ok(s.raw.includes(`${JSON.stringify(key)}:${canonicalStringify(JSON.parse(raw)[key])}`), `${key} is kept byte for byte`);
+    await press(page, '#close-modal', w.touch); await closed(page);
+    return { seq: s.env.save_seq };
+  });
+  await step(`${w.name} characters: returning a loan in conversation, Godot's reply in the bubble until its timer ends`, async () => {
+    await start(canonicalStringify(openedEnvelope({ save_seq: 95, epilogue: { photo: { status: 'skipped', participants: [], mural: {}, palette: 'garden', layout: 'table' }, packing: true, returned: [] } })));
+    await walkTo(page, w, 'thanh');
+    assert.equal(await page.locator('#return-event-loan').textContent(), `Return ${LOAN_TITLES.table}`);
+    await press(page, '#return-event-loan', w.touch); await closed(page);
+    assert.equal(await toastText(page), loanReturnAnnouncement('table', 1));
+    assert.deepEqual(pick(await bubbleView(), ['id', 'text', 'visible', 'matched']), { id: 'thanh', text: spokenText(loanReply('table')), visible: true, matched: false }, "Thanh's reply is drawn over him");
+    await page.screenshot({ path: file(`${w.name}-bubble.png`) });
+    await written(page, 95, {});
+    await until(page, () => window.tenderloin.bubble() === null, null, 'the bubble hides when its hold time ends', 16000);
+    await walkTo(page, w, 'thanh');
+    assert.equal(await page.locator('#loan-receipt').textContent(), `Returned ${LOAN_TITLES.table}`, 'the conversation keeps a receipt for this visit');
+    assert.ok((await talkView()).line.includes(LOAN_REPLIES.table), "Thanh remembers the return in his memory tail");
+    await layoutCheck(page, w, 'talk-thanh-loan');
+    await press(page, '#close-modal', w.touch); await closed(page);
+    return { returned: 'table' };
+  });
+  clean(log); await context.close();
+}
+// Phase 2 at every width, through real taps and clicks. Each new button is pressed twice in one gesture the first time it is
+// used (the press-settle guard turned on for that press only), so the chain itself proves that a double press acts once; chained
+// buttons also take a held Enter. Visit-only steps leave the stored save byte-identical, and a reload clears them.
+async function phase2Suite(w) {
+  const context = await newContext(w), { page, log } = await newPage(context, `phase2-${w.name}`), narrow = isNarrow(w.viewport.width), targets = {};
+  const sound = () => call(page, 'sound'), view = () => call(page, 'ending'), talkView = () => call(page, 'conversation');
+  const title = () => page.evaluate(() => document.querySelector('dialog[open] #modal-title')?.textContent);
+  const focused = () => page.evaluate(() => document.activeElement?.id);
+  const status = () => page.evaluate(() => document.querySelector('#modal-status').textContent);
+  const route = () => page.evaluate(() => document.querySelector('#route-status').textContent);
+  const settled = () => until(page, () => !window.tenderloin.pressSettle().open, null, 'the press-settle window closes', 10000);
+  const guarded = [];
+  // One gesture of two presses on a new button, with the guard at its production window: only the first press reaches the page,
+  // except on a [data-rapid] control (Keep Chatting, Rook's Volume), where both do.
+  async function once(selector, { rapid = false } = {}) {
+    const locator = typeof selector === 'string' ? page.locator(selector) : selector; selector = typeof selector === 'string' ? selector : 'the startup card button'; await locator.waitFor(); await locator.scrollIntoViewIfNeeded();
+    await page.evaluate(() => { delete window.__tenderloinPressSettleMs; window.__nextPassed = { pointerdown: 0, pointerup: 0, click: 0 }; if (!window.__nextCounting) { window.__nextCounting = true; for (const type of Object.keys(window.__nextPassed)) window.addEventListener(type, () => window.__nextPassed[type]++); } });
+    const b = await locator.boundingBox(), x = b.x + b.width / 2, y = b.y + b.height / 2, before = await call(page, 'pressSettle');
+    if (w.touch) { await page.touchscreen.tap(x, y); await page.waitForTimeout(80); await page.touchscreen.tap(x, y); } else await page.mouse.dblclick(x, y, { delay: 40 });
+    await page.waitForTimeout(300);
+    const after = await call(page, 'pressSettle'), passed = await page.evaluate(() => window.__nextPassed);
+    if (rapid) { assert.equal(after.swallowed, before.swallowed, `${selector}: a [data-rapid] control is not gated`); assert.deepEqual(passed, { pointerdown: 2, pointerup: 2, click: 2 }, `${selector}: both presses of a rapid control reach the page`); }
+    else {
+      assert.equal(after.armed - before.armed, 1, `${selector}: one press armed the guard`);
+      assert.ok(after.swallowed > before.swallowed, `${selector}: the second press was swallowed (${before.swallowed} -> ${after.swallowed})`);
+      assert.deepEqual(passed, { pointerdown: 1, pointerup: 1, click: 1 }, `${selector}: only the first press reached the page`);
+    }
+    await settled(); await page.evaluate(() => { window.__tenderloinPressSettleMs = 0; });
+    guarded.push(selector);
+  }
+  // The first use of a button is a guarded double press; later uses are one ordinary press.
+  const use = (selector, opts) => guarded.includes(selector) ? press(page, selector, w.touch) : once(selector, opts);
+  const held = async selector => { await page.locator(selector).focus(); await holdEnter(page); };
+  const start = async raw => { await seed(page, raw); await boot(page); await dismissCard(page, w, await cardCheck(page, true)); return raw; };
+
+  await step(`${w.name} phase 2: the opening card's button starts the music; volume 70% of 100 and the Sounds toggle`, async () => {
+    await boot(page);
+    assert.deepEqual(pick(await sound(), ['enabled', 'volume', 'rewardsEnabled', 'rewardCount']), { enabled: false, volume: 0.7, rewardsEnabled: true, rewardCount: 0 }, 'a new player: no music yet, Godot volume 0.70, Sounds on');
+    const card = await cardCheck(page, true); await once(card.button);
+    await closed(page); await until(page, () => window.tenderloin.sound().enabled, null, "the card's button starts the music once (a second press would stop it)", 10000);
+    assert.equal((await call(page, 'story')).card, false);
+    await page.waitForTimeout(300); assert.equal((await sound()).enabled, true, 'the swallowed second press did not reach the music toggle');
+    await press(page, '#settings-button', w.touch); await page.locator('#reward-sounds').waitFor();
+    assert.deepEqual(await page.locator('#volume').evaluate(i => [i.min, i.max, i.value]), ['0', '100', '70']);
+    await once('#reward-sounds');
+    assert.deepEqual([await page.locator('#reward-sounds').textContent(), await page.locator('#reward-sounds').getAttribute('aria-pressed'), await status()], [soundsLabel(false), 'false', soundsAnnouncement(false)], 'one gesture turns Sounds off once');
+    assert.equal(await page.evaluate(key => JSON.parse(localStorage.getItem(key)).rewardSounds, SETTINGS_KEY), false);
+    await use('#reward-sounds');
+    assert.deepEqual([await page.locator('#reward-sounds').textContent(), await status()], [soundsLabel(true), soundsAnnouncement(true)]);
+    targets.settings = await layoutCheck(page, w, 'p2-settings');
+    await press(page, '#close-modal', w.touch); await closed(page);
+    assert.equal(await stored(page), null, 'settings and music write nothing to the shared save');
+    return { card: card.label, music: pick(await sound(), ['engine', 'rate']) };
+  });
+  let raw;
+  await step(`${w.name} phase 2: a conversation turns, says What's Next? while walking and mirrors the bubble to the live region`, async () => {
+    await walkTo(page, w, 'bea'); raw = (await envelope(page, { visited_neighbors: ['bea'] })).raw;
+    await until(page, () => window.tenderloin.sound().rewardCount === 1, null, 'meeting Bea plays one reward chime');
+    assert.equal((await sound()).rewardLastCue, 'neighbor_visit');
+    const lines = neighborLines({ opened: false }, 'bea').map(webLine);
+    let v = await talkView();
+    assert.ok(narrow ? /^Bea · Turn 1\/5 · Sparks: \d+$/.test(v.header) : v.header.startsWith('Talking with Bea (') && v.header.includes(`${NEIGHBOR_BADGES.bea} · Turn 1/5)`), `the ${narrow ? 'narrow' : 'wide'} header (${v.header})`);
+    assert.ok(v.line.startsWith(lines[0].slice(0, 20)), "Bea's first line");
+    assert.deepEqual(await page.evaluate(() => ['#choose-table', '#choose-floor'].map(s => document.querySelector(s)?.getAttribute('aria-pressed'))), ['false', 'false'], "Bea's context buttons offer the layout");
+    targets.talk = await layoutCheck(page, w, 'p2-talk-bea');
+    await once('#talk-chat', { rapid: true });
+    await until(page, () => window.tenderloin.conversation().header.includes('Turn 3/5'), null, 'Keep Chatting is rapid: two presses, two turns');
+    v = await talkView(); assert.ok(v.line.startsWith(lines[2].slice(0, 20)), "Bea's third line");
+    assert.equal(await stored(page), raw, 'chatting with Bea writes nothing');
+    const snap = await call(page, 'snapshot'), goal = nextObjective(snap, WORLD(snap)), name = NEIGHBORS.find(n => n.id === goal.neighbor).name;
+    await once('#talk-next'); await closed(page);
+    assert.deepEqual(pick(await call(page, 'bubble'), ['id', 'text', 'matched']), { id: 'bea', text: spokenText(whatsNext(goal, 'bea')), matched: false }, "Bea says Godot's What's Next? line in the bubble");
+    assert.equal(await route(), whatsNextAnnouncement(goal, 'bea'), "the live region gets Godot's What's Next? announcement");
+    await talkOpen(page, name);
+    const there = await call(page, 'snapshot'), after = nextObjective(there, WORLD(there));
+    await once('#talk-bye'); await closed(page);
+    assert.equal(await toastText(page), goodbyeLines(goal.neighbor, after).text);
+    assert.equal(await route(), goodbyeLines(goal.neighbor, after).announcement, 'Goodbye sends the next step to the live region');
+    // A context action: Long Table opens the layout editor, and the swallowed second press places nothing on its grid.
+    await walkTo(page, w, 'bea'); const seq = (await call(page, 'save')).seq;
+    await once('#choose-table'); await page.locator('.placement-grid').waitFor();
+    await written(page, seq, { gathering_layout: 'table' });
+    assert.deepEqual((await call(page, 'snapshot')).furniture, {}, 'Long Table acts once');
+    await press(page, '#close-modal', w.touch); await closed(page);
+    return { walkedTo: goal.neighbor };
+  });
+  await step(`${w.name} phase 2: Rook's music panel plays, steps the volume, returns to the sketch and loads a local track`, async () => {
+    await walkTo(page, w, 'rook');
+    await once('#talk-play'); await until(page, () => !window.tenderloin.sound().enabled, null, 'Play/Pause Groove pauses the music once');
+    await use('#talk-play'); await until(page, () => window.tenderloin.sound().enabled, null, 'and plays it again');
+    const v0 = (await sound()).volume, v2 = nextVolume(nextVolume(v0));
+    await once('#talk-volume', { rapid: true });
+    await until(page, v => Math.abs(window.tenderloin.sound().volume - v) < 1e-9, v2, 'Volume is rapid: two presses, two steps');
+    assert.equal(await status(), volumeAnnouncement(v2));
+    assert.equal(await page.evaluate(key => JSON.parse(localStorage.getItem(key)).volume, SETTINGS_KEY), v2, 'the volume is kept in the fork settings');
+    assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('.talk-controls button')].map(b => b.id)), ['talk-play', 'talk-volume', 'soundcheck', 'talk-load', 'talk-sketch', 'talk-next', 'talk-bye'], "Rook's music buttons in Godot's order");
+    await once('#talk-sketch'); assert.equal((await sound()).mode, 'sketch');
+    targets.rook = await layoutCheck(page, w, 'p2-talk-rook');
+    await once('#talk-load'); await page.locator('#soundtrack-volume').waitFor();
+    assert.equal(await page.locator('#soundtrack-volume').getAttribute('max'), '100');
+    await press(page, '#close-modal', w.touch); await closed(page); await stored(page);
+    return { volume: v2 };
+  });
+  await step(`${w.name} phase 2: memory tails, and a loan reply in the bubble and the live region`, async () => {
+    raw = await start(canonicalStringify(openedEnvelope({ save_seq: 95, mural_scenes: { left: 'music' }, epilogue: { photo: { status: 'skipped', participants: [], mural: {}, palette: 'garden', layout: 'table' }, packing: true, returned: [] } })));
+    await walkTo(page, w, 'dez');
+    assert.ok((await talkView()).line.includes(MURAL_REPLY.dez.text), "Dez's memory tail names the painted scene");
+    await press(page, '#close-modal', w.touch); await closed(page);
+    const count = (await sound()).rewardCount;
+    await walkTo(page, w, 'thanh'); await once('#return-event-loan'); await closed(page);
+    await written(page, 95, {});
+    assert.equal(await toastText(page), loanReturnAnnouncement('table', 1));
+    assert.equal(await route(), `Thanh: ${spokenText(loanReply('table'))}`, 'the bubble line is mirrored to the live region while no dialog shows it');
+    assert.equal((await call(page, 'bubble'))?.id, 'thanh');
+    await until(page, c => window.tenderloin.sound().rewardCount === c + 1 && window.tenderloin.sound().rewardLastCue === 'loan_returned', count, 'a returned loan plays its chime once');
+    return { reply: loanReply('table') };
+  });
+  await step(`${w.name} phase 2: the third shot finishes the film and shows Chapter 6`, async () => {
+    const plan = { framing: 'close', plan: 'quiet', order: ['seat', 'paint', 'welcome'] };
+    raw = await start(canonicalStringify(civicDoneEnvelope({ save_seq: 70, film: { phase: 'shooting', draft: plan, result: plan, captured: ['seat', 'paint'] } })));
+    await press(page, '#film-shoot', w.touch); await once('#film-capture');
+    const s = await written(page, 70, {}); assert.equal(s.env.film.phase, 'done'); assert.deepEqual(s.env.film.captured, ['seat', 'paint', 'welcome']);
+    await press(page, '#close-modal', w.touch);
+    const card = await cardCheck(page, false); assert.equal(card.num, 6, 'the finished film moves the story to Chapter 6');
+    targets.chapter6 = await layoutCheck(page, w, 'p2-chapter-6-card');
+    await dismissCard(page, w, card); const c = await chapterCheck(page);
+    assert.ok(c.line.startsWith(narrow ? 'Ch. 6 · Next: ' : 'Chapter 6: Your Block · Next: '), `chapter 6 line (${c.line})`);
+    raw = s.raw;
+    return { line: c.line };
+  });
+  await step(`${w.name} phase 2: Dez's offer, the screening, the bench, the room and the departure, guarded and visit-only`, async () => {
+    await press(page, '#civic-hour', w.touch); await once('#civic-follow'); await closed(page);
+    assert.equal(await focused(), 'film-shoot');
+    await once('#film-shoot'); await until(page, () => /^The Open Seat \| 1 \/ 3/.test(document.querySelector('dialog[open] #modal-title')?.textContent), null, 'the screening opens on frame 1');
+    await once('#screen-frame-1'); assert.match(await title(), /^The Open Seat \| 2 \/ 3/);
+    await held('#screen-helper');
+    await until(page, () => window.tenderloin.ending().stage === 'bench', null, 'a held Enter on Helper workshop opens the bench');
+    assert.deepEqual((await view()).visit.bench, { selected: 0, fitted: [false, false], complete: false }, 'and presses nothing on the bench');
+    await use('#bench-support-1'); await use('#bench-support-0');
+    await held('#bench-assist');
+    assert.deepEqual([(await view()).visit.bench.complete, (await view()).stage], [true, 'bench'], 'a held Enter on the lift lifts once and stays on the bench');
+    targets.bench = await layoutCheck(page, w, 'p2-bench');
+    await once('#bench-habitat'); await until(page, () => window.tenderloin.ending().stage === 'room', null, 'Habitat room opens');
+    assert.deepEqual((await view()).visit.room.assigned, {}, 'the second press placed nothing');
+    for (const [item, place, n] of [[0, 0, 1], [2, 1, 2], [1, 2, 3]]) {
+      await use(`#room-item-${item}`); await use(`#room-place-${place}`); await held('#room-assist');
+      const r = (await view()).visit.room; assert.deepEqual([Object.keys(r.assigned).length, r.complete], [n, false], `a held Enter on carry ${n} carries once and does not welcome`);
+    }
+    await once('#room-detail'); assert.equal((await view()).visit.room.inspecting, true, 'one gesture opens the detail view once'); await use('#room-detail');
+    assert.equal(await page.locator('#room-assist').textContent(), 'Welcome Thanh'); await use('#room-assist');
+    assert.equal(await page.locator('#room-assist').textContent(), 'Prepare together'); await use('#room-assist');
+    targets.room = await layoutCheck(page, w, 'p2-room');
+    await use('#room-item-0'); await use('#room-place-2'); await use('#room-assist');
+    assert.match(await page.locator('#ending-reader').innerText(), /Celeste: My link faces our art by entry\./);
+    await use('#room-place-0'); await use('#room-assist');
+    for (const [item, rel] of [[2, 1], [1, 2]]) { await use(`#room-item-${item}`); await use(`#room-place-${rel}`); await use('#room-assist'); }
+    assert.equal(await page.locator('#room-assist').textContent(), 'Ready together'); await use('#room-assist');
+    assert.equal(await page.locator('#room-assist').textContent(), 'Depart'); await use('#room-assist');
+    assert.equal((await view()).visit.room.mode, 'depart');
+    await held('#room-place-0'); assert.equal((await view()).visit.room.panel, 1, 'a held Enter turns one departure panel');
+    await use('#room-place-1'); assert.equal(await focused(), 'room-detail');
+    targets.departure = await layoutCheck(page, w, 'p2-departure');
+    assert.equal(await stored(page), raw, 'the screening, bench, room and departure write nothing');
+    return { guarded: guarded.length };
+  });
+  await step(`${w.name} phase 2: the orbital commons by floor taps and DOM buttons, and the return home`, async () => {
+    await use('#room-assist'); await until(page, () => window.tenderloin.ending().stage === 'orbit', null, 'the commons opens');
+    const floor = async i => {
+      const rect = page.locator(`#orbit-figure rect[data-target="${i}"]`); await rect.scrollIntoViewIfNeeded(); const b = await rect.boundingBox();
+      assert.ok(b.width >= 43.5 && b.height >= 43.5, `floor target ${i} is at least 44 px (${Math.round(b.width)}x${Math.round(b.height)})`);
+      if (w.touch) await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2); else await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+    };
+    const reached = (i, how) => until(page, i => { const s = window.tenderloin.ending(); return s.visit.orbit.reached === i && !s.moving; }, i, `${how} reaches destination ${i}`, 10000);
+    await floor(0); await reached(0, w.touch ? 'a floor tap' : 'a floor click');
+    targets.orbit = await layoutCheck(page, w, 'p2-orbital');
+    await once('#orbit-1'); await reached(1, 'Walk to Film');
+    assert.match(await page.locator('#ending-reader').innerText(), /You reached Film/);
+    await once('#orbit-3'); await until(page, () => /Thanh has joined you/.test(document.querySelector('#ending-reader')?.innerText || ''), null, 'Thanh joins', 10000);
+    assert.equal(await page.locator('#orbit-4').textContent(), 'Gather here');
+    await held('#orbit-4'); assert.equal((await view()).visit.orbit.phase, 'gathered', 'a held Enter gathers once');
+    await once('#orbit-0'); assert.equal((await view()).visit.orbit.phase, 'menu');
+    await once('#orbit-2'); await use('#orbit-1'); assert.match(await page.locator('#ending-reader').innerText(), /^Memories of this visit \| Film/);
+    await use('#orbit-3'); await use('#orbit-0'); assert.equal((await view()).visit.orbit.phase, 'return');
+    await held('#orbit-1'); assert.equal((await view()).visit.orbit.returnPanel, 1, 'a held Enter turns one return panel');
+    await use('#orbit-1'); assert.equal(await page.locator('#orbit-1').textContent(), 'Home now');
+    await held('#orbit-1'); await closed(page);
+    assert.equal(await focused(), 'film-shoot');
+    assert.match(await toastText(page), /^You finished the imagined orbital afternoon/);
+    assert.equal((await view()).visit.orbit.returned, true);
+    assert.equal(await page.evaluate(() => !!document.querySelector('dialog[open]')), false, 'the held Enter that went home opened nothing after it');
+    assert.equal(await stored(page), raw, 'the whole chain is visit-only');
+    return { orbit: pick((await view()).visit.orbit, ['phase', 'returned']) };
+  });
+  await step(`${w.name} phase 2: Rhythm Circle practice by guarded presses; a reload clears every visit`, async () => {
+    await once('#rhythm-circle'); await until(page, () => window.tenderloin.rhythm().open, null, 'the circle opens');
+    await once('#rhythm-pad-1'); assert.equal((await call(page, 'rhythm')).pattern, 87, 'one gesture toggles one pad');
+    await once('#rhythm-step-cues'); assert.equal((await call(page, 'rhythm')).stepCues, true);
+    await once('#rhythm-play-bar'); assert.deepEqual(pick(await sound(), ['audition', 'muted']), { audition: true, muted: true });
+    await use('#rhythm-play-bar'); assert.equal((await sound()).audition, false);
+    await once('#rhythm-listen'); assert.equal((await call(page, 'rhythm')).pattern, 0, 'in practice, Listen clears the copy once (rhythm.js listen)');
+    await once('#rhythm-complete'); assert.equal((await call(page, 'rhythm')).pattern, 85, 'Reset Practice restores the hosted 85 once');
+    await once('#rhythm-music'); await until(page, () => !window.tenderloin.sound().enabled, null, 'Music: Off stops the sketch once');
+    await use('#rhythm-music'); await until(page, () => window.tenderloin.sound().enabled, null, 'Music: On plays it again');
+    targets.rhythm = await layoutCheck(page, w, 'p2-rhythm');
+    await once('#rhythm-back'); await closed(page); assert.equal(await focused(), 'rhythm-circle');
+    assert.equal(await stored(page), raw, 'practice is visit-only');
+    await page.reload(); await until(page, () => !!window.tenderloin, null, 'the fork restarts', 15000);
+    const v = await view();
+    assert.deepEqual([v.visit.orbit.returned, v.visit.room.complete, v.visit.bench.complete, v.visit.room.mode], [false, false, false, 'room'], 'a reload clears the ending visit');
+    assert.deepEqual(Object.values((await talkView()).talks).filter(n => typeof n === 'number' && n > 0), [], 'a reload clears the conversation turns');
+    await dismissCard(page, w, await cardCheck(page, true));
+    await once('#rhythm-circle'); assert.deepEqual(pick(await call(page, 'rhythm'), ['practice', 'pattern', 'stepCues']), { practice: true, pattern: 85, stepCues: false }, 'a reload clears the practice copy');
+    await press(page, '#rhythm-back', w.touch); await closed(page);
+    assert.equal(await stored(page), raw, 'reloading writes nothing');
+    return { guarded: guarded.length };
+  });
+  await step(`${w.name} phase 2: the hosted view, Bea's offer and Gather again, guarded`, async () => {
+    raw = await start(canonicalStringify(hostedEnvelope({ save_seq: 80 })));
+    await once('#host-afternoon'); await until(page, () => window.tenderloin.ending().stage === 'hosted', null, 'the hosted view opens');
+    await once('#hosted-card-beats'); assert.equal(await page.locator('#hosted-card-beats').getAttribute('aria-pressed'), 'true');
+    await once('#hosted-follow'); await closed(page); assert.equal(await focused(), 'civic-hour');
+    await press(page, '#next-afternoon', w.touch); await press(page, '#programme-view', w.touch);
+    await once('#programme-gather'); await until(page, () => window.tenderloin.ending().stage === 'gather', null, 'Gather again opens');
+    await held('#gather-choice-0'); assert.equal((await view()).visit.gather.gestures.length, 1, 'a held Enter hands off once');
+    await once('#gather-choice-1'); assert.equal((await view()).visit.gather.gestures.length, 2, 'one gesture, one handoff');
+    const at = (await view()).visit.gather.step;
+    await once('#gather-previous'); assert.equal((await view()).visit.gather.step, at - 1, 'Previous steps back once');
+    await once('#gather-next'); assert.equal((await view()).visit.gather.step, at, 'Next steps forward once');
+    targets.gather = await layoutCheck(page, w, 'p2-gather');
+    await page.keyboard.press('Escape'); await closed(page);
+    assert.equal(await stored(page), raw, 'the hosted view and Gather again are visit-only');
+    return { guarded: guarded.length };
+  });
+  if (!w.touch) await step(`${w.name} phase 2: Mural Stories writes mural_scenes, and the real Godot build loads them intact`, async () => {
+    await stat(new URL('artifacts/godot-web/index.pck', root)).catch(() => assert.fail('artifacts/godot-web/index.pck is missing; run npm run godot:export'));
+    const before = await envelope(page);
+    await walkTo(page, w, 'celeste'); await press(page, '#start-mural', w.touch);
+    await once('#mural-scenes'); await until(page, () => window.tenderloin.ending().stage === 'stories', null, 'Mural Stories opens');
+    await once('#scene-target-0'); await written(page, before.env.save_seq, { mural_scenes: { left: 'cooking' } });
+    await once('#scene-page'); await once('#scene-choice-1'); await use('#scene-target-1');
+    const s = await written(page, before.env.save_seq + 1, { mural_scenes: { left: 'cooking', right: 'garden' } });
+    targets.stories = await layoutCheck(page, w, 'p2-stories');
+    for (const key of Object.keys(before.env)) if (!['mural_scenes', 'save_seq'].includes(key)) assert.equal(canonicalStringify(s.env[key]), canonicalStringify(before.env[key]), `${key} is unchanged by a scene edit`);
+    // Godot marks the Stories Palette button rapid: both presses of one gesture cycle it.
+    const PAL = ['garden', 'sunset', 'ocean'], twice = PAL[(PAL.indexOf(s.env.mural_palette) + 2) % 3];
+    await once('#scene-palette', { rapid: true });
+    await until(page, p => window.tenderloin.snapshot().palette === p, twice, 'two presses, two palette steps');
+    const pal = await written(page, s.env.save_seq + 1, { mural_palette: twice, mural_scenes: { left: 'cooking', right: 'garden' } });
+    await once('#scene-back'); await until(page, () => document.querySelector('dialog[open] #modal-title')?.textContent === 'Many hands. One mural.', null, 'Back returns to the mural');
+    await press(page, '#close-modal'); await closed(page);
+    log.on = 'godot'; await page.goto(base + '/godot/'); const g = await godotReady(page);
+    assert.deepEqual(g.mural_scenes_world?.scenes, { left: 'cooking', right: 'garden' }, "Godot shows the fork's mural scenes");
+    assert.equal(await stored(page), pal.raw, 'Godot loaded the scenes without resetting or rewriting the save');
+    await page.screenshot({ path: file(`${w.name}-godot-mural-scenes.png`) }); log.on = 'fork';
+    return { seq: s.env.save_seq, scenes: g.mural_scenes_world.scenes };
+  });
+  await step(`${w.name} phase 2: every new button checked keeps 44 px targets and its close button clear`, async () => {
+    assert.deepEqual(undersized.filter(line => / p2-/.test(line) && line.startsWith(w.name + ' ')), [], 'every phase 2 screen keeps its targets at least 44 px');
+    assert.deepEqual(underClose.filter(line => / p2-/.test(line) && line.startsWith(w.name + ' ')), [], "no phase 2 text is drawn under a dialog's close button");
+    return { guarded, screens: Object.keys(targets).length };
+  });
+  clean(log); await context.close();
+}
 const CLEARED_NOT_SAVED = 'The shared save was cleared in another tab. A fresh afternoon is ready. Your last change no longer applies, so it was not saved.';
 
 try {
@@ -782,9 +1358,9 @@ try {
   });
   // Playwright's BiDi Firefox ignores the reducedMotion context option, so the preference supplies it.
   browser = isFirefox ? await firefox.launch({ channel: 'moz-firefox', headless: true, firefoxUserPrefs: { 'ui.prefersReducedMotion': 1 } }) : await chromium.launch({ ...(channel === 'bundled' ? {} : { channel }), headless: true });
-  for (const w of WIDTHS) { if (SUITES.includes('journey')) await journey(w); if (SUITES.includes('guard')) await guard(w); }
+  for (const w of WIDTHS) { if (SUITES.includes('journey')) await journey(w); if (SUITES.includes('guard')) await guard(w); if (SUITES.includes('ending')) await endingSuite(w); if (SUITES.includes('phase2')) await phase2Suite(w); }
   const wide = WIDTHS.find(w => !w.touch);
-  if (wide) { if (SUITES.includes('tabs')) { await twoTabs(wide); await recoveryCases(wide); } if (SUITES.includes('restart')) await restartSafety(wide); if (SUITES.includes('seeded')) await seeded(wide); }
+  if (wide) { if (SUITES.includes('tabs')) { await twoTabs(wide); await recoveryCases(wide); } if (SUITES.includes('restart')) await restartSafety(wide); if (SUITES.includes('seeded')) await seeded(wide); if (SUITES.includes('music')) await musicSuite(wide); if (SUITES.includes('characters')) await charactersSuite(wide); }
   await step('every checked screen outside the journeys keeps 44 px targets and its close button clear', async () => {
     assert.deepEqual(undersized, [], 'every checked screen keeps its interactive targets at least 44 px');
     assert.deepEqual(underClose, [], "no text is drawn under a dialog's close button");

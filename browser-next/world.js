@@ -35,7 +35,7 @@ export class World {
   constructor(canvas, ways, getState, callbacks) {
     this.canvas = canvas; this.ctx = canvas.getContext('2d'); this.ways = ways; this.getState = getState; this.callbacks = callbacks;
     this.hover = null; this.target = null; this.path = []; this.time = 0; this.motion = false; this.reducedMotion = callbacks.reducedMotion ?? true;
-    this.districtVisible = false; this.districtPolygons = [];
+    this.districtVisible = false; this.districtPolygons = []; this.bubble = null;
     this.resize = new ResizeObserver(() => this.measure()); this.resize.observe(canvas);
     this.pointers = new Set();
     canvas.addEventListener('pointermove', event => {
@@ -272,5 +272,14 @@ export class World {
     this.chip(state.hosting.order.length ? currentActivity(state.hosting) ? `Second afternoon · ${segment(currentActivity(state.hosting)).name}` : 'A programme shared' : state.epilogue.packing ? 'An afternoon well spent' : state.opened ? state.layout === 'table' ? 'The Long Table' : 'The Open Floor' : 'The gathering', 314, 64, state.opened ? '#d5e5ca' : '#f4e4bb');
     if (this.hover) this.chip(this.hover.name, this.hover.x, this.hover.y + 37, '#fff5d9');
     c.setTransform(this.ratio, 0, 0, this.ratio, 0, 0);
+    if (this.bubble) this.drawBubble(this.bubble);
+  }
+  // The speech bubble, in screen px: bubble.js bubbleLayout() (border, fill, tail and wrapped lines), set each frame by game.js.
+  drawBubble(b) {
+    const c = this.ctx, shape = (outline, tail, color) => { c.fillStyle = color; for (const points of [outline, tail]) { c.beginPath(); points.forEach((p, i) => i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)); c.closePath(); c.fill(); } };
+    c.save(); shape(b.border, b.borderTail, b.colors.border); shape(b.fill, b.fillTail, b.colors.fill);
+    c.font = `${b.font}px "Segoe UI", sans-serif`; c.fillStyle = b.colors.text; c.textAlign = 'center'; c.textBaseline = 'middle';
+    for (const line of b.lines) c.fillText(line.text, line.x, line.y);
+    c.restore();
   }
 }

@@ -342,6 +342,27 @@ test("combining brings back the neighborhood surprises and mural scenes in this 
   const kept = JSON.parse(combineSaves(painted.envelope, mine, { ...myWrite.envelope, discovered_surprises: ['not_a_surprise'] }).raw);
   assert.deepEqual([kept.discovered_surprises, kept.mural_scenes], [7, { left: 'cooking' }]);
   assert.equal(JSON.parse(combineSaves(stale.envelope, mine).raw).discovered_surprises.length, 1, 'without a write base nothing is added');
+  // Scenes this tab painted or lifted and saved itself are its choices: an older stored save with scenes does not undo them.
+  // The fourth argument is the scenes this tab last read from the shared save (its own writes do not change it).
+  const loaded = { left: 'music', right: 'garden' };
+  const lifted = act(mine, { type: 'mural-scene', id: '', slot: 'right' }), liftWrite = wrote(myWrite, lifted);
+  assert.deepEqual(liftWrite.envelope.mural_scenes, { left: 'music' });
+  const older = loadEnv(godotEnvelope({ save_seq: 11, visited_neighbors: ['bea'], mural_scenes: { left: 'music', right: 'garden' } }));
+  assert.equal(lostProgress(liftWrite.envelope, older.envelope), 'visited_neighbors');
+  let keep = combineSaves(older.envelope, lifted, liftWrite.envelope, loaded);
+  assert.deepEqual([keep.ok, keep.state.muralScenes, JSON.parse(keep.raw).mural_scenes], [true, { left: 'music' }, { left: 'music' }], 'a saved lift stays lifted');
+  const repainted = act(mine, { type: 'mural-scene', id: 'cooking', slot: 'right' }), paintWrite = wrote(myWrite, repainted);
+  const sharing = loadEnv(godotEnvelope({ save_seq: 11, visited_neighbors: ['bea'], mural_scenes: { left: 'sharing' } }));
+  keep = combineSaves(sharing.envelope, repainted, paintWrite.envelope, loaded);
+  assert.deepEqual([keep.state.muralScenes, JSON.parse(keep.raw).mural_scenes], [{ left: 'music', right: 'cooking' }, { left: 'music', right: 'cooking' }], 'a saved paint stays painted');
+  // Scenes this tab only adopted still follow the stored save, as above.
+  assert.deepEqual(JSON.parse(combineSaves(painted.envelope, mine, myWrite.envelope, loaded).raw).mural_scenes, { left: 'cooking' });
+  // A stored value Godot would clean to nothing counts as no scenes, so the write base's scenes come back.
+  for (const junk of [{ junk: 1 }, { left: 'bogus' }, ['music']]) {
+    const bad = loadEnv(godotEnvelope({ save_seq: 10, visited_neighbors: ['bea'], mural_scenes: junk }));
+    const out = combineSaves(bad.envelope, mine, myWrite.envelope, loaded);
+    assert.deepEqual([out.ok, out.state.muralScenes, JSON.parse(out.raw).mural_scenes], [true, loaded, loaded], `stored ${JSON.stringify(junk)}`);
+  }
   // The merged fields count toward the budget.
   const padded = n => loadEnv(godotEnvelope({ save_seq: 10, visited_neighbors: ['bea'], optional: { pad: 'x'.repeat(n) } }));
   let n = 0, hi = SAVE_BUDGET;

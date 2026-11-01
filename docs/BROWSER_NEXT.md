@@ -31,7 +31,9 @@ Godot reads the save once at startup and has no recovery hold: an invalid core f
    - the required, optional-but-strict and lenient field classes;
    - the opening cascade: `block_opened` holds only with 5 neighbors met, 3 motifs placed and the soundcheck done; the later sections need their own gates.
    - It returns the validated envelope and the fork's state. An invalid save is held: the fork starts fresh in memory and does not write until the player chooses to start over.
-2. **Write by read-modify-write.** The fork overwrites only the fields it owns and keeps every other key exactly as it was loaded: Godot-only progress (`discovered_surprises`, `mural_scenes`, `district_boundary_visible`) and any key a later Godot adds. The one exception is "Keep this tab's progress" (rule 6), which also brings back known surprise ids and mural scenes from this tab's own last write.
+2. **Write by read-modify-write.** The fork overwrites only the fields it owns and keeps every other key exactly as it was loaded: Godot-only progress (`discovered_surprises`, `district_boundary_visible`) and any key a later Godot adds. It writes `mural_scenes` by Godot's rules when the player paints or lifts a scene in Mural Stories. The one exception is "Keep this tab's progress" (rule 6):
+   - Known surprise ids come back from this tab's own last write.
+   - Mural scenes this tab painted or lifted, judged against the scenes it last read from the shared save, win over the stored save. Scenes it only adopted follow the stored save. This tab's last write supplies scenes only when the stored save has none that Godot's clean keeps.
    - Fork-only data goes in `optional['browser-next']`: furniture for the current layout. The player position and litter stay session-only.
    - The output is canonical JSON: compact, keys sorted recursively.
    - `save_seq` is one more than the stored value.
@@ -58,8 +60,39 @@ Godot reads the save once at startup and has no recovery hold: an invalid core f
   - Within 450 ms and 32 px (36 px for touch), any further click is swallowed. The exception is a `[data-rapid]` button that is still under the pointer.
   - The clock runs on frame time, capped at 50 ms per frame.
   - Keyboard activation is never gated by the press window, but a held key's repeats never press a control, as Godot's buttons ignore echo events.
+  - While a dialog is open, a held Escape closes only that dialog, not the screen under it.
+  - A movement key held while a dialog closes does not walk until it is pressed again, like Godot's `release_pending`.
+  - A movement key on the startup card closes the card and starts the music, like Godot's `continue_story()`.
   - Tests switch the guard off with `window.__tenderloinPressSettleMs = 0`; the held-key rule stays on.
 - **Drift test.** It parses `STORY_CHAPTERS`, `PROGRAMME_TITLES`, `LOAN_TITLES`, `GATHERING_LAYOUT_TITLES` and the objective templates from `godot/main.gd`, and compares them with the fork's copies.
+
+## Phase 2: music, neighbors and the ending
+
+- **Music.** The Godot sketch is now the 2D sketch.
+  - `sketch-core.js` ports `advance_music_clock` exactly to the sample at 22,050 Hz.
+  - `sketch-worklet.js` plays it as an AudioWorklet, and `sketch-player.js` keeps `MusicSketch`'s old interface for `audio.js`.
+  - Stems follow progress as in Godot.
+  - Volume defaults to 70% and the slider goes to 100%.
+  - The opening card's button starts the music.
+  - Reward chimes (`rewards.js`) play on Godot's progress cues with Godot's suppression rules. A Sounds On/Off setting is stored only in the fork's settings key.
+- **Rhythm Circle.** `rhythm.js` and `rhythm-ui.js` port the Play Bar drum, the step clock and the pads. Practice is never saved. In hosting, the beats save as `host-beat` and `host-complete` actions. The hosting dialog's beats summary has no Godot source and is declared fork text in `hosted-text.js`.
+- **Neighbors.** `characters.js` copies every neighbor line from `godot/main.gd`. That includes:
+  - rotating lines and memory tails;
+  - Keep Chatting (the only rapid button), What's Next? (which walks to the objective) and context buttons;
+  - the Turn n/5 header, story badges, arrival captions and goodbyes;
+  - Rook's music panel, in Godot's button order.
+  - `bubble.js` draws speech bubbles on the map and mirrors them into the live region.
+  - `hosted-text.js` holds the hosted-afternoon, invitation, quiet and loan texts.
+- **Ending chain.** `ending/` ports the rest of the ending, all as visit-only steps that save nothing until a step Godot also saves:
+  - the hosted review and Bea's offer;
+  - Dez's film offer, the screening and the helper workshop;
+  - Gather again, the helper bench and the habitat room;
+  - the departure, and the orbital commons with its recap and Home now;
+  - Chapter 6;
+  - Mural Stories with Palette and Music buttons, writing `mural_scenes`.
+  - Text is copied verbatim into `ending/text.js`. Only the import, F5 and Godot-storage lines are rewritten, through `ENDING_WEB_OVERRIDES`.
+- **Drift tests.** `tests/next-music.test.mjs`, `next-characters.test.mjs` and `next-ending.test.mjs` parse the Godot sources at test time and fail when a copied line, constant or cue drifts.
+- **Not ported yet.** Godot's visual feel-good bursts, a street tap on the startup card, and movement keys on a later chapter card.
 
 ## Proof
 
