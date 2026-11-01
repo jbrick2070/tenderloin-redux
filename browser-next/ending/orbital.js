@@ -1,12 +1,14 @@
 // The orbital commons, its finale recap and the return home: godot/orbital_commons.gd. Visit-only.
 // Movement is a pure step(orbit, dtMs, reducedMotion); the DOM loop lives in ui.js.
-import { G, C, gdf, web } from './text.js';
+import { G, C } from './text.js';
+import { compose, midSentence, display, ENDING_COMPOSE as K, ENDING_DISPLAY } from './compose.js';
+import { L } from '../i18n.js';
 import { filmShotTitle } from './rules.js';
 import { moduleSVG, svgBody, PAPER_COLORS, escapeXML } from './art.js';
 import { ITEMS, TITLES, NAMES, sparePlace, invitation, habitatCopies } from './habitat.js';
 
-const T = G['orbital_commons.gd'], K = C['orbital_commons.gd'], M = C['main.gd'];
-const { DESTINATIONS, DISPLAY_RECTS, JUNCTION, ENTRY, GATHERED } = K;
+const T = G['orbital_commons.gd'], K0 = C['orbital_commons.gd'], M = C['main.gd'];
+const { DESTINATIONS, DISPLAY_RECTS, JUNCTION, ENTRY, GATHERED } = K0;
 const BEA_TITLES = C['bea_invitation.gd'].TITLES, QUIET_TITLES = C['quiet_seats.gd'].TITLES;
 export const SPEED = 135, THANH_SPEED = 0.8, MAX_FRAME_MS = 50, HOP_MS = 250, THANH_START = [432, 350];
 export { DESTINATIONS, JUNCTION, ENTRY };
@@ -55,7 +57,7 @@ export function halt(o) {
   if (!was && o.sharing < 0) return { orbit: o, halted: false };
   const next = clone(o);
   next.playerPath = []; next.thanhPath = []; next.sharing = -1;
-  if (was) next.notice = resident ? T.halt.thanh : T.halt.stopped;
+  if (was) next.notice = L(resident ? T.halt.thanh : T.halt.stopped);
   return { orbit: next, halted: was };
 }
 export function walkTo(o, index) {
@@ -63,8 +65,8 @@ export function walkTo(o, index) {
   if (o.target === index && o.playerPath.length) return { orbit: o };
   const next = halted(o);
   next.target = index;
-  if (dist(next.player, DESTINATIONS[index]) < 1) { next.reached = index; next.notice = T.walk_to.here + TITLES[index] + T.walk_to.hereTail; }
-  else { next.reached = -1; next.playerPath = route(next.player, DESTINATIONS[index]); next.hop[0] = 0; next.notice = T.walk_to.walking + TITLES[index] + T.walk_to.walkingTail; }
+  if (dist(next.player, DESTINATIONS[index]) < 1) { next.reached = index; next.notice = compose(K.youAreBy, { place: L(TITLES[index]) }); }
+  else { next.reached = -1; next.playerPath = route(next.player, DESTINATIONS[index]); next.hop[0] = 0; next.notice = compose(K.walkingTo, { place: L(TITLES[index]) }); }
   return { orbit: next, changed: true };
 }
 export function inviteThanh(o) {
@@ -72,8 +74,8 @@ export function inviteThanh(o) {
   const next = clone(o);
   next.sharing = next.reached; next.shared = -1;
   next.thanhPath = route(next.thanh, add(DESTINATIONS[next.reached], [42, 10])); next.hop[1] = 0;
-  next.notice = T.invite_thanh.join + TITLES[next.reached] + T.invite_thanh.joinTail;
-  if (!next.thanhPath.length) { next.shared = next.sharing; next.sharing = -1; next.notice = T.invite_thanh.beside; }
+  next.notice = compose(K.thanhJoins, { place: L(TITLES[next.reached]) });
+  if (!next.thanhPath.length) { next.shared = next.sharing; next.sharing = -1; next.notice = L(T.invite_thanh.beside); }
   return { orbit: next, changed: true };
 }
 const moveToward = (p, to, d) => { const l = dist(p, to); return l <= d || l === 0 ? [...to] : [p[0] + (to[0] - p[0]) / l * d, p[1] + (to[1] - p[1]) / l * d]; };
@@ -94,41 +96,49 @@ export function step(o, dtMs, reducedMotion = false) {
     }
     return next[pathKey].length === 0;
   };
-  if (advanceWalker('player', 'playerPath', 1, 0)) { next.reached = next.target; next.notice = T._process.reached + TITLES[next.reached] + T._process.reachedTail; events.push('arrived'); }
-  if (advanceWalker('thanh', 'thanhPath', THANH_SPEED, 1)) { next.shared = next.sharing; next.sharing = -1; next.notice = T._process.joined; events.push('joined'); }
+  if (advanceWalker('player', 'playerPath', 1, 0)) { next.reached = next.target; next.notice = compose(K.youReached, { place: L(TITLES[next.reached]) }); events.push('arrived'); }
+  if (advanceWalker('thanh', 'thanhPath', THANH_SPEED, 1)) { next.shared = next.sharing; next.sharing = -1; next.notice = L(T._process.joined); events.push('joined'); }
   return { orbit: next, events };
 }
 
 const beats = o => o.copies.beats;
+// The palette id as the commons says it mid-sentence ("warm").
+const palette = c => midSentence(display(ENDING_DISPLAY.artPalettes, c.art.palette));
 export function response(o) {
   const r = T.response, c = o.copies;
-  if (o.shared < 0) return r.waits;
-  if (o.shared === 0) return r.art + c.art.palette + r.artTail;
-  if (o.shared === 1) return r.film + filmShotTitle(c.film.order[2]).toLowerCase() + r.filmTail + (beats(o) === 0 ? r.beatsNone : r.beatsSome);
-  return r.seats + QUIET_TITLES[c.pause] + r.seatsMid + M.CIVIC_FORMAT_LABELS[c.civic.format] + r.seatsTail;
+  if (o.shared < 0) return L(r.waits);
+  if (o.shared === 0) return compose(K.responseArt, { palette: palette(c) });
+  if (o.shared === 1) return compose(K.responseFilm, { ending: midSentence(filmShotTitle(c.film.order[2])), beats: L(beats(o) === 0 ? r.beatsNone : r.beatsSome) });
+  return compose(K.responseSeats, { seats: L(QUIET_TITLES[c.pause]), format: L(M.CIVIC_FORMAT_LABELS[c.civic.format]) });
 }
-export const recognition = o => o.returned ? T.recognition.returned : o.completed ? T.recognition.completed : '';
+export const recognition = o => o.returned ? L(T.recognition.returned) : o.completed ? L(T.recognition.completed) : '';
 function acknowledgments(o, room) {
-  const a = T.acknowledgments, c = o.copies, place = TITLES[o.gathering];
-  return a.gathered + place + a.gatheredTail + c.art.palette + a.shapes + NAMES[sparePlace(room)].toLowerCase() + a.open + M.FILM_FRAMING_LABELS[c.film.framing].toLowerCase()
-    + a.plan + M.FILM_PLAN_LABELS[c.film.plan].toLowerCase() + a.looked + (beats(o) === 0 ? a.beatsNone : a.beatsSome)
-    + a.thanh + QUIET_TITLES[c.pause] + a.and + M.CIVIC_FORMAT_LABELS[c.civic.format] + a.pause + o.invitationTitle + a.never + place + a.tail;
+  const a = T.acknowledgments, c = o.copies;
+  return compose(K.acknowledgments, {
+    place: L(TITLES[o.gathering]), palette: palette(c), spare: midSentence(L(NAMES[sparePlace(room)])), framing: midSentence(L(M.FILM_FRAMING_LABELS[c.film.framing])),
+    plan: midSentence(L(M.FILM_PLAN_LABELS[c.film.plan])), beats: L(beats(o) === 0 ? a.beatsNone : a.beatsSome), seats: L(QUIET_TITLES[c.pause]),
+    format: L(M.CIVIC_FORMAT_LABELS[c.civic.format]), title: L(o.invitationTitle),
+  });
 }
 function finaleText(o, room) {
-  const f = T.finale_text, c = o.copies, place = TITLES[o.gathering], answer = [f.answer0, f.answer1, f.answer2][o.gathering];
+  const f = T.finale_text, c = o.copies, place = L(TITLES[o.gathering]), answer = L([f.answer0, f.answer1, f.answer2][o.gathering]);
   let body = acknowledgments(o, room);
-  if (o.phase === 'gathered') body += f.response + answer + (o.completed ? f.gatheredDone : f.gatheredOpen);
-  else if (o.phase === 'menu') body = recognition(o) + f.you + answer + f.menu;
-  else if (o.phase === 'recap') body = f.memories + TITLES[o.memory] + '\n' + [
-    f.recapArt + c.art.palette + f.recapArtMid + NAMES[sparePlace(room)] + '.',
-    f.recapFilm + filmShotTitle(c.film.order[0]) + ', ' + filmShotTitle(c.film.order[1]) + ', ' + filmShotTitle(c.film.order[2]) + '. ' + M.FILM_FRAMING_LABELS[c.film.framing] + '.',
-    f.recapSeats + QUIET_TITLES[c.pause] + f.recapSeatsMid + M.CIVIC_FORMAT_LABELS[c.civic.format] + '.',
-  ][o.memory] + '\n' + acknowledgments(o, room);
-  else if (o.phase === 'return') body = f.returnHome + String(o.returnPanel + 1) + f.of3 + [f.return0 + o.invitationTitle + f.return0Mid + place + f.return0Tail, f.return1, f.return2][o.returnPanel] + f.returnTail;
-  return body + f.speculative + (beats(o) === 0 ? f.beatsNone : f.beatsSome) + web(f.tail);
+  if (o.phase === 'gathered') body += compose(K.yourResponse, { answer }) + L(o.completed ? f.gatheredDone : f.gatheredOpen);
+  else if (o.phase === 'menu') body = recognition(o) + compose(K.youAnswer, { answer }) + L(f.menu);
+  else if (o.phase === 'recap') body = compose(K.memories, { memory: L(TITLES[o.memory]) }) + '\n' + [
+    () => compose(K.recapArt, { palette: palette(c), spare: L(NAMES[sparePlace(room)]) }),
+    () => compose(K.recapFilm, { first: filmShotTitle(c.film.order[0]), second: filmShotTitle(c.film.order[1]), third: filmShotTitle(c.film.order[2]), framing: L(M.FILM_FRAMING_LABELS[c.film.framing]) }),
+    () => compose(K.recapSeats, { seats: L(QUIET_TITLES[c.pause]), format: L(M.CIVIC_FORMAT_LABELS[c.civic.format]) }),
+  ][o.memory]() + '\n' + acknowledgments(o, room);
+  else if (o.phase === 'return') {
+    const panel = o.returnPanel === 0 ? compose(K.returnFold, { title: L(o.invitationTitle), place }) : L([f.return1, f.return2][o.returnPanel - 1]);
+    body = compose(K.returnPanel, { number: o.returnPanel + 1, panel });
+  }
+  return body + compose(K.speculative, { beats: L(beats(o) === 0 ? f.beatsNone : f.beatsSome) });
 }
 const HEADINGS = () => ({ walk: T.refresh.walk, gathered: T.refresh.gathered, menu: T.refresh.menu, return: T.refresh.return, recap: T.refresh.recap });
-export const orbitHeading = o => T.refresh.heading + HEADINGS()[o.phase] + T.refresh.credit;
+// The heading's first line is the title, its second the credit (ending/ui.js splits it at the newline).
+export const orbitHeading = o => compose(K.starsHeading, { view: L(HEADINGS()[o.phase]) }) + L(T.refresh.credit);
 function labels(o) {
   const t = T.refresh;
   if (o.phase === 'gathered') return [o.completed ? t.backChoices : t.keepOpen, t.backCommons, '', '', '', t.back, t.pause];
@@ -140,25 +150,25 @@ function labels(o) {
   return out;
 }
 export function orbitButtons(o) {
-  const texts = labels(o), out = texts.map((label, i) => ({ id: `orbit-${i}`, label, name: label, hidden: !label, disabled: false }));
+  const texts = labels(o).map(label => label && L(label)), out = texts.map((label, i) => ({ id: `orbit-${i}`, label, name: label, hidden: !label, disabled: false }));
   if (o.phase === 'walk') {
     out[3].disabled = o.reached < 0 || moving(o) || o.shared === o.reached;
     out[4].disabled = !moving(o) && !canGather(o) && !o.completed;
-    for (let i = 0; i < 3; i++) out[i].name = texts[i] + (o.reached === i ? T.refresh.here : '');
+    for (let i = 0; i < 3; i++) out[i].name = o.reached === i ? compose(K.walkHere, { label: texts[i] }) : texts[i];
   }
   return out;
 }
 export function orbitText(o, room) {
   const t = T.refresh;
   if (o.phase !== 'walk') return finaleText(o, room);
-  let body = t.intro + o.notice + '\n' + response(o);
-  if (o.shared >= 0) body = response(o) + '\n' + o.notice + t.another;
-  body += t.invitation + o.invitationTitle + t.copies + (beats(o) === 0 ? t.beatsNone : t.beatsSome) + web(t.tail);
-  if (o.gathering >= 0 && !o.completed) body = t.still + body;
+  let body = L(t.intro) + o.notice + '\n' + response(o);
+  if (o.shared >= 0) body = response(o) + '\n' + o.notice + L(t.another);
+  body += compose(K.commonsInvitation, { title: L(o.invitationTitle), beats: L(beats(o) === 0 ? t.beatsNone : t.beatsSome) });
+  if (o.gathering >= 0 && !o.completed) body = L(t.still) + body;
   if (o.completed) body = recognition(o) + '\n' + body;
   return body;
 }
-export const orbitAnnounce = o => o.phase !== 'walk' ? orbitHeading(o).split('\n')[0] + '. ' + recognition(o) : o.shared >= 0 && !moving(o) ? response(o) : o.notice;
+export const orbitAnnounce = o => o.phase !== 'walk' ? compose(K.titled, { title: orbitHeading(o).split('\n')[0], text: recognition(o) }) : o.shared >= 0 && !moving(o) ? response(o) : o.notice;
 export function orbitalView(o, room) {
   return { heading: orbitHeading(o), text: orbitText(o, room), buttons: orbitButtons(o), announce: orbitAnnounce(o), svg: orbitalSVG(o, room) };
 }
@@ -208,7 +218,7 @@ export function returnHome(o) {
   if (o.phase !== 'return' || o.returnPanel !== 2 || !o.completed) return { orbit: o };
   const next = halted(o);
   next.returned = true; next.phase = 'menu';
-  return { orbit: next, effect: 'home', announce: recognition(next) + T.return_home.tail };
+  return { orbit: next, effect: 'home', announce: recognition(next) + L(T.return_home.tail) };
 }
 
 // _draw() and person(), flattened to one 720x480 inline SVG. Figures are their own <g> so ui.js can move them per frame.
@@ -261,7 +271,7 @@ export function orbitalSVG(o, room) {
     else s += '<rect x="110" y="309" width="106" height="128" fill="none" stroke="#29434a" stroke-width="8"/><path d="M110 309L180 332V437" fill="none" stroke="#548b84" stroke-width="5"/>';
     s += `<path d="M${tri([550, 370], 52, 35)}" fill="#${colors[1]}"/><path d="M498 405H602" stroke="#${colors[0]}" stroke-width="6"/>`;
   }
-  if (o.phase !== 'return') for (let i = 0; i < 3; i++) s += `<text x="${DESTINATIONS[i][0]}" y="${DESTINATIONS[i][1] + 34}" text-anchor="middle" font-size="14" fill="#182c38" font-family="sans-serif">${TITLES[i]}</text>`;
+  if (o.phase !== 'return') for (let i = 0; i < 3; i++) s += `<text x="${DESTINATIONS[i][0]}" y="${DESTINATIONS[i][1] + 34}" text-anchor="middle" font-size="14" fill="#182c38" font-family="sans-serif">${escapeXML(L(TITLES[i]))}</text>`;
   // Floor destinations: invisible hit areas, sized to 44 CSS px by ui.js. The Walk buttons are the accessible path.
   if (o.phase === 'walk') for (let i = 0; i < 3; i++) s += `<rect data-target="${i}" x="${DESTINATIONS[i][0] - 22}" y="${DESTINATIONS[i][1] - 22}" width="44" height="44" fill="transparent" pointer-events="all" aria-hidden="true"/>`;
   return s + '</svg>';

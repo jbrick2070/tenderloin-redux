@@ -1,6 +1,7 @@
 // The Godot predicates the ending reads, over the fork state (parseGodotSave's shape). Pure.
 import { C } from './text.js';
 import { programmeIssue } from '../programme.js';
+import { L } from '../i18n.js';
 
 const M = C['main.gd'];
 const isDict = v => v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -9,8 +10,9 @@ const list = v => Array.isArray(v) ? v : [];
 const whole = v => typeof v === 'number' && Number.isFinite(v) && Math.abs(v - Math.round(v)) < Math.max(1e-5, 1e-5 * Math.abs(v));
 const round = v => Math.sign(v) * Math.round(Math.abs(v));
 
-export const programmeTitle = id => Object.hasOwn(M.PROGRAMME_TITLES, id) ? M.PROGRAMME_TITLES[id] : String(id);
-export const filmShotTitle = id => Object.hasOwn(M.FILM_SHOT_LABELS, id) ? M.FILM_SHOT_LABELS[id] : String(id);
+// A segment's and a film shot's display title, localized (an unknown id is shown as it is, as Godot does).
+export const programmeTitle = id => Object.hasOwn(M.PROGRAMME_TITLES, id) ? L(M.PROGRAMME_TITLES[id]) : String(id);
+export const filmShotTitle = id => Object.hasOwn(M.FILM_SHOT_LABELS, id) ? L(M.FILM_SHOT_LABELS[id]) : String(id);
 // main.gd is_hosting_done, is_civic_available, is_film_available.
 export const isHostingDone = s => list(s?.hosting?.order).length === 4 && list(s?.hosting?.results).length === 4;
 export const isCivicAvailable = s => s?.opened === true && isHostingDone(s);
