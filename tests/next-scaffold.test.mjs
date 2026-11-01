@@ -55,6 +55,18 @@ test('the fork declares its Content-Security-Policy first in <head>, with no inl
   assert.doesNotMatch(html, /<[^>]+\son[a-z]+\s*=/i, 'no on* event handler attribute');
 });
 
+// Play the 3D edition: a plain link to the Godot build beside the fork, right after the edition note. It opens in the same tab (no
+// target), is relative (Pages serves the fork under /tenderloin-redux/), and loads nothing, so the policy above stays as it is.
+test('the page links to the 3D edition right after the edition note: same tab, relative, and the note stays true', () => {
+  const html = readFileSync(new URL('../browser-next/index.html', import.meta.url), 'utf8');
+  const note = '<p class="save-status edition-note" id="edition-note">Playing the 3D edition too? Your progress comes with you; if it is already open in another tab, reload it after switching.</p>';
+  const link = '<a id="swap-edition" class="edition-link" href="../godot/">Play the 3D edition<span aria-hidden="true">↗</span></a>';
+  assert.ok(html.includes(note + link), 'the link follows the edition note, which says progress comes with you');
+  assert.equal(html.split('id="swap-edition"').length - 1, 1, 'one page link');
+  assert.doesNotMatch(html, /Reload the other edition after switching\./, 'the old note is gone');
+  assert.ok(html.indexOf(link) < html.indexOf('</aside>', html.indexOf('class="field-guide"')), 'the link sits in the field guide, under the save status');
+});
+
 // Line endings: the files the fork copied from classic keep classic's CRLF, every other fork file is LF, and none is mixed.
 const CRLF_FILES = ['camera.js', 'core.js', 'data/streets.osm.json', 'game.js', 'index.html', 'style.css', 'world.js'];
 test('every fork file is uniformly LF or uniformly CRLF, and only the files copied from classic are CRLF', () => {

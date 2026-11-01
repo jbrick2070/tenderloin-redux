@@ -484,6 +484,45 @@ h1 {
 .edition-note {
   margin-top:4px
 }
+/* Play the 3D edition (edition.js): a link, so a modifier or middle click opens a new tab. A 44 px row of teal on the paper
+   (5.9:1) with the shared focus ring, which the 8 px above keeps off the note; the arrow is an inline block set off by its own
+   margin, so the underline stops at the words. */
+.edition-link {
+  display:block;
+  width:fit-content;
+  max-width:100%;
+  min-height:44px;
+  margin:8px auto 0;
+  padding:0 12px;
+  color:var(--teal);
+  font-size:12px;
+  font-weight:600;
+  line-height:44px;
+  text-align:center;
+  text-underline-offset:3px
+}
+.edition-link span {
+  display:inline-block;
+  margin-left:6px
+}
+/* Its Settings row: the help beside the link where both fit, the link under the help on a phone. */
+.edition-row {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px 20px;
+  margin:12px 0
+}
+.edition-row p {
+  flex:1 1 220px;
+  margin:0
+}
+.edition-row .edition-link {
+  margin:0;
+  padding:0;
+  font-size:12px
+}
 .task.optional .task-number {
   opacity:.7
 }

@@ -29,6 +29,7 @@ import { createEpisodeScreens } from './visits-episodes.js';
 import { createWorldVisits } from './visits-world.js';
 import { VISITS_FORK_TEXT } from './visits-kit.js';
 import { createSprites, tourMarkerLift, BEACON_LIFT } from './sprites.js';
+import { EDITION_URL, EDITION_TEXT, swapAction } from './edition.js';
 
 const $ = selector => document.querySelector(selector);
 const modal = $('#modal'), body = $('#modal-body'), canvas = $('#world');
@@ -928,7 +929,7 @@ function finale() {
   bind('stay-block', close); bind('finale-notes', journal);
 }
 function showSettings() {
-  show(`<span class="eyebrow">MAKE YOURSELF COMFORTABLE</span><h2 id="modal-title">Your afternoon.</h2><label class="settings-row" for="volume"><span>Music volume <span id="volume-number">${Math.round(settings.volume * 100)}%</span></span><input id="volume" data-rapid type="range" min="0" max="${MAX_VOLUME * 100}" value="${Math.round(settings.volume * 100)}"></label><div class="settings-row"><span id="reward-sounds-label">Reward sounds</span><button id="reward-sounds" class="secondary-button" aria-pressed="${settings.rewardSounds}" aria-describedby="reward-sounds-help" title="${SOUNDS_TEXT.tooltip}">${soundsLabel(settings.rewardSounds)}</button><span id="reward-sounds-help" class="sr-only">${SOUNDS_TEXT.tooltip}</span></div><label class="settings-row" for="motion"><span>Reduce ambient motion</span><input type="checkbox" id="motion" ${settings.reducedMotion ? 'checked' : ''}></label><p>Music is optional. Every preparation, conversation, and completion message works without sound.</p><fieldset class="experiment-settings"><legend>Experimental</legend><label class="settings-row" for="voices-enabled"><span>Neighborhood Voices · text only</span><input id="voices-enabled" type="checkbox" ${settings.experimental.neighborhoodVoices ? 'checked' : ''}></label><p>Three dated organization cards with official links. Off by default. You can turn this off at any time; your gathering stays the same. No TenderVoice code, recordings or interviews are included.</p><p id="voices-settings-status" role="status"></p></fieldset><div class="history-entry"><span class="eyebrow">YOUR SAVED AFTERNOON</span><p>${held ? SAVE_TEXT.held : storageAvailable ? 'Your progress stays in this browser, shared with the 3D edition of this site. After switching editions, reload the other one.' : 'Browser storage is unavailable. Progress will last in this tab.'}</p><button id="restart" class="danger-button">${held ? 'Start over…' : 'Start a new afternoon…'}</button></div>`);
+  show(`<span class="eyebrow">MAKE YOURSELF COMFORTABLE</span><h2 id="modal-title">Your afternoon.</h2><label class="settings-row" for="volume"><span>Music volume <span id="volume-number">${Math.round(settings.volume * 100)}%</span></span><input id="volume" data-rapid type="range" min="0" max="${MAX_VOLUME * 100}" value="${Math.round(settings.volume * 100)}"></label><div class="settings-row"><span id="reward-sounds-label">Reward sounds</span><button id="reward-sounds" class="secondary-button" aria-pressed="${settings.rewardSounds}" aria-describedby="reward-sounds-help" title="${SOUNDS_TEXT.tooltip}">${soundsLabel(settings.rewardSounds)}</button><span id="reward-sounds-help" class="sr-only">${SOUNDS_TEXT.tooltip}</span></div><label class="settings-row" for="motion"><span>Reduce ambient motion</span><input type="checkbox" id="motion" ${settings.reducedMotion ? 'checked' : ''}></label><p>Music is optional. Every preparation, conversation, and completion message works without sound.</p><fieldset class="experiment-settings"><legend>Experimental</legend><label class="settings-row" for="voices-enabled"><span>Neighborhood Voices · text only</span><input id="voices-enabled" type="checkbox" ${settings.experimental.neighborhoodVoices ? 'checked' : ''}></label><p>Three dated organization cards with official links. Off by default. You can turn this off at any time; your gathering stays the same. No TenderVoice code, recordings or interviews are included.</p><p id="voices-settings-status" role="status"></p></fieldset><div class="history-entry"><span class="eyebrow">YOUR SAVED AFTERNOON</span><p>${held ? SAVE_TEXT.held : storageAvailable ? 'Your progress stays in this browser, shared with the 3D edition of this site. After switching editions, reload the other one.' : 'Browser storage is unavailable. Progress will last in this tab.'}</p><div class="edition-row"><p id="swap-edition-settings-help">${EDITION_TEXT.help}</p><a id="swap-edition-settings" class="edition-link" href="${EDITION_URL}" aria-describedby="swap-edition-settings-help">${EDITION_TEXT.link}<span aria-hidden="true">↗</span></a></div><button id="restart" class="danger-button">${held ? 'Start over…' : 'Start a new afternoon…'}</button></div>`);
   $('#volume').addEventListener('input', event => { settings.volume = Number(event.target.value) / 100; music.setVolume(settings.volume); $('#volume-number').textContent = `${Math.round(settings.volume * 100)}%`; saveSettings(); });
   // Godot toggle_reward_sounds: Sounds On/Off in the fork's settings key; turning it off stops a chime at once. Godot's tooltip
   // is the button's description too (#reward-sounds-help), so it is not reachable by hover alone.
@@ -936,6 +937,7 @@ function showSettings() {
   $('#motion').addEventListener('change', event => { settings.reducedMotion = event.target.checked; document.documentElement.classList.toggle('reduced-motion', settings.reducedMotion); saveSettings(); });
   $('#voices-enabled').addEventListener('change', event => setVoicesEnabled(event.target.checked)); voicesUI();
   bind('restart', () => confirmRestart(() => { showSettings(); const restartButton = $('#restart'); restartButton.focus({ preventScroll: true }); restartButton.scrollIntoView({ block: 'nearest' }); }));
+  bindSwap($('#swap-edition-settings'), () => { showSettings(); const link = $('#swap-edition-settings'); link.focus({ preventScroll: true }); link.scrollIntoView({ block: 'nearest' }); });
 }
 // Restart clears the shared key, so it resets the 3D edition too; Godot reads an absent save as a fresh one.
 // Keep has focus, and a held Enter never reaches Start fresh: press-settle.js drops every repeated Enter on a control.
@@ -951,6 +953,31 @@ function restart() {
   resetSession(); ending.reset(); rhythm.stop();
   stopWalk(); if (world) { world.camera.overview(); if (world.width < 600) world.camera.follow(state.player); cameraUI(); }
   updateUI(); close(); toast('A fresh afternoon. Bea is ready when you are.');
+}
+// Play the 3D edition (edition.js), on the page and in Settings. The Godot build reads the shared save when it starts and the fork
+// writes on every change, so a click follows the link as it is, and a modifier or middle click keeps the browser's own new tab. The
+// stored key is read again first, as before a write; then swapAction holds the swap only where leaving could lose progress: a
+// pending recovery offer comes back and says why, and a save that could not be read asks first, since the 3D edition would replace
+// it. back: Stay here's way back to the link the swap came from.
+function bindSwap(link, back) {
+  const guard = event => { if (event.type === 'click' || event.button === 1) swapEdition(event, back); };
+  link.addEventListener('click', guard); link.addEventListener('auxclick', guard);
+}
+function swapEdition(event, back) {
+  syncStored();
+  const action = swapAction({ recovery, held });
+  if (action === 'go') return;
+  event.preventDefault();
+  if (action === 'recover') offerRecovery(EDITION_TEXT.recover); else confirmSwap(back, event.currentTarget);
+}
+// Stay here has the focus, as Keep my afternoon does, and a held Enter never reaches Open the 3D edition: press-settle.js drops
+// every repeated Enter on a control. Opened from the page, Escape and × return to its link too.
+function confirmSwap(back, origin) {
+  const fromPage = !modal.open;
+  show(`<span class="eyebrow">${EDITION_TEXT.eyebrow}</span><h2 id="modal-title">${EDITION_TEXT.title}</h2><p>${EDITION_TEXT.confirm}</p><div class="button-row">${button('swap-open', EDITION_TEXT.open, true)}${button('swap-stay', EDITION_TEXT.stay)}</div>`);
+  if (fromPage) modalReturnTarget = origin;
+  bind('swap-open', () => location.assign(EDITION_URL)); bind('swap-stay', back);
+  $('#swap-stay').focus({ preventScroll: true });
 }
 function interact(object, how = 'tap') {
   if (!object) return;
@@ -1107,6 +1134,7 @@ window.addEventListener('resize', chapterUI);
 $('#journal-button').addEventListener('click', journal); $('#settings-button').addEventListener('click', showSettings);
 $('#map-info').addEventListener('click', mapInfo); $('#about-button').addEventListener('click', mapInfo);
 $('#open-gathering').addEventListener('click', finale); $('#save-start-over').addEventListener('click', () => confirmRestart(() => close($('#save-start-over'))));
+bindSwap($('#swap-edition'), () => close($('#swap-edition')));
 $('#world-prompt').addEventListener('click', () => { if (!world) return; if (walkPath.length) { canvas.focus({ preventScroll: true }); toast('Walking to your stop. Choose Stop walking to cancel.'); return; } const nearest = world.nearest(); if (nearest) { stopWalk(); interact(nearest, 'talk'); } else { toast('Walk a little closer, or choose a neighbor from the list.'); canvas.focus({ preventScroll: true }); } });
 $('#recenter').addEventListener('click', () => { if (world) { world.camera.follow(state.player); cameraUI(); } });
 $('#map-overview').addEventListener('click', () => { if (world) { world.camera.overview(); cameraUI(); } });

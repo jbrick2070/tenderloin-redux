@@ -20,6 +20,7 @@ import { soundsLabel, soundsAnnouncement } from '../browser-next/rewards.js';
 import { LOAN_REPLIES, loanReply, loanReturnAnnouncement } from '../browser-next/hosted-text.js';
 import { LOAN_TITLES } from '../browser-next/story.js';
 import { VISITS_FORK_TEXT, freshSession } from '../browser-next/visits-kit.js';
+import { EDITION_URL, EDITION_TEXT } from '../browser-next/edition.js';
 import { GODOT_TEXT as VISITS_TEXT, web } from '../browser-next/visits/text.js';
 import { gdf } from '../browser-next/visits/format.js';
 import { initialBefore, changeBefore, TEXT as BEFORE_TEXT } from '../browser-next/visits/before-streets.js';
@@ -238,6 +239,40 @@ async function layoutCheck(page, w, label) {
   if (r.under.length) underClose.push(`${w.name} ${label}: ${r.under.join(', ')}`);
   return r.checked;
 }
+// WCAG contrast of two computed rgb() colors.
+const luminance = rgb => { const [r, g, b] = rgb.match(/[\d.]+/g).slice(0, 3).map(v => Number(v) / 255).map(v => v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+const contrast = (a, b) => { const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+// Play the 3D edition (edition.js): the page's link (#swap-edition) or the open Settings dialog's (#swap-edition-settings). It leads
+// to the Godot build beside the fork in the same tab; its accessible name is its label (the arrow is hidden); Tab from the control
+// before it reaches it with the shared focus ring; it is a 44 px target inside the view that clips nothing, at 4.5:1 or more.
+async function editionLinkCheck(page, id) {
+  const link = page.locator(`#${id}`), scope = page.locator(id === 'swap-edition' ? 'main' : 'dialog[open]');
+  await link.scrollIntoViewIfNeeded();
+  assert.deepEqual(await link.evaluate(a => [a.tagName, a.getAttribute('href'), a.href, a.target]), ['A', EDITION_URL, base + '/godot/', ''], `#${id} links to the Godot build beside the fork, in the same tab`);
+  assert.equal(await scope.getByRole('link', { name: EDITION_TEXT.link, exact: true }).evaluate(a => a.id), id, `#${id}'s accessible name is its label, ${EDITION_TEXT.link}`);
+  assert.ok((await link.innerText()).startsWith(EDITION_TEXT.link), `#${id} shows its label`);
+  const from = await link.evaluate(a => {
+    const open = document.querySelector('dialog[open]'), order = [...document.querySelectorAll('a[href], button, input, select, textarea, summary, [tabindex]')]
+      .filter(e => e.tabIndex >= 0 && !e.disabled && !e.closest('[hidden], [inert]') && e.getClientRects().length && (!open || open.contains(e)));
+    const previous = order[order.indexOf(a) - 1]; previous.focus(); return previous.id || previous.tagName;
+  });
+  await page.keyboard.press('Tab');
+  const r = await link.evaluate(a => {
+    const s = getComputedStyle(a), b = a.getBoundingClientRect(), open = document.querySelector('dialog[open]');
+    let bg = 'rgba(0, 0, 0, 0)';
+    for (let n = a; n && bg === 'rgba(0, 0, 0, 0)'; n = n.parentElement) bg = getComputedStyle(n).backgroundColor;
+    return { focused: document.activeElement === a, visible: a.matches(':focus-visible'), ring: `${s.outlineWidth} ${s.outlineStyle} ${s.outlineColor}`, box: [b.left, b.top, b.width, b.height], clipped: a.scrollWidth > a.clientWidth, color: s.color, bg, page: [document.documentElement.scrollWidth, innerWidth], dialog: open && [open.scrollWidth, open.clientWidth] };
+  });
+  assert.ok(r.focused && r.visible, `Tab from ${from} focuses #${id} with :focus-visible`);
+  assert.equal(r.ring, '3px solid rgb(163, 94, 39)', `#${id} draws the shared focus ring`);
+  assert.ok(r.box[2] >= 43.99 && r.box[3] >= 43.99, `#${id} is a 44 px target (${r.box[2]}x${r.box[3]})`);
+  assert.ok(r.box[0] >= 0 && r.box[0] + r.box[2] <= r.page[1] + .5 && !r.clipped, `#${id} lies inside the view and shows its whole label`);
+  assert.ok(r.page[0] <= r.page[1], `no horizontal page overflow (scrollWidth ${r.page[0]} > ${r.page[1]})`);
+  if (r.dialog) assert.ok(r.dialog[0] <= r.dialog[1], `no horizontal dialog overflow (scrollWidth ${r.dialog[0]} > ${r.dialog[1]})`);
+  const ratio = contrast(r.color, r.bg);
+  assert.ok(ratio >= 4.5, `#${id} is ${r.color} on ${r.bg}, ${ratio.toFixed(2)}:1`);
+  return { tabFrom: from, box: r.box.map(Math.round), contrast: Number(ratio.toFixed(2)) };
+}
 const toastText = page => page.locator('#toast').textContent();
 // The selected look of a pressed choice (style.css, as the hosting choices draw it), and the computed look of a pressed control
 // and an unpressed sibling.
@@ -406,6 +441,18 @@ async function journey(w) {
     }
     return { screens: ['settings', 'music', 'journal'] };
   });
+  await step(`${w.name} Play the 3D edition: the page's link and its own Settings row`, async () => {
+    const saved = await stored(page), onPage = await editionLinkCheck(page, 'swap-edition');
+    targets.editionLink = await layoutCheck(page, w, 'edition-link');
+    await press(page, '#settings-button', w.touch); await page.locator('#swap-edition-settings').waitFor();
+    const inSettings = await editionLinkCheck(page, 'swap-edition-settings');
+    const help = await page.evaluate(() => { const a = document.querySelector('#swap-edition-settings'), p = document.getElementById(a.getAttribute('aria-describedby')); return [p?.textContent, p?.parentElement === a.parentElement && a.parentElement.classList.contains('edition-row')]; });
+    assert.deepEqual(help, [EDITION_TEXT.help, true], 'its row has the one-sentence help, which describes the link');
+    targets.settingsEdition = await layoutCheck(page, w, 'settings-edition');
+    await press(page, '#close-modal', w.touch); await closed(page);
+    assert.equal(await stored(page), saved, 'looking at the links writes nothing');
+    return { page: onPage, settings: inSettings };
+  });
   await step(`${w.name} reload keeps progress`, async () => {
     const before = await stored(page); await page.reload(); await until(page, () => !!window.tenderloin, null, 'the fork starts again', 15000);
     card = await cardCheck(page, true); assert.equal(card.num, 2, 'the startup card is Chapter 2');
@@ -456,10 +503,15 @@ async function godotReady(page) {
 }
 async function crossEdition(page, log, w) {
   let forkWrite;
-  await step(`${w.name} Godot opens the fork's save`, async () => {
+  // As a player switches: a real click on Play the 3D edition loads the Godot build in this tab, and it reads the fork's save.
+  await step(`${w.name} Play the 3D edition opens Godot, which reads the fork's save`, async () => {
     await stat(new URL('artifacts/godot-web/index.pck', root)).catch(() => assert.fail('artifacts/godot-web/index.pck is missing; run npm run godot:export'));
-    const forkRaw = await stored(page); log.on = 'godot';
-    await page.goto(base + '/godot/'); const g = await godotReady(page);
+    const forkRaw = await stored(page);
+    assert.equal(await page.evaluate(() => !!document.querySelector('dialog[open]')), false, 'no dialog covers the link');
+    log.on = 'godot';
+    await Promise.all([page.waitForURL(base + '/godot/', { waitUntil: 'commit', timeout: 30000 }), page.locator('#swap-edition').click()]);
+    assert.equal(page.context().pages().length, 1, 'the 3D edition opened in this tab');
+    const g = await godotReady(page);
     assert.deepEqual(pick(g, ['visited_count', 'mural_count', 'soundcheck_done', 'block_opened']), { visited_count: 5, mural_count: 3, soundcheck_done: true, block_opened: true }, "Godot shows the fork's progress");
     assert.equal(g.story_detail?.text, STORY_CHAPTERS[1].intro, "Godot's startup card is Chapter 2");
     assert.equal(await stored(page), forkRaw, 'Godot loaded the save without resetting or rewriting it');
@@ -726,6 +778,109 @@ async function recoveryCases(w) {
     await until(page, () => document.activeElement?.id === 'film-shoot', null, "focus returns to the film button once the dialog's close event has run", 8000);
     assert.deepEqual([(await call(page, 'ending')).stage, (await call(page, 'snapshot')).film.result.framing, await page.evaluate(() => document.activeElement?.id)], [null, framing, 'film-shoot']);
     return { toast: FORK_TEXT.copiesChanged };
+  });
+  for (const tab of [{ log }, S]) clean(tab.log);
+  await context.close();
+}
+
+// Play the 3D edition where leaving could lose progress (edition.js swapAction): a pending recovery offer comes back and says why,
+// and a held save asks first. Until the player chooses, nothing opens the 3D edition and nothing is written. With nothing pending,
+// a middle click or a Ctrl+click keeps the browser's new tab (a stand-in /godot/ page); the last step opens the real build. Page S
+// stands in for a 3D tab that was opened earlier. A navigation is counted in Playwright: a /godot/ request from this tab's main frame,
+// or a new page. Nothing in a click promises that a navigation it starts has begun when it returns, so a check that none happened
+// first waits for what the press must show, then gives a navigation 400 ms.
+async function editionSwap(w) {
+  const context = await newContext(w), { page, log } = await newPage(context, 'edition-swap'), S = await newPage(context, 'edition-swap-3d-tab');
+  const sameTab = [], newTabs = [], link = page.locator('#swap-edition');
+  page.on('request', r => { if (r.isNavigationRequest() && r.frame() === page.mainFrame() && new URL(r.url()).pathname === '/godot/') sameTab.push(r.url()); });
+  context.on('page', p => newTabs.push(p));
+  const start = async raw => { await page.bringToFront(); await seed(page, raw); await boot(page); await dismissCard(page, w, await cardCheck(page, true)); await page.evaluate(() => { window.__nextStayed = true; }); };
+  const offered = what => until(page, () => !!document.querySelector('dialog[open] [data-recovery] #recover-save'), null, what, 30000);
+  const why = () => until(page, text => document.querySelector('dialog[open] [data-recovery] .grid-message')?.textContent === text && document.querySelector('#modal-status').textContent === text, EDITION_TEXT.recover, 'the offer says why the swap waits, in its text and its status line');
+  const asked = what => until(page, title => document.querySelector('dialog[open] #modal-title')?.textContent === title && document.activeElement?.id === 'swap-stay', EDITION_TEXT.title, `${what} asks first, with Stay here focused`);
+  const backOn = (id, what) => until(page, id => document.activeElement?.id === id, id, `${what} returns focus to #${id}`);
+  async function stayed(what) {
+    await page.waitForTimeout(400);
+    assert.deepEqual([sameTab, newTabs.length], [[], 0], `${what}: nothing opened the 3D edition`);
+    assert.equal(await page.evaluate(() => window.__nextStayed), true, `${what}: this tab is the same page`);
+  }
+  async function middle() { await link.scrollIntoViewIfNeeded(); const b = await link.boundingBox(); await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2, { button: 'middle' }); }
+  await step('edition swap: with nothing pending, a middle click and a Ctrl+click open the 3D edition in a new tab, and this tab stays', async () => {
+    const text = canonicalStringify(readyEnvelope({ save_seq: 5 }));
+    await start(text);
+    await context.route(base + '/godot/', route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>3D edition stand-in</title><link rel="icon" href="data:,">' }));
+    try {
+      for (const [how, open] of [['middle click', middle], ['Ctrl+click', () => link.click({ modifiers: ['Control'] })]]) {
+        const tab = context.waitForEvent('page', { timeout: 10000 }); await open(); const opened = await tab;
+        await opened.waitForURL(base + '/godot/', { waitUntil: 'commit', timeout: 10000 }).catch(() => assert.fail(`a ${how} opens the 3D edition in a new tab (it opened ${opened.url()})`));
+        await opened.close();
+      }
+    } finally { await context.unroute(base + '/godot/'); }
+    assert.equal(newTabs.length, 2, 'two new tabs'); newTabs.length = 0;
+    assert.deepEqual(sameTab, [], 'this tab stays on the fork');
+    assert.deepEqual(await page.evaluate(() => [window.__nextStayed, !!document.querySelector('dialog[open]')]), [true, false], 'the same page, with no dialog');
+    assert.equal(await stored(page), text, 'and nothing is written');
+    return { newTabs: ['middle click', 'Ctrl+click'] };
+  });
+  await step('edition swap: a pending recovery offer comes back and says why; a click, a middle click or a Ctrl+click opens nothing', async () => {
+    await start(canonicalStringify(readyEnvelope({ save_seq: 10 })));
+    const stale = canonicalStringify(godotEnvelope({ save_seq: 11, visited_neighbors: ['bea'] }));
+    await seed(S.page, stale); await page.bringToFront(); await offered('a stale save from another tab is offered back');
+    await settledClose(page, () => page.keyboard.press('Escape'), 'Escape puts the choice off');
+    for (const [how, act] of [['click', () => link.click()], ['middle click', middle], ['Ctrl+click', () => link.click({ modifiers: ['Control'] })]]) {
+      await act(); await offered(`a ${how} on the link brings the offer back`); await why(); await stayed(`a ${how}`);
+      if (how !== 'Ctrl+click') await settledClose(page, () => page.keyboard.press('Escape'), `Escape after the ${how}`);
+    }
+    assert.deepEqual([await stored(page), (await call(page, 'snapshot')).visited], [stale, MET], "nothing is written, and this tab keeps its own progress");
+    await press(page, '#recover-save'); await closed(page);
+    const s = await written(page, 11, { save_seq: 12, visited_neighbors: MET });
+    return { seq: s.env.save_seq };
+  });
+  await step('edition swap: the link reads the shared save again first, so a stale save no event reported is offered back too', async () => {
+    const was = await envelope(page), stale = canonicalStringify(godotEnvelope({ save_seq: was.env.save_seq + 1, visited_neighbors: ['bea'] }));
+    await page.evaluate(([key, value]) => localStorage.setItem(key, value), [GODOT_SAVE_KEY, stale]); // as another tab whose storage event has not reached this one
+    assert.deepEqual((await call(page, 'snapshot')).visited, MET, 'nothing has told this tab yet');
+    await link.click(); await offered("the swap finds the stale save and offers this tab's progress back"); await why(); await stayed('the click');
+    assert.equal(await stored(page), stale, 'nothing is written while the offer waits');
+    await press(page, '#recover-save'); await closed(page);
+    const s = await written(page, was.env.save_seq + 1, { visited_neighbors: MET });
+    return { seq: s.env.save_seq };
+  });
+  let bad;
+  await step('edition swap: an unreadable save asks first; Stay here, Escape and a held Enter stay, back on the link; Settings asks too', async () => {
+    bad = canonicalStringify({ ...JSON.parse(GODOT_WRITTEN.firstMeeting), mural_palette: 'neon' });
+    assert.equal(parseGodotSave(bad).status, 'invalid');
+    await start(bad); assert.equal((await call(page, 'save')).status, 'held');
+    await link.click(); await asked('a click on the link');
+    const dialog = await page.evaluate(() => ({ text: document.querySelector('dialog[open]').innerText, buttons: [...document.querySelectorAll('dialog[open] .button-row button')].map(b => [b.id, b.textContent]) }));
+    assert.ok(dialog.text.includes(EDITION_TEXT.confirm), 'the question says the 3D edition would start fresh and replace the save');
+    assert.deepEqual(dialog.buttons, [['swap-open', EDITION_TEXT.open], ['swap-stay', EDITION_TEXT.stay]]);
+    const targets = await layoutCheck(page, w, 'swap-confirm'); await stayed('the click');
+    await settledClose(page, () => page.locator('#swap-stay').click(), 'Stay here'); await backOn('swap-edition', 'Stay here');
+    await link.click(); await asked('the link again');
+    await settledClose(page, () => page.keyboard.press('Escape'), 'Escape'); await backOn('swap-edition', 'Escape');
+    // A held Enter on the link opens the question once, and its repeats never press a button in it.
+    await link.focus(); await holdEnter(page); await asked('a held Enter'); await stayed('a held Enter');
+    await settledClose(page, () => page.keyboard.press('Enter'), 'a fresh Enter on Stay here'); await backOn('swap-edition', 'Enter on Stay here');
+    // Settings' link asks too, and Stay here draws Settings again on its link.
+    await page.locator('#settings-button').click(); await page.locator('#swap-edition-settings').click(); await asked("Settings' link");
+    await page.locator('#swap-stay').click();
+    await until(page, () => document.querySelector('dialog[open] #modal-title')?.textContent === 'Your afternoon.' && document.activeElement?.id === 'swap-edition-settings', null, 'Stay here goes back to Settings, on its link');
+    await stayed("Settings' Stay here");
+    assert.equal(await stored(page), bad, 'the unreadable save is kept as it is');
+    return { targets };
+  });
+  await step('edition swap: Open the 3D edition goes in this tab, and Godot starts fresh without writing over the unreadable save yet', async () => {
+    await stat(new URL('artifacts/godot-web/index.pck', root)).catch(() => assert.fail('artifacts/godot-web/index.pck is missing; run npm run godot:export'));
+    await page.locator('#swap-edition-settings').click(); await asked("Settings' link");
+    log.on = 'godot';
+    await Promise.all([page.waitForURL(base + '/godot/', { waitUntil: 'commit', timeout: 30000 }), page.locator('#swap-open').click()]);
+    assert.equal(newTabs.length, 0, 'in this tab');
+    const g = await godotReady(page);
+    assert.equal(g.visited_count, 0, 'the 3D edition starts fresh, as the question said');
+    assert.equal(await stored(page), bad, 'and has not written over the unreadable save: its first change will');
+    await page.screenshot({ path: file(`${w.name}-godot-held-save.png`) });
+    return { godot: pick(g, ['visited_count', 'mural_count', 'block_opened']) };
   });
   for (const tab of [{ log }, S]) clean(tab.log);
   await context.close();
@@ -2165,7 +2320,7 @@ try {
   browser = isFirefox ? await firefox.launch({ channel: 'moz-firefox', headless: true, firefoxUserPrefs: { 'ui.prefersReducedMotion': 1 } }) : await chromium.launch({ ...(channel === 'bundled' ? {} : { channel }), headless: true });
   for (const w of WIDTHS) { if (SUITES.includes('journey')) await journey(w); if (SUITES.includes('guard')) await guard(w); if (SUITES.includes('ending')) await endingSuite(w); if (SUITES.includes('phase2')) await phase2Suite(w); if (SUITES.includes('visits')) await visitsSuite(w); }
   const wide = WIDTHS.find(w => !w.touch);
-  if (wide) { if (SUITES.includes('tabs')) { await twoTabs(wide); await recoveryCases(wide); } if (SUITES.includes('restart')) await restartSafety(wide); if (SUITES.includes('seeded')) await seeded(wide); if (SUITES.includes('music')) await musicSuite(wide); if (SUITES.includes('characters')) await charactersSuite(wide); }
+  if (wide) { if (SUITES.includes('tabs')) { await twoTabs(wide); await recoveryCases(wide); await editionSwap(wide); } if (SUITES.includes('restart')) await restartSafety(wide); if (SUITES.includes('seeded')) await seeded(wide); if (SUITES.includes('music')) await musicSuite(wide); if (SUITES.includes('characters')) await charactersSuite(wide); }
   await step('every checked screen outside the journeys keeps 44 px targets and its close button clear', async () => {
     assert.deepEqual(undersized, [], 'every checked screen keeps its interactive targets at least 44 px');
     assert.deepEqual(underClose, [], "no text is drawn under a dialog's close button");

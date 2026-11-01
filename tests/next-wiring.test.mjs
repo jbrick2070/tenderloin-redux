@@ -22,6 +22,7 @@ import { createEpisodeScreens } from '../browser-next/visits-episodes.js';
 import { createWorldVisits } from '../browser-next/visits-world.js';
 import { showBubble, spokenText } from '../browser-next/bubble.js';
 import * as sprites from '../browser-next/sprites.js';
+import { EDITION_URL, EDITION_TEXT, swapAction } from '../browser-next/edition.js';
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 // A macrotask: every promise the stand-in host settled, and everything queued after it, has run by then (nothing here sets a timer).
@@ -819,4 +820,106 @@ test('game.js draws the fork text of the visits from VISITS_FORK_TEXT and their 
   // second gathering's footnote starts as shared_meal.gd's credit, and Keep exploring is the fork's own close label.
   const OLDER = ['Original fictional neighbors | Stylized, untimed cooking | This visit only', 'Keep exploring'];
   for (const value of new Set([...strings(GODOT_TEXT), ...strings(WEB_OVERRIDES)])) if (value.length > 3 && !OLDER.includes(value)) assert.ok(!inline(value), `game.js does not copy the Godot line ${JSON.stringify(value)}`);
+});
+
+// ---------------------------------------------------------------- Play the 3D edition (edition.js)
+test('game.js swaps to the 3D edition through edition.js: the page link and a Settings row of its own, both guarded', () => {
+  assert.match(GAME, /^import \{ EDITION_URL, EDITION_TEXT, swapAction \} from '\.\/edition\.js';$/m);
+  // The page's link (index.html) is guarded, and Stay here returns to it.
+  assert.match(GAME, /^bindSwap\(\$\('#swap-edition'\), \(\) => close\(\$\('#swap-edition'\)\)\);$/m);
+  // Settings: the same link in its own row, described by its one-sentence help and guarded. Stay here draws Settings again with
+  // the link focused, as Keep my afternoon does for the restart button.
+  const settings = declaration('function showSettings(');
+  assert.ok(settings.includes('<div class="edition-row"><p id="swap-edition-settings-help">${EDITION_TEXT.help}</p><a id="swap-edition-settings" class="edition-link" href="${EDITION_URL}" aria-describedby="swap-edition-settings-help">${EDITION_TEXT.link}<span aria-hidden="true">↗</span></a></div>'), 'the Settings row');
+  assert.ok(settings.indexOf('id="swap-edition-settings"') < settings.indexOf('id="restart"'), 'above the restart button');
+  assert.match(settings, /bindSwap\(\$\('#swap-edition-settings'\), \(\) => \{ showSettings\(\); const link = \$\('#swap-edition-settings'\); link\.focus\(\{ preventScroll: true \}\); link\.scrollIntoView\(\{ block: 'nearest' \}\); \}\);/);
+});
+
+// game.js's swapEdition over stand-ins: syncStored (whose re-read may find a newer save), offerRecovery and confirmSwap record what
+// they are asked to do, and the event records whether the browser may still follow the link.
+function swapGame({ recovery = null, held = false, sync = () => ({}) } = {}) {
+  const log = [];
+  const game = new Function('swapAction', 'EDITION_TEXT', 'log', 'sync', [
+    'let recovery = null, held = false;',
+    "function syncStored() { const next = sync(); log.push(['sync']); if ('recovery' in next) recovery = next.recovery; if ('held' in next) held = next.held; }",
+    "function offerRecovery(message) { log.push(['offer', message]); }",
+    "function confirmSwap(back, origin) { log.push(['confirm', back, origin.id]); }",
+    declaration('function swapEdition('),
+    'return { swapEdition, set(r, h) { recovery = r; held = h; } };',
+  ].join('\n'))(swapAction, EDITION_TEXT, log, sync);
+  game.set(recovery, held);
+  const press = (init = {}) => {
+    const event = { type: 'click', button: 0, currentTarget: { id: 'swap-edition' }, prevented: 0, preventDefault() { this.prevented++; }, ...init };
+    game.swapEdition(event, 'back');
+    return event;
+  };
+  return { log, press };
+}
+
+test('swapEdition reads the shared save again, then lets the link go unless leaving could lose progress', () => {
+  // Nothing pending: the browser follows the link, and a modifier click keeps its new tab.
+  let g = swapGame();
+  assert.equal(g.press().prevented, 0); assert.equal(g.press({ ctrlKey: true }).prevented, 0);
+  assert.deepEqual(g.log, [['sync'], ['sync']]);
+  // A pending recovery offer: no swap; the offer comes back and says why.
+  g = swapGame({ recovery: { envelope: {} } });
+  assert.equal(g.press().prevented, 1);
+  assert.deepEqual(g.log, [['sync'], ['offer', EDITION_TEXT.recover]]);
+  // A held save: no swap; the confirmation, which knows the way back and the link it came from.
+  g = swapGame({ held: true });
+  assert.equal(g.press().prevented, 1);
+  assert.deepEqual(g.log, [['sync'], ['confirm', 'back', 'swap-edition']]);
+  // The re-read decides: a stale save another tab or edition wrote just now is offered back...
+  g = swapGame({ sync: () => ({ recovery: { envelope: {} } }) });
+  assert.equal(g.press().prevented, 1); assert.deepEqual(g.log.at(-1), ['offer', EDITION_TEXT.recover]);
+  // ...an unreadable one asks first...
+  g = swapGame({ sync: () => ({ held: true }) });
+  assert.equal(g.press().prevented, 1); assert.deepEqual(g.log.at(-1), ['confirm', 'back', 'swap-edition']);
+  // ...and a restart in another tab that withdrew the offer lets the swap go.
+  g = swapGame({ recovery: { envelope: {} }, sync: () => ({ recovery: null }) });
+  assert.equal(g.press().prevented, 0); assert.deepEqual(g.log, [['sync']]);
+  // A middle click that would open a new tab is held the same way.
+  g = swapGame({ held: true });
+  assert.equal(g.press({ type: 'auxclick', button: 1 }).prevented, 1);
+});
+
+test('bindSwap guards a click, a modifier click and a middle click on the link, never a right click', () => {
+  const listeners = {}, seen = [];
+  const link = { addEventListener(type, fn) { (listeners[type] ??= []).push(fn); } };
+  const bindSwap = new Function('swapEdition', `${declaration('function bindSwap(')}\nreturn bindSwap;`)((event, back) => seen.push([event.type, event.button, back]));
+  bindSwap(link, 'back');
+  assert.deepEqual(Object.keys(listeners).sort(), ['auxclick', 'click']);
+  const fire = (type, button, extra = {}) => listeners[type].forEach(fn => fn({ type, button, ...extra }));
+  fire('click', 0); fire('click', 0, { ctrlKey: true }); fire('auxclick', 1); fire('auxclick', 2);
+  assert.deepEqual(seen, [['click', 0, 'back'], ['click', 0, 'back'], ['auxclick', 1, 'back']]);
+});
+
+// game.js's confirmSwap and button over stand-ins for show, bind, $, the dialog and location.
+function confirmGame(open) {
+  const shown = [], bound = {}, focused = [], assigned = [], modal = { open };
+  const el = id => ({ id, focus() { focused.push(id); } }), canvas = el('world'), origin = el('swap-edition');
+  const made = new Function('show', 'bind', '$', 'modal', 'location', 'EDITION_URL', 'EDITION_TEXT', 'canvas',
+    `let modalReturnTarget = canvas;\n${declaration('function button(')}\n${declaration('function confirmSwap(')}\nreturn { confirmSwap, target: () => modalReturnTarget };`)(
+    html => { shown.push(html); modal.open = true; }, (id, fn) => { bound[id] = fn; }, selector => el(selector.slice(1)), modal, { assign: url => assigned.push(url) }, EDITION_URL, EDITION_TEXT, canvas);
+  return { made, shown, bound, focused, assigned, origin, canvas };
+}
+
+test('confirmSwap asks before the 3D edition replaces an unreadable save: Stay here has the focus, Open the 3D edition goes', () => {
+  const back = () => {}, page = confirmGame(false);
+  page.made.confirmSwap(back, page.origin);
+  assert.equal(page.shown.length, 1);
+  const html = page.shown[0], T = EDITION_TEXT;
+  assert.ok(html.startsWith(`<span class="eyebrow">${T.eyebrow}</span><h2 id="modal-title">${T.title}</h2><p>${T.confirm}</p><div class="button-row">`), html);
+  const buttons = [...html.matchAll(/<button id="([^"]+)" class="([^"]+)"[^>]*>([^<]*)<\/button>/g)].map(m => m.slice(1));
+  assert.deepEqual(buttons, [['swap-open', 'primary-button', T.open], ['swap-stay', 'secondary-button', T.stay]], 'Open first, as Start fresh is');
+  assert.doesNotMatch(html, /data-rapid/, 'neither is rapid');
+  assert.deepEqual(page.focused, ['swap-stay'], 'Stay here has the focus, as Keep my afternoon does, so a held Enter never reaches Open');
+  assert.equal(page.bound['swap-stay'], back, 'Stay here goes back to the link the swap came from');
+  assert.equal(page.made.target(), page.origin, 'opened from the page, Escape and × return to the link too');
+  page.bound['swap-open']();
+  assert.deepEqual(page.assigned, [EDITION_URL], 'Open the 3D edition follows the same link');
+  // From Settings the dialog was already open: Escape and × close it as they close Settings.
+  const settings = confirmGame(true);
+  settings.made.confirmSwap(back, { id: 'swap-edition-settings' });
+  assert.equal(settings.made.target(), settings.canvas);
 });
