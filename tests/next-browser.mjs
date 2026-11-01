@@ -1,9 +1,10 @@
 // The fork's local browser test: node tests/next-browser.mjs. QA tooling, not a game dependency: PLAYWRIGHT_MODULE points at a local
 // Playwright, BROWSER_CHANNEL selects chrome (default), msedge, bundled or firefox, BASE_URL tests a running server and
-// NEXT_BROWSER_WIDTHS (for example 1440) or NEXT_BROWSER_SUITES (journey,guard,ending,phase2,tabs,restart,seeded,music,characters) runs a subset while debugging.
+// NEXT_BROWSER_WIDTHS (for example 1440) or NEXT_BROWSER_SUITES (journey,guard,ending,phase2,visits,tabs,restart,seeded,music,characters) runs a subset while debugging.
 // Screenshots and the receipt go to artifacts/browser-next/.
 import assert from 'node:assert/strict';
 import { mkdir, writeFile, stat } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
@@ -18,6 +19,18 @@ import { GODOT, FORK_TEXT } from '../browser-next/ending/text.js';
 import { soundsLabel, soundsAnnouncement } from '../browser-next/rewards.js';
 import { LOAN_REPLIES, loanReply, loanReturnAnnouncement } from '../browser-next/hosted-text.js';
 import { LOAN_TITLES } from '../browser-next/story.js';
+import { VISITS_FORK_TEXT, freshSession } from '../browser-next/visits-kit.js';
+import { GODOT_TEXT as VISITS_TEXT, web } from '../browser-next/visits/text.js';
+import { gdf } from '../browser-next/visits/format.js';
+import { initialBefore, changeBefore, TEXT as BEFORE_TEXT } from '../browser-next/visits/before-streets.js';
+import { initialMeal, changeMeal, mealView, TEXT as MEAL_TEXT } from '../browser-next/visits/meal.js';
+import { activeEpisode, activeObjective, TEXT as PICKER_TEXT } from '../browser-next/visits/picker.js';
+import { initialDogs, dogsView, NAMES as DOG_NAMES, TEXT as DOGS_TEXT } from '../browser-next/visits/dogs.js';
+import { initialLantern, lanternView, LENGTH as LANTERN_LENGTH, TEXT as LANTERN_TEXT } from '../browser-next/visits/lantern.js';
+import { initialPower, changePower, SOLUTIONS, VOICES, ARRIVAL as RELAY_ARRIVAL, TEXT as POWER_TEXT } from '../browser-next/visits/power.js';
+import { initialElection, electionView, TEXT as ELECTION_TEXT } from '../browser-next/visits/election.js';
+import { SURPRISE_IDS, inspect, conversationLabel } from '../browser-next/visits/surprises.js';
+import { EATERIES, initialTour, tourState, visitStop, inspectMuseum, cycleEatery, activateEatery } from '../browser-next/visits/landmarks.js';
 import { GODOT_WRITTEN, FULL_MURAL, PUBLISHED, godotEnvelope, readyEnvelope, openedEnvelope, hostedEnvelope, civicDoneEnvelope, filmDoneEnvelope } from './next-fixtures.mjs';
 const { chromium, firefox } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : 'playwright');
 
@@ -28,7 +41,7 @@ const WIDTHS = [{ name: '320', viewport: { width: 320, height: 667 }, touch: tru
   .filter(w => !process.env.NEXT_BROWSER_WIDTHS || process.env.NEXT_BROWSER_WIDTHS.split(',').includes(w.name));
 const MET = NEIGHBORS.map(n => n.id).sort(), MURAL = { sun: { col: 0, row: 0 }, wave: { col: 2, row: 1 }, rise: { col: 4, row: 0 } };
 const WORLD = snap => ({ player: snap.player, neighbors: NEIGHBORS, places: PLACES });
-const SUITES = (process.env.NEXT_BROWSER_SUITES || 'journey,guard,ending,phase2,tabs,restart,seeded,music,characters').split(',');
+const SUITES = (process.env.NEXT_BROWSER_SUITES || 'journey,guard,ending,phase2,visits,tabs,restart,seeded,music,characters').split(',');
 const channel = process.env.BROWSER_CHANNEL || 'chrome', isFirefox = channel === 'firefox';
 let ownedServer, browser, base, next, activePage, current = 'server start', failure = null;
 const evidence = [], logs = [], undersized = [], underClose = [], started = Date.now();
@@ -219,6 +232,42 @@ function silentWav(seconds = 0.5, rate = 22050) {
 }
 // Holding Enter: one press, then three key repeats.
 async function holdEnter(page) { for (let i = 0; i < 4; i++) { await page.keyboard.down('Enter'); await page.waitForTimeout(40); } await page.keyboard.up('Enter'); await page.waitForTimeout(300); }
+// The presses of the phase 2 and visits suites. once: one gesture of two presses on a new button, with the guard at its production
+// window: only the first press reaches the page, except on a [data-rapid] control (Keep Chatting, Rook's Volume, Godot's rapid
+// story controls), where both do. use: the first use of a button is a guarded double press; later uses are one ordinary press.
+// held: a held Enter (one press, three repeats). tapAt: one guarded tap or click on the map, which acts on its pointerup; the click
+// that follows is claimed when a dialog opened under it (press-settle tap). guarded can be shared by the pages of one suite.
+function presses(page, w, guarded = []) {
+  const settled = () => until(page, () => !window.tenderloin.pressSettle().open, null, 'the press-settle window closes', 10000);
+  const counting = () => page.evaluate(() => { delete window.__tenderloinPressSettleMs; window.__nextPassed = { pointerdown: 0, pointerup: 0, click: 0 }; if (!window.__nextCounting) { window.__nextCounting = true; for (const type of Object.keys(window.__nextPassed)) window.addEventListener(type, () => window.__nextPassed[type]++); } });
+  async function once(selector, { rapid = false } = {}) {
+    const locator = typeof selector === 'string' ? page.locator(selector) : selector; selector = typeof selector === 'string' ? selector : 'the startup card button'; await locator.waitFor(); await locator.scrollIntoViewIfNeeded();
+    await counting();
+    const b = await locator.boundingBox(), x = b.x + b.width / 2, y = b.y + b.height / 2, before = await call(page, 'pressSettle');
+    if (w.touch) { await page.touchscreen.tap(x, y); await page.waitForTimeout(80); await page.touchscreen.tap(x, y); } else await page.mouse.dblclick(x, y, { delay: 40 });
+    const want = rapid ? { pointerdown: 2, pointerup: 2, click: 2 } : { pointerdown: 1, pointerup: 1, click: 1 }, [after, passed] = await letThrough(page, before, want, !rapid);
+    if (rapid) { assert.equal(after.swallowed, before.swallowed, `${selector}: a [data-rapid] control is not gated`); assert.deepEqual(passed, want, `${selector}: both presses of a rapid control reach the page`); }
+    else {
+      assert.equal(after.armed - before.armed, 1, `${selector}: one press armed the guard`);
+      assert.ok(after.swallowed > before.swallowed, `${selector}: the second press was swallowed (${before.swallowed} -> ${after.swallowed})`);
+      assert.deepEqual(passed, want, `${selector}: only the first press reached the page`);
+    }
+    await settled(); await page.evaluate(() => { window.__tenderloinPressSettleMs = 0; });
+    guarded.push(selector);
+  }
+  const use = (selector, opts) => guarded.includes(selector) ? press(page, selector, w.touch) : once(selector, opts);
+  const held = async selector => { await page.locator(selector).focus(); await holdEnter(page); };
+  async function tapAt({ x, y }, what) {
+    await counting(); const before = await call(page, 'pressSettle');
+    if (w.touch) await page.touchscreen.tap(x, y); else await page.mouse.click(x, y);
+    const want = { pointerdown: 1, pointerup: 1, click: 0 }, [after, passed] = await letThrough(page, before, want, true);
+    assert.equal(after.armed - before.armed, 1, `${what}: the dialog the tap opened under the pointer armed the guard`);
+    assert.deepEqual(passed, want, `${what}: the tap's pointerup reached the page; its click went to the new dialog and was claimed`);
+    await settled(); await page.evaluate(() => { window.__tenderloinPressSettleMs = 0; });
+    return { armed: after.armed - before.armed, swallowed: after.swallowed - before.swallowed };
+  }
+  return { once, use, held, tapAt, guarded };
+}
 
 async function journey(w) {
   const context = await newContext(w), { page, log } = await newPage(context, `journey-${w.name}`), narrow = isNarrow(w.viewport.width), targets = {};
@@ -1201,28 +1250,7 @@ async function phase2Suite(w) {
   const focused = () => page.evaluate(() => document.activeElement?.id);
   const status = () => page.evaluate(() => document.querySelector('#modal-status').textContent);
   const route = () => page.evaluate(() => document.querySelector('#route-status').textContent);
-  const settled = () => until(page, () => !window.tenderloin.pressSettle().open, null, 'the press-settle window closes', 10000);
-  const guarded = [];
-  // One gesture of two presses on a new button, with the guard at its production window: only the first press reaches the page,
-  // except on a [data-rapid] control (Keep Chatting, Rook's Volume), where both do.
-  async function once(selector, { rapid = false } = {}) {
-    const locator = typeof selector === 'string' ? page.locator(selector) : selector; selector = typeof selector === 'string' ? selector : 'the startup card button'; await locator.waitFor(); await locator.scrollIntoViewIfNeeded();
-    await page.evaluate(() => { delete window.__tenderloinPressSettleMs; window.__nextPassed = { pointerdown: 0, pointerup: 0, click: 0 }; if (!window.__nextCounting) { window.__nextCounting = true; for (const type of Object.keys(window.__nextPassed)) window.addEventListener(type, () => window.__nextPassed[type]++); } });
-    const b = await locator.boundingBox(), x = b.x + b.width / 2, y = b.y + b.height / 2, before = await call(page, 'pressSettle');
-    if (w.touch) { await page.touchscreen.tap(x, y); await page.waitForTimeout(80); await page.touchscreen.tap(x, y); } else await page.mouse.dblclick(x, y, { delay: 40 });
-    const want = rapid ? { pointerdown: 2, pointerup: 2, click: 2 } : { pointerdown: 1, pointerup: 1, click: 1 }, [after, passed] = await letThrough(page, before, want, !rapid);
-    if (rapid) { assert.equal(after.swallowed, before.swallowed, `${selector}: a [data-rapid] control is not gated`); assert.deepEqual(passed, want, `${selector}: both presses of a rapid control reach the page`); }
-    else {
-      assert.equal(after.armed - before.armed, 1, `${selector}: one press armed the guard`);
-      assert.ok(after.swallowed > before.swallowed, `${selector}: the second press was swallowed (${before.swallowed} -> ${after.swallowed})`);
-      assert.deepEqual(passed, want, `${selector}: only the first press reached the page`);
-    }
-    await settled(); await page.evaluate(() => { window.__tenderloinPressSettleMs = 0; });
-    guarded.push(selector);
-  }
-  // The first use of a button is a guarded double press; later uses are one ordinary press.
-  const use = (selector, opts) => guarded.includes(selector) ? press(page, selector, w.touch) : once(selector, opts);
-  const held = async selector => { await page.locator(selector).focus(); await holdEnter(page); };
+  const { once, use, held, guarded } = presses(page, w);
   const start = async raw => { await seed(page, raw); await boot(page); await dismissCard(page, w, await cardCheck(page, true)); return raw; };
 
   await step(`${w.name} phase 2: the opening card's button starts the music; volume 70% of 100 and the Sounds toggle`, async () => {
@@ -1483,6 +1511,580 @@ async function phase2Suite(w) {
   });
   clean(log); await context.close();
 }
+// ---------------------------------------------------------------- Phase 3: the side stories
+const MAIN_TEXT = VISITS_TEXT['main.gd'], STORY_CARD = MAIN_TEXT.build_story_card, WALK_CONTROL = MAIN_TEXT.update_walk_control;
+const plain = value => JSON.parse(JSON.stringify(value));
+// window.tenderloin.visits() of a fresh visit (visits-kit.js freshSession through visits-ui.js snapshot): every story, the meal, the
+// picker and the tour at their start, no trip, and neither place file loaded.
+const FRESH_VISITS = (() => { const s = freshSession(); return plain({ screen: null, before: s.before, meal: s.meal, stories: s.stories, world: { tour: s.world.tour, guideIdx: s.world.guideIdx, lastHinted: s.world.lastHinted }, trip: null, data: { power_place: 'idle', voting_places: 'idle' } }); })();
+// The side stories' two place files (browser-next/data), for an active episode's objective.
+const PLACE_FILES = Object.fromEntries(['power_place', 'voting_places'].map(name => [name, JSON.parse(readFileSync(new URL(`browser-next/data/${name}.json`, root), 'utf8'))]));
+// story.js reads the active episode, the tour and the last hint from the side stories (game.js storyWorld): WORLD with them.
+function visitsWorld(snap, v) {
+  const ctx = { opened: snap.opened === true, player: snap.player, walking: false, busy: false, sites: {}, powerPlace: v.data.power_place === 'ready' ? PLACE_FILES.power_place : null, voting: v.data.voting_places === 'ready' ? PLACE_FILES.voting_places : null };
+  return { ...WORLD(snap), episode: activeEpisode(v.stories) ? activeObjective(v.stories, ctx) : null, tour: v.world.tour, lastHinted: v.world.lastHinted };
+}
+// chapterCheck for a visit with an active episode or a tour under way, which chapterCheck's WORLD leaves out.
+async function visitsChapterCheck(page) {
+  const [s, snap, v, width, text] = await page.evaluate(() => [window.tenderloin.story(), window.tenderloin.snapshot(), window.tenderloin.visits(), innerWidth, document.body.innerText]);
+  const idx = currentChapter(snap), chapter = STORY_CHAPTERS[idx], goal = nextObjective(snap, visitsWorld(snap, v)), U = GODOT_TEMPLATES.update_objective_ui;
+  assert.deepEqual([s.chapter, s.card], [idx, false], 'story() reports currentChapter of the page state and no open card');
+  assert.deepEqual([s.objective?.id, s.objective?.text], [goal.id, goal.text], "the Next objective follows story.js nextObjective with the visit's episode, tour and last hint");
+  assert.equal(s.line, isNarrow(width) ? fmt(U.narrow, chapter.num, s.objective.text) : fmt(U.wide, chapter.num, chapter.title, s.objective.text), 'the chapter line');
+  assert.ok(squash(text).includes(squash(s.line)), `the chapter line is shown on the page (${s.line})`);
+  return { ...s, expected: goal };
+}
+// The side-story screen that holds the open dialog (visits().screen with its reader in the dialog).
+const onScreen = (page, screen, what, timeout = 10000) => until(page, screen => document.querySelector('#modal').open && window.tenderloin.visits().screen === screen && !!document.querySelector('dialog[open] #visits-reader'), screen, `${what} shows the ${screen} screen`, timeout);
+// A story's walk: its screen closes and the trip is the visit's own while the player walks. The arrival reopens the story on the game
+// clock (at most 45 ms a frame), which a loaded machine stretches, so a long walk gets minutes.
+const walking = (page, id, what) => until(page, id => !document.querySelector('#modal').open && window.tenderloin.visits().trip === id && !document.querySelector('#stop-walking').disabled, id, `${what}: the story walks`, 10000);
+const arrives = (page, id, what, timeout = 180000) => until(page, id => document.querySelector('#modal').open && window.tenderloin.visits().screen === id && window.tenderloin.visits().trip === null, id, `${what}: arriving reopens the story`, timeout);
+// A map point in page px (the canvas, the camera's offset and scale), and whether it is on screen.
+const mapPoint = (page, p) => page.evaluate(([x, y]) => { const r = document.querySelector('#world').getBoundingClientRect(), l = window.tenderloin.location(), px = r.left + l.x + x * l.scale, py = r.top + l.y + y * l.scale; return { x: px, y: py, scale: l.scale, visible: px > Math.max(0, r.left) && px < Math.min(innerWidth, r.right) && py > Math.max(0, r.top) && py < Math.min(innerHeight, r.bottom) }; }, [p.x, p.y]);
+const near = (a, b, distance) => Math.hypot(a.x - b.x, a.y - b.y) <= distance;
+// A position as the page has it (browser-next/visits/positions.js, the module its stories walk to and its map draws from), so the
+// checks follow the streets wherever the sites sit.
+const placed = (page, name) => page.evaluate(async name => (await import('./visits/positions.js'))[name], name);
+
+// The side stories (Phase 3) through real taps, clicks and keys, from the entries Godot offers: at every width Before These Streets on
+// the startup card and in Field notes, Cook & Share and the stories hub in the afterglow, the picker, a surprise beacon on the map and
+// Field notes' museum and eatery cards; the Power festival, Two Dogs Home and the Lantern Procession at 390 and 1440; Larkin, the
+// Election Walk, Thanh's Spot Surprise, the finale, the landmark tour and Godot reading the finds at 1440. As in phase 2, each new
+// button is first pressed twice in one gesture with the press-settle guard on (Godot's rapid controls take both presses), chained
+// controls also take a held Enter, and every screen is checked for 44 px targets. Only a find writes the save; the rest is visit-only.
+async function visitsSuite(w) {
+  const context = await newContext(w), { page, log } = await newPage(context, `visits-${w.name}`), targets = {}, how = w.touch ? 'double tap' : 'double click';
+  const { once, use, held, tapAt, guarded } = presses(page, w);
+  const v = () => call(page, 'visits'), sound = () => call(page, 'sound'), snap = () => call(page, 'snapshot');
+  const title = () => page.evaluate(() => document.querySelector('dialog[open] #modal-title')?.textContent);
+  const focused = () => page.evaluate(() => document.activeElement?.id);
+  const status = () => page.evaluate(() => document.querySelector('#modal-status').textContent);
+  const reader = () => page.evaluate(() => document.querySelector('dialog[open] #visits-reader')?.innerText ?? '');
+  const focusIs = (id, what) => until(page, id => document.activeElement?.id === id, id, `${what}: focus is on #${id}`, 8000);
+  const titled = (text, what) => until(page, text => document.querySelector('dialog[open] #modal-title')?.textContent === text, text, `${what} (${text})`);
+  // A field of visits(), by its path ('meal.steps.0'), becomes a value.
+  const visitIs = (path, value, what, timeout) => until(page, ([path, value]) => JSON.stringify(path.split('.').reduce((o, k) => o?.[k], window.tenderloin.visits())) === JSON.stringify(value), [path, value], `${what} (visits().${path} becomes ${JSON.stringify(value)})`, timeout);
+  const opened = canonicalStringify(openedEnvelope({ save_seq: 10 })), closedBefore = changeBefore({ ...initialBefore(), open: true }, { type: 'close' }).announce;
+  // Power's connector pads: each press turns one a quarter (power.js SOLUTIONS solve the relays). A pad's first use is one gesture of
+  // two presses, which Godot's rapid mark lets through as two turns.
+  async function solve(station) {
+    const want = [...SOLUTIONS[station]].map(Number);
+    for (let i = 0; i < 4; i++) {
+      const pad = `#power-pad-${i}`, turned = t => visitIs(`stories.power.turns.${station}.${i}`, t, `${pad} turns`);
+      let t = (await v()).stories.power.turns[station][i];
+      if (!guarded.includes(pad)) { await once(pad, { rapid: true }); t = (t + 2) % 4; await turned(t); }
+      while (t !== want[i]) { await use(pad); t = (t + 1) % 4; await turned(t); }
+    }
+  }
+
+  await step(`${w.name} visits: Before These Streets from the startup card, a gust a press, and Back to start keeps the card's button, which starts the music`, async () => {
+    await seed(page, opened); await boot(page); await cardCheck(page, true);
+    assert.equal(await focused(), 'begin', "Godot's optional opening sits above the startup card's button, which keeps the focus");
+    const entry = await page.locator('#before-entry').evaluate(b => [b.innerText.trim(), b.getAttribute('aria-label') ?? b.innerText.trim(), document.getElementById(b.getAttribute('aria-describedby'))?.textContent]);
+    assert.deepEqual(entry, [STORY_CARD.before, STORY_CARD.before, STORY_CARD.beforeName], "Godot's label is the name; Godot's accessibility name, which does not start with it, is the description");
+    targets.startCard = await layoutCheck(page, w, 'v-startup-card');
+    await once('#before-entry'); await onScreen(page, 'before', 'Before These Streets');
+    const open = changeBefore(initialBefore(), { type: 'open' }, { startupCard: true, storyCard: true });
+    assert.deepEqual([await title(), await focused(), await status()], [BEFORE_TEXT.setup.title, 'before-gust', open.announce], "Godot's title, Send a gust focused and the opening's line");
+    targets.before = await layoutCheck(page, w, 'v-before');
+    await once('#before-gust'); await visitIs('before.view', 1, 'one gesture sends one gust');
+    await once('#before-previous'); await visitIs('before.view', 0, 'Previous view');
+    await focusIs('before-gust', 'Previous view at the first view, where it is disabled (Godot set_view)');
+    await held('#before-gust'); await visitIs('before.view', 1, 'a held Enter on Send a gust');
+    assert.equal((await v()).before.view, 1, 'a held Enter on Send a gust advances one view');
+    await once('#before-shapes'); await visitIs('before.observation', 0, 'Changing shapes'); await pressedLook(page, '#before-shapes', '#before-time');
+    await once('#before-time'); await visitIs('before.observation', 1, 'Passing time'); await pressedLook(page, '#before-time', '#before-shapes');
+    await once('#before-sources'); await visitIs('before.sources', true, 'Sources'); await focusIs('visits-reader', 'Sources');
+    const links = await page.evaluate(() => [...document.querySelectorAll('#visits-reader a')].map(a => [a.className, a.target, a.rel, /^https:\/\//.test(a.href)].join()));
+    assert.ok(links.length > 0 && links.every(link => link === 'source-link,_blank,noreferrer,true'), `the sources are reading links that open apart with no referrer (${links.length})`);
+    targets.sources = await layoutCheck(page, w, 'v-before-sources');
+    await use('#before-sources'); await visitIs('before.sources', false, 'Back to scene');
+    await once('#before-back');
+    await until(page, () => !!document.querySelector('dialog[open] [data-chapter-card] #begin') && document.activeElement?.id === 'begin', null, 'Back to start brings the startup card back with its button focused');
+    assert.equal(await status(), closedBefore, "the card's status line says Godot's close line");
+    assert.deepEqual([(await v()).screen, (await v()).before.open, (await sound()).enabled], [null, false, false], 'the opening closed, and it started no audio');
+    await press(page, '#begin', w.touch); await closed(page);
+    await until(page, () => window.tenderloin.sound().enabled, null, "the startup card's button still starts the music", 10000);
+    assert.equal(await stored(page), opened, 'the opening is visit-only');
+    clean(log);
+    return { sources: links.length, targets: targets.startCard + targets.before + targets.sources };
+  });
+  await step(`${w.name} visits: Before These Streets from Field notes returns focus to Field notes' button`, async () => {
+    await press(page, '#journal-button', w.touch); await page.locator('#before-revisit').waitFor();
+    const notes = await page.evaluate(() => [...document.querySelectorAll('[data-visits-notes] button')].map(b => [b.id, b.textContent]));
+    assert.deepEqual(notes, [['notes-spot', conversationLabel([])], ['notes-museum', MAIN_TEXT.conversation_actions.museum], ['notes-eateries', MAIN_TEXT.conversation_actions.eateries]], "Field notes offer Godot's Spot Surprise, Visit the Museum and Visit Eateries");
+    targets.notes = await layoutCheck(page, w, 'v-field-notes');
+    await once('#before-revisit'); await onScreen(page, 'before', 'Before These Streets from Field notes');
+    assert.equal(await page.locator('#before-back').innerText(), BEFORE_TEXT.refresh.backToBlock, 'from Field notes, Back says Back to block');
+    await use('#before-back'); await closed(page); await focusIs('journal-button', 'Back to block');
+    assert.equal(await toastText(page), closedBefore, "Godot's close line, once the dialog has closed");
+    clean(log);
+    return { notes: notes.length };
+  });
+  await step(`${w.name} visits: Cook & Share, two dishes prepared and shared through guarded presses, and Previous and Next cook taking two presses`, async () => {
+    const raw = await stored(page), meal = async () => (await v()).meal;
+    assert.deepEqual(await page.evaluate(() => ['#story-entry', '#meal-entry'].map(id => document.querySelector(`#afterglow ${id}`)?.innerText)), [VISITS_TEXT['power_story.gd'].setup.story, MAIN_TEXT.make_ui.meal], "the afterglow offers Godot's Story and Cook & Share");
+    targets.afterglow = await layoutCheck(page, w, 'v-afterglow');
+    await once('#meal-entry'); await onScreen(page, 'meal', 'Cook & Share');
+    const open = changeMeal(initialMeal(), { type: 'open' }, { opened: true });
+    assert.deepEqual([await title(), await focused(), await status()], [mealView(open.state).heading, 'meal-prepare', open.announce], "the first cook's heading, the preparation focused, Godot's line");
+    targets.meal = await layoutCheck(page, w, 'v-meal');
+    await once('#meal-serving-1'); await visitIs('meal.servings.0', 1, 'Tasting plates'); await pressedLook(page, '#meal-serving-1', '#meal-serving-0');
+    await once('#meal-placement-1'); await visitIs('meal.placements.0', 1, 'Other edge'); await pressedLook(page, '#meal-placement-1', '#meal-placement-0');
+    await once('#meal-prepare'); await visitIs('meal.steps.0', 1, 'one gesture, one preparation step');
+    await held('#meal-prepare'); await visitIs('meal.steps.0', 2, 'a held Enter on the preparation');
+    assert.equal((await meal()).steps[0], 2, 'a held Enter prepares one step');
+    for (let n = 3; n <= 5; n++) { await use('#meal-prepare'); await visitIs('meal.steps.0', n, `preparation step ${n}`); }
+    await focusIs('meal-share', 'the fifth step');
+    await once('#meal-share'); await until(page, () => Object.keys(window.tenderloin.visits().meal.shared).length === 1, null, 'Share this dish');
+    assert.equal((await meal()).selected, 0, 'the second press did not follow the invitation');
+    assert.equal(await page.locator('#meal-share').innerText(), MEAL_TEXT.refresh.followLabel, 'a shared dish offers its invitation');
+    await use('#meal-share'); await visitIs('meal.selected', 1, 'Follow this invitation');
+    for (let n = 1; n <= 5; n++) { await use('#meal-prepare'); await visitIs('meal.steps.1', n, `the second cook's step ${n}`); }
+    await use('#meal-share'); await visitIs('meal.revealed', 3, 'the second shared dish reveals the third cook');
+    // Godot marks Previous and Next cook rapid: one gesture presses twice and moves two cooks. Three gestures each way start from every
+    // cook, so each redraw from one cook to the next must keep the row where the gesture's second press lands.
+    const moved = [];
+    for (const dir of ['next', 'previous']) for (let n = 0; n < 3; n++) {
+      const from = (await meal()).selected, to = (from + (dir === 'next' ? 2 : 1)) % 3;
+      await once(`#meal-${dir}`, { rapid: true }); await visitIs('meal.selected', to, `one gesture on ${dir === 'next' ? 'Next' : 'Previous'} cook from cook ${from} moves two cooks`);
+      moved.push(`${dir} ${from}->${to}`);
+    }
+    targets.mealCooks = await layoutCheck(page, w, 'v-meal-cooks');
+    await once('#meal-explore'); await closed(page); await focusIs('meal-entry', 'Keep exploring');
+    assert.equal(await toastText(page), MEAL_TEXT.close_meal.announce, "Godot's close line");
+    assert.equal(await stored(page), raw, 'Cook & Share is visit-only');
+    clean(log);
+    return { moved, targets: targets.meal + targets.mealCooks };
+  });
+  await step(`${w.name} visits: the stories hub, More stories, the picker's two pages, Two Dogs Home, Other stories and Keep exploring`, async () => {
+    const raw = await stored(page);
+    await once('#story-entry'); await onScreen(page, 'power', 'Story');
+    assert.deepEqual([await title(), await focused()], [POWER_TEXT.refresh.hub, 'power-begin'], "the hub's title, with Begin story focused");
+    // The first Story opening loads the Larkin place file quietly: Power's own opening line stays in the status line (spec 3.4).
+    await visitIs('data.power_place', 'ready', 'the first Story opening loads the place file', 15000);
+    assert.equal(await status(), changePower(initialPower(), { type: 'open' }, { opened: true }).announce, "Power's opening line stays in the status line while its place file loads");
+    targets.power = await layoutCheck(page, w, 'v-power-hub');
+    await once('#power-more'); await onScreen(page, 'picker', 'More stories');
+    assert.deepEqual([await title(), await focused()], [PICKER_TEXT.setup.title, 'picker-entry-0'], "the picker's title, with its first entry focused");
+    await until(page, () => window.tenderloin.visits().data.voting_places === 'ready' && document.querySelector('#picker-entry-1')?.disabled === false, null, 'the Election Walk entry opens once both place files load', 15000);
+    targets.picker = await layoutCheck(page, w, 'v-picker');
+    // Godot marks Earlier and Later rapid, but each press reaches the other of the two pages and disables the button pressed, so a
+    // gesture's second press always meets a disabled control, which the guard swallows: one page a gesture.
+    assert.deepEqual(await page.evaluate(() => ['#picker-earlier', '#picker-later'].map(id => document.querySelector(id).hasAttribute('data-rapid'))), [true, true], "Earlier and Later carry Godot's rapid mark");
+    await once('#picker-later'); await visitIs('stories.picker.page', 1, 'Later'); await focusIs('picker-entry-2', "Later focuses the page's first entry");
+    targets.picker2 = await layoutCheck(page, w, 'v-picker-page-2');
+    await once('#picker-earlier'); await visitIs('stories.picker.page', 0, 'Earlier'); await focusIs('picker-entry-0', 'Earlier');
+    await use('#picker-later'); await visitIs('stories.picker.page', 1, 'Later again');
+    await once('#picker-entry-3'); await onScreen(page, 'dogs', 'Two Dogs Home');
+    assert.deepEqual([await title(), await focused()], [dogsView(initialDogs(), { opened: true }).heading, 'dogs-begin'], "the search's heading, with Begin search focused");
+    targets.dogs = await layoutCheck(page, w, 'v-dogs');
+    await once('#dogs-stories'); await onScreen(page, 'picker', 'Other stories');
+    assert.deepEqual(pick((await v()).stories.picker, ['returnStory', 'openedFromReader']), { returnStory: 'dogs', openedFromReader: true }, 'the picker remembers the story it was opened from');
+    await once('#picker-explore'); await closed(page); await focusIs('story-entry', 'Keep exploring');
+    assert.equal(await toastText(page), PICKER_TEXT.keep_exploring.announce, "Godot's Keep exploring line");
+    assert.equal(await stored(page), raw, 'the hub and the picker are visit-only');
+    clean(log);
+    return { targets: targets.power + targets.picker + targets.picker2 + targets.dogs };
+  });
+  await step(`${w.name} visits: a held Escape on the picker goes back to the story it came from, and no further`, async () => {
+    await use('#story-entry'); await onScreen(page, 'power', 'Story');
+    await use('#power-more'); await onScreen(page, 'picker', 'More stories');
+    if ((await v()).stories.picker.page !== 1) await use('#picker-later');
+    await use('#picker-entry-3'); await onScreen(page, 'dogs', 'Two Dogs Home');
+    await use('#dogs-stories'); await onScreen(page, 'picker', 'Other stories');
+    await page.keyboard.down('Escape'); await page.keyboard.down('Escape'); await page.keyboard.down('Escape'); await page.keyboard.up('Escape');
+    await onScreen(page, 'dogs', 'a held Escape on the picker (Back to stories)');
+    await page.waitForTimeout(300);
+    assert.deepEqual([await page.evaluate(() => document.querySelector('#modal').open), (await v()).screen], [true, 'dogs'], "the held Escape's repeats close nothing more");
+    await focusIs('dogs-begin', 'Back to stories reopens the story focused as Godot opens it');
+    await page.keyboard.press('Escape'); await closed(page); await focusIs('story-entry', 'Escape on Two Dogs Home (its Back)');
+    assert.equal(await toastText(page), DOGS_TEXT.close_story.announce, "Godot's close line");
+    clean(log);
+  });
+  await step(`${w.name} visits: a tap on the drag show's beacon finds it there: the save, one chime, its card and its bubble`, async () => {
+    // The beacon's site and how high sprites.js draws its globe above it, as the page itself has them.
+    const id = 'impromptu_drag_show', site = (await placed(page, 'SURPRISE_SITES'))[id], lift = await page.evaluate(async () => (await import('./sprites.js')).BEACON_LIFT), found = (await snap()).surprises;
+    assert.ok(Number.isFinite(lift) && lift > 0, `sprites.js says where it draws a beacon's globe (BEACON_LIFT ${lift})`);
+    await press(page, '#recenter', w.touch);
+    await until(page, () => document.querySelector('#camera-status').textContent === 'Following you' && window.tenderloin.location().scale >= 0.85 - 1e-9, null, 'Follow me zooms in on the player');
+    await page.evaluate(() => document.querySelector('#world').scrollIntoView({ block: 'center' }));
+    const at = await mapPoint(page, { x: site.x, y: site.y - lift });
+    assert.ok(at.visible, `the beacon's globe is on screen (${Math.round(at.x)}, ${Math.round(at.y)})`);
+    const before = { seq: (await call(page, 'save')).seq, chimes: (await sound()).rewardCount, player: (await snap()).player };
+    const guardedTap = await tapAt(at, "a tap on the beacon's globe");
+    await onScreen(page, 'card', "the tap on the beacon's globe");
+    const r = inspect(found, id);
+    assert.equal(await title(), r.heading, "the card's heading is Godot's find line");
+    const s = await written(page, before.seq, { discovered_surprises: [...found, id].sort() });
+    await until(page, n => window.tenderloin.sound().rewardCount === n + 1, before.chimes, 'the find plays one chime');
+    assert.equal((await sound()).rewardLastCue, 'surprise_discovery', "Godot's surprise_discovery cue");
+    await until(page, id => window.tenderloin.bubble()?.id === `surprise:${id}`, id, 'the surprise speaks in the bubble at its site');
+    assert.equal((await call(page, 'bubble')).text, spokenText(r.speech), "the bubble says Godot's line");
+    assert.deepEqual([(await snap()).player, await page.locator('#stop-walking').isDisabled()], [before.player, true], 'a tap on a beacon never walks');
+    assert.equal(await status(), r.announce, "the card's status line says Godot's announcement");
+    targets.surprise = await layoutCheck(page, w, 'v-card-surprise');
+    assert.equal((await sound()).rewardCount, before.chimes + 1, 'one chime in all');
+    // The card's Spot Surprise (Godot Shift+D) inspects the next id: one gesture finds one, and a held Enter one more.
+    const [third, fourth] = [3, 4].map(i => SURPRISE_IDS[i]);
+    await once('#card-spot'); let t = await written(page, s.env.save_seq, { discovered_surprises: [...found, id, third].sort() });
+    await held('#card-spot'); t = await written(page, t.env.save_seq, { discovered_surprises: [...found, id, third, fourth].sort() });
+    await titled(inspect([...found, id, third], fourth).heading, 'a held Enter on Spot Surprise finds one more');
+    await once('#card-back'); await closed(page); await focusIs('world', 'Back on a card opened from the map');
+    clean(log);
+    return { tap: [Math.round(at.x), Math.round(at.y)], scale: at.scale, ...guardedTap, seq: t.env.save_seq };
+  });
+  await step(`${w.name} visits: Field notes' Visit the Museum and Visit Eateries cards, and a movement key held while a card closes does not walk`, async () => {
+    await press(page, '#journal-button', w.touch); await page.locator('#notes-museum').waitFor();
+    assert.equal(await page.locator('#notes-spot').textContent(), conversationLabel((await snap()).surprises), "Field notes' Spot Surprise counts the finds");
+    const chimes = (await sound()).rewardCount, era0 = inspectMuseum(initialTour()), era1 = inspectMuseum(era0.tour);
+    await once('#notes-museum'); await onScreen(page, 'card', 'Visit the Museum'); await titled(era0.eraTitle, "the museum card shows the portal's first era");
+    await until(page, n => window.tenderloin.sound().rewardCount === n + 1 && window.tenderloin.sound().rewardLastCue === 'museum_portal', chimes, "a new era plays Godot's museum_portal chime");
+    targets.museum = await layoutCheck(page, w, 'v-card-museum');
+    await once('#card-next-era'); await titled(era1.eraTitle, 'Next era');
+    await use('#card-back'); await closed(page); await focusIs('journal-button', 'Back on a card from Field notes');
+    await press(page, '#journal-button', w.touch); await page.locator('#notes-eateries').waitFor();
+    const guide = cycleEatery(era1.tour), order = activateEatery(guide.tour, guide.index, { tourId: '' });
+    await once('#notes-eateries'); await onScreen(page, 'card', 'Visit Eateries');
+    await titled(gdf(web('main.gd', MAIN_TEXT.build_street_life_decor.eatery), [EATERIES[guide.index].name]), "the eatery guide's card");
+    targets.eatery = await layoutCheck(page, w, 'v-card-eatery');
+    await once('#card-order'); await titled(order.burst.heading, "the counter's first order");
+    // Godot release_pending: a movement key held while the card closes does not walk until it is pressed again.
+    const x = async () => (await snap()).player.x;
+    await page.keyboard.down('ArrowRight'); await settledClose(page, async () => { await use('#card-back'); await closed(page); }, 'Back on the eatery card');
+    const before = await x();
+    for (let i = 0; i < 6; i++) { await page.keyboard.down('ArrowRight'); await page.waitForTimeout(50); }
+    await page.waitForTimeout(200);
+    await page.evaluate(() => { window.__nextFrames = 0; requestAnimationFrame(function count() { if (++window.__nextFrames < 2) requestAnimationFrame(count); }); });
+    await until(page, () => window.__nextFrames >= 2, null, 'two animation frames run after the repeats', 8000);
+    assert.equal(await x(), before, 'repeats of the key held through the close do not walk');
+    await page.keyboard.up('ArrowRight'); await page.keyboard.down('ArrowRight');
+    try { await until(page, before => window.tenderloin.snapshot().player.x > before, before, 'a fresh press walks', 8000); } finally { await page.keyboard.up('ArrowRight'); }
+    clean(log);
+    return { eras: [era0.eraTitle, era1.eraTitle], order: order.burst.heading, walked: Math.round(await x() - before) };
+  });
+  if (w.name !== '320') {
+    await step(`${w.name} visits: the Power Story festival, three relays walked to and solved, its pads rapid and Check path held`, async () => {
+      await use('#story-entry'); await onScreen(page, 'power', 'Story');
+      await once('#power-begin'); await visitIs('stories.power.active', true, 'Begin story'); await focusIs('power-walk', 'Begin story');
+      for (const station of [0, 1, 2]) {
+        if (station) { await use(`#power-tab-${station}`); await visitIs('stories.power.station', station, `Relay ${station + 1}`); }
+        await use('#power-walk'); await arrives(page, 'power', `the walk to relay ${station + 1}`, 60000);
+        assert.ok(near((await snap()).player, (await placed(page, 'RELAY_GOALS'))[station], RELAY_ARRIVAL), `the player stands at relay ${station + 1}`);
+        await focusIs('power-pad-0', 'arriving at the relay');
+        if (!station) targets.relay = await layoutCheck(page, w, 'v-power-relay');
+        await solve(station);
+        if (station === 1) await held('#power-check'); else await use('#power-check');
+        await visitIs('stories.power.restored', [1, 3, 7][station], `Check path lights relay ${station + 1}`);
+        if (station === 1) assert.equal((await v()).stories.power.station, 1, 'a held Enter on Check path lights the relay once and chooses no other');
+      }
+      assert.deepEqual(pick((await v()).stories.power, ['won', 'message']), { won: true, message: POWER_TEXT.check_path.won }, "all three lights back on: Godot's festival win");
+      await focusIs('power-back', 'the last relay');
+      targets.powerWon = await layoutCheck(page, w, 'v-power-won');
+      await once('#power-end'); await visitIs('stories.power.active', false, 'End story');
+      assert.equal(await title(), POWER_TEXT.refresh.ended, "the hub's heading says the story ended");
+      clean(log);
+    });
+    await step(`${w.name} visits: Two Dogs Home from Missing dogs: its walk control, three walks, both dogs matched and the reunion`, async () => {
+      await once('#power-dogs'); await onScreen(page, 'dogs', 'Missing dogs');
+      await use('#dogs-begin'); await visitIs('stories.dogs.active', true, 'Begin search'); await focusIs('dogs-lead0', 'Begin search');
+      await once('#dogs-lead0'); await visitIs('stories.dogs.lead', 0, "Pippin's lead");
+      await once('#dogs-back'); await closed(page);
+      await until(page, () => !document.querySelector('#story-resume').hidden, null, 'the walk control offers the active search');
+      assert.deepEqual(await page.locator('#story-resume').evaluate(b => [b.textContent, b.title, document.getElementById(b.getAttribute('aria-describedby'))?.textContent]), [WALK_CONTROL.dogs, WALK_CONTROL.dogsTip, WALK_CONTROL.dogsTip], "Godot's walk control label and tip");
+      targets.resume = await layoutCheck(page, w, 'v-story-resume');
+      assert.equal((await visitsChapterCheck(page)).objective.id, 'dog_story', "the Next objective is the search's");
+      await once('#story-resume'); await onScreen(page, 'dogs', 'the walk control'); await focusIs('dogs-walk', 'the walk control reopens the search');
+      await use('#dogs-walk'); await arrives(page, 'dogs', "the walk to Pippin's lead", 60000); await focusIs('dogs-match', "Pippin's lead");
+      assert.ok(near((await snap()).player, (await placed(page, 'DOG_GOALS'))[0], 10), "the player stands at Pippin's lead");
+      await once('#dogs-match'); await visitIs('stories.dogs.found', 1, 'Match dog');
+      await once('#dogs-junebug'); await visitIs('stories.dogs.profile', 1, "Junebug's notes");
+      await once('#dogs-lead1'); await visitIs('stories.dogs.lead', 1, "Junebug's lead");
+      await held('#dogs-walk'); await walking(page, 'dogs', 'a held Enter on Walk to lead'); await arrives(page, 'dogs', "the walk to Junebug's lead");
+      await held('#dogs-match'); await visitIs('stories.dogs.found', 3, 'a held Enter on Match dog');
+      const M = DOGS_TEXT.match_dog;
+      assert.equal((await v()).stories.dogs.message, DOG_NAMES[1] + M.matched + M.both, 'one match: a second press would say she is matched already');
+      await once('#dogs-lead2'); await visitIs('stories.dogs.lead', 2, 'the gathering');
+      await use('#dogs-walk'); await walking(page, 'dogs', 'Walk to lead'); await arrives(page, 'dogs', 'the walk to the gathering');
+      assert.equal(await page.locator('#dogs-match').innerText(), DOGS_TEXT.refresh.reunite, 'both found, at the gathering, Match dog is Reunite');
+      await use('#dogs-match'); await visitIs('stories.dogs.won', true, 'Reunite');
+      assert.equal((await v()).stories.picker.lanternInvited, true, "the reunion offers Imani's lantern invitation");
+      assert.equal(await title(), dogsView((await v()).stories.dogs, { opened: true }).heading, 'the heading says the dogs are home');
+      targets.dogsWon = await layoutCheck(page, w, 'v-dogs-reunited');
+      clean(log);
+    });
+    await step(`${w.name} visits: the Lantern Procession by Imani's invitation: costumes, the assembly, the march with its progress, and Welcome`, async () => {
+      await once('#dogs-stories'); await onScreen(page, 'picker', 'Other stories'); await focusIs('picker-follow', "the reunion's invitation");
+      targets.invitation = await layoutCheck(page, w, 'v-picker-invitation');
+      assert.deepEqual(await page.locator('#picker-follow').evaluate(b => [b.innerText, b.getAttribute('aria-label') ?? b.innerText, document.getElementById(b.getAttribute('aria-describedby'))?.textContent]), [PICKER_TEXT.setup.follow, PICKER_TEXT.setup.follow, PICKER_TEXT.setup.followName], "Godot's Follow label, with Godot's name as its description");
+      await once('#picker-follow'); await onScreen(page, 'lantern', 'Follow this invitation');
+      const s0 = (await v()).stories;
+      assert.deepEqual([s0.dogs.active, s0.picker.suspended, s0.picker.invitationFollowed], [false, ['dogs'], true], 'the search waits while the procession runs');
+      assert.deepEqual([await title(), await focused()], [lanternView(initialLantern(), { opened: true }).heading, 'lantern-begin']);
+      targets.lantern = await layoutCheck(page, w, 'v-lantern');
+      await pressedLook(page, '#lantern-bat', '#lantern-star');
+      await once('#lantern-star'); await visitIs('stories.lantern.costume', 1, 'the Stargazer cape'); await pressedLook(page, '#lantern-star', '#lantern-bat');
+      await once('#lantern-starLantern'); await visitIs('stories.lantern.lantern', 1, 'the star lantern'); await pressedLook(page, '#lantern-starLantern', '#lantern-moon');
+      await once('#lantern-begin'); await visitIs('stories.lantern.active', true, 'Begin'); await focusIs('lantern-walk', 'Begin');
+      await once('#lantern-walk'); await arrives(page, 'lantern', 'the walk to the assembly', 60000); await focusIs('lantern-advance', 'the assembly');
+      await once('#lantern-advance'); await visitIs('stories.lantern.phase', 1, 'Gather');
+      assert.equal((await v()).stories.lantern.message, LANTERN_TEXT.advance.ready, 'one Gather: a second press would say the group is paused');
+      const progress = [(await v()).stories.lantern.progress];
+      await use('#lantern-walk');
+      await until(page, p => { const v = window.tenderloin.visits(); return v.trip === 'lantern' && v.stories.lantern.progress > p; }, progress[0], 'the march raises the progress while it travels', 30000);
+      progress.push((await v()).stories.lantern.progress);
+      await arrives(page, 'lantern', 'the march', 60000);
+      progress.push((await v()).stories.lantern.progress);
+      assert.ok(progress[2] >= LANTERN_LENGTH - 1, `the march reaches the end of the route (${progress.map(p => p.toFixed(1)).join(' -> ')} of ${LANTERN_LENGTH} m)`);
+      await focusIs('lantern-advance', 'the end of the march');
+      await held('#lantern-advance'); await visitIs('stories.lantern.won', true, 'a held Enter on Welcome');
+      assert.equal((await v()).screen, 'lantern', 'the held Enter welcomed once and did not press Back, which has the focus now');
+      await focusIs('lantern-back', 'Welcome');
+      targets.lanternWon = await layoutCheck(page, w, 'v-lantern-welcome');
+      await once('#lantern-end'); await visitIs('stories.lantern.active', false, 'End parade');
+      await once('#lantern-back'); await closed(page);
+      clean(log);
+      return { progress: progress.map(p => Math.round(p * 10) / 10) };
+    });
+  }
+  await step(`${w.name} visits: another tab's write closes the open side story and starts the visit over, keeping the finds; so does Start fresh`, async () => {
+    await use('#meal-entry'); await onScreen(page, 'meal', 'Cook & Share');
+    await use('#meal-prepare'); await until(page, () => window.tenderloin.visits().meal.steps.some(n => n > 0), null, 'a preparation');
+    const was = await envelope(page), newer = canonicalStringify({ ...was.env, celeste_talk_count: was.env.celeste_talk_count + 1, save_seq: was.env.save_seq + 1 });
+    assert.equal(parseGodotSave(newer).status, 'loaded');
+    const other = await context.newPage();
+    try {
+      await other.route(base + '/__next-seed', route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>Other tab</title><link rel="icon" href="data:,">' }));
+      await other.goto(base + '/__next-seed'); await other.evaluate(([key, value]) => localStorage.setItem(key, value), [GODOT_SAVE_KEY, newer]);
+    } finally { await other.close(); }
+    await page.bringToFront();
+    await until(page, seq => !document.querySelector('#modal').open && window.tenderloin.save().seq === seq, was.env.save_seq + 1, "this tab adopts the other tab's write (storage event), which closes Cook & Share");
+    await until(page, text => document.querySelector('#toast').textContent === text, VISITS_FORK_TEXT.adopted, 'the toast says the side stories started fresh');
+    assert.deepEqual(plain(await v()), FRESH_VISITS, 'the visit starts over, as a Godot load does');
+    assert.deepEqual((await snap()).surprises, was.state.surprises, 'the saved finds stay');
+    await use('#meal-entry'); await onScreen(page, 'meal', 'Cook & Share again'); await use('#meal-prepare'); await visitIs('meal.steps.0', 1, 'a preparation');
+    await use('#meal-explore'); await closed(page);
+    await press(page, '#settings-button', w.touch); await press(page, '#restart', w.touch); await press(page, '#confirm-restart', w.touch);
+    await until(page, () => window.tenderloin.save().status === 'fresh', null, 'Start fresh restarts');
+    assert.deepEqual(plain(await v()), FRESH_VISITS, 'Start fresh starts the visit over');
+    // The fresh afternoon is Chapter 1 again, so its chapter card follows.
+    const card = await cardCheck(page, false); assert.equal(card.num, 1); await dismissCard(page, w, card);
+    clean(log);
+    return { adopted: was.env.save_seq + 1 };
+  });
+  if (!w.touch) {
+    await step('1440 visits: Larkin 2017: the case map, the walk to Larkin/Eddy and its battery light, fetching only the local place file', async () => {
+      await seed(page, opened); await boot(page); await cardCheck(page, true);
+      await page.keyboard.press('Escape'); await closed(page); // no music, so nothing else loads while the requests are counted
+      const requests = [], heard = request => { if (!/^(data|blob):/.test(request.url())) requests.push(request.url()); };
+      page.on('request', heard);
+      try {
+        await use('#story-entry'); await onScreen(page, 'power', 'Story');
+        await use('#power-tab-1'); await visitIs('stories.power.historical', true, 'the Larkin 2017 tab');
+        await until(page, () => window.tenderloin.visits().data.power_place === 'ready' && document.querySelectorAll('dialog[open] .visits-label').length === 4 && !document.querySelector('#power-begin').disabled, null, 'the case map draws its four labels once the place file is in', 15000);
+        targets.larkinMap = await layoutCheck(page, w, 'v-power-larkin-map');
+        await use('#power-begin'); await visitIs('stories.power.active', true, 'Begin story at Larkin');
+        assert.equal((await v()).stories.power.message, POWER_TEXT.begin.larkin, "Godot's Larkin opening");
+        await use('#power-walk'); await walking(page, 'power', 'Walk to relay'); await arrives(page, 'power', 'the walk to Larkin/Eddy', 300000);
+        assert.ok(near((await snap()).player, await placed(page, 'LARKIN_JUNCTION'), RELAY_ARRIVAL), 'the player stands at the Larkin/Eddy junction');
+        targets.larkin = await layoutCheck(page, w, 'v-power-larkin');
+        await solve(0); await use('#power-check'); await visitIs('stories.power.restored', 1, 'the battery light at Larkin');
+        assert.equal((await v()).stories.power.message, VOICES[0] + POWER_TEXT.check_path.portable, "Godot's portable-light line");
+        await use('#power-end'); await visitIs('stories.power.active', false, 'End story');
+        await use('#power-back'); await closed(page);
+      } finally { page.off('request', heard); }
+      assert.deepEqual(requests, [`${base}/browser-next/data/power_place.json`], 'Larkin fetches its local place file once, and nothing else');
+      clean(log);
+      return { requests: requests.map(url => url.slice(base.length)) };
+    });
+    await step('1440 visits: the Election Walk to both sites and back to Bea: the records, the paper map\'s pins and the shared map', async () => {
+      await use('#story-entry'); await onScreen(page, 'power', 'Story');
+      await use('#power-more'); await onScreen(page, 'picker', 'More stories');
+      if ((await v()).stories.picker.page !== 0) await use('#picker-earlier');
+      await until(page, () => document.querySelector('#picker-entry-1')?.disabled === false, null, 'the Election Walk entry opens once both place files load', 15000);
+      await once('#picker-entry-1'); await onScreen(page, 'election', 'the Election Walk');
+      assert.deepEqual([await title(), await focused()], [electionView(initialElection()).heading, 'election-begin']);
+      targets.election = await layoutCheck(page, w, 'v-election');
+      await pressedLook(page, '#election-cadillac', '#election-boeddeker'); await pressedLook(page, '#election-warm', '#election-cool');
+      await once('#election-cool'); await visitIs('stories.election.palette', 1, 'Cool paper'); await pressedLook(page, '#election-cool', '#election-warm');
+      await once('#election-begin'); await visitIs('stories.election.active', true, 'Begin walk'); await focusIs('election-walk', 'Begin walk');
+      await once('#election-walk'); await walking(page, 'election', 'Walk to site'); await arrives(page, 'election', 'the walk to 380 Eddy');
+      assert.ok(near((await snap()).player, (await v()).stories.election.tripGoal, 10), 'the player stands at the first observation point (the trip goal voting_places.json gives)');
+      await focusIs('election-record', 'the first site');
+      await once('#election-record'); await visitIs('stories.election.observed', 1, 'Record site'); await focusIs('election-boeddeker', 'the first record');
+      await once('#election-boeddeker'); await visitIs('stories.election.selected', 1, 'the second site'); await pressedLook(page, '#election-boeddeker', '#election-cadillac');
+      await use('#election-walk'); await walking(page, 'election', 'Walk to site'); await arrives(page, 'election', 'the walk to 246 Eddy');
+      assert.ok(near((await snap()).player, (await v()).stories.election.tripGoal, 10), 'the player stands at the second observation point');
+      await held('#election-record'); await visitIs('stories.election.observed', 3, 'a held Enter on Record site');
+      assert.equal((await v()).stories.election.phase, 1, 'one record: the repeats did not press Make map, which has the focus now');
+      await focusIs('election-make', 'both sites recorded');
+      await once('#election-make'); await visitIs('stories.election.phase', 2, 'Make map'); await focusIs('election-cadillac', 'Make map');
+      targets.pins = await layoutCheck(page, w, 'v-election-pins');
+      await use('#election-cadillac'); await visitIs('stories.election.selected', 0, 'the first label');
+      await once('#election-pin-0'); await visitIs('stories.election.placed', 1, 'pin 1'); await focusIs('election-boeddeker', 'the first label placed');
+      await use('#election-boeddeker'); await visitIs('stories.election.selected', 1, 'the second label');
+      await once('#election-pin-1'); await visitIs('stories.election.phase', 3, 'pin 2 places the last label'); await focusIs('election-walk', 'both labels placed');
+      assert.equal(await page.locator('#election-walk').innerText(), ELECTION_TEXT.refresh.returnBea, 'the walk control returns to Bea');
+      await use('#election-walk'); await walking(page, 'election', 'Return to Bea'); await arrives(page, 'election', 'the walk back to Bea');
+      assert.ok(near((await snap()).player, await placed(page, 'ELECTION_HOME'), 5), 'the player stands by Bea');
+      await focusIs('election-share', 'back with Bea');
+      await once('#election-share'); await visitIs('stories.election.won', true, 'Share map');
+      assert.equal(await title(), electionView((await v()).stories.election).heading, 'the heading says the map is shared');
+      targets.electionShared = await layoutCheck(page, w, 'v-election-shared');
+      await once('#election-end'); await visitIs('stories.election.active', false, 'End walk');
+      await once('#election-back'); await closed(page);
+      clean(log);
+    });
+    await step("1440 visits: Thanh's Spot Surprise finds his pair's surprise and shows his memory line", async () => {
+      const eight = SURPRISE_IDS.filter(id => !['impromptu_drag_show', 'mayor_pomp_event'].includes(id)).sort();
+      await seed(page, canonicalStringify(filmDoneEnvelope({ save_seq: 60, history_read: true, blackhawk_discovered: true, discovered_surprises: eight }))); await boot(page); await dismissCard(page, w, await cardCheck(page, true));
+      await walkTo(page, w, 'thanh');
+      assert.equal(await page.locator('#talk-surprise').textContent(), conversationLabel(eight), "Thanh offers Godot's Spot Surprise");
+      const r = inspect(eight, 'impromptu_drag_show', { openNeighborId: 'thanh' });
+      assert.ok(r.memory, 'the premise: the drag show is paired with Thanh');
+      await once('#talk-surprise'); await onScreen(page, 'card', "Thanh's Spot Surprise"); await titled(r.heading, "the card names Thanh's pair");
+      assert.ok((await reader()).includes(r.memory), `the card says Thanh's memory line (${r.memory})`);
+      await written(page, 60, { discovered_surprises: [...eight, 'impromptu_drag_show'].sort() });
+      targets.thanh = await layoutCheck(page, w, 'v-card-thanh');
+      await use('#card-back'); await closed(page);
+      clean(log);
+      return { memory: r.memory };
+    });
+    await step('1440 visits: the tenth find is the finale: its heading and burst line, its chime, all ten saved', async () => {
+      const nine = SURPRISE_IDS.filter(id => id !== 'impromptu_drag_show').sort();
+      await seed(page, canonicalStringify(filmDoneEnvelope({ save_seq: 70, history_read: true, blackhawk_discovered: true, discovered_surprises: nine }))); await boot(page); await dismissCard(page, w, await cardCheck(page, true));
+      assert.equal((await visitsChapterCheck(page)).expected.surpriseId, 'impromptu_drag_show', 'the explore objective names the last surprise');
+      const chimes = (await sound()).rewardCount, r = inspect(nine, 'impromptu_drag_show');
+      await press(page, '#journal-button'); await use('#notes-spot'); await onScreen(page, 'card', "Field notes' Spot Surprise");
+      await titled(r.heading, "the finale's heading");
+      assert.ok(r.finale && (await reader()).startsWith(MAIN_TEXT.inspect_neighborhood_surprise.all), 'the burst line says all ten keepsakes');
+      await until(page, n => window.tenderloin.sound().rewardCount === n + 1, chimes, 'the tenth find plays one chime');
+      assert.equal((await sound()).rewardLastCue, 'surprise_finale', "Godot's surprise_finale cue");
+      await written(page, 70, { discovered_surprises: [...SURPRISE_IDS].sort() });
+      targets.finale = await layoutCheck(page, w, 'v-card-finale');
+      await use('#card-back'); await closed(page); await focusIs('journal-button', 'Back on the finale card');
+      clean(log);
+      return { heading: r.heading };
+    });
+    await step("1440 visits: the landmark tour through Bea's talk action and the card's next stop, completed once with its chime and toast", async () => {
+      let tour = initialTour(); const stops = [];
+      for (let i = 0; i < 12; i++) { const next = tourState(tour).next, r = visitStop(tour, next.id, {}); stops.push({ id: next.id, action: next.action, heading: r.eraTitle ?? r.title ?? r.burst.heading }); tour = r.tour; }
+      assert.equal((await visitsChapterCheck(page)).expected.tourId, stops[0].id, 'all ten found, the explore objective is the first tour stop');
+      const count = async () => tourState((await v()).world.tour).count;
+      await walkTo(page, w, 'bea');
+      assert.equal(await page.locator('#talk-landmark-tour').textContent(), stops[0].action, "Bea offers the tour's first stop under Godot's tour action");
+      await once('#talk-landmark-tour'); await onScreen(page, 'card', "Bea's tour action"); await titled(stops[0].heading, 'the first stop');
+      assert.equal(await count(), 1, 'one stop visited');
+      for (let i = 1; i < 11; i++) {
+        assert.equal(await page.locator('#card-tour').textContent(), stops[i].action, `the card offers stop ${i + 1}`);
+        if (i === 2) await held('#card-tour'); else await use('#card-tour');
+        await titled(stops[i].heading, `stop ${i + 1}`);
+        assert.equal(await count(), i + 1, i === 2 ? 'a held Enter on the next stop visits one stop' : `${i + 1} stops visited`);
+      }
+      targets.tour = await layoutCheck(page, w, 'v-card-tour');
+      await use('#card-back'); await closed(page);
+      assert.equal((await v()).world.tour.celebrated, false, 'eleven stops do not complete the tour');
+      await walkTo(page, w, 'bea');
+      assert.equal(await page.locator('#talk-landmark-tour').textContent(), stops[11].action, 'Bea offers the last stop');
+      await use('#talk-landmark-tour'); await titled(stops[11].heading, 'the last stop');
+      assert.deepEqual([await count(), await page.locator('#card-tour').count()], [12, 0], 'twelve stops, and no next stop to offer');
+      const chimes = (await sound()).rewardCount, done = gdf(MAIN_TEXT.update_landmark_tour_completion.announce, [12]);
+      await use('#card-back'); await closed(page);
+      await until(page, n => window.tenderloin.sound().rewardCount === n + 1 && window.tenderloin.sound().rewardLastCue === 'tour_complete', chimes, "the completed tour plays Godot's tour_complete chime", 15000);
+      await until(page, text => document.querySelector('#toast').textContent === text, done, "the toast says Godot's completion line");
+      assert.equal((await v()).world.tour.celebrated, true, 'the tour is celebrated for this visit');
+      await page.waitForTimeout(1000);
+      assert.equal((await sound()).rewardCount, chimes + 1, 'the completion chimes once');
+      assert.equal((await visitsChapterCheck(page)).objective.id, 'explore', "the explore objective's done line");
+      clean(log);
+      return { stops: stops.length };
+    });
+    await step("1440 visits: Godot opens the fork's two finds: surprises_found 2, no reset, the save unchanged", async () => {
+      await stat(new URL('artifacts/godot-web/index.pck', root)).catch(() => assert.fail('artifacts/godot-web/index.pck is missing; run npm run godot:export'));
+      const cross = await newContext(w), c = await newPage(cross, 'visits-godot-1440'), p = c.page, cp = presses(p, w, guarded);
+      try {
+        await seed(p, canonicalStringify(openedEnvelope({ save_seq: 30 }))); await boot(p); await dismissCard(p, w, await cardCheck(p, true));
+        await press(p, '#journal-button'); await cp.use('#notes-spot'); await onScreen(p, 'card', "Field notes' Spot Surprise");
+        await written(p, 30, { discovered_surprises: ['jeffrey_record'] });
+        await cp.held('#card-spot'); const s = await written(p, 31, { discovered_surprises: ['hidden_mural_145', 'jeffrey_record'] });
+        await until(p, t => document.querySelector('dialog[open] #modal-title')?.textContent === t, inspect(['jeffrey_record'], 'hidden_mural_145').heading, 'a held Enter on Spot Surprise finds one more');
+        await cp.use('#card-back'); await closed(p);
+        assert.equal(await stored(p), s.raw, 'nothing else was written');
+        c.log.on = 'godot'; await p.goto(base + '/godot/'); const g = await godotReady(p);
+        assert.deepEqual(pick(g, ['surprises_found', 'visited_count', 'block_opened']), { surprises_found: 2, visited_count: 5, block_opened: true }, "Godot counts the fork's two finds and keeps the rest of the afternoon");
+        assert.equal(await stored(p), s.raw, 'Godot loaded the finds without resetting or rewriting the save');
+        await p.screenshot({ path: file('1440-godot-visits-surprises.png') }); c.log.on = 'fork';
+        clean(c.log);
+        return { godot: pick(g, ['surprises_found', 'visited_count', 'block_opened']), seq: s.env.save_seq };
+      } finally { await cross.close(); activePage = page; }
+    });
+  }
+  await step(`${w.name} visits guard: a ${how} on Share this dish acts once; on Next cook, which Godot marks rapid, twice`, async () => {
+    const gate = await newContext(w, { gate: true }), g = await newPage(gate, `visits-guard-${w.name}`), p = g.page, counts = {};
+    const rest = async () => { await p.waitForTimeout(650); await until(p, () => !window.tenderloin.pressSettle().open, null, 'the press-settle window closes', 10000); };
+    const tap = async selector => { await rest(); await press(p, selector, w.touch); };
+    const mealIs = (path, value, what) => until(p, ([path, value]) => JSON.stringify(path.split('.').reduce((o, k) => o?.[k], window.tenderloin.visits().meal)) === JSON.stringify(value), [path, value], what);
+    async function double(selector, rapid = false) {
+      const locator = p.locator(selector); await locator.scrollIntoViewIfNeeded(); const b = await locator.boundingBox(), x = b.x + b.width / 2, y = b.y + b.height / 2;
+      await p.evaluate(() => { window.__nextPassed = { pointerdown: 0, pointerup: 0, click: 0 }; if (!window.__nextCounting) { window.__nextCounting = true; for (const type of Object.keys(window.__nextPassed)) window.addEventListener(type, () => window.__nextPassed[type]++); } });
+      const before = await call(p, 'pressSettle');
+      if (w.touch) { await p.touchscreen.tap(x, y); await p.waitForTimeout(80); await p.touchscreen.tap(x, y); } else await p.mouse.dblclick(x, y, { delay: 40 });
+      const want = rapid ? { pointerdown: 2, pointerup: 2, click: 2 } : { pointerdown: 1, pointerup: 1, click: 1 }, [after, passed] = await letThrough(p, before, want, !rapid);
+      if (rapid) { assert.equal(after.swallowed, before.swallowed, `${selector}: a [data-rapid] control still under the pointer is not gated`); assert.deepEqual(passed, want, `${selector}: both presses reach the page`); }
+      else {
+        assert.equal(after.armed - before.armed, 1, `${selector}: one press armed the guard`);
+        assert.ok(after.swallowed > before.swallowed, `${selector}: pressSettle().swallowed increased (${before.swallowed} -> ${after.swallowed})`);
+        assert.deepEqual(passed, want, `${selector}: only the first press reached the page`);
+      }
+      return { armed: after.armed - before.armed, swallowed: after.swallowed - before.swallowed };
+    }
+    try {
+      await seed(p, opened); await boot(p);
+      assert.equal(await p.evaluate(() => window.__tenderloinPressSettleMs), undefined, 'the guard runs at its default');
+      const card = await cardCheck(p, true); await rest(); await dismissCard(p, w, card);
+      await tap('#meal-entry'); await onScreen(p, 'meal', 'Cook & Share');
+      for (let n = 1; n <= 5; n++) { await tap('#meal-prepare'); await mealIs('steps.0', n, `preparation step ${n}`); }
+      await rest(); counts.share = await double('#meal-share');
+      await until(p, () => Object.keys(window.tenderloin.visits().meal.shared).length === 1, null, 'the first press shares the dish');
+      assert.equal((await call(p, 'visits')).meal.selected, 0, 'the second press did not follow the invitation');
+      await tap('#meal-share'); await mealIs('selected', 1, 'Follow this invitation');
+      for (let n = 1; n <= 5; n++) { await tap('#meal-prepare'); await mealIs('steps.1', n, `the second cook's step ${n}`); }
+      await tap('#meal-share'); await mealIs('revealed', 3, 'the second dish reveals the third cook');
+      await rest(); counts.next = await double('#meal-next', true);
+      await mealIs('selected', 0, 'one gesture on Next cook moves two cooks');
+      clean(g.log);
+    } finally { await gate.close(); activePage = page; }
+    return counts;
+  });
+  if (w.name === '320') await step('320 visits: Walk to relay routes START to Larkin/Eddy in one click of at most 1.5 s (spec risk R2)', async () => {
+    const timing = await newContext(w), t = await newPage(timing, 'visits-larkin-click-320'), p = t.page, tp = presses(p, w, guarded);
+    try {
+      await seed(p, opened); await boot(p); await dismissCard(p, w, await cardCheck(p, true));
+      const start = await placed(p, 'START'), junction = await placed(p, 'LARKIN_JUNCTION');
+      assert.deepEqual((await call(p, 'snapshot')).player, start, 'the player stands at the start');
+      await tp.use('#story-entry'); await onScreen(p, 'power', 'Story');
+      await tp.use('#power-tab-1');
+      await until(p, () => { const v = window.tenderloin.visits(); return v.stories.power.historical && v.data.power_place === 'ready' && !document.querySelector('#power-begin').disabled; }, null, 'the Larkin 2017 tab with its place file', 15000);
+      await tp.use('#power-begin'); await until(p, () => window.tenderloin.visits().stories.power.active, null, 'Begin story at Larkin');
+      // The click's own work, from the window's capture phase to its bubble phase: the route and everything else it does before the
+      // page can draw again.
+      await p.evaluate(() => { const at = window.__nextWalkClick = {}; addEventListener('click', () => { at.start ??= performance.now(); }, true); addEventListener('click', () => { at.end ??= performance.now(); }); });
+      await tp.use('#power-walk'); await walking(p, 'power', 'Walk to relay');
+      const ms = await p.evaluate(() => window.__nextWalkClick.end - window.__nextWalkClick.start);
+      assert.ok(Number.isFinite(ms) && ms <= 1500, `the click that routes START to the Larkin junction took ${ms} ms (at most 1500)`);
+      await press(p, '#stop-walking', w.touch); await until(p, () => window.tenderloin.visits().trip === null, null, 'Stop walking cancels the trip');
+      clean(t.log);
+      return { clickMs: Math.round(ms * 10) / 10, from: start, to: { x: Math.round(junction.x), y: Math.round(junction.y) } };
+    } finally { await timing.close(); activePage = page; }
+  });
+  await step(`${w.name} visits: every side-story screen keeps 44 px targets and its close button clear`, async () => {
+    assert.deepEqual(undersized.filter(line => / v-/.test(line) && line.startsWith(w.name + ' ')), [], 'every side-story screen keeps its targets at least 44 px');
+    assert.deepEqual(underClose.filter(line => / v-/.test(line) && line.startsWith(w.name + ' ')), [], "no side-story text is drawn under a dialog's close button");
+    return { guarded: guarded.length, screens: Object.keys(targets).length, controls: Object.values(targets).reduce((a, b) => a + b, 0) };
+  });
+  clean(log); await context.close();
+}
 const CLEARED_NOT_SAVED = 'The shared save was cleared in another tab. A fresh afternoon is ready. Your last change no longer applies, so it was not saved.';
 
 try {
@@ -1498,7 +2100,7 @@ try {
   });
   // Playwright's BiDi Firefox ignores the reducedMotion context option, so the preference supplies it.
   browser = isFirefox ? await firefox.launch({ channel: 'moz-firefox', headless: true, firefoxUserPrefs: { 'ui.prefersReducedMotion': 1 } }) : await chromium.launch({ ...(channel === 'bundled' ? {} : { channel }), headless: true });
-  for (const w of WIDTHS) { if (SUITES.includes('journey')) await journey(w); if (SUITES.includes('guard')) await guard(w); if (SUITES.includes('ending')) await endingSuite(w); if (SUITES.includes('phase2')) await phase2Suite(w); }
+  for (const w of WIDTHS) { if (SUITES.includes('journey')) await journey(w); if (SUITES.includes('guard')) await guard(w); if (SUITES.includes('ending')) await endingSuite(w); if (SUITES.includes('phase2')) await phase2Suite(w); if (SUITES.includes('visits')) await visitsSuite(w); }
   const wide = WIDTHS.find(w => !w.touch);
   if (wide) { if (SUITES.includes('tabs')) { await twoTabs(wide); await recoveryCases(wide); } if (SUITES.includes('restart')) await restartSafety(wide); if (SUITES.includes('seeded')) await seeded(wide); if (SUITES.includes('music')) await musicSuite(wide); if (SUITES.includes('characters')) await charactersSuite(wide); }
   await step('every checked screen outside the journeys keeps 44 px targets and its close button clear', async () => {
