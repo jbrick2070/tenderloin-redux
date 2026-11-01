@@ -549,9 +549,9 @@ export const BEACON_LIFT = BEACON.lift;
 // Time-Portal, park, So What, the eateries' names), 3 the menus; then the anchor's y, x and the id, so the same scene, view
 // and player give the same layout. (Godot's update_readable_scene_labels hides a label that overlaps one placed before it,
 // the guided eatery's label and menu first: scene_caption_priority.) A chip that reaches into the visible map is clamped
-// inside it with a small margin. A beacon's label is also a tap target (chipTargets), so its middle line keeps at least
-// NEARBY px from the player's feet: none of its hit points is ever what world.js nearest() finds for E/Enter and the Nearby
-// hint. Map px; the sizes below are chip px, which the chip's zoom scaling k turns into map px.
+// inside it with a small margin. A beacon's label is also a tap target (chipTargets, which game.js marks tapOnly, so world.js
+// nearest() never finds one for E/Enter and the Nearby hint); its middle line keeps at least NEARBY px from the player's feet
+// where the frame is laid out. Map px; the sizes below are chip px, which the chip's zoom scaling k turns into map px.
 const CHIP = { top: 19, bottom: 4, gap: 3, steps: 3, margin: 6, focus: 40, spacing: 16, cell: 8 };
 const CHIP_STEP = CHIP.top + CHIP.bottom + CHIP.gap, CHIP_MIDDLE = (CHIP.top - CHIP.bottom) / 2;
 const TIER = { focus: 0, beacon: 1, landmark: 2, menu: 3 };
@@ -559,6 +559,9 @@ const NEARBY = 40;    // world.js nearest(): within 40 map px of the player's fe
 const GLOBE = { found: BEACON.radius * 1.25, unfound: BEACON.radius };
 // A person as world.js person() draws one, around the feet (map px): a hat or headphones up to 38 above, a rollator 18 aside.
 const PERSON = { left: -18, right: 18, top: -38, bottom: 11 };
+// The player's block: a person's box grown by CHIP.cell on every side. chips() keeps a layout while the player stays in its cell,
+// so a chip laid out from anywhere in the cell covers the player nowhere in it.
+const PLAYER = { left: PERSON.left - CHIP.cell, right: PERSON.right + CHIP.cell, top: PERSON.top - CHIP.cell, bottom: PERSON.bottom + CHIP.cell };
 const EPSILON = 1e-6; // map px: rows a chip apart touch without overlapping, whatever the rounding
 const NONE = Object.freeze([]);
 const box = (x, y, b) => ({ left: x + b.left, right: x + b.right, top: y + b.top, bottom: y + b.bottom });
@@ -680,8 +683,9 @@ export function createSprites({ reducedMotion = () => false } = {}) {
   // The chips: each text measured once in chip()'s font; the sources once per set of scene parts; the layout of the chips that can
   // reach the view (reachable) once per key: the scene's chip parts, the zoom, the view to the whole CSS pixel, the player's
   // CHIP.cell px cell and the tour stop. A new key lays the frame out from its own view and player, exactly as afresh; a frame with
-  // the same key keeps that layout (a chip clamped to the map's edge then lags the view by under a pixel, and the player's block,
-  // focus and nearby radius stay where it stood in its cell). The overlay that draws it and the hit points of a tap share it.
+  // the same key keeps that layout (a chip clamped to the map's edge then lags the view by under a pixel; the player's block,
+  // PLAYER, covers the player anywhere in its cell, while its focus and nearby radius stay where it stood). The overlay that draws
+  // it and the hit points of a tap share it.
   const widths = new Map();
   function measure(c, texts) {
     const missing = texts.filter(t => !widths.has(t));
@@ -706,8 +710,9 @@ export function createSprites({ reducedMotion = () => false } = {}) {
       && at[6] === px && at[7] === py && at[8] === m?.x && at[9] === m?.y) return laid.chips;
     const k = Math.max(1, 1 / world.scale), names = sources.length ? worldChips(world.scale) : [];
     measure(c, [...sources.map(t => t.text), ...names.map(n => n.text)]);
-    // The frame's blocks: the scene's, the player as drawn, and world.js's name chips (measured as world.chip measures them).
-    const blocks = [...sourced.blocks, ...(p ? [box(p.x, p.y, PERSON)] : []), ...names.filter(n => ok(widths.get(n.text))).map(n => {
+    // The frame's blocks: the scene's, the player as drawn anywhere in its cell (PLAYER), and world.js's name chips (measured as
+    // world.chip measures them).
+    const blocks = [...sourced.blocks, ...(p ? [box(p.x, p.y, PLAYER)] : []), ...names.filter(n => ok(widths.get(n.text))).map(n => {
       const half = widths.get(n.text) * k / 2;
       return { left: n.x - half, right: n.x + half, top: n.y - CHIP.top * k, bottom: n.y + CHIP.bottom * k };
     })];
@@ -782,25 +787,23 @@ export function createSprites({ reducedMotion = () => false } = {}) {
     // A beacon label's hit points where this frame draws it, for game.js's beacon objects: copies of the beacon's object along
     // the label's middle line, end to end at most CHIP.spacing chip px apart, so the World's hit radius (28 map px, more when
     // zoomed out) covers the whole label and a tap on it is nearer its own points than a neighbouring label's. None for any
-    // other object, nor for a label this frame does not draw (below the chip zoom, or dropped) or draws out of view, nor within
-    // NEARBY px of the player where it stands now (the declutter keeps a placed label out of that radius; this holds for a forced
-    // one, and for a layout kept from where the player stood elsewhere in its cell), so world.js nearest(), which reads the same
-    // objects for E/Enter and the Nearby hint, never finds one.
+    // other object, nor for a label this frame does not draw (below the chip zoom, or dropped) or draws out of view. game.js marks
+    // every one tapOnly, so world.js nearest(), which reads the same objects for E/Enter and the Nearby hint, never finds one,
+    // however near the player stands. Kept with the layout: the same points for an object while it is kept.
     chipTargets(world, scene, object) {
       const id = typeof object?.id === 'string' ? object.id : '';
       if (!id.startsWith('surprise:')) return NONE;
       const placed = chips(world, scene);
       if (!placed.length) return NONE;
-      const now = world.getState?.()?.player ?? scene.player, me = point(now) ? now : null, kept = laid.targets.get(object);
-      if (kept && kept.x === me?.x && kept.y === me?.y) return kept.out;
+      const kept = laid.targets.get(object);
+      if (kept) return kept;
       const at = placed.find(p => p.id === id), view = laid.view;
       let out = NONE;
       if (at && (!view || (at.right > view.left && at.left < view.right && at.bottom > view.top && at.top < view.bottom))) {
         const span = at.right - at.left, n = Math.max(1, Math.ceil(span / (CHIP.spacing * at.k))), y = (at.top + at.bottom) / 2;
-        const points = Array.from({ length: n + 1 }, (_, i) => ({ ...object, x: i === n ? at.right : at.left + span * i / n, y }));
-        out = Object.freeze(points.filter(t => !me || Math.hypot(t.x - me.x, t.y - me.y) >= NEARBY).map(t => Object.freeze(t)));
+        out = Object.freeze(Array.from({ length: n + 1 }, (_, i) => Object.freeze({ ...object, x: i === n ? at.right : at.left + span * i / n, y })));
       }
-      laid.targets.set(object, { x: me?.x, y: me?.y, out });
+      laid.targets.set(object, out);
       return out;
     },
   };

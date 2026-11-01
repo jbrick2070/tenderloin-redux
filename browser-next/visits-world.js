@@ -21,7 +21,8 @@
 //   anchor(id), parkTrees()            a speech bubble's { x, y, name }; Boeddeker Park's trees
 //   objectiveInputs(), hinted(id)      story.js's { tour, lastHinted }; Godot last_hinted_surprise_id
 //   tick(now, world)                   the tour's completion (update_landmark_tour_completion); world defaults to the last objects() one
-//   reset(), snapshot(), notesHTML(), bindNotes()
+//   reset(), snapshot()
+//   notesHTML()                        Field notes' neighborhood entry; the shell binds its five buttons to openNotes (visits-ui.js)
 // }
 import { VISITS_FORK_TEXT, btn, esc, frameHTML, freshSession } from './visits-kit.js';
 import { GODOT_TEXT, MAIN, web } from './visits/text.js';
@@ -308,13 +309,6 @@ export function createWorldVisits(kit) {
     return `<div class="history-entry" data-visits-notes><span class="eyebrow visits-eyebrow">${esc(VISITS_FORK_TEXT.notesEyebrow)}</span><h3>${esc(VISITS_FORK_TEXT.notesTitle)}</h3>`
       + `<p>${esc(progressLabel(have, sparksNow()))}</p><div class="button-row">${buttons.map(b => btn(b)).join('')}</div></div>`;
   }
-  // Each button acts only while its entry is in the open dialog (Field notes may have been replaced since it was drawn), and opens a
-  // card in Field notes' place, so a held Enter or Space never presses one again (kit.noRepeat).
-  function bindNotes() {
-    const keys = Object.keys(NOTES), bound = keys.filter(key => kit.bind(`notes-${key}`, () => { const el = kit.$(`notes-${key}`); if (el && host.modal.open && host.modal.contains(el)) openNotes(key); }));
-    kit.noRepeat(bound.map(key => `notes-${key}`));
-    return bound.length === keys.length;
-  }
 
   // ---------- The scene part (spec 3.8): each part rebuilt only when what it shows changed ----------
   function keep(name, key, build) {
@@ -372,5 +366,5 @@ export function createWorldVisits(kit) {
   }
   const snapshot = () => ({ tour: structuredClone(session.world?.tour ?? initialTour()), guideIdx: session.world?.guideIdx ?? -1, lastHinted: session.world?.lastHinted ?? '' });
 
-  return { objects, interact, conversationAction, openNotes, cancel, silentClose, scenePart, anchor, parkTrees: boeddekerTrees, objectiveInputs, hinted, tick, reset, snapshot, notesHTML, bindNotes };
+  return { objects, interact, conversationAction, openNotes, cancel, silentClose, scenePart, anchor, parkTrees: boeddekerTrees, objectiveInputs, hinted, tick, reset, snapshot, notesHTML };
 }

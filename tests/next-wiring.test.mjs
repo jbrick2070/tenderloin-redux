@@ -267,6 +267,54 @@ test('host.load refuses a place file over 256 kB: unread when the response says 
   await assert.rejects(load('streets.osm.json'), /Not a story data file/);
 });
 
+test('host.load reads a place file as a stream and stops a chunk past 256 kB, whatever the response says of its length: a compressed or chunked bomb is never read whole', async () => {
+  const LIMIT = 256 * 1024, real = read('browser-next/data/power_place.json'), aborted = [];
+  let next = null;
+  const load = new Function('fetch', 'setTimeout', 'clearTimeout', 'AbortController', `${declaration('const VISIT_DATA_LIMIT')}\n${declaration('async function loadVisitData(')}\nreturn loadVisitData;`)(
+    async () => next, () => 1, () => {}, class { constructor() { this.signal = {}; } abort() { aborted.push(true); } });
+  // A response whose body streams `bytes` (a length past them: endlessly) in chunks of `size`, pulled only as they are read; its
+  // header says `length` (a gzip body's own, compressed size) or nothing, as a chunked one does. It counts what was pulled and
+  // whether the reader was cancelled; its text() is never the way a readable body is read.
+  const streamed = (bytes, { size = 16384, length = null } = {}) => {
+    const s = { pulled: 0, cancelled: false }, chunk = typeof bytes === 'number' ? null : bytes, total = chunk ? chunk.length : bytes;
+    s.response = { ok: true, headers: { get: name => (name.toLowerCase() === 'content-length' && length != null ? String(length) : null) }, text: async () => assert.fail('a readable body is read as a stream'),
+      body: new ReadableStream({
+        pull(c) { const n = Math.min(size, total - s.pulled); if (n <= 0) { c.close(); return; } c.enqueue(chunk ? chunk.slice(s.pulled, s.pulled + n) : new Uint8Array(n).fill(0x20)); s.pulled += n; },
+        cancel() { s.cancelled = true; },
+      }, { highWaterMark: 0 }) };
+    return s;
+  };
+  const bytes = text => new TextEncoder().encode(text);
+  // An endless body, and one of 10 MB said to be 40 kB (its compressed size): refused a chunk past the limit, the reader cancelled.
+  for (const [what, s, size] of [['an endless body', streamed(Infinity), 16384], ['10 MB said to be 40 kB', streamed(10 * 1024 * 1024, { size: 65536, length: 40000 }), 65536], ['an endless body in odd chunks', streamed(Infinity, { size: 1000 }), 1000]]) {
+    next = s.response;
+    await assert.rejects(load('power_place.json'), /too large/, what);
+    assert.ok(s.pulled > LIMIT && s.pulled <= LIMIT + size, `${what}: ${s.pulled} bytes read, at most one chunk past the limit`);
+    assert.equal(s.cancelled, true, `${what}: the reader is cancelled`);
+  }
+  // 256 kB exactly is still a place file; the real file parses, in chunks of any size.
+  for (const [what, s] of [['256 kB', streamed(bytes(' '.repeat(LIMIT - 2) + '{}'), { size: 65536 })], ['the real file', streamed(bytes(real), { size: 1000 })], ['the real file a byte at a time', streamed(bytes(real), { size: 1 })]]) {
+    next = s.response;
+    assert.deepEqual(await load('power_place.json'), JSON.parse(what === '256 kB' ? '{}' : real), what);
+    assert.equal(s.cancelled, false, `${what}: read to its end`);
+  }
+  // Multi-byte characters split across chunks decode whole; a truncated sequence is U+FFFD (the decoder never throws), so a file
+  // with one in a string parses and one cut off at its end fails as JSON, not as UTF-8.
+  const words = '{"name":"café ✓ 🌉 Tenderloin"}';
+  for (const size of [1, 2, 3]) { next = streamed(bytes(words), { size }).response; assert.deepEqual(await load('power_place.json'), JSON.parse(words), `chunks of ${size} bytes`); }
+  next = streamed(new Uint8Array([...bytes('{"a":"x'), 0xe2, 0x9c, ...bytes('"}')]), { size: 1 }).response;
+  assert.deepEqual(await load('power_place.json'), { a: 'x�' }, 'a truncated sequence in a string');
+  next = streamed(new Uint8Array([...bytes('{"a":1}'), 0xf0, 0x9f, 0x8c])).response;
+  await assert.rejects(load('power_place.json'), SyntaxError, 'a truncated sequence at the end');
+  // A response with no readable body is read whole, as before.
+  const plain = { ok: true, headers: { get: () => null }, body: null, text: async () => real };
+  next = plain;
+  assert.deepEqual(await load('power_place.json'), JSON.parse(real), 'no body stream: text()');
+  next = { ...plain, text: async () => ' '.repeat(LIMIT) + '{}' };
+  await assert.rejects(load('power_place.json'), /too large/, 'and measured');
+  assert.deepEqual(aborted, [], 'only a length said to be over the limit aborts the fetch itself');
+});
+
 // ---------------------------------------------------------------- one line, said once
 test("a map tap on a beacon says its line once: the card's status line, never also the page's live region (the card is up before the bubble)", () => {
   const { host, io, log, dialog } = visitsHost(), live = [];
@@ -464,19 +512,53 @@ test("game.js hit-tests a surprise beacon where sprites.js draws it: the globe, 
   assert.equal(world.nearest()?.id, at);
 });
 
-test("a beacon label's hit points are never what nearest() finds for E/Enter and the Nearby hint: they keep the World's 40 px nearby radius from the player", () => {
+test("a beacon label's hit points are tap targets alone: nearest() (E/Enter and the Nearby hint) never finds one, however near the player stands, and a tap on the label opens the beacon", () => {
   const { id } = clearBeacon(), site = SURPRISE_SITES[id], at = `surprise:${id}`;
+  const own = (near, where) => assert.ok(!near?.tapOnly && (near?.id !== at || near.y === site.y), `${where}: the beacon is nearby by its own object at its foot, never by its label (${JSON.stringify(near)})`);
   // The player all around the beacon and its label, the camera following as game.js's does.
   for (const [dx, dy] of [[0, 0], [0, -30], [0, -60], [0, -80], [-60, -70], [70, -60], [-120, -55], [120, -40], [0, 30], [40, 10]]) {
     const player = { x: site.x + dx, y: site.y + dy }, { world, label, drawn, visits } = beaconMap({ player });
     world.camera.follow(player);
     const points = drawn.chipTargets(world, visits.scene(), visits.objects(world).find(o => o.id === at));
-    for (const p of points) assert.ok(Math.hypot(p.x - player.x, p.y - player.y) >= 40, `a label point ${Math.hypot(p.x - player.x, p.y - player.y).toFixed(1)} px from the player at (${dx}, ${dy})`);
-    const near = world.nearest();
-    if (near?.id === at) assert.ok([0, sprites.BEACON_LIFT / 2, sprites.BEACON_LIFT].some(lift => near.y === site.y - lift), `at (${dx}, ${dy}) the beacon is nearby by its own points, never by its label`);
+    assert.ok(points.length >= 2, `the label has its points at (${dx}, ${dy})`);
+    own(world.nearest(), `at (${dx}, ${dy})`);
     const chip = label(at);
     if (chip) assert.ok(chip.bottom < player.y - 38 || chip.top > player.y + 11 || chip.right < player.x - 18 || chip.left > player.x + 18, `the label keeps off the player at (${dx}, ${dy})`);
   }
+  // The camera held still while the player walks within its 8 px cell: the layout and the label's points are kept (the very same
+  // array), so a point can come nearer the player than the World's 40 px nearby radius. It is still never what nearest() finds,
+  // and a tap on it opens the beacon.
+  const tally = { kept: 0, near: 0 };
+  for (const scale of [0.85, 1.6]) {
+    const { world, drawn, visits, state } = beaconMap({ player: { x: site.x + 400, y: site.y + 400 } });
+    world.camera.lookAt(site, scale);
+    const object = visits.objects(world).find(o => o.id === at), points = () => drawn.chipTargets(world, visits.scene(), object), chip = () => drawn.chips(world, visits.scene()).find(c => c.id === at);
+    const { left, right, top, bottom } = chip();
+    for (let y = top - 60; y <= bottom + 60; y += 8) for (let x = left - 60; x <= right + 60; x += 8) {
+      const cx = Math.floor(x / 8) * 8, cy = Math.floor(y / 8) * 8;
+      // Laid out (drawn) with the player in the cell's middle; its points first asked for (a tap) once it walked to a corner.
+      state.player = { x: cx + 4, y: cy + 4 };
+      const c = chip(), middle = (c.top + c.bottom) / 2;
+      let first = null;
+      for (const [ox, oy] of [[0, 0], [7.999, 0], [0, 7.999], [7.999, 7.999]]) {
+        const p = state.player = { x: cx + ox, y: cy + oy }, where = `the player at (${p.x.toFixed(1)}, ${p.y.toFixed(1)}), scale ${scale}`;
+        if (!first) {
+          first = points();
+          // End to end along the label, however near the player: no gap where it stands.
+          const xs = first.map(t => t.x);
+          assert.deepEqual([Math.min(...xs), Math.max(...xs)], [c.left, c.right], `${where}: the label's points run end to end`);
+          for (let i = 1; i < xs.length; i++) assert.ok(xs[i] - xs[i - 1] <= 16 * c.k + 1e-9, `${where}: no gap in the label's points`);
+        }
+        assert.equal(points(), first, `${where}: the same points while the layout is kept`);
+        assert.equal(chip(), c, `${where}: the layout is kept`);
+        own(world.nearest(), where);
+        for (const t of first) if (Math.hypot(t.x - p.x, t.y - p.y) < 40) { tally.near++; assert.equal(world.hit(t)?.id, at, `${where}: a tap on the label point at (${t.x.toFixed(1)}, ${t.y.toFixed(1)}) opens the beacon`); }
+        for (let x = c.left; x <= c.right; x += 4) if (Math.hypot(x - p.x, middle - p.y) < 40) assert.equal(world.hit({ x, y: middle })?.id, at, `${where}: a tap on the label at (${x.toFixed(1)}, ${middle.toFixed(1)}) opens the beacon`);
+        tally.kept++;
+      }
+    }
+  }
+  assert.ok(tally.kept > 1000 && tally.near > 20, `the premise: label points within 40 px of the player (${JSON.stringify(tally)})`);
 });
 
 // Real Worlds over one visits shell and one state: `now` with game.js's mapLayers; `then` with the objects game.js gave before a

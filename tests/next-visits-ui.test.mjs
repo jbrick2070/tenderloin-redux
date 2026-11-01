@@ -1024,7 +1024,7 @@ test('the neighborhood part: objects, interact, conversation actions, anchors, h
   const calls = [], made = [];
   const NOTES_HTML = '<div data-visits-notes><button id="notes-spot">Spot</button><button id="notes-museum">Museum</button><button id="notes-eateries">Eateries</button><button id="notes-park">Park</button><button id="notes-so-what">So What</button></div>';
   const RET = { objects: [{ id: 'museum', kind: 'visit', name: 'Museum', x: 1, y: 2 }], interact: true, conversationAction: true, openNotes: true, scenePart: { museum: { x: 1, y: 2 } },
-    anchor: { x: 3, y: 4, name: 'Docent' }, objectiveInputs: { tour: 'TOUR', lastHinted: 'x' }, notesHTML: NOTES_HTML, bindNotes: true, snapshot: { tour: 'TOUR', guideIdx: 3, lastHinted: 'x' } };
+    anchor: { x: 3, y: 4, name: 'Docent' }, objectiveInputs: { tour: 'TOUR', lastHinted: 'x' }, notesHTML: NOTES_HTML, snapshot: { tour: 'TOUR', guideIdx: 3, lastHinted: 'x' } };
   const world = kit => { made.push(kit); return new Proxy({}, { get: (_, name) => (typeof name === 'string' ? (...args) => { calls.push([name, ...args]); return RET[name]; } : undefined) }); };
   const s = setup({ world }), { visits, dialog } = s;
   const W = { camera: { overviewMode: false } }, object = RET.objects[0];

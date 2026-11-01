@@ -8,6 +8,7 @@ import { gdSource, gdFunc, gdStrings, jsStrings } from './gd-literal.mjs';
 import { visitsHost } from './next-fixtures.mjs';
 import * as K from '../browser-next/visits-kit.js';
 import { createWorldVisits } from '../browser-next/visits-world.js';
+import { createVisits } from '../browser-next/visits-ui.js';
 import { initialState } from '../browser-next/core.js';
 import { nextObjective, LOAN_IDS, NEIGHBOR_IDS } from '../browser-next/story.js';
 import { sceneReceipt } from '../browser-next/ending/mural.js';
@@ -63,20 +64,23 @@ function cardOf(html) {
 }
 
 // The stand-in host over a real kit: the objective is story.js nextObjective with the visit inputs, as game.js storyWorld()
-// gives it; sparks read the post-act finds. instrument logs every read of the host's getters as ['read', name].
-function setup({ over = {}, state = exploring(), instrument = false, routes } = {}) {
+// gives it; sparks read the post-act finds. instrument logs every read of the host's getters as ['read', name]. shell: the part
+// inside the real visits shell (visits-ui.js createVisits) on the shell's own kit, as game.js builds them; the shell binds Field
+// notes' five buttons (visits.bindEntry('notes')).
+function setup({ over = {}, state = exploring(), instrument = false, routes, shell = false } = {}) {
   const { host, log, io, dialog } = visitsHost(undefined, over);
   io.state = state;
   if (!Object.hasOwn(over, 'sparks')) host.sparks = () => 5 + list(io.state?.surprises).length;
-  const session = K.freshSession();
-  const kit = K.createKit(host, session, routes ?? { openResume: () => { log.push(['openResume']); return true; } });
-  const world = createWorldVisits(kit);
+  let kit = null, world = null, visits = null;
+  if (shell) visits = createVisits(host, { createWorldVisits: k => (world = createWorldVisits(kit = k)) });
+  else { kit = K.createKit(host, K.freshSession(), routes ?? { openResume: () => { log.push(['openResume']); return true; } }); world = createWorldVisits(kit); }
+  const session = kit.session;
   if (!Object.hasOwn(over, 'objective')) host.objective = () => nextObjective(io.state, { player: io.player, ...world.objectiveInputs(), openNeighborId: io.neighbor });
   if (instrument) for (const name of ['sparks', 'saveReason', 'openNeighborId', 'objective']) { const read = host[name]; host[name] = (...args) => { log.push(['read', name]); return read(...args); }; }
   const view = (overviewMode = false) => ({ camera: { overviewMode }, scale: 1, getState: () => io.state });
   const object = id => world.objects(view()).find(o => o.id === id) ?? assert.fail(`no ${id} object`);
   return {
-    host, log, io, dialog, session, kit, world, view, object,
+    host, log, io, dialog, session, kit, world, visits, view, object,
     card: () => cardOf(io.html), status: () => log.filter(e => e[0] === 'status').at(-1)?.[1],
     chimes: () => log.filter(e => e[0] === 'chime').map(e => e.slice(1)), shows: () => log.filter(e => e[0] === 'show').length,
     tour: () => session.world.tour,
@@ -89,8 +93,11 @@ test('the module imports in Node without a DOM and createWorldVisits returns the
   const mod = await import('../browser-next/visits-world.js');
   assert.equal(typeof mod.createWorldVisits, 'function');
   const { world } = setup();
-  const CONTRACT = ['objects', 'interact', 'conversationAction', 'openNotes', 'cancel', 'silentClose', 'scenePart', 'anchor', 'parkTrees', 'objectiveInputs', 'hinted', 'tick', 'reset', 'snapshot', 'notesHTML', 'bindNotes'];
+  const CONTRACT = ['objects', 'interact', 'conversationAction', 'openNotes', 'cancel', 'silentClose', 'scenePart', 'anchor', 'parkTrees', 'objectiveInputs', 'hinted', 'tick', 'reset', 'snapshot', 'notesHTML'];
   for (const name of CONTRACT) assert.equal(typeof world[name], 'function', name);
+  // Field notes' five buttons are the shell's to bind (visits-ui.js bindEntry('notes')): the part draws them and opens their cards.
+  assert.deepEqual(Object.keys(world).sort(), [...CONTRACT].sort(), 'the contract and nothing else');
+  assert.doesNotMatch(SOURCE, /\bbindNotes\b/, 'no second binding of Field notes');
   const code = SOURCE.replace(/\/\/.*$/gm, '').replace(/'(?:[^'\\\n]|\\.)*'|`(?:[^`\\]|\\.)*`|"(?:[^"\\\n]|\\.)*"/g, "''");
   assert.doesNotMatch(code, /\b(document|window|localStorage|sessionStorage|setTimeout|requestAnimationFrame|fetch|Math\.random|Date\.now|performance)\b/);
   assert.doesNotMatch(SOURCE.replace(/^\s*\/\/.*$/gm, ''), /querySelector|innerHTML|fetch\(|localStorage|\son[a-z]+=/, 'the spec grep for UI files');
@@ -552,7 +559,7 @@ test('Back and Escape close the card without a toast; focus returns to the canva
 });
 
 test('Field notes: the neighborhood entry, its five buttons, and openNotes', () => {
-  const s = setup({ state: exploring(['cutesy_dino']) });
+  const s = setup({ state: exploring(['cutesy_dino']), shell: true });
   const html = s.world.notesHTML();
   assert.match(html, /^<div class="history-entry"/);
   assert.ok(html.includes(`<span class="eyebrow visits-eyebrow">${K.esc(K.VISITS_FORK_TEXT.notesEyebrow)}</span>`));
@@ -563,9 +570,10 @@ test('Field notes: the neighborhood entry, its five buttons, and openNotes', () 
   const buttons = cardOf(html).buttons, TOUR = T.landmark_tour_state;
   assert.deepEqual(buttons.map(b => [b.id, b.label]), [['notes-spot', S.conversationLabel(['cutesy_dino'])], ['notes-museum', T.conversation_actions.museum], ['notes-eateries', T.conversation_actions.eateries],
     ['notes-park', TOUR.parkAction], ['notes-so-what', TOUR.soWhatAction]]);
-  // Field notes is game.js's dialog; the entry binds into it and each button opens its card with the return to Field notes.
+  // Field notes is game.js's dialog; the shell binds the entry's buttons in it and each opens its card with the return to Field notes.
   s.host.show(`<span class="eyebrow">FIELD NOTES</span><h2 id="modal-title">Notes</h2>${html}`);
-  assert.equal(s.world.bindNotes(), true);
+  assert.equal(s.visits.entryHTML('notes'), html, "the shell's Field notes entry is the part's");
+  assert.equal(s.visits.bindEntry('notes'), true);
   // Each replaces Field notes with a card, so a held Enter or Space never presses one again (kit.noRepeat).
   const keydown = (id, init) => { const event = { ...init, defaultPrevented: false, preventDefault() { this.defaultPrevented = true; } }; for (const fn of s.dialog.doc.getElementById(id).listeners.keydown || []) fn(event); return event.defaultPrevented; };
   for (const { id } of buttons) assert.deepEqual([keydown(id, { key: 'Enter', repeat: false }), keydown(id, { key: 'Enter', repeat: true }), keydown(id, { key: ' ', repeat: true })], [false, true, true], id);
@@ -577,13 +585,28 @@ test('Field notes: the neighborhood entry, its five buttons, and openNotes', () 
   assert.equal(s.world.openNotes('notes-spot'), true);
   assert.equal(s.session.world.card.id, 'jeffrey_record');
   for (const kind of ['nope', '', undefined, 'notes-', 'soWhat', 'notes-so_what']) assert.equal(s.world.openNotes(kind), false, String(kind));
-  assert.equal(setup().world.bindNotes(), false, 'no entry on screen, nothing bound');
+  assert.equal(setup({ shell: true }).visits.bindEntry('notes'), false, 'no entry on screen, nothing bound');
+});
+
+test("Field notes: the five buttons wrap three to a row on a wide dialog and two on a phone, never four abreast (style.css)", () => {
+  // The entry's hooks: the five buttons alone in a .button-row inside [data-visits-notes].
+  assert.match(setup().world.notesHTML(), /^<div class="history-entry" data-visits-notes>[\s\S]*<div class="button-row">(?:<button id="notes-[a-z-]+" class="secondary-button">[^<]+<\/button>){5}<\/div><\/div>$/);
+  const css = readFileSync(new URL('../browser-next/style.css', import.meta.url), 'utf8');
+  const rule = selector => { const m = new RegExp(`(?:^|\\n)${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{([^}]*)\\}`).exec(css); assert.ok(m, `style.css has ${selector}`); return m[1]; };
+  const prop = (decls, name) => new RegExp(`(?:^|[;{\\s])${name}\\s*:\\s*([^;!]+?)\\s*(?:!important)?\\s*(?:;|$)`).exec(decls)?.[1];
+  // Dialog button rows wrap with a 10 px gap and share each row (flex:1), which squeezed four of these abreast on a phone.
+  const row = rule('dialog .button-row');
+  assert.deepEqual([prop(row, 'display'), prop(row, 'flex-wrap'), prop(row, 'gap'), prop(rule('dialog .button-row button'), 'flex')], ['flex', 'wrap', '10px', '1']);
+  // Here (a more specific selector) each takes 30% of the row, at least 7rem but never more than the row: four never fit (4 x 30%
+  // is over the row), three do once 30% is 7rem or more (with the two gaps they take 90% and 20 px), else two or one, each as wide.
+  const own = rule('[data-visits-notes] .button-row button');
+  assert.deepEqual([prop(own, 'flex'), prop(own, 'min-width')], ['1 1 30%', 'min(100%,7rem)']);
 });
 
 test('Field notes: Visit the Park and See "So What" open their cards as a tap on the park or the awning does, chime once, and Back returns to Field notes', () => {
-  const s = setup(), trees = s.world.parkTrees().length;
+  const s = setup({ shell: true }), trees = s.world.parkTrees().length;
   s.host.show(`<h2 id="modal-title">Notes</h2>${s.world.notesHTML()}`);
-  s.world.bindNotes();
+  s.visits.bindEntry('notes');
   s.dialog.click('notes-park');
   const park = L.inspectPark(L.initialTour(), trees);
   assert.deepEqual([s.card().credit, s.card().title, s.card().reader, s.card().ids], [say(T.build_boeddeker_park.label), park.title, lines(park.info), ['card-back']]);
@@ -652,9 +675,9 @@ test('stale screens: a press, a tick or a notes click after the card closed or w
   s.dialog.click('card-next-era');
   assert.equal(s.tour().eras.length, eras + 1);
   // Field notes replaced before its button is pressed.
-  const n = setup();
+  const n = setup({ shell: true });
   n.host.show(`<h2 id="modal-title">Notes</h2>${n.world.notesHTML()}`);
-  n.world.bindNotes();
+  n.visits.bindEntry('notes');
   const spot = stale(n, 'notes-spot');
   n.dialog.show(RECOVERY);
   spot();

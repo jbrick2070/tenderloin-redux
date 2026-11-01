@@ -878,8 +878,9 @@ async function requestDistrict() {
   districtUI(); await districtPromise; districtUI();
 }
 // host.load of the side stories: one of their two place files, same-origin and parsed, within 10 s (as requestDistrict). The real
-// files are 5 and 12 kB: one over 256 kB is refused, unread when the response says its length and unparsed when it does not (the
-// side stories' kit then bounds what it holds, visits-kit.js).
+// files are 5 and 12 kB: one over 256 kB is refused, unread when the response says its length, else read as it arrives and no
+// further than a chunk past the limit (a compressed or chunked body's header is not its size), so it is never held whole; a
+// response with no readable body is read whole and measured. The side stories' kit then bounds what it holds (visits-kit.js).
 const VISIT_DATA_LIMIT = 256 * 1024;
 async function loadVisitData(name) {
   if (!['power_place.json', 'voting_places.json'].includes(name)) throw Error('Not a story data file');
@@ -888,9 +889,21 @@ async function loadVisitData(name) {
     const response = await fetch('./data/' + name, { signal: controller.signal });
     if (!response.ok) throw Error('Story data unavailable');
     if (Number(response.headers.get('content-length')) > VISIT_DATA_LIMIT) { controller.abort(); throw Error('Story data too large'); }
-    const text = await response.text();
-    if (text.length > VISIT_DATA_LIMIT) throw Error('Story data too large');
-    return JSON.parse(text);
+    const reader = response.body?.getReader?.();
+    if (!reader) {
+      const text = await response.text();
+      if (text.length > VISIT_DATA_LIMIT) throw Error('Story data too large');
+      return JSON.parse(text);
+    }
+    // UTF-8 decoded as it streams: a character split between chunks is whole, a truncated one U+FFFD.
+    const decoder = new TextDecoder('utf-8');
+    let bytes = 0, text = '';
+    for (let chunk = await reader.read(); !chunk.done; chunk = await reader.read()) {
+      bytes += chunk.value.byteLength;
+      if (bytes > VISIT_DATA_LIMIT) { reader.cancel().catch(() => {}); throw Error('Story data too large'); }
+      text += decoder.decode(chunk.value, { stream: true });
+    }
+    return JSON.parse(text + decoder.decode());
   } finally { clearTimeout(timeout); }
 }
 function livingDistrict() {

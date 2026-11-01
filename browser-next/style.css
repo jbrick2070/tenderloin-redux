@@ -1328,6 +1328,9 @@ dialog .button-row button {
 .placement-scroll.more-left.more-right { -webkit-mask-image:linear-gradient(to right,transparent,#000 32px,#000 calc(100% - 32px),transparent); mask-image:linear-gradient(to right,transparent,#000 32px,#000 calc(100% - 32px),transparent); }
 /* A source link on its own line is a control, so it gets a 44 px row. */
 .history-entry a.source-link { display:inline-flex; align-items:center; min-height:44px; }
+/* Field notes' five neighborhood buttons (visits-world.js notesHTML): 30% of the row each but at least 7rem, so three to a row on
+   a wide dialog and two on a phone, each label on a line or two, never squeezed four abreast. */
+[data-visits-notes] .button-row button { flex:1 1 30%; min-width:min(100%,7rem); }
 /* Conversations: Godot draws each neighbor's panel border in their coat colour, lightened 24%. */
 .conversation { border-left:4px solid var(--talk-border, #b6c3ac); padding-left:14px; }
 .conversation .character-heading { padding-right:44px; margin-bottom:10px; }

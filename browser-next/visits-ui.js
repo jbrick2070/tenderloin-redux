@@ -10,7 +10,8 @@
 // sparks(), hostingInProgress() and restoreStartupCard(text). The parts (missing members fall back to the inert ones):
 //   createEpisodeScreens(kit) -> { render(id, { announce }), cancel(id), silentClose(id) }
 //   createWorldVisits(kit) -> { objects, interact, conversationAction, openNotes, cancel, silentClose, scenePart, anchor, parkTrees,
-//                               objectiveInputs, hinted, tick, reset, snapshot, notesHTML, bindNotes }
+//                               objectiveInputs, hinted, tick, reset, snapshot, notesHTML } (bindEntry('notes') binds the buttons
+//                               notesHTML draws)
 // session.from is the id of the control that opened the visits screens now in the dialog, where their Back, Escape and × return
 // focus (null: the canvas, as after a walk, a map tap or an arrival). An episode opened from the picker keeps the control that
 // opened the visit, as Godot's close_story falls back to the hub when the picker entry it came from is hidden.
@@ -44,7 +45,7 @@ const INERT_EPISODES = { render: () => false, cancel: () => false, silentClose: 
 const inertWorld = session => ({
   objects: () => [], interact: () => false, conversationAction: () => false, openNotes: () => false, cancel: () => false, silentClose: () => false,
   scenePart: () => ({}), anchor: () => null, parkTrees: () => [], objectiveInputs: () => ({ tour: session.world.tour, lastHinted: session.world.lastHinted }),
-  hinted() {}, tick: () => false, reset() {}, snapshot: () => undefined, notesHTML: () => '', bindNotes: () => false,
+  hinted() {}, tick: () => false, reset() {}, snapshot: () => undefined, notesHTML: () => '',
 });
 // A part's own members, called on the part, over the inert ones.
 function withDefaults(part, inert) {

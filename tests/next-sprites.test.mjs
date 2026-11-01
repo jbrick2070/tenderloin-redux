@@ -813,6 +813,65 @@ test('sprites: the chip layout is kept while the view moves less than a whole pi
   assert.deepEqual(targets, createSprites({ reducedMotion: () => true }).chipTargets(w.world, scene, object));
 });
 
+test('sprites: a layout kept while the player walks within its 8 px cell covers the player nowhere in that cell; the next cell is laid out afresh, clear of it too', async () => {
+  const { createSprites } = await loadSprites();
+  const scene = realScene({ found: ['jeffrey_record', 'good_donut_and_bagel'], eateries: true });
+  // The box the declutter keeps every chip off a person by, around the feet (sprites.js PERSON): world.js person() at its largest
+  // (a rollator, a hat and headphones) lies inside it.
+  const PERSON = { left: -18, right: 18, top: -38, bottom: 11 }, person = p => ({ left: p.x + PERSON.left, right: p.x + PERSON.right, top: p.y + PERSON.top, bottom: p.y + PERSON.bottom });
+  const probe = makeWorld({ state: OPENED() });
+  probe.ctx.calls.length = 0; probe.world.person({ x: 0, y: 0, rollator: true, hat: true, headphones: true }, true);
+  const body = drawnBounds(probe.ctx.calls.splice(0));
+  assert.ok(body.left >= PERSON.left && body.right <= PERSON.right && body.top >= PERSON.top && body.bottom <= PERSON.bottom, `the drawn person ${JSON.stringify(body)} is inside the box`);
+  // The player all around every chip's anchor: the beacons' feet, the eateries' awnings and open counter, the museum, the park, So What.
+  const anchors = [...scene.surprises, ...scene.eateries.flatMap(e => [e.awning, e.counter]), scene.museum, scene.park.entrance, scene.soWhat.awning, scene.soWhat.floor].filter(Boolean);
+  const tally = { kept: 0, fresh: 0, chips: 0, beside: 0 };
+  for (const scale of [0.3, 0.6, 1, 1.6]) {
+    const besides = new Set();
+    for (const a of anchors) {
+      // A phone's view on the anchor, held still while the player walks.
+      const w = makeWorld({ state: OPENED(), width: 358, height: 518 }), sprites = createSprites({ reducedMotion: () => true });
+      setView(w, a.x - 179 / scale, a.y - 259 / scale, scale);
+      const stand = p => { w.holder.state = { ...w.holder.state, player: p }; return sprites.chips(w.world, scene); };
+      const clear = (laid, p, from) => { for (const c of laid) assert.ok(!overlaps(c, person(p)), `scale ${scale}: ${c.id} covers the player at (${p.x}, ${p.y}), laid out with the player at (${from.x}, ${from.y})`); tally.chips += laid.length; };
+      // Laid out from a cell's corner (fx, fy), then kept while the player walks to its other corners and its middle, a whole cell
+      // toward two sides; then on into a cell beside it (out), laid out afresh.
+      const walk = (cx, cy, [fx, fy], out) => {
+        const from = { x: cx + fx, y: cy + fy }, first = stand(from);
+        clear(first, from, from);
+        for (const [ox, oy] of [[0, 0], [7.999, 0], [0, 7.999], [7.999, 7.999], [4, 4]]) {
+          const p = { x: cx + ox, y: cy + oy }, laid = stand(p);
+          assert.equal(laid, first, `scale ${scale}: kept at (${p.x}, ${p.y}) in the cell of (${from.x}, ${from.y})`);
+          clear(laid, p, from); tally.kept++;
+        }
+        const laid = stand(out);
+        assert.notEqual(laid, first, `scale ${scale}: laid out afresh at (${out.x}, ${out.y})`);
+        clear(laid, out, out); tally.fresh++;
+      };
+      // The player beside each chip near the anchor, at its height, its box a little more than the gap from the chip's end (a chip
+      // never moves sideways for a block): then it walks toward the chip, from the top-left corner to its right, else the bottom-right.
+      const reference = stand({ x: a.x + 5000, y: a.y + 5000 });
+      for (const c of reference.filter(c => Math.abs(c.x - a.x) < 150 && !besides.has(c.id))) {
+        besides.add(c.id);
+        const cy = Math.floor((c.bottom + 10) / 8) * 8;
+        for (const d of [1, 4, 7]) {
+          const right = Math.floor((c.left + PERSON.left - 3 * c.k - d) / 8) * 8, left = Math.floor((c.right - PERSON.left + 3 * c.k + d) / 8) * 8;
+          walk(right, cy, [0, 0], { x: right - 0.001, y: cy });
+          walk(left, cy, [7.999, 7.999], { x: left + 8, y: cy + 7.999 });
+          tally.beside += 2;
+        }
+      }
+      // And all around the anchor: laid out from a cell's top-left corner, then (after a step into the next cell) its bottom-right.
+      for (let dy = -60; dy <= 60; dy += 20) for (let dx = -60; dx <= 60; dx += 20) {
+        const cx = Math.floor((a.x + dx) / 8) * 8, cy = Math.floor((a.y + dy) / 8) * 8;
+        walk(cx, cy, [0, 0], { x: cx + 8, y: cy + 7.999 });
+        walk(cx, cy, [7.999, 7.999], { x: cx - 0.001, y: cy });
+      }
+    }
+  }
+  assert.ok(tally.kept > 3000 && tally.chips > 10000 && tally.beside > 100, JSON.stringify(tally));
+});
+
 test('sprites: the declutter lays out only the chips that can reach the view: never one from across the map', async () => {
   const { createSprites } = await loadSprites();
   const scene = realScene({ found: [...SURPRISE_IDS], eateries: true });
@@ -828,6 +887,36 @@ test('sprites: the declutter lays out only the chips that can reach the view: ne
     assert.ok(placed.length > 0 && placed.length <= all.length / 2, `${placed.length} of ${all.length} chips laid out at (${at.x}, ${at.y})`);
     assert.ok(placed.every(c => c.right > v.left - 600 && c.left < v.right + 600), `none from across the map at (${at.x}, ${at.y})`);
     assert.ok(shown.length >= 1 && shown.every(d => placed.some(c => c.text === d.text)), `what is drawn is laid out at (${at.x}, ${at.y})`);
+  }
+});
+
+test('sprites: a run of chips is laid out whole: a chip past the pad whose span is within the gap of a drawn one still moves it, as among all the chips', async () => {
+  const { createSprites } = await loadSprites();
+  // Two eateries' names side by side, away from every person and name chip: B's anchor a pixel above A's, so B is placed first and
+  // A gives way to it. Their spans 2 chip px apart: under the 3 chip px gap (each is in the other's way), yet not touching.
+  const origin = { x: -1700, y: -300 }, EAT = fullScene().eateries;
+  const sceneOf = (...names) => ({ ...emptyScene(), eateries: names.map(([awning, index]) => ({ ...EAT[index], awning, counter: null })) });
+  for (const scale of [0.5, 1, 1.6]) {
+    const k = Math.max(1, 1 / scale), pad = 4 + 4 / scale, W = 358 / scale, H = 518 / scale;
+    // The full layout: the pair in the middle of a canvas showing the whole map, laid out among all the chips.
+    const whole = makeWorld({ state: OPENED(), ...WHOLE });
+    setView(whole, origin.x - WHOLE.width / 2 / scale, origin.y - WHOLE.height / 2 / scale, scale);
+    const width = index => { const [c] = createSprites().chips(whole.world, sceneOf([origin, index])); return c.right - c.left; };
+    for (const side of [1, -1]) {
+      const b = { x: origin.x + side * (width(0) / 2 + 2 * k + width(1) / 2), y: origin.y - 1 }, scene = sceneOf([origin, 0], [b, 1]);
+      const full = createSprites().chips(whole.world, scene), [A, B] = ['eatery:0', 'eatery:1'].map(id => full.find(c => c.id === id));
+      const where = `scale ${scale}, the view ${side > 0 ? 'left' : 'right'} of the pair`;
+      assert.ok(A && B && A.shift !== 0 && B.shift === 0, `${where}: in the full layout A gives way to B`);
+      assert.ok(Math.abs((side > 0 ? B.left - A.right : A.left - B.right) - 2 * k) < 1e-9, `${where}: the spans are 2 chip px apart`);
+      // A phone's view whose edge is half the pad short of A: the frame draws A (within the pad) and not B (past it).
+      const w = makeWorld({ state: OPENED(), width: 358, height: 518 }), edge = side > 0 ? A.left - pad / 2 : A.right + pad / 2;
+      const v = setView(w, side > 0 ? edge - W : edge, origin.y - H / 2, scale), sprites = createSprites();
+      assert.ok(side > 0 ? A.left >= v.right && B.left >= v.right + pad : A.right <= v.left && B.right + k <= v.left - pad, `${where}: A off the map, B past the pad`);
+      assert.deepEqual(overlayChips(sprites, w, scene).map(c => c.text), [eateryLabel(0)], `${where}: the frame draws A alone`);
+      const laid = sprites.chips(w.world, scene);
+      assert.deepEqual(laid.find(c => c.id === 'eatery:0'), A, `${where}: A is placed exactly as in the full layout`);
+      assert.deepEqual(laid.find(c => c.id === 'eatery:1'), B, `${where}: B is laid out with it, in its run`);
+    }
   }
 });
 
