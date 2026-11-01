@@ -14,7 +14,7 @@
 // session.from is the id of the control that opened the visits screens now in the dialog, where their Back, Escape and × return
 // focus (null: the canvas, as after a walk, a map tap or an arrival). An episode opened from the picker keeps the control that
 // opened the visit, as Godot's close_story falls back to the hub when the picker entry it came from is hidden.
-import { createKit, btn, figure, frameHTML, sourceLinesHTML } from './visits-kit.js';
+import { createKit, btn, figure, frameHTML, sourceLinesHTML, pointerPress } from './visits-kit.js';
 import { GODOT_TEXT, web } from './visits/text.js';
 import { changeBefore, beforeView, readerText, artworkDataURI as beforeArt, idleEntryAvailable } from './visits/before-streets.js';
 import { changeMeal, mealView, artworkDataURI as mealArt, worldDishes, sharedCount } from './visits/meal.js';
@@ -63,8 +63,8 @@ export function createVisits(host, parts = {}) {
   routes.renderEpisode = (id, options) => episodes.render(id, options);
   const holds = kind => kit.holds(kind);
   const target = () => session.from ?? undefined;
-  // A press acts only while its screen still holds the dialog.
-  const press = (id, kind, fn) => kit.bind(id, () => { if (holds(kind)) fn(); });
+  // A press acts only while its screen still holds the dialog. fn gets the click (pointerPress tells a pointer's from a key's).
+  const press = (id, kind, fn) => kit.bind(id, event => { if (holds(kind)) fn(event); });
   // Where a chain of screens that starts here returns focus: 'map' is the canvas, a control id that control, else the entry.
   const returnFor = (from, entry) => (from === 'map' ? null : typeof from === 'string' && from ? from : entry);
   // Godot's open_meal and open_story also refuse over the startup card and a story card (startup_story_pending,
@@ -167,23 +167,27 @@ export function createVisits(host, parts = {}) {
     if (!held && from) host.returnTo(from);
     return true;
   }
-  // Godot's tray: Previous and Next cook (rapid, as Godot marks them), the preparation, the serving and placement rows (hidden once
-  // this preparation is shared), Share or Follow this invitation, and Keep exploring.
+  // Godot's controls in its focus order: Previous and Next cook (rapid, as Godot marks them) in the pager above the heading,
+  // picture and text they change (frameHTML), so a fast double press finds them in place; then the tray: the preparation, the
+  // serving and placement rows (hidden once this preparation is shared), Share or Follow this invitation, and Keep exploring.
   function drawMeal() {
     const v = mealView(session.meal);
-    const tray = [
+    const pager = [
       btn({ id: 'meal-previous', label: v.previous.label, name: v.previous.name, disabled: v.previous.disabled, rapid: true }),
       btn({ id: 'meal-next', label: v.next.label, name: v.next.name, disabled: v.next.disabled, rapid: true }),
+    ].join('');
+    const tray = [
       btn({ id: 'meal-prepare', label: v.prepare }),
       ...v.servings.map((choice, i) => btn({ ...choice, id: `meal-serving-${i}` })),
       ...v.placements.map((choice, i) => btn({ ...choice, id: `meal-placement-${i}` })),
       btn({ ...v.share, id: 'meal-share', primary: true }),
       btn({ id: 'meal-explore', label: v.explore }),
     ].join('');
-    kit.show('meal', frameHTML({ kind: 'meal', credit: v.credit, title: v.heading, picture: figure({ src: mealArt(v.art.index, v.art.stage, v.art.style), alt: v.description }), reader: v.text, tray }));
-    // Godot select_cook focuses the preparation; advance focuses Share at the fifth step; a choice keeps its own focus.
-    press('meal-previous', 'meal', () => stepMeal({ type: 'previous' }, () => 'meal-prepare'));
-    press('meal-next', 'meal', () => stepMeal({ type: 'next' }, () => 'meal-prepare'));
+    kit.show('meal', frameHTML({ kind: 'meal', credit: v.credit, title: v.heading, pager, picture: figure({ src: mealArt(v.art.index, v.art.stage, v.art.style), alt: v.description }), reader: v.text, tray }));
+    // Godot select_cook focuses the preparation (from a pointer, without scrolling the pager away); advance focuses Share at
+    // the fifth step; a choice keeps its own focus.
+    press('meal-previous', 'meal', event => stepMeal({ type: 'previous' }, () => 'meal-prepare', pointerPress(event)));
+    press('meal-next', 'meal', event => stepMeal({ type: 'next' }, () => 'meal-prepare', pointerPress(event)));
     press('meal-prepare', 'meal', () => stepMeal({ type: 'advance' }, m => (m.steps[m.selected] === 5 ? 'meal-share' : 'meal-prepare')));
     for (const i of [0, 1]) {
       press(`meal-serving-${i}`, 'meal', () => stepMeal({ type: 'serving', index: i }, () => `meal-serving-${i}`));
@@ -193,12 +197,13 @@ export function createVisits(host, parts = {}) {
     press('meal-share', 'meal', () => { const cook = session.meal.selected; stepMeal({ type: 'shareOrFollow' }, m => (m.selected === cook ? 'meal-share' : 'meal-prepare')); });
     press('meal-explore', 'meal', closeMeal);
   }
-  function stepMeal(action, focusFor) {
+  // pointer: the press came from a pointer, so the focus moves without scrolling the dialog (kit.focus).
+  function stepMeal(action, focusFor, pointer = false) {
     const out = changeMeal(session.meal, action);
     if (out.state === session.meal) return;
     session.meal = out.state; kit.bump();
     drawMeal();
-    kit.focus(focusFor(session.meal));
+    kit.focus(focusFor(session.meal), { scroll: !pointer });
     kit.say(out.announce);
   }
   // Godot close_meal(): Keep exploring and Escape; its line once the dialog has closed.
@@ -221,8 +226,10 @@ export function createVisits(host, parts = {}) {
     if (!drawEpisode(shown, out.announce)) return false;
     if (!held && from) host.returnTo(from);
     // Spec 3.4: the first Story open fetches the place file (Power's Larkin view and the Election Walk read it). The episode screens
-    // fetch and redraw what they show, so this starts only a fetch that nobody has started (idle) or that failed (error).
-    if (prefetch && ['idle', 'error'].includes(session.data[PLACE]?.status)) kit.ensureData([PLACE]);
+    // fetch and redraw what they show, so this starts only a fetch that nobody has started (idle) or that failed (error), quietly:
+    // the hub shows nothing that needs the file, so Power's opening line stays and nothing is redrawn; a failure says nothing and
+    // the next screen that needs the file loads it again with its own loading line.
+    if (prefetch && ['idle', 'error'].includes(session.data[PLACE]?.status)) kit.ensureData([PLACE], null, { quiet: true });
     return true;
   }
   // A screen nothing drew (no episode part) closes again in the module, and its line is a toast, as the kit's walk protocol does.
@@ -262,8 +269,8 @@ export function createVisits(host, parts = {}) {
       + btn({ id: 'picker-explore', label: v.explore.label }) + btn({ id: 'picker-back', label: v.back.label });
     kit.show('picker', frameHTML({ kind: 'picker', title: v.title, reader: v.text, extra: `<div class="visits-tray">${entries}${pages}</div>`, tray: footer }));
     for (const e of v.entries) if (e.visible) press(`picker-entry-${e.index}`, 'picker', () => select(e.index));
-    press('picker-earlier', 'picker', () => turnPage(-1));
-    press('picker-later', 'picker', () => turnPage(1));
+    press('picker-earlier', 'picker', event => turnPage(-1, pointerPress(event)));
+    press('picker-later', 'picker', event => turnPage(1, pointerPress(event)));
     press('picker-follow', 'picker', follow);
     press('picker-explore', 'picker', keepExploring);
     press('picker-back', 'picker', backToStories);
@@ -295,11 +302,12 @@ export function createVisits(host, parts = {}) {
     session.stories = out.stories; kit.bump();
     present(out.announce);
   }
-  // Godot change_page: no announcement; focus on the page's first entry, or Back to stories when it is unavailable.
-  function turnPage(delta) {
+  // Godot change_page: no announcement; focus on the page's first entry, or Back to stories when it is unavailable (from a
+  // pointer, without scrolling the dialog: Earlier and Later are rapid).
+  function turnPage(delta, pointer = false) {
     session.stories = picker.changePage(session.stories, delta); kit.bump();
     const first = drawPicker().entries[session.stories.picker.page * 2];
-    kit.focus(first && !first.disabled ? `picker-entry-${first.index}` : 'picker-back');
+    kit.focus(first && !first.disabled ? `picker-entry-${first.index}` : 'picker-back', { scroll: !pointer });
   }
   function keepExploring() {
     host.stopWalk();

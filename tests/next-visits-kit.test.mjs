@@ -112,6 +112,74 @@ test('esc, paragraphs, dataURI and figure: escaped text, Godot paragraphs, and d
   }
 });
 
+// A redraw must not move a rapid control between the two presses of one gesture (Cook & Share's Previous/Next cook): the
+// picture's box is reserved before its data: image decodes, the pager sits above what a press changes, and the scroll stays.
+test("figure: the picture's box is reserved before the image decodes, from the SVG's own width and height (else its viewBox)", () => {
+  const sized = K.dataURI('<svg xmlns="http://www.w3.org/2000/svg" width="720" height="480" viewBox="0 0 360 240"><rect width="9" height="9"/></svg>');
+  assert.equal(K.figure({ src: sized, alt: 'A' }), `<figure class="visits-picture"><img alt="A" src="${sized}" width="720" height="480"></figure>`);
+  assert.match(K.figure({ src: K.dataURI('<svg viewBox="0 0 360 240.5" xmlns="http://www.w3.org/2000/svg"></svg>') }), / width="360" height="240\.5"><\/figure>$/);
+  assert.match(K.figure({ src: K.dataURI('<svg width="300px" height="200px"/>'), overlay: '<b></b>' }), / width="300" height="200"><div class="visits-overlay">/);
+  // Every picture a visits screen draws has its size (Before These Streets, Cook & Share, and the four episodes' pictures).
+  const P = JSON.parse(read('godot/data/power_place.json')), V = JSON.parse(read('godot/data/voting_places.json'));
+  const pictures = [before.artwork(0, 0), decodeURIComponent(meal.artworkDataURI(0, 0, 0).split(',')[1]), dogs.illustration(dogs.initialDogs()), lantern.artwork(lantern.initialLantern()),
+    power.diagram(power.initialPower()), power.mapSVG(P), election.paperSVG(election.initialElection(), V)];
+  for (const svg of pictures) {
+    const [, w, h] = /<svg\b[^>]*\bwidth="(\d+)"[^>]*\bheight="(\d+)"/.exec(svg);
+    assert.match(K.figure({ src: K.dataURI(svg) }), new RegExp(` width="${w}" height="${h}">`), svg.slice(0, 80));
+  }
+  // A size it cannot read is left out: none, a percentage, zero, an absurd or a hostile value.
+  for (const svg of ['<svg xmlns="http://www.w3.org/2000/svg"/>', '<svg width="100%" height="50%"/>', '<svg width="0" height="10"/>', '<svg width="123456" height="2"/>', '<svg width="1&quot; onerror=&quot;x" height="2"/>', '<svg viewBox="0 0 a b"/>']) {
+    assert.doesNotMatch(K.figure({ src: K.dataURI(svg) }), /\s(width|height)=/, svg);
+  }
+  // STYLE keeps the picture at height:auto, so the attributes' ratio sizes its box before the bytes decode (max-height caps it).
+  assert.match(K.STYLE, /\.visits-picture img\{display:block;width:100%;height:auto;/);
+  assert.doesNotMatch(K.STYLE, /aspect-ratio/, "no rule overrides the attributes' ratio");
+});
+
+test("frameHTML: a pager row sits right under the eyebrow, above everything its press changes; it keeps two 44 px columns", () => {
+  const pager = K.btn({ id: 'meal-previous', label: 'Previous', rapid: true }) + K.btn({ id: 'meal-next', label: 'Next', rapid: true });
+  const html = K.frameHTML({ kind: 'meal', credit: 'Credit', title: 'Cook | Dish', pager, picture: K.figure({ src: K.dataURI('<svg width="2" height="1"/>') }), reader: 'Text', tray: K.btn({ id: 'meal-prepare', label: 'Prepare' }) });
+  assert.ok(html.startsWith(`<section class="visits" data-visits="meal"><p class="eyebrow visits-credit">Credit</p><div class="visits-pager">${pager}</div><h2 id="modal-title" tabindex="-1">Cook | Dish</h2>`), html.slice(0, 200));
+  for (const after of ['visits-picture', 'id="visits-reader"', 'meal-prepare']) assert.ok(html.indexOf('visits-pager') < html.indexOf(after), after);
+  assert.ok(!K.frameHTML({ kind: 'x', title: 'T' }).includes('visits-pager'), 'no pager, no row');
+  assert.match(K.STYLE, /\.visits-pager\{display:grid;grid-template-columns:1fr 1fr;gap:6px\}/);
+  assert.match(K.STYLE, /\.visits button\{min-height:44px;min-width:44px;/, 'its buttons are visits buttons: 44 px');
+});
+
+test("show: a screen redrawn in place keeps the dialog's scroll position; another screen starts where game.js's show leaves it", () => {
+  const s = setup(), { kit, dialog, host } = s;
+  s.draw('meal');
+  dialog.modal.scrollTop = 140;
+  // game.js show() puts the scroll back to the top when focus was not in the new content (a redraw from a load, say).
+  const base = host.show.bind(host);
+  host.show = html => { base(html); dialog.modal.scrollTop = 0; };
+  s.draw('meal');
+  assert.equal(dialog.modal.scrollTop, 140, 'the same screen drawn again keeps its place');
+  s.draw('picker');
+  assert.equal(dialog.modal.scrollTop, 0, 'a different screen is not a redraw');
+  // A dialog without a scroll position (the stand-in before any scroll) is left alone.
+  const t = setup();
+  t.draw('meal'); t.draw('meal');
+  assert.equal(t.dialog.modal.scrollTop, undefined);
+});
+
+test('pointerPress: a click from a pointer has a detail of 1 or more; a keyboard or assistive click has 0', () => {
+  for (const event of [{ detail: 1 }, { detail: 2 }]) assert.equal(K.pointerPress(event), true);
+  for (const event of [{ detail: 0 }, {}, undefined, null, { detail: '-1' }, { detail: NaN }]) assert.equal(K.pointerPress(event), false, JSON.stringify(event));
+});
+
+test("focus(id, { scroll: false }): the focus moves without scrolling the dialog (a pointer press on a rapid control)", () => {
+  const s = setup(), { kit, log } = s;
+  s.draw('meal', K.btn({ id: 'meal-prepare', label: 'Prepare' }));
+  let scrolled = 0;
+  kit.$('meal-prepare').scrollIntoView = () => scrolled++;
+  assert.equal(kit.focus('meal-prepare'), true);
+  assert.equal(scrolled, 1, 'by default the focused control is scrolled into view (keyboard use)');
+  assert.equal(kit.focus('meal-prepare', { scroll: false }), true);
+  assert.equal(scrolled, 1);
+  assert.deepEqual(log.filter(e => e[0] === 'focus').map(e => e[1]), ['meal-prepare', 'meal-prepare']);
+});
+
 test('frameHTML: the eyebrow credit first (clear of ×), the heading, the reader region and the tray', () => {
   const src = K.dataURI('<svg/>');
   const html = K.frameHTML({ kind: 'meal', credit: 'Credit line', title: 'Title | Sub', headingEntry: K.btn({ id: 'meal-stories', label: 'Other' }), picture: K.figure({ src, alt: 'Alt' }),
@@ -638,6 +706,71 @@ test('ensureData: idle, loading, ready; invalid is final for the visit; a networ
     assert.equal(s.kit.ensureData(['streets.osm.json'], () => {}), true);
     assert.equal(s.kit.ensureData([], () => {}), true);
     assert.deepEqual(s.loads(), []);
+  });
+});
+
+// A prefetch that no visible control waits on (the shell's first Story open) loads quietly: the screen's own line stays.
+test('ensureData quiet: a prefetch says no loading line and redraws nothing; a failed one is loaded again, out loud, by the next screen that needs it', async t => {
+  const loader = () => {
+    const s = setup(), pending = {};
+    s.host.load = name => { s.log.push(['load', name]); return (pending[name] = deferred()).promise; };
+    return { ...s, pending, loads: () => s.log.filter(e => e[0] === 'load').map(e => e[1]) };
+  };
+  const OPENING = 'Power: Godot opening line';
+  await t.test("the screen's own line survives the prefetch, and nothing is redrawn once the file is ready", async () => {
+    const s = loader();
+    let redraws = 0;
+    s.draw('power'); s.kit.say(OPENING);
+    const said = s.said().length;
+    assert.equal(s.kit.ensureData(['power_place.json'], () => redraws++, { quiet: true }), false, 'the file is on its way');
+    assert.deepEqual([s.loads(), s.session.data.power_place.status], [['power_place.json'], 'loading']);
+    assert.equal(s.said().length, said, 'no loading line');
+    s.pending['power_place.json'].resolve(POWER_PLACE); await flush();
+    assert.deepEqual([s.session.data.power_place.status, redraws, s.said().length], ['ready', 0, said]);
+    assert.deepEqual(s.said().at(-1), ['status', OPENING], "the screen's opening line is still the last word");
+    assert.equal(s.kit.ctx().powerPlace, POWER_PLACE);
+    assert.equal(s.kit.ensureData(['power_place.json'], () => redraws++, { quiet: true }), true, 'ready: nothing to wait for');
+  });
+  await t.test('a failed quiet prefetch says nothing; the next screen that needs the file loads it again with its loading line and redraw', async () => {
+    const s = loader();
+    let redraws = 0;
+    s.draw('power'); s.kit.say(OPENING);
+    const said = s.said().length;
+    s.kit.ensureData(['power_place.json'], () => redraws++, { quiet: true });
+    s.pending['power_place.json'].reject(Error('offline')); await flush();
+    assert.deepEqual([s.session.data.power_place, redraws, s.said().length], [{ status: 'error', value: null }, 0, said], 'no error line, no redraw');
+    s.draw('picker');
+    assert.equal(s.kit.ensureData(['power_place.json'], () => { redraws++; s.draw('picker'); }), false);
+    assert.deepEqual(s.loads(), ['power_place.json', 'power_place.json'], 'retried on the next open of a screen that needs it');
+    assert.deepEqual(s.said().at(-1), ['status', K.VISITS_FORK_TEXT.loading]);
+    s.pending['power_place.json'].resolve(POWER_PLACE); await flush();
+    assert.deepEqual([s.session.data.power_place.status, redraws], ['ready', 1]);
+  });
+  await t.test('a quiet call joins a load a screen waits on and changes nothing it says; a screen that joins a quiet load says its line and is redrawn', async () => {
+    const s = loader();
+    let redraws = 0, quiet = 0;
+    s.draw('picker');
+    s.kit.ensureData(['power_place.json'], () => redraws++);
+    const said = s.said().length;
+    assert.equal(s.kit.ensureData(['power_place.json'], () => quiet++, { quiet: true }), false);
+    assert.deepEqual([s.loads(), s.said().length], [['power_place.json'], said], 'the same load, nothing said');
+    s.pending['power_place.json'].resolve(POWER_PLACE); await flush();
+    assert.deepEqual([redraws, quiet], [1, 0], 'the waiting screen is redrawn; the quiet caller is not');
+    // The other way round: a quiet prefetch first, then a screen that needs the file while it loads.
+    const r = loader();
+    let late = 0;
+    r.draw('power');
+    r.kit.ensureData(['power_place.json'], () => quiet++, { quiet: true });
+    assert.equal(r.kit.ensureData(['power_place.json'], () => { late++; r.draw('power'); }), false);
+    assert.deepEqual([r.loads(), r.said().at(-1)], [['power_place.json'], ['status', K.VISITS_FORK_TEXT.loading]]);
+    r.pending['power_place.json'].reject(Error('offline')); await flush();
+    assert.deepEqual([late, quiet, r.said().at(-1)], [1, 0, ['status', K.VISITS_FORK_TEXT.dataError]], 'the screen that waits hears the error');
+  });
+  await t.test('quiet with no options object, or false, is the loud path', async () => {
+    const s = loader();
+    s.draw('power');
+    s.kit.ensureData(['power_place.json'], () => {}, { quiet: false });
+    assert.deepEqual(s.said().at(-1), ['status', K.VISITS_FORK_TEXT.loading]);
   });
 });
 

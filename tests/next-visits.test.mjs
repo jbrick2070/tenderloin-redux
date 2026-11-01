@@ -736,7 +736,11 @@ test('Positions: the conversion formula matches core.js and Godot anchors', () =
   const back = P.mapToGodot(P.godotToMap(-593.4, -10.08));
   assert.ok(near(back.x, -593.4, 1e-9) && near(back.z, -10.08, 1e-9));
   close(P.LARKIN_JUNCTION, { x: -2921.4, y: -520.7 }, 0.06, 'junction');
-  close(P.MUSEUM, { x: -1397.7, y: -551.3 }, 0.06, 'museum');
+  close(P.RAW_MUSEUM, { x: -1397.7, y: -551.3 }, 0.06, 'museum');
+  assert.deepEqual(P.RAW_MUSEUM, P.godotToMap(MAIN.MUSEUM_HUB_POS[0], MAIN.MUSEUM_HUB_POS[2]));
+  close(P.RAW_MUSEUM_DOCENT, { x: -1411.4, y: -543.4 }, 0.06, 'docent');
+  assert.deepEqual(P.RAW_EATERY_AWNINGS, MAIN.NEIGHBORHOOD_EATERIES.map(rec => P.godotToMap(rec.pos[0], rec.pos[2])));
+  assert.deepEqual(P.RAW_RELAY_GOALS, P.RAW_RELAY_LAMPS.map(p => ({ x: p.x, y: 38 })), 'the fork rule: each goal 7 px (1.4 m) south of its lamp');
   close(P.PARK_ENTRANCE, { x: -544.5, y: -582.3 }, 0.06, 'park');
   close(P.SO_WHAT_AWNING, { x: -1780.0, y: 47.1 }, 0.06, 'So What');
   close(P.SO_WHAT_LEAVENWORTH, { x: -1514.5, y: 259.9 }, 0.06, '145 Leavenworth');
@@ -788,18 +792,203 @@ test('Positions: pinned surprise sites and eatery counters reproduce the constru
   const { NEIGHBORS, PLACES } = await import('../browser-next/world.js');
   const avoid = [...NEIGHBORS.map(n => ({ x: n.x, y: n.y })), ...PLACES.map(p => ({ x: p.x, y: p.y })), P.START];
   const counters = MAIN.NEIGHBORHOOD_EATERIES.map((rec, i) => {
-    const site = sidewalkSite(P.EATERY_AWNINGS[i], [33], [0, 15, -15, 27.5, -27.5, 40, -40], 14, avoid);
-    close(site, P.EATERY_COUNTERS[i], 0.051, rec.id);
-    assert.equal(site.street, P.EATERY_COUNTERS[i].street);
+    const site = sidewalkSite(P.RAW_EATERY_AWNINGS[i], [33], [0, 15, -15, 27.5, -27.5, 40, -40], 14, avoid);
+    close(site, P.RAW_EATERY_COUNTERS[i], 0.051, rec.id);
+    assert.equal(site.street, P.RAW_EATERY_COUNTERS[i].street);
     return site;
   });
   const placed = [];
   for (const id of MAIN.NEIGHBORHOOD_SURPRISE_IDS) {
     const site = sidewalkSite(P.SURPRISE_RAW[id], [31, 28, 34], [0, 12.5, -12.5, 25, -25, 37.5, -37.5, 50, -50], 13, [...avoid, ...counters, ...placed]);
-    close(site, P.SURPRISE_SITES[id], 0.051, id);
-    assert.equal(site.street, P.SURPRISE_SITES[id].street);
+    close(site, P.RAW_SURPRISE_SITES[id], 0.051, id);
+    assert.equal(site.street, P.RAW_SURPRISE_SITES[id].street);
     placed.push(site);
   }
+});
+
+// ---------------------------------------------------------------- the 2D sidewalk (positions.js SIDEWALK_SITES)
+// The rule, recomputed from data/streets.osm.json (the scratchpad's sidewalk/generate.mjs ran the same code once to write the
+// table). A site inside a drawn roadway moves perpendicular to its nearest centreline (the nearest segment of any way; the first in
+// the data on a tie), on the side it already stands, to SIDEWALK.at px from it; a site Godot nudges along the curb
+// (surprise_sidewalk_site's 2.5 m steps, eatery_counter_site's 3, 5.5 and 8 m) takes Godot's next step when its first is refused.
+// A candidate, rounded to 0.1 px as stored, is refused (in this order) when it moves more than SIDEWALK.reach px, stands in any
+// drawn roadway or beyond its own sidewalk, inside a building world.js draws, off the walkable streets, out of core.js findPath's
+// reach from the start, or nearer than SIDEWALK.clear px to a map object or site it was not already that close to (more than
+// SIDEWALK.slack px nearer). Points Godot defines as an offset of a site (the docent, a relay goal, a dog's goal) move with it and
+// are checked with it. Sites are placed in Godot's build order, each against the others' points as they stand at its turn. A
+// site with no candidate keeps Godot's point, with the first refusal of its own perpendicular.
+const NUDGE = { counter: [0, 15, -15, 27.5, -27.5, 40, -40], surprise: [0, 12.5, -12.5, 25, -25, 37.5, -37.5, 50, -50] };
+const tenth = v => Math.round(v * 10) / 10 + 0;
+const WORLD_SRC = readFileSync(new URL('../browser-next/world.js', import.meta.url), 'utf8');
+function nearestWay(p, ways = WAYS) {
+  let best = null;
+  for (const w of ways) for (let i = 1; i < w.points.length; i++) {
+    const A = w.points[i - 1], B = w.points[i], dx = B.x - A.x, dy = B.y - A.y;
+    const t = Math.max(0, Math.min(1, ((p.x - A.x) * dx + (p.y - A.y) * dy) / (dx * dx + dy * dy || 1)));
+    const q = { x: A.x + t * dx, y: A.y + t * dy }, d = Math.hypot(p.x - q.x, p.y - q.y);
+    if (!best || d < best.d) best = { name: w.name, q, d, A, B };
+  }
+  return best;
+}
+const ownWay = (p, name) => nearestWay(p, WAYS.filter(w => w.name === name));
+// world.js draw(): each building() as [left, top, right, bottom], roof top to face bottom (the face is drawn 9 px lower).
+async function drawnBuildings() {
+  const { WEST_FACADES } = await import('../browser-next/history.js');
+  const out = [];
+  for (const m of WORLD_SRC.matchAll(/this\.building\(x, (-?\d+), width, (\d+),/g)) for (const { x, width } of WEST_FACADES) out.push([x, Number(m[1]), x + width, Number(m[1]) + Number(m[2]) + 9]);
+  for (const m of WORLD_SRC.matchAll(/this\.building\((-?\d+), (-?\d+), (\d+), (\d+),/g)) { const [x, y, w, h] = m.slice(1, 5).map(Number); out.push([x, y, x + w, y + h + 9]); }
+  return out;
+}
+// The fork's own map objects, which never move: what the World hit-tests besides the sites, and the start.
+async function fixedObjects() {
+  const { NEIGHBORS, PLACES } = await import('../browser-next/world.js');
+  return [
+    ...NEIGHBORS.map(n => ({ key: `neighbor ${n.id}`, raw: { x: n.x, y: n.y } })), ...PLACES.map(p => ({ key: `place ${p.id}`, raw: { x: p.x, y: p.y } })),
+    { key: 'start', raw: P.START }, ...core.LITTER.map(l => ({ key: `litter ${l.id}`, raw: { x: l.x, y: l.y } })),
+    { key: 'park entrance', raw: P.PARK_ENTRANCE }, { key: 'So What awning', raw: P.SO_WHAT_AWNING }, { key: 'So What 8th floor', raw: P.SO_WHAT_LEAVENWORTH },
+  ];
+}
+// Every site the rule considers, in Godot's build order (counters, surprises, the eatery fronts, the museum), then the relay
+// lamps and the other sites the visits harness measured in the roadway. deps: the offsets that move with the site.
+function sidewalkCandidates() {
+  const E = MAIN.NEIGHBORHOOD_EATERIES, off = (p, base) => ({ x: p.x - base.x, y: p.y - base.y });
+  return [
+    ...E.map((rec, i) => ({ key: `counter:${rec.id}`, raw: P.RAW_EATERY_COUNTERS[i], nudge: NUDGE.counter })),
+    ...MAIN.NEIGHBORHOOD_SURPRISE_IDS.map(id => ({ key: `surprise:${id}`, raw: P.RAW_SURPRISE_SITES[id], nudge: NUDGE.surprise })),
+    ...E.map((rec, i) => ({ key: `awning:${rec.id}`, raw: P.RAW_EATERY_AWNINGS[i] })),
+    { key: 'museum', raw: P.RAW_MUSEUM, deps: [off(P.RAW_MUSEUM_DOCENT, P.RAW_MUSEUM)] },
+    ...P.RAW_RELAY_LAMPS.map((p, i) => ({ key: `lamp:${i}`, raw: p, deps: [off(P.RAW_RELAY_GOALS[i], p)] })),
+    { key: 'battery stand', raw: P.BATTERY_STAND },
+    ...P.DOG_SEARCH.map((p, i) => ({ key: `dog search ${i}`, raw: p, deps: [off(P.DOG_GOALS[i], p)] })),
+    ...P.DOG_OWNERS.map((p, i) => ({ key: `dog owner ${i}`, raw: p })),
+  ];
+}
+const withDeps = (s, at) => [at, ...(s.deps ?? []).map(d => ({ x: at.x + d.x, y: at.y + d.y }))];
+// [raw, now] of every point but site s's own: the fixed objects, and each other site with its dependents.
+const otherPoints = (s, sites, fixed) => [...fixed.map(f => [f.raw, f.raw]), ...sites.filter(o => o !== s).flatMap(o => { const now = withDeps(o, o.at ?? o.raw); return withDeps(o, o.raw).map((r, i) => [r, now[i]]); })];
+function refusal(g, r, street, others, buildings) {
+  const S = P.SIDEWALK, own = ownWay(g, street);
+  if (dist(g, r) > S.reach + 1e-9) return 'reach';
+  if (core.streetDistance(g, WAYS) < S.curb - 1e-9) return 'roadway';
+  if (own.d > S.edge + 1e-9) return 'edge';
+  if (buildings.some(([l, t, rt, b]) => g.x >= l && g.x <= rt && g.y >= t && g.y <= b)) return 'building';
+  if (!core.walkable(g, WAYS)) return 'walk';
+  if (!core.findPath(P.START, g, WAYS).length) return 'route';
+  if (others.some(([was, now]) => { const d = dist(g, now); return d < S.clear - 1e-9 && d < dist(r, was) - S.slack - 1e-9; })) return 'clear';
+  return null;
+}
+async function sidewalkRule() {
+  const S = P.SIDEWALK, buildings = await drawnBuildings(), fixed = await fixedObjects(), sites = sidewalkCandidates();
+  for (const s of sites) {
+    const n = nearestWay(s.raw);
+    s.street = n.name;
+    if (n.d >= S.curb) { s.kept = 'sidewalk'; continue; }
+    const u = { x: (s.raw.x - n.q.x) / n.d, y: (s.raw.y - n.q.y) / n.d }, others = otherPoints(s, sites, fixed), raws = withDeps(s, s.raw);
+    let first = null;
+    for (const shift of s.nudge ?? [0]) {
+      const at = { x: tenth(n.q.x + S.at * u.x - shift * u.y), y: tenth(n.q.y + S.at * u.y + shift * u.x) };
+      const why = withDeps(s, at).map((g, i) => refusal(g, raws[i], n.name, others, buildings)).find(Boolean);
+      if (!why) { s.at = at; s.shift = shift; break; }
+      first ??= why;
+    }
+    if (!s.at) s.kept = first;
+  }
+  return { sites, fixed, buildings };
+}
+// What the rule leaves where Godot put it, and why (its own perpendicular's first refusal).
+const SIDEWALK_KEPT = {
+  'awning:bowl_basil_pho': 'reach', 'awning:saffron_clay_oven': 'reach', 'awning:morning_star_banh_mi': 'reach', // in Godot's own roadway
+  'awning:copper_cue_tavern': 'sidewalk', 'awning:open_seat_diner': 'clear', // 59.1 px out already; 6.8 px from Thanh on the sidewalk
+  'battery stand': 'reach', 'dog search 0': 'clear', 'dog search 1': 'reach', 'dog owner 0': 'reach', 'dog owner 1': 'reach',
+};
+
+test('Positions: the sidewalk rule\'s numbers are the street world.js draws', () => {
+  assert.deepEqual(P.SIDEWALK, { curb: 38, edge: 58, at: 48, reach: 24, clear: 18, slack: 1 });
+  assert.ok(Object.isFrozen(P.SIDEWALK) && Object.isFrozen(P.SIDEWALK_SITES) && Object.values(P.SIDEWALK_SITES).every(Object.isFrozen));
+  // The carriageway and the sidewalk world.js strokes along every centreline, full widths.
+  assert.match(WORLD_SRC, /for \(const way of this\.ways\) this\.line\(way\.points, '#e6deca', 116\);/);
+  assert.match(WORLD_SRC, /for \(const way of this\.ways\) this\.line\(way\.points, '#b6bba6', 76\);/);
+  assert.equal(2 * P.SIDEWALK.curb, 76);
+  assert.equal(2 * P.SIDEWALK.edge, 116);
+  assert.ok(P.SIDEWALK.curb < P.SIDEWALK.at && P.SIDEWALK.at < P.SIDEWALK.edge && P.SIDEWALK.edge < P.STREET_CORRIDOR);
+});
+
+test('Positions: the sidewalk table is the rule recomputed from data/streets.osm.json', async () => {
+  const { sites } = await sidewalkRule();
+  const adapted = sites.filter(s => s.at), kept = sites.filter(s => !s.at);
+  assert.deepEqual(Object.keys(P.SIDEWALK_SITES), adapted.map(s => s.key), 'the stored keys, in the rule\'s order');
+  for (const s of adapted) close(P.SIDEWALK_SITES[s.key], s.at, 0.051, s.key);
+  assert.deepEqual(Object.fromEntries(kept.map(s => [s.key, s.kept])), SIDEWALK_KEPT);
+  // Only two take one of Godot's steps along the curb: Copper Cue's counter (clear of its own front, 59.1 px out) and the 145
+  // Leavenworth mural (clear of the 8th-floor canopy).
+  assert.deepEqual(adapted.filter(s => s.shift).map(s => [s.key, s.shift]), [['counter:copper_cue_tavern', 15], ['surprise:hidden_mural_145', 12.5]]);
+  // No raw point is within 0.5 px of being as near another street as its own, so the first-in-the-data tie never decides.
+  for (const s of sites) {
+    const n = nearestWay(s.raw), other = nearestWay(s.raw, WAYS.filter(w => w.name !== n.name));
+    assert.ok(other.d - n.d > 0.5, `${s.key}: ${n.name} ${n.d.toFixed(1)} px, ${other.name} ${other.d.toFixed(1)} px`);
+  }
+});
+
+test('Positions: every sidewalk site stands on the 2D sidewalk, near Godot\'s point, walkable and routed', async () => {
+  const S = P.SIDEWALK, buildings = await drawnBuildings(), byKey = Object.fromEntries(sidewalkCandidates().map(s => [s.key, s]));
+  const checked = [];
+  for (const [key, at] of Object.entries(P.SIDEWALK_SITES)) {
+    const s = byKey[key], raws = withDeps(s, s.raw);
+    withDeps(s, at).forEach((g, i) => {
+      const r = raws[i], n = nearestWay(r), own = ownWay(g, n.name), label = `${key}${i ? ` (dependent ${i})` : ''} at (${g.x.toFixed(1)}, ${g.y.toFixed(1)})`;
+      if (!i) assert.ok(n.d < S.curb, `${label}: Godot's point was in the ${n.name} roadway`); // the relay goals were on its edge, 38 px out
+      assert.ok(own.d >= S.curb - 1e-9 && own.d <= S.edge + 1e-9, `${label}: ${own.d.toFixed(2)} px from ${n.name}, on its sidewalk`);
+      assert.ok(core.streetDistance(g, WAYS) >= S.curb - 1e-9, `${label}: outside every drawn roadway`);
+      assert.ok(dist(g, r) <= S.reach + 1e-9, `${label}: ${dist(g, r).toFixed(1)} px from Godot's point`);
+      const side = p => Math.sign((n.B.x - n.A.x) * (p.y - n.A.y) - (n.B.y - n.A.y) * (p.x - n.A.x));
+      assert.equal(side(g), side(r), `${label}: on the same side of ${n.name} as Godot's point`);
+      assert.ok(!buildings.some(([l, t, rt, b]) => g.x >= l && g.x <= rt && g.y >= t && g.y <= b), `${label}: in no building`);
+      assert.ok(core.walkable(g, WAYS), `${label}: walkable`);
+      assert.ok(core.findPath(P.START, g, WAYS).length > 0, `${label}: routed from the start`);
+      checked.push(key);
+    });
+  }
+  // The ten beacons, the six counters, Blue Valve's front, the museum and its docent, three lamps and their goals.
+  assert.equal(checked.length, 10 + 6 + 1 + 2 + 6);
+  // The museum's point sits at the sidewalk distance; the docent keeps Godot's offset from it (main.gd:8738), 40 px out; each
+  // relay goal stays 7 px south of its lamp, 55 px out.
+  assert.ok(near(ownWay(P.MUSEUM, 'Eddy Street').d, 48, 0.06) && near(ownWay(P.MUSEUM_DOCENT, 'Eddy Street').d, 40.1, 0.06), 'museum 48 px, docent 40 px out');
+  for (const g of P.RELAY_GOALS) assert.ok(near(ownWay(g, 'Turk Street').d, 55, 0.06), 'relay goal 55 px out');
+});
+
+test('Positions: no site moves nearer than 18 px to anything it was not already that close to', async () => {
+  const { sites, fixed } = await sidewalkRule();
+  const all = [...fixed.map(f => ({ owner: f.key, key: f.key, raw: f.raw, now: f.raw })), ...sites.flatMap(s => { const raw = withDeps(s, s.raw), now = withDeps(s, s.at ?? s.raw); return raw.map((r, i) => ({ owner: s.key, key: i ? `${s.key} dependent` : s.key, raw: r, now: now[i] })); })];
+  const near18 = [];
+  for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) {
+    const a = all[i], b = all[j];
+    if (a.owner === b.owner) continue;
+    const now = dist(a.now, b.now), before = dist(a.raw, b.raw);
+    if (now < P.SIDEWALK.clear) { near18.push([a.key, b.key]); assert.ok(now >= before - P.SIDEWALK.slack, `${a.key} / ${b.key}: ${now.toFixed(1)} px, ${before.toFixed(1)} before`); }
+  }
+  // Both as close in Godot's own points: Blue Valve's counter on its own front (both were 33 px out), and Thanh beside Open Seat's
+  // front (neither moves).
+  assert.deepEqual(near18, [['neighbor thanh', 'awning:open_seat_diner'], ['counter:blue_valve_hifi', 'awning:blue_valve_hifi']]);
+});
+
+test('Positions: the exports and their pure consumers use the sidewalk points', () => {
+  const on = (key, raw) => ({ ...raw, ...P.SIDEWALK_SITES[key] });
+  for (const id of MAIN.NEIGHBORHOOD_SURPRISE_IDS) assert.deepEqual(P.SURPRISE_SITES[id], on(`surprise:${id}`, P.RAW_SURPRISE_SITES[id]), id);
+  MAIN.NEIGHBORHOOD_EATERIES.forEach((rec, i) => {
+    assert.deepEqual(P.EATERY_COUNTERS[i], on(`counter:${rec.id}`, P.RAW_EATERY_COUNTERS[i]), rec.id);
+    assert.deepEqual(P.EATERY_AWNINGS[i], P.SIDEWALK_SITES[`awning:${rec.id}`] ? on(`awning:${rec.id}`, P.RAW_EATERY_AWNINGS[i]) : P.RAW_EATERY_AWNINGS[i], rec.id);
+  });
+  assert.deepEqual(P.MUSEUM, on('museum', P.RAW_MUSEUM));
+  close(P.MUSEUM_DOCENT, { x: P.MUSEUM.x + P.RAW_MUSEUM_DOCENT.x - P.RAW_MUSEUM.x, y: P.MUSEUM.y + P.RAW_MUSEUM_DOCENT.y - P.RAW_MUSEUM.y }, 1e-9, 'docent');
+  P.RAW_RELAY_LAMPS.forEach((p, i) => { assert.deepEqual(P.RELAY_LAMPS[i], on(`lamp:${i}`, p)); assert.deepEqual(P.RELAY_GOALS[i], { x: P.RELAY_LAMPS[i].x, y: P.RELAY_LAMPS[i].y + 7 }); });
+  // What the pure modules hand the map, the camera, the bubbles and the walks: off every drawn roadway.
+  const off = (p, label) => assert.ok(core.streetDistance(p, WAYS) >= P.SIDEWALK.curb - 1e-9, `${label} at (${p.x}, ${p.y}): ${core.streetDistance(p, WAYS).toFixed(1)} px from a centreline`);
+  for (const m of surprises.markers([])) off(m, `marker ${m.id}`);
+  for (const id of surprises.SURPRISE_IDS) off(surprises.inspect([], id).site, `inspect ${id}`);
+  off(landmarks.exploreObjective([], landmarks.initialTour(), { player: P.START, compass: compassPhrase }).target, 'the explore objective');
+  for (const stop of landmarks.tourState(landmarks.initialTour()).stops) off(stop.target, `tour stop ${stop.id}`);
+  const lit = { ...power.initialPower(), active: true };
+  power.powerScene(lit).relays.forEach((r, i) => { off(r, `relay lamp ${i}`); off(power.relayGoal(lit, i), `relay goal ${i}`); });
 });
 
 // positions.js proposedFindPath from the start, once per target (the uncached router both routing tests compare with).

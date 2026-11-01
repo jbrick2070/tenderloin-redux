@@ -4,6 +4,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { gdFunc, gdSource, gdStrings, jsStrings } from './gd-literal.mjs';
+import { visitsHost } from './next-fixtures.mjs';
+import { createKit, freshSession } from '../browser-next/visits-kit.js';
+import { createWorldVisits } from '../browser-next/visits-world.js';
 import { initialState } from '../browser-next/core.js';
 import { gatheringScene } from '../browser-next/gathering.js';
 import { World, NEIGHBORS, makeWays, objectLabel } from '../browser-next/world.js';
@@ -312,6 +315,7 @@ test('sprites: reduced motion freezes every animation at its world.time 0 pose',
   zoom(w.world, 1);
   const at = (sprites, time) => { w.world.time = time; const r = layerCalls(sprites, w, scene); return JSON.stringify([r.ground, r.actorCalls, r.overlay]); };
   const moving = createSprites({ reducedMotion: () => false }), still = createSprites({ reducedMotion: () => true });
+  at(moving, 0); at(still, 0); // a sprite set's first frame also measures the chip texts, once (the declutter needs their widths)
   assert.notEqual(at(moving, 0), at(moving, 2.5), 'the park trees and the tour marker move with world.time');
   assert.equal(at(still, 2.5), at(still, 0));
   assert.equal(at(still, 7.75), at(moving, 0));
@@ -370,11 +374,14 @@ test('sprites: Label3D chips say visits/text.js text in Godot\'s tint, at the ne
   const [r, g, b, a] = /outline_modulate = Color\(([^)]*)\)/.exec(gdFunc('main.gd', 'make_label_3d'))[1].split(',').map(Number);
   assert.equal(GODOT_LABEL_OUTLINE, '#' + [r, g, b, a].map(v => Math.round(v * 255).toString(16).padStart(2, '0')).join(''));
   for (const color of want.values()) assert.ok(contrast(color, GODOT_LABEL_OUTLINE.slice(0, 7)) >= 4.5, color);
-  // Below world.js's neighbor-name zoom no label chip is drawn; at it, all of them.
+  // Below world.js's neighbor-name zoom no label chip is drawn; at it and above, every beacon's label, and the rest unless the
+  // declutter dropped a landmark or menu chip that had no free row (far out, the chips are large next to the map).
   const bea = NEIGHBORS[0];
   for (const scale of [0.2199, 0.22, 0.6]) {
     zoom(w.world, scale);
-    assert.equal(texts(layerCalls(sprites, w, scene).overlay).length, objectLabel(bea, scale) ? want.size : 0, String(scale));
+    const drawn = texts(layerCalls(sprites, w, scene).overlay);
+    if (!objectLabel(bea, scale)) { assert.equal(drawn.length, 0, String(scale)); continue; }
+    assert.ok(drawn.length <= want.size && SURPRISE_IDS.every(id => drawn.some(s => s.text === web('main.gd', T.build_neighborhood_surprises[id]))), String(scale));
   }
 });
 
@@ -384,6 +391,7 @@ test('sprites: a chip has world.chip\'s geometry and zoom scaling, with Godot\'s
   const park = fullScene().park;
   for (const scale of [0.4, 1, 1.6]) {
     zoom(w.world, scale);
+    layerCalls(sprites, w, { ...emptyScene(), park }); // a sprite set's first frame also measures the chip text, once
     const calls = layerCalls(sprites, w, { ...emptyScene(), park }).overlay;
     const k = Math.max(1, 1 / scale);
     const [, x, y] = calls.find(c => c[0] === 'translate');
@@ -394,6 +402,299 @@ test('sprites: a chip has world.chip\'s geometry and zoom scaling, with Godot\'s
     const shape = list => list.map(c => (c[0] === 'set' && c[1] === 'fillStyle' ? ['set', 'fillStyle', '*'] : c));
     assert.deepEqual(shape(calls), shape(chip), String(scale));
   }
+});
+
+// ---------------------------------------------------------------- the beacon's drawn height and the chip declutter
+// The world part of the VisitsScene as visits-world.js builds it (scenePart), over the stand-in host: the ten beacons with the
+// given finds, the museum, the park, So What and the eateries. Visit Eateries guides Bowl & Basil at 361 Turk and opens its counter.
+function realScene({ found = [], eateries = false, player = { x: 95, y: -47 } } = {}) {
+  const { host, io } = visitsHost();
+  io.state = { opened: true, surprises: [...found] };
+  const part = createWorldVisits(createKit(host, freshSession()));
+  if (eateries) assert.equal(part.openNotes('eateries'), true);
+  return { ...part.scenePart(), player };
+}
+// The map box, text and body fill of every chip a call list draws (world.js chip() and sprites.js chip(): save, translate, scale,
+// the shadow, the body rect at -19, the text), in the coordinates of the list's own transform.
+function drawnChips(calls) {
+  const out = [], stack = [];
+  let m = [1, 0, 0, 1, 0, 0], body = null, fill = null;
+  for (const call of calls) {
+    const [name] = call;
+    if (name === 'save') stack.push(m);
+    else if (name === 'restore') m = stack.pop() ?? m;
+    else if (name === 'setTransform') m = call.slice(1);
+    else if (name === 'translate') m = multiply(m, [1, 0, 0, 1, call[1], call[2]]);
+    else if (name === 'scale') m = multiply(m, [call[1], 0, 0, call[2], 0, 0]);
+    else if (name === 'rotate') { const c = Math.cos(call[1]), s = Math.sin(call[1]); m = multiply(m, [c, s, -s, c, 0, 0]); }
+    else if (name === 'set' && call[1] === 'fillStyle') fill = call[2];
+    else if ((name === 'roundRect' || name === 'rect') && call[2] === -19) body = { left: m[4] + call[1] * m[0], top: m[5] + call[2] * m[3], right: m[4] + (call[1] + call[3]) * m[0], bottom: m[5] + (call[2] + call[4]) * m[3], fill };
+    else if (name === 'fillText' && body) { out.push({ text: call[1], ...body }); body = null; }
+  }
+  return out;
+}
+// The box of everything a call list draws (rects, arcs, ellipses, path points), in its own transform's coordinates.
+function drawnBounds(calls) {
+  const stack = [], b = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
+  let m = [1, 0, 0, 1, 0, 0];
+  const add = (x, y) => { const X = m[0] * x + m[2] * y + m[4], Y = m[1] * x + m[3] * y + m[5]; b.left = Math.min(b.left, X); b.right = Math.max(b.right, X); b.top = Math.min(b.top, Y); b.bottom = Math.max(b.bottom, Y); };
+  for (const call of calls) {
+    const [name] = call;
+    if (name === 'save') stack.push(m);
+    else if (name === 'restore') m = stack.pop() ?? m;
+    else if (name === 'translate') m = multiply(m, [1, 0, 0, 1, call[1], call[2]]);
+    else if (name === 'scale') m = multiply(m, [call[1], 0, 0, call[2], 0, 0]);
+    else if (name === 'rect' || name === 'roundRect') { add(call[1], call[2]); add(call[1] + call[3], call[2] + call[4]); }
+    else if (name === 'arc') { add(call[1] - call[3], call[2] - call[3]); add(call[1] + call[3], call[2] + call[3]); }
+    else if (name === 'ellipse') { add(call[1] - call[3], call[2] - call[4]); add(call[1] + call[3], call[2] + call[4]); }
+    else if (name === 'moveTo' || name === 'lineTo') add(call[1], call[2]);
+  }
+  return b;
+}
+// What no visits chip may cover in a scene: each beacon's globe as drawn, and every person as world.js person() draws one at its
+// largest (the player's ring, a hat, headphones and a rollator): the player, the neighbors, the docent and an open counter's host.
+function mustShow(w, scene, sprites) {
+  const out = [];
+  const actors = sprites.actors(w.world, { surprises: scene.surprises });
+  for (const [i, m] of list(scene.surprises).entries()) {
+    w.ctx.calls.length = 0; actors[i].draw(w.ctx, w.world);
+    const globe = shapes(w.ctx.calls.splice(0)).find(s => s.kind === 'fill' && s.path[0]?.[0] === 'arc' && s.color === (m.found ? m.accent : darken(m.accent, 0.28)));
+    const [, x, y, r] = globe.path[0];
+    out.push({ what: `the globe of ${m.id}`, id: m.id, left: x - r, right: x + r, top: y - r, bottom: y + r });
+  }
+  w.ctx.calls.length = 0; w.world.person({ x: 0, y: 0, rollator: true, hat: true, headphones: true }, true);
+  const body = drawnBounds(w.ctx.calls.splice(0)), person = (what, p) => out.push({ what, left: p.x + body.left, right: p.x + body.right, top: p.y + body.top, bottom: p.y + body.bottom });
+  person('the player', w.holder.state.player);
+  for (const n of NEIGHBORS) person(n.name, n);
+  if (scene.museum?.docent) person('the docent', scene.museum.docent);
+  for (const e of list(scene.eateries)) if (e?.counter) person(`the host of ${e.name}`, { x: e.counter.x, y: e.counter.y - 3 });
+  return out;
+}
+const list = v => (Array.isArray(v) ? v : []);
+const overlayChips = (sprites, w, scene) => { w.ctx.calls.length = 0; sprites.overlay(w.ctx, w.world, scene); return drawnChips(w.ctx.calls.splice(0)); };
+const viewOf = world => ({ left: -world.offset.x / world.scale, right: (world.width - world.offset.x) / world.scale, top: -world.offset.y / world.scale, bottom: (world.height - world.offset.y) / world.scale });
+const overlaps = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+const surpriseLabel = id => web('main.gd', T.build_neighborhood_surprises[id]);
+const eateryLabel = i => gdf(T.build_street_life_decor.eatery, [EATERIES[i].name]);
+const menuLabel = i => gdf(T.build_eatery_counters.menu, [MAIN.EATERY_MENU_ITEMS[EATERIES[i].id][0]]);
+// The camera looking at a point at a scale (Camera.lookAt: centred 25 px above it).
+const lookAt = (w, p, scale) => { w.world.camera.lookAt(p, scale); return viewOf(w.world); };
+
+test("sprites: BEACON_LIFT is the drawn globe's height above its beacon's foot, found or not, at every zoom; the foot, half way and the globe cover the drawing", async () => {
+  const { createSprites, BEACON_LIFT } = await loadSprites();
+  assert.equal(typeof BEACON_LIFT, 'number');
+  const sprites = createSprites({ reducedMotion: () => true }), w = makeWorld({ state: OPENED() });
+  const list = markers(['jeffrey_record']);
+  for (const scale of [0.3, 0.85, 1.6]) {
+    zoom(w.world, scale);
+    const calls = layerCalls(sprites, w, { ...emptyScene(), surprises: list }).actorCalls, drawn = shapes(calls);
+    for (const m of list) {
+      const globe = drawn.find(s => s.kind === 'fill' && s.path[0]?.[0] === 'arc' && s.path[0][1] === m.x && s.color === (m.found ? m.accent : darken(m.accent, 0.28)));
+      assert.ok(globe, `${m.id} has its globe`);
+      assert.ok(Math.abs(globe.path[0][2] - (m.y - BEACON_LIFT)) < 1e-9, `${m.id}: the globe is BEACON_LIFT above the foot at ${scale}`);
+      const pole = drawn.find(s => s.kind === 'stroke' && s.path.some(p => p[0] === 'moveTo' && p[1] === m.x && p[2] === m.y));
+      assert.deepEqual(pole.path.map(p => p.slice(1)), [[m.x, m.y], [m.x, m.y - BEACON_LIFT]], `${m.id}: the pole runs from the foot to the globe`);
+      // game.js's three hit points (the foot, half way, the globe): every drawn part of this beacon (the fills and strokes at its
+      // x: arcs by centre and radius, ellipses by centre and the larger radius, the pole by its ends) is within 28 px of one.
+      const samples = [0, BEACON_LIFT / 2, BEACON_LIFT].map(lift => ({ x: m.x, y: m.y - lift }));
+      const far = (x, y, r = 0) => Math.min(...samples.map(s => Math.hypot(x - s.x, y - s.y))) + r;
+      const parts = drawn.filter(s => s.path[0] && Math.abs(s.path[0][1] - m.x) < 2);
+      assert.ok(parts.length >= 3 && parts.includes(globe) && parts.includes(pole), `${m.id}: shadow, pole and globe`);
+      const reach = Math.max(...parts.flatMap(s => s.path.map(p => p[0] === 'arc' ? far(p[1], p[2], p[3]) : p[0] === 'ellipse' ? far(p[1], p[2], Math.max(p[3], p[4])) : far(p[1], p[2]))));
+      assert.ok(reach < 28, `${m.id} (${m.found ? 'found' : 'unfound'}): the farthest drawn point is ${reach.toFixed(2)} px from a hit point at ${scale}`);
+    }
+  }
+});
+
+test('sprites: the chip declutter keeps the museum corner and the 361 Turk cluster readable: no two drawn chips overlap, none clips at the map edge', async () => {
+  const { createSprites } = await loadSprites();
+  const D = T.build_street_life_decor;
+  const fixtures = [
+    ['the museum corner', realScene(), P.MUSEUM, [surpriseLabel('mayor_pomp_event'), surpriseLabel('magic_carpet_chef'), D.museum, D.portal, eateryLabel(2)]],
+    ['361 Turk', realScene({ found: ['jeffrey_record'], eateries: true }), P.EATERY_AWNINGS[0], [surpriseLabel('jeffrey_record'), eateryLabel(0), menuLabel(0), D.soWhatAwning]],
+  ];
+  // The smoke test's map canvases: 1440 px wide (1036 x 608) and 390 px wide (358 x 518); and the harness's 1.6 zoom. A whole
+  // World frame with the sprites as game.js layers them, so world.js's own name chips and people are in it too.
+  const { GODOT_LABEL_OUTLINE: LABEL } = await loadSprites(); // a visits chip's body (world.js chips are light)
+  for (const [name, scene, at, cluster] of fixtures) {
+    for (const [width, height] of [[1036, 608], [358, 518]]) {
+      for (const scale of [0.85, 0.5, 1.25, 1.6]) {
+        const sprites = createSprites({ reducedMotion: () => true });
+        const w = makeWorld({ state: OPENED(), width, height, layers: { ground: (c, world) => sprites.ground(c, world, scene), actors: world => sprites.actors(world, scene), overlay: (c, world) => sprites.overlay(c, world, scene) } });
+        const view = lookAt(w, at, scale), k = Math.max(1, 1 / scale), where = `${name}, ${width} px, scale ${scale}`;
+        // The frame draws in canvas px (device ratio 1 here): back to map px.
+        const o = w.world.offset, map = c => ({ ...c, left: (c.left - o.x) / scale, right: (c.right - o.x) / scale, top: (c.top - o.y) / scale, bottom: (c.bottom - o.y) / scale });
+        const all = drawnChips(frame(w, 0, true)).map(map), chips = all.filter(c => c.fill === LABEL);
+        const near = chips.filter(c => c.right > view.left && c.left < view.right && c.bottom > view.top && c.top < view.bottom);
+        assert.ok(near.length >= 2, `${where}: chips on screen`);
+        // No two chips overlap, the World's own name chips included.
+        for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) assert.ok(!overlaps(all[i], all[j]), `${where}: ${all[i].text} and ${all[j].text} do not overlap`);
+        // No visits chip covers a beacon's globe or a person; a beacon's own label sits above its globe, clear of it by the gap.
+        for (const thing of mustShow(w, scene, sprites)) for (const c of chips) assert.ok(!overlaps(c, thing), `${where}: ${c.text} covers ${thing.what}`);
+        for (const globe of mustShow(w, scene, sprites).filter(t => t.id)) {
+          const own = chips.find(c => c.text === surpriseLabel(globe.id));
+          if (own) assert.ok(own.bottom <= globe.top - 3 * k + 1e-6, `${where}: ${globe.id}'s label is above its globe`);
+        }
+        const margin = 6 / scale - 1e-9;
+        for (const c of near) if (c.right - c.left <= view.right - view.left - 2 * margin) assert.ok(c.left >= view.left + margin && c.right <= view.right - margin, `${where}: ${c.text} is inside the map`);
+        // Every beacon label in view is drawn (a beacon label is never dropped), and each chip text at most once.
+        for (const m of scene.surprises) {
+          if (m.x > view.left && m.x < view.right && m.y > view.top && m.y < view.bottom) assert.ok(chips.some(c => c.text === surpriseLabel(m.id)), `${where}: ${m.id}'s label`);
+        }
+        assert.equal(new Set(chips.map(c => c.text)).size, chips.length);
+        // Every beacon label of the cluster is drawn at every width and zoom (a landmark or a menu with no room is dropped).
+        for (const text of cluster.filter(t => t.startsWith('[*]'))) assert.ok(chips.some(c => c.text === text), `${where}: ${text}`);
+      }
+    }
+  }
+  // Before the declutter the museum corner's five chips overlapped: their natural boxes, measured as the chips are.
+  const w = makeWorld({ state: OPENED(), width: 1036, height: 608 }), sprites = createSprites({ reducedMotion: () => true }), scene = fixtures[0][1];
+  lookAt(w, P.MUSEUM, 0.85);
+  const placed = sprites.chips(w.world, scene).filter(c => ['surprise:mayor_pomp_event', 'surprise:magic_carpet_chef', 'museum', 'portal', 'eatery:2'].includes(c.id));
+  assert.deepEqual(placed.filter(c => c.id.startsWith('surprise:')).map(c => c.id).sort(), ['surprise:magic_carpet_chef', 'surprise:mayor_pomp_event'], 'both beacon labels');
+  assert.ok(placed.some(c => c.shift !== 0), 'some of them moved off their natural place');
+  // What the overlay draws is chips(): the layout game.js's beacon label hit points come from (chip text width + 20, 23 tall).
+  const box = c => [c.text, ...[c.left, c.top, c.right, c.bottom].map(v => Math.round(v * 1e6))].join(' ');
+  assert.deepEqual(overlayChips(sprites, w, scene).map(box).sort(), sprites.chips(w.world, scene).map(box).sort());
+});
+
+test('sprites: a chip that reaches into the map is clamped inside it with a small margin; one wholly outside it is left where it is', async () => {
+  const { createSprites } = await loadSprites();
+  const park = { ...emptyScene(), park: fullScene().park }, at = P.PARK_ENTRANCE, label = T.build_boeddeker_park.label;
+  const sprites = createSprites({ reducedMotion: () => true });
+  for (const scale of [0.5, 0.85, 1.6]) {
+    const w = makeWorld({ state: OPENED(), width: 600, height: 500 }), half = 600 / 2 / scale, margin = 6 / scale;
+    // The entrance 20 map px inside the left edge, then inside the right edge: its chip (centred on it) would clip.
+    for (const side of [-1, 1]) {
+      const view = lookAt(w, { x: at.x - side * (half - 20), y: at.y + 25 }, scale);
+      const [chip] = overlayChips(sprites, w, park).filter(c => c.text === label);
+      assert.ok(chip, `drawn at ${scale}`);
+      if (side < 0) assert.ok(Math.abs(chip.left - (view.left + margin)) < 1e-6, `clamped to the left margin at ${scale}`);
+      else assert.ok(Math.abs(chip.right - (view.right - margin)) < 1e-6, `clamped to the right margin at ${scale}`);
+    }
+    // Wholly outside the map: drawn at its natural place, centred on the entrance.
+    lookAt(w, { x: at.x + half + 400 / scale, y: at.y + 25 }, scale);
+    const [away] = overlayChips(sprites, w, park).filter(c => c.text === label);
+    assert.ok(Math.abs((away.left + away.right) / 2 - at.x) < 1e-6, `not moved into view at ${scale}`);
+  }
+  // A chip wider than the map is centred on it.
+  const narrow = makeWorld({ state: OPENED(), width: 120, height: 500 }), view = lookAt(narrow, at, 1.6);
+  const [wide] = overlayChips(sprites, narrow, park).filter(c => c.text === label);
+  assert.ok(Math.abs((wide.left + wide.right) / 2 - (view.left + view.right) / 2) < 1e-6);
+});
+
+test('sprites: the declutter is deterministic and stable: the same scene and view give the same layout, a one-pixel player move keeps every chip in its slot', async () => {
+  const { createSprites } = await loadSprites();
+  const scene = realScene(), w = makeWorld({ state: OPENED(), width: 1036, height: 608 });
+  lookAt(w, P.MUSEUM, 0.85);
+  const a = createSprites({ reducedMotion: () => true }), b = createSprites({ reducedMotion: () => false });
+  assert.deepEqual(overlayChips(a, w, scene), overlayChips(b, w, scene), 'two sprite sets, with and without reduced motion');
+  assert.deepEqual(a.chips(w.world, scene), b.chips(w.world, scene));
+  w.world.time = 9.5;
+  assert.deepEqual(overlayChips(b, w, scene), overlayChips(a, w, scene), 'world.time moves no chip');
+  // Memoized: the same inputs give the same array, and a frame measures nothing beyond what chip() itself measures.
+  const first = a.chips(w.world, scene);
+  assert.equal(a.chips(w.world, scene), first);
+  w.ctx.calls.length = 0;
+  a.overlay(w.ctx, w.world, scene);
+  const calls = w.ctx.calls.splice(0);
+  assert.equal(calls.filter(c => c[0] === 'measureText').length, drawnChips(calls).length, 'one measure per drawn chip, as world.chip');
+  // The player walks one pixel at a time past the museum, the camera following: every chip keeps its slot and its row.
+  const state = { ...OPENED(), player: { x: P.MUSEUM.x + 120, y: P.MUSEUM.y + 60 } }, v = makeWorld({ state, width: 1036, height: 608 });
+  v.world.camera.follow(state.player);
+  const sprites = createSprites({ reducedMotion: () => true });
+  const slots = () => sprites.chips(v.world, { ...scene, player: v.holder.state.player }).map(c => [c.id, Math.round(c.shift * 1000), Math.round(c.y * 1000)].join(' '));
+  const before = slots();
+  for (const [dx, dy] of [[1, 0], [0, 1], [-1, 0], [0, -1]]) {
+    const p = v.holder.state.player;
+    v.holder.state = { ...v.holder.state, player: { x: p.x + dx, y: p.y + dy } };
+    v.world.camera.track(v.holder.state.player);
+    assert.deepEqual(slots(), before, `a one-pixel move (${dx}, ${dy})`);
+  }
+});
+
+test('sprites: chips go by priority: the tour stop and what the player stands at, then beacons, landmarks, menus; a low chip with no free row is dropped, a beacon never', async () => {
+  const { createSprites } = await loadSprites();
+  const w = makeWorld({ state: OPENED(), width: 1036, height: 608 });
+  const origin = { x: -700, y: -150 };
+  lookAt(w, origin, 1);
+  const [jeffrey] = markers([]), others = markers([]).slice(1);
+  const beacon = (m, x, y) => ({ ...m, x, y });
+  const eatery = (awning, counter = null, index = 1) => ({ ...fullScene().eateries[index], awning, counter });
+  const chipsOf = (sprites, scene) => sprites.chips(w.world, { ...emptyScene(), ...scene });
+  const byId = (chips, id) => chips.find(c => c.id === id);
+  // A beacon's label (50 above its foot) and an awning's (10 above it) on the same row: the beacon keeps its place, the awning
+  // goes above it (a label never moves below its own beacon's globe, the awning may go either way: above first).
+  const foot = { x: origin.x, y: origin.y }, awning = { x: origin.x, y: origin.y - 40 };
+  let chips = chipsOf(createSprites(), { surprises: [beacon(jeffrey, foot.x, foot.y)], eateries: [eatery(awning)] });
+  assert.equal(byId(chips, 'surprise:jeffrey_record').shift, 0, 'the beacon at its place');
+  assert.ok(byId(chips, 'eatery:1').shift < 0, 'the awning above it');
+  // The tour stop at the awning (the gold marker's): the awning keeps its place and the beacon's label goes above it.
+  chips = chipsOf(createSprites(), { surprises: [beacon(jeffrey, foot.x, foot.y)], eateries: [eatery(awning)], tourMarker: awning });
+  assert.deepEqual([byId(chips, 'eatery:1').shift, Math.sign(byId(chips, 'surprise:jeffrey_record').shift)], [0, -1]);
+  // A menu and a landmark on a beacon's row: both give way by a row or more, and none of the three overlaps another. (The counter's
+  // host stands at the beacon's foot here, so the beacon's label rises the 0.75 px that clears the host's head.)
+  const menuAt = { x: origin.x, y: origin.y - 4 };            // its menu sits 46 above it: the beacon's label row
+  chips = chipsOf(createSprites(), { surprises: [beacon(jeffrey, foot.x, foot.y)], eateries: [eatery(awning, menuAt)] });
+  const trio = ['surprise:jeffrey_record', 'eatery:1', 'counter:1'].map(id => byId(chips, id));
+  assert.ok(Math.abs(trio[0].shift) < 0.05 && Math.abs(trio[1].shift) >= 1 && Math.abs(trio[2].shift) >= 1, JSON.stringify(trio.map(c => c.shift)));
+  for (let i = 0; i < 3; i++) for (let j = i + 1; j < 3; j++) assert.ok(!overlaps(trio[i], trio[j]), `${trio[i].id} and ${trio[j].id}`);
+  // Ten landmark chips on one row (six awnings, So What, the park, the 8th floor, the museum): seven rows within reach are
+  // filled in order and the last three are dropped for the frame.
+  const spot = { x: origin.x, y: origin.y }, at = dy => ({ x: spot.x, y: spot.y + dy });
+  const landmarks = {
+    eateries: [0, 1, 2, 3, 4, 5].map(i => eatery(spot, null, i)), soWhat: { awning: at(10), floor: at(10.5 + 16) },
+    park: { ...fullScene().park, entrance: at(24) }, museum: { ...fullScene().museum, x: spot.x, y: spot.y + 40 },
+  };
+  chips = chipsOf(createSprites(), landmarks);
+  const ids = ['eatery:0', 'eatery:1', 'eatery:2', 'eatery:3', 'eatery:4', 'eatery:5', 'so_what', 'park', 'so_what_floor', 'museum'];
+  assert.deepEqual(ids.filter(id => byId(chips, id)), ids.slice(0, 7), 'the first seven by the stable order, then dropped');
+  assert.deepEqual(chips.filter(c => ids.includes(c.id)).map(c => Math.round(c.shift)).sort((a, b) => a - b), [-3, -2, -1, 0, 1, 2, 3]);
+  // Eight beacons on one spot: a beacon's label is never dropped and only ever goes up (never under its globe); past the rows
+  // within reach it takes the nearest free row beyond, so the eight stack one above another and none covers another.
+  const crowd = [jeffrey, ...others].slice(0, 8).map(m => beacon(m, origin.x, origin.y)), sprites = createSprites();
+  chips = chipsOf(sprites, { surprises: crowd });
+  assert.deepEqual(chips.map(c => Math.round(c.shift)).sort((a, b) => a - b), [-7, -6, -5, -4, -3, -2, -1, 0]);
+  for (let i = 0; i < chips.length; i++) for (let j = i + 1; j < chips.length; j++) assert.ok(!overlaps(chips[i], chips[j]), `${chips[i].id} and ${chips[j].id}`);
+  const drawn = overlayChips(sprites, w, { ...emptyScene(), surprises: crowd });
+  assert.equal(drawn.filter(c => c.text.startsWith('[*]')).length, 8);
+});
+
+test('sprites: no chip is placed or drawn without a chip part, below the chip zoom, or in an empty scene', async () => {
+  const { createSprites, CHIP_ZOOM } = await loadSprites();
+  const sprites = createSprites(), w = makeWorld({ state: OPENED() }), scene = realScene();
+  lookAt(w, P.MUSEUM, 0.85);
+  assert.deepEqual(sprites.chips(w.world, emptyScene()), []);
+  assert.deepEqual(overlayChips(sprites, w, emptyScene()), []);
+  assert.ok(sprites.chips(w.world, scene).length > 0);
+  zoom(w.world, CHIP_ZOOM - 0.0001);
+  assert.deepEqual(sprites.chips(w.world, scene), []);
+  assert.deepEqual(overlayChips(sprites, w, scene), []);
+  for (const broken of [undefined, null, {}, { surprises: 3, eateries: 'x', museum: { x: NaN, y: 0 } }]) assert.deepEqual(sprites.chips(w.world, broken), []);
+});
+
+test('sprites: chipTargets puts hit points along a beacon label where the frame draws it, and none where it draws none', async () => {
+  const { createSprites } = await loadSprites();
+  const scene = realScene(), w = makeWorld({ state: OPENED(), width: 1036, height: 608 });
+  const object = { id: 'surprise:mayor_pomp_event', kind: 'visit', name: 'Mayor', x: P.SURPRISE_SITES.mayor_pomp_event.x, y: P.SURPRISE_SITES.mayor_pomp_event.y };
+  for (const scale of [0.5, 0.85, 1.6]) {
+    lookAt(w, P.MUSEUM, scale);
+    const sprites = createSprites(), chip = sprites.chips(w.world, scene).find(c => c.id === object.id), targets = sprites.chipTargets(w.world, scene, object);
+    assert.ok(targets.length >= 2, `points along the label at ${scale}`);
+    for (const t of targets) assert.deepEqual([t.id, t.kind, t.name], [object.id, 'visit', object.name]);
+    assert.deepEqual([Math.min(...targets.map(t => t.x)), Math.max(...targets.map(t => t.x))], [chip.left, chip.right], 'from end to end');
+    for (const t of targets) assert.ok(Math.abs(t.y - (chip.top + chip.bottom) / 2) < 1e-9, 'on its middle line');
+    const xs = targets.map(t => t.x).sort((p, q) => p - q), k = Math.max(1, 1 / scale);
+    for (let i = 1; i < xs.length; i++) assert.ok(xs[i] - xs[i - 1] <= 16 * k + 1e-9, 'close enough that the World\'s hit radius covers the chip');
+    assert.equal(sprites.chipTargets(w.world, scene, object), targets, 'the same points while the frame is the same');
+  }
+  const sprites = createSprites();
+  assert.deepEqual(sprites.chipTargets(w.world, scene, { ...object, id: 'museum' }), [], 'only beacon labels are hit points');
+  assert.deepEqual(sprites.chipTargets(w.world, scene, { ...object, id: 'surprise:nope' }), []);
+  lookAt(w, { x: 600, y: -40 }, 0.85);
+  assert.deepEqual(sprites.chipTargets(w.world, scene, object), [], 'a label out of view has none');
+  zoom(w.world, 0.2);
+  assert.deepEqual(sprites.chipTargets(w.world, scene, object), [], 'below the chip zoom there is no label');
 });
 
 test('sprites: dishes sit on the 2D gathering table in Godot\'s slot order, or on a cloth beside the Open Floor table', async () => {
@@ -433,8 +734,9 @@ test('sprites: actors of an unchanged scene part are reused, and the costume fol
   const sprites = createSprites({ reducedMotion: () => false }), w = makeWorld({ state: OPENED() });
   const scene = fullScene();
   const a = sprites.actors(w.world, scene), b = sprites.actors(w.world, { ...scene });
-  const beacons = list => list.filter(actor => scene.surprises.some(m => m.y === actor.y));
-  assert.equal(beacons(a).length, 10);
+  // actors() lists the beacons first, one per marker (a counter's actor may share a beacon's y on the sidewalk).
+  const beacons = list => list.slice(0, scene.surprises.length);
+  assert.deepEqual(beacons(a).map(actor => actor.y), scene.surprises.map(m => m.y));
   assert.ok(beacons(a).every((actor, i) => actor === beacons(b)[i]), 'the same beacon actors while scene.surprises is the same list');
   const c = sprites.actors(w.world, { ...scene, surprises: markers(['cutesy_dino']) });
   assert.ok(beacons(c).every(actor => !a.includes(actor)), 'a new marker list builds new actors');

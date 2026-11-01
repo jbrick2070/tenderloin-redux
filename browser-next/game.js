@@ -28,7 +28,7 @@ import { createVisits } from './visits-ui.js';
 import { createEpisodeScreens } from './visits-episodes.js';
 import { createWorldVisits } from './visits-world.js';
 import { VISITS_FORK_TEXT } from './visits-kit.js';
-import { createSprites, tourMarkerLift } from './sprites.js';
+import { createSprites, tourMarkerLift, BEACON_LIFT } from './sprites.js';
 
 const $ = selector => document.querySelector(selector);
 const modal = $('#modal'), body = $('#modal-body'), canvas = $('#world');
@@ -96,10 +96,14 @@ const visitsHost = {
 };
 const visits = createVisits(visitsHost, { createEpisodeScreens, createWorldVisits });
 const sprites = createSprites({ reducedMotion: () => settings.reducedMotion });
-// The side stories on the map: their objects for hit tests (the tour marker where sprites.js draws its diamond), and their ground,
-// actors and overlay layers, all drawn from visits.scene().
+// The side stories on the map: their objects for hit tests where sprites.js draws them (the tour marker at its diamond; a surprise
+// beacon at its foot, half way up and at its globe, and along its label chip where this frame placed it), and their ground, actors
+// and overlay layers, all drawn from visits.scene().
 const mapLayers = {
-  objects: w => visits.objects(w).map(o => o.id === 'tour-marker' ? { ...o, y: o.y - tourMarkerLift(w.scale) } : o),
+  objects: w => {
+    let scene = null;
+    return visits.objects(w).flatMap(o => o.id === 'tour-marker' ? [{ ...o, y: o.y - tourMarkerLift(w.scale) }] : o.id.startsWith('surprise:') ? [o, { ...o, y: o.y - BEACON_LIFT / 2 }, { ...o, y: o.y - BEACON_LIFT }, ...sprites.chipTargets(w, scene ??= visits.scene(), o)] : [o]);
+  },
   ground: (c, w) => sprites.ground(c, w, visits.scene()), actors: w => sprites.actors(w, visits.scene()), overlay: (c, w) => sprites.overlay(c, w, visits.scene()),
 };
 // Godot's session-only talk counters (characters.js freshTalk; Celeste's is the saved celesteTalks) and the one shared

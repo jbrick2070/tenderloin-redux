@@ -13,8 +13,11 @@ import { nextObjective } from '../browser-next/story.js';
 import { conversationActions, freshTalk } from '../browser-next/characters.js';
 import { VISITS_FORK_TEXT } from '../browser-next/visits-kit.js';
 import { GODOT_TEXT, WEB_OVERRIDES, web } from '../browser-next/visits/text.js';
-import { conversationLabel, progressLabel, SURPRISE_IDS } from '../browser-next/visits/surprises.js';
+import { conversationLabel, progressLabel, SURPRISE_IDS, markers } from '../browser-next/visits/surprises.js';
 import { entryTooltip } from '../browser-next/visits/power.js';
+import { SURPRISE_SITES } from '../browser-next/visits/positions.js';
+import { createVisits } from '../browser-next/visits-ui.js';
+import { createWorldVisits } from '../browser-next/visits-world.js';
 import * as sprites from '../browser-next/sprites.js';
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
@@ -186,6 +189,143 @@ test("a tap on the gold diamond finds the tour marker: sprites.js's lift is wher
     for (const y of [centre, top + 1, bottom - 1, centre - bob, centre + bob]) assert.equal(lifted.hit({ x: stop.x, y })?.id, 'tour-marker', `a tap at ${y.toFixed(1)} (scale ${scale}) finds the marker`);
     assert.equal(unlifted.hit({ x: stop.x, y: centre }), undefined, `without the lift the drawn diamond is not a hit (scale ${scale})`);
   }
+});
+
+// A surprise beacon is hit where sprites.js draws it: at its foot, half way up its pole and at its globe (BEACON_LIFT above the
+// foot), and along its label chip where the frame's declutter placed it. A real World with game.js's mapLayers over the real shell and
+// neighborhood part (on the stand-in host) or over stand-in objects and scene, the real sprites measuring on its stub context.
+function beaconMap({ found = [], objects = null, scene = null, player = { x: 95, y: -47 }, width = 1440, height = 1000 } = {}) {
+  const { host, io } = visitsHost();
+  io.state = { opened: true, surprises: [...found] };
+  const real = createVisits(host, { createWorldVisits });
+  const visits = objects ? { objects: () => objects, scene: () => scene } : real, drawn = sprites.createSprites({ reducedMotion: () => true });
+  const made = new Function('visits', 'sprites', 'tourMarkerLift', 'BEACON_LIFT', `${declaration('const mapLayers = {')}\nreturn mapLayers;`)(visits, drawn, sprites.tourMarkerLift, sprites.BEACON_LIFT);
+  const { ctx } = recorder(), state = { ...initialState(), opened: true, surprises: io.state.surprises, player };
+  const canvas = { width: 0, height: 0, style: {}, getContext: () => ctx, addEventListener() {}, getBoundingClientRect: () => ({ left: 0, top: 0, width, height }), setPointerCapture() {}, focus() {} };
+  const world = new World(canvas, WAYS, () => state, { click() {}, reducedMotion: true, layers: { objects: made.objects } });
+  const marker = id => visits.scene().surprises.find(m => m.id === id);
+  // The globe as sprites.js draws it: the top of the pole the beacon's actor strokes from its foot.
+  const globe = id => { const r = recorder(); drawn.actors(world, { surprises: [marker(id)] })[0].draw(r.ctx, world); return r.points.at(-1); };
+  return { world, visits, drawn, state, marker, globe, label: id => drawn.chips(world, visits.scene()).find(c => c.id === id) };
+}
+const R = world => Math.max(28, 22 / world.scale); // the World's hit radius (world.js hit), map px
+// The beacon farthest from every other thing a tap could find (neighbors, places, litter, landmarks, other beacons), wherever
+// visits/positions.js puts the sites, with that distance.
+function clearBeacon() {
+  const { world, visits } = beaconMap(), others = id => [...visits.objects(world).filter(o => o.id !== `surprise:${id}`), ...world.objects().filter(o => o.kind !== 'visit')];
+  return SURPRISE_IDS.map(id => ({ id, room: Math.min(...others(id).map(o => Math.hypot(o.x - SURPRISE_SITES[id].x, o.y - SURPRISE_SITES[id].y))) })).sort((a, b) => b.room - a.room)[0];
+}
+
+test("game.js hit-tests a surprise beacon where sprites.js draws it: the globe, the pole, the foot and its label chip open it; empty ground beside it walks", () => {
+  assert.match(GAME, /import \{ createSprites, tourMarkerLift, BEACON_LIFT \} from '\.\/sprites\.js';/);
+  assert.match(declaration('const mapLayers = {'), /o\.id\.startsWith\('surprise:'\) \? \[o, \{ \.\.\.o, y: o\.y - BEACON_LIFT \/ 2 \}, \{ \.\.\.o, y: o\.y - BEACON_LIFT \}, \.\.\.sprites\.chipTargets\(w, scene \?\?= visits\.scene\(\), o\)\]/);
+  const { id, room } = clearBeacon(), site = SURPRISE_SITES[id], at = `surprise:${id}`;
+  assert.ok(room > 110, `the premise: ${id} stands ${room.toFixed(0)} px from anything else a tap could find`);
+  for (const found of [[], [id]]) {
+    for (const scale of [0.5, 0.85, 1, 1.6]) {
+      const { world, label, globe } = beaconMap({ found });
+      world.camera.lookAt(site, scale);
+      const where = `${found.length ? 'found' : 'unfound'}, scale ${scale}`, r = found.length ? 6.25 : 5, g = globe(id), middle = site.y - sprites.BEACON_LIFT / 2;
+      const hits = (p, what) => assert.equal(world.hit(p)?.id, at, `${what} (${p.x.toFixed(1)}, ${p.y.toFixed(1)}), ${where}`);
+      // The globe as drawn and its edges, the pole from the foot up, the foot and its shadow.
+      assert.ok(g.y < site.y - 30, 'the globe stands above the foot');
+      for (const [dx, dy] of [[0, 0], [0, -r + 0.5], [0, r - 0.5], [-r + 0.5, 0], [r - 0.5, 0]]) hits({ x: g.x + dx, y: g.y + dy }, 'the globe');
+      for (const t of [0, 0.25, 0.5, 0.75, 0.97]) hits({ x: site.x, y: site.y + (g.y - site.y) * t }, 'the pole');
+      hits({ x: site.x + 5, y: site.y + 1.5 }, 'the shadow');
+      // The label chip as the frame placed it: its middle, its four corners and its "(Tap)" end.
+      const chip = label(at);
+      assert.ok(chip, `the label is placed, ${where}`);
+      const inset = 1, k = chip.k;
+      for (const [x, y, what] of [[chip.x, (chip.top + chip.bottom) / 2, 'the label'], [chip.left + inset, chip.top + inset, 'its top-left'], [chip.right - inset, chip.top + inset, 'its top-right'],
+        [chip.left + inset, chip.bottom - inset, 'its bottom-left'], [chip.right - inset, chip.bottom - inset, 'its bottom-right'], [chip.right - 14 * k, chip.y - 8 * k, 'its (Tap)']]) hits({ x, y }, what);
+      // Empty ground beside the beacon and below it, beyond the World's hit radius from what is drawn: a walk (no object).
+      const radius = R(world);
+      for (const p of [{ x: site.x - radius - 12, y: middle }, { x: site.x + radius + 12, y: middle }, { x: site.x, y: site.y + radius + 8 }, { x: site.x + radius + 20, y: site.y + 10 }]) {
+        assert.equal(world.hit(p), undefined, `empty ground (${p.x.toFixed(1)}, ${p.y.toFixed(1)}) walks, ${where}`);
+      }
+    }
+  }
+  // E/Enter: a player at the foot has the beacon nearby.
+  const { world } = beaconMap({ player: { ...site } });
+  world.camera.lookAt(site, 0.85);
+  assert.equal(world.nearest()?.id, at);
+});
+
+test("a beacon label's hit points are never what nearest() finds for E/Enter and the Nearby hint: they keep the World's 40 px nearby radius from the player", () => {
+  const { id } = clearBeacon(), site = SURPRISE_SITES[id], at = `surprise:${id}`;
+  // The player all around the beacon and its label, the camera following as game.js's does.
+  for (const [dx, dy] of [[0, 0], [0, -30], [0, -60], [0, -80], [-60, -70], [70, -60], [-120, -55], [120, -40], [0, 30], [40, 10]]) {
+    const player = { x: site.x + dx, y: site.y + dy }, { world, label, drawn, visits } = beaconMap({ player });
+    world.camera.follow(player);
+    const points = drawn.chipTargets(world, visits.scene(), visits.objects(world).find(o => o.id === at));
+    for (const p of points) assert.ok(Math.hypot(p.x - player.x, p.y - player.y) >= 40, `a label point ${Math.hypot(p.x - player.x, p.y - player.y).toFixed(1)} px from the player at (${dx}, ${dy})`);
+    const near = world.nearest();
+    if (near?.id === at) assert.ok([0, sprites.BEACON_LIFT / 2, sprites.BEACON_LIFT].some(lift => near.y === site.y - lift), `at (${dx}, ${dy}) the beacon is nearby by its own points, never by its label`);
+    const chip = label(at);
+    if (chip) assert.ok(chip.bottom < player.y - 38 || chip.top > player.y + 11 || chip.right < player.x - 18 || chip.left > player.x + 18, `the label keeps off the player at (${dx}, ${dy})`);
+  }
+});
+
+test("the beacon and its label are no target in an overview (Godot taps no surprise there), nor its label below the chip zoom", () => {
+  const { id } = clearBeacon(), site = SURPRISE_SITES[id], at = `surprise:${id}`;
+  const { world, label, globe } = beaconMap();
+  world.camera.lookAt(site, 0.85);
+  const chip = label(at), g = globe(id);
+  world.camera.overviewMode = true;
+  for (const p of [{ x: site.x, y: site.y }, g, { x: chip.x, y: (chip.top + chip.bottom) / 2 }]) assert.notEqual(world.hit(p)?.id, at, `(${p.x}, ${p.y}) in an overview`);
+  assert.ok(!world.objects().some(o => o.id === at), 'no beacon object at all');
+  world.camera.overviewMode = false;
+  world.camera.scale = sprites.CHIP_ZOOM - 0.01; world.camera.update();
+  assert.deepEqual(world.objects().filter(o => o.id === at).map(o => o.y), [0, sprites.BEACON_LIFT / 2, sprites.BEACON_LIFT].map(lift => site.y - lift), 'below the chip zoom: its foot, half way and its globe, no label');
+});
+
+test('two beacons close together: a tap resolves to the nearest drawn one, globe, foot or label', () => {
+  const [a, b] = markers([]);
+  const A = { ...a, x: -700, y: -150 }, B = { ...b, x: -676, y: -162 };
+  const object = m => ({ id: `surprise:${m.id}`, kind: 'visit', name: m.id, x: m.x, y: m.y });
+  const scene = { surprises: [A, B] };
+  for (const scale of [0.85, 1.6]) {
+    const { world, label, globe } = beaconMap({ objects: [object(A), object(B)], scene });
+    world.camera.lookAt(A, scale);
+    for (const m of [A, B]) {
+      const at = `surprise:${m.id}`, chip = label(at), g = globe(m.id);
+      assert.equal(world.hit(g)?.id, at, `${m.id}'s globe at ${scale}`);
+      assert.equal(world.hit({ x: m.x, y: m.y })?.id, at, `${m.id}'s foot at ${scale}`);
+      for (const x of [chip.left + 2, chip.x, chip.right - 2]) for (const y of [chip.top + 2, chip.bottom - 2]) assert.equal(world.hit({ x, y })?.id, at, `${m.id}'s label at (${x.toFixed(1)}, ${y.toFixed(1)}), ${scale}`);
+    }
+    const [ca, cb] = [label(`surprise:${A.id}`), label(`surprise:${B.id}`)];
+    assert.ok(ca.bottom <= cb.top || cb.bottom <= ca.top, 'the two labels sit in different rows');
+    // Between the two globes, the nearer one.
+    const ga = globe(A.id);
+    assert.equal(world.hit({ x: ga.x + 8, y: ga.y - 2 })?.id, `surprise:${A.id}`);
+  }
+});
+
+test("a neighbor's name chip, a neighbor and a place keep winning where they did: labels first, then the nearest point", () => {
+  const bea = NEIGHBORS.find(n => n.id === 'bea'), history = PLACES.find(p => p.id === 'history');
+  const [m] = markers([]);
+  // A beacon a step south of Bea: the declutter keeps its label off her name chip and her body; her name chip and her own point
+  // are hers, the beacon's globe and label the beacon's.
+  const B = { ...m, x: bea.x, y: bea.y + 7 }, object = { id: `surprise:${m.id}`, kind: 'visit', name: m.id, x: B.x, y: B.y };
+  const { world, label, globe } = beaconMap({ objects: [object], scene: { surprises: [B] }, player: { x: 300, y: 10 } });
+  world.camera.lookAt(bea, 1);
+  const chip = label(object.id), name = { x: bea.x, y: bea.y - 43 - 7.5 };
+  assert.ok(chip.bottom <= name.y - 11.5 - 3 || chip.top >= name.y + 11.5 + 3 || chip.right <= bea.x - 20 || chip.left >= bea.x + 20, 'the label keeps off her name chip');
+  assert.equal(world.hit(name)?.id, 'bea', 'her name chip is hers');
+  assert.equal(world.hit({ x: bea.x, y: bea.y })?.id, 'bea', 'and her own point');
+  assert.equal(world.hit({ x: chip.x, y: (chip.top + chip.bottom) / 2 })?.id, object.id, "the beacon's label is the beacon's");
+  // A beacon beside Bea: her body is hers, the beacon's globe is the beacon's.
+  const C = { ...m, x: bea.x + 30, y: bea.y }, near = beaconMap({ objects: [{ ...object, x: C.x, y: C.y }], scene: { surprises: [C] } });
+  near.world.camera.lookAt(bea, 1);
+  assert.equal(near.world.hit({ x: bea.x - 2, y: bea.y - 4 })?.id, 'bea');
+  assert.equal(near.world.hit(near.globe(m.id))?.id, object.id);
+  // The real drag show beacon by the history stop: the stop's marker is the stop's, the beacon's globe and label the beacon's.
+  const id = 'impromptu_drag_show', site = SURPRISE_SITES[id], real = beaconMap();
+  real.world.camera.lookAt(site, 0.85);
+  assert.equal(real.world.hit({ x: history.x, y: history.y - 14 })?.id, 'history');
+  assert.equal(real.world.hit(real.globe(id))?.id, `surprise:${id}`);
+  const drag = real.label(`surprise:${id}`);
+  assert.equal(real.world.hit({ x: drag.right - 10 * drag.k, y: drag.y - 8 * drag.k })?.id, `surprise:${id}`, 'its (Tap)');
 });
 
 test("a map tap on a visit object opens it there and never walks; E/Enter and arrivals reach the visits too", () => {

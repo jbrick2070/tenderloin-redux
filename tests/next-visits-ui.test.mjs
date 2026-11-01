@@ -459,6 +459,47 @@ test('Cook & Share: five preparations, serving and placement, Share, Follow this
   assert.deepEqual([m().selected, m().revealed], [1, 2]);
 });
 
+// A fast double press on a rapid control must find it where the first press left it (the harness's check 3): Previous/Next cook
+// sit in the pager under the eyebrow, above the heading, picture and text a press changes; the picture's box is reserved; and a
+// pointer press moves focus as Godot does (to the preparation, the page's first entry) without scrolling the dialog.
+test("Cook & Share's Previous/Next cook and the picker's Earlier/Later stay under the pointer: the pager sits above what they change, and a pointer press never scrolls", async () => {
+  const s = setup(), { visits, log } = s;
+  const base = s.host.show.bind(s.host);
+  s.host.show = html => { base(html); for (const id of s.ids()) { const el = s.dialog.doc.getElementById(id); if (el) el.scrollIntoView = () => log.push(['scroll', id]); } };
+  const click = (id, detail) => { const el = s.dialog.doc.getElementById(id); assert.ok(el && !el.disabled, `#${id} is on screen and enabled`); for (const fn of el.listeners.click || []) fn({ detail, preventDefault() {} }); };
+  visits.open('meal');
+  for (let step = 1; step <= 5; step++) s.press('meal-prepare');
+  s.press('meal-share'); s.press('meal-share');
+  assert.equal(s.snap().meal.revealed, 2, 'two cooks revealed');
+  const html = s.html(), pager = html.indexOf('<div class="visits-pager">'), title = html.indexOf('id="modal-title"');
+  assert.ok(pager > html.indexOf('class="eyebrow visits-credit"') && pager < title, 'the pager is right under the eyebrow, above the heading');
+  assert.ok(pager < html.indexOf('id="meal-previous"') && html.indexOf('id="meal-previous"') < html.indexOf('id="meal-next"') && html.indexOf('id="meal-next"') < title, 'Previous then Next, in the pager');
+  assert.ok(html.indexOf('id="meal-prepare"') > title, 'the preparation stays in the tray');
+  assert.match(html, /<img alt="[^"]*" src="data:image\/svg\+xml[^"]*" width="720" height="480">/, "the picture's box is reserved before it decodes");
+  // A pointer press (click detail 1): the next cook, focus on the preparation as Godot's select_cook, and no scroll.
+  let scrolls = s.count('scroll'), selected = s.snap().meal.selected;
+  click('meal-next', 1);
+  assert.deepEqual([s.snap().meal.selected, s.focused(), s.count('scroll')], [(selected + 1) % 2, 'meal-prepare', scrolls]);
+  click('meal-next', 2);
+  assert.deepEqual([s.snap().meal.selected, s.count('scroll')], [selected, scrolls], "the gesture's second press acts too, still without a scroll");
+  click('meal-previous', 1);
+  assert.equal(s.count('scroll'), scrolls);
+  // A keyboard press (detail 0) shows the focused preparation.
+  click('meal-previous', 0);
+  assert.deepEqual([s.focused(), s.count('scroll'), log.filter(e => e[0] === 'scroll').at(-1)], ['meal-prepare', scrolls + 1, ['scroll', 'meal-prepare']]);
+  s.press('meal-explore');
+  // The picker: Earlier and Later after the entries, as Godot's; a pointer press turns the page and focuses its first entry unscrolled.
+  visits.open('story'); await flush();
+  s.press('power-more'); await flush();
+  const picker = s.html();
+  assert.ok(picker.indexOf('id="picker-entry-1"') < picker.indexOf('id="picker-earlier"'), "Godot's order: the entries, then Earlier and Later");
+  scrolls = s.count('scroll');
+  click('picker-later', 1);
+  assert.deepEqual([s.snap().stories.picker.page, s.focused(), s.count('scroll')], [1, 'picker-entry-2', scrolls]);
+  click('picker-earlier', 0);
+  assert.deepEqual([s.snap().stories.picker.page, s.focused(), s.count('scroll')], [0, 'picker-entry-0', scrolls + 1]);
+});
+
 test("Cook & Share: Escape closes with Godot's line, and sync() closes it silently once the block is no longer open", () => {
   const s = setup(), { visits, io, log } = s;
   visits.open('meal');
@@ -483,11 +524,13 @@ test('Story opens Power, or the active episode it delegates to; resume opens the
   assert.deepEqual(s.lastOf('render'), ['render', 'power', expected]);
   assert.deepEqual(s.lastOf('returnTo'), ['returnTo', 'story-entry']);
   assert.equal(s.snap().screen, 'power');
-  // The first Story open fetches the place file for Power's Larkin view and the Election Walk: Godot's line, then the loading line.
+  // The first Story open fetches the place file for Power's Larkin view and the Election Walk, quietly: the hub shows nothing that
+  // needs it, so Godot's opening line stays the last word in the status line and nothing is redrawn once the file is ready.
   assert.deepEqual(log.filter(e => e[0] === 'load').map(e => e[1]), ['power_place.json']);
-  assert.deepEqual(log.filter(e => e[0] === 'status').slice(-2).map(e => e[1]), [expected, K.VISITS_FORK_TEXT.loading]);
+  assert.equal(log.filter(e => e[0] === 'status').at(-1)?.[1], expected, "Godot's opening line, no loading line");
   await flush();
   assert.deepEqual([s.snap().data.power_place, s.count('render')], ['ready', 1], 'the hub shows nothing that needs it, so nothing is redrawn');
+  assert.equal(log.filter(e => e[0] === 'status' || e[0] === 'toast').at(-1)?.[1], expected, 'the opening line survives the prefetch');
   s.press('power-back');
   // A later Story open finds it ready; one that failed is tried again.
   visits.open('story');
@@ -518,6 +561,32 @@ test('Story opens Power, or the active episode it delegates to; resume opens the
   assert.equal(visits.open('story'), false);
   assert.deepEqual(log.at(-1), ['toast', power.TEXT.open_story.refuse]);
   await flush();
+});
+
+test("a Story-open prefetch that fails says nothing; the picker, which needs the file, loads it again with its loading line", async () => {
+  const s = setup({ files: false }), { visits, log, io } = s;
+  const expected = picker.openEpisode(picker.initialStories(), 'power', s.kit().ctx()).announce;
+  assert.equal(visits.open('story'), true);
+  await flush();
+  assert.deepEqual(s.snap().data.power_place, 'error');
+  assert.equal(log.filter(e => e[0] === 'status' || e[0] === 'toast').at(-1)?.[1], expected, 'no loading line and no error line over the hub');
+  assert.equal(s.count('render'), 1, 'and no redraw');
+  // More stories: the picker needs both files (Election), so it loads the failed one again, out loud, and redraws once ready.
+  io.files = { 'power_place.json': POWER_PLACE, 'voting_places.json': VOTING };
+  s.press('power-more');
+  assert.equal(s.snap().screen, 'picker');
+  assert.deepEqual(log.filter(e => e[0] === 'load').map(e => e[1]), ['power_place.json', 'power_place.json', 'voting_places.json']);
+  assert.equal(log.filter(e => e[0] === 'status').at(-1)?.[1], K.VISITS_FORK_TEXT.loading);
+  await flush();
+  assert.deepEqual(s.snap().data, { power_place: 'ready', voting_places: 'ready' });
+  // A Story open over a failed prefetch tries it again (quietly).
+  const t2 = setup({ files: false });
+  t2.visits.open('story'); await flush();
+  t2.press('power-back');
+  t2.io.files = { 'power_place.json': POWER_PLACE };
+  t2.visits.open('story'); await flush();
+  assert.deepEqual([t2.log.filter(e => e[0] === 'load').length, t2.snap().data.power_place], [2, 'ready']);
+  assert.notEqual(t2.log.filter(e => e[0] === 'status').at(-1)?.[1], K.VISITS_FORK_TEXT.loading);
 });
 
 test('the picker: opened from an episode, the visible page only, Earlier and Later, and Election once both files are ready', async () => {

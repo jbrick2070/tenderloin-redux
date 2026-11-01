@@ -33,10 +33,29 @@ export const esc = text => String(text ?? '').replace(/[&<>\x22]/g, ch => `&${EN
 export const paragraphs = text => (text == null || text === '' ? '' : String(text).split('\n').map(line => `<p>${esc(line)}</p>`).join(''));
 export const dataURI = svg => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(String(svg));
 const IMAGE_DATA = /^data:image\/[a-z0-9.+-]+[;,]/i;
-// The picture, only ever a data: image (img-src allows no other origin). overlay is HTML over it: buttons and labels placed in
-// percentages of the picture, which is drawn at full width without letterboxing so they stay on their marks.
+// The size of a data: SVG, from its root tag's width and height (else its viewBox), or null: only a plain positive number up to
+// four digits (px allowed) is taken. With it the <img> box is reserved before the image decodes, so a redraw never collapses
+// the screen for a moment and moves the controls below the picture.
+const SIZE = /^(\d{1,4}(?:\.\d{1,3})?)(?:px)?$/, VIEW_BOX = /^\s*-?[\d.]+[\s,]+-?[\d.]+[\s,]+(\d{1,4}(?:\.\d{1,3})?)[\s,]+(\d{1,4}(?:\.\d{1,3})?)\s*$/;
+function svgSize(src) {
+  const at = src.search(/,/), end = src.indexOf('%3E', at);
+  if (at < 0 || end < 0) return null;
+  let tag;
+  try { tag = decodeURIComponent(src.slice(at + 1, end)); } catch { return null; }
+  if (!/^\s*<svg\b/.test(tag)) return null;
+  const attr = name => new RegExp(`\\s${name}="([^"]*)"`).exec(tag)?.[1] ?? '';
+  let width = SIZE.exec(attr('width'))?.[1], height = SIZE.exec(attr('height'))?.[1];
+  if (!width || !height) [, width, height] = VIEW_BOX.exec(attr('viewBox')) ?? [];
+  return +width > 0 && +height > 0 ? { width: +width, height: +height } : null;
+}
+// A click from a pointer (mouse, touch, pen) has a detail of 1 or more; Enter, Space and assistive activation give 0.
+export const pointerPress = event => Number(event?.detail) > 0;
+// The picture, only ever a data: image (img-src allows no other origin), with its own width and height when the SVG says them.
+// overlay is HTML over it: buttons and labels placed in percentages of the picture, which is drawn at full width without
+// letterboxing so they stay on their marks.
 export function figure({ src, alt = '', overlay = '' } = {}) {
-  const img = typeof src === 'string' && IMAGE_DATA.test(src) ? `<img alt="${esc(alt)}" src="${esc(src)}">` : '';
+  const data = typeof src === 'string' && IMAGE_DATA.test(src), size = data ? svgSize(src) : null;
+  const img = data ? `<img alt="${esc(alt)}" src="${esc(src)}"${size ? ` width="${size.width}" height="${size.height}"` : ''}>` : '';
   return `<figure class="visits-picture${overlay ? ' visits-overlaid' : ''}">${img}${overlay ? `<div class="visits-overlay">${overlay}</div>` : ''}</figure>`;
 }
 // The Sources reader: reading references are links that open in a new tab with no referrer; nothing is fetched.
@@ -76,9 +95,11 @@ export function btn(b) {
 
 // One visits screen. The eyebrow comes first so its text keeps clear of × (style.css #modal-body > section > .eyebrow:first-child);
 // #visits-reader is how holds() knows the screen is still in the dialog. reader is Godot's text (paragraphs); readerHTML,
-// when given, is built HTML for the reader instead (sourceLinesHTML). headingEntry, picture, extra and tray are HTML.
-export function frameHTML({ kind = '', credit = '', title = '', headingEntry = '', picture = '', reader = '', readerHTML, tray = '', extra = '' } = {}) {
-  return `<section class="visits" data-visits="${esc(kind)}"><p class="eyebrow visits-credit">${esc(credit)}</p><h2 id="modal-title" tabindex="-1">${esc(title)}</h2>`
+// when given, is built HTML for the reader instead (sourceLinesHTML). pager, headingEntry, picture, extra and tray are HTML.
+// pager is a row of rapid controls that redraw this same screen (Cook & Share's Previous/Next cook): it sits right under the
+// eyebrow, above the heading, picture and text its press changes, so the second press of a fast double press finds it in place.
+export function frameHTML({ kind = '', credit = '', title = '', pager = '', headingEntry = '', picture = '', reader = '', readerHTML, tray = '', extra = '' } = {}) {
+  return `<section class="visits" data-visits="${esc(kind)}"><p class="eyebrow visits-credit">${esc(credit)}</p>${pager ? `<div class="visits-pager">${pager}</div>` : ''}<h2 id="modal-title" tabindex="-1">${esc(title)}</h2>`
     + `${headingEntry ? `<div class="visits-heading-entry">${headingEntry}</div>` : ''}${picture}`
     + `<div id="visits-reader" class="visits-reader" tabindex="0" role="region" aria-label="Story text">${readerHTML ?? paragraphs(reader)}</div>${extra}<div class="visits-tray">${tray}</div></section>`;
 }
@@ -100,6 +121,7 @@ export const STYLE = `
 .visits-reader:focus-visible{outline:3px solid #a35e27}
 .visits-reader p{margin:.35em 0;font-size:13px;line-height:1.6;color:var(--ink);overflow-wrap:anywhere}
 .visits-tray{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:6px}
+.visits-pager{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .visits button{min-height:44px;min-width:44px;white-space:normal;overflow-wrap:anywhere}
 .visits [aria-pressed=true]{background:#d5e5ca;border:2px solid #23675c;color:var(--ink);padding:11px 14px}
 .visits a.source-link{display:inline-flex;align-items:center;min-height:44px;overflow-wrap:anywhere}
@@ -157,10 +179,13 @@ export function createKit(host, session = freshSession(), routes = {}) {
   const $ = id => doc.getElementById(id);
   function on(id, type, fn) { const el = $(id); if (!el) return false; el.addEventListener(type, fn); return true; }
   const bind = (id, fn) => on(id, 'click', fn);
-  function focus(id) {
+  // { scroll: false } moves the focus without scrolling the dialog: after a pointer press on a rapid control, which must stay
+  // under the pointer for the gesture's second press (keyboard use keeps the scroll that shows the focused control).
+  function focus(id, { scroll = true } = {}) {
     const el = id === 'reader' ? $('visits-reader') : $(id);
     if (!el) return false;
-    el.focus?.({ preventScroll: true }); el.scrollIntoView?.({ block: 'nearest' });
+    el.focus?.({ preventScroll: true });
+    if (scroll) el.scrollIntoView?.({ block: 'nearest' });
     return true;
   }
   const bump = () => (session.version = (session.version || 0) + 1);
@@ -171,7 +196,13 @@ export function createKit(host, session = freshSession(), routes = {}) {
     if (!screen || (kind != null && kind !== screen)) return false;
     return !!modal.open && modal.contains($('visits-reader'));
   }
-  function show(kind, html) { session.screen = kind; bump(); host.show(html); }
+  // A screen drawn again in place keeps the dialog's scroll position (game.js show() puts it back to the top when focus was not
+  // in the new content), so a press that redraws its own screen never moves the controls under the pointer.
+  function show(kind, html) {
+    const again = holds(kind), top = again ? modal.scrollTop : undefined;
+    session.screen = kind; bump(); host.show(html);
+    if (again && Number.isFinite(top) && modal.scrollTop !== top) modal.scrollTop = top;
+  }
   // Close the screen with a toast; the screen is cleared first, so a close listener sees none (Godot's announcement goes last).
   function leave(text, returnTarget) {
     const held = holds();
@@ -239,7 +270,10 @@ export function createKit(host, session = freshSession(), routes = {}) {
   // Call when a screen that needs the files has been drawn. Returns true when nothing is waiting (every named file ready or
   // invalid); otherwise the screen's status line says the fork's loading line, and once the files settle, onReady() redraws
   // it only if it still holds the dialog, followed by the fork's error line when one could not load.
-  function ensureData(names, onReady) {
+  // { quiet: true } is a prefetch that no visible control waits on: it loads (or joins a load) and says nothing, neither the
+  // loading line nor the error line, and never calls onReady. A file it failed to load is loaded again, out loud, by the next
+  // screen that needs it (error is retried, as above).
+  function ensureData(names, onReady, { quiet = false } = {}) {
     const kind = session.screen, waits = [];
     for (const name of names ?? []) {
       const key = dataKey(name), entry = session.data?.[key];
@@ -248,6 +282,7 @@ export function createKit(host, session = freshSession(), routes = {}) {
       waits.push(entry.status === 'loading' && inFlight?.entry === entry ? inFlight.settled : load(key));
     }
     if (!waits.length) return true;
+    if (quiet) return false;
     if (kind && holds(kind)) host.status(VISITS_FORK_TEXT.loading);
     Promise.all(waits).then(() => {
       if (!kind || !holds(kind)) return;
