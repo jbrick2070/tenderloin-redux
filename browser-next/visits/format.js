@@ -1,4 +1,5 @@
 // GDScript string formatting for copied Godot templates. Pure; no DOM.
+import { format, FLAVORS } from '../i18n.js';
 
 // Godot 4 prints a float with up to 14 significant decimals, trailing zeros removed, and
 // keeps ".0" on a whole number (String::num, then Variant's num_real). Wrap a value with
@@ -32,6 +33,10 @@ export function gdf(template, args = []) {
     return Number(v).toFixed(Number(decimals));
   });
 }
+// gdf for text a player reads (docs/I18N_PLAN.md 2.7): the template is looked up in the active catalog first. English is gdf
+// itself, so it still throws on a missing argument; gdf stays the formatter of markup and SVG, which is never looked up.
+const VISITS = { ...FLAVORS.visits, legacy: gdf };
+export const gdfText = (template, args = []) => format(template, args, VISITS);
 
 // Godot String.capitalize(): split camelCase, letter/digit boundaries and underscores into
 // words, lowercase them, then uppercase each word's first letter ("1961 live jazz LP" -> "1961 Live Jazz Lp").

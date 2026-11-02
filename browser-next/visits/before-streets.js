@@ -1,9 +1,11 @@
 // Before These Streets (godot/before_streets.gd), pure. Visit-only state; nothing is saved.
+// Every word a player reads goes through the active catalog (L, gdfText, compose); English is unchanged. gdf stays for the SVG.
 import { BEFORE, GODOT_TEXT } from './text.js';
-import { gdf } from './format.js';
+import { gdf, gdfText } from './format.js';
+import { L, compose, COMPOSE_TEXT } from './compose.js';
 
 export const { FRAME, VIEWS, REPLIES, SOURCES } = BEFORE;
-const T = GODOT_TEXT['before_streets.gd'];
+const T = GODOT_TEXT['before_streets.gd'], C = COMPOSE_TEXT.before;
 export const TEXT = T;
 
 export function initialBefore() {
@@ -25,14 +27,14 @@ export function changeBefore(b, action, ctx = {}) {
   switch (action?.type) {
     case 'open': {
       if (b.open) return { state: b, announce: '' };
-      if (!canOpen(ctx)) return { state: b, announce: T.open_opening.refuse, refused: true };
+      if (!canOpen(ctx)) return { state: b, announce: L(T.open_opening.refuse), refused: true };
       s.open = true; s.fromStartup = !!ctx.storyCard && !!ctx.startupCard;
       return { state: s, announce: announcement(s) };
     }
     case 'close':
       if (!b.open) return { state: b, announce: '' };
       s.open = false;
-      return { state: s, announce: action.announce === false ? '' : FRAME + T.close_opening.closed };
+      return { state: s, announce: action.announce === false ? '' : compose(C.close, { frame: L(FRAME) }) };
     case 'view': {
       const i = action.index;
       if (!b.open || !Number.isInteger(i) || i < 0 || i >= VIEWS.length) return { state: b, announce: '' };
@@ -58,37 +60,37 @@ export function changeBefore(b, action, ctx = {}) {
 
 // Godot refresh(): the reader text.
 export function readerText(b) {
-  if (b.sources) return FRAME + '\n\n' + SOURCES;
+  if (b.sources) return L(FRAME) + '\n\n' + L(SOURCES);
   let text = '';
-  if (b.observation >= 0) text = REPLIES[b.observation] + '\n\n';
-  text += FRAME + '\n\n' + VIEWS[b.view] + '\n\n';
-  text += b.observation >= 0 ? T.refresh.observed : T.refresh.prompt;
+  if (b.observation >= 0) text = L(REPLIES[b.observation]) + '\n\n';
+  text += L(FRAME) + '\n\n' + L(VIEWS[b.view]) + '\n\n';
+  text += L(b.observation >= 0 ? T.refresh.observed : T.refresh.prompt);
   return text;
 }
 export function artDescription(view, observation) {
   const A = T.art_description;
-  return gdf(A.template, [view + 1, [A.view0, A.view1, A.view2][view], observation >= 0 ? A.card : A.none]);
+  return gdfText(A.template, [view + 1, L([A.view0, A.view1, A.view2][view]), L(observation >= 0 ? A.card : A.none)]);
 }
 export function announcement(b) {
-  return T.refresh.announce + (b.sources ? SOURCES : artDescription(b.view, b.observation) + ' ' + (b.observation >= 0 ? REPLIES[b.observation] : VIEWS[b.view]));
+  return compose(C.announce, { text: b.sources ? L(SOURCES) : artDescription(b.view, b.observation) + ' ' + L(b.observation >= 0 ? REPLIES[b.observation] : VIEWS[b.view]) });
 }
 // Godot refresh(): button labels, disabled and pressed states, the tooltip.
 export function beforeView(b) {
   const S = T.setup, R = T.refresh;
   return {
-    title: S.title, subtitle: S.subtitle, text: readerText(b), description: artDescription(b.view, b.observation),
+    title: L(S.title), subtitle: L(S.subtitle), text: readerText(b), description: artDescription(b.view, b.observation),
     buttons: [
-      { id: 'previous', label: S.previous, disabled: b.view === 0 },
-      { id: 'gust', label: S.gust, disabled: b.view === VIEWS.length - 1 },
-      { id: 'shapes', label: S.shapes, pressed: b.observation === 0 },
-      { id: 'time', label: S.time, pressed: b.observation === 1 },
-      { id: 'sources', label: b.sources ? R.backToScene : R.sources },
-      { id: 'back', label: b.fromStartup ? R.backToStart : R.backToBlock, tooltip: R.backTip },
+      { id: 'previous', label: L(S.previous), disabled: b.view === 0 },
+      { id: 'gust', label: L(S.gust), disabled: b.view === VIEWS.length - 1 },
+      { id: 'shapes', label: L(S.shapes), pressed: b.observation === 0 },
+      { id: 'time', label: L(S.time), pressed: b.observation === 1 },
+      { id: 'sources', label: L(b.sources ? R.backToScene : R.sources) },
+      { id: 'back', label: L(b.fromStartup ? R.backToStart : R.backToBlock), tooltip: L(R.backTip) },
     ],
   };
 }
 // The SOURCES text split into lines, with the reading-reference URLs marked (links, never fetched).
-export const sourceLines = () => SOURCES.split('\n').map(line => ({ text: line, url: /^https:\/\//.test(line) ? line : null }));
+export const sourceLines = () => L(SOURCES).split('\n').map(line => ({ text: line, url: /^https:\/\//.test(line) ? line : null }));
 
 // Godot artwork(index, choice), verbatim: finite deterministic views as an SVG string.
 export function artwork(index, choice) {

@@ -1,10 +1,12 @@
 // Cook & Share (godot/shared_meal.gd, shared_meal_data.gd), pure. Visit-only; nothing is saved.
+// Every word a player reads goes through the active catalog (L, gdfText, compose); English is unchanged. gdf stays for the SVG.
 import { MEAL, MEAL_DATA, GODOT_TEXT } from './text.js';
-import { gdf } from './format.js';
+import { gdf, gdfText } from './format.js';
+import { L, compose, COMPOSE_TEXT } from './compose.js';
 
 export const { SERVING, TABLE_SLOTS } = MEAL;
 export const { RECIPES } = MEAL_DATA;
-const T = GODOT_TEXT['shared_meal.gd'];
+const T = GODOT_TEXT['shared_meal.gd'], C = COMPOSE_TEXT.meal, J = COMPOSE_TEXT.joiners;
 export const TEXT = T;
 
 export function initialMeal() {
@@ -19,10 +21,10 @@ export const sharedCount = m => Object.keys(m.shared).length;
 // and fewer than 4 results). Returns the refusal text or ''.
 export function mealRefusal(ctx = {}) {
   const O = T.open_meal;
-  if (!ctx.opened) return O.closed;
-  if (ctx.storyActive) return O.story;
-  if (ctx.busy || ctx.walking) return O.busy;
-  if (ctx.hostingInProgress) return O.hosting;
+  if (!ctx.opened) return L(O.closed);
+  if (ctx.storyActive) return L(O.story);
+  if (ctx.busy || ctx.walking) return L(O.busy);
+  if (ctx.hostingInProgress) return L(O.hosting);
   return '';
 }
 export const currentPreparationShared = m => has(m, m.selected) && m.shared[m.selected].generation === m.generations[m.selected];
@@ -49,7 +51,7 @@ export function changeMeal(m, action, ctx = {}) {
     case 'close': {
       if (!m.open) return none;
       const s = copy(m); s.open = false;
-      return { state: s, announce: action.announce === false ? '' : T.close_meal.announce };
+      return { state: s, announce: action.announce === false ? '' : L(T.close_meal.announce) };
     }
     case 'select': {
       const i = action.index;
@@ -68,7 +70,7 @@ export function changeMeal(m, action, ctx = {}) {
     case 'advance': {
       if (!m.open) return none;
       const s = copy(m), i = m.selected;
-      if (s.steps[i] >= 5) { s.steps[i] = 0; s.generations[i] += 1; s.message = T.advance.again; }
+      if (s.steps[i] >= 5) { s.steps[i] = 0; s.generations[i] += 1; s.message = L(T.advance.again); }
       else { s.steps[i] += 1; s.message = ''; }
       return { state: s, announce: cue(s) };
     }
@@ -84,7 +86,7 @@ export function changeMeal(m, action, ctx = {}) {
       s.shared[i] = { serving: m.servings[i], placement: m.placements[i], generation: m.generations[i] };
       if (first && i + 1 < 4) { s.revealed = Math.max(s.revealed, i + 2); s.invitation = i + 1; }
       else if (first && sharedCount(s) === 4) s.invitation = 0;
-      s.message = RECIPES[i].recognition[m.servings[i]];
+      s.message = L(RECIPES[i].recognition[m.servings[i]]);
       return { state: s, announce: cue(s) };
     }
     case 'reset': return { state: initialMeal(), announce: '' };
@@ -95,26 +97,26 @@ export function changeMeal(m, action, ctx = {}) {
 // Godot refresh(): every label and the reader.
 export function mealView(m) {
   const R = T.refresh, i = m.selected, recipe = RECIPES[i], complete = m.steps[i] >= 5, served = currentPreparationShared(m), target = followTarget(m);
-  const heading = recipe.cook + ' | ' + recipe.title;
-  let text = recipe.welcome + '\n' + recipe.tradition + '. ' + recipe.ingredients;
-  if (!complete) text += gdf(R.step, [m.steps[i] + 1, recipe.steps[m.steps[i]][1]]);
-  else if (m.message) text += '\n' + recipe.cook + ': "' + m.message + '"';
-  else text += R.ready;
+  const cook = L(recipe.cook), heading = compose(J.pipe, { left: cook, right: L(recipe.title) });
+  let text = L(recipe.welcome) + '\n' + compose(C.tradition, { tradition: L(recipe.tradition), ingredients: L(recipe.ingredients) });
+  if (!complete) text += gdfText(R.step, [m.steps[i] + 1, L(recipe.steps[m.steps[i]][1])]);
+  else if (m.message) text += '\n' + compose(C.said, { cook, message: m.message });
+  else text += L(R.ready);
   if (served) {
-    text += gdf(R.shared, [sharedCount(m), recipe.invite]);
-    if (target >= 0) text += R.follow + RECIPES[target].cook + R.retains;
+    text += gdfText(R.shared, [sharedCount(m), L(recipe.invite)]);
+    if (target >= 0) text += compose(C.follow, { cook: L(RECIPES[target].cook) });
   }
-  text += '\n' + recipe.source + '\n' + recipe.url + R.condensed;
+  text += '\n' + L(recipe.source) + '\n' + recipe.url + L(R.condensed);
   const choices = !served || !complete;
   return {
-    heading, credit: T.setup.credit, text,
-    prepare: complete ? R.again : recipe.steps[m.steps[i]][0],
-    previous: { label: T.setup.previous, disabled: m.revealed < 2, name: R.previousName + recipe.cook },
-    next: { label: T.setup.next, disabled: m.revealed < 2, name: R.nextName + recipe.cook },
-    servings: SERVING.map((label, k) => ({ label, pressed: m.servings[i] === k, visible: choices })),
-    placements: [T.setup.near, T.setup.other].map((label, k) => ({ label, pressed: m.placements[i] === k, visible: choices })),
-    share: { label: complete && served && target >= 0 ? R.followLabel : R.shareLabel, disabled: !complete },
-    explore: T.setup.explore,
+    heading, credit: L(T.setup.credit), text,
+    prepare: L(complete ? R.again : recipe.steps[m.steps[i]][0]),
+    previous: { label: L(T.setup.previous), disabled: m.revealed < 2, name: compose(C.previousName, { cook }) },
+    next: { label: L(T.setup.next), disabled: m.revealed < 2, name: compose(C.nextName, { cook }) },
+    servings: SERVING.map((label, k) => ({ label: L(label), pressed: m.servings[i] === k, visible: choices })),
+    placements: [T.setup.near, T.setup.other].map((label, k) => ({ label: L(label), pressed: m.placements[i] === k, visible: choices })),
+    share: { label: L(complete && served && target >= 0 ? R.followLabel : R.shareLabel), disabled: !complete },
+    explore: L(T.setup.explore),
     description: artDescription(i, m.steps[i], m.servings[i]),
     art: { index: i, stage: m.steps[i], style: m.servings[i] },
   };
@@ -122,15 +124,16 @@ export function mealView(m) {
 // Godot's announcement cue (refresh(true)). "Step %d of5" is Godot's own wording, copied verbatim.
 export function cue(m) {
   const R = T.refresh, i = m.selected, recipe = RECIPES[i], complete = m.steps[i] >= 5, served = currentPreparationShared(m);
-  let c = recipe.cook + ' | ' + recipe.title + '. ';
-  if (!complete) c += gdf(R.cueStep, [m.steps[i] + 1, recipe.steps[m.steps[i]][0], recipe.steps[m.steps[i]][1]]);
-  else if (m.message) c += m.message + (served ? ' ' + recipe.invite : '');
-  else c += R.cueReady;
-  return c;
+  const heading = compose(J.pipe, { left: L(recipe.cook), right: L(recipe.title) });
+  let c;
+  if (!complete) c = gdfText(R.cueStep, [m.steps[i] + 1, L(recipe.steps[m.steps[i]][0]), L(recipe.steps[m.steps[i]][1])]);
+  else if (m.message) c = m.message + (served ? ' ' + L(recipe.invite) : '');
+  else c = L(R.cueReady);
+  return compose(J.sentence, { heading, text: c });
 }
 export function artDescription(index, stage, style) {
   const A = T.art_description;
-  return A.prefix + [A.shape0, A.shape1, A.shape2, A.shape3][index] + gdf(A.template, [stage, SERVING[style]]);
+  return compose(C.artDescription, { shape: L([A.shape0, A.shape1, A.shape2, A.shape3][index]), stage: Math.trunc(Number(stage)), serving: L(SERVING[style]) });
 }
 // Godot update_world(): the dishes on the map, while the block is open, something is shared
 // and no story visit is active. `other` is the far-edge placement.

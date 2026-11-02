@@ -1,8 +1,11 @@
 // Neighborhood surprises (godot/main.gd 266-405, 5683-5771, 6006-6020, 6604-6617, 10560-10598), pure.
 // `found` is the saved list of discovered ids (Godot discovered_surprises); this module never
 // writes the save. Guide index and the last hinted id are visit-only (game.js keeps them).
+// Every word a player reads goes through the active catalog (L, gdfText); English is unchanged. The memory lines stay English
+// literals (characters.js SURPRISE_MEMORY holds the same msgids) and are looked up where they are shown.
 import { MAIN, GODOT_TEXT, web } from './text.js';
-import { gdf, gdCapitalize } from './format.js';
+import { gdfText, gdCapitalize } from './format.js';
+import { L, unquote } from './compose.js';
 import { SURPRISE_SITES } from './positions.js';
 
 export const SURPRISE_IDS = MAIN.NEIGHBORHOOD_SURPRISE_IDS;
@@ -98,40 +101,40 @@ export function memoryLine(neighborId, found) {
 // sparks: Godot spark_count(), which the fork may not track (default 0).
 export function inspect(found, id, { openNeighborId = null, sparks = 0, guideIdx = -1, lastHinted = '' } = {}) {
   if (!Object.hasOwn(SURPRISES, id)) return null;
-  const I = T.inspect_neighborhood_surprise, rec = SURPRISES[id];
+  const I = T.inspect_neighborhood_surprise, rec = SURPRISES[id], text = value => (value ? L(value) : '');
   const newly = !has(found, id), next = discover(found, id), total = SURPRISE_IDS.length;
-  const title = rec.title ?? id, badge = rec.badge ?? I.badge, speaker = rec.speaker ?? I.speaker, speech = rec.speech ?? '', summary = rec.summary ?? '';
-  const keepsake = KEEPSAKES[id]?.label ?? '';
+  const title = L(rec.title ?? id), badge = L(rec.badge ?? I.badge), speaker = L(rec.speaker ?? I.speaker), speech = text(rec.speech), summary = text(rec.summary);
+  const keepsake = text(KEEPSAKES[id]?.label);
   const allFound = next.length >= total;
-  const tag = allFound ? I.all : gdf(I.tag, [next.length, total]);
-  const burstSub = keepsake ? gdf(I.burstKeepsake, [tag, sparks, keepsake]) : gdf(I.burst, [tag, sparks, badge]);
+  const tag = allFound ? L(I.all) : gdfText(I.tag, [next.length, total]);
+  const burstSub = keepsake ? gdfText(I.burstKeepsake, [tag, sparks, keepsake]) : gdfText(I.burst, [tag, sparks, badge]);
   let memory = null;
   if (newly) {
     const paired = KEEPSAKES[id]?.neighbor ?? '';
     if (paired && openNeighborId === paired) {
-      const line = memoryLine(paired, next).replace(/^“/, '').replace(/”$/, '');
-      memory = line ? gdf(I.memory, [NAMES[paired] ?? gdCapitalize(paired), line]) : '';
+      const english = memoryLine(paired, next), line = english ? unquote(L(english)) : '';
+      memory = line ? gdfText(I.memory, [L(NAMES[paired] ?? gdCapitalize(paired)), line]) : '';
     } else memory = '';
   }
-  const line = gdf(I.line, [title, rec.street ?? '', next.length, total]);
-  const keepsakeSuffix = keepsake ? gdf(I.keepsake, [keepsake]) : '';
-  const sub = gdf(W(I.sub), [speaker, speech, summary, keepsakeSuffix]);
+  const line = gdfText(I.line, [title, text(rec.street), next.length, total]);
+  const keepsakeSuffix = keepsake ? gdfText(I.keepsake, [keepsake]) : '';
+  const sub = gdfText(W(I.sub), [speaker, speech, summary, keepsakeSuffix]);
   return {
     found: next, newly, allFound, finale: newly && allFound,
     guideIdx: SURPRISE_IDS.indexOf(id) >= 0 ? SURPRISE_IDS.indexOf(id) : guideIdx,
     lastHinted: lastHinted === id ? '' : lastHinted,
-    heading: newly ? gdf(allFound ? I.finale : I.found, [title]) : null,
+    heading: newly ? gdfText(allFound ? I.finale : I.found, [title]) : null,
     burstSub: newly ? burstSub : null, accent: '#' + (rec.accent ?? 'f8cc58'),
     title, speaker, speech, summary, keepsake, line, sub,
-    info: gdf(I.info, [line, sub]),
-    announce: gdf(I.announce, [line, keepsakeSuffix, speaker, speech]),
+    info: gdfText(I.info, [line, sub]),
+    announce: gdfText(I.announce, [line, keepsakeSuffix, speaker, speech]),
     memory, site: SURPRISE_SITES[id],
   };
 }
 
 // Text that mentions surprises elsewhere in Godot.
-export const conversationLabel = found => gdf(T.conversation_actions.spot, [found.length, SURPRISE_IDS.length]);
-export const progressLabel = (found, sparks = 0) => gdf(T.update_objective_ui.progress, [sparks, found.length]);
+export const conversationLabel = found => gdfText(T.conversation_actions.spot, [found.length, SURPRISE_IDS.length]);
+export const progressLabel = (found, sparks = 0) => gdfText(T.update_objective_ui.progress, [sparks, found.length]);
 // Godot ask_whats_next's explore hint for a speaking neighbor (main.gd:6420-6438). compass(from, to)
 // is story.js compassPhrase. Returns { hint, lastHinted } or null when every surprise is found.
 export function neighborHint(found, speakerId, { player, compass }) {
@@ -140,17 +143,18 @@ export function neighborHint(found, speakerId, { player, compass }) {
   const id = SURPRISE_IDS[i], rec = SURPRISES[id], A = T.ask_whats_next;
   const dir = compass(player, SURPRISE_SITES[id]);
   const personal = (PAIRS[speakerId] ?? []).includes(id);
+  const title = L(rec.title ?? id), street = rec.street ? L(rec.street) : '';
   const hint = personal
-    ? gdf(W(A.pair), [rec.title ?? id, dir, rec.street ?? '', found.length, SURPRISE_IDS.length])
-    : gdf(W(A.next), [rec.title ?? id, dir, rec.street ?? '', found.length, SURPRISE_IDS.length]);
+    ? gdfText(W(A.pair), [title, dir, street, found.length, SURPRISE_IDS.length])
+    : gdfText(W(A.next), [title, dir, street, found.length, SURPRISE_IDS.length]);
   return { hint, lastHinted: id };
 }
 // Keepsake icons beside their paired neighbors once found (Godot update_neighborhood_surprises_3d).
-export const keepsakes = found => SURPRISE_IDS.filter(id => has(found, id)).map(id => ({ id, neighbor: KEEPSAKES[id].neighbor, label: KEEPSAKES[id].label }));
+export const keepsakes = found => SURPRISE_IDS.filter(id => has(found, id)).map(id => ({ id, neighbor: KEEPSAKES[id].neighbor, label: L(KEEPSAKES[id].label) }));
 // Map markers: every surprise at its pinned site; found ones in full accent colour (Godot 1.25x),
 // unfound ones darkened 28%.
 export function markers(found) {
-  return SURPRISE_IDS.map(id => ({ id, ...SURPRISE_SITES[id], title: SURPRISES[id].title, accent: '#' + SURPRISES[id].accent, found: has(found, id) }));
+  return SURPRISE_IDS.map(id => ({ id, ...SURPRISE_SITES[id], title: L(SURPRISES[id].title), accent: '#' + SURPRISES[id].accent, found: has(found, id) }));
 }
 export function darken(hex, amount = 0.28) {
   const n = parseInt(hex.replace('#', ''), 16), f = c => Math.round(c * (1 - amount));

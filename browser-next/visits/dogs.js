@@ -1,12 +1,15 @@
 // Two Dogs Home (godot/dog_story.gd), pure. Visit-only; no real lost-pet records.
 // Shared episode context `ctx` (see picker.js): { opened, busy, walking, player, activeId,
 // musicPlaying, sites: { dogs } }. Distances are 2D pixels (5 px = 1 m).
+// Every word a player reads goes through the active catalog (L, gdfText, compose; English is unchanged); ids, logic and the
+// state's message stay as they were (a message composed before a language switch keeps its language, plan R9).
 import { DOGS, GODOT_TEXT } from './text.js';
-import { gdf } from './format.js';
+import { gdfText } from './format.js';
+import { L, compose, COMPOSE_TEXT } from './compose.js';
 import { DOG_GOALS, DOG_SEARCH, DOG_OWNERS, PIXELS_PER_METRE } from './positions.js';
 
 export const { NAMES, DESCRIPTIONS, LEADS, NOTES } = DOGS;
-const T = GODOT_TEXT['dog_story.gd'];
+const T = GODOT_TEXT['dog_story.gd'], C = COMPOSE_TEXT.dogs, J = COMPOSE_TEXT.joiners;
 export const TEXT = T;
 export const ID = 'dogs';
 export const ARRIVAL = 2.0 * PIXELS_PER_METRE; // near(): within 2 m of the lead's goal
@@ -24,7 +27,7 @@ const matchedCount = d => ((d.found & 1) !== 0 ? 1 : 0) + ((d.found & 2) !== 0 ?
 // Godot open_story's refusal ('' when it may open).
 export function openRefusal(d, ctx = {}) {
   if (d.open) return '';
-  return !available(ctx) || otherActive(ctx) || ctx.busy || ctx.walking ? T.open_story.refuse : '';
+  return !available(ctx) || otherActive(ctx) || ctx.busy || ctx.walking ? L(T.open_story.refuse) : '';
 }
 export const cancelIntent = d => ({ ...d, traveling: false });
 export const resetSession = d => ({ ...initialDogs(), open: d.open });
@@ -42,7 +45,7 @@ export function changeDogs(d, action, ctx = {}) {
     }
     case 'close':
       if (!d.open) return none;
-      return { state: { ...d, open: false }, announce: action.announce === false ? '' : T.close_story.announce };
+      return { state: { ...d, open: false }, announce: action.announce === false ? '' : L(T.close_story.announce) };
     case 'profile': {
       const i = action.index;
       if (!d.open || (i !== 0 && i !== 1)) return none;
@@ -54,14 +57,14 @@ export function changeDogs(d, action, ctx = {}) {
     case 'lead': {
       const i = action.index;
       if (!d.open || !d.active || !Number.isInteger(i) || i < 0 || i > 2) return none;
-      return out({ ...d, lead: i, infoView: false, message: T.choose_lead.chose + LEADS[i] + T.choose_lead.choseTail });
+      return out({ ...d, lead: i, infoView: false, message: compose(C.chose, { lead: L(LEADS[i]) }) });
     }
     case 'begin':
       if (!d.open || d.active || otherActive(ctx) || !available(ctx)) return none;
-      return out({ ...d, active: true, won: false, found: 0, lead: -1, message: T.begin.begun });
+      return out({ ...d, active: true, won: false, found: 0, lead: -1, message: L(T.begin.begun) });
     case 'end':
       if (!d.open) return none;
-      return out({ ...resetSession(d), message: T.end_session.ended });
+      return out({ ...resetSession(d), message: L(T.end_session.ended) });
     case 'walk': {
       if (!d.open || !d.active || d.lead < 0) return none;
       if (near(d, ctx)) return out(d);
@@ -69,7 +72,7 @@ export function changeDogs(d, action, ctx = {}) {
     }
     case 'blocked': {
       // A refused route (walk_to_point false) reopens the screen; a stopped walk does not.
-      const s = { ...cancelIntent(d), message: T.blocked_route.blocked };
+      const s = { ...cancelIntent(d), message: L(T.blocked_route.blocked) };
       return { state: action.reopen ? { ...s, open: true } : s, announce: s.message };
     }
     case 'arrived': {
@@ -84,15 +87,15 @@ export function changeDogs(d, action, ctx = {}) {
     case 'match': {
       if (!d.open || !d.active || !near(d, ctx) || d.won) return none;
       const s = { ...d }; let reunited = false;
-      const M = T.match_dog;
+      const M = T.match_dog, name = L(NAMES[d.profile]);
       if (d.lead === 2) {
-        if (d.found !== 3) s.message = M.noDog;
-        else { s.won = true; reunited = true; s.message = M.reunion; }
-      } else if (d.lead !== d.profile) s.message = M.differs + DESCRIPTIONS[d.lead] + M.differs2 + NAMES[d.profile] + M.differs3;
-      else if ((d.found & (1 << d.profile)) !== 0) s.message = NAMES[d.profile] + M.already;
+        if (d.found !== 3) s.message = L(M.noDog);
+        else { s.won = true; reunited = true; s.message = L(M.reunion); }
+      } else if (d.lead !== d.profile) s.message = compose(C.differs, { observed: L(DESCRIPTIONS[d.lead]), name });
+      else if ((d.found & (1 << d.profile)) !== 0) s.message = compose(C.already, { name });
       else {
         s.found = d.found | (1 << d.profile);
-        s.message = NAMES[d.profile] + M.matched + (s.found === 3 ? M.both : M.next);
+        s.message = compose(s.found === 3 ? C.matchedBoth : C.matchedNext, { name });
       }
       return { ...out(s), reunited };
     }
@@ -104,28 +107,30 @@ export function changeDogs(d, action, ctx = {}) {
 // Godot refresh(): heading, reader and the 11 buttons in Godot's grid order.
 export function dogsView(d, ctx = {}) {
   const R = T.refresh, S = T.setup;
-  const heading = gdf(R.heading, [matchedCount(d), d.won ? R.headingWon : '']);
-  let text = R.intro;
+  const heading = gdfText(R.heading, [matchedCount(d), d.won ? L(R.headingWon) : '']);
+  let text = L(R.intro);
   if (d.active) {
-    text = NOTES[d.profile] + '\n' + NAMES[d.profile] + ': ' + DESCRIPTIONS[d.profile] + '.\n';
-    text += R.lead + (d.lead >= 0 ? LEADS[d.lead] : R.none) + '. ';
-    if (near(d, ctx)) text += d.lead === 2 && d.found !== 3 ? R.noDog : (d.lead === 2 ? R.ready : R.observed + DESCRIPTIONS[d.lead] + R.compare);
-    else text += R.walk;
+    text = compose(C.profile, { note: L(NOTES[d.profile]), name: L(NAMES[d.profile]), description: L(DESCRIPTIONS[d.profile]) }) + '\n';
+    text += compose(C.lead, { lead: d.lead >= 0 ? L(LEADS[d.lead]) : L(R.none) }) + ' ';
+    if (near(d, ctx)) text += d.lead === 2 && d.found !== 3 ? L(R.noDog) : (d.lead === 2 ? L(R.ready) : compose(C.observed, { description: L(DESCRIPTIONS[d.lead]) }));
+    else text += L(R.walk);
   }
-  if (d.infoView) text = R.info;
+  if (d.infoView) text = L(R.info);
   if (d.message) text = d.message + '\n' + text;
-  text += R.visitOnly;
-  const labels = [NAMES[0], NAMES[1], S.info, LEADS[0], LEADS[1], LEADS[2], S.begin, S.walk, d.found === 3 && d.lead === 2 ? R.reunite : R.match, S.end, ctx.musicPlaying ? R.musicOn : R.musicOff, S.back];
+  text += L(R.visitOnly);
+  const labels = [NAMES[0], NAMES[1], S.info, LEADS[0], LEADS[1], LEADS[2], S.begin, S.walk, d.found === 3 && d.lead === 2 ? R.reunite : R.match, S.end, ctx.musicPlaying ? R.musicOn : R.musicOff, S.back].map(label => L(label));
   const disabled = [false, false, false, !d.active, !d.active, !d.active, d.active || otherActive(ctx) || ctx.sites?.dogs === false, !d.active || d.lead < 0, !d.active || !near(d, ctx) || d.won, !d.active, false, false];
   const ids = ['pippin', 'junebug', 'info', 'lead0', 'lead1', 'lead2', 'begin', 'walk', 'match', 'end', 'music', 'back'];
-  const buttons = labels.map((label, i) => ({ id: ids[i], label, disabled: disabled[i], name: label + (i < 2 ? ': ' + DESCRIPTIONS[i] : (i === 10 ? R.soundtrack : '')) }));
-  return { heading, credit: S.credit, text, buttons, focus: !d.active ? 'begin' : (near(d, ctx) && !d.won ? 'match' : (d.lead >= 0 ? 'walk' : 'lead0')), description: DESCRIPTIONS[d.profile] };
+  const nameOf = (label, i) => (i < 2 ? compose(J.labelDescription, { label, description: L(DESCRIPTIONS[i]) }) : (i === 10 ? compose(C.music, { label }) : label));
+  const buttons = labels.map((label, i) => ({ id: ids[i], label, disabled: disabled[i], name: nameOf(label, i) }));
+  return { heading, credit: L(S.credit), text, buttons, focus: !d.active ? 'begin' : (near(d, ctx) && !d.won ? 'match' : (d.lead >= 0 ? 'walk' : 'lead0')), description: L(DESCRIPTIONS[d.profile]) };
 }
-export const announce = (d, ctx) => { const v = dogsView(d, ctx); return v.heading + '. ' + v.text; };
+export const announce = (d, ctx) => { const v = dogsView(d, ctx); return compose(J.sentence, { heading: v.heading, text: v.text }); };
 
 export function objective(d, ctx = {}) {
   const O = T.objective, g = goals(ctx);
-  return { id: 'dog_story', hasTarget: d.lead >= 0 && !d.won, target: d.lead >= 0 ? g[d.lead] : null, targetName: d.lead >= 0 ? LEADS[d.lead] : O.chooseLead, text: O.prefix + (d.won ? O.reunited : gdf(O.count, [matchedCount(d), d.lead >= 0 ? LEADS[d.lead] : O.chooseLower])), hint: O.hint };
+  const status = d.won ? L(O.reunited) : gdfText(O.count, [matchedCount(d), d.lead >= 0 ? L(LEADS[d.lead]) : L(O.chooseLower)]);
+  return { id: 'dog_story', hasTarget: d.lead >= 0 && !d.won, target: d.lead >= 0 ? g[d.lead] : null, targetName: d.lead >= 0 ? L(LEADS[d.lead]) : L(O.chooseLead), text: compose(C.objective, { status }), hint: L(O.hint) };
 }
 // Map sprites (Godot update_world): dogs at their search sites while active; with owners at the gathering when won.
 export function dogsScene(d, ctx = {}) {
