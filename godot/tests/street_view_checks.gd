@@ -1,11 +1,87 @@
 extends RefCounted
 ## Street view (docs/FIRST_PERSON_PLAN.md, Phase 1): the one rule, the exact return pose,
 ## suspension by framing functions, the guarded refit, horizon taps, depth scaling, line of
-## sight, the walking pace and the Shift+F key. Runs early in the formal suite and restores
-## the caller's camera, player, route and story card.
+## sight, the walking pace and the Shift+F key. Phase 2 (docs/FIRST_PERSON_EXECUTION.md section 2,
+## work orders 1-3): yaw-relative walking, mouse and touch contact roles, the touch stick and the
+## turn step. Runs early in the formal suite and restores the caller's camera, player, route and
+## story card.
 
 static func pose(game: Node) -> Array:
 	return [game.target, game.view_size, game.camera_yaw, game.camera_pitch_scale, game.following_player]
+
+static func send(suite: SceneTree, event: InputEvent) -> void:
+	Input.parse_input_event(event)
+	await suite.process_frame
+
+static func mouse_left(pos: Vector2, pressed: bool) -> InputEventMouseButton:
+	var e := InputEventMouseButton.new()
+	e.button_index = MOUSE_BUTTON_LEFT
+	e.pressed = pressed
+	e.button_mask = MOUSE_BUTTON_MASK_LEFT if pressed else 0
+	e.position = pos
+	e.global_position = pos
+	return e
+
+static func mouse_move(pos: Vector2, rel: Vector2) -> InputEventMouseMotion:
+	var e := InputEventMouseMotion.new()
+	e.button_mask = MOUSE_BUTTON_MASK_LEFT
+	e.position = pos
+	e.global_position = pos
+	e.relative = rel
+	return e
+
+static func touch(index: int, pos: Vector2, pressed: bool) -> InputEventScreenTouch:
+	var e := InputEventScreenTouch.new()
+	e.index = index
+	e.position = pos
+	e.pressed = pressed
+	return e
+
+static func touch_drag(index: int, pos: Vector2, rel: Vector2) -> InputEventScreenDrag:
+	var e := InputEventScreenDrag.new()
+	e.index = index
+	e.position = pos
+	e.relative = rel
+	return e
+
+static func key(code: Key, pressed: bool, shift := false) -> InputEventKey:
+	var e := InputEventKey.new()
+	e.keycode = code
+	e.pressed = pressed
+	e.shift_pressed = shift
+	return e
+
+## A play-area point with room for a 60 px drag to the right, clear of the HUD, the stick and `avoid`.
+static func free_point(game: Node, sv, avoid := Rect2()) -> Vector2:
+	var area: Rect2 = game.play_area_rect()
+	for fy in [0.55, 0.65, 0.45, 0.75, 0.35]:
+		for fx in [0.5, 0.4, 0.6, 0.3, 0.7]:
+			var p: Vector2 = area.position + area.size * Vector2(fx, fy)
+			var ok := true
+			for off in [Vector2.ZERO, Vector2(5, 0), Vector2(30, 0), Vector2(60, 0)]:
+				var q: Vector2 = p + off
+				ok = ok and area.has_point(q) and not game.is_screen_point_in_ui(q) and not avoid.grow(12.0).has_point(q) and not (sv.stick_visible() and sv.stick.get_global_rect().grow(8.0).has_point(q))
+			if ok:
+				return p
+	return Vector2.INF
+
+## A walkable spot on the block with 1.5 m of open ground all round, so short test walks never meet a wall,
+## and well clear of every neighbour, so a walk never arrives at one (an arrival frames a greeting and suspends the eye).
+static func open_spot(game: Node, sv) -> Vector2:
+	var start: Vector2 = sv.eye_xz()
+	for r in [0.0, 2.0, 4.0, 6.0, 9.0, 12.0, 16.0, 20.0, 25.0]:
+		for k in range(8):
+			var c: Vector2 = start + Vector2(r, 0.0).rotated(float(k) * PI / 4.0)
+			if c.x < sv.WEST_LIMIT_X + 3.0 or not game.is_walkable_point(c):
+				continue
+			var ok := true
+			for n_i in range(game.neighbors.size()):
+				ok = ok and game.neighbor_xz(n_i).distance_to(c) > game.ARRIVAL_DISTANCE_M + 4.0
+			for a in range(16):
+				ok = ok and game.is_walkable_point(c + Vector2(1.5, 0.0).rotated(float(a) * PI / 8.0))
+			if ok:
+				return c
+	return Vector2.INF
 
 static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	suite.require(game.is_test_suite_mode(), "street view checks require explicit isolated test paths")
@@ -82,6 +158,7 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	game.camera_pitch_scale = elevated_pose[3]
 	game.view_size = elevated_pose[1]
 	game.update_camera()
+	game.update_occlusion(true) # The cutaways follow the pose; the rotated map's set must not count against the toggles.
 	var same_materials := true
 	for i in range(game.meshes.size()):
 		same_materials = same_materials and game.meshes[i].material_override == materials[i]
@@ -247,11 +324,220 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	await suite.process_frame
 	checks += 1
 
+	# Phase 2 groups run from the active eye that group 12 leaves, on an open spot of the block.
+	var saved_settle: int = game.press_settle_msec
+	var saved_touch_screen: bool = sv.touch_screen
+	var saved_taps: int = sv.taps_routed
+	game.press_settle_msec = 0 # Synthetic presses must not meet the double-activation gate.
+	suite.require(sv.active() and not sv.stick_visible(), "Phase 2 starts from the active eye; no stick without a touchscreen")
+	var spot: Vector2 = open_spot(game, sv)
+	suite.require(is_finite(spot.x), "an open spot on the block for the walking checks")
+	if not is_finite(spot.x):
+		spot = sv.eye_xz()
+	game.player.position = Vector3(spot.x, 0.0, spot.y)
+	game.update_camera()
+	await suite.process_frame
+
+	# 13. Walking is relative to the heading at 0, 90 and 180 degrees; diagonals are normalized; the stick's magnitude scales the step.
+	var step_m: float = game.WALK_SPEED_M_PER_S * 0.1
+	var yaw_axes := [[0.0, Vector2(0.0, -1.0)], [90.0, Vector2(-1.0, 0.0)], [180.0, Vector2(0.0, 1.0)]]
+	for pair in yaw_axes:
+		sv.yaw = deg_to_rad(pair[0])
+		game.player.position = Vector3(spot.x, 0.0, spot.y)
+		game.walk_step(sv.walk_input(Vector2(0.0, -1.0)), 0.1)
+		var fwd_moved: Vector2 = game.player_xz() - spot
+		suite.require(fwd_moved.normalized().dot(pair[1]) > 0.999 and absf(fwd_moved.length() - step_m) < 0.01, "forward at %d degrees walks along %s (%s)" % [int(pair[0]), str(pair[1]), str(fwd_moved)])
+		game.player.position = Vector3(spot.x, 0.0, spot.y)
+		game.walk_step(sv.walk_input(Vector2(1.0, 0.0)), 0.1)
+		var side_moved: Vector2 = game.player_xz() - spot
+		suite.require(side_moved.normalized().dot(Vector2(-pair[1].y, pair[1].x)) > 0.999, "a right step at %d degrees walks to the eye's right (%s)" % [int(pair[0]), str(side_moved)])
+	sv.yaw = 0.0
+	game.player.position = Vector3(spot.x, 0.0, spot.y)
+	game.walk_step(sv.walk_input(Vector2(1.0, -1.0)), 0.1)
+	var diag: Vector2 = game.player_xz() - spot
+	suite.require(absf(diag.length() - step_m) < 0.01 and diag.normalized().dot(Vector2(1.0, -1.0).normalized()) > 0.999, "a diagonal walks at the normal speed, not 1.41 times it (%.3f m)" % diag.length())
+	game.player.position = Vector3(spot.x, 0.0, spot.y)
+	game.walk_step(sv.walk_input(Vector2(0.0, -1.0)), 0.1, 0.5)
+	suite.require(absf((game.player_xz() - spot).length() - step_m * 0.5) < 0.01, "walk_step's magnitude scales the step")
+	game.player.position = Vector3(spot.x, 0.0, spot.y)
+	game.update_camera()
+	await suite.process_frame
+	checks += 1
+
+	# 14. A synthetic left-drag turns the eye without detaching it or moving the player; a release after it never routes, a release inside 8 px does.
+	var look_at: Vector2 = free_point(game, sv)
+	suite.require(is_finite(look_at.x), "a free play-area point for the drag checks")
+	if is_finite(look_at.x):
+		var yaw0: float = sv.yaw
+		var pitch0: float = sv.pitch
+		await send(suite, mouse_left(look_at, true))
+		suite.require(sv.contacts.has(sv.MOUSE_CONTACT) and sv.contacts[sv.MOUSE_CONTACT].role == "look" and not game.pointer_active, "a left press at eye level is a look contact, not a map pan")
+		await send(suite, mouse_move(look_at + Vector2(30, 0), Vector2(30, 0)))
+		await send(suite, mouse_move(look_at + Vector2(60, 0), Vector2(30, 0)))
+		var turned_by: float = wrapf(sv.yaw - yaw0, -PI, PI)
+		suite.require(absf(turned_by + 60.0 * sv.LOOK_YAW_PER_PX) < 1e-3 and is_equal_approx(sv.pitch, pitch0), "a 60 px left-drag to the right turns the eye right by 60 x 0.0085 rad (%.4f)" % turned_by)
+		suite.require(sv.active() and game.following_player and game.player_xz() == spot and game.current_path.is_empty(), "the drag keeps following the player and leaves the player in place")
+		await send(suite, mouse_left(look_at + Vector2(60, 0), false))
+		suite.require(sv.taps_routed == saved_taps and sv.contacts.is_empty() and game.current_path.is_empty() and sv.active(), "the release after a drag does not route")
+		sv.pitch = -PI / 6.0 # Look down so the tap lands on the street near the player.
+		game.update_camera()
+		await send(suite, mouse_left(look_at, true))
+		await send(suite, mouse_move(look_at + Vector2(5, 0), Vector2(5, 0)))
+		suite.require(absf(wrapf(sv.yaw - yaw0 - turned_by, -PI, PI)) < 1e-6, "a 5 px wobble does not turn the eye")
+		await send(suite, mouse_left(look_at + Vector2(5, 0), false))
+		suite.require(sv.taps_routed == saved_taps + 1, "a release inside 8 px is a tap into handle_scene_tap")
+	game.stop_walking()
+	if not sv.active():
+		game.end_conversation()
+		game.frame_player_for_walking()
+	game.player.position = Vector3(spot.x, 0.0, spot.y)
+	sv.yaw = 0.0
+	sv.pitch = 0.0
+	game.update_camera()
+	await suite.process_frame
+	suite.require(sv.active(), "the eye is active again after the tap")
+	checks += 1
+
+	# 15. Touch: a look drag turns the eye, its emulated mouse never reaches the map path, a second contact neither pinches nor looks, and focus loss clears roles.
+	look_at = free_point(game, sv)
+	var second: Vector2 = free_point(game, sv, Rect2(look_at, Vector2(60, 0)).grow(40.0))
+	suite.require(is_finite(look_at.x) and is_finite(second.x), "two free play-area points for the touch checks")
+	if is_finite(look_at.x) and is_finite(second.x):
+		var yaw0: float = sv.yaw
+		var taps0: int = sv.taps_routed
+		await send(suite, touch(0, look_at, true))
+		suite.require(sv.contacts.has(0) and sv.contacts[0].role == "look" and not game.pointer_active, "a touch at eye level is a look contact; its emulated mouse never arms the map pan")
+		await send(suite, touch_drag(0, look_at + Vector2(50, 0), Vector2(50, 0)))
+		suite.require(absf(wrapf(sv.yaw - yaw0, -PI, PI) + 50.0 * sv.LOOK_YAW_PER_PX) < 1e-3, "a 50 px touch drag turns the eye")
+		await send(suite, touch(1, second, true))
+		suite.require(sv.contacts.has(1) and sv.contacts[1].role == "ignored", "a second look contact is ignored")
+		suite.require(not game.map_pinch_active and not game.map_pinch_blocked and game.map_touch_contacts.is_empty(), "two contacts at eye level never start the map pinch")
+		var yaw1: float = sv.yaw
+		await send(suite, touch_drag(1, second + Vector2(40, 0), Vector2(40, 0)))
+		suite.require(sv.yaw == yaw1 and not game.map_pinch_active, "an ignored contact neither turns nor pinches")
+		await send(suite, touch(1, second + Vector2(40, 0), false))
+		await send(suite, touch(0, look_at + Vector2(50, 0), false))
+		suite.require(sv.taps_routed == taps0 and sv.contacts.is_empty() and game.current_path.is_empty() and sv.active(), "the touch release after a drag does not route")
+		await send(suite, touch(0, look_at, true))
+		suite.require(sv.contacts.size() == 1, "a new touch takes a role")
+		game.notification(Node.NOTIFICATION_WM_WINDOW_FOCUS_OUT)
+		suite.require(sv.contacts.is_empty(), "focus loss clears the contact roles")
+		game.notification(Node.NOTIFICATION_WM_WINDOW_FOCUS_IN)
+		await send(suite, touch(0, look_at, false))
+		suite.require(sv.taps_routed == taps0, "a release after focus loss does not route")
+		await send(suite, touch(0, look_at, true))
+		game.cancel_map_pinch()
+		suite.require(sv.contacts.is_empty(), "cancel_map_pinch clears the contact roles")
+		await send(suite, touch(0, look_at, false))
+		suite.require(sv.taps_routed == taps0, "a release after cancel_map_pinch does not route")
+	sv.yaw = 0.0
+	game.update_camera()
+	checks += 1
+
+	# 16. The stick: only on touchscreens; its contact walks along the heading, a look contact may join in either order, keys win, release stops.
+	sv.touch_screen = true
+	await suite.process_frame
+	suite.require(sv.stick_visible() and sv.stick.size == sv.STICK_SIZE and game.play_area_rect().encloses(sv.stick.get_global_rect()), "the stick shows bottom-left of the play area on a touchscreen")
+	suite.require(not game.is_screen_point_in_ui(sv.stick.get_global_rect().get_center()), "the stick is a world contact, not a GUI control")
+	if sv.stick_visible():
+		var centre: Vector2 = sv.stick.get_global_rect().get_center()
+		look_at = free_point(game, sv)
+		game.player.position = Vector3(spot.x, 0.0, spot.y)
+		await send(suite, touch(0, centre + Vector2(0, -45), true))
+		suite.require(sv.contacts.has(0) and sv.contacts[0].role == "move" and absf(sv.stick_vector().length() - 0.75) < 0.01, "a contact in the stick is the movement contact (%s)" % str(sv.stick_vector()))
+		for _f in range(6):
+			await suite.physics_frame
+		var walked: Vector2 = game.player_xz() - spot
+		suite.require(walked.length() > 0.1 and walked.normalized().dot(Vector2(0.0, -1.0)) > 0.99 and sv.active() and game.following_player, "holding the stick up walks forward (%s)" % str(walked))
+		if is_finite(look_at.x):
+			var yaw0: float = sv.yaw
+			await send(suite, touch(1, look_at, true))
+			await send(suite, touch_drag(1, look_at + Vector2(30, 0), Vector2(30, 0)))
+			suite.require(sv.contacts.has(1) and sv.contacts[1].role == "look" and sv.yaw < yaw0, "a look contact joins a held stick and turns the eye")
+			await send(suite, touch(2, look_at + Vector2(0, 40), true))
+			suite.require(sv.contacts.has(2) and sv.contacts[2].role == "ignored" and not game.map_pinch_active, "a third contact is ignored")
+			await send(suite, touch(2, look_at + Vector2(0, 40), false))
+			await send(suite, touch(1, look_at + Vector2(30, 0), false))
+			sv.yaw = 0.0
+			game.update_camera()
+		await send(suite, touch_drag(0, centre + Vector2(0, -5), Vector2(0, 40)))
+		suite.require(sv.stick_vector() == Vector2.ZERO, "inside the 0.15 deadzone the stick does not walk")
+		await send(suite, touch_drag(0, centre + Vector2(0, 200), Vector2(0, 205)))
+		suite.require(absf(sv.stick_vector().length() - 1.0) < 1e-4 and sv.stick_vector().y > 0.99, "a pull past the ring clamps to 1.0")
+		var before_keys: Vector2 = game.player_xz()
+		await send(suite, key(KEY_W, true))
+		for _f in range(4):
+			await suite.physics_frame
+		await send(suite, key(KEY_W, false))
+		var key_walk: Vector2 = game.player_xz() - before_keys
+		suite.require(key_walk.length() > 0.05 and key_walk.normalized().dot(Vector2(0.0, -1.0)) > 0.99, "W wins over a stick held backwards (%s)" % str(key_walk))
+		await send(suite, touch(0, centre + Vector2(0, 200), false))
+		suite.require(sv.contacts.is_empty() and sv.stick_vector() == Vector2.ZERO, "releasing the stick ends the movement contact")
+		await suite.physics_frame
+		var stopped: Vector2 = game.player_xz()
+		for _f in range(4):
+			await suite.physics_frame
+		suite.require(game.player_xz() == stopped, "after the release the player stands still")
+		# Look first, then the stick.
+		if is_finite(look_at.x):
+			await send(suite, touch(0, look_at, true))
+			await send(suite, touch(1, centre + Vector2(0, -45), true))
+			suite.require(sv.contacts[0].role == "look" and sv.contacts[1].role == "move" and sv.stick_vector().y < -0.7, "the stick also takes a contact that comes after a look")
+			await send(suite, touch(1, centre + Vector2(0, -45), false))
+			var taps_held: int = sv.taps_routed
+			await send(suite, touch_drag(0, look_at + Vector2(20, 0), Vector2(20, 0)))
+			await send(suite, touch(0, look_at + Vector2(20, 0), false))
+			suite.require(sv.taps_routed == taps_held and game.current_path.is_empty() and sv.contacts.is_empty(), "the look contact's release after its drag does not route")
+	sv.touch_screen = false
+	await suite.process_frame
+	suite.require(not sv.stick_visible(), "the stick hides without a touchscreen")
+	game.player.position = Vector3(spot.x, 0.0, spot.y)
+	sv.yaw = 0.0
+	game.update_camera()
+	sv.taps_routed = saved_taps
+	checks += 1
+
+	# 17. The turn step: snap30 by default, snap45 on request, smooth at 90 degrees a second on held Shift+arrows.
+	suite.require(sv.street_turn == "snap30" and is_equal_approx(sv.turn_step(), PI / 6.0), "street_turn defaults to snap30")
+	sv.street_turn = "snap45"
+	sv.key_turn(KEY_RIGHT)
+	suite.require(is_equal_approx(wrapf(-sv.yaw, -PI, PI), PI / 4.0), "snap45 turns 45 degrees per Shift+Right")
+	sv.yaw = 0.0
+	sv.street_turn = "smooth"
+	sv.key_turn(KEY_RIGHT)
+	suite.require(sv.yaw == 0.0, "smooth turning does not snap on the key press")
+	sv.hold_turn(1.0, 0.5)
+	suite.require(is_equal_approx(wrapf(-sv.yaw, -PI, PI), PI / 4.0), "smooth turning runs at 90 degrees a second")
+	sv.yaw = 0.0
+	game.update_camera()
+	await send(suite, key(KEY_SHIFT, true))
+	await send(suite, key(KEY_RIGHT, true, true))
+	var held_yaw: float = sv.yaw
+	var held_frames := 6
+	for _f in range(held_frames):
+		await suite.physics_frame
+	await send(suite, key(KEY_RIGHT, false, true))
+	await send(suite, key(KEY_SHIFT, false))
+	var held_turn: float = wrapf(held_yaw - sv.yaw, -PI, PI)
+	var tick_turn: float = sv.SMOOTH_TURN_RAD_PER_S / float(Engine.physics_ticks_per_second)
+	suite.require(held_turn > tick_turn * 0.5 and held_turn <= tick_turn * float(held_frames + 4) + 1e-4 and game.player_xz() == spot and game.camera_yaw == map_yaw, "held Shift+Right turns smoothly at eye level without walking or touching the map's yaw (%.4f rad, moved %s, path %d, map yaw %.3f vs %.3f)" % [held_turn, str(game.player_xz() - spot), game.current_path.size(), game.camera_yaw, map_yaw])
+	sv.street_turn = "snap30"
+	sv.yaw = 0.0
+	game.update_camera()
+	game.press_settle_msec = saved_settle
+	sv.touch_screen = saved_touch_screen
+	checks += 1
+
 	# Restore the caller's state.
 	sv.enabled = false
 	sv.yaw = 0.0
 	sv.pitch = 0.0
 	sv.has_heading = false
+	sv.street_turn = "snap30"
+	sv.touch_screen = saved_touch_screen
+	sv.taps_routed = saved_taps
+	sv.clear_contacts()
+	game.press_settle_msec = saved_settle
 	game.stop_walking()
 	game.update_camera()
 	game.player.position = original_player
@@ -275,4 +561,4 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	game.a11y_announcement_seq = saved_seq
 	suite.require(not sv.active() and cam.projection == Camera3D.PROJECTION_ORTHOGONAL and cam.near == map_near and cam.far == map_far, "street view checks hand back the orthographic map camera")
 	suite.require(game.player.position == original_player and game.current_path == original_path, "street view checks restore caller position and route")
-	print("STREET_VIEW_PASS:" + ("FORMAL" if formal else "PRIVATE") + " rule/eye/return-pose/suspend/resume/refit/horizon/depth/sight/pace/west/ShiftF ", checks)
+	print("STREET_VIEW_PASS:" + ("FORMAL" if formal else "PRIVATE") + " rule/eye/return-pose/suspend/resume/refit/horizon/depth/sight/pace/west/ShiftF/yaw-walk/mouse-look/touch-roles/stick/turn-step ", checks)

@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 // Street view (docs/FIRST_PERSON_PLAN.md, Phase 1) in the real web build: every session starts in the
 // map view; Shift+F gives a perspective eye with sky above and street below; the button and Shift+F
-// hand back the orthographic walking view. Runs right after Start Exploring at each supported size.
+// hand back the orthographic walking view. Phase 2: a mouse or touch drag turns the eye and its release
+// never routes; the walk stick is a touchscreen control. Runs right after Start Exploring at each supported size.
 export async function verifyStreetView(page,{touch,size,renderedPixels,outputDir='artifacts'}) {
   const snap=()=>page.evaluate(()=>window.__tenderloinGodotA11ySnapshot);
   const settle=async()=>{const f=(await snap()).ui_frame;await page.waitForFunction(f=>window.__tenderloinGodotA11ySnapshot.ui_frame>f+3,f);};
@@ -34,6 +35,23 @@ export async function verifyStreetView(page,{touch,size,renderedPixels,outputDir
   const sky=band(skyY),ground=band(groundY);
   assert.ok(sky.sky>=Math.ceil(sky.total*0.12),`the upper band shows sky at y=${skyY}: ${sky.sky}/${sky.total} sky samples`);
   assert.ok(ground.sky<=Math.floor(ground.total*0.05),`the lower band is street, not sky, at y=${groundY}: ${ground.sky}/${ground.total} sky samples`);
+  // Phase 2 (docs/FIRST_PERSON_EXECUTION.md section 2): the walk stick is a touchscreen control only.
+  if(!touch)assert.equal(s.street_view.stick.visible,false,'no walk stick without a touchscreen');
+  if(touch&&size.width===390&&size.height===667)assert.ok(s.street_view.stick.visible&&s.street_view.stick.width>=44&&s.street_view.stick.height>=44,`the walk stick shows on a touchscreen ${JSON.stringify(s.street_view.stick)}`);
+  // A drag in the play area turns the eye (page.mouse on desktop, a touchscreen drag on phones) and its release never routes.
+  const area=s.play_area,dragPx=Math.min(90,area.width*0.3),fromX=area.x+area.width*0.3,fromY=area.y+area.height*0.42;
+  const px=canvas.x+fromX*sx,py=canvas.y+fromY*sy,toX=canvas.x+(fromX+dragPx)*sx,steps=6;
+  const dragBefore=s,dragYaw=s.street_view.yaw_deg;
+  if(touch){const cdp=await page.context().newCDPSession(page);try{await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:px,y:py,id:0}]});for(let i=1;i<=steps;i++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:px+(toX-px)*i/steps,y:py,id:0}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});}finally{await cdp.detach();}}
+  else{await page.mouse.move(px,py);await page.mouse.down();await page.mouse.move(toX,py,{steps});await page.mouse.up();}
+  await settle();s=await snap();
+  const dragTurn=((dragYaw-s.street_view.yaw_deg)%360+540)%360-180,dragExpect=dragPx*0.0085*180/Math.PI;
+  assert.ok(dragTurn>dragExpect*0.5&&dragTurn<dragExpect*1.2,`a ${Math.round(dragPx)} px ${touch?'touch':'mouse'} drag turns the eye right by about ${dragExpect.toFixed(1)} degrees (${dragTurn.toFixed(1)})`);
+  assert.ok(s.street_view.active&&s.following_player,'the drag keeps the eye on the player');
+  assert.equal(s.street_view.taps_routed,dragBefore.street_view.taps_routed,'the release after a drag does not route');
+  assert.deepEqual(s.street_view.contacts,[],'no contact is left held after the drag');
+  assert.ok(Math.abs(s.player_grounding.x-dragBefore.player_grounding.x)<1e-3&&Math.abs(s.player_grounding.z-dragBefore.player_grounding.z)<1e-3,'the drag does not move the player');
+  assert.equal(s.map_pinch.active,false,'a look drag never starts the map pinch');
   const eye={...s.street_view.eye},yaw=s.street_view.yaw_deg;
   // Shift+Right snaps the heading by 30 degrees without detaching from the player.
   await page.keyboard.press('Shift+ArrowRight');await settle();s=await snap();
@@ -53,7 +71,7 @@ export async function verifyStreetView(page,{touch,size,renderedPixels,outputDir
   assert.ok(Math.abs((((s.street_view.yaw_deg-yaw-turned)%360)+540)%360-180)<0.5,'re-entering keeps the turned heading');
   await page.keyboard.press('Shift+F');await page.waitForFunction(()=>!window.__tenderloinGodotA11ySnapshot.street_view.active);await settle();s=await snap();
   assert.equal(s.street_view.projection,1);
-  const result={...size,touch,eye,yaw,turned,sky,ground,skyY,groundY};
+  const result={...size,touch,eye,yaw,turned,dragTurn,dragExpect,stick:dragBefore.street_view.stick,sky,ground,skyY,groundY};
   await writeFile(`${outputDir}/street-view-${size.width}x${size.height}-${touch?'touch':'mouse'}.json`,JSON.stringify(result,null,1));
   return result;
 }

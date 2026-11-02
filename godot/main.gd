@@ -7225,8 +7225,8 @@ func update_guide_arrow() -> void:
 	lbl_global.y = clampf(lbl_global.y, area.position.y + 7.0, maxf(area.position.y + 7.0, area.end.y - lbl_size.y - 7.0))
 	# Keep the outlined objective name clear of the Talk prompt and transient UI.
 	var occupied: Array[Rect2] = []
-	if street_view != null and street_view.button_visible():
-		occupied.append(street_view.button.get_global_rect().grow(6.0))
+	if street_view != null:
+		occupied.append_array(street_view.occupied_rects())
 	if bea_invitation != null and bea_invitation.inspection_rect().has_area():
 		occupied.append(bea_invitation.inspection_rect())
 	if mural_inspection_rect().has_area(): occupied.append(mural_inspection_rect())
@@ -8308,7 +8308,7 @@ func resume_walking_view() -> void:
 	in_wide_overview = false
 	following_player = true
 
-func walk_step(input_dir: Vector2, delta: float) -> bool:
+func walk_step(input_dir: Vector2, delta: float, magnitude: float = 1.0) -> bool: # magnitude < 1 from the street view's touch stick
 	if power_story != null: power_story.cancel_intent()
 	if dog_story != null: dog_story.cancel_intent()
 	if lantern_procession != null: lantern_procession.cancel_intent()
@@ -8336,7 +8336,7 @@ func walk_step(input_dir: Vector2, delta: float) -> bool:
 	var dir := input_dir.normalized()
 	if player_visual != null:
 		player_visual.rotation.y = atan2(dir.x, dir.y)
-	var total_dist := WALK_SPEED_M_PER_S * delta
+	var total_dist := WALK_SPEED_M_PER_S * delta * magnitude
 	var steps := maxi(1, int(ceil(total_dist / 0.20)))
 	var step_len := total_dist / float(steps)
 	var moved := false
@@ -14272,8 +14272,8 @@ func update_readable_scene_labels() -> void:
 			occupied.append(talk_rect.grow(4.0))
 	if is_story_card_visible():
 		occupied.append(story_card.get_global_rect())
-	if street_view != null and street_view.button_visible():
-		occupied.append(street_view.button.get_global_rect().grow(6.0))
+	if street_view != null:
+		occupied.append_array(street_view.occupied_rects())
 	var ordered := readable_scene_labels.duplicate()
 	ordered.sort_custom(func(a: Label3D, b: Label3D) -> bool: return scene_caption_priority(a) < scene_caption_priority(b))
 	for label in ordered:
@@ -14376,6 +14376,8 @@ func _physics_process(delta: float) -> void:
 		if (absf(yaw_dir) > 0.0 or absf(pitch_dir) > 0.0) and not street_view_active():
 			rotate_camera_by_delta(yaw_dir * delta * 1.65, pitch_dir * delta * 0.75)
 			return
+		if street_view_active():
+			street_view.hold_turn(yaw_dir, delta) # Smooth turning only; the snap settings turn on the key press.
 	var input_vec := Vector2.ZERO
 	if not shift_held:
 		if Input.is_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_D):
@@ -14395,6 +14397,10 @@ func _physics_process(delta: float) -> void:
 			input_vec.y += 1.0
 		if Input.is_key_pressed(KEY_UP):
 			input_vec.y -= 1.0
+	var walk_magnitude := 1.0
+	if street_view_active() and input_vec.length_squared() == 0.0:
+		input_vec = street_view.stick_vector() # Keys win over the touch stick.
+		walk_magnitude = input_vec.length()
 	if input_vec.length_squared() > 0.0:
 		if get_viewport().gui_get_focus_owner() != null:
 			get_viewport().gui_release_focus()
@@ -14402,7 +14408,7 @@ func _physics_process(delta: float) -> void:
 			input_vec = street_view.walk_input(input_vec)
 		elif absf(camera_yaw) > 1e-4:
 			input_vec = input_vec.rotated(-camera_yaw)
-		walk_step(input_vec, delta)
+		walk_step(input_vec, delta, walk_magnitude)
 		var p_now := player_xz()
 		if last_proximity_neighbor >= 0 and last_proximity_neighbor < neighbors.size():
 			if p_now.distance_to(neighbor_xz(last_proximity_neighbor)) > ARRIVAL_DISTANCE_M + 0.75:
@@ -14618,6 +14624,8 @@ func cancel_map_pinch() -> void:
 	pointer_active = false
 	pointer_dragging = false
 	orbit_dragging = false
+	if street_view != null:
+		street_view.clear_contacts() # Eye-level contact roles end with every mode flip and every focus loss.
 
 func map_pinch_input(event: InputEvent) -> bool:
 	# Mouse emulation belongs to the original one-finger path until a second contact.
@@ -14833,7 +14841,7 @@ func _input(event: InputEvent) -> void:
 		if phone_talking(): conv_next_btn.grab_focus()
 		get_viewport().set_input_as_handled()
 		return
-	if map_pinch_input(event):
+	if not street_view_active() and map_pinch_input(event): # Eye-level contacts take roles in street_view.pointer_input instead.
 		get_viewport().set_input_as_handled()
 		return
 	if event is InputEventKey and event.pressed and is_story_card_visible():
@@ -14927,6 +14935,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			else: close_mural_workshop()
 		get_viewport().set_input_as_handled()
 		return
+	if street_view_active() and street_view.pointer_input(event):
+		return # Eye-level contacts: look, the walk stick, or a tap.
 	if event is InputEventKey and event.pressed and not event.echo:
 		var k: Key = event.keycode if event.keycode != KEY_NONE else event.physical_keycode
 		if is_story_card_visible() and not (k in [KEY_SHIFT, KEY_CTRL, KEY_ALT, KEY_META]):

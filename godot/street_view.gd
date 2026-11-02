@@ -5,6 +5,8 @@ extends RefCounted
 ## block. Everything else suspends it and the elevated view renders exactly as before; `follow_player`
 ## and `frame_player_for_walking` resume it at the player's current position with the saved heading.
 ## All state here is transient: nothing is saved, and every session starts in the map view.
+## Phase 2 (docs/FIRST_PERSON_EXECUTION.md section 2): every mouse or touch contact at eye level takes a role at
+## contact-down (look, the walk stick, or ignored); a Control under it has already taken it in the GUI.
 
 const EYE_M := 1.6
 const FOV_DEG := 70.0
@@ -16,6 +18,15 @@ const PITCH_LIMIT_RAD := PI / 3.0
 const WEST_LIMIT_X := -50.0 # The fast corridor west of here stays a map-view walk in this phase.
 const CAPTION_RANGE_M := 28.0
 const BUTTON_SIZE := Vector2(132, 44)
+const STICK_SIZE := Vector2(120, 120)
+const STICK_KNOB := Vector2(48, 48)
+const STICK_DEADZONE := 0.15
+const LOOK_DRAG_PX := 8.0 # The map's tap/drag threshold.
+const LOOK_YAW_PER_PX := 0.0085 # The map's orbit-drag rates.
+const LOOK_PITCH_PER_PX := 0.0035
+const MOUSE_CONTACT := -2 # Touch indices start at 0.
+const TURN_STEPS := {"snap30": PI / 6.0, "snap45": PI / 4.0}
+const SMOOTH_TURN_RAD_PER_S := PI / 2.0 # 90 degrees a second on held Shift+Left/Right.
 
 var game: Node
 var enabled := false # The player's choice; suspension is derived, never stored.
@@ -27,6 +38,13 @@ var map_near := 0.05
 var map_far := 4000.0
 var map_background := {}
 var has_heading := false
+var street_turn := "snap30" # "snap30", "snap45" or "smooth"; the settings envelope carries it from the next work order.
+var contacts := {} # contact id (touch index or MOUSE_CONTACT) -> {"role", "down", "last", "dragging"}
+var stick: Control
+var stick_knob: Panel
+var stick_vec := Vector2.ZERO
+var touch_screen := false
+var taps_routed := 0 # Look contacts released inside the drag threshold; read by the tests.
 
 func setup(g: Node, layer: Node) -> void:
 	game = g
@@ -42,6 +60,32 @@ func setup(g: Node, layer: Node) -> void:
 	button.add_theme_font_size_override("font_size", 18)
 	button.pressed.connect(toggle)
 	layer.add_child(button)
+	touch_screen = DisplayServer.is_touchscreen_available()
+	stick = Control.new()
+	stick.name = "StreetStick"
+	stick.size = STICK_SIZE
+	stick.mouse_filter = Control.MOUSE_FILTER_IGNORE # Its contact is routed by role in `pointer_input`, never by the GUI.
+	stick.visible = false
+	var ring := Panel.new()
+	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ring.size = STICK_SIZE
+	ring.add_theme_stylebox_override("panel", stick_style(Color(0.06, 0.08, 0.1, 0.42), STICK_SIZE.x * 0.5, 2))
+	stick.add_child(ring)
+	stick_knob = Panel.new()
+	stick_knob.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stick_knob.size = STICK_KNOB
+	stick_knob.add_theme_stylebox_override("panel", stick_style(Color(1, 1, 1, 0.72), STICK_KNOB.x * 0.5, 0))
+	stick.add_child(stick_knob)
+	center_knob()
+	layer.add_child(stick)
+
+func stick_style(fill: Color, radius: float, border: int) -> StyleBoxFlat:
+	var st := StyleBoxFlat.new()
+	st.bg_color = fill
+	st.set_corner_radius_all(int(radius))
+	st.set_border_width_all(border)
+	st.border_color = Color(1, 1, 1, 0.65)
+	return st
 
 ## The single rule. Any framing function that detaches from the player suspends street view.
 func active() -> bool:
@@ -87,7 +131,7 @@ func enter() -> void:
 	apply_sky(true)
 	set_label_depth(true)
 	apply_camera()
-	game.announce_a11y_status("Street view at eye level. Shift+Left and Shift+Right turn, Shift+Up and Shift+Down tilt, WASD or arrows walk. Shift+F returns to the map view.")
+	game.announce_a11y_status("Street view at eye level. Shift+Left and Shift+Right turn, Shift+Up and Shift+Down tilt, WASD or arrows walk. Shift+F returns to the map view." + touch_hint())
 
 func exit() -> void:
 	var cam: Camera3D = game.camera
@@ -202,7 +246,7 @@ func toggle() -> void:
 	else:
 		game.frame_player_for_walking()
 	if active():
-		game.announce_a11y_status("Street view. Facing %s. %s. Shift+Left and Shift+Right turn, Shift+Up and Shift+Down tilt, WASD or arrows walk. Shift+F returns to the map view." % [heading_text(), game.location_phrase(eye_xz())])
+		game.announce_a11y_status("Street view. Facing %s. %s. Shift+Left and Shift+Right turn, Shift+Up and Shift+Down tilt, WASD or arrows walk. Shift+F returns to the map view." % [heading_text(), game.location_phrase(eye_xz())] + touch_hint())
 	refresh_button()
 
 ## Entering from the map faces the gold marker (or Bea) so the first view is down the street, not a wall.
@@ -216,18 +260,39 @@ func face_objective() -> void:
 	yaw = atan2(-d.x, -d.y)
 	pitch = 0.0
 
+func touch_hint() -> String:
+	return " Drag the stick at the bottom left to walk; drag anywhere else to look around." if touch_screen else ""
+
 func key_turn(keycode: Key) -> void:
 	match keycode:
-		KEY_LEFT: turn(1)
-		KEY_RIGHT: turn(-1)
+		KEY_LEFT:
+			if street_turn != "smooth":
+				turn(1)
+		KEY_RIGHT:
+			if street_turn != "smooth":
+				turn(-1)
 		KEY_UP: tilt(1)
 		KEY_DOWN: tilt(-1)
 
+## The snap step from the `street_turn` setting; anything unknown snaps 30 degrees.
+func turn_step() -> float:
+	return float(TURN_STEPS.get(street_turn, SNAP_TURN_RAD))
+
 ## Snap turn: positive steps turn left. Keeps the map view's yaw untouched for the return.
 func turn(steps: int) -> void:
-	yaw = wrapf(yaw + float(steps) * SNAP_TURN_RAD, -PI, PI)
+	yaw = wrapf(yaw + float(steps) * turn_step(), -PI, PI)
 	game.update_camera()
 	game.announce_a11y_status("Facing %s." % heading_text())
+
+## Held Shift+Left/Right in the smooth setting, from `_physics_process`; `dir` is +1 for right, as in the map's orbit.
+func hold_turn(dir: float, delta: float) -> void:
+	if street_turn != "smooth" or is_zero_approx(dir):
+		return
+	var before := heading_text()
+	yaw = wrapf(yaw - dir * SMOOTH_TURN_RAD_PER_S * delta, -PI, PI)
+	game.update_camera()
+	if heading_text() != before:
+		game.announce_a11y_status("Facing %s." % heading_text())
 
 func tilt(steps: int) -> void:
 	pitch = clampf(pitch + float(steps) * PITCH_STEP_RAD, -PITCH_LIMIT_RAD, PITCH_LIMIT_RAD)
@@ -299,7 +364,128 @@ func caption_visible(label_xz: Vector2) -> bool:
 	var eye := eye_xz()
 	return label_xz.distance_to(eye) <= CAPTION_RANGE_M and line_of_sight_clear(eye, label_xz)
 
-## Called once per frame from `_process`: region changes and the floating button.
+## Contact roles, from `_unhandled_input` while active, so a Control under the contact has already taken it. A look
+## contact turns the eye once it moves past 8 px and taps the scene when released inside 8 px; a release after a
+## drag never routes. One look and one stick contact may coexist in either order; any other contact is ignored, and
+## no contact pinches at eye level (`_input` skips `map_pinch_input` while active). Returns true when used here.
+func pointer_input(event: InputEvent) -> bool:
+	if event is InputEventMouse and event.device == InputEvent.DEVICE_ID_EMULATION:
+		return true # Touch contacts carry their own role; their emulated-mouse duplicates never act twice.
+	if event is InputEventScreenTouch:
+		if event.canceled:
+			drop_contact(event.index)
+			return true
+		return contact_down(event.index, event.position) if event.pressed else contact_up(event.index, event.position)
+	if event is InputEventScreenDrag:
+		return contact_move(event.index, event.position)
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed and (event.shift_pressed or event.alt_pressed or event.ctrl_pressed):
+			return false # The map's modifier orbit already turns the eye through `rotate_camera_by_delta`.
+		return contact_down(MOUSE_CONTACT, event.position) if event.pressed else contact_up(MOUSE_CONTACT, event.position)
+	if event is InputEventMouseMotion:
+		return contact_move(MOUSE_CONTACT, event.position)
+	return false
+
+func has_role(role: String) -> bool:
+	for id in contacts:
+		if contacts[id].role == role:
+			return true
+	return false
+
+func contact_down(id: int, pos: Vector2) -> bool:
+	drop_contact(id)
+	if game.is_screen_point_in_ui(pos) or not game.play_area_rect().has_point(pos):
+		return false
+	var role := "move" if stick_visible() and stick.get_global_rect().has_point(pos) else "look"
+	if contacts.size() >= 2 or has_role(role):
+		role = "ignored"
+	contacts[id] = {"role": role, "down": pos, "last": pos, "dragging": false}
+	if role == "move":
+		set_stick(pos)
+	return true
+
+func contact_move(id: int, pos: Vector2) -> bool:
+	if not contacts.has(id):
+		return false
+	var c: Dictionary = contacts[id]
+	if c.role == "move":
+		set_stick(pos)
+	elif c.role == "look":
+		if not c.dragging and pos.distance_to(c.down) > LOOK_DRAG_PX:
+			c.dragging = true
+		if c.dragging:
+			var d: Vector2 = pos - c.last
+			look(-d.x * LOOK_YAW_PER_PX, d.y * LOOK_PITCH_PER_PX)
+	c.last = pos
+	return true
+
+func contact_up(id: int, pos: Vector2) -> bool:
+	if not contacts.has(id):
+		return false
+	var c: Dictionary = contacts[id]
+	drop_contact(id) # Before the tap: a tap that opens a panel flips the mode and clears the roles.
+	if c.role == "look" and not c.dragging and pos.distance_to(c.down) <= LOOK_DRAG_PX:
+		taps_routed += 1
+		game.handle_scene_tap(pos)
+	return true
+
+func drop_contact(id: int) -> void:
+	if contacts.has(id) and contacts[id].role == "move":
+		stick_vec = Vector2.ZERO
+		center_knob()
+	contacts.erase(id)
+
+## From `cancel_map_pinch`: every mode flip and every focus loss ends the held contacts.
+func clear_contacts() -> void:
+	contacts.clear()
+	stick_vec = Vector2.ZERO
+	center_knob()
+
+## The walking vector for `_physics_process`: screen up is forward, deadzone 0.15, length at most 1.
+func stick_vector() -> Vector2:
+	return stick_vec if has_role("move") else Vector2.ZERO
+
+func set_stick(pos: Vector2) -> void:
+	var radius := STICK_SIZE.x * 0.5
+	var v := (pos - stick.get_global_rect().get_center()) / radius
+	if v.length() > 1.0:
+		v = v.normalized()
+	stick_vec = v if v.length() >= STICK_DEADZONE else Vector2.ZERO
+	stick_knob.position = STICK_SIZE * 0.5 + v * radius - STICK_KNOB * 0.5
+
+func center_knob() -> void:
+	if stick_knob != null:
+		stick_knob.position = (STICK_SIZE - STICK_KNOB) * 0.5
+
+func stick_visible() -> bool:
+	return stick != null and stick.is_visible_in_tree()
+
+## Bottom-left of the play area, only on touchscreens while the eye is active and the area has room for it.
+func refresh_stick() -> void:
+	if stick == null:
+		return
+	var show := touch_screen and active()
+	if show:
+		var area: Rect2 = game.play_area_rect()
+		stick.size = STICK_SIZE
+		stick.position = Vector2(area.position.x, area.end.y - STICK_SIZE.y)
+		show = area.size.x >= STICK_SIZE.x + BUTTON_SIZE.x + 16.0 and area.size.y >= STICK_SIZE.y + BUTTON_SIZE.y + 16.0
+	stick.visible = show
+	if not show:
+		for id in contacts.keys():
+			if contacts[id].role == "move":
+				drop_contact(id)
+
+## The street button and the stick, for the caption and guide-arrow `occupied` lists.
+func occupied_rects() -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	if button_visible():
+		rects.append(button.get_global_rect().grow(6.0))
+	if stick_visible():
+		rects.append(stick.get_global_rect().grow(6.0))
+	return rects
+
+## Called once per frame from `_process`: region changes, the floating button and the stick.
 func tick() -> void:
 	if sync():
 		game.update_camera() # A rule change outside update_camera (an activity opening, a western route) must not leave the eye pose.
@@ -307,6 +493,7 @@ func tick() -> void:
 		if not was_active:
 			game.refresh_hub_camera.call_deferred() # A hub that opened while the eye was in charge still gets its fit.
 	refresh_button()
+	refresh_stick()
 
 func button_visible() -> bool:
 	return button != null and button.is_visible_in_tree()
@@ -327,6 +514,10 @@ func refresh_button() -> void:
 func snapshot() -> Dictionary:
 	var cam: Camera3D = game.camera
 	var rect: Rect2 = button.get_global_rect() if button != null else Rect2()
+	var stick_rect: Rect2 = stick.get_global_rect() if stick != null else Rect2()
+	var roles: Array = []
+	for id in contacts:
+		roles.append(contacts[id].role)
 	return {
 		"active": active(),
 		"enabled": enabled,
@@ -335,4 +526,8 @@ func snapshot() -> Dictionary:
 		"projection": int(cam.projection) if cam != null else -1,
 		"eye": {"x": cam.global_position.x, "y": cam.global_position.y, "z": cam.global_position.z} if cam != null else {},
 		"button": {"visible": button_visible(), "text": button.text if button != null else "", "x": rect.position.x, "y": rect.position.y, "width": rect.size.x, "height": rect.size.y},
+		"stick": {"visible": stick_visible(), "x": stick_rect.position.x, "y": stick_rect.position.y, "width": stick_rect.size.x, "height": stick_rect.size.y},
+		"turn": street_turn,
+		"contacts": roles,
+		"taps_routed": taps_routed,
 	}
