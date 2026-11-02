@@ -197,6 +197,8 @@ const BOEDDEKER_VIEW_TARGET := Vector3(-118.0, 2.0, -132.0)
 const SPEECH_BUBBLE_PIXEL := 0.0024
 const SPEECH_BUBBLE_FONT := 24
 const SPEECH_BUBBLE_HEIGHT_M := 5.0
+const SPEECH_BUBBLE_HEIGHT_EYE_M := 2.05 # Street view: just above a true-scale head (about 1.75 m).
+const GUIDE_MARKER_LIFT_EYE := 2.4
 const SPEECH_BUBBLE_HIDE_TARGET_DIST_M := 45.0
 const GUIDE_MARKER_LIFT_LOW := 4.6
 const GUIDE_MARKER_LIFT_HIGH := 6.6
@@ -4755,7 +4757,7 @@ func show_neighbor_speech(index: int, line: String) -> void:
 	if index < 0 or index >= neighbors.size():
 		return
 	var n_pos: Vector3 = neighbors[index].pos
-	show_speech_bubble(String(neighbors[index].get("id", "")), n_pos + Vector3.UP * SPEECH_BUBBLE_HEIGHT_M, spoken_text_from_line(line))
+	show_speech_bubble(String(neighbors[index].get("id", "")), n_pos + Vector3.UP * speech_lift_m(), spoken_text_from_line(line))
 
 func release_speech_info() -> void:
 	if speech_opened_info:
@@ -5295,7 +5297,7 @@ func show_eatery_host_speech(idx: int, line: String) -> void:
 	var props := eatery_counter_nodes[idx]
 	var host_world := props.position + props.basis * Vector3(0.0, 0.0, -0.75)
 	var rec: Dictionary = NEIGHBORHOOD_EATERIES[idx]
-	show_speech_bubble("eatery:%s" % String(rec.get("id", "")), host_world + Vector3.UP * SPEECH_BUBBLE_HEIGHT_M, "%s (fictional)\n%s" % [String(rec.get("name", "")), line])
+	show_speech_bubble("eatery:%s" % String(rec.get("id", "")), host_world + Vector3.UP * speech_lift_m(), "%s (fictional)\n%s" % [String(rec.get("name", "")), line])
 
 func eatery_counter_interact(target_idx: int = -1) -> bool:
 	var idx := eatery_guide_idx if target_idx < 0 else target_idx
@@ -5726,7 +5728,7 @@ func inspect_neighborhood_surprise(s_id: String) -> bool:
 	var burst_sub := "%s · Sparks: %d · %s" % [surp_tag, spark_count(), badge_str]
 	if not keepsake_label.is_empty():
 		burst_sub = "%s · Sparks: %d · Keepsake: %s" % [surp_tag, spark_count(), keepsake_label]
-	show_speech_bubble("surprise:%s" % s_id, world_pos + Vector3.UP * (SPEECH_BUBBLE_HEIGHT_M + 0.35), speech_str)
+	show_speech_bubble("surprise:%s" % s_id, world_pos + Vector3.UP * (speech_lift_m() + 0.35), speech_str)
 	if newly_discovered:
 		var burst_heading := ("10/10 Surprises: %s" % title_str) if all_found else ("Surprise Found: %s" % title_str)
 		trigger_progress_cue("surprise_finale" if all_found else "surprise_discovery", s_id)
@@ -6248,6 +6250,8 @@ func build_guide_marker() -> void:
 func guide_marker_anchor(obj: Dictionary) -> Vector3:
 	var t: Vector3 = obj.get("target", Vector3.ZERO)
 	var lift := GUIDE_MARKER_LIFT_HIGH if int(obj.get("neighbor", -1)) >= 0 and String(obj.get("id", "")) != "mural" and String(obj.get("id", "")) != "soundcheck" else GUIDE_MARKER_LIFT_LOW
+	if street_view_active():
+		lift = GUIDE_MARKER_LIFT_EYE # The map heights float above the top of a 70 degree eye-level view up close.
 	return Vector3(t.x, lift, t.z)
 
 func objective_target_name(obj: Dictionary) -> String:
@@ -6344,7 +6348,7 @@ func update_talk_prompt() -> void:
 		talk_prompt_label.offset = Vector2(0.0, 12.0 + (sz.y + 14.0) * 0.5)
 		talk_prompt_bg.mesh = bubble_shape_mesh(sz.x + 24.0, sz.y + 14.0, 12.0, 0.0)
 	var n_pos: Vector3 = neighbors[idx].pos
-	talk_prompt_node.position = n_pos + Vector3.UP * SPEECH_BUBBLE_HEIGHT_M
+	talk_prompt_node.position = n_pos + Vector3.UP * speech_lift_m()
 	talk_prompt_node.scale = Vector3.ONE * speech_bubble_base_scale()
 	talk_prompt_node.visible = true
 
@@ -8796,7 +8800,7 @@ func inspect_tenderloin_museum_hub() -> bool:
 			line = "Tenderloin Museum Time-Portal » 1907: Cadillac Hotel & Great White Way"
 			sub = "Archive Portal tuned to 1907 · Grand reopening of the 4-story Cadillac Hotel at Eddy & Leavenworth with theater-district marquees and supper clubs."
 	var docent_world := MUSEUM_HUB_POS + Vector3(-1.4, 0.0, 1.15) * 1.75
-	show_speech_bubble("museum_docent", docent_world + Vector3.UP * SPEECH_BUBBLE_HEIGHT_M, MUSEUM_DOCENT_LINES[step % MUSEUM_DOCENT_LINES.size()])
+	show_speech_bubble("museum_docent", docent_world + Vector3.UP * speech_lift_m(), MUSEUM_DOCENT_LINES[step % MUSEUM_DOCENT_LINES.size()])
 	update_museum_portal_3d()
 	if not visited_museum_eras.has(active_time_era):
 		visited_museum_eras[active_time_era] = true
@@ -9269,6 +9273,16 @@ func street_view_active() -> bool:
 	return street_view != null and street_view.active()
 
 ## The reduced-motion setting (street_view.gd keeps it with the other Phase 2 settings); off unless chosen or seeded.
+## Speech bubbles and the talk prompt float above the speaker: high for the map's 2.15-scale figures, just above
+## the head at eye level.
+## A panel suspends or resumes the eye: switch the camera now, before any refit in the same frame reads it.
+func resync_street_view() -> void:
+	if street_view != null:
+		street_view.resync()
+
+func speech_lift_m() -> float:
+	return SPEECH_BUBBLE_HEIGHT_EYE_M if street_view_active() else SPEECH_BUBBLE_HEIGHT_M
+
 func reduced_motion_on() -> bool:
 	return street_view != null and street_view.reduced_motion
 
@@ -15563,6 +15577,7 @@ func show_mural_panel(visible_flag: bool) -> void:
 		mural_panel.visible = visible_flag
 		if visible_flag:
 			update_mural_ui()
+	resync_street_view()
 	layout_walking_controls_and_hub()
 	if visible_flag and following_player and uses_compact_activity_controls():
 		focus_mural_camera()
@@ -15586,6 +15601,7 @@ func show_music_panel(visible_flag: bool) -> void:
 		music_panel.visible = visible_flag
 		if visible_flag:
 			update_music_ui()
+	resync_street_view()
 	layout_walking_controls_and_hub()
 	if visible_flag and following_player and uses_compact_activity_controls():
 		focus_speaker_camera()
@@ -15619,6 +15635,7 @@ func show_block_panel(visible_flag: bool, invitation_context := false) -> void:
 			music_panel.visible = false
 	if block_panel != null:
 		block_panel.visible = visible_flag
+		resync_street_view()
 		if visible_flag:
 			update_block_ui()
 			if block_panel_mode == "hub" and owned_conversation and (uses_compact_narrow_hub() or (uses_side_block_hub() and is_narrow_layout())):

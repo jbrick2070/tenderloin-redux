@@ -245,21 +245,26 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	suite.require(game.following_player and sv.active() and cam.projection == Camera3D.PROJECTION_PERSPECTIVE, "ending the conversation resumes street view")
 	checks += 1
 
-	# 6. A deferred refit while active leaves the eye alone, even with a talk panel framed and its pose current.
+	# 6. A panel over the eye suspends it at once (the map camera is back in the same call, so a refit never meets
+	# the eye's perspective), quietly, and closing it resumes the eye with its heading; a refit while active still
+	# leaves the eye alone.
 	var eye: Vector3 = cam.global_position
 	var rot: Vector3 = cam.rotation
-	var panel_was_visible: bool = game.block_panel.visible
-	game.block_panel.visible = true
-	game.block_panel_mode = "talk"
-	game.talk_partner = 0
-	game.remember_panel_framing(game.block_panel, game.neighbors[0].pos)
+	var yaw6: float = sv.yaw
+	game.refit_panel_camera()
+	suite.require(sv.active() and cam.global_position == eye and cam.rotation == rot, "a panel refit while active leaves the eye alone")
+	var note6: String = game.last_a11y_announcement
+	game.show_block_panel(true)
+	var suspended6: bool = not sv.active() and sv.enabled and cam.projection == Camera3D.PROJECTION_ORTHOGONAL
+	var quiet6: bool = not game.last_a11y_announcement.begins_with("Map view")
 	game.refit_panel_camera()
 	await suite.process_frame
-	suite.require(sv.active() and cam.global_position == eye and cam.rotation == rot, "a panel refit while active leaves the eye alone")
-	game.talk_partner = -1
-	game.block_panel_mode = "hub"
-	game.block_panel.visible = panel_was_visible
-	game.panel_frame_control = null
+	var still6: bool = not sv.active() and not sv.stick_visible()
+	game.show_block_panel(false)
+	var resumed6: bool = sv.active() and cam.projection == Camera3D.PROJECTION_PERSPECTIVE
+	await suite.process_frame
+	suite.require(suspended6 and quiet6 and still6 and resumed6 and is_equal_approx(sv.yaw, yaw6) and cam.global_position.distance_to(eye) < 1e-3, "the block hub suspends the eye at once and quietly, and closing it resumes the same view (suspended %s, quiet %s, held %s, resumed %s)" % [str(suspended6), str(quiet6), str(still6), str(resumed6)])
+	game.last_a11y_announcement = note6
 	checks += 1
 
 	# 7. screen_to_ground_xz at or above the horizon reports no hit.
@@ -300,7 +305,9 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 			shown += 1
 			var l_xz := Vector2(label.global_position.x, label.global_position.z)
 			captions_ok = captions_ok and l_xz.distance_to(eye_xz) <= sv.CAPTION_RANGE_M and sv.line_of_sight_clear(eye_xz, l_xz)
-	suite.require(shown > 0 and captions_ok, "every caption shown at eye level is within 28 m with a clear line of sight (%d shown)" % shown)
+	# Beside Bea the Talk prompt takes her nameplate's place (one label, as in the map view), so it counts as shown.
+	var talk_shown: bool = game.talk_prompt_node != null and game.talk_prompt_node.is_visible_in_tree()
+	suite.require((shown > 0 or talk_shown) and captions_ok, "every caption shown at eye level is within 28 m with a clear line of sight (%d shown, talk prompt %s)" % [shown, str(talk_shown)])
 	checks += 1
 
 	# 10. Route speed is at most 4.8 m/s in street view.
@@ -970,7 +977,7 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	game.block_panel.visible = true
 	sv.mouse_mode_override = CAPTURED
 	await suite.process_frame
-	suite.require(sv.active() and sv.capture_state == "released" and sv.mouse_mode_override == VISIBLE, "a grant that lands after a panel opened over the eye is cancelled at once (%s)" % sv.capture_state)
+	suite.require(not sv.active() and sv.capture_state == "released" and sv.mouse_mode_override == VISIBLE, "a grant that lands after a panel opened over the eye is cancelled at once (%s)" % sv.capture_state)
 	game.block_panel.visible = false
 	await send(suite, mouse_left(ml_at, true))
 	await send(suite, mouse_left(ml_at, false))
@@ -979,7 +986,7 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	var panel_locked: bool = sv.capture_state == "locked"
 	game.block_panel.visible = true
 	await suite.process_frame
-	suite.require(panel_locked and sv.active() and sv.capture_state == "released" and sv.mouse_mode_override == VISIBLE, "a panel opening over the eye releases a held mouse (locked first: %s, now %s)" % [str(panel_locked), sv.capture_state])
+	suite.require(panel_locked and not sv.active() and sv.capture_state == "released" and sv.mouse_mode_override == VISIBLE, "a panel opening over the eye releases a held mouse (locked first: %s, now %s)" % [str(panel_locked), sv.capture_state])
 	var panel_requests: int = sv.capture_requests
 	sv.pointer_input(mouse_left(ml_at, true))
 	sv.pointer_input(mouse_move(ml_at + Vector2(30, 0), Vector2(30, 0)))
@@ -1213,7 +1220,9 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 			for r in sv.occupied_rects():
 				if arrow_box.intersects(r):
 					arrow_overlaps.append(h * 5)
-	suite.require(arrow_shown >= 4 and near_button >= 1 and arrow_overlaps.is_empty(), "at 390x667 the guide arrow keeps clear of the street controls at every 5 degree heading (%d shown, %d by the button, overlaps at %s)" % [arrow_shown, near_button, str(arrow_overlaps)])
+	# The marker now sits at 2.4 m at eye level, so the arrow rarely reaches the button; the slide itself is checked
+	# directly below.
+	suite.require(arrow_shown >= 4 and arrow_overlaps.is_empty(), "at 390x667 the guide arrow keeps clear of the street controls at every 5 degree heading (%d shown, %d by the button, overlaps at %s)" % [arrow_shown, near_button, str(arrow_overlaps)])
 	var slide_inset: Rect2 = game.play_area_rect().grow(-27.0)
 	var slide_from := Vector2(sv.button.get_global_rect().get_center().x, slide_inset.position.y)
 	var slid: Vector2 = game.clear_of_street_controls(slide_from, slide_inset, sv.occupied_rects())
@@ -1370,6 +1379,93 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	await suite.process_frame
 	checks += 1
 
+	# 25. Declutter at eye level (the creator's iPhone run): street banners at a readable screen size and only within
+	# reach; speech, the Talk prompt, the gold marker and the mural caption just above head height; nameplates kept
+	# whole past poles (line of sight still hides them behind buildings); Celeste's and Rook's panels suspend the eye
+	# like the hub, and closing them resumes it. Leaving restores every map value.
+	var g25_player: Vector3 = game.player.position
+	var g25_size: Vector2i = suite.root.size
+	if sv.enabled:
+		sv.toggle()
+	await suite.process_frame
+	var eye_banners: Array = []
+	for b in game.street_signs_root.get_children():
+		if b is Label3D:
+			eye_banners.append([b, b.pixel_size, b.visible])
+	var mural_cap: Label3D = sv.mural_label()
+	var ml_map_y: float = mural_cap.position.y if mural_cap != null else 0.0
+	var bea_nameplate: Label3D = null
+	for label in game.readable_scene_labels:
+		if is_instance_valid(label) and int(label.get_meta("neighbor_index", -1)) == 0:
+			bea_nameplate = label
+	game.player.position = Vector3(bea_stand.x, 0.0, bea_stand.y)
+	game.update_camera()
+	sv.toggle()
+	await suite.process_frame
+	await suite.process_frame
+	var near_shown := 0
+	var far_hidden := 0
+	var banners_sized := true
+	for item in eye_banners:
+		var b: Label3D = item[0]
+		var d: float = Vector2(b.global_position.x, b.global_position.z).distance_to(sv.eye_xz())
+		if b.visible:
+			near_shown += 1
+			var want: float = game.screen_constant_scale(sv.BANNER_PX / float(b.font_size), b.global_position)
+			banners_sized = banners_sized and d <= sv.BANNER_RANGE_M and absf(b.pixel_size - want) <= want * 0.02 and b.pixel_size < float(item[1])
+		elif d > sv.BANNER_RANGE_M:
+			far_hidden += 1
+	suite.require(sv.active() and near_shown >= 1 and far_hidden >= 1 and banners_sized, "at eye level street banners are about 18 px tall and only within 45 m (%d near shown, %d far hidden, sized %s)" % [near_shown, far_hidden, str(banners_sized)])
+	var heights_eye := [game.speech_lift_m(), game.guide_marker_anchor({"target": Vector3(bea_xz.x, 0.0, bea_xz.y), "neighbor": 0}).y, mural_cap.position.y if mural_cap != null else -1.0]
+	suite.require(is_equal_approx(heights_eye[0], 2.05) and is_equal_approx(heights_eye[1], 2.4) and is_equal_approx(heights_eye[2], sv.MURAL_LABEL_EYE_Y), "at eye level speech and the Talk prompt sit at 2.05 m, the gold marker at 2.4 m and the mural caption at 2.4 m (%s)" % str(heights_eye))
+	var banner_tested: bool = eye_banners.size() > 0 and not (eye_banners[0][0] as Label3D).no_depth_test
+	suite.require(bea_nameplate != null and bea_nameplate.no_depth_test and banner_tested, "at eye level nameplates are not sliced by poles while street banners stay depth-tested")
+	# Celeste's and Rook's panels suspend the eye like the hub, at 1100x760 and at 390x667.
+	var g25_panels: Array = []
+	for size in [g25_size, Vector2i(390, 667)]:
+		suite.root.size = size
+		await suite.process_frame
+		await suite.process_frame
+		for which in ["mural", "music"]:
+			if not sv.active():
+				game.frame_player_for_walking()
+				await suite.process_frame
+			if which == "mural":
+				game.show_mural_panel(true)
+			else:
+				game.show_music_panel(true)
+			var off: bool = not sv.active() and game.camera.projection == Camera3D.PROJECTION_ORTHOGONAL
+			await suite.process_frame
+			if which == "mural":
+				game.show_mural_panel(false)
+			else:
+				game.show_music_panel(false)
+			await suite.process_frame
+			if not sv.active() and not game.following_player:
+				game.follow_player() # A phone frames the easel or speaker; closing walks the view back to the player.
+				await suite.process_frame
+			g25_panels.append([size.x, which, off, sv.active()])
+	var g25_panels_ok := true
+	for r in g25_panels:
+		g25_panels_ok = g25_panels_ok and r[2] and r[3]
+	suite.require(g25_panels_ok, "Celeste's and Rook's panels suspend the eye at once and closing them resumes it, at 1100 and 390 wide (%s)" % str(g25_panels))
+	suite.root.size = g25_size
+	await suite.process_frame
+	await suite.process_frame
+	if sv.enabled:
+		sv.toggle()
+	await suite.process_frame
+	var g25_restored := true
+	for item in eye_banners:
+		var b: Label3D = item[0]
+		g25_restored = g25_restored and is_equal_approx(b.pixel_size, float(item[1])) and b.visible == bool(item[2])
+	suite.require(g25_restored and is_equal_approx(game.speech_lift_m(), game.SPEECH_BUBBLE_HEIGHT_M) and (mural_cap == null or is_equal_approx(mural_cap.position.y, ml_map_y)) and is_equal_approx(game.guide_marker_anchor({"target": Vector3(bea_xz.x, 0.0, bea_xz.y), "neighbor": 0}).y, game.GUIDE_MARKER_LIFT_HIGH), "leaving street view restores the banners, the speech, marker and mural caption heights")
+	game.stop_walking()
+	game.player.position = g25_player
+	game.update_camera()
+	await suite.process_frame
+	checks += 1
+
 	# Restore the caller's state.
 	sv.enabled = false
 	sv.yaw = 0.0
@@ -1405,4 +1501,4 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	game.player_visual.rotation = saved_visual_rotation
 	suite.require(not sv.active() and cam.projection == Camera3D.PROJECTION_ORTHOGONAL and cam.near == map_near and cam.far == map_far, "street view checks hand back the orthographic map camera")
 	suite.require(game.player.position == original_player and game.current_path == original_path, "street view checks restore caller position and route")
-	print("STREET_VIEW_PASS:" + ("FORMAL" if formal else "PRIVATE") + " rule/eye/return-pose/suspend/resume/refit/horizon/depth/sight/pace/west/ShiftF/yaw-walk/mouse-look/touch-roles/stick/turn-step/portrait-fov/settings/reduced-motion/capture/playtest/agy/playtest2 ", checks)
+	print("STREET_VIEW_PASS:" + ("FORMAL" if formal else "PRIVATE") + " rule/eye/return-pose/suspend/resume/refit/horizon/depth/sight/pace/west/ShiftF/yaw-walk/mouse-look/touch-roles/stick/turn-step/portrait-fov/settings/reduced-motion/capture/playtest/agy/playtest2/declutter ", checks)

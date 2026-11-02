@@ -37,6 +37,9 @@ const FOV_MAX_DEG := 90
 const DEFAULT_TURN := "snap30"
 const CAPTURE_WAIT_FRAMES := 10 # A pointer lock not granted within this many frames counts as refused.
 const ESC_GRACE_FRAMES := 10 # The browser may drop the lock just before its Esc reaches the game.
+const BANNER_PX := 18.0 # Street-name banners at eye level: about this many pixels tall, like a readable caption.
+const BANNER_RANGE_M := 45.0
+const MURAL_LABEL_EYE_Y := 2.4 # The mural board's caption sits at 4.1 m for the map; at eye level just above the board.
 const BODY_TOP_M := 1.75 # A neighbour at true scale, for eye-level taps.
 const BODY_HALF_WIDTH_M := 0.35
 
@@ -257,7 +260,9 @@ func stick_style(fill: Color, radius: float, border: int) -> StyleBoxFlat:
 
 ## The single rule. Any framing function that detaches from the player suspends street view.
 func active() -> bool:
-	return enabled and game.following_player and not game.in_overview and not game.in_wide_overview and game.selected < 0 and not game.is_focused_activity_visible() and in_block()
+	# A hub, mural or music panel suspends the eye while it is open (it resumes when the panel closes), so its
+	# buttons, the walk stick and the eye-level labels never pile up on one screen.
+	return enabled and game.following_player and not game.in_overview and not game.in_wide_overview and game.selected < 0 and not game.is_focused_activity_visible() and not game.any_side_panel_visible() and in_block()
 
 func in_block() -> bool:
 	if game.player == null or game.player.position.x < WEST_LIMIT_X:
@@ -306,6 +311,7 @@ func enter() -> void:
 			n.scale = Vector3.ONE
 	apply_sky(true)
 	set_label_depth(true)
+	set_banners(true)
 	apply_camera()
 	game.announce_a11y_status("Street view at eye level. Shift+Left and Shift+Right turn, Shift+Up and Shift+Down tilt, WASD or arrows walk. Shift+F returns to the map view." + touch_hint())
 
@@ -324,6 +330,9 @@ func exit() -> void:
 			n.scale = Vector3.ONE * game.CHARACTER_VISUAL_SCALE
 	apply_sky(false)
 	set_label_depth(false)
+	set_banners(false)
+	if enabled and game.any_side_panel_visible():
+		return # The panel speaks for itself; street view comes back when it closes.
 	game.announce_a11y_status("Map view." if enabled else "Map view. Street view off.")
 
 ## The map view draws every Label3D through walls (`no_depth_test`). At eye level that shows street
@@ -333,6 +342,8 @@ func set_label_depth(on: bool) -> void:
 	if on:
 		label_depth_saved = {}
 		for label in game.find_children("*", "Label3D", true, false):
+			if label.has_meta("neighbor_index"):
+				continue # Nameplates hide behind buildings by line of sight; a lamp pole must not slice a name in two.
 			label_depth_saved[label] = label.no_depth_test
 			label.no_depth_test = false
 		var gem_mat := guide_gem_material()
@@ -344,6 +355,47 @@ func set_label_depth(on: bool) -> void:
 		if is_instance_valid(item):
 			item.no_depth_test = label_depth_saved[item]
 	label_depth_saved = {}
+
+## Street-name banners are sized for the map (a 28-letter banner is about 8 m wide), so up close at eye level one
+## filled the screen. While active they are drawn at a readable screen size and only within reach; the mural
+## board's caption comes down to just above the board. Exit restores the map values.
+var banner_saved := {}
+func set_banners(on: bool) -> void:
+	var ml := mural_label()
+	if on:
+		banner_saved = {}
+		if game.street_signs_root != null:
+			for b in game.street_signs_root.get_children():
+				if b is Label3D:
+					banner_saved[b] = [b.pixel_size, b.visible]
+		if ml != null:
+			banner_saved[ml] = [ml.position.y]
+			ml.position.y = MURAL_LABEL_EYE_Y
+		size_banners()
+		return
+	for item in banner_saved:
+		if not is_instance_valid(item):
+			continue
+		if item == ml:
+			item.position.y = banner_saved[item][0]
+		else:
+			item.pixel_size = banner_saved[item][0]
+			item.visible = banner_saved[item][1]
+	banner_saved = {}
+
+func size_banners() -> void:
+	var eye := eye_xz()
+	var ml := mural_label()
+	for b in banner_saved:
+		if not is_instance_valid(b) or b == ml:
+			continue
+		var xz := Vector2(b.global_position.x, b.global_position.z)
+		b.visible = xz.distance_to(eye) <= BANNER_RANGE_M and not game.camera.is_position_behind(b.global_position)
+		if b.visible:
+			b.pixel_size = game.screen_constant_scale(BANNER_PX / float(maxi(b.font_size, 1)), b.global_position)
+
+func mural_label() -> Label3D:
+	return game.mural_node.get_node_or_null("MuralBoardLabel") as Label3D if game.mural_node != null else null
 
 func guide_gem_material() -> BaseMaterial3D:
 	if game.guide_marker == null:
@@ -850,14 +902,24 @@ func occupied_rects() -> Array[Rect2]:
 	return rects
 
 ## Called once per frame from `_process`: region changes, the floating button and the stick.
+## Applies a rule change at once: the camera, cutaways and hub fit follow in the same call. From `tick`, and from
+## the panel show functions, so a refit in the frame a panel opens meets the map camera, not the eye.
+func resync() -> bool:
+	if not sync():
+		return false
+	game.update_camera() # A rule change outside update_camera (an activity opening, a western route) must not leave the eye pose.
+	game.update_occlusion(true)
+	if not was_active:
+		game.refresh_hub_camera.call_deferred() # A hub that opened while the eye was in charge still gets its fit.
+	return true
+
 func tick() -> void:
-	if sync():
-		game.update_camera() # A rule change outside update_camera (an activity opening, a western route) must not leave the eye pose.
-		game.update_occlusion(true)
-		if not was_active:
-			game.refresh_hub_camera.call_deferred() # A hub that opened while the eye was in charge still gets its fit.
+	if resync():
+		pass
 	elif was_active and game.camera.keep_aspect != eye_keep_aspect():
 		game.update_camera() # A phone turned between portrait and landscape moves the angle to the other dimension.
+	if was_active:
+		size_banners()
 	if capture_requests > 0:
 		poll_capture()
 	refresh_button()

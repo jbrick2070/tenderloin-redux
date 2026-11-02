@@ -386,7 +386,9 @@ test('drift: speech bubble numbers, colours, text and the spoken-text rule', () 
   assert.deepEqual(colors, [X.colors.border, X.colors.fill]);
   assert.ok(ens.includes(`speech_bubble_label.modulate = Color("${X.colors.text.slice(1)}")`));
   assert.deepEqual(lines('spoken_text_from_line').slice(1), ['var quote_at := line.find(": \\"")', 'if quote_at >= 0 and quote_at <= 12 and line.ends_with("\\"") and line.length() > quote_at + 4:', 'return line.substr(quote_at + 3, line.length() - quote_at - 4)', 'return line']);
-  inOrder(lines('show_neighbor_speech'), ['show_speech_bubble(String(neighbors[index].get("id", "")), n_pos + Vector3.UP * SPEECH_BUBBLE_HEIGHT_M, spoken_text_from_line(line))'], 'show_neighbor_speech');
+  inOrder(lines('show_neighbor_speech'), ['show_speech_bubble(String(neighbors[index].get("id", "")), n_pos + Vector3.UP * speech_lift_m(), spoken_text_from_line(line))'], 'show_neighbor_speech');
+  // The 2D fork copies the map height; the 3D eye-level height applies only while street view is active.
+  inOrder(lines('speech_lift_m'), ['return SPEECH_BUBBLE_HEIGHT_EYE_M if street_view_active() else SPEECH_BUBBLE_HEIGHT_M'], 'speech_lift_m');
 });
 
 test('drift: CHARACTER_WEB_OVERRIDES covers exactly the lines naming 3D-only keys and controls', () => {
