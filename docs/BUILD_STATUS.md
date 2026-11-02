@@ -1,5 +1,13 @@
 # Build status
 
+## Current: 3D street view, Phase 1 - November 2, 2026 UTC
+
+The Godot edition has an optional eye-level street view on the opening block (Shift+F or the "Street view" button; `godot/street_view.gd`, hooks in `main.gd`), per `docs/FIRST_PERSON_PLAN.md` Phase 1, after the Phase 0 spikes (`docs/first-person-advice/phase0/RESULTS.md`). Every session starts in the map view, which is unchanged when street view is off. Two outside reviews (Codex, then agy arbitrating) were checked line by line and their confirmed findings fixed. `docs/FIRST_PERSON_EXECUTION.md` is the reviewed work plan for Phases 2-7.
+
+Evidence on a clean checkout of `761e91c`: `godot:import` and `godot:export` (pck 1,489,888 bytes), `npm run check`, 838 Node tests, `npm run godot:browser` PASS (now including the street-view step at 1100x760, 390x667 and 320x667: perspective, sky above and street below, snap turn, button and Shift+F round trips, map pose kept), `next:browser`, `next:visits`, `next:ending` PASS; the formal Godot suite PASS on the working tree with 12 street-view groups. An earlier clean run on `103cb2f` failed one Power Story step (a Stop tap landing after arrival under heavy load); it passed at every size on `761e91c` and is treated as a load race.
+
+Open: not deployed; Chrome only; no phone or human playtest of street view yet (prompt for Codex and agy in `docs/first-person-advice/playtest-prompt.md`); Phase 2 (drag-look, touch stick, settings, reduced motion, opt-in mouse capture) is being built on branch `street-phase2`.
+
 ## Current: 2D fork Phase 3, side stories, surprises and landmarks - November 1, 2026 UTC
 
 `browser-next/` now has Godot's side stories: Before These Streets from the startup card and Field notes, Cook & Share and the Neighborhood Stories hub in the afterglow, the story picker, Two Dogs Home, the Lantern Procession, the Power Story with the Larkin place, and the Election Walk. It also has the ten neighborhood surprises (map beacons with label chips, Field notes' Spot Surprise and the neighbors' Spot Surprise) and the landmark tour of the museum's Time-Portal, Boeddeker Park, "So What" and six fictional eateries, with Godot's gold marker on the tour's stop. The map walks north to Eddy and west along a static Eddy corridor to Larkin. Only the finds are saved, as Godot's `discovered_surprises`, so the 3D edition counts them; every story, the meal and the tour are visit-only and start over on Start fresh or an adopted save. Copied text, constants and colors are drift-tested against the Godot sources. Nine declared deviations (D1-D9), the 2D sidewalk adaptation and the known limits are in the design of record, `docs/BROWSER_NEXT.md`; the Phase 3 design spec is kept as `docs/PHASE3_SPEC.md`.
