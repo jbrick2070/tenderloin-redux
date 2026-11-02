@@ -1,0 +1,245 @@
+{
+  "chrome": "156.0.8078.79",
+  "steps": [
+    {
+      "label": "after first click",
+      "t": 16984,
+      "pointerLocked": true,
+      "godotMouseMode": 2,
+      "yaw": 0
+    },
+    {
+      "label": "after mouse move while locked",
+      "t": 17346,
+      "pointerLocked": true,
+      "godotMouseMode": 2,
+      "yaw": -33.7
+    },
+    {
+      "label": "after Esc",
+      "t": 18063,
+      "pointerLocked": false,
+      "godotMouseMode": 0,
+      "yaw": -33.7
+    },
+    {
+      "label": "click 0.5 s after Esc",
+      "t": 18573,
+      "pointerLocked": true,
+      "godotMouseMode": 2,
+      "yaw": -33.7
+    },
+    {
+      "label": "click ~1.6 s after Esc",
+      "t": 19708,
+      "pointerLocked": true,
+      "godotMouseMode": 2,
+      "yaw": -33.7
+    },
+    {
+      "label": "while another tab is in front",
+      "t": 20967,
+      "pointerLocked": false,
+      "godotMouseMode": 0,
+      "yaw": -33.7
+    },
+    {
+      "label": "back on the game tab, before any click",
+      "t": 21884,
+      "pointerLocked": false,
+      "godotMouseMode": 0,
+      "yaw": -33.7
+    },
+    {
+      "label": "click after returning",
+      "t": 22600,
+      "pointerLocked": true,
+      "godotMouseMode": 2,
+      "yaw": -33.7
+    },
+    {
+      "label": "after Godot release",
+      "t": 23206,
+      "pointerLocked": false,
+      "godotMouseMode": 0,
+      "yaw": -33.7
+    },
+    {
+      "label": "click after Godot release (2 s)",
+      "t": 25232,
+      "pointerLocked": true,
+      "godotMouseMode": 2,
+      "yaw": -33.7
+    },
+    {
+      "label": "after document.exitPointerLock()",
+      "t": 25848,
+      "pointerLocked": false,
+      "godotMouseMode": 0,
+      "yaw": -33.7
+    }
+  ],
+  "domEvents": [
+    {
+      "t": 16280,
+      "locked": true
+    },
+    {
+      "t": 17350,
+      "escKeydown": true,
+      "dp": false
+    },
+    {
+      "t": 17350,
+      "escKeyup": true
+    },
+    {
+      "t": 17364,
+      "locked": false
+    },
+    {
+      "t": 18080,
+      "locked": true
+    },
+    {
+      "t": 19722,
+      "locked": false
+    },
+    {
+      "t": 21899,
+      "locked": true
+    },
+    {
+      "t": 22614,
+      "locked": false
+    },
+    {
+      "t": 23230,
+      "locked": true
+    },
+    {
+      "t": 25235,
+      "locked": false
+    }
+  ],
+  "godotLog": [
+    {
+      "event": "request",
+      "mode_after_set": 0,
+      "mouse_mode": 0,
+      "since_request_ms": 0,
+      "t": 15827
+    },
+    {
+      "event": "mouse_mode_changed",
+      "from": 0,
+      "mouse_mode": 2,
+      "since_request_ms": 3,
+      "t": 15830,
+      "to": 2
+    },
+    {
+      "echo": false,
+      "event": "esc_key_down",
+      "mouse_mode": 2,
+      "since_request_ms": 1087,
+      "t": 16914
+    },
+    {
+      "event": "release",
+      "mouse_mode": 0,
+      "since_request_ms": 1087,
+      "t": 16914
+    },
+    {
+      "echo": false,
+      "event": "esc_key_up",
+      "mouse_mode": 0,
+      "since_request_ms": 1087,
+      "t": 16914
+    },
+    {
+      "event": "mouse_mode_changed",
+      "from": 2,
+      "mouse_mode": 0,
+      "since_request_ms": 1087,
+      "t": 16914,
+      "to": 0
+    },
+    {
+      "event": "request",
+      "mode_after_set": 0,
+      "mouse_mode": 0,
+      "since_request_ms": 0,
+      "t": 17624
+    },
+    {
+      "event": "mouse_mode_changed",
+      "from": 0,
+      "mouse_mode": 2,
+      "since_request_ms": 6,
+      "t": 17630,
+      "to": 2
+    },
+    {
+      "event": "mouse_mode_changed",
+      "from": 2,
+      "mouse_mode": 0,
+      "since_request_ms": 1657,
+      "t": 19281,
+      "to": 0
+    },
+    {
+      "event": "request",
+      "mode_after_set": 0,
+      "mouse_mode": 0,
+      "since_request_ms": 0,
+      "t": 21444
+    },
+    {
+      "event": "mouse_mode_changed",
+      "from": 0,
+      "mouse_mode": 2,
+      "since_request_ms": 5,
+      "t": 21449,
+      "to": 2
+    },
+    {
+      "event": "release",
+      "mouse_mode": 0,
+      "since_request_ms": 721,
+      "t": 22165
+    },
+    {
+      "event": "mouse_mode_changed",
+      "from": 2,
+      "mouse_mode": 0,
+      "since_request_ms": 738,
+      "t": 22182,
+      "to": 0
+    },
+    {
+      "event": "request",
+      "mode_after_set": 0,
+      "mouse_mode": 0,
+      "since_request_ms": 0,
+      "t": 22769
+    },
+    {
+      "event": "mouse_mode_changed",
+      "from": 0,
+      "mouse_mode": 2,
+      "since_request_ms": 13,
+      "t": 22782,
+      "to": 2
+    },
+    {
+      "event": "mouse_mode_changed",
+      "from": 2,
+      "mouse_mode": 0,
+      "since_request_ms": 2030,
+      "t": 24799,
+      "to": 0
+    }
+  ]
+}

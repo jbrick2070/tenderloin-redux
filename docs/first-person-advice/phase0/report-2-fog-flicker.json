@@ -1,0 +1,163 @@
+{
+  "fog": [
+    "C:/Users/jeffr/AppData/Local/Temp/claude/C--tenderloin-redux/4c5e49de-e485-4e4f-92ce-17784f75a2df/scratchpad/spike-out/0b-turk-fogon.png",
+    "C:/Users/jeffr/AppData/Local/Temp/claude/C--tenderloin-redux/4c5e49de-e485-4e4f-92ce-17784f75a2df/scratchpad/spike-out/0b-turk-fogoff.png",
+    "C:/Users/jeffr/AppData/Local/Temp/claude/C--tenderloin-redux/4c5e49de-e485-4e4f-92ce-17784f75a2df/scratchpad/spike-out/0b-taylor-south-fogon.png",
+    "C:/Users/jeffr/AppData/Local/Temp/claude/C--tenderloin-redux/4c5e49de-e485-4e4f-92ce-17784f75a2df/scratchpad/spike-out/0b-taylor-south-fogoff.png",
+    "C:/Users/jeffr/AppData/Local/Temp/claude/C--tenderloin-redux/4c5e49de-e485-4e4f-92ce-17784f75a2df/scratchpad/spike-out/0b-taylor-north-fogon.png",
+    "C:/Users/jeffr/AppData/Local/Temp/claude/C--tenderloin-redux/4c5e49de-e485-4e4f-92ce-17784f75a2df/scratchpad/spike-out/0b-taylor-north-fogoff.png"
+  ],
+  "flicker": [
+    {
+      "name": "turk-road",
+      "yaw": 270,
+      "pitch": -14,
+      "diffs": [
+        {
+          "changed": 226,
+          "pct": 0.025,
+          "bands32px": {
+            "2": 24,
+            "4": 18,
+            "5": 35,
+            "6": 132,
+            "7": 10
+          }
+        },
+        {
+          "changed": 598,
+          "pct": 0.065,
+          "bands32px": {
+            "2": 44,
+            "4": 46,
+            "5": 95,
+            "6": 382,
+            "7": 19
+          }
+        },
+        {
+          "changed": 2839,
+          "pct": 0.308,
+          "bands32px": {
+            "2": 579,
+            "3": 572,
+            "4": 554,
+            "5": 535,
+            "6": 567
+          }
+        },
+        {
+          "changed": 4010,
+          "pct": 0.435,
+          "bands32px": {
+            "2": 739,
+            "3": 828,
+            "4": 863,
+            "5": 840,
+            "6": 696
+          }
+        }
+      ]
+    },
+    {
+      "name": "taylor-road",
+      "yaw": 90,
+      "pitch": -14,
+      "diffs": [
+        {
+          "changed": 1,
+          "pct": 0,
+          "bands32px": {
+            "6": 1
+          }
+        },
+        {
+          "changed": 3,
+          "pct": 0,
+          "bands32px": {
+            "6": 1,
+            "7": 2
+          }
+        },
+        {
+          "changed": 7,
+          "pct": 0.001,
+          "bands32px": {
+            "6": 5,
+            "7": 2
+          }
+        },
+        {
+          "changed": 9,
+          "pct": 0.001,
+          "bands32px": {
+            "6": 7,
+            "7": 2
+          }
+        }
+      ]
+    },
+    {
+      "name": "turk-far",
+      "yaw": 270,
+      "pitch": 2,
+      "diffs": [
+        {
+          "changed": 229,
+          "pct": 0.025,
+          "bands32px": {
+            "7": 26,
+            "8": 7,
+            "9": 30,
+            "10": 80,
+            "11": 86
+          }
+        },
+        {
+          "changed": 503,
+          "pct": 0.055,
+          "bands32px": {
+            "7": 35,
+            "8": 14,
+            "9": 52,
+            "10": 155,
+            "11": 247
+          }
+        },
+        {
+          "changed": 601,
+          "pct": 0.065,
+          "bands32px": {
+            "7": 76,
+            "8": 26,
+            "9": 56,
+            "10": 173,
+            "11": 270
+          }
+        },
+        {
+          "changed": 1080,
+          "pct": 0.117,
+          "bands32px": {
+            "0": 572,
+            "7": 35,
+            "9": 51,
+            "10": 150,
+            "11": 260
+          }
+        }
+      ]
+    }
+  ],
+  "lifted": {
+    "changed": 276,
+    "pct": 0.03,
+    "bands32px": {
+      "2": 26,
+      "3": 8,
+      "4": 30,
+      "5": 57,
+      "6": 147
+    }
+  }
+}

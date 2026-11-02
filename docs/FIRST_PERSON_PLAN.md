@@ -192,12 +192,15 @@ Only after 0d passes and the creator commits to it. Phases 1–5 already provide
 - **Claude:** "`screen_constant_scale` used by the talk prompt (:6335)". Line 6335 uses `speech_bubble_base_scale()`, which reads `camera.size` directly. The conclusion holds. "Shift+F is free": it currently triggers Find Me, so it is unbound only as a combination and needs an explicit arm.
 - **The brief:** `main.gd` is 16,327 lines, not about 17,000. Babylon.js is Apache-2.0, not MIT.
 
-## 10. Unverified
+## 10. Phase 0 results and what is still unverified
 
-- Esc delivery to Godot during Pointer Lock, the re-lock cooldown, and Safari behaviour (spike 0a).
-- Fog and `ProceduralSkyMaterial` appearance in Compatibility on 4.7.2 web (spike 0b).
-- Phone frame rate in perspective (spike 0c).
-- `WebXRInterface` with the Compatibility renderer in this export, on any headset (spike 0d).
+Phase 0 ran on November 2, 2026 from the throwaway branch `fp-spike-phase0`; the full tables, screenshots, JSON reports and harness are in `docs/first-person-advice/phase0/RESULTS.md`.
+
+- **0a, measured in Chrome 156 (headless and a real window):** Pointer Lock engages from a press in 3–6 ms; the Esc that releases it does reach Godot as `KEY_ESCAPE` (synthesized key; one physical press should confirm); a re-lock 0.5 s after Esc succeeded, so Argon's 1.25 s cooldown was not reproduced; a tab switch releases the lock and `Input.mouse_mode` tracks that release on its own. The Claude desktop in-app pane refused Pointer Lock every time (`pointerlockerror`). *Decision: drag-look is the base, mouselook stays opt-in.* Firefox and Safari were not available.
+- **0b, verified:** `ProceduralSkyMaterial` and depth fog render in Compatibility on 4.7.2 web; no hard horizon edge with `fog_depth_end` 235 m inside far 250 m; no z-fighting on the ribbons (five-frame pixel diffs: 0.000–0.001 % on the Taylor roadway; the Turk differences sit on Bea's idle animation and the tree sway, and a 2 cm lift changed nothing). The screenshots confirm two Phase 1 items: `Label3D` texts are unreadable at eye height, and a 2.15-scale neighbour towers over the eye.
+- **0c, desktop only:** 60 fps vsync-capped, 179–187 draw calls, about 550 k primitives, 82 MB video memory, but 7.7–8.1 ms of script `_process` per frame. The CPU side, not the draw calls, is the phone risk. *Pending on the creator's phones* (the spike build is on the LAN; see RESULTS.md).
+- **0d, partly:** the `WebXRInterface` exists in this export and the session path is wired; `is_session_supported("immersive-vr")` is false on this PC with no headset. *Pending on a headset over HTTPS.*
+- Safari and Firefox behaviour for Pointer Lock (0a).
 - Whether GitHub Pages serves Brotli or gzip for `.wasm`, and the real transfer size; savings from a custom size-optimized template.
 - Whether hidden or replaced buildings keep collision bodies (affects a physics line-of-sight test; the 2D test avoids it).
 - Engine sizes for three.js, Babylon, PlayCanvas and Bevy (estimates); Unity 6.6 WebGPU status and its benchmark sizes; Defold's 0.83 MB vendor figure; Unity and Unreal licence terms as of today.
