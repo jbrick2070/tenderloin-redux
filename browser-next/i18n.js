@@ -225,12 +225,14 @@ function checkValue(source, value, plurals, options) {
   // lookup (es lists 'many' for millions, so an ordinary { one, other } entry is valid).
   if (!forms.every(category => plurals.includes(category))) return [null, 'plural-categories'];
   if (!forms.includes('other')) return [null, 'plural-other'];
+  // The selector: $count, a 1-based argument or (in a named template) a placeholder's name; else the first %d, or {count}.
+  const named = signature(source).named;
   if (Object.hasOwn(value, '$count')) {
     const n = value.$count;
-    if (!Number.isInteger(n) || n < 1 || n > argCount) return [null, 'plural-index'];
+    if (typeof n === 'string' ? !named.includes(n) : !Number.isInteger(n) || n < 1 || n > argCount) return [null, 'plural-index'];
     clean.$count = n;
-  } else if (!signature(source).specs.some(s => s.kind === 'd')) return [null, 'plural-selector'];
-  const counted = Object.hasOwn(value, '$count') ? value.$count : signature(source).specs.findIndex(s => s.kind === 'd') + 1;
+  } else if (!signature(source).specs.some(s => s.kind === 'd') && !named.includes('count')) return [null, 'plural-selector'];
+  const counted = !Object.hasOwn(value, '$count') ? signature(source).specs.findIndex(s => s.kind === 'd') + 1 : typeof value.$count === 'number' ? value.$count : 0;
   for (const key of forms) { const why = checkText(source, value[key], key === 'other' ? options : { ...options, optional: counted }); if (why) return [null, why]; clean[key] = value[key]; }
   return [Object.freeze(clean), null];
 }
@@ -541,12 +543,18 @@ function substitute(template, args, flavor) {
   }
   return out;
 }
-// The variant of a plural or select object for these arguments. The plural selector is $count, else the template's first %d.
+// The variant of a plural or select object for these arguments. The plural selector is $count, else the template's first %d;
+// in a named template ({ name } values) $count names the placeholder, else it is {count}.
 function variant(value, template, args) {
   if (typeof value === 'string') return value;
   const list = Array.isArray(args) ? args : [args];
   if (Object.hasOwn(value, '$select')) return select(value, list[value.$select - 1]);
-  const specs = signature(template).specs, index = Object.hasOwn(value, '$count') ? value.$count - 1 : specs.findIndex(s => s.kind === 'd');
+  const specs = signature(template).specs;
+  if (typeof value.$count === 'string' || (!Object.hasOwn(value, '$count') && !specs.some(s => s.kind === 'd'))) {
+    const values = list[0] ?? {}, name = typeof value.$count === 'string' ? value.$count : 'count';
+    return plural(value, Math.trunc(Number(values[name])));
+  }
+  const index = Object.hasOwn(value, '$count') ? value.$count - 1 : specs.findIndex(s => s.kind === 'd');
   return plural(value, Math.trunc(Number(list[index])));
 }
 export function format(template, args, flavor, ctx) {

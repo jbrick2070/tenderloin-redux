@@ -129,25 +129,11 @@ test('gdfText is gdf in English: same text, same %% and the same error on a miss
 });
 
 // ---------------------------------------------------------------- the pseudo-locale
-// Every English key the side stories may look up: their Godot tables as the 2D shows them (with and without the web override),
-// the composites, the menu titles, the declared fork text, the kit's region name, the memory lines and the place file's rooms
-// and listed descriptions.
-function msgids() {
-  const out = new Set();
-  const walk = (value, file) => {
-    if (typeof value === 'string') { out.add(value); if (file) out.add(web(file, value)); return; }
-    if (value && typeof value === 'object') for (const item of Object.values(value)) walk(item, file);
-  };
-  for (const [file, table] of Object.entries(GODOT_TEXT)) walk(table, file);
-  for (const [file, table] of Object.entries(GODOT_CONSTANTS)) walk(table, file);
-  walk(COMPOSE_TEXT); walk(MENU_TITLES); walk(VISITS_FORK_TEXT);
-  out.add('Story text');
-  for (const name of ['Bea', 'Celeste', 'Rook', 'Dez', 'Thanh']) out.add(name); // world.js NEIGHBORS: the memory line's speaker
-  for (const who of Object.keys(surprises.PAIRS)) { const [a, b] = surprises.PAIRS[who]; for (const found of [[a], [b], [a, b]]) out.add(surprises.memoryLine(who, found)); }
-  for (const site of VOTING.sites) { out.add(site.room); out.add(site.listed_description); }
-  out.delete('');
-  return [...out].filter(text => /[A-Za-z]/.test(text));
-}
+// Every English key the side stories may look up is a msgid of i18n/source.json (their Godot tables as the 2D shows them, the
+// composites, the menu titles, the declared fork text, the kit's region name, the memory lines and the place file's rooms and
+// listed descriptions are all registered), so the pseudo catalog is the source alone and a miss is a msgid it lacks.
+const SOURCE = JSON.parse(read('i18n/source.json')).entries.filter(e => !e.ctx).map(e => e.msgid);
+const msgids = () => SOURCE;
 function pseudoLocale(extra = {}) {
   const json = JSON.parse(pseudoCatalog(msgids(), 'qps-ploc'));
   const read = readCatalog(JSON.stringify({ ...json, ...extra }), 'qps-ploc');
@@ -329,7 +315,7 @@ test('under the pseudo-locale every story, every screen and every reply is looke
   const leaks = new Map();
   for (const text of strings(seen)) for (const run of residue(text)) if (!leaks.has(run)) leaks.set(run, text);
   assert.deepEqual([...leaks].slice(0, 12).map(([run, text]) => `${run}  <-  ${text.slice(0, 140)}`), [], 'English that reached the player under qps-ploc');
-  assert.deepEqual([...new Set(english_)].filter(text => /[A-Za-z]{2,}/.test(text)).slice(0, 12), [], 'a lookup the catalog lacked');
+  assert.deepEqual([...new Set(english_)].slice(0, 12), [], 'a lookup the catalog lacked');
   // The run was long enough to mean something: it showed thousands of pseudo strings, every story's ending among them.
   const all = strings(seen).join('\n');
   for (const key of [D.match_dog.reunion, LT.advance.won, PW.check_path.won, PW.check_path.larkinWon, V.share_map.won, PK.refresh.invitation, G('main.gd').update_landmark_tour_completion.announce]) assert.ok(all.includes(pseudo(key).slice(0, 30)), `reached: ${key.slice(0, 50)}`);

@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { pathToFileURL, fileURLToPath } from 'node:url';
-import { REGISTRY, EXCLUDED, extract, stableJSON, sourceIndex, readSource, buildManifest, checkLocales, catalogCodes, isHumanText, SOURCE_PATH, MANIFEST_PATH } from '../scripts/i18n.mjs';
+import { REGISTRY, EXCLUDED, extract, stableJSON, sourceIndex, readSource, buildManifest, checkLocales, catalogCodes, isHumanText, isMsgid, SHORT_TEXT, SOURCE_PATH, MANIFEST_PATH } from '../scripts/i18n.mjs';
 import { readCatalog, readManifest, pseudoCatalog, LOCALES, PSEUDO_LOCALES, shippedLocales } from '../browser-next/i18n.js';
 
 const FORK = new URL('../browser-next/', import.meta.url);
@@ -21,7 +21,7 @@ test('i18n/source.json is fresh: the extractor on the current tree writes exactl
   assert.deepEqual(keys, [...keys].sort((a, b) => { const [ca, ma] = a.split('\u0004'), [cb, mb] = b.split('\u0004'); return ma < mb ? -1 : ma > mb ? 1 : ca < cb ? -1 : ca > cb ? 1 : 0; }), 'sorted by msgid');
   for (const e of source.entries) {
     assert.ok(e.paths.length > 0 && ['chip', 'label', 'button', 'sentence', 'paragraph'].includes(e.length), e.msgid);
-    assert.ok(isHumanText(e.msgid), e.msgid);
+    assert.ok(isMsgid(e.msgid), e.msgid);
   }
   // Spot checks: an override is applied (the 2D text, not Godot's), and ids and colours are not msgids.
   const msgids = new Set(source.entries.map(e => e.msgid));
@@ -83,4 +83,27 @@ test('the pseudo catalogs of the whole source pass the validator with nothing re
     assert.equal(read.catalog.size, source.entries.filter(e => !e.ctx).length);
   }
   assert.ok(Object.keys(LOCALES).every(code => !code.startsWith('qps')), 'pseudo-locales are not LOCALES');
+});
+
+test('extractor gaps: grouped overrides, text under art/kind/cue keys, short shown words and letterless templates are msgids', async () => {
+  const msgids = new Set(readSource().entries.map(e => e.msgid));
+  // visits/text.js WEB_OVERRIDES is keyed by Godot file: each 2D wording is a msgid, and the Godot literal it replaces is not,
+  // also where another module re-exports that file's table (visits/power.js TEXT, visits/picker.js TEXT).
+  const { WEB_OVERRIDES } = await import('../browser-next/visits/text.js');
+  const pairs = Object.values(WEB_OVERRIDES).flatMap(map => Object.entries(map));
+  assert.ok(pairs.length >= 17);
+  for (const [godot, web] of pairs) { assert.ok(msgids.has(web), web); assert.ok(!msgids.has(godot), godot); }
+  // Shown text that sits under a key the extractor once skipped as an id key.
+  const { GODOT, GODOT_CONSTS } = await import('../browser-next/ending/text.js');
+  const { EATERIES } = await import('../browser-next/visits/landmarks.js');
+  const { GODOT_TEXT } = await import('../browser-next/visits/text.js');
+  for (const text of [GODOT['programme_studio.gd'].hosted_picture_description.art, GODOT['programme_gathering.gd'].contribution.art, GODOT['orbital_commons.gd'].response.art,
+    GODOT_CONSTS['programme_gathering.gd'].OPENINGS.art, ...EATERIES.map(e => e.kind), GODOT_TEXT['main.gd'].update_landmark_tour_completion.cue]) assert.ok(msgids.has(text), text);
+  assert.deepEqual([...new Set(EATERIES.map(e => e.kind))].sort(), ['Bar & Lounge', 'Corner Bar', 'Eatery']);
+  // SHORT_TEXT: every entry is found in a table (no dead allowlist), and only there: isHumanText still rejects ids.
+  for (const word of Object.keys(SHORT_TEXT)) { assert.ok(msgids.has(word), word); assert.ok(!isHumanText(word), `${word} needs no allowlist`); }
+  for (const id of ['bea', 'art', 'cup', 'visit', 'hit', 'garden', 'first']) assert.ok(!msgids.has(id), id);
+  // Letterless templates are text (their separators and quotes are a translator's), letterless data is not.
+  for (const template of ['%s: %s', '%s: "%s"', '%s: "%s" · %s%s', '%d/3', '%s · %s', '%s %s', '%d\n%s']) { assert.ok(isHumanText(template), template); assert.ok(msgids.has(template), template); }
+  for (const data of ['x="%f"', '%', '%s', '%%', '1/3', '  ', '#c5874f', '{}']) assert.ok(!isHumanText(data), data);
 });

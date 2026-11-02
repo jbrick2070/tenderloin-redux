@@ -11,7 +11,7 @@ import { filmDoneEnvelope, openedEnvelope } from './next-fixtures.mjs';
 import { GAME_TEXT, tf } from '../browser-next/game-text.js';
 import * as I from '../browser-next/i18n.js';
 import { isHumanText } from '../scripts/i18n.mjs';
-import { initialState, FURNITURE, MOTIFS, PALETTES, LOANS, LITTER, PHOTO_GUESTS, BLOCK_TEXT, ready, blockMissing } from '../browser-next/core.js';
+import { initialState, FURNITURE, MOTIFS, PALETTES, LOANS, LITTER, PHOTO_GUESTS, BLOCK_TEXT, ready, blockMissing, blockMissingItems } from '../browser-next/core.js';
 import { parseGodotSave, canonicalStringify } from '../browser-next/godot-save.js';
 import { FILM_SHOTS } from '../browser-next/film.js';
 import { NEIGHBORS, PLACES } from '../browser-next/world.js';
@@ -174,7 +174,7 @@ export function renderScreens(source, state, { held = false, storageAvailable = 
     visits: { entryHTML: id => `[${id}]`, bindEntry() {} }, voicesHost: { enabled: true }, civicAvailable: () => true, filmAvailable: () => true, programmeTitle: () => 'TITLE',
     livingDistrict() {}, viewKeepsake() {}, programmeEditor() {}, hostingScreen() {}, civicScreen() {}, filmScreen() {}, openVoices() {}, restart() {}, photoLayout() {}, languageRowHTML: () => '', rewards: { setEnabled() {} }, saveSettings() {},
     soundsAnnouncement: () => '', music: { setVolume() {} }, setVoicesEnabled() {}, voicesUI() {}, bindSwap() {}, chooseLanguage() {},
-    NEIGHBORS, PLACES, LOANS, LITTER, PHOTO_GUESTS, PHOTO_RESPONSES, BLOCK_TEXT, BLACK_HAWK: { id: 'blackhawk' }, ready, blockMissing, fmt, GATHERING_LAYOUT_TITLES, STORY_CHAPTERS, FORK_TEXT, EDITION_TEXT, EDITION_URL, SOUNDS_TEXT, soundsLabel, MAX_VOLUME,
+    NEIGHBORS, PLACES, LOANS, LITTER, PHOTO_GUESTS, PHOTO_RESPONSES, BLOCK_TEXT, BLACK_HAWK: { id: 'blackhawk' }, ready, blockMissingItems, list: I.list, fmt, GATHERING_LAYOUT_TITLES, STORY_CHAPTERS, FORK_TEXT, EDITION_TEXT, EDITION_URL, SOUNDS_TEXT, soundsLabel, MAX_VOLUME,
     SAVE_TEXT: GAME_TEXT.save, GAME_TEXT, t: I.t, L: I.L, tf, BACK: GODOT['film_screening.gd'].setup.back, STUDIO: GODOT['programme_studio.gd'].refresh, ORDER: VISIT_TEXT['story_picker.gd'].setup,
   };
   const code = [declaration(lines, 'function button('), ...SCREENS.map(name => declaration(lines, `function ${name}(`)), `return { ${SCREENS.join(', ')} };`].join('\n');
@@ -218,13 +218,32 @@ test('under the pseudo-locale every moved string is looked up: the screens show 
     for (const [, v] of ALL) if (isHumanText(v) && /[A-Za-z]/.test(v.replace(/\{\w+\}/g, ''))) assert.notEqual(I.t(v), v, v);
     assert.equal(tf(GAME_TEXT.speech.line, { name: 'Bea', text: 'Hi.' }), I.pseudo('{name}: {text}').replace('{name}', 'Bea').replace('{text}', 'Hi.'));
     const long = [...new Set([...entries, ...tables])].filter(v => v.length > 12 && !/[{}%]/.test(v) && /\s/.test(v));
+    // Every lookup the screens make is a msgid of the catalog: none is missing, and none is already pseudo text (looked up twice).
+    const misses = new Set();
+    I.onMiss((english, ctx) => misses.add(ctx ? `${ctx}\u0004${english}` : english));
     for (const [name, make, options] of CASES) {
-      // The finale's not-ready notice joins core.js blockMissing's English names until I2c's blockMissingItems is wired (game.js TODO).
-      const state = make(), almost = `toast:${fmt(BLOCK_TEXT.almost, blockMissing(state))}`;
-      const drawn = renderScreens(GAME, state, options).filter(html => html !== almost).join('\n');
+      const drawn = renderScreens(GAME, make(), options).join('\n');
       assert.ok(drawn.includes('⟦'), name);
       const english = long.filter(v => drawn.includes(v));
       assert.deepEqual(english, [], `${name}: English that reached the screen`);
     }
+    assert.deepEqual([...misses], [], 'a lookup the catalog lacks, or a second lookup of localized text');
+  } finally { I.onMiss(null); I.setLocale('en'); }
+});
+
+test("the finale's not-ready notice: core.js blockMissingItems, each part through its template; English is blockMissing's join", () => {
+  const base = initialState(), states = [base, { ...base, visited: ['bea', 'dez'] }, { ...base, visited: NEIGHBORS.map(n => n.id), celesteTalks: 1 },
+    { ...base, mural: { [MOTIFS[0]]: 1 }, soundcheck: true }, { ...base, visited: NEIGHBORS.map(n => n.id), mural: Object.fromEntries(MOTIFS.map(id => [id, 1])) }];
+  const toasts = state => renderScreens(GAME, state).filter(html => html.startsWith('toast:'));
+  I.setLocale('en');
+  for (const state of states) {
+    assert.ok(!ready(state) && blockMissingItems(state).length > 0);
+    assert.deepEqual(toasts(state), [`toast:${fmt(BLOCK_TEXT.almost, blockMissing(state))}`]);
+  }
+  const loaded = I.readCatalog(I.pseudoCatalog([BLOCK_TEXT.almost, BLOCK_TEXT.neighbors, BLOCK_TEXT.mural, BLOCK_TEXT.sound], 'qps-ploc'), 'qps-ploc');
+  I.setLocale('qps-ploc', loaded.catalog, { preview: true });
+  try {
+    const [toast] = toasts(states[0]), parts = [I.pseudo(BLOCK_TEXT.neighbors).replace('%d', '0'), I.pseudo(BLOCK_TEXT.mural).replace('%d', '0'), I.pseudo(BLOCK_TEXT.sound)];
+    assert.equal(toast, `toast:${I.pseudo(BLOCK_TEXT.almost).replace('%s', new Intl.ListFormat('en-US', { type: 'conjunction' }).format(parts))}`);
   } finally { I.setLocale('en'); }
 });

@@ -25,7 +25,7 @@ import { FILM_SHOTS } from '../browser-next/film.js';
 import { NEIGHBORS as WORLD_NEIGHBORS, PLACES } from '../browser-next/world.js';
 import { parseGodotSave } from '../browser-next/godot-save.js';
 import { gdCapitalize } from '../browser-next/visits/format.js';
-import { extract, isHumanText } from '../scripts/i18n.mjs';
+import { readSource, isHumanText } from '../scripts/i18n.mjs';
 import { GODOT_WRITTEN, godotEnvelope, readyEnvelope, openedEnvelope, hostedEnvelope, civicDoneEnvelope, filmDoneEnvelope, fakeDialog, SURPRISES } from './next-fixtures.mjs';
 
 const english = () => I.setLocale('en');
@@ -124,18 +124,17 @@ test('English: narrowLabel ignores a template, spokenText keeps the 12-unit limi
 });
 
 // ------------------------------------------------------------------------------------------------ pseudo coverage
-const source = await extract();
-const MSGIDS = [...new Set([...source.entries.filter(e => !e.ctx).map(e => e.msgid), ...Object.values(COMPOSITES).flatMap(strings).filter(isHumanText)])];
+// The catalog is i18n/source.json alone (the registry lists these tables), so a miss is a msgid the extractor does not find.
+const source = readSource();
+const MSGIDS = source.entries.filter(e => !e.ctx).map(e => e.msgid);
 const PSEUDO = I.readCatalog(I.pseudoCatalog(MSGIDS, 'qps-ploc'), 'qps-ploc');
 const pseudoOn = () => { assert.ok(PSEUDO.catalog, PSEUDO.error); assert.deepEqual(PSEUDO.rejected, []); I.setLocale('qps-ploc', PSEUDO.catalog, { preview: true }); };
 // A run of two plain English words: what a missed string looks like among pseudo text (whose letters are all accented).
 // Pseudo text keeps only the protected tokens (BPM, WASD, Enter…) in plain letters, so any other word of plain letters is
 // English that was not looked up: a whole string, or a word Godot joins in (hit, rest, on, off). The stem ids (bass+brush) and
 // the stand-in file name are data, not text; "and" is the pseudo-locale's Intl.ListFormat (en-US), which a real locale's Intl
-// replaces. "nearby" (story.js FORK_TEXT.nearby) is looked up but is one lowercase word, which the extractor does not keep as a
-// msgid (scripts/i18n.mjs isHumanText): a known gap, reported with this package. A speech envelope keeps its speaker's name, as
-// the pseudo transform does.
-const ALLOWED = new Set(['BPM', 'WASD', 'Enter', 'Esc', 'Shift', 'Tenderloin', 'Redux', 'bass', 'brush', 'chords', 'lead', 'and', 'nearby']);
+// replaces. A speech envelope keeps its speaker's name, as the pseudo transform does.
+const ALLOWED = new Set(['BPM', 'WASD', 'Enter', 'Esc', 'Shift', 'Tenderloin', 'Redux', 'bass', 'brush', 'chords', 'lead', 'and']);
 const SPEAKER = new RegExp(`(?:^|(?<=[\\s·]))(?:${C.CHARACTER_PEOPLE.map(p => p.name).join('|')}): "`, 'g');
 const englishRuns = text => (String(text).replace(SPEAKER, ' ').replace(/cut\.mp3/g, ' ').match(/[A-Za-z]{2,}/g) ?? []).filter(word => !ALLOWED.has(word));
 // Visible text and the accessible names of HTML.
@@ -183,7 +182,8 @@ test('pseudo-locale: every string these modules show is looked up, and no plain 
   pseudoOn();
   try {
     const leaks = [], seen = [], misses = new Set();
-    I.onMiss(key => { if (isHumanText(key)) misses.add(key); });
+    // characters.js shows PANEL_TEXT.detail as a lone '%s' (CHARACTER_WEB_OVERRIDES), a template with nothing to translate.
+    I.onMiss(key => { if (key !== '%s') misses.add(key); });
     everything((label, texts) => { for (const text of texts) { if (String(text ?? '') !== '') seen.push(String(text)); for (const run of englishRuns(text)) leaks.push(`${label}: ${JSON.stringify(run)} in ${JSON.stringify(String(text).slice(0, 160))}`); } });
     assert.ok(seen.length > 3000, `a broad matrix (${seen.length} texts)`);
     assert.deepEqual(leaks, [], 'English reached the output under the pseudo-locale');

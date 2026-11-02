@@ -1,4 +1,4 @@
-import { SAVE_KEY, SETTINGS_KEY, PIXELS_PER_METRE, LITTER, MOTIFS, FURNITURE, PALETTES, SIGNS, LOANS, PHOTO_GUESTS, BLOCK_TEXT, initialState, applyAction, progress, ready, arranged, metCount, blockMissing, musicLayers, canPlaceFurniture, occupiedCells, walkable, findPath } from './core.js';
+import { SAVE_KEY, SETTINGS_KEY, PIXELS_PER_METRE, LITTER, MOTIFS, FURNITURE, PALETTES, SIGNS, LOANS, PHOTO_GUESTS, BLOCK_TEXT, initialState, applyAction, progress, ready, arranged, metCount, blockMissingItems, musicLayers, canPlaceFurniture, occupiedCells, walkable, findPath } from './core.js';
 import { parseGodotSave, buildGodotSave, freshEnvelope, utf8Bytes, isWholeNumber, lostProgress, combineSaves, sceneAdmission, FORK_FIELDS } from './godot-save.js';
 import { STORY_CHAPTERS, currentChapter, chapterLine, chapterCard, chapterCardDue, chapterAnnouncement, storyChapter, nextObjective, isNarrow, fmt, GATHERING_LAYOUT_TITLES } from './story.js';
 import { installPressSettle } from './press-settle.js';
@@ -96,7 +96,7 @@ let chapterNotice = '';
 const chapterText = () => { if (!chapterCardDue(lastChapter, state)) return ''; lastChapter = storyChapter(state).num; const text = chapterAnnouncement(state, chapterNotice) + ' '; chapterNotice = ''; return text; };
 const modalStatus = text => { $('#modal-status').textContent = text; }, STUDIO = GODOT['programme_studio.gd'].refresh;
 const ending = createEnding({ doc: document, win: window, modal, settle, getState: () => state, show, close: target => close(target), status: modalStatus, toast, stopWalk, reducedMotion: () => settings.reducedMotion, chapterText, act,
-  sceneAdmission: next => sceneAdmission(envelope ?? recovery?.envelope, state, next), saveReason, music: { label: () => music.enabled || music.starting ? STUDIO.musicOn : STUDIO.musicOff, on: () => music.enabled || music.starting, toggle: toggleMusic },
+  sceneAdmission: next => sceneAdmission(envelope ?? recovery?.envelope, state, next), saveReason, music: { label: () => t(music.enabled || music.starting ? STUDIO.musicOn : STUDIO.musicOff), on: () => music.enabled || music.starting, toggle: toggleMusic },
   filmButtonLabel: () => ($('#film-shoot') ? filmButtonText() : ''), openDraft: () => programmeEditor(), openPosted: () => programmePoster(), openMural: () => muralEditor() });
 // Leaving the circle returns focus to the button that opened it: the hosting dialog's (its title once the circle's Complete
 // hosted the beats) or the afterglow's.
@@ -115,7 +115,7 @@ const visitsHost = {
   burst: spec => { try { burst(directBurst(spec), spec?.finale ? BANNER.finale : 0); } catch { /* a banner never holds up a visit */ } }, rewardPending: () => banner.pending(),
   walk: (goal, options) => visitWalk(goal, options), stopWalk: () => stopWalk(), walking: () => walkPath.length > 0, player: () => ({ ...state.player }),
   lookAt: point => { if (!world) return; world.camera.lookAt(point); cameraUI(); }, speak: (id, text, name) => speak(id, text, name),
-  music: { label: () => music.enabled || music.starting ? STUDIO.musicOn : STUDIO.musicOff, on: () => music.enabled || music.starting, toggle: toggleMusic },
+  music: { label: () => t(music.enabled || music.starting ? STUDIO.musicOn : STUDIO.musicOff), on: () => music.enabled || music.starting, toggle: toggleMusic },
   reducedMotion: () => settings.reducedMotion, sparks: () => sparkCount(state, talkExtras()), objective: () => nextObjective(state, storyWorld()), openNeighborId: () => openConversation(),
   cards: () => { const card = chapterCardOpen(); return { startup: card && !!body.querySelector('[data-chapter-card] #begin'), story: card }; }, dialogOpen: () => modal.open,
   hostingInProgress: () => state.hosting.order.length > 0 && state.hosting.results.length < 4, restoreStartupCard: text => showChapterCard(true, { announce: text }), load: name => loadVisitData(name),
@@ -1012,8 +1012,8 @@ function mapInfo() {
   show(`<span class="eyebrow">${t(GAME_TEXT.mapInfo.aRealCornerCarefully)}</span><h2 id="modal-title">${t(GAME_TEXT.mapInfo.turkTaylorToHyde)}</h2><p>${t(GAME_TEXT.mapInfo.theStreetsUseActual)}</p><p>${t(GAME_TEXT.mapInfo.theOptionalHistoryWalk)}</p><div class="history-entry"><span class="eyebrow">${t(GAME_TEXT.mapInfo.mapDataOdbl1)}</span><p>${t(GAME_TEXT.mapInfo.openstreetmapContributorsApiExtract)}</p><p><a href="./data/streets.osm.json" target="_blank">${t(GAME_TEXT.mapInfo.streetGeometryProvenance)} ↗</a> · <a href="https://github.com/jbrick2070/tenderloin-redux/blob/main/public/data/source-turk-west.osm.xml" target="_blank">${t(GAME_TEXT.mapInfo.turkWestOsmExtract)} ↗</a> · <a href="https://github.com/jbrick2070/tenderloin-redux/blob/main/public/data/source.osm.xml" target="_blank">${t(GAME_TEXT.mapInfo.earlierOpeningBlockExtract)} ↗</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">${t(GAME_TEXT.mapInfo.licenseAttribution)} ↗</a></p></div><div class="button-row">${button('map-close', `${t(GAME_TEXT.mapInfo.backToOurCorner)} ↗`, true)}</div>`); bind('map-close', close);
 }
 function finale() {
-  // TODO(I2c merge): the missing items from core.js blockMissingItems(state), localized; blockMissing joins English names.
-  if (!ready(state)) { toast(fmt(BLOCK_TEXT.almost, blockMissing(state))); return; }
+  // core.js blockMissingItems: each part through its own template, joined as a list (English: blockMissing's ', ' join).
+  if (!ready(state)) { const missing = blockMissingItems(state).map(item => item.count === undefined ? t(item.template) : fmt(item.template, item.count)); toast(fmt(BLOCK_TEXT.almost, missing.length ? list(missing, parts => parts.join(', ')) : t(BLOCK_TEXT.ready))); return; }
   const wasOpen = state.opened;
   if (!wasOpen) { act({ type: 'open' }); if (!state.opened) return; }
   if (state.epilogue.packing) {

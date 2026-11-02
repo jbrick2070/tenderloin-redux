@@ -23,29 +23,36 @@ export const LOCALES_DIR = new URL('browser-next/locales/', ROOT);
 export const MANIFEST_PATH = new URL('index.json', LOCALES_DIR);
 
 // module: the file under browser-next/; tables: its exported text tables; overrides: the exported map whose values replace
-// Godot text in 2D (the function that applies it is named in `via`).
+// Godot text in 2D (the function that applies it is named in `via`); a grouped map is keyed by Godot file first, like the tables'
+// own first level (visits/text.js web(file, literal)), and a table value takes the override of its own file only.
 export const REGISTRY = Object.freeze([
-  { module: 'characters.js', tables: ['PANEL_TEXT', 'BUTTON_TEXT', 'CAPTION_TEXT', 'ACTION_LABELS', 'HUB_LABELS', 'NEIGHBOR_LINES', 'CELESTE_LINES', 'ROOK_LINES', 'PROJECT_MEMORY', 'SURPRISE_MEMORY', 'LAYOUT_MEMORY', 'COMPOSITION', 'MURAL_REPLY', 'MURAL_SCENE_NAMES', 'NEIGHBOR_BADGES', 'BOEDDEKER_FROM_BEA', 'CHARACTER_PEOPLE'], overrides: 'CHARACTER_WEB_OVERRIDES', via: 'webLine' },
+  { module: 'characters.js', tables: ['PANEL_TEXT', 'BUTTON_TEXT', 'CAPTION_TEXT', 'ACTION_LABELS', 'HUB_LABELS', 'NEIGHBOR_LINES', 'CELESTE_LINES', 'ROOK_LINES', 'PROJECT_MEMORY', 'SURPRISE_MEMORY', 'LAYOUT_MEMORY', 'COMPOSITION', 'MURAL_REPLY', 'MURAL_SCENE_NAMES', 'NEIGHBOR_BADGES', 'BOEDDEKER_FROM_BEA', 'CHARACTER_PEOPLE', 'CHARACTER_COMPOSE'], overrides: 'CHARACTER_WEB_OVERRIDES', via: 'webLine' },
   { module: 'bubble.js', tables: ['BUBBLE_TEXT'] },
-  { module: 'bursts.js', tables: ['BURST_TEXT', 'LAYOUT_BURST'], overrides: 'BURST_WEB_OVERRIDES', via: 'web (module-private)' },
-  { module: 'civic.js', tables: ['CIVIC_FORMATS', 'CIVIC_NOTES', 'CIVIC_TOPICS'] },
+  { module: 'bursts.js', tables: ['BURST_TEXT', 'LAYOUT_BURST', 'BURST_DISPLAY'], overrides: 'BURST_WEB_OVERRIDES', via: 'web (module-private)' },
+  { module: 'civic.js', tables: ['CIVIC_FORMATS', 'CIVIC_NOTES', 'CIVIC_TEXT', 'CIVIC_TOPICS'] },
   { module: 'core.js', tables: ['BLOCK_TEXT', 'LITTER', 'LOANS'] },
   { module: 'edition.js', tables: ['EDITION_TEXT'] },
+  { module: 'ending/compose.js', tables: ['ENDING_COMPOSE', 'ENDING_DISPLAY', 'ENDING_UI'] },
   { module: 'ending/habitat.js', tables: ['NAMES', 'TITLES'] },
   { module: 'ending/mural.js', tables: ['SCENE_LABELS', 'SCENE_NAMES', 'SIGNATURE_CREDIT'] },
   { module: 'ending/text.js', tables: ['GODOT', 'GODOT_CONSTS', 'FORK_TEXT'], overrides: 'ENDING_WEB_OVERRIDES', via: 'web' },
-  { module: 'film.js', tables: ['FILM_FRAMING', 'FILM_PLANS', 'FILM_SHOTS'] },
+  { module: 'experiments/neighborhood-voices.js', tables: ['VOICES_TEXT'] },
+  { module: 'film.js', tables: ['FILM_FRAMING', 'FILM_PLANS', 'FILM_SHOTS', 'FILM_TEXT'] },
+  { module: 'game-text.js', tables: ['GAME_TEXT'] },
+  { module: 'gathering.js', tables: ['GATHERING_TEXT'] },
   { module: 'history.js', tables: ['BLACK_HAWK'] },
-  { module: 'hosted-text.js', tables: ['HOSTED_GODOT_TEXT', 'HOSTING_FORK_TEXT', 'INVITATION_EXAMPLES', 'INVITATION_TITLES', 'LOAN_COMPLETION_NOTICE', 'LOAN_REPLIES', 'QUIET_TITLES'], overrides: 'HOSTED_WEB_OVERRIDES', via: 'hostedText (module-private)' },
-  { module: 'hosting.js', tables: ['QUIET_CHOICES', 'STORY_CHOICES'] },
-  { module: 'keepsake.js', tables: ['PHOTO_RESPONSES'] },
-  { module: 'programme.js', tables: ['SEGMENTS'] },
-  { module: 'rewards.js', tables: ['CUE_REASONS', 'HISTORY_REASONS', 'SOUNDS_TEXT'] },
-  { module: 'rhythm.js', tables: ['RHYTHM_TEXT'], overrides: 'RHYTHM_WEB_OVERRIDES', via: 'rhythm-ui.js' },
-  { module: 'sketch-core.js', tables: ['MUSIC_TEXT'] },
-  { module: 'story.js', tables: ['GATHERING_LAYOUT_TITLES', 'GODOT_TEMPLATES', 'LOAN_TITLES', 'NEIGHBOR_NAMES', 'PROGRAMME_TITLES', 'STORY_CHAPTERS'], overrides: 'WEB_OVERRIDES', via: 'webText' },
+  { module: 'hosted-text.js', tables: ['HOSTED_GODOT_TEXT', 'HOSTING_FORK_TEXT', 'INVITATION_EXAMPLES', 'INVITATION_TITLES', 'LOAN_COMPLETION_NOTICE', 'LOAN_REPLIES', 'QUIET_TITLES', 'HOSTED_COMPOSE'], overrides: 'HOSTED_WEB_OVERRIDES', via: 'hostedText (module-private)' },
+  { module: 'hosting.js', tables: ['HOSTING_TEXT', 'QUIET_CHOICES', 'STORY_CHOICES'] },
+  { module: 'keepsake.js', tables: ['KEEPSAKE_TEXT', 'PHOTO_RESPONSES'] },
+  { module: 'programme.js', tables: ['PROGRAMME_TEXT', 'SEGMENTS'] },
+  { module: 'rewards.js', tables: ['CUE_REASONS', 'HISTORY_REASONS', 'SOUNDS_TEXT', 'SOUNDS_COMPOSE'] },
+  { module: 'rhythm.js', tables: ['RHYTHM_TEXT', 'RHYTHM_COMPOSE'], overrides: 'RHYTHM_WEB_OVERRIDES', via: 'rhythm-ui.js' },
+  { module: 'sketch-core.js', tables: ['MUSIC_TEXT', 'MUSIC_COMPOSE'] },
+  { module: 'soundtrack.js', tables: ['SOUNDTRACK_TEXT'] },
+  { module: 'story.js', tables: ['GATHERING_LAYOUT_TITLES', 'GODOT_TEMPLATES', 'LOAN_TITLES', 'NEIGHBOR_NAMES', 'PROGRAMME_TITLES', 'STORY_CHAPTERS', 'COMPASS_TEXT', 'FORK_TEXT'], overrides: 'WEB_OVERRIDES', via: 'webText' },
   { module: 'visits-kit.js', tables: ['VISITS_FORK_TEXT'] },
   { module: 'visits/before-streets.js', tables: ['FRAME', 'REPLIES', 'SOURCES', 'TEXT', 'VIEWS'] },
+  { module: 'visits/compose.js', tables: ['COMPOSE_TEXT', 'MENU_TITLES'] },
   { module: 'visits/dogs.js', tables: ['DESCRIPTIONS', 'LEADS', 'NAMES', 'NOTES', 'TEXT'] },
   { module: 'visits/election.js', tables: ['TEXT'] },
   { module: 'visits/landmarks.js', tables: ['EATERIES', 'EATERY_HOST_LINES', 'EATERY_MENU_ITEMS', 'MUSEUM_DOCENT_LINES', 'TOUR_MUSEUM_TITLES'] },
@@ -55,13 +62,13 @@ export const REGISTRY = Object.freeze([
   { module: 'visits/positions.js', tables: ['EATERY_COUNTERS', 'SURPRISE_SITES'] },
   { module: 'visits/power.js', tables: ['CLUES', 'DIRECTIONS', 'NAMES', 'TEXT', 'VOICES'] },
   { module: 'visits/surprises.js', tables: ['KEEPSAKES', 'SURPRISES'] },
-  { module: 'visits/text.js', tables: ['GODOT_TEXT', 'GODOT_CONSTANTS'], overrides: 'WEB_OVERRIDES', via: 'web' },
+  { module: 'visits/text.js', tables: ['GODOT_TEXT', 'GODOT_CONSTANTS'], overrides: 'WEB_OVERRIDES', grouped: true, via: 'web(file, literal)' },
   { module: 'world.js', tables: ['NEIGHBORS', 'PLACES'] },
 ]);
 // Exports that hold text but are not msgids.
 export const EXCLUDED = Object.freeze({
   'characters.js': { CHARACTER_WEB_OVERRIDES: 'override map (its values are extracted through the tables)', NARROW_LABEL_REWRITES: 'English substring rewrites; locales use the catalog narrow section' },
-  'bursts.js': { BURST_WEB_OVERRIDES: 'override map' },
+  'bursts.js': { BURST_WEB_OVERRIDES: 'override map', BANNER: 'banner timing and the "* %s" title mark, drawn around the looked-up title' },
   'core.js': { SIGNS: 'the mural signs, drawn as they are (RISE is not translated, D8)' },
   'ending/art.js': { GODOT_ART: 'SVG drawing data' },
   'ending/text.js': { ENDING_WEB_OVERRIDES: 'override map', C: 'alias of GODOT_CONSTS', G: 'alias of GODOT' },
@@ -78,13 +85,30 @@ export const EXCLUDED = Object.freeze({
 // Displayed fields of data files (2.6): looked up by their English value, which stays in the file.
 export const DATA_FIELDS = Object.freeze([
   { file: 'experiments/neighborhood-voices.json', records: data => data?.records ?? [], fields: ['topic', 'summary'] },
+  { file: 'data/voting_places.json', records: data => data?.sites ?? [], fields: ['room', 'listed_description'] },
 ]);
-// Object keys whose values are ids, colours, art or geometry, never text.
-const SKIP_KEYS = new Set(['id', 'ids', 'color', 'colour', 'coat', 'skin', 'hair', 'kind', 'sprite', 'icon', 'url', 'href', 'src', 'svg', 'art', 'path', 'shape', 'slot', 'palette', 'x', 'y', 'key', 'cue', 'type', 'tint', 'fill', 'stroke']);
+// Object keys whose values are ids, colours or geometry, never text. Not `art`, `kind` or `cue`: Godot keys shown text by them
+// (hosted_picture_description.art, OPENINGS.art, the eateries' kind "Corner Bar", the tour's cue "All %d session stops"), and the
+// ids under those keys (art, cup, visit) are not human text anyway.
+const SKIP_KEYS = new Set(['id', 'ids', 'color', 'colour', 'coat', 'skin', 'hair', 'sprite', 'icon', 'url', 'href', 'src', 'svg', 'path', 'shape', 'slot', 'palette', 'x', 'y', 'key', 'type', 'tint', 'fill', 'stroke']);
+// Shown table values that isHumanText rejects (one lowercase word, a measure, a compass letter), each looked up where it is
+// shown. A value here is a msgid wherever a registered table holds it; a test fails on an entry the extractor no longer finds.
+export const SHORT_TEXT = Object.freeze({
+  nearby: 'story.js FORK_TEXT.nearby: the compass phrase when a position is unknown',
+  restored: 'visits/power.js TEXT.refresh.restoredWord: the restored-lights word',
+  rest: 'rhythm.js RHYTHM_TEXT.rest: a rest step of a Rhythm Circle pattern',
+  '40 m': 'visits/power.js TEXT.setup.map1: the case map scale',
+  N: 'visits/power.js TEXT.setup.map2: the case map north letter',
+});
+const PLACEHOLDERS = /%%|%(?:\d+\$)?(?:s|d|f|\.\d+f)|\{[A-Za-z_]\w*\}/g;
 
 // A string that a player reads: letters in words, not an id, a path, a colour, CSS, a selector or markup-only.
 export function isHumanText(value) {
   const s = String(value).trim();
+  // A letterless template ("%s: %s", "%s: \"%s\" · %s%s", "%d/3", "%s %s"): its separators, quote marks and order are a
+  // translator's to change. A lone placeholder ("%s") is not: it has nothing to translate.
+  const bare = s.replace(PLACEHOLDERS, '');
+  if (bare !== s && !/[A-Za-z]/.test(bare) && (/\S/.test(bare) || s.match(PLACEHOLDERS).length >= 2)) return true;
   if (!s || !/[A-Za-z]/.test(s)) return false;
   if (/^(https?:|mailto:|\.\.?\/|data:|blob:)/i.test(s)) return false;
   if (/^#[0-9a-f]{3,8}$/i.test(s) || /^(rgba?|hsla?)\(/i.test(s)) return false;
@@ -118,13 +142,26 @@ function lengthClass(msgid, paths) {
   return 'paragraph';
 }
 
-// Walk a table, calling visit(text, path) for every string leaf that is human text.
-function walk(value, path, visit, seen = new Set()) {
-  if (typeof value === 'string') { if (isHumanText(value)) visit(value, path); return; }
+// A msgid: human text, or a short shown value listed in SHORT_TEXT.
+export const isMsgid = value => isHumanText(value) || Object.hasOwn(SHORT_TEXT, String(value));
+// Walk a table, calling visit(text, path, own) for every string leaf; the caller checks the text after its override map `own`.
+// An object that belongs to a file of a grouped override map (owners) takes that file's map, wherever a module re-exports it.
+function walk(value, path, visit, own = null, owners = new WeakMap(), seen = new Set()) {
+  if (typeof value === 'string') { visit(value, path, own); return; }
   if (!value || typeof value !== 'object' || seen.has(value)) return;
   seen.add(value);
-  if (Array.isArray(value)) value.forEach((item, i) => walk(item, `${path}[${i}]`, visit, seen));
-  else for (const [key, item] of Object.entries(value)) { if (SKIP_KEYS.has(key) && typeof item === 'string') continue; walk(item, /^[A-Za-z_$][\w$]*$/.test(key) ? `${path}.${key}` : `${path}[${JSON.stringify(key)}]`, visit, seen); }
+  if (owners.has(value)) own = owners.get(value);
+  if (Array.isArray(value)) value.forEach((item, i) => walk(item, `${path}[${i}]`, visit, own, owners, seen));
+  else for (const [key, item] of Object.entries(value)) { if (SKIP_KEYS.has(key) && typeof item === 'string') continue; walk(item, /^[A-Za-z_$][\w$]*$/.test(key) ? `${path}.${key}` : `${path}[${JSON.stringify(key)}]`, visit, own, owners, seen); }
+}
+// Every object under each file of a grouped table, mapped to that file's override map: visits/power.js TEXT is visits/text.js
+// GODOT_TEXT['power_story.gd'], so it shows web('power_story.gd', …) too.
+function ownersOf(table, map, owners) {
+  for (const [file, part] of Object.entries(table)) {
+    const own = Object.hasOwn(map, file) ? map[file] : null;
+    const mark = v => { if (v && typeof v === 'object' && !owners.has(v)) { owners.set(v, own); Object.values(v).forEach(mark); } };
+    mark(part);
+  }
 }
 // t('…') and L('…', 'ctx') literal calls in modules that import them from i18n.js; [data-i18n] nodes in index.html.
 const LITERAL = /(?<![\w$.])([tL])\(\s*'((?:[^'\\\n]|\\.)*)'\s*(?:,\s*'((?:[^'\\\n]|\\.)*)')?\s*\)/g;
@@ -142,15 +179,21 @@ export async function extract() {
     if (!entries.has(key)) entries.set(key, { msgid, ctx: ctx ?? null, paths: new Set() });
     entries.get(key).paths.add(where);
   };
-  for (const { module, tables, overrides } of REGISTRY) {
-    const m = await import(pathToFileURL(fileURLToPath(new URL(module, FORK))).href);
+  const load = module => import(pathToFileURL(fileURLToPath(new URL(module, FORK))).href), owners = new WeakMap();
+  for (const { module, tables, overrides, grouped } of REGISTRY) {
+    if (!grouped) continue;
+    const m = await load(module);
+    for (const table of tables) ownersOf(m[table], m[overrides], owners);
+  }
+  const visit = (text, path, own) => { const value = own && Object.hasOwn(own, text) ? own[text] : text; if (isMsgid(value)) add(value, null, path); };
+  for (const { module, tables, overrides, grouped } of REGISTRY) {
+    const m = await load(module);
     const map = overrides ? m[overrides] : null;
     if (overrides && (!map || typeof map !== 'object')) throw Error(`${module}: no override map ${overrides}`);
-    const shown = text => map && Object.hasOwn(map, text) ? map[text] : text;
     const base = module.replace(/\.js$/, '').replace(/\//g, '.');
     for (const table of tables) {
       if (!(table in m)) throw Error(`${module}: no export ${table}`);
-      walk(m[table], `${base}.${table}`, (text, path) => { const value = shown(text); if (isHumanText(value)) add(value, null, path); });
+      walk(m[table], `${base}.${table}`, visit, grouped ? null : map, owners);
     }
   }
   for (const { file, records, fields } of DATA_FIELDS) {

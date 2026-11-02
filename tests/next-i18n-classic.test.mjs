@@ -211,9 +211,9 @@ test('pseudo-locale: every shown string is looked up, declared, valid, and nothi
   const empty = catalogOf('qps-ploc', JSON.stringify({ format: 1, locale: 'qps-ploc', messages: {} })).catalog;
   const first = await underLocale('qps-ploc', empty, renderAll);
   const keys = [...new Set(first.misses)];
-  // Declared: in one of these modules' tables, or already a msgid of the extractor's source (classic tables, names, the
-  // Neighborhood Voices records).
-  const declared = new Set([...TABLES.flatMap(table => leaves(table)), ...JSON.parse(readFileSync(new URL('../i18n/source.json', import.meta.url), 'utf8')).entries.map(e => e.msgid)]);
+  // Declared: a msgid of the extractor's source, which registers these modules' tables (classic tables, names, the
+  // Neighborhood Voices records), so a translator sees every looked-up key.
+  const declared = new Set(JSON.parse(readFileSync(new URL('../i18n/source.json', import.meta.url), 'utf8')).entries.map(e => e.msgid));
   assert.deepEqual(keys.filter(key => !declared.has(key)), [], 'every looked-up key is declared');
   // Every string of the new tables is looked up somewhere in the matrix (no dead entries).
   assert.deepEqual(TABLES.flatMap(table => leaves(table)).filter(s => !keys.includes(s)), [], 'every table entry is shown');

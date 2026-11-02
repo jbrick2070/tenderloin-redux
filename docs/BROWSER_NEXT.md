@@ -230,7 +230,7 @@ Godot's side stories, its ten neighborhood surprises and its landmark tour now p
   - `CHARACTER_WEB_OVERRIDES` keeps its 13 entries, with D4's nine surprise lines;
   - `VISITS_FORK_TEXT` (`visits-kit.js`), declared fork text: the card's "Back to exploring" (the spec's "Back to the block" is `film_screening.gd`'s own label), "Next era", "Order at the counter", Field notes' eyebrow and title, the adopted-save notice and the two data lines;
   - `ending/text.js` `FORK_TEXT.restart` names the neighborhood surprises without "found only in 3D", and `story.js` `FORK_TEXT` keeps only `nearby`.
-- **Future work.** Localization into Spanish, Vietnamese, Arabic and Thai is proposed, not started: `docs/I18N_PLAN.md`.
+- **Future work.** Localization into Spanish, Vietnamese, Arabic and Thai: the side stories' text is moved (I2e), no locale ships yet (Localization, below).
 
 ## The reward banner
 
@@ -263,6 +263,7 @@ Godot's reward banner, the on-screen half of its feel-good burst, is ported in `
 - The language is `language` (with `languageOffer` and `addressForm`) in the fork settings key. Unknown values mean English, and the shared save gains nothing. The game never switches on its own: a first-run offer appears only for a shipped locale, and `?lang=xx` (with `&preview=1` for one not shipped) is for links and QA and is never stored.
 - Movement and talk keys: a typed Latin letter keeps its identity as before, so US, AZERTY, Dvorak and Colemak behave exactly as they did. On a layout that types no Latin letter there (Arabic, Thai), the keys at the W, A, S, D and E positions and the arrows walk and talk by `event.code`. AltGr and IME input never walk. Godot ORs the typed and the physical key; one DOM event carries one identity, so the fork keeps the typed letter wherever there is one.
 - `scripts/i18n.mjs` extracts `i18n/source.json` from the registered tables and checks the catalogs; `tests/next-i18n.test.mjs` and `tests/next-i18n-catalogs.test.mjs` run under `npm test`.
+- The string moves (I2a to I2e) are built and integrated: every module shows its text through `t()`, `L()`, `format()` or a named template, and sentences built from fragments are whole templates (`game-text.js`, `ending/compose.js`, `visits/compose.js` and the `*_COMPOSE` and `*_TEXT` tables). `i18n/source.json` holds 2,398 msgids; the package tests (`next-game-text`, `next-i18n-dialogue`, `-classic`, `-ending`, `-visits`, `-integration`) pin English byte for byte and fail on any lookup the source lacks. Not yet: RTL CSS (I3), canvas text (I4) and the locales themselves (I5, I6).
 
 ## Not ported, known limits and known debt
 

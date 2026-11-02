@@ -8,8 +8,10 @@ import { readFileSync } from 'node:fs';
 import { gdStrings, gdSource } from './gd-lex.mjs';
 import { GODOT, GODOT_CONSTS, gdf, gdfRaw, capitalize, web } from '../browser-next/ending/text.js';
 import { ENDING_COMPOSE, ENDING_DISPLAY, ENDING_UI, compose, midSentence } from '../browser-next/ending/compose.js';
-import { setLocale, readCatalog, pseudo, pseudoCatalog, diagnostics, isEnglish, signature } from '../browser-next/i18n.js';
-import { extract, isHumanText } from '../scripts/i18n.mjs';
+import { setLocale, readCatalog, pseudo, pseudoCatalog, diagnostics, isEnglish, signature, onMiss } from '../browser-next/i18n.js';
+import { FILM_SHOTS, FILM_TEXT } from '../browser-next/film.js';
+import { HOSTING_TEXT } from '../browser-next/hosting.js';
+import { readSource, isHumanText } from '../scripts/i18n.mjs';
 import { parseGodotSave } from '../browser-next/godot-save.js';
 import { initialState } from '../browser-next/core.js';
 import { GODOT_WRITTEN, PUBLISHED, hostedEnvelope, civicDoneEnvelope, filmDoneEnvelope, raw, fakeDialog } from './next-fixtures.mjs';
@@ -28,8 +30,8 @@ const full = () => parseGodotSave(GODOT_WRITTEN.fullRun, { initialState }).state
 const flat = (value, out = []) => { if (typeof value === 'string') out.push(value); else if (value && typeof value === 'object') for (const v of Object.values(value)) flat(v, out); return out; };
 const entries = (value, path = '', out = []) => { if (typeof value === 'string') out.push([path, value]); else for (const [k, v] of Object.entries(value)) entries(v, path ? `${path}.${k}` : k, out); return out; };
 const english = fn => { setLocale('en'); try { return fn(); } finally { setLocale('en'); } };
-// Every msgid the extractor finds today, read once before the tests run.
-const sourceMsgids = await extract().then(s => s.entries.filter(e => !e.ctx).map(e => e.msgid));
+// Every msgid of i18n/source.json (the catalogs test keeps it fresh), read once before the tests run.
+const sourceMsgids = readSource().entries.filter(e => !e.ctx).map(e => e.msgid);
 
 // ---------- The composites ----------
 // Godot's text as pieces: each fragment whole, and each part of a template between its % slots.
@@ -221,6 +223,9 @@ test('sceneReply joins the painted scenes as a list: English with ", ", a locale
   } finally { setLocale('en'); }
 });
 test('gdf and capitalize delegate to i18n.js: English unchanged, a locale looks the template up, the SVG formatter never does', () => {
+  // Drawing data (GODOT_ART, through gdfRaw) is never looked up: the only lookups while drawing are the accessible names of the
+  // nested pictures, from film.js filmFrameSVG and hosting.js tilePanelSVG: each frame's title template and shot label, and the
+  // tile panel's title and its palette's description.
   english(() => {
     for (const [template, args] of [['%s was %s.', ['A', 'B']], ['%d of 3', [2.7]], ['x="%f"', [0.46]], ['100%% %s', ['x']]]) assert.equal(gdf(template, ...args), gdfRaw(template, ...args));
     assert.equal(capitalize('teal_blue'), 'Teal Blue');
@@ -230,21 +235,26 @@ test('gdf and capitalize delegate to i18n.js: English unchanged, a locale looks 
   try {
     assert.equal(gdf(tpl, 'Jardín', 2.9), 'Paleta Jardín (2/3 motivos).');
     assert.equal(capitalize('garden'), 'garden', 'a locale never title-cases');
-    const before = diagnostics().missCount;
-    B.helperBenchSVG({ selected: 0, fitted: [true, false], complete: false }, filmDoneEnvelope().film.result);
-    R.habitatSVG(R.freshRoom(), R.habitatCopies(full()), full());
-    assert.equal(diagnostics().missCount, before, 'drawing data is never looked up');
+    const looked = [], film = filmDoneEnvelope().film.result, copies = R.habitatCopies(full());
+    const names = plan => [FILM_TEXT.frameTitle, ...plan.order.map(id => FILM_SHOTS[id].label)].sort();
+    const panel = art => [HOSTING_TEXT.panel.title, HOSTING_TEXT.panel.desc[art.palette]];
+    const during = draw => { looked.length = 0; onMiss(english => looked.push(english)); try { draw(); } finally { onMiss(null); } return [...new Set(looked)].sort(); };
+    assert.deepEqual(during(() => B.helperBenchSVG({ selected: 0, fitted: [true, false], complete: false }, film)), names(film), 'the bench: its three frames');
+    assert.deepEqual(during(() => R.habitatSVG(R.freshRoom(), copies, full())), [], 'an empty room: nothing');
+    const placed = { ...R.freshRoom(), assigned: { entry: 'art', window: 'film', wall: 'seats' } };
+    assert.deepEqual(during(() => R.habitatSVG(placed, copies, full())), [...panel(copies.art), ...names(copies.film)].sort(), 'a placed room: the panel and the frames');
   } finally { setLocale('en'); }
 });
 
 // ---------- Pseudo-locale coverage ----------
-// Every msgid the extractor finds today, plus the new fork tables (ending/compose.js joins the registry at merge) and the ending's
-// Godot text as 2D shows it (four GODOT strings sit under an `art` key, which the extractor skips as an id key today).
+// Every msgid the extractor finds (the registry lists ending/compose.js and the ending's Godot text as 2D shows it), and nothing
+// else: a lookup this catalog lacks is a msgid that i18n/source.json lacks.
 let catalogCache = null;
 function pseudoCatalogFor(code = 'qps-ploc') {
   if (catalogCache?.code === code) return catalogCache.catalog;
   const godot = [...flat(G), ...flat(C)].map(web).filter(isHumanText);
-  const msgids = [...new Set([...sourceMsgids, ...godot, ...flat(ENDING_COMPOSE), ...flat(ENDING_DISPLAY), ...flat(ENDING_UI)])];
+  for (const text of [...godot, ...flat(ENDING_COMPOSE), ...flat(ENDING_DISPLAY), ...flat(ENDING_UI)]) assert.ok(sourceMsgids.includes(text), `extracted: ${text.slice(0, 60)}`);
+  const msgids = sourceMsgids;
   const read = readCatalog(pseudoCatalog(msgids, code), code);
   assert.deepEqual(read.rejected, [], 'every pseudo entry passes the validator');
   catalogCache = { code, catalog: read.catalog };
