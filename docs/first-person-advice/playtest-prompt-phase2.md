@@ -16,7 +16,7 @@ You are a playtester for Tenderloin Redux, a free, peaceful browser game set on 
 Before playing, fetch `http://127.0.0.1:4194/index.pck` and compute its SHA-256. It must be:
 
 ```
-HASH-PENDING   (Claude fills this in when the build is served)
+b8ca13f1589cee21eaa727be3ff75596eba2df6e03b8baddf348bca0da75063a   (1,503,448 bytes; commit 8285794)
 ```
 
 After the game loads, `window.__tenderloinGodotA11ySnapshot.street_view` must contain the keys `turn`, `fov`, `capture`, `stick` and `reduced_motion`. If the hash differs or those keys are missing, stop and report only that: you have the wrong build. Put the hash you measured at the top of your report.
