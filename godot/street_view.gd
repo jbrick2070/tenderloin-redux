@@ -686,8 +686,9 @@ func refresh_mouselook_button() -> void:
 	if mouselook_btn == null:
 		return
 	mouselook_btn.set_pressed_no_signal(street_mouselook)
-	mouselook_btn.text = "Esc releases mouse" if capture_state == "locked" else ("Mouse look: on" if street_mouselook else "Mouse look: off")
-	mouselook_btn.accessibility_name = mouselook_btn.text
+	mouselook_btn.text = "Esc frees mouse" if capture_state == "locked" else ("Mouse look: on" if street_mouselook else "Mouse look: off")
+	# The label fits the 132 px button ("Esc releases mouse" clipped to "Esc releases mou"); the name says it in full.
+	mouselook_btn.accessibility_name = "Esc releases the mouse" if capture_state == "locked" else mouselook_btn.text
 
 func read_mouse_mode() -> int:
 	return mouse_mode_override if mouse_mode_override >= 0 else int(Input.mouse_mode)
@@ -705,7 +706,7 @@ func capture_allowed() -> bool:
 	return street_mouselook and mouselook_offered() and mouselook_room() and active() and not game.is_story_card_visible() and not game.any_side_panel_visible()
 
 ## The room the toggle needs under the street button. Read from the play area, not the toggle's visibility, so a
-## lock is never asked for or kept while the toggle and its "Esc releases mouse" hint cannot be shown.
+## lock is never asked for or kept while the toggle and its "Esc frees mouse" hint cannot be shown.
 func mouselook_room() -> bool:
 	var area: Rect2 = game.play_area_rect()
 	return area.size.x >= BUTTON_SIZE.x + 16.0 and area.size.y >= BUTTON_SIZE.y * 5.0
@@ -826,7 +827,9 @@ func refresh_stick() -> void:
 		var area: Rect2 = game.play_area_rect()
 		stick.size = STICK_SIZE
 		stick.position = Vector2(area.position.x, area.end.y - STICK_SIZE.y)
-		show = area.size.x >= STICK_SIZE.x + BUTTON_SIZE.x + 16.0 and area.size.y >= STICK_SIZE.y + BUTTON_SIZE.y + 16.0
+		# The stick sits bottom-left and the street button top-right, so they only meet in a narrow area; a short
+		# landscape phone (667x390 leaves about 140 px) still has room for the stick beside the button.
+		show = area.size.x >= STICK_SIZE.x + BUTTON_SIZE.x + 16.0 and area.size.y >= STICK_SIZE.y + 8.0
 	stick.visible = show
 	# A finger already on the stick keeps walking while a rotation leaves no room for it (the eye is still active);
 	# only leaving the eye, or a device without touch, ends the movement contact.

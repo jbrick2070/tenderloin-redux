@@ -876,7 +876,7 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	suite.require(sv.capture_state == "requested" and sv.capture_requests == saved_requests + 1 and sv.contacts.has(sv.MOUSE_CONTACT) and sv.contacts[sv.MOUSE_CONTACT].role == "capture", "with the toggle on, a left press on the street asks for the mouse (%s, %d, %s, allowed %s, story %s)" % [sv.capture_state, sv.capture_requests - saved_requests, str(sv.contacts), str(sv.capture_allowed()), str(game.is_story_card_visible())])
 	sv.mouse_mode_override = CAPTURED # The browser's grant.
 	await suite.process_frame
-	suite.require(sv.capture_state == "locked" and game.last_a11y_announcement == "Esc releases the mouse." and ml.text == "Esc releases mouse", "requested -> locked when the mode reports captured, with the Esc hint shown and announced")
+	suite.require(sv.capture_state == "locked" and game.last_a11y_announcement == "Esc releases the mouse." and ml.text == "Esc frees mouse" and ml.accessibility_name == "Esc releases the mouse" and ThemeDB.fallback_font.get_string_size(ml.text, HORIZONTAL_ALIGNMENT_LEFT, -1, ml.get_theme_font_size("font_size")).x <= ml.size.x - 12.0, "requested -> locked when the mode reports captured, with the Esc hint shown in full and announced")
 	var taps_lock: int = sv.taps_routed
 	await send(suite, mouse_left(ml_at, false))
 	await send(suite, mouse_left(ml_at, true))
@@ -1316,6 +1316,7 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	suite.root.size = Vector2i(667, 390)
 	await suite.process_frame
 	await suite.process_frame
+	var landscape_stick: bool = sv.stick_visible() and game.play_area_rect().encloses(sv.stick.get_global_rect()) and not sv.stick.get_global_rect().intersects(sv.button.get_global_rect())
 	var held_landscape: bool = sv.active() and sv.contacts.has(0) and sv.contacts[0].role == "move" and sv.stick_vector().length() > 0.5
 	suite.root.size = Vector2i(390, 667)
 	await suite.process_frame
@@ -1323,6 +1324,7 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	var held_back: bool = sv.active() and sv.stick_visible() and sv.contacts.has(0) and sv.stick_vector().length() > 0.5
 	await send(suite, touch(0, rot_centre + Vector2(0, -40), false))
 	suite.require(held_portrait and held_landscape and held_back and sv.contacts.is_empty(), "a held stick walks on through a rotation to 667x390 and back (portrait %s, landscape %s, back %s)" % [str(held_portrait), str(held_landscape), str(held_back)])
+	suite.require(landscape_stick, "a 667x390 landscape phone shows the walk stick inside the play area, clear of the street button (%s in %s)" % [str(sv.stick.get_global_rect()), str(game.play_area_rect())])
 	sv.touch_screen = false
 	suite.root.size = g24_size
 	await suite.process_frame
