@@ -66,6 +66,10 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 		sv.toggle()
 		await suite.process_frame
 	suite.require(pose(game) == elevated_pose and cam.global_transform.is_equal_approx(elevated_cam) and cam.projection == Camera3D.PROJECTION_ORTHOGONAL, "ten toggles restore the exact elevated pose")
+	var same_materials := true
+	for i in range(game.meshes.size()):
+		same_materials = same_materials and game.meshes[i].material_override == materials[i]
+	suite.require(same_materials, "ten toggles leave every building material as it was")
 	# A rotated, zoomed walking map keeps its own pose through a street visit.
 	game.camera_yaw = 0.7
 	game.camera_pitch_scale = 1.2
@@ -82,10 +86,7 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	game.camera_pitch_scale = elevated_pose[3]
 	game.view_size = elevated_pose[1]
 	game.update_camera()
-	var same_materials := true
-	for i in range(game.meshes.size()):
-		same_materials = same_materials and game.meshes[i].material_override == materials[i]
-	suite.require(same_materials, "ten toggles leave every building material as it was")
+	game.update_occlusion(true) # Cutaways follow the heading; recompute them for the restored one.
 	var map_scale := true
 	for n in game.neighbor_nodes:
 		map_scale = map_scale and n.scale.is_equal_approx(Vector3.ONE * game.CHARACTER_VISUAL_SCALE)
