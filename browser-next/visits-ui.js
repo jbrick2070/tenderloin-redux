@@ -16,7 +16,7 @@
 // focus (null: the canvas, as after a walk, a map tap or an arrival). An episode opened from the picker keeps the control that
 // opened the visit, as Godot's close_story falls back to the hub when the picker entry it came from is hidden.
 import { createKit, btn, figure, frameHTML, sourceLinesHTML, pointerPress } from './visits-kit.js';
-import { GODOT_TEXT, web } from './visits/text.js';
+import { GODOT_TEXT } from './visits/text.js';
 import { changeBefore, beforeView, readerText, artworkDataURI as beforeArt, idleEntryAvailable } from './visits/before-streets.js';
 import { changeMeal, mealView, artworkDataURI as mealArt, worldDishes, sharedCount } from './visits/meal.js';
 import * as picker from './visits/picker.js';
@@ -25,6 +25,7 @@ import { dogsScene } from './visits/dogs.js';
 import { lanternScene } from './visits/lantern.js';
 import { electionScene } from './visits/election.js';
 import { conversationLabel, progressLabel } from './visits/surprises.js';
+import { L, compose, COMPOSE_TEXT, locale } from './visits/compose.js';
 
 const MAIN = GODOT_TEXT['main.gd'], CARD = MAIN.build_story_card, MAKE = MAIN.make_ui, HUB = MAIN.apply_hub_guidance, WALK = MAIN.update_walk_control;
 const STORY = GODOT_TEXT['power_story.gd'].setup;
@@ -375,7 +376,8 @@ export function createVisits(host, parts = {}) {
 
   // ---------- scene() (spec 3.8) ----------
   // The world part keeps its parts' identities; each actor part here is rebuilt only when its own visit state changes, so sprites.js
-  // builds each part's drawing once (spec risk R9). The whole scene is kept while the session, the state and the player stand still.
+  // builds each part's drawing once (spec risk R9). The whole scene is kept while the session, the state, the player and the
+  // language stand still (the world part's labels are the active language's).
   const kept = new Map();
   function part(name, inputs, build) {
     const last = kept.get(name);
@@ -386,8 +388,8 @@ export function createVisits(host, parts = {}) {
   }
   let shown = null;
   function scene() {
-    const state = host.getState() || {}, at = host.player() || {}, version = session.version;
-    if (shown && shown.version === version && shown.state === state && shown.x === at.x && shown.y === at.y) return shown.scene;
+    const state = host.getState() || {}, at = host.player() || {}, version = session.version, code = locale();
+    if (shown && shown.version === version && shown.state === state && shown.x === at.x && shown.y === at.y && shown.code === code) return shown.scene;
     const s = session.stories, opened = state.opened === true, storyActive = picker.activeEpisode(s) != null;
     const value = {
       ...neighborhood.scenePart(),
@@ -398,7 +400,7 @@ export function createVisits(host, parts = {}) {
       election: part('election', [s.election], () => electionScene(s.election)),
       player: { x: at.x, y: at.y },
     };
-    shown = { version, state, x: at.x, y: at.y, scene: value };
+    shown = { version, state, x: at.x, y: at.y, code, scene: value };
     return value;
   }
 
@@ -422,18 +424,18 @@ export function createVisits(host, parts = {}) {
     const make = (label, description = '', visible = true, extra = {}) => ({ id: ENTRY[kind], label, description, visible, locked: false, suggested: false, ...extra });
     const state = host.getState() || {}, opened = state.opened === true;
     switch (kind) {
-      case 'before': return make(CARD.before, CARD.beforeName);
+      case 'before': return make(L(CARD.before), L(CARD.beforeName));
       // Godot idle_entry_available with Field notes counted as neither busy nor a side panel: only a story visit or walking hides it.
-      case 'revisit': return make(MAKE.beforeRevisit, '', idleEntryAvailable({ ...kit.ctx({ from: 'notes' }), sidePanel: false, startupCard: false, storyCard: false }));
-      case 'story': return make(STORY.story, web('power_story.gd', entryTooltip()), opened);
+      case 'revisit': return make(L(MAKE.beforeRevisit), '', idleEntryAvailable({ ...kit.ctx({ from: 'notes' }), sidePanel: false, startupCard: false, storyCard: false }));
+      case 'story': return make(L(STORY.story), entryTooltip(), opened);
       case 'meal': {
         // Godot apply_hub_guidance: suggested on the explore objective while fewer than four dishes are shared, locked until the
         // block opens or while hosting is in progress, the hint joined to the meal's own line. 2D never dims it (4.5:1 contrast).
         const suggested = opened && host.objective()?.id === 'explore' && sharedCount(session.meal) < 4, locked = !opened || !!host.hostingInProgress();
         const hint = suggested ? HUB.suggested : locked ? HUB.locked : '';
-        return make(MAKE.meal, hint + (hint ? HUB.joiner : '') + HUB.meal, opened, { locked, suggested });
+        return make(L(MAKE.meal), hint ? compose(COMPOSE_TEXT.ui.mealHint, { hint: L(hint), meal: L(HUB.meal) }) : L(HUB.meal), opened, { locked, suggested });
       }
-      case 'resume': { const id = picker.activeEpisode(session.stories), [label, tip] = RESUME[id] ?? ['', '']; return make(label, tip, !!id && !host.walking()); }
+      case 'resume': { const id = picker.activeEpisode(session.stories), [label, tip] = RESUME[id] ?? ['', '']; return make(label && L(label), tip && L(tip), !!id && !host.walking()); }
       case 'notes': { const found = Array.isArray(state.surprises) ? state.surprises : []; return make(conversationLabel(found), progressLabel(found, host.sparks())); }
       default: return null;
     }

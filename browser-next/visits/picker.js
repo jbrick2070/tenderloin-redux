@@ -17,9 +17,11 @@ import * as lantern from './lantern.js';
 import * as power from './power.js';
 import * as election from './election.js';
 import { PICKER, GODOT_TEXT, web } from './text.js';
+import { L, compose, COMPOSE_TEXT, commaList } from './compose.js';
 
 export const { TITLES } = PICKER;
-const T = GODOT_TEXT['story_picker.gd'];
+// The completed titles stay English in the visit state; every word is looked up when the picker draws or announces.
+const T = GODOT_TEXT['story_picker.gd'], C = COMPOSE_TEXT.picker;
 export const TEXT = T;
 // Godot episodes() order: the picker's entries, two per page.
 export const EPISODES = ['lantern', 'election', 'power', 'dogs'];
@@ -111,14 +113,14 @@ export function openPicker(stories, ctx = {}) {
   if (stories.picker.open) return { stories, announce: '' };
   if (!ctx.opened || ctx.startupCard || ctx.storyCard) return { stories, announce: '', refused: true };
   const visible = openEpisodeId(stories);
-  if (ctx.busy && !visible) return { stories, announce: T.open_picker.refuse, refused: true };
+  if (ctx.busy && !visible) return { stories, announce: L(T.open_picker.refuse), refused: true };
   let s = clone(stories);
   const previous = visible ?? activeEpisode(stories);
   s.picker.returnStory = previous; s.picker.openedFromReader = !!visible;
   if (visible) s[visible] = { ...s[visible], open: false };
   s = rememberCompleted(s);
   s.picker.open = true;
-  return { stories: s, announce: T.open_picker.announce + pickerView(s, ctx).text };
+  return { stories: s, announce: compose(C.announce, { text: pickerView(s, ctx).text }) };
 }
 export function closePicker(stories) {
   if (!stories.picker.open) return stories;
@@ -129,7 +131,7 @@ export function backToStories(stories, ctx = {}) {
   const { returnStory, openedFromReader } = stories.picker;
   const s = closePicker(stories);
   if (openedFromReader && returnStory) return openEpisode(s, returnStory, ctx);
-  return { stories: s, announce: T.back_to_stories.announce };
+  return { stories: s, announce: L(T.back_to_stories.announce) };
 }
 export function changePage(stories, delta) {
   const page = Math.max(0, Math.min(1, stories.picker.page + delta));
@@ -154,7 +156,7 @@ export function selectStory(stories, index, ctx = {}) {
   if (current) s = resumeExisting(s, current, walkFree);
   s = openPicker(s, walkFree).stories;
   s = { ...s, picker: { ...s.picker, ...prior } };
-  return { stories: s, announce: T.select_story.refused, ok: false };
+  return { stories: s, announce: L(T.select_story.refused), ok: false };
 }
 // Godot follow_invitation().
 export function followInvitation(stories, ctx = {}) {
@@ -166,7 +168,7 @@ export function followInvitation(stories, ctx = {}) {
 // Godot keep_exploring().
 export function keepExploring(stories) {
   if (!stories.picker.open) return { stories, announce: '' };
-  return { stories: closePicker(suspendStory(stories, activeEpisode(stories))), announce: T.keep_exploring.announce };
+  return { stories: closePicker(suspendStory(stories, activeEpisode(stories))), announce: L(T.keep_exploring.announce) };
 }
 // Godot reset_visit(): restart or a loaded save clears every visit and invitation.
 export const resetStories = () => initialStories();
@@ -177,25 +179,25 @@ export function pickerView(stories, ctx = {}) {
   const s = rememberCompleted(stories);
   const entries = EPISODES.map((id, i) => {
     const status = s[id].active ? R.continue : (P.suspended.includes(id) ? R.resume : R.visit);
-    const label = status + ': ' + TITLES[i];
-    return { index: i, id, label, name: label + R.entrySuffix, visible: Math.trunc(i / 2) === page, disabled: !isAvailable(id, ctx) };
+    const label = compose(C.entry, { status: L(status), title: L(TITLES[i]) });
+    return { index: i, id, label, name: compose(C.entryName, { label }), visible: Math.trunc(i / 2) === page, disabled: !isAvailable(id, ctx) };
   });
   const done = EPISODES.map((_, i) => s.picker.completed[i]).filter(v => v != null);
   let text = '';
-  if (P.lanternInvited) text += R.invitation;
-  if (done.length) text += R.completed + done.join(', ') + '.\n';
-  text += web('story_picker.gd', R.detail);
-  const follow = { label: T.setup.follow, name: T.setup.followName, visible: P.lanternInvited, disabled: !isAvailable('lantern', ctx) };
+  if (P.lanternInvited) text += L(R.invitation);
+  if (done.length) text += compose(C.completed, { stories: commaList(done.map(title => L(title))) }) + '\n';
+  text += L(web('story_picker.gd', R.detail));
+  const follow = { label: L(T.setup.follow), name: L(T.setup.followName), visible: P.lanternInvited, disabled: !isAvailable('lantern', ctx) };
   const focus = follow.visible && !follow.disabled ? 'follow' : (!entries[page * 2].disabled ? `entry${page * 2}` : 'back');
   return {
-    title: T.setup.title, text, entries, follow, focus,
-    earlier: { label: T.setup.earlier, disabled: page === 0, rapid: true },
-    later: { label: T.setup.later, disabled: page === 1, rapid: true },
-    explore: { label: T.setup.explore }, back: { label: T.setup.back },
+    title: L(T.setup.title), text, entries, follow, focus,
+    earlier: { label: L(T.setup.earlier), disabled: page === 0, rapid: true },
+    later: { label: L(T.setup.later), disabled: page === 1, rapid: true },
+    explore: { label: L(T.setup.explore) }, back: { label: L(T.setup.back) },
   };
 }
 // The "Other stories" button in every episode heading (Godot add_reader_entry), without Shift F8.
-export const readerEntry = () => ({ label: T.add_reader_entry.label, name: web('story_picker.gd', T.add_reader_entry.name) });
+export const readerEntry = () => ({ label: L(T.add_reader_entry.label), name: L(web('story_picker.gd', T.add_reader_entry.name)) });
 // The one view function for whichever episode screen is open.
 export function episodeView(stories, id, ctx = {}) {
   return MODULES[id].view(stories[id], withActive(stories, ctx));

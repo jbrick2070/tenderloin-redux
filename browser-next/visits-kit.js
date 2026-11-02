@@ -25,11 +25,12 @@ import { EPISODES, initialStories, activeEpisode, changeEpisode, readerEntry as 
 import { initialTour } from './visits/landmarks.js';
 import { validSource as validPowerPlace } from './visits/power.js';
 import { validSource as validVoting } from './visits/election.js';
+import { t, escapeHTML, localeInfo } from './i18n.js';
 
 // ---------- Pure helpers ----------
-// & < > " as &amp; &lt; &gt; &quot; (the ending's esc), keyed by character code so no Godot-looking token is a literal here.
-const ENTITY = { 34: 'quot', 38: 'amp', 60: 'lt', 62: 'gt' };
-export const esc = text => String(text ?? '').replace(/[&<>\x22]/g, ch => `&${ENTITY[ch.charCodeAt(0)]};`);
+// & < > " as &amp; &lt; &gt; &quot; (the ending's esc): i18n.js escapeHTML, the one escaper of localized text, which tHTML and
+// html() use too. Every text a screen draws is escaped through it, so a translation is never markup.
+export const esc = escapeHTML;
 // Godot's "\n"-separated reader text, one paragraph per line (an empty line keeps its gap).
 export const paragraphs = text => (text == null || text === '' ? '' : String(text).split('\n').map(line => `<p>${esc(line)}</p>`).join(''));
 export const dataURI = svg => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(String(svg));
@@ -74,8 +75,19 @@ export function sourceLinesHTML(lines) {
 // A label of one or two characters that are no word (the Election Walk's pins "1" and "2") says nothing as a name of its own:
 // there Godot's name is the name when it holds the label as a token ("Map pin 1: city address point"), which is what WCAG 2.5.3
 // asks (the name contains the visible label), and a screen reader says the pin rather than "1".
+// The rule compares two renderings in the same language (label and name are localized together), never text against English.
+// "A whole word" is a break that is no letter or digit; in a script written without spaces between words (Thai) it is a word
+// boundary of Intl.Segmenter in the active locale instead.
 const spoken = text => String(text ?? '').replace(/\s+/g, ' ').trim();
-const startsWithLabel = (name, label) => name.startsWith(label) && (name.length === label.length || /^[^\p{L}\p{N}]/u.test(name.slice(label.length)));
+const UNSPACED = new Set(['th']), segmenters = new Map();
+function wordBreakAt(text, index) {
+  const { code, intl } = localeInfo();
+  if (!UNSPACED.has(code) || typeof Intl.Segmenter !== 'function') return /^[^\p{L}\p{N}]/u.test(text.slice(index));
+  if (!segmenters.has(intl)) segmenters.set(intl, new Intl.Segmenter(intl, { granularity: 'word' }));
+  for (const { index: at } of segmenters.get(intl).segment(text)) if (at === index) return true;
+  return false;
+}
+const startsWithLabel = (name, label) => name.startsWith(label) && (name.length === label.length || wordBreakAt(name, label.length));
 const SHORT_LABEL = /^[^\p{L}]{1,2}$/u, TOKENS = /[\p{L}\p{N}]+|[^\p{L}\p{N}\s]+/gu;
 const holdsLabel = (name, label) => SHORT_LABEL.test(label) && (name.match(TOKENS) ?? []).includes(label);
 const UNSAFE_STYLE = /url\s*\(|expression\s*\(|@import|[<>\x22\x27\\]/i;
@@ -107,7 +119,7 @@ export function btn(b) {
 export function frameHTML({ kind = '', credit = '', title = '', pager = '', headingEntry = '', picture = '', reader = '', readerHTML, tray = '', extra = '' } = {}) {
   return `<section class="visits" data-visits="${esc(kind)}"><p class="eyebrow visits-credit">${esc(credit)}</p>${pager ? `<div class="visits-pager">${pager}</div>` : ''}<h2 id="modal-title" tabindex="-1">${esc(title)}</h2>`
     + `${headingEntry ? `<div class="visits-heading-entry">${headingEntry}</div>` : ''}${picture}`
-    + `<div id="visits-reader" class="visits-reader" tabindex="0" role="region" aria-label="Story text">${readerHTML ?? paragraphs(reader)}</div>${extra}<div class="visits-tray">${tray}</div></section>`;
+    + `<div id="visits-reader" class="visits-reader" tabindex="0" role="region" aria-label="${esc(t('Story text'))}">${readerHTML ?? paragraphs(reader)}</div>${extra}<div class="visits-tray">${tray}</div></section>`;
 }
 
 // ---------- STYLE ----------
@@ -149,6 +161,7 @@ export function injectStyle(doc) {
 }
 
 // ---------- Declared fork text (no Godot source has these; tests/next-visits-kit.test.mjs) ----------
+// The English is the catalog key: every use looks it up with t() where it is shown (game.js shows `adopted`).
 // back: the visit card's Back. The spec proposed "Back to the block", but that is film_screening.gd's own Back label, so it
 // would be hand-copied Godot text; "Back to exploring" is the fork's own close wording (the Living district dialog).
 export const VISITS_FORK_TEXT = {
@@ -318,11 +331,11 @@ export function createKit(host, session = freshSession(), routes = {}) {
     }
     if (!waits.length) return true;
     if (quiet) return false;
-    if (kind && holds(kind)) host.status(VISITS_FORK_TEXT.loading);
+    if (kind && holds(kind)) host.status(t(VISITS_FORK_TEXT.loading));
     Promise.all(waits).then(() => {
       if (!kind || !holds(kind)) return;
       onReady?.();
-      if ((names ?? []).some(name => session.data?.[dataKey(name)]?.status === 'error')) say(VISITS_FORK_TEXT.dataError);
+      if ((names ?? []).some(name => session.data?.[dataKey(name)]?.status === 'error')) say(t(VISITS_FORK_TEXT.dataError));
     });
     return false;
   }

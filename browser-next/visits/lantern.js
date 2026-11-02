@@ -2,12 +2,14 @@
 // route here is 2D pixels (LANTERN_ROUTE, 180 px = 36 m) and every distance is converted.
 // Shared episode context `ctx` (see picker.js): { opened, busy, walking, player, activeId,
 // musicPlaying, sites: { lantern } }.
+// Every word a player reads goes through the active catalog (L, gdfText, compose); English is unchanged.
 import { LANTERN, GODOT_TEXT } from './text.js';
-import { gdf } from './format.js';
+import { gdfText } from './format.js';
+import { L, compose, COMPOSE_TEXT } from './compose.js';
 import { LANTERN_ROUTE, PIXELS_PER_METRE as M } from './positions.js';
 
 export const { LENGTH, GAP, CLEARANCE } = LANTERN;
-const T = GODOT_TEXT['lantern_procession.gd'];
+const T = GODOT_TEXT['lantern_procession.gd'], C = COMPOSE_TEXT.lantern, J = COMPOSE_TEXT.joiners;
 export const TEXT = T;
 export const ID = 'lantern';
 
@@ -29,8 +31,8 @@ const otherActive = ctx => ctx.activeId != null && ctx.activeId !== ID;
 
 export function openRefusal(l, ctx = {}) {
   if (l.open) return '';
-  if (!sitesValid(ctx)) return T.open_story.noRoute;
-  return !available(ctx) || otherActive(ctx) || ctx.busy || ctx.walking ? T.open_story.refuse : '';
+  if (!sitesValid(ctx)) return L(T.open_story.noRoute);
+  return !available(ctx) || otherActive(ctx) || ctx.busy || ctx.walking ? L(T.open_story.refuse) : '';
 }
 export const cancelIntent = l => ({ ...l, traveling: false, returning: false });
 export const resetSession = l => ({ ...initialLantern(), open: l.open });
@@ -48,7 +50,7 @@ export function changeLantern(l, action, ctx = {}) {
     }
     case 'close':
       if (!l.open) return none;
-      return { state: { ...l, open: false }, announce: action.announce === false ? '' : T.close_story.announce };
+      return { state: { ...l, open: false }, announce: action.announce === false ? '' : L(T.close_story.announce) };
     case 'costume': case 'lantern': {
       const v = action.value;
       if (!l.open || (l.active && l.phase > 0) || (v !== 0 && v !== 1)) return none;
@@ -56,10 +58,10 @@ export function changeLantern(l, action, ctx = {}) {
     }
     case 'begin':
       if (!l.open || l.active || !available(ctx) || ctx.activeId != null) return none;
-      return out({ ...l, active: true, won: false, phase: 0, progress: 8.0, message: T.begin.begun });
+      return out({ ...l, active: true, won: false, phase: 0, progress: 8.0, message: L(T.begin.begun) });
     case 'end':
       if (!l.open) return none;
-      return out({ ...resetSession(l), message: T.end_session.ended });
+      return out({ ...resetSession(l), message: L(T.end_session.ended) });
     case 'walk': {
       if (!l.open || !l.active || l.won) return none;
       if (near(l, ctx) && (l.phase === 0 || l.progress >= LENGTH - 1)) return out(l);
@@ -70,20 +72,20 @@ export function changeLantern(l, action, ctx = {}) {
     }
     case 'advance': {
       if (!l.open || !l.active || !near(l, ctx) || l.won) return none;
-      if (l.phase === 1 && l.progress < LENGTH - 1) return out({ ...l, message: T.advance.paused });
-      if (l.phase === 0) return out({ ...l, phase: 1, message: T.advance.ready });
-      return out({ ...l, phase: 2, won: true, message: T.advance.won });
+      if (l.phase === 1 && l.progress < LENGTH - 1) return out({ ...l, message: L(T.advance.paused) });
+      if (l.phase === 0) return out({ ...l, phase: 1, message: L(T.advance.ready) });
+      return out({ ...l, phase: 2, won: true, message: L(T.advance.won) });
     }
     case 'tick': return { state: tick(l, ctx), announce: '' };
     case 'blocked': {
-      const s = { ...cancelIntent(l), message: T.blocked_route.blocked };
+      const s = { ...cancelIntent(l), message: L(T.blocked_route.blocked) };
       return { state: action.reopen ? { ...s, open: true } : s, announce: s.message };
     }
     case 'arrived': {
       if (!l.traveling) return none;
       const s0 = tick(l, ctx);
       if (!ctx.player || !l.tripGoal || dist(ctx.player, l.tripGoal) > 1 * M) return changeLantern(s0, { type: 'blocked' }, ctx);
-      const s = { ...s0, traveling: false, returning: false, message: l.returning ? T._process.back : s0.message };
+      const s = { ...s0, traveling: false, returning: false, message: l.returning ? L(T._process.back) : s0.message };
       return s.active ? changeLantern(s, { type: 'open' }, { ...ctx, walking: false }) : { state: s, announce: '' };
     }
     case 'cancel': return { state: cancelIntent(l), announce: '' };
@@ -113,10 +115,10 @@ export function tick(l, ctx = {}) {
 
 export function lanternView(l, ctx = {}) {
   const R = T.refresh, S = T.setup;
-  const heading = R.heading + (l.won ? R.welcome : (l.phase === 0 ? R.makers : R.lead));
-  let text = l.message + R.route + (l.costume === 0 ? R.bat : R.star) + ' / ' + (l.lantern === 0 ? R.moon : R.starLantern) + '. ';
-  text += l.phase === 0 ? R.phase0 : (l.won ? R.won : R.phase1);
-  text += R.source;
+  const heading = compose(C.heading, { status: L(l.won ? R.welcome : (l.phase === 0 ? R.makers : R.lead)) });
+  let text = l.message + compose(C.route, { costume: L(l.costume === 0 ? R.bat : R.star), lantern: L(l.lantern === 0 ? R.moon : R.starLantern) }) + ' ';
+  text += L(l.phase === 0 ? R.phase0 : (l.won ? R.won : R.phase1));
+  text += L(R.source);
   const nearNow = near(l, ctx);
   const locked = l.active && l.phase > 0;
   const buttons = [
@@ -130,15 +132,16 @@ export function lanternView(l, ctx = {}) {
     { id: 'end', label: S.end, disabled: !l.active },
     { id: 'music', label: ctx.musicPlaying ? R.musicOn : R.musicOff, disabled: false },
     { id: 'back', label: S.back, disabled: false },
-  ].map(b => ({ ...b, name: b.label }));
+  ].map(b => ({ ...b, label: L(b.label), name: L(b.label) }));
   const focus = !l.active ? 'begin' : (l.won ? 'back' : (nearNow && (l.phase === 0 || l.progress >= LENGTH - 1) ? 'advance' : 'walk'));
-  return { heading, credit: S.credit, text, buttons, focus, art: { costume: l.costume, lantern: l.lantern } };
+  return { heading, credit: L(S.credit), text, buttons, focus, art: { costume: l.costume, lantern: l.lantern } };
 }
-export const announce = (l, ctx) => { const v = lanternView(l, ctx); return v.heading + '. ' + v.text; };
+export const announce = (l, ctx) => { const v = lanternView(l, ctx); return compose(J.sentence, { heading: v.heading, text: v.text }); };
 
 export function objective(l, ctx = {}) {
   const O = T.objective;
-  return { id: 'lantern_procession', hasTarget: !l.won, target: goal(l, ctx), targetName: l.phase === 0 ? O.assembly : O.finish, text: O.prefix + (l.won ? O.won : (l.phase === 0 ? O.meet : gdf(O.left, [LENGTH - l.progress]))), hint: O.hint };
+  const status = l.won ? L(O.won) : (l.phase === 0 ? L(O.meet) : gdfText(O.left, [LENGTH - l.progress]));
+  return { id: 'lantern_procession', hasTarget: !l.won, target: goal(l, ctx), targetName: L(l.phase === 0 ? O.assembly : O.finish), text: compose(C.objective, { status }), hint: L(O.hint) };
 }
 // Map sprites while active (Godot update_world): the player's cape and lantern, and two visitors
 // GAP metres apart behind the progress point, the first carrying the paper boat.

@@ -26,7 +26,8 @@
 // }
 import { VISITS_FORK_TEXT, btn, esc, frameHTML, freshSession } from './visits-kit.js';
 import { GODOT_TEXT, MAIN, web } from './visits/text.js';
-import { gdf } from './visits/format.js';
+import { gdfText } from './visits/format.js';
+import { L, t, locale } from './visits/compose.js';
 import { SURPRISE_IDS, SURPRISES, inspect, cycleTarget, nextIndexForNeighbor, conversationLabel, progressLabel, markers, keepsakes } from './visits/surprises.js';
 import { EATERIES, EATERY_MENU_ITEMS, initialTour, tourState, lensColor, ringAngle, inspectMuseum, inspectPark, inspectSoWhat, cycleEatery, activateEatery, visitStop, tourCompletion } from './visits/landmarks.js';
 import {
@@ -44,22 +45,35 @@ const xy = p => ({ x: p.x, y: p.y });
 function safely(fn, fallback) { try { return fn(); } catch { return fallback; } }
 
 // ---------- Godot's labels (build_street_life_decor, build_boeddeker_park, build_eatery_counters, build_neighborhood_surprises) ----------
+// Looked up in the active language once per language (labels()), so every part below stays the same object while the language
+// does, and a switch draws them again.
 const DECOR = T.build_street_life_decor;
-const MUSEUM_LABEL = say(DECOR.museum), PARK_LABEL = say(T.build_boeddeker_park.label), AWNING_LABEL = say(DECOR.soWhatAwning), FLOOR_LABEL = say(DECOR.soWhatFloor);
-const EATERY_LABELS = EATERIES.map(rec => gdf(say(DECOR.eatery), [rec.name]));
-// The counter's menu board always shows the first item (build_eatery_counters).
-const MENU_LABELS = EATERIES.map(rec => gdf(say(T.build_eatery_counters.menu), [String((EATERY_MENU_ITEMS[rec.id] ?? [T.eatery_counter_interact.special])[0])]));
-const SURPRISE_LABELS = Object.fromEntries(SURPRISE_IDS.map(id => [id, say(T.build_neighborhood_surprises[id])]));
 const JOURNAL = 'journal-button';
 
 // ---------- Hit-test objects (spec 3.8): the same frozen objects on every call ----------
 const visit = (id, name, p) => Object.freeze({ id, kind: 'visit', name, x: p.x, y: p.y });
-const BEACONS = SURPRISE_IDS.map(id => visit(`surprise:${id}`, SURPRISES[id].title ?? id, SURPRISE_SITES[id]));
-const COUNTERS = EATERIES.map((rec, i) => visit(`counter:${i}`, EATERY_LABELS[i], EATERY_COUNTERS[i]));
-const LANDMARKS = [
-  visit('museum', MUSEUM_LABEL, MUSEUM), visit('park', PARK_LABEL, PARK_ENTRANCE), visit('so_what', AWNING_LABEL, SO_WHAT_AWNING), visit('so_what_floor', FLOOR_LABEL, SO_WHAT_LEAVENWORTH),
-  ...EATERIES.map((rec, i) => visit(`eatery:${i}`, EATERY_LABELS[i], EATERY_AWNINGS[i])),
-];
+const LABELS = new Map();
+function labels() {
+  const code = locale();
+  if (LABELS.has(code)) return LABELS.get(code);
+  const museum = L(say(DECOR.museum)), park = L(say(T.build_boeddeker_park.label)), awning = L(say(DECOR.soWhatAwning)), floor = L(say(DECOR.soWhatFloor));
+  const eateries = EATERIES.map(rec => gdfText(say(DECOR.eatery), [L(rec.name)]));
+  // The counter's menu board always shows the first item (build_eatery_counters).
+  const menus = EATERIES.map(rec => gdfText(say(T.build_eatery_counters.menu), [L(String((EATERY_MENU_ITEMS[rec.id] ?? [T.eatery_counter_interact.special])[0]))]));
+  const value = Object.freeze({
+    museum, park, awning, floor, eateries, menus,
+    surprises: Object.fromEntries(SURPRISE_IDS.map(id => [id, L(say(T.build_neighborhood_surprises[id]))])),
+    beacons: SURPRISE_IDS.map(id => visit(`surprise:${id}`, L(SURPRISES[id].title ?? id), SURPRISE_SITES[id])),
+    counters: EATERIES.map((rec, i) => visit(`counter:${i}`, eateries[i], EATERY_COUNTERS[i])),
+    landmarks: [
+      visit('museum', museum, MUSEUM), visit('park', park, PARK_ENTRANCE), visit('so_what', awning, SO_WHAT_AWNING), visit('so_what_floor', floor, SO_WHAT_LEAVENWORTH),
+      ...EATERIES.map((rec, i) => visit(`eatery:${i}`, eateries[i], EATERY_AWNINGS[i])),
+    ],
+    soWhatPart: { awning: SO_WHAT_AWNING, floor: SO_WHAT_LEAVENWORTH, labels: { awning, floor } },
+  });
+  LABELS.set(code, value);
+  return value;
+}
 const STOP_TOTAL = tourState(initialTour()).total;
 
 // ---------- Boeddeker Park's trees (main.gd build_boeddeker_park) ----------
@@ -92,10 +106,13 @@ function boeddekerTrees() {
   return (TREES = out);
 }
 
-// ---------- Static scene parts (spec 3.8, risk R9): one object each for every visit, so sprites.js builds them once ----------
-let PARK_PART = null;
-const parkPart = () => (PARK_PART ??= { ring: PARK_RING, path: PARK_PATH, entrance: PARK_ENTRANCE, trees: boeddekerTrees(), label: PARK_LABEL });
-const SO_WHAT_PART = { awning: SO_WHAT_AWNING, floor: SO_WHAT_LEAVENWORTH, labels: { awning: AWNING_LABEL, floor: FLOOR_LABEL } };
+// ---------- Static scene parts (spec 3.8, risk R9): one object each for every visit (and language), so sprites.js builds them once ----------
+const PARK_PARTS = new Map();
+function parkPart() {
+  const code = locale();
+  if (!PARK_PARTS.has(code)) PARK_PARTS.set(code, { ring: PARK_RING, path: PARK_PATH, entrance: PARK_ENTRANCE, trees: boeddekerTrees(), label: labels().park });
+  return PARK_PARTS.get(code);
+}
 const LARKIN_PART = { exterior: LARKIN_EXTERIOR, junction: LARKIN_JUNCTION };
 
 export function createWorldVisits(kit) {
@@ -135,9 +152,9 @@ export function createWorldVisits(kit) {
   function drawCard(card) {
     const goal = goalNow(), stop = goal.id === 'explore' && typeof goal.tourId === 'string' && goal.tourId && goal.tourAction ? goal : null;
     const own = card.kind === 'surprise' ? [{ id: 'card-spot', label: conversationLabel(found()), primary: true }]
-      : card.kind === 'museum' ? [{ id: 'card-next-era', label: VISITS_FORK_TEXT.nextEra, primary: true }]
-        : card.kind === 'eatery' ? [{ id: 'card-order', label: VISITS_FORK_TEXT.order, primary: true }, { id: 'card-eateries', label: T.conversation_actions.eateries }] : [];
-    const tray = [...own, stop && { id: 'card-tour', label: stop.tourAction }, { id: 'card-back', label: VISITS_FORK_TEXT.back }].filter(Boolean).map(b => btn(b)).join('');
+      : card.kind === 'museum' ? [{ id: 'card-next-era', label: t(VISITS_FORK_TEXT.nextEra), primary: true }]
+        : card.kind === 'eatery' ? [{ id: 'card-order', label: t(VISITS_FORK_TEXT.order), primary: true }, { id: 'card-eateries', label: L(T.conversation_actions.eateries) }] : [];
+    const tray = [...own, stop && { id: 'card-tour', label: stop.tourAction }, { id: 'card-back', label: t(VISITS_FORK_TEXT.back) }].filter(Boolean).map(b => btn(b)).join('');
     const reader = [card.burst, card.info, ...card.quotes, card.receipt].filter(Boolean).join('\n');
     session.world.card = card;
     const mine = ++token, back = card.returnTo;
@@ -186,7 +203,7 @@ export function createWorldVisits(kit) {
     w.guideIdx = r.guideIdx; w.lastHinted = r.lastHinted; kit.bump();
     const burst = r.newly ? { title: r.heading, detail: r.burstSub, accent: r.accent, finale: r.allFound } : null;
     return present({ look: r.site, speech: { id: `surprise:${id}`, text: r.speech, name: r.speaker }, burst }, {
-      kind: 'surprise', id, eyebrow: SURPRISES[id].badge ?? T.inspect_neighborhood_surprise.badge, heading: r.heading ?? r.title,
+      kind: 'surprise', id, eyebrow: L(SURPRISES[id].badge ?? T.inspect_neighborhood_surprise.badge), heading: r.heading ?? r.title,
       burst: r.newly ? r.burstSub : '', info: r.info, quotes: r.memory ? [r.memory] : [], memory: r.memory,
       receipt: typeof reason === 'string' && reason ? sceneReceipt(reason) : '', announce: r.announce, returnTo,
     });
@@ -203,15 +220,15 @@ export function createWorldVisits(kit) {
   function museum(returnTo, stop) {
     const r = stop ?? inspectMuseum(session.world.tour);
     setTour(r.tour);
-    return present({ look: MUSEUM, speech: { id: 'museum_docent', text: r.docent, name: MUSEUM_LABEL }, chime: r.newStop && ['museum_portal', r.eraTitle, { eras: list(r.tour.eras).length }] },
-      { kind: 'museum', eyebrow: MUSEUM_LABEL, heading: r.eraTitle, info: r.info, quotes: [r.docent], announce: r.announce, returnTo });
+    return present({ look: MUSEUM, speech: { id: 'museum_docent', text: r.docent, name: labels().museum }, chime: r.newStop && ['museum_portal', r.eraTitle, { eras: list(r.tour.eras).length }] },
+      { kind: 'museum', eyebrow: labels().museum, heading: r.eraTitle, info: r.info, quotes: [r.docent], announce: r.announce, returnTo });
   }
   function park(returnTo, stop) {
     const r = stop ?? inspectPark(session.world.tour, boeddekerTrees().length);
     setTour(r.tour);
-    return present({ look: PARK_VIEW, chime: r.newStop && ['boeddeker_park', r.title, { trees: boeddekerTrees().length }] }, { kind: 'park', eyebrow: PARK_LABEL, heading: r.title, info: r.info, announce: r.announce, returnTo });
+    return present({ look: PARK_VIEW, chime: r.newStop && ['boeddeker_park', r.title, { trees: boeddekerTrees().length }] }, { kind: 'park', eyebrow: labels().park, heading: r.title, info: r.info, announce: r.announce, returnTo });
   }
-  function soWhat(returnTo, stop, eyebrow = AWNING_LABEL) {
+  function soWhat(returnTo, stop, eyebrow = labels().awning) {
     const r = stop ?? inspectSoWhat(session.world.tour);
     setTour(r.tour);
     return present({ look: SO_WHAT_VIEW, chime: r.newStop && ['so_what_egg', r.title] }, { kind: 'so_what', eyebrow, heading: r.title, info: r.info, announce: r.announce, returnTo });
@@ -226,10 +243,10 @@ export function createWorldVisits(kit) {
     setTour(r.tour);
     const order = typeof r.count === 'number';
     return present({
-      look: r.kind === 'order' && !r.guided ? null : EATERY_AWNINGS[i], speech: { id: `eatery:${rec.id}`, text: r.speech, name: rec.name }, chime: r.newStop && ['eatery_order', rec.id],
+      look: r.kind === 'order' && !r.guided ? null : EATERY_AWNINGS[i], speech: { id: `eatery:${rec.id}`, text: r.speech, name: L(rec.name) }, chime: r.newStop && ['eatery_order', rec.id],
       burst: r.burst && { title: r.burst.heading, detail: r.burst.sub, accent: r.burst.color },
     }, {
-      kind: 'eatery', index: i, eyebrow: r.burst ? EATERY_LABELS[i] : MENU_LABELS[i], heading: r.burst?.heading ?? EATERY_LABELS[i],
+      kind: 'eatery', index: i, eyebrow: r.burst ? labels().eateries[i] : labels().menus[i], heading: r.burst?.heading ?? labels().eateries[i],
       burst: r.burst?.sub ?? '', info: r.info, quotes: order ? [] : [r.speech], announce: r.announce, returnTo,
     });
   }
@@ -273,9 +290,10 @@ export function createWorldVisits(kit) {
     const goal = tourGoal(), stopId = goal?.tourId ?? '', open = list(session.world?.tour?.counters), out = [];
     // The marker comes first, so it wins a tap on the landmark it stands on, as Godot tests it first (main.gd:14443-14448).
     if (goal) out.push(markerFor(goal).object);
-    if (!world?.camera?.overviewMode) out.push(...BEACONS);
-    COUNTERS.forEach((counter, i) => { if (open.includes(i) || stopId === `eatery:${i}`) out.push(counter); });
-    return [...out, ...LANDMARKS];
+    const shown = labels();
+    if (!world?.camera?.overviewMode) out.push(...shown.beacons);
+    shown.counters.forEach((counter, i) => { if (open.includes(i) || stopId === `eatery:${i}`) out.push(counter); });
+    return [...out, ...shown.landmarks];
   }
   // how ('tap' | 'talk' | 'walk') changes nothing: Godot inspects the same from a tap, its keys and an arrival.
   function interact(object, how = 'tap') {
@@ -284,7 +302,7 @@ export function createWorldVisits(kit) {
     if (id === 'episode') return !!kit.openResume();
     if (id === 'museum') return museum();
     if (id === 'park') return park();
-    if (id === 'so_what' || id === 'so_what_floor') return soWhat(undefined, null, id === 'so_what' ? AWNING_LABEL : FLOOR_LABEL);
+    if (id === 'so_what' || id === 'so_what_floor') return soWhat(undefined, null, id === 'so_what' ? labels().awning : labels().floor);
     if (id === 'tour-marker') return tourStop(goalNow().tourId);
     const m = /^(surprise|tour):(.+)$/.exec(id), e = /^(?:eatery|counter):(\d+)$/.exec(id);
     if (m) return m[1] === 'surprise' ? find(m[2]) : tourStop(m[2]);
@@ -307,14 +325,14 @@ export function createWorldVisits(kit) {
   // two visits (landmark_tour_state).
   const TOUR = T.landmark_tour_state;
   const NOTES = { spot: () => spot(-1, JOURNAL), museum: () => museum(JOURNAL), eateries: () => nextEatery(JOURNAL), park: () => park(JOURNAL), 'so-what': () => soWhat(JOURNAL) };
-  const NOTES_LABELS = { spot: have => conversationLabel(have), museum: () => T.conversation_actions.museum, eateries: () => T.conversation_actions.eateries, park: () => TOUR.parkAction, 'so-what': () => TOUR.soWhatAction };
+  const NOTES_LABELS = { spot: have => conversationLabel(have), museum: () => L(T.conversation_actions.museum), eateries: () => L(T.conversation_actions.eateries), park: () => L(TOUR.parkAction), 'so-what': () => L(TOUR.soWhatAction) };
   function openNotes(kind) {
     const key = String(kind ?? '').replace(/^notes-/, '');
     return Object.hasOwn(NOTES, key) ? NOTES[key]() : false;
   }
   function notesHTML() {
     const have = found(), buttons = Object.keys(NOTES).map(key => ({ id: `notes-${key}`, label: NOTES_LABELS[key](have) }));
-    return `<div class="history-entry" data-visits-notes><span class="eyebrow visits-eyebrow">${esc(VISITS_FORK_TEXT.notesEyebrow)}</span><h3>${esc(VISITS_FORK_TEXT.notesTitle)}</h3>`
+    return `<div class="history-entry" data-visits-notes><span class="eyebrow visits-eyebrow">${esc(t(VISITS_FORK_TEXT.notesEyebrow))}</span><h3>${esc(t(VISITS_FORK_TEXT.notesTitle))}</h3>`
       + `<p>${esc(progressLabel(have, sparksNow()))}</p><div class="button-row">${buttons.map(b => btn(b)).join('')}</div></div>`;
   }
 
@@ -328,26 +346,27 @@ export function createWorldVisits(kit) {
   }
   function scenePart() {
     const have = found(), tour = session.world?.tour ?? initialTour(), open = list(tour.counters), goal = tourGoal(), spotAt = goal ? markerFor(goal).scene : null;
-    const finds = have.join(), era = `${tour.museumStep} ${tour.era}`, counters = open.join();
+    // The language is part of each text part's key, so a switch redraws the labels; within a language nothing changes.
+    const code = locale(), shown = labels(), finds = `${code} ${have.join()}`, era = `${tour.museumStep} ${tour.era}`, counters = `${code} ${open.join()}`;
     return keep('scene', [finds, era, counters, spotAt ? [spotAt.x, spotAt.y].join(' ') : ''].join(' '), () => ({
-      surprises: keep('surprises', finds, () => markers(have).map(m => ({ ...m, label: SURPRISE_LABELS[m.id] }))),
+      surprises: keep('surprises', finds, () => markers(have).map(m => ({ ...m, label: shown.surprises[m.id] }))),
       keepsakes: keep('keepsakes', finds, () => keepsakes(have)),
       eateries: keep('eateries', counters, () => EATERIES.map((rec, i) => ({
-        index: i, id: rec.id, name: rec.name, awning: EATERY_AWNINGS[i], counter: open.includes(i) ? EATERY_COUNTERS[i] : null, canopy: `#${rec.canopy_color}`, label: `#${rec.label_color}`, menu: MENU_LABELS[i],
+        index: i, id: rec.id, name: L(rec.name), awning: EATERY_AWNINGS[i], counter: open.includes(i) ? EATERY_COUNTERS[i] : null, canopy: `#${rec.canopy_color}`, label: `#${rec.label_color}`, menu: shown.menus[i],
       }))),
       museum: keep('museum', era, () => ({ x: MUSEUM.x, y: MUSEUM.y, docent: MUSEUM_DOCENT, lens: lensColor(tour.era), rings: [0, 1, 2].map(i => ringAngle(tour, i)) })),
-      park: parkPart(), soWhat: SO_WHAT_PART, larkin: LARKIN_PART, tourMarker: spotAt,
+      park: parkPart(), soWhat: shown.soWhatPart, larkin: LARKIN_PART, tourMarker: spotAt,
     }));
   }
 
   // ---------- Bubbles, the objective's inputs, the session ----------
   function anchor(id) {
-    if (id === 'museum_docent') return { ...xy(MUSEUM_DOCENT), name: MUSEUM_LABEL };
+    if (id === 'museum_docent') return { ...xy(MUSEUM_DOCENT), name: labels().museum };
     const m = typeof id === 'string' ? /^(surprise|eatery):(.+)$/.exec(id) : null;
     if (!m) return null;
-    if (m[1] === 'surprise') return Object.hasOwn(SURPRISES, m[2]) ? { ...xy(SURPRISE_SITES[m[2]]), name: SURPRISES[m[2]].speaker ?? T.inspect_neighborhood_surprise.speaker } : null;
+    if (m[1] === 'surprise') return Object.hasOwn(SURPRISES, m[2]) ? { ...xy(SURPRISE_SITES[m[2]]), name: L(SURPRISES[m[2]].speaker ?? T.inspect_neighborhood_surprise.speaker) } : null;
     const i = EATERIES.findIndex(rec => rec.id === m[2]);
-    return i >= 0 ? { ...xy(EATERY_COUNTERS[i]), name: EATERIES[i].name } : null;
+    return i >= 0 ? { ...xy(EATERY_COUNTERS[i]), name: L(EATERIES[i].name) } : null;
   }
   const objectiveInputs = () => ({ tour: session.world?.tour ?? initialTour(), lastHinted: session.world?.lastHinted ?? '' });
   // Godot ask_whats_next sets last_hinted_surprise_id to the surprise a neighbor named, or clears it.

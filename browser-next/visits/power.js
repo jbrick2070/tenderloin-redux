@@ -1,12 +1,14 @@
 // Power Story (godot/power_story.gd) and the Larkin place (godot/power_place.gd), pure.
 // Visit-only. Shared episode context `ctx` (see picker.js): { opened, busy, walking, player,
 // activeId, musicPlaying, powerPlace (parsed power_place.json or null), sites: { larkin } }.
+// Every word a player reads goes through the active catalog (L, gdfText, compose); English is unchanged. gdf stays for the SVG.
 import { POWER, GODOT_TEXT, web } from './text.js';
-import { gdf, gdFloat, f32 } from './format.js';
+import { gdf, gdfText, gdFloat, f32 } from './format.js';
+import { L, compose, COMPOSE_TEXT, compassNorth } from './compose.js';
 import { RELAY_GOALS, RELAY_GODOT_GOALS, LARKIN_JUNCTION, LARKIN_JUNCTION_XZ, RELAY_LAMPS, BATTERY_STAND, PIXELS_PER_METRE } from './positions.js';
 
 export const { NAMES, VOICES, CLUES, SOURCES, SINKS, DIRECTIONS, ARRIVAL_M } = POWER;
-const T = GODOT_TEXT['power_story.gd'];
+const T = GODOT_TEXT['power_story.gd'], C = COMPOSE_TEXT.power, J = COMPOSE_TEXT.joiners;
 export const TEXT = T;
 export const ID = 'power';
 export const INITIAL_TURNS = () => [[0, 0, 1, 1], [2, 0, 3, 1], [3, 0, 1, 2]];
@@ -35,7 +37,7 @@ export function relayGoal(p, index, ctx = {}) {
 export const near = (p, ctx = {}) => !ctx.walking && !!ctx.player && dist(ctx.player, relayGoal(p, p.station, ctx)) <= ARRIVAL;
 export function phaseName(p, index) {
   const P = T.phase_name;
-  return p.historical ? [P.larkin0, P.larkin1, P.larkin2][index] : NAMES[index];
+  return L(p.historical ? [P.larkin0, P.larkin1, P.larkin2][index] : NAMES[index]);
 }
 const room = ctx => ctx.connectorRoom !== false;
 const canTurn = (p, ctx) => p.open && p.active && room(ctx) && !p.mapView && near(p, ctx) && !bit(p, p.station);
@@ -60,11 +62,11 @@ export function connected(turns, station) {
 // Godot open_story's own refusal (delegation to another active episode is picker.js openEpisode).
 export function openRefusal(p, ctx = {}) {
   if (p.open) return '';
-  return !available(ctx) || ctx.busy || ctx.walking ? T.open_story.refuse : '';
+  return !available(ctx) || ctx.busy || ctx.walking ? L(T.open_story.refuse) : '';
 }
 export const cancelIntent = p => ({ ...p, traveling: false });
 export function endSession(p) {
-  return { ...cancelIntent(p), active: false, message: T.end_session.ended };
+  return { ...cancelIntent(p), active: false, message: L(T.end_session.ended) };
 }
 export const resetSession = p => ({ ...initialPower(), open: p.open });
 
@@ -80,11 +82,11 @@ export function changePower(p, action, ctx = {}) {
     }
     case 'close':
       if (!p.open) return none;
-      return { state: { ...p, open: false }, announce: action.announce === false ? '' : T.close_story.back + (p.active ? T.close_story.active : T.close_story.idle) };
+      return { state: { ...p, open: false }, announce: action.announce === false ? '' : L(p.active ? C.closeActive : C.closeIdle) };
     case 'begin': {
       if (p.active) return p.historical && p.open ? out({ ...p, mapView: !p.mapView }) : none;
       if (!p.open || !available(ctx) || (p.historical && !siteValid(ctx))) return none;
-      return out({ ...p, active: true, mapView: false, won: false, restored: 0, station: 0, turns: INITIAL_TURNS(), message: p.historical ? T.begin.larkin : T.begin.festival });
+      return out({ ...p, active: true, mapView: false, won: false, restored: 0, station: 0, turns: INITIAL_TURNS(), message: L(p.historical ? T.begin.larkin : T.begin.festival) });
     }
     case 'end': {
       const s = endSession(p);
@@ -105,17 +107,17 @@ export function changePower(p, action, ctx = {}) {
     case 'walk': {
       if (!p.active || !p.open) return none;
       const s = { ...p, mapView: false };
-      if (p.historical && near(p, ctx)) return out({ ...s, message: T.walk_to_relay.already });
+      if (p.historical && near(p, ctx)) return out({ ...s, message: L(T.walk_to_relay.already) });
       const tripGoal = relayGoal(p, p.station, ctx);
-      return { state: { ...s, open: false, traveling: true, tripGoal }, announce: gdf(T.walk_to_relay.walking, [phaseName(p, p.station), p.historical ? T.walk_to_relay.battery : T.walk_to_relay.repair]), walk: tripGoal };
+      return { state: { ...s, open: false, traveling: true, tripGoal }, announce: gdfText(T.walk_to_relay.walking, [phaseName(p, p.station), L(p.historical ? T.walk_to_relay.battery : T.walk_to_relay.repair)]), walk: tripGoal };
     }
     case 'blocked': {
       // reopen: walk_to_point refused the route (walk_to_relay); otherwise the walk stopped (blocked_route).
       if (action.reopen) {
-        const s = { ...cancelIntent(p), message: T.walk_to_relay.closed };
+        const s = { ...cancelIntent(p), message: L(T.walk_to_relay.closed) };
         return changePower(s, { type: 'open' }, { ...ctx, walking: false });
       }
-      const s = { ...cancelIntent(p), message: gdf(T.blocked_route.blocked, [p.station + 1]) };
+      const s = { ...cancelIntent(p), message: gdfText(T.blocked_route.blocked, [p.station + 1]) };
       return { state: s, announce: s.message };
     }
     case 'arrived': {
@@ -130,20 +132,20 @@ export function changePower(p, action, ctx = {}) {
       const s = copy(p);
       s.turns[p.station][i] = (s.turns[p.station][i] + 1) % 4;
       const r = s.turns[p.station][i];
-      s.message = gdf(T.rotate.linked, [i + 1, DIRECTIONS[r], DIRECTIONS[(r + 1) % 4]]);
+      s.message = gdfText(T.rotate.linked, [i + 1, L(DIRECTIONS[r]), L(DIRECTIONS[(r + 1) % 4])]);
       return out(s);
     }
     case 'check': {
       if (!canTurn(p, ctx)) return none;
-      const s = copy(p), C = T.check_path, st = p.station;
-      if (!connected(p.turns, st)) s.message = C.notYet;
+      const s = copy(p), K = T.check_path, st = p.station;
+      if (!connected(p.turns, st)) s.message = L(K.notYet);
       else {
         s.restored = p.restored | (1 << st);
-        s.message = VOICES[st] + C.there + NAMES[st] + C.backOn;
-        if (s.restored === 7) { s.won = true; s.message = C.won; }
+        s.message = compose(C.there, { voice: L(VOICES[st]), name: L(NAMES[st]) });
+        if (s.restored === 7) { s.won = true; s.message = L(K.won); }
         if (p.historical) {
-          s.message = VOICES[st] + C.portable;
-          if (s.restored === 7) s.message = C.larkinWon;
+          s.message = compose(C.portable, { voice: L(VOICES[st]) });
+          if (s.restored === 7) s.message = L(K.larkinWon);
         }
       }
       return out(s);
@@ -161,13 +163,13 @@ export function objective(p, ctx = {}) {
   if (bit(p, next)) for (let i = 0; i < 3; i++) if (!bit(p, i)) { next = i; break; }
   return {
     id: 'power_story', hasTarget: p.restored !== 7, target: relayGoal(p, next, ctx), targetName: phaseName(p, next),
-    text: gdf(O.text, [p.restored !== 7 ? phaseName(p, next) : (p.historical ? O.connected : O.back), count(p)]),
-    hint: O.hint + (p.restored === 7 ? O.hintEnd : VOICES[next] + O.clue + phaseName(p, next) + '.'),
+    text: gdfText(O.text, [p.restored !== 7 ? phaseName(p, next) : L(p.historical ? O.connected : O.back), count(p)]),
+    hint: p.restored === 7 ? L(C.hintEnd) : compose(C.hintClue, { voice: L(VOICES[next]), phase: phaseName(p, next) }),
   };
 }
 
 // Godot source_text().
-export const sourceText = () => T.source_text.text;
+export const sourceText = () => L(T.source_text.text);
 // Straight-line Godot metres from a festival station to the Larkin junction (Godot relay_goal
 // distance_to power_place.goal), so the "%.0f m" number matches the 3D edition.
 export function stationMetres(index, ctx = {}) {
@@ -178,37 +180,37 @@ export function stationMetres(index, ctx = {}) {
 // Godot refresh(): heading, credit, reader, pads, tabs and actions.
 export function powerView(p, ctx = {}) {
   const R = T.refresh, S = T.setup, c = count(p), valid = siteValid(ctx), nearNow = near(p, ctx);
-  let heading = p.historical ? gdf(R.headingLarkin, [c]) : gdf(R.heading, [c]);
-  let credit = p.historical ? R.creditLarkin : R.credit;
-  if (p.won && !p.active) heading = R.ended;
-  if (!p.active && !p.historical && !p.won) { heading = R.hub; credit = R.hubCredit; }
-  let text = R.intro;
+  let heading = p.historical ? gdfText(R.headingLarkin, [c]) : gdfText(R.heading, [c]);
+  let credit = L(p.historical ? R.creditLarkin : R.credit);
+  if (p.won && !p.active) heading = L(R.ended);
+  if (!p.active && !p.historical && !p.won) { heading = L(R.hub); credit = L(R.hubCredit); }
+  let text = L(R.intro);
   if (p.active) {
     const st = p.station;
-    text = gdf(R.relay, [st + 1, phaseName(p, st), VOICES[st], CLUES[st], DIRECTIONS[SOURCES[st][1]], SOURCES[st][0] + 1, DIRECTIONS[SINKS[st][1]], SINKS[st][0] + 1]);
-    text += bit(p, st) ? R.restored : (nearNow ? R.atRelay : R.walkFirst);
-    text += R.backKeeps;
+    text = gdfText(R.relay, [st + 1, phaseName(p, st), L(VOICES[st]), L(CLUES[st]), L(DIRECTIONS[SOURCES[st][1]]), SOURCES[st][0] + 1, L(DIRECTIONS[SINKS[st][1]]), SINKS[st][0] + 1]);
+    // Godot replaces "repair surface" with "battery view" in the Larkin reader; walkFirst is the one line that holds it.
+    text += L(bit(p, st) ? R.restored : (nearNow ? R.atRelay : (p.historical ? C.walkFirstBattery : R.walkFirst)));
+    text += L(R.backKeeps);
   }
   if (p.historical) {
-    if (!p.active || p.mapView) text = (p.active ? R.battery : R.beginLarkin) + sourceText();
+    if (!p.active || p.mapView) text = L(p.active ? R.battery : R.beginLarkin) + sourceText();
     else {
-      text = R.inspired + phaseName(p, p.station) + '.\n' + text;
-      if (p.station > 0) text += gdf(R.distance, [stationMetres(p.station, ctx)]);
-      text += R.restoredReal;
+      text = compose(C.inspired, { phase: phaseName(p, p.station) }) + '\n' + text;
+      if (p.station > 0) text += gdfText(R.distance, [stationMetres(p.station, ctx)]);
+      text += L(R.restoredReal);
     }
-    if (p.active) text = text.replaceAll(R.repairSurface, R.batteryView);
-    if (!valid) text = R.unavailable + text;
+    if (!valid) text = L(R.unavailable) + text;
   }
   if (p.message) text = p.message + '\n' + text;
-  if (!room(ctx)) text = R.room + text;
+  if (!room(ctx)) text = L(R.room) + text;
   const padsDisabled = !p.active || !room(ctx) || p.mapView || !nearNow || bit(p, p.station);
   const pads = [0, 1, 2, 3].map(i => {
     const r = p.turns[p.station][i];
-    return { index: i, ...PAD_CELLS[i], disabled: padsDisabled, name: gdf(R.pad, [i + 1, DIRECTIONS[r], DIRECTIONS[(r + 1) % 4]]), visible: !(p.historical && (!p.active || p.mapView)) };
+    return { index: i, ...PAD_CELLS[i], disabled: padsDisabled, name: gdfText(R.pad, [i + 1, L(DIRECTIONS[r]), L(DIRECTIONS[(r + 1) % 4])]), visible: !(p.historical && (!p.active || p.mapView)) };
   });
   const tabs = [0, 1, 2].map(i => p.active
-    ? { index: i, label: gdf(R.tab, [i + 1, bit(p, i) ? R.ok : '']), name: gdf(R.tabName, [i + 1, phaseName(p, i), bit(p, i) ? R.restoredWord : R.notRestored]), disabled: false }
-    : { index: i, label: [R.festival, R.larkin, R.placeMap][i], name: [R.festivalName, R.larkinName, R.placeName][i], disabled: i === 2 && !p.historical });
+    ? { index: i, label: gdfText(R.tab, [i + 1, bit(p, i) ? L(R.ok) : '']), name: gdfText(R.tabName, [i + 1, phaseName(p, i), L(bit(p, i) ? R.restoredWord : R.notRestored)]), disabled: false }
+    : { index: i, label: L([R.festival, R.larkin, R.placeMap][i]), name: L([R.festivalName, R.larkinName, R.placeName][i]), disabled: i === 2 && !p.historical });
   const actions = [
     { id: 'begin', label: p.active && p.historical ? (p.mapView ? R.batteryButton : R.caseMap) : (p.won ? R.replay : R.begin), disabled: (p.active && !p.historical) || (p.historical && !valid) },
     { id: 'walk', label: S.walk, disabled: !p.active },
@@ -216,19 +218,21 @@ export function powerView(p, ctx = {}) {
     { id: 'end', label: S.end, disabled: !p.active },
     { id: 'music', label: ctx.musicPlaying ? R.musicOn : R.musicOff, disabled: false },
     { id: 'back', label: S.back, disabled: false },
-  ].map(a => ({ ...a, name: a.label.replace(/\n/g, ' ') + (a.id === 'music' ? T._process.soundtrack : '') }));
+  ].map(a => { const label = L(a.label), spoken = label.replace(/\n/g, ' '); return { ...a, label, name: a.id === 'music' ? compose(C.music, { label: spoken }) : spoken }; });
   const showMap = p.historical && (!p.active || p.mapView);
+  // The case map's compass letter is the catalog's narrow form of "North" (English keeps Godot's "N").
+  const mapTexts = [L(S.map0), L(S.map1), compassNorth(S.map2), L(S.map3)];
   return {
     heading, credit, text, pads, tabs, actions,
-    dogs: { label: S.dogs, name: R.dogsName, disabled: p.active }, more: { label: S.more, name: R.moreName, disabled: false },
+    dogs: { label: L(S.dogs), name: L(R.dogsName), disabled: p.active }, more: { label: L(S.more), name: L(R.moreName), disabled: false },
     picture: showMap ? 'map' : 'diagram',
-    mapLabels: [S.map0, S.map1, S.map2, S.map3].map((text, i) => ({ text, x: MAP_LABEL_POINTS[i][0], y: MAP_LABEL_POINTS[i][1], visible: showMap && !!ctx.powerPlace })),
+    mapLabels: mapTexts.map((text, i) => ({ text, x: MAP_LABEL_POINTS[i][0], y: MAP_LABEL_POINTS[i][1], visible: showMap && !!ctx.powerPlace })),
     focus: !p.active ? 'begin' : (nearNow && !bit(p, p.station) && pads[0].visible ? 'pad0' : 'walk'),
   };
 }
-export const announce = (p, ctx) => { const v = powerView(p, ctx); return v.heading + '. ' + v.text; };
+export const announce = (p, ctx) => { const v = powerView(p, ctx); return compose(J.sentence, { heading: v.heading, text: v.text }); };
 // The hub "Story" button: tooltip without Godot's F8 / Shift F8 hint.
-export const entryTooltip = () => web('power_story.gd', T.setup.storyTip);
+export const entryTooltip = () => L(web('power_story.gd', T.setup.storyTip));
 
 // Map drawing (Godot apply_lighting / update_world): after dark for the festival while active,
 // daytime for Larkin; relay boxes, the battery stand and lit bits.

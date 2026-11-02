@@ -1,11 +1,14 @@
 // Election Walk (godot/voting_story.gd), pure. Visit-only; no real ballot or assigned site.
 // Shared episode context `ctx` (see picker.js): { opened, busy, walking, player, activeId,
 // musicPlaying, voting (parsed voting_places.json or null), powerPlace, sites: { election } }.
+// Every word a player reads goes through the active catalog (L, gdfText, compose); English is unchanged. The source's names,
+// addresses and EAS ids are not translated (D8); its room and listed description are looked up by their English.
 import { GODOT_TEXT } from './text.js';
-import { gdf, f32 } from './format.js';
+import { gdf, gdfText, f32 } from './format.js';
+import { L, compose, COMPOSE_TEXT } from './compose.js';
 import { ELECTION_HOME, PIXELS_PER_METRE as M, godotToMap } from './positions.js';
 
-const T = GODOT_TEXT['voting_story.gd'];
+const T = GODOT_TEXT['voting_story.gd'], C = COMPOSE_TEXT.election, J = COMPOSE_TEXT.joiners;
 export const TEXT = T;
 export const ID = 'election';
 
@@ -52,7 +55,7 @@ const site = (ctx, i) => ctx.voting?.sites?.[i] ?? {};
 
 export function openRefusal(e, ctx = {}) {
   if (e.open) return '';
-  return !available(ctx) || otherActive(ctx) || ctx.busy || ctx.walking ? T.open_story.refuse : '';
+  return !available(ctx) || otherActive(ctx) || ctx.busy || ctx.walking ? L(T.open_story.refuse) : '';
 }
 export const cancelIntent = e => ({ ...e, traveling: false });
 export const resetSession = e => ({ ...initialElection(), open: e.open });
@@ -69,14 +72,14 @@ export function changeElection(e, action, ctx = {}) {
     }
     case 'close':
       if (!e.open) return none;
-      return { state: { ...e, open: false }, announce: action.announce === false ? '' : T.close_story.announce };
+      return { state: { ...e, open: false }, announce: action.announce === false ? '' : L(T.close_story.announce) };
     case 'begin':
       if (!e.open || e.active || !available(ctx) || ctx.activeId != null) return none;
-      return out({ ...e, active: true, won: false, phase: 1, observed: 0, placed: 0, message: T.begin.begun });
+      return out({ ...e, active: true, won: false, phase: 1, observed: 0, placed: 0, message: L(T.begin.begun) });
     case 'choose': {
       const i = action.index;
       if (!e.open || (i !== 0 && i !== 1)) return none;
-      return out({ ...e, selected: i, message: T.choose.selected + String(site(ctx, i).address) + '.' });
+      return out({ ...e, selected: i, message: compose(C.selected, { address: String(site(ctx, i).address) }) });
     }
     case 'palette': {
       if (!e.open || (action.value !== 0 && action.value !== 1)) return none;
@@ -84,40 +87,40 @@ export function changeElection(e, action, ctx = {}) {
     }
     case 'record': {
       if (!e.open || !e.active || e.phase !== 1 || !near(e, ctx) || bit(e.observed, e.selected)) return none;
-      const s = { ...e, observed: e.observed | (1 << e.selected) }, R = T.record_site, here = site(ctx, e.selected);
-      s.message = R.recorded + String(here.listed_description) + ', ' + String(here.address) + R.list;
-      if (s.observed === 3) s.message += R.both;
+      const s = { ...e, observed: e.observed | (1 << e.selected) }, here = site(ctx, e.selected);
+      s.message = compose(s.observed === 3 ? C.recordedBoth : C.recorded, { description: L(String(here.listed_description)), address: String(here.address) });
       return out(s);
     }
     case 'make':
       if (!e.open || !e.active || e.observed !== 3 || e.phase !== 1) return none;
-      return out({ ...e, phase: 2, message: T.make_map.make });
+      return out({ ...e, phase: 2, message: L(T.make_map.make) });
     case 'place': {
-      const i = action.index, P = T.place_label;
+      const i = action.index;
       if (!e.open || !e.active || e.phase !== 2 || (i !== 0 && i !== 1)) return none;
-      const s = { ...e };
-      if (i !== e.selected) s.message = P.belongs + String(site(ctx, i).address) + P.selected + String(site(ctx, e.selected).address) + P.nothing;
+      const s = { ...e }, address = String(site(ctx, i).address);
+      if (i !== e.selected) s.message = compose(C.belongs, { address, selected: String(site(ctx, e.selected).address) });
       else {
-        s.placed = e.placed | (1 << i); s.message = P.placed + String(site(ctx, i).address) + P.onPin;
-        if (s.placed === 3) { s.phase = 3; s.message += P.fit; }
+        s.placed = e.placed | (1 << i);
+        if (s.placed === 3) s.phase = 3;
+        s.message = compose(s.placed === 3 ? C.placedFit : C.placed, { address });
       }
       return out(s);
     }
     case 'share':
       if (!e.open || !e.active || e.phase !== 3 || e.placed !== 3 || !near(e, ctx) || e.won) return none;
-      return out({ ...e, won: true, message: T.share_map.won });
+      return out({ ...e, won: true, message: L(T.share_map.won) });
     case 'end':
       if (!e.open) return none;
-      return out({ ...resetSession(e), message: T.end_session.ended });
+      return out({ ...resetSession(e), message: L(T.end_session.ended) });
     case 'walk': {
       if (!e.open || !e.active || e.won || e.phase === 2) return none;
-      if (near(e, ctx)) return out({ ...e, message: T.walk_route.already });
+      if (near(e, ctx)) return out({ ...e, message: L(T.walk_route.already) });
       const tripGoal = goal(e, ctx);
       return { state: { ...e, open: false, traveling: true, tripGoal }, announce: '', walk: tripGoal };
     }
     case 'blocked': {
       // Godot blocked_route() always reopens through open_from_walking.
-      const s = { ...cancelIntent(e), message: T.blocked_route.blocked };
+      const s = { ...cancelIntent(e), message: L(T.blocked_route.blocked) };
       const opened = s.active ? changeElection(s, { type: 'open' }, { ...ctx, walking: false }).state : s;
       return { state: opened, announce: s.message };
     }
@@ -135,14 +138,14 @@ export function changeElection(e, action, ctx = {}) {
 
 export function sourceText(e, ctx = {}) {
   const S = T.source_text;
-  if (!ctx.voting) return S.unavailable;
+  if (!ctx.voting) return L(S.unavailable);
   const s = site(ctx, e.selected);
-  return S.head + String(s.name) + ' - ' + String(s.address) + ' - ' + String(s.room) + S.eas + String(s.eas_id) + S.tail;
+  return compose(C.source, { name: String(s.name), address: String(s.address), room: L(String(s.room)), eas: String(s.eas_id) });
 }
 const observedCount = e => (bit(e.observed, 0) ? 1 : 0) + (bit(e.observed, 1) ? 1 : 0);
 export function electionView(e, ctx = {}) {
   const R = T.refresh, S = T.setup, nearNow = near(e, ctx);
-  const heading = R.heading + (e.won ? R.shared : (e.phase === 2 ? R.place : (e.phase >= 3 ? R.shareBea : gdf(R.observed, [observedCount(e)]))));
+  const heading = compose(C.heading, { status: e.won ? L(R.shared) : (e.phase === 2 ? L(R.place) : (e.phase >= 3 ? L(R.shareBea) : gdfText(R.observed, [observedCount(e)]))) });
   const text = e.message + '\n' + sourceText(e, ctx);
   const buttons = [
     { id: 'cadillac', label: S.cadillac, disabled: false, pressed: e.selected === 0 },
@@ -157,17 +160,18 @@ export function electionView(e, ctx = {}) {
     { id: 'end', label: S.end, disabled: !e.active },
     { id: 'music', label: ctx.musicPlaying ? R.musicOn : R.musicOff, disabled: false },
     { id: 'back', label: S.back, disabled: false },
-  ].map(b => ({ ...b, name: b.label.replace(/\n/g, ' ') }));
-  const pins = [0, 1].map(i => ({ index: i, label: String(i + 1), name: gdf(R.pin, [i + 1]), visible: e.phase === 2, ...(ctx.voting ? mapPoint(site(ctx, i).xz) : { x: 0, y: 0 }) }));
-  const labels = [S.label0, S.label1].map((text, i) => ({ text, visible: bit(e.placed, i) }));
+  ].map(b => { const label = L(b.label); return { ...b, label, name: label.replace(/\n/g, ' ') }; });
+  const pins = [0, 1].map(i => ({ index: i, label: String(i + 1), name: gdfText(R.pin, [i + 1]), visible: e.phase === 2, ...(ctx.voting ? mapPoint(site(ctx, i).xz) : { x: 0, y: 0 }) }));
+  const labels = [S.label0, S.label1].map((text, i) => ({ text: L(text), visible: bit(e.placed, i) }));
   const focus = e.won ? 'back' : (!e.active ? 'begin' : (e.phase === 2 ? ['cadillac', 'boeddeker'][e.selected] : (e.phase >= 3 && nearNow ? 'share' : (e.phase === 1 && nearNow && !bit(e.observed, e.selected) ? 'record' : 'walk'))));
-  return { heading, credit: S.credit, text, buttons, pins, labels, focus };
+  return { heading, credit: L(S.credit), text, buttons, pins, labels, focus };
 }
-export const announce = e => { const v = electionView(e); return v.heading + '. ' + e.message; };
+export const announce = e => { const v = electionView(e); return compose(J.sentence, { heading: v.heading, text: e.message }); };
 
 export function objective(e, ctx = {}) {
   const O = T.objective, address = String(site(ctx, e.selected).address);
-  return { id: 'election_walk', hasTarget: !e.won && e.phase !== 2, target: goal(e, ctx), targetName: e.phase >= 3 ? O.home : address, text: O.prefix + (e.won ? O.won : (e.phase === 2 ? O.place : (e.phase >= 3 ? O.return : O.observe + address))), hint: O.hint };
+  const status = e.won ? L(O.won) : (e.phase === 2 ? L(O.place) : (e.phase >= 3 ? L(O.return) : compose(C.observe, { address })));
+  return { id: 'election_walk', hasTarget: !e.won && e.phase !== 2, target: goal(e, ctx), targetName: e.phase >= 3 ? L(O.home) : address, text: compose(C.objective, { status }), hint: L(O.hint) };
 }
 // The paper folio at the player's hand while active (Godot `paper`).
 export const electionScene = e => (e.active ? { folio: true, palette: e.palette } : null);
