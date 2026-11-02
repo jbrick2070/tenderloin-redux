@@ -372,7 +372,7 @@ test('drift: speech bubble numbers, colours, text and the spoken-text rule', () 
   inOrder(u, [
     `var pop := clampf((speech_bubble_age + delta) / ${X.pop.seconds}, 0.0, 1.0)`,
     `speech_bubble_node.scale = Vector3.ONE * ((${X.pop.from} + ${1 - X.pop.from} * (1.0 - pow(1.0 - pop, 3.0))) * speech_bubble_base_scale())`,
-    `speech_bubble_node.position = speech_bubble_anchor_pos + Vector3.UP * (sin(speech_bubble_age * ${X.bob.rate}) * ${X.bob.metres})`,
+    `speech_bubble_node.position = speech_bubble_anchor_pos + Vector3.UP * (0.0 if reduced_motion_on() else sin(speech_bubble_age * ${X.bob.rate}) * ${X.bob.metres})`,
     `var area := play_area_rect().grow(-${f(X.areaInset)})`,
     `var reward_rect := reward_banner.get_global_rect().grow(${f(X.rewardGrow)}) if banner_visible else Rect2()`,
     'var full_size := Vector2(speech_bubble_box.x + 6.0, speech_bubble_box.y + speech_bubble_box.z + 7.2) * speech_bubble_screen_scale()',
