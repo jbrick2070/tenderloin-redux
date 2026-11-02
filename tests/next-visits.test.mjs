@@ -126,7 +126,7 @@ test('inline Godot values copied into code still match', () => {
   assert.match(gdFunc('voting_story.gd', 'map_point'), /Vector2\(20\+\(float\(xz\[0\]\)\+320\)\*0\.9,18\+\(float\(xz\[1\]\)\+140\)\*0\.9\)/);
   assert.match(gdFunc('voting_story.gd', 'near'), /\(1\.0 if phase>=3 else 2\.0\)/);
   assert.match(gdFunc('power_story.gd', 'setup'), /site_kit\.position=Vector3\(game\.power_place\.goal\.x,0,game\.power_place\.goal\.y\+2\.2\)/);
-  assert.match(gdSource('main.gd'), /var leav_ee_screen := camera\.unproject_position\(Vector3\(-290\.8, 24\.6, 99\.4\)\)/);
+  assert.match(gdFunc('main.gd', 'handle_scene_tap'), /tap_screen_distance\(Vector3\(-290\.8, 24\.6, 99\.4\), screen_pos\)/);
   assert.deepEqual(P.SO_WHAT_LEAVENWORTH_XZ, [-290.8, 99.4]);
   assert.match(gdFunc('main.gd', 'inspect_tenderloin_museum_hub'), /var docent_world := MUSEUM_HUB_POS \+ Vector3\(-1\.4, 0\.0, 1\.15\) \* 1\.75/);
   assert.match(gdFunc('main.gd', 'update_museum_portal_3d'), /float\(museum_hub_step \* 30 \+ r_i \* 25\)/);
