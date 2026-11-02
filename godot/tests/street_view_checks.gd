@@ -1223,6 +1223,9 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	# The marker now sits at 2.4 m at eye level, so the arrow rarely reaches the button; the slide itself is checked
 	# directly below.
 	suite.require(arrow_shown >= 4 and arrow_overlaps.is_empty(), "at 390x667 the guide arrow keeps clear of the street controls at every 5 degree heading (%d shown, %d by the button, overlaps at %s)" % [arrow_shown, near_button, str(arrow_overlaps)])
+	game.reward_banner_timer = 0.0 # A reward note moves the street button down; this check is about the top edge.
+	game.reward_banner.visible = false
+	sv.refresh_button()
 	var slide_inset: Rect2 = game.play_area_rect().grow(-27.0)
 	var slide_from := Vector2(sv.button.get_global_rect().get_center().x, slide_inset.position.y)
 	var slid: Vector2 = game.clear_of_street_controls(slide_from, slide_inset, sv.occupied_rects())
@@ -1420,6 +1423,44 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	suite.require(is_equal_approx(heights_eye[0], 2.05) and is_equal_approx(heights_eye[1], 2.4) and is_equal_approx(heights_eye[2], sv.MURAL_LABEL_EYE_Y), "at eye level speech and the Talk prompt sit at 2.05 m, the gold marker at 2.4 m and the mural caption at 2.4 m (%s)" % str(heights_eye))
 	var banner_tested: bool = eye_banners.size() > 0 and not (eye_banners[0][0] as Label3D).no_depth_test
 	suite.require(bea_nameplate != null and bea_nameplate.no_depth_test and banner_tested, "at eye level nameplates are not sliced by poles while street banners stay depth-tested")
+	# The two collisions in the follow-up phone shots: the reward note under the street button, and a banner
+	# behind the Talk prompt. At 410x892, beside Bea: the button steps below a showing reward note, and no visible
+	# banner overlaps the prompt, the street controls or another banner.
+	suite.root.size = Vector2i(410, 892)
+	game.player.position = Vector3(17.74, 0.0, -9.33)
+	face_toward(sv, game, bea_xz)
+	sv.pitch = 0.0
+	game.update_camera()
+	if not sv.enabled:
+		sv.toggle()
+	await suite.process_frame
+	await suite.process_frame
+	game.trigger_feel_good_burst("Layout check", "A reward note for the street button check.", game.player.position)
+	await suite.process_frame
+	await suite.process_frame
+	var rb_rect: Rect2 = game.reward_banner.get_global_rect() if game.reward_banner.is_visible_in_tree() else Rect2()
+	suite.require(rb_rect.has_area() and sv.button_visible() and not sv.button.get_global_rect().intersects(rb_rect), "with a reward note showing, the street button steps below it (%s, %s)" % [str(rb_rect), str(sv.button.get_global_rect())])
+	game.reward_banner_timer = 0.0
+	game.reward_banner.visible = false
+	game.celebration_burst_node.visible = false
+	await suite.process_frame
+	var taken: Array[Rect2] = sv.occupied_rects()
+	var talk25: Rect2 = game.talk_prompt_screen_rect()
+	if talk25.has_area():
+		taken.append(talk25.grow(6.0))
+	var clash := ""
+	var shown25 := 0
+	for b in game.street_signs_root.get_children():
+		if not (b is Label3D) or not b.visible or game.camera.is_position_behind(b.global_position):
+			continue
+		shown25 += 1
+		var sz: Vector2 = ThemeDB.fallback_font.get_string_size(b.text, HORIZONTAL_ALIGNMENT_CENTER, -1, b.font_size) * (sv.BANNER_PX / float(b.font_size)) + Vector2(16.0, 8.0)
+		var rect := Rect2(game.camera.unproject_position(b.global_position) - sz * 0.5, sz)
+		for r in taken:
+			if rect.intersects(r):
+				clash = String(b.name)
+		taken.append(rect)
+	suite.require(talk25.has_area() and clash == "", "beside Bea at 410x892 no street banner overlaps the Talk prompt, the street controls or another banner (talk %s, %d shown, clash '%s')" % [str(talk25), shown25, clash])
 	# Celeste's and Rook's panels suspend the eye like the hub, at 1100x760 and at 390x667.
 	var g25_panels: Array = []
 	for size in [g25_size, Vector2i(390, 667)]:

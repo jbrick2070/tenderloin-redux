@@ -383,16 +383,40 @@ func set_banners(on: bool) -> void:
 			item.visible = banner_saved[item][1]
 	banner_saved = {}
 
+## Banners also give way, like captions do: one that would overlap the street controls, the Talk prompt, a speech
+## bubble, a visible caption or a nearer banner is hidden for that frame.
 func size_banners() -> void:
 	var eye := eye_xz()
 	var ml := mural_label()
+	var cam: Camera3D = game.camera
+	var area: Rect2 = game.play_area_rect()
+	var avoid: Array[Rect2] = occupied_rects()
+	var talk: Rect2 = game.talk_prompt_screen_rect()
+	if talk.has_area():
+		avoid.append(talk.grow(6.0))
+	if game.is_speech_bubble_visible():
+		avoid.append(game.speech_bubble_screen_rect().grow(6.0))
+	for c in game.visible_scene_captions:
+		avoid.append(c.rect)
+	var order: Array = []
 	for b in banner_saved:
-		if not is_instance_valid(b) or b == ml:
-			continue
+		if is_instance_valid(b) and b != ml:
+			order.append(b)
+	order.sort_custom(func(a: Label3D, c: Label3D) -> bool: return Vector2(a.global_position.x, a.global_position.z).distance_to(eye) < Vector2(c.global_position.x, c.global_position.z).distance_to(eye))
+	for b in order:
 		var xz := Vector2(b.global_position.x, b.global_position.z)
-		b.visible = xz.distance_to(eye) <= BANNER_RANGE_M and not game.camera.is_position_behind(b.global_position)
-		if b.visible:
-			b.pixel_size = game.screen_constant_scale(BANNER_PX / float(maxi(b.font_size, 1)), b.global_position)
+		b.visible = xz.distance_to(eye) <= BANNER_RANGE_M and not cam.is_position_behind(b.global_position)
+		if not b.visible:
+			continue
+		b.pixel_size = game.screen_constant_scale(BANNER_PX / float(maxi(b.font_size, 1)), b.global_position)
+		var sz: Vector2 = ThemeDB.fallback_font.get_string_size(b.text, HORIZONTAL_ALIGNMENT_CENTER, -1, b.font_size) * (BANNER_PX / float(maxi(b.font_size, 1))) + Vector2(16.0, 8.0)
+		var rect := Rect2(cam.unproject_position(b.global_position) - sz * 0.5, sz)
+		for r in avoid:
+			if rect.intersects(r):
+				b.visible = false
+				break
+		if b.visible and area.intersects(rect):
+			avoid.append(rect)
 
 func mural_label() -> Label3D:
 	return game.mural_node.get_node_or_null("MuralBoardLabel") as Label3D if game.mural_node != null else null
@@ -942,7 +966,12 @@ func refresh_button() -> void:
 	button.text = "Map view" if active() else "Street view"
 	var area: Rect2 = game.play_area_rect()
 	button.size = BUTTON_SIZE
-	button.position = Vector2(area.end.x - BUTTON_SIZE.x, area.position.y)
+	var top: float = area.position.y
+	if game.reward_banner != null and game.reward_banner.is_visible_in_tree():
+		var rb: Rect2 = game.reward_banner.get_global_rect()
+		if rb.intersects(Rect2(Vector2(area.end.x - BUTTON_SIZE.x, top), BUTTON_SIZE)):
+			top = rb.end.y + 6.0 # The reward note keeps its place; the button steps down below it while it shows.
+	button.position = Vector2(area.end.x - BUTTON_SIZE.x, top)
 	button.visible = area.size.x >= BUTTON_SIZE.x + 16.0 and area.size.y >= BUTTON_SIZE.y * 3.0
 	# Mouse look sits under the street button at eye level, for a mouse; a touchscreen has the stick and drag-look.
 	mouselook_btn.size = BUTTON_SIZE
