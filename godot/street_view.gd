@@ -556,9 +556,15 @@ func pointer_input(event: InputEvent) -> bool:
 		if event.pressed and (event.shift_pressed or event.alt_pressed or event.ctrl_pressed):
 			return false # The map's modifier orbit already turns the eye through `rotate_camera_by_delta`.
 		if not event.pressed:
-			return contact_up(MOUSE_CONTACT, event.position)
+			if contacts.has(MOUSE_CONTACT):
+				return contact_up(MOUSE_CONTACT, event.position)
+			# A modifier orbit's release still reaches the map to end it; any other stray release is ignored here.
+			return not game.orbit_dragging and not game.pointer_active and not game.is_screen_point_in_ui(event.position)
 		var used := contact_down(MOUSE_CONTACT, event.position)
-		if used and contacts[MOUSE_CONTACT].role == "look" and request_capture():
+		if not used:
+			# A press in a gutter outside the play area is ignored at eye level, as the same touch is; only UI keeps it.
+			return not game.is_screen_point_in_ui(event.position)
+		if contacts[MOUSE_CONTACT].role == "look" and request_capture():
 			contacts[MOUSE_CONTACT].role = "capture" # The press that asks for the lock neither looks nor taps.
 		return used
 	if event is InputEventMouseMotion:
@@ -651,7 +657,20 @@ func write_mouse_mode(mode: int) -> void:
 ## A grant is only kept while the eye is active with nothing over it: no story card, and no hub, conversation,
 ## mural or music panel (those open over the eye without suspending it, and their buttons need the mouse).
 func capture_allowed() -> bool:
-	return street_mouselook and mouselook_offered() and active() and not game.is_story_card_visible() and not game.any_side_panel_visible()
+	return street_mouselook and mouselook_offered() and mouselook_room() and active() and not game.is_story_card_visible() and not game.any_side_panel_visible()
+
+## The room the toggle needs under the street button. Read from the play area, not the toggle's visibility, so a
+## lock is never asked for or kept while the toggle and its "Esc releases mouse" hint cannot be shown.
+func mouselook_room() -> bool:
+	var area: Rect2 = game.play_area_rect()
+	return area.size.x >= BUTTON_SIZE.x + 16.0 and area.size.y >= BUTTON_SIZE.y * 5.0
+
+## A right- or middle-button orbit held into a lock never sees its release (the lock takes every button), so the
+## map's drag flags end with the lock's start and end; otherwise a plain hover would turn the eye after Esc.
+func clear_map_drag() -> void:
+	game.orbit_dragging = false
+	game.pointer_active = false
+	game.pointer_dragging = false
 
 ## The toggle is a mouse control; a touchscreen has the stick and drag-look, so a saved `street_mouselook` asks for
 ## nothing there, where the toggle that would turn it off is not shown.
@@ -675,6 +694,7 @@ func release_capture() -> void:
 	capture_state = "released"
 	write_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	contacts.erase(MOUSE_CONTACT)
+	clear_map_drag()
 	refresh_mouselook_button()
 
 ## Once per frame from `tick`, after the first request of the session: follows the browser's answer.
@@ -685,6 +705,7 @@ func poll_capture() -> void:
 			if captured and capture_allowed():
 				capture_state = "locked"
 				contacts.erase(MOUSE_CONTACT)
+				clear_map_drag()
 				refresh_mouselook_button()
 				game.announce_a11y_status("Esc releases the mouse.")
 			elif captured:
@@ -814,7 +835,7 @@ func refresh_button() -> void:
 	# Mouse look sits under the street button at eye level, for a mouse; a touchscreen has the stick and drag-look.
 	mouselook_btn.size = BUTTON_SIZE
 	mouselook_btn.position = button.position + Vector2(0.0, BUTTON_SIZE.y + 8.0)
-	mouselook_btn.visible = button.visible and active() and mouselook_offered() and area.size.y >= BUTTON_SIZE.y * 5.0
+	mouselook_btn.visible = button.visible and active() and mouselook_offered() and mouselook_room()
 
 func snapshot() -> Dictionary:
 	var cam: Camera3D = game.camera

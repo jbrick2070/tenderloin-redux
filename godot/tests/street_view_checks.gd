@@ -562,8 +562,8 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 		await send(suite, key(KEY_W, true))
 		for _f in range(4):
 			await suite.physics_frame
+		var key_walk: Vector2 = game.player_xz() - before_keys # Read before the release, so the stick's backward ticks after it do not count.
 		await send(suite, key(KEY_W, false))
-		var key_walk: Vector2 = game.player_xz() - before_keys
 		suite.require(key_walk.length() > 0.05 and key_walk.normalized().dot(Vector2(0.0, -1.0)) > 0.99, "W wins over a stick held backwards (%s)" % str(key_walk))
 		await send(suite, touch(0, centre + Vector2(0, 200), false))
 		suite.require(sv.contacts.is_empty() and sv.stick_vector() == Vector2.ZERO, "releasing the stick ends the movement contact")
@@ -790,11 +790,15 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 		var first := motion_sample(game)
 		var bubble_first: Vector3 = game.speech_bubble_node.position
 		var age_first: float = game.speech_bubble_age
+		game.celebration_burst_age = 0.5 # Fixed ages, so the widening never meets the 2 s clamp on a slow machine.
+		game.update_celebration_burst(0.0)
 		var burst_first: Array = burst_sample(game)
 		for _f in range(30):
 			await suite.process_frame
 		var last := motion_sample(game)
 		var bubble_last: Vector3 = game.speech_bubble_node.position
+		game.celebration_burst_age = 1.0
+		game.update_celebration_burst(0.0)
 		var burst_last: Array = burst_sample(game)
 		# Trees (every entry but the marker's last two) and the marker are compared apart, so each has its own control.
 		samples[on] = [first.slice(0, -2) == last.slice(0, -2), bubble_first == bubble_last, burst_first[0] == burst_last[0], burst_last[1] > burst_first[1] and burst_last[2] > burst_first[2] and burst_last[3] < burst_first[3], first.slice(-2) == last.slice(-2)]
@@ -994,6 +998,74 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	game.update_camera()
 	await suite.process_frame
 	suite.require(sv.active() and sv.mouselook_visible(), "the eye and the toggle are back before the late grant check")
+	# A right-button orbit held into a lock: the lock takes its release, so the lock's start and end clear the map's
+	# drag flags; after Esc a plain hover must not turn the eye.
+	var right := InputEventMouseButton.new()
+	right.button_index = MOUSE_BUTTON_RIGHT
+	right.pressed = true
+	right.button_mask = MOUSE_BUTTON_MASK_RIGHT
+	right.position = ml_at
+	right.global_position = ml_at
+	await send(suite, right)
+	var orbit_armed: bool = game.orbit_dragging
+	await send(suite, mouse_left(ml_at, true))
+	sv.mouse_mode_override = CAPTURED
+	await suite.process_frame
+	var orbit_locked: bool = sv.capture_state == "locked"
+	var right_up: InputEventMouseButton = right.duplicate()
+	right_up.pressed = false
+	right_up.button_mask = 0
+	await send(suite, right_up)
+	await send(suite, mouse_left(ml_at, false))
+	await send(suite, key(KEY_ESCAPE, true))
+	await send(suite, key(KEY_ESCAPE, false))
+	var hover_yaw: float = sv.yaw
+	await send(suite, mouse_move(ml_at + Vector2(40, 0), Vector2(40, 0)))
+	suite.require(orbit_armed and orbit_locked and sv.capture_state == "released" and not game.orbit_dragging and not game.pointer_active and is_equal_approx(sv.yaw, hover_yaw), "a right-button orbit held into a lock ends with it: after Esc a hover does not turn the eye (armed %s, locked %s, yaw moved %.4f)" % [str(orbit_armed), str(orbit_locked), sv.yaw - hover_yaw])
+	sv.yaw = 0.0
+	game.update_camera()
+	await suite.process_frame
+	# A click in a gutter outside the play area (not over UI) is ignored at eye level, as the same touch is.
+	var play: Rect2 = game.play_area_rect()
+	var gutter := Vector2(INF, INF)
+	for g in [Vector2(play.position.x - 3.0, play.get_center().y), Vector2(play.end.x + 3.0, play.get_center().y), Vector2(play.get_center().x, play.end.y + 3.0), Vector2(play.get_center().x, play.position.y - 3.0)]:
+		if g.x >= 0.0 and g.y >= 0.0 and g.x < float(suite.root.size.x) and g.y < float(suite.root.size.y) and not game.is_screen_point_in_ui(g) and not play.has_point(g):
+			gutter = g
+			break
+	if is_finite(gutter.x):
+		var gutter_state: Array = tap_state(game, sv)
+		var gutter_taps: int = sv.taps_routed
+		var gutter_requests: int = sv.capture_requests
+		await send(suite, mouse_left(gutter, true))
+		var gutter_armed: bool = game.pointer_active
+		await send(suite, mouse_left(gutter, false))
+		suite.require(not gutter_armed and not game.pointer_active and sv.taps_routed == gutter_taps and tap_state(game, sv) == gutter_state and sv.capture_requests == gutter_requests, "a click in the gutter at %s outside the play area neither taps the scene nor asks for the mouse" % str(gutter))
+	else:
+		suite.require(false, "a gutter point outside the play area and the UI for the eye-level click check (play %s)" % str(play))
+	# A play area too short for the toggle under the street button: no lock is kept or asked for there.
+	await send(suite, mouse_left(ml_at, true))
+	await send(suite, mouse_left(ml_at, false))
+	sv.mouse_mode_override = CAPTURED
+	await suite.process_frame
+	var short_locked: bool = sv.capture_state == "locked"
+	var short_size: Vector2i = suite.root.size
+	suite.root.size = Vector2i(1100, 300)
+	await suite.process_frame
+	await suite.process_frame
+	var short_area: Rect2 = game.play_area_rect()
+	var short_released: bool = sv.capture_state == "released" and sv.mouse_mode_override == VISIBLE
+	var short_requests: int = sv.capture_requests
+	sv.pointer_input(mouse_left(short_area.get_center(), true))
+	var short_role: String = sv.contacts[sv.MOUSE_CONTACT].role if sv.contacts.has(sv.MOUSE_CONTACT) else ""
+	sv.pointer_input(mouse_left(short_area.get_center(), false))
+	suite.require(short_locked and short_area.size.y < sv.BUTTON_SIZE.y * 5.0 and not sv.mouselook_visible() and short_released and sv.capture_requests == short_requests and short_role == "look", "a play area too short for the toggle (%.0f px) drops a held mouse and a press there only looks (locked %s, released %s, role %s)" % [short_area.size.y, str(short_locked), str(short_released), short_role])
+	suite.root.size = short_size
+	await suite.process_frame
+	await suite.process_frame
+	sv.yaw = 0.0
+	game.update_camera()
+	await suite.process_frame
+	suite.require(sv.active() and sv.mouselook_visible(), "the eye and the toggle are back after the drag, gutter and short-area checks")
 	# A grant that lands after the player has left street view is cancelled at once.
 	await send(suite, mouse_left(ml_at, true))
 	await send(suite, mouse_left(ml_at, false))
