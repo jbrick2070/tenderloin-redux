@@ -1233,6 +1233,66 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	await suite.process_frame
 	checks += 1
 
+	# 23. The agy playtest of Phase 1: Shift+F on the opening card accepts it first (music on, as Start Exploring
+	# does); Shift+F with a chat or the hub open ends it with its goodbye before the eye takes over; the gold diamond
+	# is depth-tested at eye level and restored after; Zoom at eye level says why it does nothing.
+	var g23_player: Vector3 = game.player.position
+	var g23_music: bool = game.music_playing
+	if sv.enabled:
+		sv.toggle()
+	game.player.position = Vector3(bea_stand.x, 0.0, bea_stand.y)
+	game.update_camera()
+	await suite.process_frame
+	if game.music_playing:
+		game.stop_music_playback()
+	game.show_story_card(game.current_chapter(), true)
+	game.startup_story_pending = true
+	await suite.process_frame
+	suite.require(game.is_story_card_visible() and game.startup_story_pending and not game.music_playing, "the opening card is up, with the music off, for the Shift+F check")
+	suite.root.gui_release_focus()
+	await send(suite, key(KEY_F, true, true))
+	await send(suite, key(KEY_F, false, true))
+	await suite.process_frame
+	suite.require(not game.is_story_card_visible() and not game.startup_story_pending and game.music_playing and sv.active(), "Shift+F on the opening card accepts it with the music on, then enters street view (card %s, music %s, active %s)" % [str(game.is_story_card_visible()), str(game.music_playing), str(sv.active())])
+	var gem_mat: BaseMaterial3D = sv.guide_gem_material()
+	suite.require(gem_mat != null and sv.active() and not gem_mat.no_depth_test, "at eye level the gold diamond is depth-tested, so it does not show through walls")
+	var zoom_size: float = game.view_size
+	game.zoom(0.8)
+	suite.require(is_equal_approx(game.view_size, zoom_size) and game.last_a11y_announcement.begins_with("Zoom works in the map view"), "Zoom at eye level changes nothing and says why ('%s')" % game.last_a11y_announcement)
+	sv.toggle()
+	await suite.process_frame
+	suite.require(not sv.active() and gem_mat != null and gem_mat.no_depth_test, "leaving street view restores the diamond's map drawing")
+	# A chat with Bea, then Shift+F: the goodbye comes first and no panel stays over the eye.
+	game.talk_with_neighbor(0)
+	await suite.process_frame
+	suite.require(game.talk_partner == 0 and game.any_side_panel_visible(), "a chat with Bea is open for the Shift+F check")
+	suite.root.gui_release_focus()
+	await send(suite, key(KEY_F, true, true))
+	await send(suite, key(KEY_F, false, true))
+	await suite.process_frame
+	suite.require(sv.active() and game.talk_partner == -1 and not game.any_side_panel_visible() and String(game.info.text).begins_with("You said goodbye to Bea"), "Shift+F during a chat says goodbye to Bea, then enters street view with no panel open (partner %d, panel %s, info '%s')" % [game.talk_partner, str(game.any_side_panel_visible()), String(game.info.text).get_slice("\n", 0)])
+	# The block hub (G), then Shift+F: the hub closes before the eye takes over.
+	sv.toggle()
+	await suite.process_frame
+	game.toggle_block_panel()
+	await suite.process_frame
+	suite.require(game.block_panel.visible and not sv.active(), "the block hub is open for the Shift+F check")
+	suite.root.gui_release_focus()
+	await send(suite, key(KEY_F, true, true))
+	await send(suite, key(KEY_F, false, true))
+	await suite.process_frame
+	suite.require(sv.active() and not game.block_panel.visible, "Shift+F with the hub open closes it, then enters street view")
+	if sv.enabled:
+		sv.toggle()
+	await suite.process_frame
+	if game.music_playing and not g23_music:
+		game.stop_music_playback()
+	game.stop_walking()
+	game.player.position = g23_player
+	game.update_camera()
+	await suite.process_frame
+	checks += 1
+
 	# Restore the caller's state.
 	sv.enabled = false
 	sv.yaw = 0.0
@@ -1268,4 +1328,4 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	game.player_visual.rotation = saved_visual_rotation
 	suite.require(not sv.active() and cam.projection == Camera3D.PROJECTION_ORTHOGONAL and cam.near == map_near and cam.far == map_far, "street view checks hand back the orthographic map camera")
 	suite.require(game.player.position == original_player and game.current_path == original_path, "street view checks restore caller position and route")
-	print("STREET_VIEW_PASS:" + ("FORMAL" if formal else "PRIVATE") + " rule/eye/return-pose/suspend/resume/refit/horizon/depth/sight/pace/west/ShiftF/yaw-walk/mouse-look/touch-roles/stick/turn-step/portrait-fov/settings/reduced-motion/capture/playtest ", checks)
+	print("STREET_VIEW_PASS:" + ("FORMAL" if formal else "PRIVATE") + " rule/eye/return-pose/suspend/resume/refit/horizon/depth/sight/pace/west/ShiftF/yaw-walk/mouse-look/touch-roles/stick/turn-step/portrait-fov/settings/reduced-motion/capture/playtest/agy ", checks)

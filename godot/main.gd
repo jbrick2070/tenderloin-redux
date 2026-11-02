@@ -15010,8 +15010,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			if k == KEY_ESCAPE or k == KEY_ENTER or k == KEY_KP_ENTER or k == KEY_SPACE:
 				continue_story(k != KEY_ESCAPE)
 				return
-			if startup_story_pending and k in [KEY_W, KEY_A, KEY_S, KEY_D, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT]:
-				continue_story()
+			if startup_story_pending and (k in [KEY_W, KEY_A, KEY_S, KEY_D, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT] or (k == KEY_F and event.shift_pressed)):
+				continue_story() # Shift+F also accepts the opening card first, so street view starts with the music on.
 			else:
 				hide_story_card()
 		match k:
@@ -15499,6 +15499,9 @@ func clamp_view_size(value: float) -> float:
 
 func zoom(factor: float) -> void:
 	if street_view_active():
+		var note := "Zoom works in the map view. Shift+F returns to it."
+		if last_a11y_announcement != note:
+			announce_a11y_status(note) # The Zoom buttons stay put at eye level; say why they do nothing (once per run of presses).
 		return
 	in_overview = false
 	in_wide_overview = false

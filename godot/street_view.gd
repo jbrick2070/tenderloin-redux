@@ -333,11 +333,21 @@ func set_label_depth(on: bool) -> void:
 		for label in game.find_children("*", "Label3D", true, false):
 			label_depth_saved[label] = label.no_depth_test
 			label.no_depth_test = false
+		var gem_mat := guide_gem_material()
+		if gem_mat != null: # The gold diamond is a mesh, not a label; at eye level it must not show through walls either.
+			label_depth_saved[gem_mat] = gem_mat.no_depth_test
+			gem_mat.no_depth_test = false
 		return
-	for label in label_depth_saved:
-		if is_instance_valid(label):
-			label.no_depth_test = label_depth_saved[label]
+	for item in label_depth_saved:
+		if is_instance_valid(item):
+			item.no_depth_test = label_depth_saved[item]
 	label_depth_saved = {}
+
+func guide_gem_material() -> BaseMaterial3D:
+	if game.guide_marker == null:
+		return null
+	var gem := game.guide_marker.get_node_or_null("GuideGem") as MeshInstance3D
+	return gem.material_override as BaseMaterial3D if gem != null else null
 
 ## Sky and depth fog from spike 0b (docs/first-person-advice/phase0/RESULTS.md); the map view keeps
 ## its flat background colour, restored exactly on exit.
@@ -417,6 +427,8 @@ func toggle() -> void:
 		enabled = false
 		game.announce_a11y_status("Street view is only on the opening block for now. Walk back east of Taylor Street to use it.")
 		return
+	if game.talk_partner >= 0 or game.any_side_panel_visible():
+		game.end_conversation() # A chat or the hub ends with its goodbye first; street view never opens under a panel.
 	enabled = true
 	if not has_heading:
 		face_objective() # First entry of the session only; later entries keep the heading the player chose.
