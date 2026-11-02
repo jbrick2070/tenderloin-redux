@@ -37,6 +37,30 @@ Both testers ran the same prompt (`playtest-prompt.md`) on November 2, 2026, aga
 | Tilt is silent; pitch is kept between visits | agy | Designed (the plan says never narrate continuously, and resume with the saved yaw and pitch) | No change |
 | Zoom buttons do nothing at eye level | agy | Designed no-op, but silent | `8285794`: they now say zoom works in the map view |
 
+## Round 2: Phase 2
+
+Both ran `playtest-prompt-phase2.md` against `8285794` on port 4194 (SHA-256 `b8ca13f1…a75063a`); both checked the hash first. Claude launched both: Codex in its workspace-write sandbox, agy with permissions skipped (approved by the creator). agy changed no tracked file.
+
+| | Codex | agy (Gemini) |
+|---|---|---|
+| Time | about 18 minutes | about 57 minutes |
+| Known bugs rechecked | 6 fixed, 1 not set up (the mural diamond), and caught Shift+F's goodbye replaced in speech | 6 fixed (including the mural diamond), the same Shift+F goodbye finding |
+| New bugs reported | 3 | 4 |
+| Real | 3 of 3 | 4 of 4 |
+| Found only by this tester | 0 | 2 (landscape phones show no stick; the lock label clips) |
+| Not a bug | 0 | 0 |
+
+**Codex was faster again and found the two biggest problems first**: the browser's reduced-motion setting read as off (the bridge returned the boolean as a number), and a rotation dropping a held stick. **agy was fully accurate this time**, with every designed behaviour from the prompt left alone; it found the same two plus two of its own.
+
+| Claim | Tester | Verdict | Fixed in |
+|---|---|---|---|
+| The system reduced-motion setting is ignored | both | Real, major | `105f841` (probed in Chrome both ways) |
+| Rotating drops a held walk stick | both | Real | `105f841` |
+| Landscape phones (667×390) show no walk stick | agy | Real: the stick asked for room above it that the layout does not need | `10d8fa0` |
+| A left click inside a right-button drag locks the mouse | both | Real (the round-2 prompt asked testers to try it) | `105f841` |
+| Shift+F in a chat: the goodbye is shown but not spoken | both | Real | `105f841` |
+| The locked Mouse look label reads "Esc releases mou" | agy | Real, polish | `10d8fa0` ("Esc frees mouse") |
+
 ## For the next round
 
-The Phase 2 prompt (`playtest-prompt-phase2.md`) now pins the build by its hash, lists every confirmed bug for rechecking, and lists the designed behaviours both testers asked about.
+The prompt pins the build by its hash, lists every confirmed bug for rechecking, lists the designed behaviours, and has test browsers run muted.
