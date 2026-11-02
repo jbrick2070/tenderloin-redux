@@ -18,9 +18,12 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	var original_player: Vector3 = game.player.position
 	var original_path: Array = game.current_path.duplicate()
 	var state := {}
-	for key in ["following_player", "in_overview", "in_wide_overview", "target", "view_size", "camera_yaw", "camera_pitch_scale", "startup_story_pending", "block_panel_mode", "talk_partner", "selected_neighbor", "arrived_neighbor", "last_proximity_neighbor", "selected", "last_story_chapter"]:
+	for key in ["following_player", "in_overview", "in_wide_overview", "target", "view_size", "camera_yaw", "camera_pitch_scale", "startup_story_pending", "block_panel_mode", "talk_partner", "selected_neighbor", "arrived_neighbor", "last_proximity_neighbor", "selected", "last_story_chapter", "reward_audio_unlocked", "panel_frame_control", "panel_frame_subject", "panel_frame_pose", "last_panel_dialogue"]:
 		state[key] = game.get(key)
 	var story_visible: bool = game.is_story_card_visible()
+	var saved_info: String = game.info.text
+	var saved_announcement: String = game.last_a11y_announcement
+	var saved_seq: int = game.a11y_announcement_seq
 	var checks := 0
 
 	# 1. After load: orthographic, street view off.
@@ -63,6 +66,22 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 		sv.toggle()
 		await suite.process_frame
 	suite.require(pose(game) == elevated_pose and cam.global_transform.is_equal_approx(elevated_cam) and cam.projection == Camera3D.PROJECTION_ORTHOGONAL, "ten toggles restore the exact elevated pose")
+	# A rotated, zoomed walking map keeps its own pose through a street visit.
+	game.camera_yaw = 0.7
+	game.camera_pitch_scale = 1.2
+	game.view_size = 62.0
+	game.update_camera()
+	var manual_pose: Array = pose(game)
+	sv.toggle()
+	await suite.process_frame
+	suite.require(sv.active(), "street view enters from a manually rotated walking map")
+	sv.toggle()
+	await suite.process_frame
+	suite.require(pose(game) == manual_pose, "entering from a walking map keeps its yaw, pitch and zoom for the return")
+	game.camera_yaw = elevated_pose[2]
+	game.camera_pitch_scale = elevated_pose[3]
+	game.view_size = elevated_pose[1]
+	game.update_camera()
 	var same_materials := true
 	for i in range(game.meshes.size()):
 		same_materials = same_materials and game.meshes[i].material_override == materials[i]
@@ -232,6 +251,7 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	sv.enabled = false
 	sv.yaw = 0.0
 	sv.pitch = 0.0
+	sv.has_heading = false
 	game.stop_walking()
 	game.update_camera()
 	game.player.position = original_player
@@ -249,6 +269,10 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	game.player.position = original_player
 	game.current_path.assign(original_path)
 	game.update_camera()
+	game.update_walk_control()
+	game.info.text = saved_info
+	game.last_a11y_announcement = saved_announcement
+	game.a11y_announcement_seq = saved_seq
 	suite.require(not sv.active() and cam.projection == Camera3D.PROJECTION_ORTHOGONAL and cam.near == map_near and cam.far == map_far, "street view checks hand back the orthographic map camera")
 	suite.require(game.player.position == original_player and game.current_path == original_path, "street view checks restore caller position and route")
 	print("STREET_VIEW_PASS:" + ("FORMAL" if formal else "PRIVATE") + " rule/eye/return-pose/suspend/resume/refit/horizon/depth/sight/pace/west/ShiftF ", checks)

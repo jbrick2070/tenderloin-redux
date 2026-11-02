@@ -61,6 +61,7 @@ func sync() -> bool:
 	if now == was_active:
 		return false
 	was_active = now
+	game.cancel_map_pinch() # Held contacts never carry a pinch or drag across the mode change.
 	if now:
 		enter()
 	else:
@@ -84,6 +85,7 @@ func enter() -> void:
 		if n != null:
 			n.scale = Vector3.ONE
 	apply_sky(true)
+	set_label_depth(true)
 	apply_camera()
 	game.announce_a11y_status("Street view at eye level. Shift+Left and Shift+Right turn, Shift+Up and Shift+Down tilt, WASD or arrows walk. Shift+F returns to the map view.")
 
@@ -99,7 +101,23 @@ func exit() -> void:
 		if n != null:
 			n.scale = Vector3.ONE * game.CHARACTER_VISUAL_SCALE
 	apply_sky(false)
+	set_label_depth(false)
 	game.announce_a11y_status("Map view." if enabled else "Map view. Street view off.")
+
+## The map view draws every Label3D through walls (`no_depth_test`). At eye level that shows street
+## signs and nameplates through buildings, so labels are depth-tested while active and restored on exit.
+var label_depth_saved := {}
+func set_label_depth(on: bool) -> void:
+	if on:
+		label_depth_saved = {}
+		for label in game.find_children("*", "Label3D", true, false):
+			label_depth_saved[label] = label.no_depth_test
+			label.no_depth_test = false
+		return
+	for label in label_depth_saved:
+		if is_instance_valid(label):
+			label.no_depth_test = label_depth_saved[label]
+	label_depth_saved = {}
 
 ## Sky and depth fog from spike 0b (docs/first-person-advice/phase0/RESULTS.md); the map view keeps
 ## its flat background colour, restored exactly on exit.
@@ -176,9 +194,15 @@ func toggle() -> void:
 	if not has_heading:
 		face_objective() # First entry of the session only; later entries keep the heading the player chose.
 		has_heading = true
-	game.frame_player_for_walking()
+	if game.following_player and not game.in_overview and not game.in_wide_overview and game.selected < 0 and not game.is_focused_activity_visible():
+		# Already walking: keep the map's own yaw, pitch and zoom for the return; just hand the camera over.
+		game.update_camera()
+		game.update_occlusion(true)
+		game.update_guide_marker()
+	else:
+		game.frame_player_for_walking()
 	if active():
-		game.announce_a11y_status("Street view at eye level. %s. Shift+F returns to the map view." % game.location_phrase(eye_xz()))
+		game.announce_a11y_status("Street view. Facing %s. %s. Shift+Left and Shift+Right turn, Shift+Up and Shift+Down tilt, WASD or arrows walk. Shift+F returns to the map view." % [heading_text(), game.location_phrase(eye_xz())])
 	refresh_button()
 
 ## Entering from the map faces the gold marker (or Bea) so the first view is down the street, not a wall.
@@ -252,11 +276,15 @@ func line_of_sight_clear(from_xz: Vector2, to_xz: Vector2) -> bool:
 			if not seen.has(idx):
 				seen[idx] = true
 				candidates.append(idx)
+	# A caption on or inside its own footprint (shop awnings, the museum hub) is not hidden by that building.
+	var own_id: String = game.building_containing_point(to_xz)
 	for idx in candidates:
 		var rect: Rect2 = game.current_building_rects[idx]
 		if not rect.intersects(bounds):
 			continue
 		var b: Dictionary = game.current_buildings[idx]
+		if own_id != "" and String(b.id) == own_id:
+			continue
 		for polygon in b.polygons:
 			for ring in polygon.rings:
 				var n: int = ring.size()
@@ -275,6 +303,9 @@ func caption_visible(label_xz: Vector2) -> bool:
 func tick() -> void:
 	if sync():
 		game.update_camera() # A rule change outside update_camera (an activity opening, a western route) must not leave the eye pose.
+		game.update_occlusion(true)
+		if not was_active:
+			game.refresh_hub_camera.call_deferred() # A hub that opened while the eye was in charge still gets its fit.
 	refresh_button()
 
 func button_visible() -> bool:

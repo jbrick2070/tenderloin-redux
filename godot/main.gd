@@ -4823,6 +4823,8 @@ func update_speech_bubble(delta: float) -> void:
 	var full_size := Vector2(speech_bubble_box.x + 6.0, speech_bubble_box.y + speech_bubble_box.z + 7.2) * speech_bubble_screen_scale()
 	var full_position := camera.unproject_position(speech_bubble_node.global_position) + Vector2(speech_bubble_shift - speech_bubble_box.x * 0.5 - 3.0, -speech_bubble_box.z - speech_bubble_box.y - 3.0) * speech_bubble_screen_scale()
 	var fitted := fit_overlay_around_player(Rect2(full_position, full_size), area, reward_rect)
+	if street_view_active() and (camera.is_position_behind(speech_bubble_node.global_position) or not street_view.line_of_sight_clear(street_view.eye_xz(), anchor_xz)):
+		fitted = Rect2() # Behind the eye or behind a wall: the line is read in Info instead of a mirrored bubble.
 	speech_bubble_deferred = not fitted.has_area()
 	var was_in_activity := speech_bubble_in_activity
 	speech_bubble_in_activity = speech_bubble_deferred and not speech_bubble_in_info and speech_activity_detail() != null
@@ -7194,6 +7196,9 @@ func update_guide_arrow() -> void:
 	if area.size.x <= 24.0 or area.size.y <= 24.0:
 		guide_arrow.visible = false
 		return
+	if camera.is_position_behind(guide_marker_target):
+		# A perspective camera mirrors points behind it; point the arrow the real way, well outside the area.
+		screen = area.get_center() - (screen - area.get_center()).normalized() * 100000.0
 	if area.grow(-12.0).has_point(screen):
 		guide_arrow.visible = false
 		return
@@ -7220,6 +7225,8 @@ func update_guide_arrow() -> void:
 	lbl_global.y = clampf(lbl_global.y, area.position.y + 7.0, maxf(area.position.y + 7.0, area.end.y - lbl_size.y - 7.0))
 	# Keep the outlined objective name clear of the Talk prompt and transient UI.
 	var occupied: Array[Rect2] = []
+	if street_view != null and street_view.button_visible():
+		occupied.append(street_view.button.get_global_rect().grow(6.0))
 	if bea_invitation != null and bea_invitation.inspection_rect().has_area():
 		occupied.append(bea_invitation.inspection_rect())
 	if mural_inspection_rect().has_area(): occupied.append(mural_inspection_rect())
@@ -14451,10 +14458,19 @@ func neighbor_screen_distance(index: int, screen_pos: Vector2) -> float:
 	var base_pos: Vector3 = neighbors[index].pos
 	var best_d := INF
 	for h_off in [0.9, 2.3, 4.1]:
-		var d := camera.unproject_position(base_pos + Vector3(0.0, h_off, 0.0)).distance_to(screen_pos)
+		var d := tap_screen_distance(base_pos + Vector3(0.0, h_off, 0.0), screen_pos)
 		if d < best_d:
 			best_d = d
 	return best_d
+
+## Screen distance from a tap to a world point; a perspective camera mirrors points behind it, and at
+## eye level a target behind a wall is not a target, so both report INF.
+func tap_screen_distance(world_pos: Vector3, screen_pos: Vector2) -> float:
+	if camera.is_position_behind(world_pos):
+		return INF
+	if street_view_active() and not street_view.line_of_sight_clear(street_view.eye_xz(), Vector2(world_pos.x, world_pos.z)):
+		return INF
+	return camera.unproject_position(world_pos).distance_to(screen_pos)
 
 func surprise_has_guide_marker(sp: Vector2) -> bool:
 	return guide_marker != null and guide_marker.visible and Vector2(guide_marker_target.x, guide_marker_target.z).distance_to(sp) < 0.5
@@ -14490,38 +14506,37 @@ func handle_scene_tap(screen_pos: Vector2) -> bool:
 	for caption in visible_scene_captions:
 		if int(caption.eatery_index) >= 0 and (caption.rect as Rect2).has_point(screen_pos):
 			return activate_eatery(int(caption.eatery_index))
-	if not is_finite(ground_xz.x):
-		return true # Street view: a tap at or above the horizon does nothing.
+	# At eye level the ground hit under the pointer says little about a tapped neighbour or sign, so
+	# world distances are measured from the player and the "standing right next to it" shortcuts are off.
+	var street_tap := street_view_active()
+	var tap_ref: Vector2 = player_xz() if street_tap else ground_xz
+	var near_tap := not street_tap
 	var best_idx := -1
 	var best_screen_d := INF
 	for i in range(neighbors.size()):
 		var screen_d := neighbor_screen_distance(i, screen_pos)
-		var world_d := neighbor_xz(i).distance_to(ground_xz)
-		if (screen_d <= 48.0 and world_d <= 14.0) or world_d <= 4.5:
+		var world_d := neighbor_xz(i).distance_to(tap_ref)
+		if (screen_d <= 48.0 and world_d <= 14.0) or (near_tap and world_d <= 4.5):
 			if screen_d < best_screen_d:
 				best_screen_d = screen_d
 				best_idx = i
-	var m_screen := camera.unproject_position(MURAL_POS + Vector3(0.0, 1.4, 0.0))
-	var m_screen_d := m_screen.distance_to(screen_pos)
-	var m_world_d := mural_xz().distance_to(ground_xz)
-	if ((m_screen_d <= 38.0 and m_world_d <= 8.5) or m_world_d <= 3.6) and m_screen_d < best_screen_d:
+	var m_screen_d := tap_screen_distance(MURAL_POS + Vector3(0.0, 1.4, 0.0), screen_pos)
+	var m_world_d := mural_xz().distance_to(tap_ref)
+	if ((m_screen_d <= 38.0 and m_world_d <= 8.5) or (near_tap and m_world_d <= 3.6)) and m_screen_d < best_screen_d:
 		if mural_panel != null and mural_panel.visible and is_near_mural_workshop():
 			return open_mural_workshop()
 		return walk_to_mural()
-	var s_screen := camera.unproject_position(ROOK_SPEAKER_POS + Vector3(0.0, 0.8, 0.0))
-	var s_screen_d := s_screen.distance_to(screen_pos)
-	var s_world_d := speaker_xz().distance_to(ground_xz)
-	if ((s_screen_d <= 36.0 and s_world_d <= 8.5) or s_world_d <= 3.2) and s_screen_d < best_screen_d:
+	var s_screen_d := tap_screen_distance(ROOK_SPEAKER_POS + Vector3(0.0, 0.8, 0.0), screen_pos)
+	var s_world_d := speaker_xz().distance_to(tap_ref)
+	if ((s_screen_d <= 36.0 and s_world_d <= 8.5) or (near_tap and s_world_d <= 3.2)) and s_screen_d < best_screen_d:
 		return walk_to_speaker()
-	var c_screen := camera.unproject_position(history_stop_pos_3d("comptons") + Vector3(0.0, 1.3, 0.0))
-	var c_screen_d := c_screen.distance_to(screen_pos)
-	var c_world_d := comptons_xz().distance_to(ground_xz)
-	if ((c_screen_d <= 34.0 and c_world_d <= 8.5) or c_world_d <= 3.0) and c_screen_d < best_screen_d:
+	var c_screen_d := tap_screen_distance(history_stop_pos_3d("comptons") + Vector3(0.0, 1.3, 0.0), screen_pos)
+	var c_world_d := comptons_xz().distance_to(tap_ref)
+	if ((c_screen_d <= 34.0 and c_world_d <= 8.5) or (near_tap and c_world_d <= 3.0)) and c_screen_d < best_screen_d:
 		return walk_to_history_stop("comptons")
-	var bh_screen := camera.unproject_position(history_stop_pos_3d("blackhawk") + Vector3(0.0, 1.3, 0.0))
-	var bh_screen_d := bh_screen.distance_to(screen_pos)
-	var bh_world_d := blackhawk_xz().distance_to(ground_xz)
-	if ((bh_screen_d <= 36.0 and bh_world_d <= 8.5) or bh_world_d <= 3.5) and bh_screen_d < best_screen_d:
+	var bh_screen_d := tap_screen_distance(history_stop_pos_3d("blackhawk") + Vector3(0.0, 1.3, 0.0), screen_pos)
+	var bh_world_d := blackhawk_xz().distance_to(tap_ref)
+	if ((bh_screen_d <= 36.0 and bh_world_d <= 8.5) or (near_tap and bh_world_d <= 3.5)) and bh_screen_d < best_screen_d:
 		return walk_to_history_stop("blackhawk")
 	if not in_overview and not in_wide_overview:
 		var best_surp_id := ""
@@ -14530,34 +14545,32 @@ func handle_scene_tap(screen_pos: Vector2) -> bool:
 			if surprise_points.has(s_id):
 				var sp: Vector2 = surprise_points[s_id]
 				var has_marker := surprise_has_guide_marker(sp)
+				if street_tap and camera.is_position_behind(Vector3(sp.x, 1.0, sp.y)):
+					continue
 				var surp_screen_d := surprise_screen_distance(sp, screen_pos, has_marker)
-				var surp_world_d := sp.distance_to(ground_xz)
+				var surp_world_d := sp.distance_to(tap_ref)
 				var max_world_d := 9.5 if has_marker else 5.5
-				if ((surp_screen_d <= 32.0 and surp_world_d <= max_world_d) or surp_world_d <= 2.2) and surp_screen_d < best_surp_screen_d:
+				if ((surp_screen_d <= 32.0 and surp_world_d <= max_world_d) or (near_tap and surp_world_d <= 2.2)) and surp_screen_d < best_surp_screen_d:
 					best_surp_screen_d = surp_screen_d
 					best_surp_id = s_id
 		if not best_surp_id.is_empty():
 			return inspect_neighborhood_surprise(best_surp_id)
-	var turk_ee_screen := camera.unproject_position(Vector3(SO_WHAT_AWNING_XZ.x, 3.6, SO_WHAT_AWNING_XZ.y))
-	var leav_ee_screen := camera.unproject_position(Vector3(-290.8, 24.6, 99.4))
-	if turk_ee_screen.distance_to(screen_pos) <= 28.0 or leav_ee_screen.distance_to(screen_pos) <= 28.0:
+	if tap_screen_distance(Vector3(SO_WHAT_AWNING_XZ.x, 3.6, SO_WHAT_AWNING_XZ.y), screen_pos) <= 28.0 or tap_screen_distance(Vector3(-290.8, 24.6, 99.4), screen_pos) <= 28.0:
 		return inspect_so_what_easter_egg()
-	var museum_screen := camera.unproject_position(MUSEUM_HUB_POS + Vector3(0.0, 2.2, 0.0))
-	if museum_screen.distance_to(screen_pos) <= 28.0:
+	if tap_screen_distance(MUSEUM_HUB_POS + Vector3(0.0, 2.2, 0.0), screen_pos) <= 28.0:
 		return inspect_tenderloin_museum_hub()
-	var park_screen := camera.unproject_position(Vector3(BOEDDEKER_PARK_ENTRANCE.x, 3.6, BOEDDEKER_PARK_ENTRANCE.y))
-	if park_screen.distance_to(screen_pos) <= 26.0:
+	if tap_screen_distance(Vector3(BOEDDEKER_PARK_ENTRANCE.x, 3.6, BOEDDEKER_PARK_ENTRANCE.y), screen_pos) <= 26.0:
 		return inspect_boeddeker_park()
 	for e_i in range(NEIGHBORHOOD_EATERIES.size()):
 		var e_pos: Vector3 = NEIGHBORHOOD_EATERIES[e_i].get("pos", Vector3.ZERO)
-		var e_screen := camera.unproject_position(e_pos + Vector3(0.0, 2.2, 0.0))
+		var e_screen_d := tap_screen_distance(e_pos + Vector3(0.0, 2.2, 0.0), screen_pos)
 		var counter_open := e_i < eatery_counter_nodes.size() and eatery_counter_nodes[e_i].visible
 		var is_tour_counter := String(obj.get("tour_id", "")) == "eatery:%d" % e_i
 		var counter_screen_d := INF
 		if counter_open or is_tour_counter:
 			var cp := eatery_counter_points[e_i]
-			counter_screen_d = camera.unproject_position(Vector3(cp.x, 1.3, cp.y)).distance_to(screen_pos)
-		if e_screen.distance_to(screen_pos) <= 24.0 or counter_screen_d <= 30.0:
+			counter_screen_d = tap_screen_distance(Vector3(cp.x, 1.3, cp.y), screen_pos)
+		if e_screen_d <= 24.0 or counter_screen_d <= 30.0:
 			return activate_eatery(e_i)
 	if best_idx >= 0:
 		if arrived_neighbor == best_idx and player_xz().distance_to(neighbor_xz(best_idx)) <= ARRIVAL_DISTANCE_M + 0.5:
@@ -14571,6 +14584,8 @@ func handle_scene_tap(screen_pos: Vector2) -> bool:
 				talk_with_neighbor(best_idx)
 				return true
 		return walk_to_neighbor(best_idx)
+	if not is_finite(ground_xz.x):
+		return true # Street view: a tap at or above the horizon, or far beyond the block, walks nowhere.
 	return walk_to_point(ground_xz)
 
 func activate_eatery(index: int) -> bool:

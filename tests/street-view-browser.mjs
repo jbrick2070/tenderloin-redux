@@ -45,6 +45,7 @@ export async function verifyStreetView(page,{touch,size,renderedPixels,outputDir
   await settle();s=await snap();
   assert.equal(s.street_view.projection,1,'leaving street view restores the orthographic camera');
   assert.ok(s.following_player,'leaving street view keeps following the player');
+  assert.deepEqual({yaw:s.camera_pose.yaw,pitch:s.camera_pose.pitch,size:s.camera_view_size},{yaw:before.camera_pose.yaw,pitch:before.camera_pose.pitch,size:before.camera_view_size},'the walking map comes back with its own heading, pitch and zoom');
   assert.equal(s.street_view.button.text,'Street view');
   assert.match(s.announcement,/Map view/,'leaving street view is announced');
   // Shift+F again resumes with the kept heading; Shift+F once more leaves.
