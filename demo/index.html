@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; media-src 'self'">
+<title>Tenderloin Redux · Demo</title>
+<meta name="description" content="An 80-second demo of Tenderloin Redux, a peaceful neighborhood game set on Turk Street in San Francisco's Tenderloin.">
+<style>
+  :root { --paper: #f3eee2; --ink: #23312b; --green: #1f5b49; --muted: #5a685f; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 17px/1.55 Georgia, "Times New Roman", serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 32px 16px 48px; }
+  h1 { font-size: clamp(28px, 5vw, 42px); font-weight: normal; margin: 0 0 4px; }
+  .lead { margin: 0 0 24px; color: var(--muted); }
+  video { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; background: #000; border-radius: 6px; }
+  .play { display: flex; flex-wrap: wrap; gap: 12px; margin: 24px 0 16px; }
+  .play a { display: inline-block; min-height: 44px; padding: 10px 18px; border-radius: 6px; background: var(--green); color: #fff; text-decoration: none; font-family: system-ui, sans-serif; font-size: 16px; }
+  .play a.secondary { background: transparent; color: var(--green); border: 1px solid var(--green); }
+  .play a:focus-visible { outline: 3px solid #b8862b; outline-offset: 2px; }
+  .note { font-size: 15px; color: var(--muted); }
+  .note a { color: var(--green); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Tenderloin Redux</h1>
+  <p class="lead">A peaceful neighborhood game on Turk Street, San Francisco. Recorded from the game, 80 seconds.</p>
+  <video controls preload="metadata" playsinline poster="poster.jpg" aria-label="Tenderloin Redux demo video">
+    <source src="tenderloin-redux-demo.mp4" type="video/mp4">
+    Your browser cannot play this video. <a href="tenderloin-redux-demo.mp4">Download it (8 MB)</a>.
+  </video>
+  <div class="play">
+    <a href="../browser-next/">Play the 2D edition</a>
+    <a class="secondary" href="../">Play the 3D edition</a>
+  </div>
+  <p class="note">Free in any browser, no account, one save shared between the 2D and 3D editions. The neighbors and the gathering are fictional; the streets, buildings and history stops come from public city data and cited sources. Music: the game's own original synth sketch. <a href="https://github.com/jbrick2070/tenderloin-redux">Source on GitHub</a>.</p>
+</main>
+</body>
+</html>
