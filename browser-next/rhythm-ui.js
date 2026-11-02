@@ -15,7 +15,8 @@
 //                                 announcement; notice is Godot's chapter_completion_notice for the next chapter card
 // }
 // No Rhythm Circle button is marked rapid in Godot, so press-settle.js guards every one of them.
-import { RHYTHM_TEXT, BAR_FRAMES, RATE, barSamples, circleAvailable, circlePattern, closedSession, openCircle, closeCircle, toggleStep, listen, complete, afterComplete, heading, objectiveLine, readerText, pads, options, playBarGate, auditionMustStop, activeStep, lamps } from './rhythm.js';
+import { RHYTHM_TEXT, BAR_FRAMES, RATE, barSamples, circleAvailable, circlePattern, closedSession, openCircle, closeCircle, toggleStep, listen, complete, afterComplete, heading, objectiveLine, readerText, pads, options, playBarGate, auditionMustStop, activeStep, lamps, lampsName } from './rhythm.js';
+import { t } from './i18n.js';
 
 const esc = text => String(text).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]);
 const label = text => esc(text).replace(/\n/g, '<br>');
@@ -47,12 +48,12 @@ export function createRhythm(host) {
 
   function lampSVG(step) {
     const ls = lamps(pattern(), step);
-    return `<svg class="rhythm-lamps" viewBox="0 0 400 70" role="img" aria-label="${esc(ls.map(l => `${l.step + 1} ${l.hit ? RHYTHM_TEXT.hit : RHYTHM_TEXT.rest}`).join(', '))}"><rect width="400" height="70" rx="10" fill="#172c32"/>${ls.map(l => `<circle data-lamp="${l.step}" cx="${25 + l.step * 50}" cy="35" r="${(12 * l.scale).toFixed(1)}" fill="${l.color}" stroke="#c29e66" stroke-width="1"/>`).join('')}</svg>`;
+    return `<svg class="rhythm-lamps" viewBox="0 0 400 70" role="img" aria-label="${esc(lampsName(ls))}"><rect width="400" height="70" rx="10" fill="#172c32"/>${ls.map(l => `<circle data-lamp="${l.step}" cx="${25 + l.step * 50}" cy="35" r="${(12 * l.scale).toFixed(1)}" fill="${l.color}" stroke="#c29e66" stroke-width="1"/>`).join('')}</svg>`;
   }
   function render(focusId = null) {
     const opts = options(session, { musicPlaying: musicPlaying(), auditioning: auditioning() });
     const text = readerText(session.message, { mode: mode(), localName: host.music.fileName });
-    host.show(`<section class="rhythm" data-rhythm><p class="eyebrow rhythm-credit">${esc(RHYTHM_TEXT.credit)}</p><h2 id="modal-title" tabindex="-1">${esc(heading(session))}</h2><p class="rhythm-objective">${esc(objectiveLine(host.objective(), host.sparks()))}</p><figure id="rhythm-figure" style="margin:0">${lampSVG(currentStep())}</figure><div id="rhythm-reader" class="rhythm-reader" tabindex="0" role="region" aria-label="Rhythm Circle text">${text.split('\n').map(line => `<p>${esc(line)}</p>`).join('')}</div><div class="rhythm-pads" role="group" aria-label="Eight steps">${pads(pattern()).map(p => `<button id="rhythm-pad-${p.step}" class="secondary-button" aria-pressed="${p.hit}" aria-label="${esc(p.name)}">${label(p.label)}</button>`).join('')}</div><div class="rhythm-options">${opts.map(o => `<button id="rhythm-${o.id}" class="secondary-button"${o.name ? ` aria-label="${esc(o.name)}"` : ''}>${label(o.label)}</button>`).join('')}</div></section>`);
+    host.show(`<section class="rhythm" data-rhythm><p class="eyebrow rhythm-credit">${esc(t(RHYTHM_TEXT.credit))}</p><h2 id="modal-title" tabindex="-1">${esc(heading(session))}</h2><p class="rhythm-objective">${esc(objectiveLine(host.objective(), host.sparks()))}</p><figure id="rhythm-figure" style="margin:0">${lampSVG(currentStep())}</figure><div id="rhythm-reader" class="rhythm-reader" tabindex="0" role="region" aria-label="${esc(t('Rhythm Circle text'))}">${text.split('\n').map(line => `<p>${esc(line)}</p>`).join('')}</div><div class="rhythm-pads" role="group" aria-label="${esc(t('Eight steps'))}">${pads(pattern()).map(p => `<button id="rhythm-pad-${p.step}" class="secondary-button" aria-pressed="${p.hit}" aria-label="${esc(p.name)}">${label(p.label)}</button>`).join('')}</div><div class="rhythm-options">${opts.map(o => `<button id="rhythm-${o.id}" class="secondary-button"${o.name ? ` aria-label="${esc(o.name)}"` : ''}>${label(o.label)}</button>`).join('')}</div></section>`);
     for (let i = 0; i < 8; i++) bind(`rhythm-pad-${i}`, () => edit(toggleStep(state(), session, i), `rhythm-pad-${i}`));
     bind('rhythm-listen', () => edit(listen(state(), session), 'rhythm-listen'));
     // Godot toggle_music_playback announces, then refresh() redraws without announcing: the music line is the last word.
@@ -112,7 +113,7 @@ export function createRhythm(host) {
       source.buffer = buffer; source.connect(gain); gain.connect(ctx.destination);
       host.music.sketch.mute(true);
       const mine = { source, gain, startedAt: ctx.currentTime, ctx };
-      source.onended = () => { if (audition !== mine) return; audition = null; host.music.sketch.mute(false); if (onScreen()) { session = { ...session, message: RHYTHM_TEXT.barEnded }; render(doc.activeElement?.id || null); host.status(RHYTHM_TEXT.barEnded); } };
+      source.onended = () => { if (audition !== mine) return; audition = null; host.music.sketch.mute(false); if (onScreen()) { session = { ...session, message: t(RHYTHM_TEXT.barEnded) }; render(doc.activeElement?.id || null); host.status(session.message); } };
       audition = mine; source.start();
       return true;
     } catch { audition = null; host.music.sketch.mute(false); return false; }
@@ -123,7 +124,7 @@ export function createRhythm(host) {
     const a = audition; audition = null;
     try { a.source.onended = null; a.source.stop(); a.source.disconnect(); a.gain.disconnect(); } catch { /* already ended */ }
     host.music.sketch.mute(false);
-    if (announce && open) { session = { ...session, message: RHYTHM_TEXT.barStoppedSettings }; render(doc.activeElement?.id || null); }
+    if (announce && open) { session = { ...session, message: t(RHYTHM_TEXT.barStoppedSettings) }; render(doc.activeElement?.id || null); }
   }
 
   // --- Lamps: the step under the sketch clock (Step cues On) or the auditioned bar's position, redrawn in place. ---
@@ -157,7 +158,7 @@ export function createRhythm(host) {
 
   return {
     available: () => circleAvailable(state()),
-    entryLabel: () => RHYTHM_TEXT.entry,
+    entryLabel: () => t(RHYTHM_TEXT.entry),
     // from: 'hosting' (the hosting dialog's beats activity) or 'block' (the afterglow entry).
     open(from = 'block', { busy = false } = {}) {
       host.stopWalk();

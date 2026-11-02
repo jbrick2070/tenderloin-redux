@@ -5,7 +5,8 @@
 // ending/hosted.js. Godot's wording is copied verbatim and tests/next-characters.test.mjs fails on
 // drift; HOSTED_WEB_OVERRIDES drops the key hints 2D does not bind. Pure: every function reads fork
 // state (the state parseGodotSave returns).
-import { LOAN_IDS, LOAN_OWNERS, LOAN_TITLES, PROGRAMME_SEGMENTS, PROGRAMME_TITLES, fmt } from './story.js';
+import { LOAN_IDS, LOAN_OWNERS, LOAN_TITLES, NEIGHBOR_NAMES, PROGRAMME_SEGMENTS, PROGRAMME_TITLES, fmt } from './story.js';
+import { L } from './i18n.js';
 
 export const INVITATION_TITLES = { memory: 'A small moment you want to keep', future: 'Something you hope to make together' };
 export const INVITATION_EXAMPLES = {
@@ -60,6 +61,16 @@ export const HOSTED_WEB_OVERRIDES = {
   ' Choose the seats, then Host Activity (Z) when you are ready.': ' Choose the seats, then Host Activity when you are ready.',
 };
 export const hostedWeb = text => Object.hasOwn(HOSTED_WEB_OVERRIDES, text) ? HOSTED_WEB_OVERRIDES[text] : text;
+// Fork composites (docs/I18N_PLAN.md 2.7): whole sentences for the lines Godot joins from fragments, so a translator sees one
+// sentence. Each equals Godot's concatenation for every input (tests/next-i18n-dialogue.test.mjs): invitation is
+// explanation.open + title + sep + example + close, quiet is explanation.open + title + close, and the two summaries are
+// host_complete_current's summary with its next + title or its last.
+export const HOSTED_COMPOSE = {
+  invitation: 'Bea: "%s. %s That is just my example. Tell something if you want to; listening is equally welcome. No story is recorded." (Original fictional scene.)',
+  quiet: 'Thanh: "%s. Two fictional visitors can sit together; the woven green cushion marks an open seat. Sit, stand or leave whenever you like. The sidewalk stays clear. Music is your choice; there is no timer."',
+  summaryNext: 'Completed %s (%d/4 hosted) · Next: %s',
+  summaryLast: 'Completed %s (%d/4 hosted) — Second Afternoon Complete!',
+};
 const G = HOSTED_GODOT_TEXT;
 const list = value => Array.isArray(value) ? value : [];
 // GDScript String.capitalize for the single-word ids used here: 'thanh' -> 'Thanh'.
@@ -76,12 +87,11 @@ export function invitationChoice(state) {
 }
 export function invitationExplanation(id) {
   if (!Object.hasOwn(INVITATION_TITLES, id)) return '';
-  const E = G['bea_invitation.gd'].explanation;
-  return E.open + INVITATION_TITLES[id] + E.sep + INVITATION_EXAMPLES[id] + E.close;
+  return fmt(HOSTED_COMPOSE.invitation, L(INVITATION_TITLES[id]), L(INVITATION_EXAMPLES[id]));
 }
 // The hub line Godot shows while the stories activity is chosen (with 2D's key hint dropped).
-export const invitationHubText = id => { const text = invitationExplanation(id); return text ? text + hostedWeb(G['bea_invitation.gd'].update_choices.hub) : ''; };
-export const invitationButtonLabel = id => id === 'memory' ? G['bea_invitation.gd'].update_choices.memory : id === 'future' ? G['bea_invitation.gd'].update_choices.future : '';
+export const invitationHubText = id => { const text = invitationExplanation(id); return text ? text + L(hostedWeb(G['bea_invitation.gd'].update_choices.hub)) : ''; };
+export const invitationButtonLabel = id => id === 'memory' ? L(G['bea_invitation.gd'].update_choices.memory) : id === 'future' ? L(G['bea_invitation.gd'].update_choices.future) : '';
 
 // bea_invitation.gd source(id): the original folded-paper invitation, 360x240.
 export function invitationSVG(id) {
@@ -102,22 +112,22 @@ export function quietChoice(state) {
 }
 export function quietExplanation(id) {
   if (!Object.hasOwn(QUIET_TITLES, id)) return '';
-  const E = G['quiet_seats.gd'].explanation;
-  return E.open + QUIET_TITLES[id] + E.close;
+  return fmt(HOSTED_COMPOSE.quiet, L(QUIET_TITLES[id]));
 }
-export const quietHubText = id => { const text = quietExplanation(id); return text ? text + hostedWeb(G['quiet_seats.gd'].update_ui.hub) : ''; };
-export const quietButtonLabel = id => id === 'arc' ? G['quiet_seats.gd'].update_ui.arc : id === 'pairs' ? G['quiet_seats.gd'].update_ui.pairs : '';
+export const quietHubText = id => { const text = quietExplanation(id); return text ? text + L(hostedWeb(G['quiet_seats.gd'].update_ui.hub)) : ''; };
+export const quietButtonLabel = id => id === 'arc' ? L(G['quiet_seats.gd'].update_ui.arc) : id === 'pairs' ? L(G['quiet_seats.gd'].update_ui.pairs) : '';
 
 // loan_homecoming.gd: the owner's reply on return, the over-budget refusal, the announcement and
-// the remembered reply that becomes the owner's memory tail.
-const ownerName = id => capitalize(LOAN_OWNERS[id] ?? '');
-export const loanReply = id => Object.hasOwn(LOAN_REPLIES, id) ? fmt(G['loan_homecoming.gd'].reply.line, ownerName(id), LOAN_REPLIES[id]) : '';
+// the remembered reply that becomes the owner's memory tail. Godot capitalizes the owner's id; the fork shows the owner's name
+// from NEIGHBOR_NAMES, which is that capitalization in English, so a locale never title-cases an id.
+const ownerName = id => { const owner = LOAN_OWNERS[id] ?? ''; return Object.hasOwn(NEIGHBOR_NAMES, owner) ? L(NEIGHBOR_NAMES[owner]) : capitalize(owner); };
+export const loanReply = id => Object.hasOwn(LOAN_REPLIES, id) ? fmt(G['loan_homecoming.gd'].reply.line, ownerName(id), L(LOAN_REPLIES[id])) : '';
 export const loanRefusal = id => Object.hasOwn(LOAN_OWNERS, id) ? fmt(G['loan_homecoming.gd'].allow_return.refusal, ownerName(id)) : '';
-export const loanReturnAnnouncement = (id, returnedCount) => Object.hasOwn(LOAN_REPLIES, id) ? fmt(G['loan_homecoming.gd'].return_to_owner.announce, LOAN_TITLES[id], returnedCount, loanReply(id)) : '';
+export const loanReturnAnnouncement = (id, returnedCount) => Object.hasOwn(LOAN_REPLIES, id) ? fmt(G['loan_homecoming.gd'].return_to_owner.announce, L(LOAN_TITLES[id]), returnedCount, loanReply(id)) : '';
 export const LOAN_COMPLETION_NOTICE = G['loan_homecoming.gd'].note_completion.notice;
 export function loanMemory(state, neighborId) {
   const returned = list(state?.epilogue?.returned), M = G['loan_homecoming.gd'].memory;
-  for (const id of LOAN_IDS) if (LOAN_OWNERS[id] === neighborId && returned.includes(id)) return M.open + LOAN_REPLIES[id] + M.close;
+  for (const id of LOAN_IDS) if (LOAN_OWNERS[id] === neighborId && returned.includes(id)) return M.open + L(LOAN_REPLIES[id]) + M.close;
   return '';
 }
 // loan_homecoming.gd pending(): the owner's loan still to return, while packing.
@@ -134,9 +144,11 @@ export function conversationLoan(state, neighborId, confirmed = '') {
   return confirmed && LOAN_OWNERS[confirmed] === neighborId ? confirmed : '';
 }
 
-// The line Godot announces as each hosted activity completes. state is the state after completing.
+// The line Godot announces as each hosted activity completes (host_complete_current's summary, one HOSTED_COMPOSE sentence).
+// state is the state after completing.
 export function hostedCompletion(state, completedId) {
-  const C = G['main.gd'].host_complete_current, order = list(state?.hosting?.order), results = list(state?.hosting?.results);
+  const order = list(state?.hosting?.order), results = list(state?.hosting?.results);
   const next = order.length === PROGRAMME_SEGMENTS.length && results.length < order.length ? order[results.length] : '';
-  return fmt(C.summary, PROGRAMME_TITLES[completedId] ?? String(completedId), results.length, next ? C.next + PROGRAMME_TITLES[next] : C.last);
+  const title = L(PROGRAMME_TITLES[completedId]) ?? String(completedId);
+  return next ? fmt(HOSTED_COMPOSE.summaryNext, title, results.length, L(PROGRAMME_TITLES[next])) : fmt(HOSTED_COMPOSE.summaryLast, title, results.length);
 }

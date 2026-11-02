@@ -7,6 +7,7 @@
 import { currentActivity, hostedResult } from './hosting.js';
 import { segmentTitle } from './story.js';
 import { auditionStep, stepAt } from './sketch-core.js';
+import { format, L, list as joinList, FLAVORS } from './i18n.js';
 
 // rhythm_bar.gd
 export const RATE = 22050;
@@ -60,8 +61,25 @@ export const RHYTHM_WEB_OVERRIDES = {
   [RHYTHM_TEXT.dragTail]: '',
   [RHYTHM_TEXT.playBarName]: `${RHYTHM_TEXT.playBar.replace('\n', ' ')}: ${RHYTHM_TEXT.playBarName}`,
 };
-export const rhythmText = key => { const t = RHYTHM_TEXT[key]; return Object.hasOwn(RHYTHM_WEB_OVERRIDES, t) ? RHYTHM_WEB_OVERRIDES[t] : t; };
+// Fork composites (docs/I18N_PLAN.md 2.7): Godot joins these from a fixed part and a word (the heading's mode, a pad's hit or
+// rest, an option's On or Off), so a translator sees each whole label or sentence. Each equals Godot's join for every input
+// (tests/next-i18n-dialogue.test.mjs): headingMode + practice or hosting, padName and toggled with hit or rest, musicLabel and
+// stepCues + On or Off, and the lamp figure's "N hit" or "N rest".
+export const RHYTHM_COMPOSE = {
+  headingPractice: "Dez's Rhythm Circle - Practice", headingHosting: "Dez's Rhythm Circle - Hosting",
+  padNameHit: 'Step %d, hit', padNameRest: 'Step %d, rest',
+  toggledHit: 'Step %d: hit. %s', toggledRest: 'Step %d: rest. %s',
+  musicOn: 'Music\nOn', musicOff: 'Music\nOff', stepCuesOn: 'Step cues\nOn', stepCuesOff: 'Step cues\nOff',
+  lampHit: '%d hit', lampRest: '%d rest',
+};
+// A line as the 2D edition shows it, in the active language ('' stays '').
+const shown = text => text ? L(text) : text;
+export const rhythmText = key => { const t = RHYTHM_TEXT[key]; return shown(Object.hasOwn(RHYTHM_WEB_OVERRIDES, t) ? RHYTHM_WEB_OVERRIDES[t] : t); };
+// Godot % for %s and %d, the English path of fillText (tests/next-i18n.test.mjs evaluates this line on its own). fillText looks
+// the template up in a locale first (i18n.js format); table values passed as arguments are localized by the caller.
 const fill = (template, ...args) => { let i = 0; return template.replace(/%[sd]/g, m => { const v = args[i++]; return m === '%d' ? String(Math.trunc(Number(v))) : String(v); }); };
+const FILL = { ...FLAVORS.rhythm, legacy: (template, args) => fill(template, ...args) };
+const fillText = (template, ...args) => format(template, args, FILL);
 const has = (pattern, i) => (pattern & (1 << i)) !== 0;
 
 // --- Drum bar PCM (rhythm_bar.gd prepare_template, make_bar). ---
@@ -108,18 +126,18 @@ export const closedSession = () => ({ visible: false, practice: false, practiceP
 export function openCircle(state, { busy = false } = {}) {
   if (!circleAvailable(state) || busy) return { session: closedSession(), announce: rhythmText('blocked'), opened: false };
   const practice = circleMode(state) === 'practice';
-  const session = { visible: true, practice, practicePattern: 0, stepCues: false, message: practice ? RHYTHM_TEXT.practiceOpen : RHYTHM_TEXT.hostingOpen };
+  const session = { visible: true, practice, practicePattern: 0, stepCues: false, message: L(practice ? RHYTHM_TEXT.practiceOpen : RHYTHM_TEXT.hostingOpen) };
   session.practicePattern = circlePattern(state, { visible: false });
   return { session, opened: true, announce: rhythmText('openAnnounce') + session.message + rhythmText('openAnnounceTail') };
 }
-export function closeCircle(session, { receipt = RHYTHM_TEXT.saved } = {}) {
-  return { session: closedSession(), announce: session?.practice ? RHYTHM_TEXT.closePractice : RHYTHM_TEXT.closeHosting + receipt + RHYTHM_TEXT.closeHostingTail };
+export function closeCircle(session, { receipt = L(RHYTHM_TEXT.saved) } = {}) {
+  return { session: closedSession(), announce: session?.practice ? L(RHYTHM_TEXT.closePractice) : L(RHYTHM_TEXT.closeHosting) + receipt + L(RHYTHM_TEXT.closeHostingTail) };
 }
 // Each edit returns {session, actions, message, done}: actions are core.js actions for the caller's act(). Godot builds the
 // message after host_toggle_beat has saved, so a caller that acts calls done(state, receipt) afterwards for the session: the
 // step as the state the write left holds it, with Godot's save_receipt for that write. message reads the state passed in.
 const unchanged = session => ({ session, actions: [], message: session?.message || '', done: () => session });
-export function toggleStep(state, session, index, { receipt = RHYTHM_TEXT.saved } = {}) {
+export function toggleStep(state, session, index, { receipt = L(RHYTHM_TEXT.saved) } = {}) {
   if (!session?.visible || !Number.isInteger(index) || index < 0 || index > 7) return unchanged(session);
   const next = { ...session }, actions = [];
   let pattern;
@@ -129,24 +147,24 @@ export function toggleStep(state, session, index, { receipt = RHYTHM_TEXT.saved 
     actions.push({ type: 'host-beat', step: index });
     pattern = (circlePattern(state, session) ^ (1 << index)) & 255;
   }
-  const say = (p, text) => ({ ...next, message: fill(RHYTHM_TEXT.toggled, index + 1, has(p, index) ? RHYTHM_TEXT.hit : RHYTHM_TEXT.rest, next.practice ? RHYTHM_TEXT.practiceOnly : text) });
+  const say = (p, text) => ({ ...next, message: fillText(has(p, index) ? RHYTHM_COMPOSE.toggledHit : RHYTHM_COMPOSE.toggledRest, index + 1, next.practice ? L(RHYTHM_TEXT.practiceOnly) : text) });
   const out = say(pattern, receipt);
-  return { session: out, actions, message: out.message, done: (after, text = RHYTHM_TEXT.saved) => say(circlePattern(after, next), text) };
+  return { session: out, actions, message: out.message, done: (after, text = L(RHYTHM_TEXT.saved)) => say(circlePattern(after, next), text) };
 }
-export function listen(state, session, { receipt = RHYTHM_TEXT.saved } = {}) {
+export function listen(state, session, { receipt = L(RHYTHM_TEXT.saved) } = {}) {
   if (!session?.visible) return unchanged(session);
   const next = { ...session }, actions = [];
   if (next.practice) next.practicePattern = 0;
   else { const p = circlePattern(state, session); for (let i = 0; i < 8; i++) if (has(p, i)) actions.push({ type: 'host-beat', step: i }); }
-  const say = text => ({ ...next, message: RHYTHM_TEXT.listened + (next.practice ? '' : ' ' + text) });
+  const say = text => ({ ...next, message: L(RHYTHM_TEXT.listened) + (next.practice ? '' : ' ' + text) });
   const out = say(receipt);
-  return { session: out, actions, message: out.message, done: (after, text = RHYTHM_TEXT.saved) => say(text) };
+  return { session: out, actions, message: out.message, done: (after, text = L(RHYTHM_TEXT.saved)) => say(text) };
 }
 // Practice: Reset Practice restores the saved pattern. Hosting: complete the beats activity, close the
 // circle, then call afterComplete with the new state.
 export function complete(state, session) {
   if (session?.practice) {
-    const next = { ...session, practicePattern: savedPattern(state), message: RHYTHM_TEXT.restored };
+    const next = { ...session, practicePattern: savedPattern(state), message: L(RHYTHM_TEXT.restored) };
     return { session: next, actions: [], message: next.message, close: false };
   }
   if (!session?.visible || currentActivity(state?.hosting) !== 'beats') return { session, actions: [], message: session?.message || '', close: false };
@@ -156,30 +174,30 @@ export function complete(state, session) {
 // lastChapter: the current chapter is the story's last.
 export function afterComplete(state, { lastChapter = false } = {}) {
   const next = currentActivity(state?.hosting), count = state?.hosting?.results?.length || 0;
-  return { notice: !next && !lastChapter ? RHYTHM_TEXT.chapterDone : '', announce: next ? fill(RHYTHM_TEXT.completed, count, segmentTitle(next)) : '' };
+  return { notice: !next && !lastChapter ? L(RHYTHM_TEXT.chapterDone) : '', announce: next ? fillText(RHYTHM_TEXT.completed, count, segmentTitle(next)) : '' };
 }
 
 // --- Labels and the reader (rhythm_circle.gd refresh). ---
-export const heading = session => RHYTHM_TEXT.headingMode + (session?.practice ? RHYTHM_TEXT.practice : RHYTHM_TEXT.hosting);
-export const objectiveLine = (objective, sparks) => fill(RHYTHM_TEXT.objective, objective || RHYTHM_TEXT.objectiveFallback, sparks);
+export const heading = session => L(session?.practice ? RHYTHM_COMPOSE.headingPractice : RHYTHM_COMPOSE.headingHosting);
+export const objectiveLine = (objective, sparks) => fillText(RHYTHM_TEXT.objective, objective || L(RHYTHM_TEXT.objectiveFallback), sparks);
 export function readerText(message, { mode = 'sketch', localName = '' } = {}) {
-  return (message + (mode === 'local' ? fill(RHYTHM_TEXT.localTail, localName) : RHYTHM_TEXT.sketchTail) + rhythmText('dragTail')).trim();
+  return (message + (mode === 'local' ? fillText(RHYTHM_TEXT.localTail, localName) : L(RHYTHM_TEXT.sketchTail)) + rhythmText('dragTail')).trim();
 }
 export function pads(pattern) {
   return Array.from({ length: 8 }, (_, i) => {
     const hit = has(pattern, i);
-    return { step: i, hit, label: fill(RHYTHM_TEXT.pad, i + 1, hit ? RHYTHM_TEXT.padHit : RHYTHM_TEXT.padRest), name: fill(RHYTHM_TEXT.padName, i + 1, hit ? RHYTHM_TEXT.hit : RHYTHM_TEXT.rest) };
+    return { step: i, hit, label: fillText(RHYTHM_TEXT.pad, i + 1, L(hit ? RHYTHM_TEXT.padHit : RHYTHM_TEXT.padRest)), name: fillText(hit ? RHYTHM_COMPOSE.padNameHit : RHYTHM_COMPOSE.padNameRest, i + 1) };
   });
 }
 // The option row, in Godot's order. View Circle frames the 3D visitors, so the fork leaves it out.
 export function options(session, { musicPlaying = false, auditioning = false } = {}) {
   return [
-    { id: 'listen', label: RHYTHM_TEXT.listen },
-    { id: 'music', label: RHYTHM_TEXT.musicLabel + (musicPlaying ? RHYTHM_TEXT.on : RHYTHM_TEXT.off) },
-    { id: 'complete', label: session?.practice ? RHYTHM_TEXT.resetPractice : RHYTHM_TEXT.complete },
-    { id: 'step-cues', label: RHYTHM_TEXT.stepCues + (session?.stepCues ? RHYTHM_TEXT.on : RHYTHM_TEXT.off) },
-    { id: 'back', label: RHYTHM_TEXT.back },
-    { id: 'play-bar', label: auditioning ? RHYTHM_TEXT.stopBar : RHYTHM_TEXT.playBar, name: auditioning ? RHYTHM_TEXT.stopBarName : rhythmText('playBarName') },
+    { id: 'listen', label: L(RHYTHM_TEXT.listen) },
+    { id: 'music', label: L(musicPlaying ? RHYTHM_COMPOSE.musicOn : RHYTHM_COMPOSE.musicOff) },
+    { id: 'complete', label: L(session?.practice ? RHYTHM_TEXT.resetPractice : RHYTHM_TEXT.complete) },
+    { id: 'step-cues', label: L(session?.stepCues ? RHYTHM_COMPOSE.stepCuesOn : RHYTHM_COMPOSE.stepCuesOff) },
+    { id: 'back', label: L(RHYTHM_TEXT.back) },
+    { id: 'play-bar', label: L(auditioning ? RHYTHM_TEXT.stopBar : RHYTHM_TEXT.playBar), name: auditioning ? L(RHYTHM_TEXT.stopBarName) : rhythmText('playBarName') },
   ];
 }
 
@@ -188,7 +206,7 @@ export function options(session, { musicPlaying = false, auditioning = false } =
 // music volume; stop means end the audition and restore the sketch gain.
 export function playBarGate({ auditioning = false, unlocked = false, musicPlaying = false, volume = 0, mode = 'sketch', pattern = 0 } = {}) {
   const key = auditioning ? 'barStopped' : !unlocked ? 'locked' : !musicPlaying || volume <= 0 ? 'muted' : mode !== 'sketch' ? 'local' : pattern === 0 ? 'allRests' : 'playing';
-  return { key, message: RHYTHM_TEXT[key], start: key === 'playing', stop: key === 'barStopped' };
+  return { key, message: L(RHYTHM_TEXT[key]), start: key === 'playing', stop: key === 'barStopped' };
 }
 // rhythm_circle.gd tick: an audition stops when the circle closes, music stops, volume is 0 or a local file plays.
 export const auditionMustStop = ({ visible = false, musicPlaying = false, volume = 0, mode = 'sketch' } = {}) => !visible || !musicPlaying || volume <= 0 || mode !== 'sketch';
@@ -202,6 +220,8 @@ export function activeStep(state, session, { musicPlaying = false, volume = 0, m
   const stepping = circleAvailable(state) && !!session?.visible && !!session.stepCues && p !== 0 && musicPlaying && volume > 0 && mode === 'sketch';
   return stepping ? stepAt(frames, queued) : -1;
 }
+// The lamp figure's accessible name, "1 hit, 2 rest, …" (rhythm-ui.js), in the active language.
+export const lampsName = ls => joinList(ls.map(l => fillText(l.hit ? RHYTHM_COMPOSE.lampHit : RHYTHM_COMPOSE.lampRest, l.step + 1)), items => items.join(', '));
 // Godot changes a lamp in one step (colour and 1.25x scale, no tween), so reduced motion needs nothing else.
 export function lamps(pattern, step) {
   return Array.from({ length: 8 }, (_, i) => {
