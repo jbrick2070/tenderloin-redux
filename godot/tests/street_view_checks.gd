@@ -1270,7 +1270,7 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	await send(suite, key(KEY_F, true, true))
 	await send(suite, key(KEY_F, false, true))
 	await suite.process_frame
-	suite.require(sv.active() and game.talk_partner == -1 and not game.any_side_panel_visible() and String(game.info.text).begins_with("You said goodbye to Bea"), "Shift+F during a chat says goodbye to Bea, then enters street view with no panel open (partner %d, panel %s, info '%s')" % [game.talk_partner, str(game.any_side_panel_visible()), String(game.info.text).get_slice("\n", 0)])
+	suite.require(sv.active() and game.talk_partner == -1 and not game.any_side_panel_visible() and String(game.info.text).begins_with("You said goodbye to Bea") and game.last_a11y_announcement.begins_with("Said goodbye to Bea. Street view."), "Shift+F during a chat says goodbye to Bea (shown and spoken), then enters street view with no panel open (partner %d, panel %s, info '%s')" % [game.talk_partner, str(game.any_side_panel_visible()), String(game.info.text).get_slice("\n", 0)])
 	# The block hub (G), then Shift+F: the hub closes before the eye takes over.
 	sv.toggle()
 	await suite.process_frame
@@ -1289,6 +1289,81 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 		game.stop_music_playback()
 	game.stop_walking()
 	game.player.position = g23_player
+	game.update_camera()
+	await suite.process_frame
+	checks += 1
+
+	# 24. The Codex playtest of Phase 2: a held stick walks on through a rotation to landscape and back; a left click
+	# chorded with a held right button never asks for the mouse. (The goodbye spoken before the street view line is
+	# checked in group 23; the system reduced-motion seed is web-only and is checked in a browser.)
+	var g24_player: Vector3 = game.player.position
+	var g24_size: Vector2i = suite.root.size
+	var g24_touch: bool = sv.touch_screen
+	var g24_spot: Vector2 = open_spot(game, sv)
+	if is_finite(g24_spot.x):
+		game.player.position = Vector3(g24_spot.x, 0.0, g24_spot.y)
+	game.update_camera()
+	suite.root.size = Vector2i(390, 667)
+	sv.touch_screen = true
+	if not sv.enabled:
+		sv.toggle()
+	await suite.process_frame
+	await suite.process_frame
+	var rot_centre: Vector2 = sv.stick.get_global_rect().get_center()
+	await send(suite, touch(0, rot_centre, true))
+	await send(suite, touch_drag(0, rot_centre + Vector2(0, -40), Vector2(0, -40)))
+	var held_portrait: bool = sv.contacts.has(0) and sv.contacts[0].role == "move" and sv.stick_vector().length() > 0.5
+	suite.root.size = Vector2i(667, 390)
+	await suite.process_frame
+	await suite.process_frame
+	var held_landscape: bool = sv.active() and sv.contacts.has(0) and sv.contacts[0].role == "move" and sv.stick_vector().length() > 0.5
+	suite.root.size = Vector2i(390, 667)
+	await suite.process_frame
+	await suite.process_frame
+	var held_back: bool = sv.active() and sv.stick_visible() and sv.contacts.has(0) and sv.stick_vector().length() > 0.5
+	await send(suite, touch(0, rot_centre + Vector2(0, -40), false))
+	suite.require(held_portrait and held_landscape and held_back and sv.contacts.is_empty(), "a held stick walks on through a rotation to 667x390 and back (portrait %s, landscape %s, back %s)" % [str(held_portrait), str(held_landscape), str(held_back)])
+	sv.touch_screen = false
+	suite.root.size = g24_size
+	await suite.process_frame
+	await suite.process_frame
+	# Mouse look on; a right drag with a left click inside it asks for nothing.
+	game.press_settle_msec = 0
+	var chord_at: Vector2 = free_point(game, sv)
+	if not is_finite(chord_at.x):
+		chord_at = game.play_area_rect().get_center()
+	sv.street_mouselook = true
+	sv.mouse_mode_override = Input.MOUSE_MODE_VISIBLE
+	sv.refresh_mouselook_button()
+	var chord_requests: int = sv.capture_requests
+	var rdown := InputEventMouseButton.new()
+	rdown.button_index = MOUSE_BUTTON_RIGHT
+	rdown.pressed = true
+	rdown.button_mask = MOUSE_BUTTON_MASK_RIGHT
+	rdown.position = chord_at
+	rdown.global_position = chord_at
+	await send(suite, rdown)
+	var ldown: InputEventMouseButton = mouse_left(chord_at, true)
+	ldown.button_mask = MOUSE_BUTTON_MASK_LEFT | MOUSE_BUTTON_MASK_RIGHT
+	await send(suite, ldown)
+	var lup: InputEventMouseButton = mouse_left(chord_at, false)
+	lup.button_mask = MOUSE_BUTTON_MASK_RIGHT
+	await send(suite, lup)
+	var rup: InputEventMouseButton = rdown.duplicate()
+	rup.pressed = false
+	rup.button_mask = 0
+	await send(suite, rup)
+	await suite.process_frame
+	suite.require(sv.active() and sv.capture_requests == chord_requests and sv.capture_state != "locked" and sv.capture_state != "requested" and not game.orbit_dragging, "a left click inside a right-button drag never asks for the mouse (%d requests, %s)" % [sv.capture_requests - chord_requests, sv.capture_state])
+	sv.street_mouselook = false
+	sv.mouse_mode_override = saved_override
+	sv.refresh_mouselook_button()
+	game.press_settle_msec = saved_settle
+	sv.touch_screen = g24_touch
+	if sv.enabled:
+		sv.toggle()
+	game.stop_walking()
+	game.player.position = g24_player
 	game.update_camera()
 	await suite.process_frame
 	checks += 1
@@ -1328,4 +1403,4 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	game.player_visual.rotation = saved_visual_rotation
 	suite.require(not sv.active() and cam.projection == Camera3D.PROJECTION_ORTHOGONAL and cam.near == map_near and cam.far == map_far, "street view checks hand back the orthographic map camera")
 	suite.require(game.player.position == original_player and game.current_path == original_path, "street view checks restore caller position and route")
-	print("STREET_VIEW_PASS:" + ("FORMAL" if formal else "PRIVATE") + " rule/eye/return-pose/suspend/resume/refit/horizon/depth/sight/pace/west/ShiftF/yaw-walk/mouse-look/touch-roles/stick/turn-step/portrait-fov/settings/reduced-motion/capture/playtest/agy ", checks)
+	print("STREET_VIEW_PASS:" + ("FORMAL" if formal else "PRIVATE") + " rule/eye/return-pose/suspend/resume/refit/horizon/depth/sight/pace/west/ShiftF/yaw-walk/mouse-look/touch-roles/stick/turn-step/portrait-fov/settings/reduced-motion/capture/playtest/agy/playtest2 ", checks)

@@ -129,8 +129,10 @@ func setup(g: Node, layer: Node) -> void:
 func system_reduced_motion() -> bool:
 	if not OS.has_feature("web"):
 		return false
-	var v: Variant = JavaScriptBridge.eval("try { window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (_e) { false; }", true)
-	return v is bool and bool(v)
+	# Ask for a string: a JS boolean did not come back through the bridge as a GDScript bool (the playtest saw
+	# matchMedia report true while this read false), and strings cross it reliably, as the localStorage reads do.
+	var v: Variant = JavaScriptBridge.eval("try { window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'reduce' : 'no-preference'; } catch (_e) { 'no-preference'; }", true)
+	return String(v) == "reduce"
 
 ## Info's idle row: the opening revisit entry shares it with one "Reduced motion" button, so opening Info costs no
 ## more height than before. The button cycles the system setting, on and off; "System" clears the saved choice.
@@ -427,8 +429,10 @@ func toggle() -> void:
 		enabled = false
 		game.announce_a11y_status("Street view is only on the opening block for now. Walk back east of Taylor Street to use it.")
 		return
+	var goodbye := ""
 	if game.talk_partner >= 0 or game.any_side_panel_visible():
 		game.end_conversation() # A chat or the hub ends with its goodbye first; street view never opens under a panel.
+		goodbye = String(game.last_a11y_announcement).get_slice(" Next:", 0) + " " # Spoken before the entry line, which replaces it.
 	enabled = true
 	if not has_heading:
 		face_objective() # First entry of the session only; later entries keep the heading the player chose.
@@ -441,7 +445,7 @@ func toggle() -> void:
 	else:
 		game.frame_player_for_walking()
 	if active():
-		game.announce_a11y_status("Street view. Facing %s. %s. Shift+Left and Shift+Right turn, Shift+Up and Shift+Down tilt, WASD or arrows walk. Shift+F returns to the map view." % [heading_text(), game.location_phrase(eye_xz())] + touch_hint())
+		game.announce_a11y_status(goodbye + "Street view. Facing %s. %s. Shift+Left and Shift+Right turn, Shift+Up and Shift+Down tilt, WASD or arrows walk. Shift+F returns to the map view." % [heading_text(), game.location_phrase(eye_xz())] + touch_hint())
 	refresh_button()
 
 ## Entering from the map faces the gold marker (or Bea) so the first view is down the street, not a wall.
@@ -604,7 +608,8 @@ func pointer_input(event: InputEvent) -> bool:
 		if not used:
 			# A press in a gutter outside the play area is ignored at eye level, as the same touch is; only UI keeps it.
 			return not game.is_screen_point_in_ui(event.position)
-		if contacts[MOUSE_CONTACT].role == "look" and request_capture():
+		var chord: bool = (event.button_mask & (MOUSE_BUTTON_MASK_RIGHT | MOUSE_BUTTON_MASK_MIDDLE)) != 0 # Part of a right/middle drag.
+		if contacts[MOUSE_CONTACT].role == "look" and not chord and request_capture():
 			contacts[MOUSE_CONTACT].role = "capture" # The press that asks for the lock neither looks nor taps.
 		return used
 	if event is InputEventMouseMotion:
@@ -823,7 +828,9 @@ func refresh_stick() -> void:
 		stick.position = Vector2(area.position.x, area.end.y - STICK_SIZE.y)
 		show = area.size.x >= STICK_SIZE.x + BUTTON_SIZE.x + 16.0 and area.size.y >= STICK_SIZE.y + BUTTON_SIZE.y + 16.0
 	stick.visible = show
-	if not show:
+	# A finger already on the stick keeps walking while a rotation leaves no room for it (the eye is still active);
+	# only leaving the eye, or a device without touch, ends the movement contact.
+	if not (touch_screen and active()):
 		for id in contacts.keys():
 			if contacts[id].role == "move":
 				drop_contact(id)
