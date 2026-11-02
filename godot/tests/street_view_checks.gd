@@ -67,6 +67,12 @@ static func free_point(game: Node, sv, avoid := Rect2()) -> Vector2:
 
 ## A walkable spot on the block with 1.5 m of open ground all round, so short test walks never meet a wall,
 ## and well clear of every neighbour, so a walk never arrives at one (an arrival frames a greeting and suspends the eye).
+## Turns the eye to face a ground point (forward is (-sin yaw, -cos yaw)) and updates the camera.
+static func face_toward(sv, game: Node, xz: Vector2) -> void:
+	var d: Vector2 = xz - sv.eye_xz()
+	sv.yaw = atan2(-d.x, -d.y)
+	game.update_camera()
+
 static func open_spot(game: Node, sv) -> Vector2:
 	var start: Vector2 = sv.eye_xz()
 	for r in [0.0, 2.0, 4.0, 6.0, 9.0, 12.0, 16.0, 20.0, 25.0]:
@@ -1095,6 +1101,138 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	game.settings_save_failed = saved_main["settings_save_failed"]
 	checks += 1
 
+	# 22. The Codex playtest of Phase 1: a hand walk west of Taylor turns street view off once (it used to flip
+	# between the eye and the map many times a second); a tap on a close neighbour's face picks her (it used to walk
+	# to a street point beyond her); a target behind the eye points the arrow down to turn around (it pointed up);
+	# the arrow keeps clear of the street controls (the Map view button hid it at some phone headings).
+	var g22_player: Vector3 = game.player.position
+	var g22_size: Vector2i = suite.root.size
+	game.stop_walking()
+	game.startup_story_pending = false
+	game.hide_story_card()
+	suite.root.gui_release_focus()
+	var bea_xz: Vector2 = game.neighbor_xz(0)
+	var west_edge := Vector2.INF
+	for zi in range(-40, 41):
+		var c := Vector2(sv.WEST_LIMIT_X + 1.2, float(zi) * 0.5)
+		if game.is_walkable_point(c) and game.is_walkable_point(c + Vector2(-3.0, 0.0)) and game.is_walkable_point(c + Vector2(-6.0, 0.0)):
+			west_edge = c
+			break
+	suite.require(west_edge.x > sv.WEST_LIMIT_X and west_edge.x < sv.WEST_LIMIT_X + 4.0, "a walkable point just east of the western limit (%s)" % str(west_edge))
+	game.player.position = Vector3(west_edge.x, 0.0, west_edge.y)
+	if not sv.enabled:
+		sv.toggle()
+	await suite.process_frame
+	face_toward(sv, game, west_edge + Vector2(-10.0, 0.0))
+	await suite.process_frame
+	suite.require(sv.active() and sv.forward_xz().x < -0.9, "the eye faces west at the limit (%s)" % str(sv.forward_xz()))
+	var west_flips := 0
+	var west_was: bool = sv.active()
+	var exit_note := ""
+	var after_exit := -1
+	await send(suite, key(KEY_W, true))
+	for _f in range(400):
+		await suite.physics_frame
+		if sv.active() != west_was:
+			west_was = sv.active()
+			west_flips += 1
+			if west_flips == 1:
+				exit_note = game.last_a11y_announcement
+				after_exit = 0
+		if after_exit >= 0:
+			after_exit += 1
+			if after_exit > 90:
+				break
+	await send(suite, key(KEY_W, false))
+	game.stop_walking()
+	suite.require(west_flips == 1 and not sv.active() and not sv.enabled and cam.projection == Camera3D.PROJECTION_ORTHOGONAL and exit_note.contains("only on the opening block"), "holding W across the western limit leaves street view once and says why (%d flips, '%s')" % [west_flips, exit_note])
+	# A tap on Bea's face from 1 m (her face below the horizon, as in the playtest) picks her: a walk to her or a
+	# talk, never a walk to a street point beyond her.
+	var bea_stand: Vector2 = game.nearest_walkable_point(bea_xz + Vector2(1.0, 0.0), game.WALK_CLEARANCE_M)
+	game.player.position = Vector3(bea_stand.x, 0.0, bea_stand.y)
+	game.update_camera()
+	sv.toggle()
+	await suite.process_frame
+	face_toward(sv, game, bea_xz)
+	sv.pitch = 0.0
+	game.update_camera()
+	await suite.process_frame
+	var bea_face: Vector2 = cam.unproject_position(game.neighbors[0].pos + Vector3.UP * 1.45)
+	suite.require(sv.active() and is_zero_approx(sv.body_screen_distance(game.neighbors[0].pos, bea_face)), "at eye level Bea's face is on her body for taps (%s, %.1f px)" % [str(bea_face), sv.body_screen_distance(game.neighbors[0].pos, bea_face)])
+	game.last_a11y_announcement = ""
+	var sn0: int = game.selected_neighbor
+	var tp0: int = game.talk_partner
+	game.handle_scene_tap(bea_face)
+	var tap_note: String = game.last_a11y_announcement
+	var to_bea: bool = game.current_path.is_empty() or (game.current_path.back() as Vector2).distance_to(bea_xz) <= game.ARRIVAL_DISTANCE_M + 1.5
+	var picked: bool = tap_note.contains("Bea") or (game.selected_neighbor == 0 and sn0 != 0) or (game.talk_partner == 0 and tp0 != 0)
+	suite.require(bea_stand.distance_to(bea_xz) < 1.6 and bea_face.y > game.play_area_rect().get_center().y and to_bea and picked and not tap_note.contains("street point"), "a tap on Bea's face up close picks her ('%s')" % tap_note)
+	game.stop_walking()
+	if game.selected_neighbor >= 0:
+		game.end_conversation()
+	await suite.process_frame
+	game.player.position = Vector3(bea_stand.x, 0.0, bea_stand.y)
+	if not sv.active():
+		game.frame_player_for_walking()
+	await suite.process_frame
+	# The objective behind the eye: the arrow sits low and points down. The marker is set from a fixed objective 8 m
+	# away and the arrow read in the same frame, so the chapter the suite has reached does not matter.
+	game.hide_speech_bubble()
+	var arrow_tgt: Vector2 = sv.eye_xz() + Vector2(8.0, 0.0)
+	var arrow_obj := {"has_target": true, "target": Vector3(arrow_tgt.x, 0.0, arrow_tgt.y), "target_name": "Arrow check"}
+	face_toward(sv, game, sv.eye_xz() * 2.0 - arrow_tgt)
+	await suite.process_frame
+	game.update_guide_marker(arrow_obj)
+	game.update_guide_arrow()
+	if game.guide_marker.visible:
+		var arrow_down := absf(wrapf(game.guide_arrow_poly.rotation - PI * 0.5, -PI, PI))
+		suite.require(sv.active() and game.camera.is_position_behind(game.guide_marker_target) and game.guide_arrow.visible and game.guide_arrow.position.y > game.play_area_rect().get_center().y and arrow_down < 0.35, "with the objective behind the eye the arrow points down to turn around (rotation %.2f, at %s)" % [game.guide_arrow_poly.rotation, str(game.guide_arrow.position)])
+	else:
+		suite.require(false, "the guide marker is up for the behind-the-eye arrow check")
+	# At 390x667 the arrow never sits under the street controls, at any heading.
+	suite.root.size = Vector2i(390, 667)
+	await suite.process_frame
+	await suite.process_frame
+	var arrow_overlaps: Array = []
+	var arrow_shown := 0
+	var near_button := 0
+	arrow_tgt = sv.eye_xz() + Vector2(4.0, 0.0) # As close as Bea was in the playtest: the marker floats above the view.
+	arrow_obj["target"] = Vector3(arrow_tgt.x, 0.0, arrow_tgt.y)
+	var btn_rect: Rect2 = sv.button.get_global_rect()
+	for h in range(72):
+		sv.yaw = float(h) * PI / 36.0
+		game.update_camera()
+		await suite.process_frame
+		game.update_guide_marker(arrow_obj)
+		game.update_guide_arrow()
+		if game.guide_arrow.visible:
+			arrow_shown += 1
+			if absf(game.guide_arrow.position.x - btn_rect.get_center().x) < btn_rect.size.x and game.guide_arrow.position.y < btn_rect.end.y + 60.0:
+				near_button += 1
+			var arrow_box := Rect2(game.guide_arrow.position - Vector2(20.0, 20.0), Vector2(40.0, 40.0))
+			for r in sv.occupied_rects():
+				if arrow_box.intersects(r):
+					arrow_overlaps.append(h * 5)
+	suite.require(arrow_shown >= 4 and near_button >= 1 and arrow_overlaps.is_empty(), "at 390x667 the guide arrow keeps clear of the street controls at every 5 degree heading (%d shown, %d by the button, overlaps at %s)" % [arrow_shown, near_button, str(arrow_overlaps)])
+	var slide_inset: Rect2 = game.play_area_rect().grow(-27.0)
+	var slide_from := Vector2(sv.button.get_global_rect().get_center().x, slide_inset.position.y)
+	var slid: Vector2 = game.clear_of_street_controls(slide_from, slide_inset, sv.occupied_rects())
+	var slid_clear := true
+	for r in sv.occupied_rects():
+		slid_clear = slid_clear and not Rect2(slid - Vector2(20.0, 20.0), Vector2(40.0, 40.0)).intersects(r)
+	suite.require(sv.button_visible() and slid_clear and is_equal_approx(slid.y, slide_from.y) and slide_inset.grow(0.5).has_point(slid) and slid.x < slide_from.x, "an arrow on the top edge under the Map view button slides left along the edge, clear of it (%s to %s)" % [str(slide_from), str(slid)])
+	suite.root.size = g22_size
+	await suite.process_frame
+	await suite.process_frame
+	sv.yaw = 0.0
+	if sv.enabled:
+		sv.toggle()
+	game.stop_walking()
+	game.player.position = g22_player
+	game.update_camera()
+	await suite.process_frame
+	checks += 1
+
 	# Restore the caller's state.
 	sv.enabled = false
 	sv.yaw = 0.0
@@ -1130,4 +1268,4 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	game.player_visual.rotation = saved_visual_rotation
 	suite.require(not sv.active() and cam.projection == Camera3D.PROJECTION_ORTHOGONAL and cam.near == map_near and cam.far == map_far, "street view checks hand back the orthographic map camera")
 	suite.require(game.player.position == original_player and game.current_path == original_path, "street view checks restore caller position and route")
-	print("STREET_VIEW_PASS:" + ("FORMAL" if formal else "PRIVATE") + " rule/eye/return-pose/suspend/resume/refit/horizon/depth/sight/pace/west/ShiftF/yaw-walk/mouse-look/touch-roles/stick/turn-step/portrait-fov/settings/reduced-motion/capture ", checks)
+	print("STREET_VIEW_PASS:" + ("FORMAL" if formal else "PRIVATE") + " rule/eye/return-pose/suspend/resume/refit/horizon/depth/sight/pace/west/ShiftF/yaw-walk/mouse-look/touch-roles/stick/turn-step/portrait-fov/settings/reduced-motion/capture/playtest ", checks)

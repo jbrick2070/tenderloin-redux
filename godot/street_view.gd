@@ -37,6 +37,8 @@ const FOV_MAX_DEG := 90
 const DEFAULT_TURN := "snap30"
 const CAPTURE_WAIT_FRAMES := 10 # A pointer lock not granted within this many frames counts as refused.
 const ESC_GRACE_FRAMES := 10 # The browser may drop the lock just before its Esc reaches the game.
+const BODY_TOP_M := 1.75 # A neighbour at true scale, for eye-level taps.
+const BODY_HALF_WIDTH_M := 0.35
 
 var game: Node
 var enabled := false # The player's choice; suspension is derived, never stored.
@@ -272,8 +274,16 @@ func sync() -> bool:
 	game.cancel_map_pinch() # Held contacts never carry a pinch or drag across the mode change.
 	if now:
 		enter()
-	else:
-		exit()
+		return true
+	# Walking west of Taylor Street turns street view off, once: suspending there would let the map's own heading
+	# walk a held W back east and re-enter it, flipping the camera many times a second. A route to the west still
+	# only suspends it (the eye returns when the route stops), since the player did not walk there by hand.
+	var left_block: bool = enabled and game.player != null and game.player.position.x < WEST_LIMIT_X
+	if left_block:
+		enabled = false
+	exit()
+	if left_block:
+		game.announce_a11y_status("Map view. Street view is only on the opening block for now. Walk back east of Taylor Street and press Shift+F to use it again.")
 	return true
 
 func enter() -> void:
@@ -497,6 +507,24 @@ func screen_constant(px_per_unit: float, at: Vector3) -> float:
 	var vp: Vector2 = game.bubble_viewport_size()
 	var span := maxf(vp.x if cam.keep_aspect == Camera3D.KEEP_WIDTH else vp.y, 1.0) # The dimension the angle spans.
 	return px_per_unit * 2.0 * depth * tan(deg_to_rad(cam.fov) * 0.5) / span
+
+## Eye-level tap distance to a neighbour standing at `base`, at true scale: 0 px anywhere on the body (feet to head,
+## a shoulder's width either side), otherwise the distance from that outline. INF behind the eye or behind a wall.
+## The map's three probe heights suit its 2.15-scale figures and miss a true-scale face up close.
+func body_screen_distance(base: Vector3, screen_pos: Vector2) -> float:
+	var cam: Camera3D = game.camera
+	var mid := base + Vector3.UP * (BODY_TOP_M * 0.5)
+	if cam.is_position_behind(mid) or not line_of_sight_clear(eye_xz(), Vector2(base.x, base.z)):
+		return INF
+	var lo := base + Vector3.UP * 0.05
+	var hi := base + Vector3.UP * BODY_TOP_M
+	var m := cam.unproject_position(mid)
+	var a := m if cam.is_position_behind(lo) else cam.unproject_position(lo)
+	var b := m if cam.is_position_behind(hi) else cam.unproject_position(hi)
+	var half_px := cam.unproject_position(mid + cam.global_transform.basis.x * BODY_HALF_WIDTH_M).distance_to(m)
+	var ab := b - a
+	var t := 0.0 if ab.length_squared() < 1e-6 else clampf((screen_pos - a).dot(ab) / ab.length_squared(), 0.0, 1.0)
+	return maxf(0.0, screen_pos.distance_to(a + ab * t) - half_px)
 
 ## 2D line of sight against the building footprints near the segment, using the walking bins.
 func line_of_sight_clear(from_xz: Vector2, to_xz: Vector2) -> bool:

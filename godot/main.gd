@@ -6354,6 +6354,8 @@ func talk_prompt_screen_rect() -> Rect2:
 	var text_size := ThemeDB.fallback_font.get_string_size(talk_prompt_label.text, HORIZONTAL_ALIGNMENT_CENTER, -1, 22)
 	var scale_px := SPEECH_BUBBLE_PIXEL * talk_prompt_node.scale.y / screen_constant_scale(1.0, talk_prompt_node.global_position)
 	var size := Vector2(text_size.x + 24.0, text_size.y + 26.0) * scale_px
+	if street_view_active() and camera.is_position_behind(talk_prompt_node.global_position):
+		return Rect2() # At eye level the prompt can sit on or behind the camera plane, which has no screen point.
 	var anchor := camera.unproject_position(talk_prompt_node.global_position)
 	return Rect2(anchor - Vector2(size.x * 0.5, size.y), size)
 
@@ -7187,18 +7189,52 @@ func play_area_rect() -> Rect2:
 	return Rect2(8.0, top, maxf(right - 8.0, 1.0), maxf(bottom - top, 1.0))
 
 ## Edge-of-screen arrow with name and distance when the next target is off-screen.
+## The guide arrow sits on the play area's inset edge; the street view controls (button, Mouse look, stick) sit
+## on that edge too. A 40 px arrow box that meets one slides along the edge to the nearer side of it.
+func clear_of_street_controls(pos: Vector2, inset: Rect2, rects: Array[Rect2]) -> Vector2:
+	var box := Rect2(pos - Vector2(20.0, 20.0), Vector2(40.0, 40.0))
+	var hit := false
+	for r in rects:
+		hit = hit or box.intersects(r)
+	if not hit:
+		return pos
+	var best := pos
+	var best_d := INF
+	for r in rects:
+		for c in [Vector2(r.position.x - 22.0, pos.y), Vector2(r.end.x + 22.0, pos.y), Vector2(pos.x, r.position.y - 22.0), Vector2(pos.x, r.end.y + 22.0)]:
+			if not inset.grow(0.5).has_point(c):
+				continue
+			var cb := Rect2(c - Vector2(20.0, 20.0), Vector2(40.0, 40.0))
+			var free := true
+			for other in rects:
+				free = free and not cb.intersects(other)
+			if free and c.distance_to(pos) < best_d:
+				best_d = c.distance_to(pos)
+				best = c
+	return best
+
 func update_guide_arrow() -> void:
 	if guide_arrow == null or camera == null:
 		return
 	if guide_marker == null or not guide_marker.visible or not speech_bubble_anchor.is_empty():
 		guide_arrow.visible = false
 		return
-	var screen := camera.unproject_position(guide_marker_target)
+	# At eye level a target on or behind the camera plane has no screen point; the heading branch below places it.
+	var eye_behind := street_view_active() and camera.is_position_behind(guide_marker_target)
+	var screen := Vector2.ZERO if eye_behind else camera.unproject_position(guide_marker_target)
 	var area := play_area_rect()
 	if area.size.x <= 24.0 or area.size.y <= 24.0:
 		guide_arrow.visible = false
 		return
-	if camera.is_position_behind(guide_marker_target):
+	if eye_behind:
+		# At eye level the marker floats above the eye, so mirroring its projection would point up for a target behind.
+		# Use the heading instead: ahead is up, behind is down (turn around), left and right are left and right.
+		var local: Vector3 = camera.global_transform.basis.inverse() * (guide_marker_target - camera.global_position)
+		var flat := Vector2(local.x, local.z)
+		if flat.length_squared() < 1e-6:
+			flat = Vector2(0.0, 1.0)
+		screen = area.get_center() + flat.normalized() * 100000.0
+	elif camera.is_position_behind(guide_marker_target):
 		# A perspective camera mirrors points behind it; point the arrow the real way, well outside the area.
 		screen = area.get_center() - (screen - area.get_center()).normalized() * 100000.0
 	if area.grow(-12.0).has_point(screen):
@@ -7213,6 +7249,8 @@ func update_guide_arrow() -> void:
 	var half := inset.size * 0.5
 	var t := minf(half.x / maxf(absf(dir.x), 1e-4), half.y / maxf(absf(dir.y), 1e-4))
 	guide_arrow.position = center + dir * t
+	if street_view != null:
+		guide_arrow.position = clear_of_street_controls(guide_arrow.position, inset, street_view.occupied_rects())
 	guide_arrow_poly.rotation = dir.angle()
 	var dist := player_xz().distance_to(Vector2(guide_marker_target.x, guide_marker_target.z))
 	var arrow_title := guide_marker_target_name
@@ -14324,9 +14362,11 @@ func update_readable_scene_labels() -> void:
 			label.set_meta("caption_measure_key", measure_key)
 			label.set_meta("caption_size", ThemeDB.fallback_font.get_multiline_string_size(label.text, HORIZONTAL_ALIGNMENT_CENTER, wrap_width, label.font_size) + Vector2(20.0, 20.0))
 		var caption_size: Vector2 = label.get_meta("caption_size")
-		var caption_center := camera.unproject_position(label.global_position)
+		var caption_behind := camera.is_position_behind(label.global_position)
+		# A point on the eye's camera plane has no screen position; it is behind for this purpose.
+		var caption_center := Vector2.ZERO if caption_behind else camera.unproject_position(label.global_position)
 		var rect := Rect2(caption_center - caption_size * 0.5, caption_size)
-		label.visible = label.visible and not camera.is_position_behind(label.global_position) and play_area_rect().encloses(rect)
+		label.visible = label.visible and not caption_behind and play_area_rect().encloses(rect)
 		if label.name == "TimePortalLabel":
 			label.visible = false # Combined with the hub caption in the close view.
 		if label.has_meta("neighbor_index"):
@@ -14484,6 +14524,8 @@ func screen_to_ground_xz(screen_pos: Vector2) -> Vector2:
 
 func neighbor_screen_distance(index: int, screen_pos: Vector2) -> float:
 	var base_pos: Vector3 = neighbors[index].pos
+	if street_view_active():
+		return street_view.body_screen_distance(base_pos, screen_pos)
 	var best_d := INF
 	for h_off in [0.9, 2.3, 4.1]:
 		var d := tap_screen_distance(base_pos + Vector3(0.0, h_off, 0.0), screen_pos)
