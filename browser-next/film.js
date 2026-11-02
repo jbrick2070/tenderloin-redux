@@ -1,3 +1,5 @@
+import { t, L, format, fillNamed, FLAVORS } from './i18n.js';
+
 // Original illustrated film project, not camera capture or a real production/permit.
 export const FILM_SHOTS = {
   seat: { label: 'An empty seat', caption: 'A chair waits. There is room for someone new.' },
@@ -12,6 +14,26 @@ export const FILM_PLANS = {
   quiet: { label: 'A quiet prop take', detail: 'Use soft props and no spoken take while neighbors keep talking. Our illustrated short uses descriptive captions; the soundtrack stays yours to choose.' },
   later: { label: 'Wait for the conversation', detail: 'Keep the kit packed until Rook cues a pause after the conversation. The fictional take has dialogue captions; no real voices or sound are recorded.' },
 };
+// The film's replies and frame title. Dez's closing line names the last shot as one whole sentence per shot (docs/I18N_PLAN.md
+// 2.7, 2.10), not a lowercased label; the English is unchanged.
+export const FILM_TEXT = {
+  laterCaptions: { seat: '“May I sit here?” “We kept a place open.”', paint: '“Your shape belongs beside mine.”', welcome: '“Stay for a moment, or come back another day.”' },
+  responses: {
+    rook: '“I helped with the cue and stayed out of the picture. A no can belong in a good film too.”',
+    celeste: { wide: '“Dez and I offered our hands, not everyone else’s faces. We made the picture together.”', close: '“Our props told the story without putting anyone on camera. I like that small frame.”' },
+    thanh: '“The crew held the take while I used the route. A production should fit around the people who live here.”',
+    bea: { later: '“They waited until the conversation finished. Being heard mattered more than rushing a take.”', quiet: '“We could keep talking while they worked quietly. The film made room for our afternoon.”' },
+    dez: {
+      seat: '“We ended on an empty seat. A different order would tell a different little story.”',
+      paint: '“We ended on a shared motif. A different order would tell a different little story.”',
+      welcome: '“We ended on room for one more. A different order would tell a different little story.”',
+    },
+  },
+  frameTitle: '{shot} — original illustrated frame',
+};
+const NAMED = { ...FLAVORS.named, legacy: (template, [values]) => fillNamed(template, values) };
+const fill = (template, values) => format(template, [values], NAMED);
+const svgDir = dir => dir === 'rtl' || dir === 'ltr' ? ` direction="${dir}"` : '';
 export const filmAvailable = state => state.opened && state.civic.phase === 'done';
 const defaults = () => ({ framing: 'close', plan: 'quiet', order: ['seat','paint','welcome'] });
 export const initialFilm = () => ({ phase: 'idle', draft: defaults(), result: null, captured: [] });
@@ -52,23 +74,25 @@ export function changeFilm(current,action) {
 }
 export function filmCaption(plan,id){
   if(!copyPlan(plan)||!validEnum(FILM_SHOTS,id))return '';
-  if(plan.plan==='quiet')return FILM_SHOTS[id].caption;
-  return ({seat:'“May I sit here?” “We kept a place open.”',paint:'“Your shape belongs beside mine.”',welcome:'“Stay for a moment, or come back another day.”'})[id];
+  if(plan.plan==='quiet')return L(FILM_SHOTS[id].caption);
+  return t(FILM_TEXT.laterCaptions[id]);
 }
 export function filmResponse(id,film){
   if(film?.phase!=='done')return '';
-  if(id==='rook')return '“I helped with the cue and stayed out of the picture. A no can belong in a good film too.”';
-  if(id==='celeste')return film.result.framing==='wide'?'“Dez and I offered our hands, not everyone else’s faces. We made the picture together.”':'“Our props told the story without putting anyone on camera. I like that small frame.”';
-  if(id==='thanh')return '“The crew held the take while I used the route. A production should fit around the people who live here.”';
-  if(id==='bea')return film.result.plan==='later'?'“They waited until the conversation finished. Being heard mattered more than rushing a take.”':'“We could keep talking while they worked quietly. The film made room for our afternoon.”';
-  if(id==='dez')return `“We ended on ${FILM_SHOTS[film.result.order[2]].label.toLowerCase()}. A different order would tell a different little story.”`;
+  const R=FILM_TEXT.responses;
+  if(id==='rook')return t(R.rook);
+  if(id==='celeste')return t(film.result.framing==='wide'?R.celeste.wide:R.celeste.close);
+  if(id==='thanh')return t(R.thanh);
+  if(id==='bea')return t(film.result.plan==='later'?R.bea.later:R.bea.quiet);
+  if(id==='dez'){const last=film.result.order[2];return Object.hasOwn(R.dez,last)?t(R.dez[last]):`“We ended on ${FILM_SHOTS[last].label.toLowerCase()}. A different order would tell a different little story.”`;}
   return '';
 }
-export function filmFrameSVG(plan,id){
+// plan, id: the film plan and the shot; options: { dir }, the direction (the frame draws no text).
+export function filmFrameSVG(plan,id,{dir=null}={}){
   const p=copyPlan(plan);if(!p||!validEnum(FILM_SHOTS,id))return '';
   const chair='<path d="M155 143V103H220V143M157 119H218M159 143V167M216 143V167" fill="none" stroke="#276a5a" stroke-width="8" stroke-linecap="round"/>';
   const panel='<rect x="95" y="54" width="100" height="68" rx="4" fill="#f3eedf" stroke="#276a5a" stroke-width="3"/><circle cx="124" cy="87" r="16" fill="#d9a2b2"/><path d="M146 98Q160 68 180 98" fill="none" stroke="#91bac2" stroke-width="7"/>';
   const scene=id==='seat'?chair:id==='paint'?panel:`${chair}<circle cx="270" cy="116" r="28" fill="none" stroke="#d9a2b2" stroke-width="7"/><path d="M254 116H286M270 100V132" stroke="#276a5a" stroke-width="4"/>`;
   const hands=p.framing==='wide'?'<path d="M20 167L65 135Q79 129 84 142L57 165L93 163Q108 169 94 180H20M400 167L355 135Q341 129 336 142L363 165L327 163Q312 169 326 180H400" fill="#c38c65"/>':'';
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="420" height="236" viewBox="0 0 420 236"><title>${FILM_SHOTS[id].label} — original illustrated frame</title><rect width="420" height="236" rx="12" fill="#253f35"/><rect x="12" y="17" width="396" height="202" rx="5" fill="#ecebdc"/><path d="M20 190H400" stroke="#91bac2" stroke-width="6"/>${p.framing==='wide'?'<rect x="64" y="176" width="292" height="7" rx="3" fill="#b59b5d"/>':''}<g${p.framing==='close'?' transform="translate(-30 -8) scale(1.2)"':''}>${scene}</g>${hands}<path d="M25 9H395M25 227H395" stroke="#f3eedf" stroke-width="4" stroke-dasharray="8 10"/></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg"${svgDir(dir)} width="420" height="236" viewBox="0 0 420 236"><title>${fill(FILM_TEXT.frameTitle,{shot:L(FILM_SHOTS[id].label)})}</title><rect width="420" height="236" rx="12" fill="#253f35"/><rect x="12" y="17" width="396" height="202" rx="5" fill="#ecebdc"/><path d="M20 190H400" stroke="#91bac2" stroke-width="6"/>${p.framing==='wide'?'<rect x="64" y="176" width="292" height="7" rx="3" fill="#b59b5d"/>':''}<g${p.framing==='close'?' transform="translate(-30 -8) scale(1.2)"':''}>${scene}</g>${hands}<path d="M25 9H395M25 227H395" stroke="#f3eedf" stroke-width="4" stroke-dasharray="8 10"/></svg>`;
 }

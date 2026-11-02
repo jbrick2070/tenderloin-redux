@@ -57,6 +57,15 @@ export function blockMissing(state) {
   if (!state.soundcheck) missing.push(BLOCK_TEXT.sound);
   return missing.length ? missing.join(', ') : BLOCK_TEXT.ready;
 }
+// blockMissing as data, for a translated list (docs/I18N_PLAN.md I2c): the same parts in the same order, [] when nothing is missing.
+// Each part is its BLOCK_TEXT template and, for a count, the count; blockMissing joins the English with ', ' and stays as it is.
+export function blockMissingItems(state) {
+  const met = metCount(state), placed = MOTIFS.filter(id => state.mural[id]).length, items = [];
+  if (met < NEIGHBOR_IDS.length) items.push({ id: 'neighbors', template: BLOCK_TEXT.neighbors, count: met });
+  if (placed < MOTIFS.length) items.push({ id: 'mural', template: BLOCK_TEXT.mural, count: placed });
+  if (!state.soundcheck) items.push({ id: 'sound', template: BLOCK_TEXT.sound });
+  return items;
+}
 // Godot recompute_music_stems on the sketch's layers: bass always, brushes, chords (piano) and lead (trumpet).
 export const musicLayers = state => ({ layout: true, tidy: state.visited.length > 0 || state.celesteTalks > 0 || state.soundcheck, mural: Object.keys(state.mural).length > 0 || state.celesteTalks > 0, opened: progress(state).mural || state.soundcheck });
 // Pure: an action that changes nothing returns the same state object.
