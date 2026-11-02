@@ -2,9 +2,9 @@ extends RefCounted
 ## Street view (docs/FIRST_PERSON_PLAN.md, Phase 1): the one rule, the exact return pose,
 ## suspension by framing functions, the guarded refit, horizon taps, depth scaling, line of
 ## sight, the walking pace and the Shift+F key. Phase 2 (docs/FIRST_PERSON_EXECUTION.md section 2,
-## work orders 1-3): yaw-relative walking, mouse and touch contact roles, the touch stick and the
-## turn step. Runs early in the formal suite and restores the caller's camera, player, route and
-## story card.
+## work orders 1-7): yaw-relative walking, mouse and touch contact roles, the touch stick, the
+## turn step, the portrait field of view, the settings keys, reduced motion and opt-in mouse look. Runs early in the formal suite and
+## restores the caller's camera, player, route, settings file and story card.
 
 static func pose(game: Node) -> Array:
 	return [game.target, game.view_size, game.camera_yaw, game.camera_pitch_scale, game.following_player]
@@ -83,6 +83,47 @@ static func open_spot(game: Node, sv) -> Vector2:
 				return c
 	return Vector2.INF
 
+## The on-screen height of a screen-constant Label3D 3 m ahead of the eye, sized for 32 px.
+static func screen_label_px(game: Node, sv) -> float:
+	var cam: Camera3D = game.camera
+	var label := Label3D.new()
+	label.text = "Turk St"
+	label.font_size = 32
+	game.add_child(label)
+	label.global_position = cam.global_position - cam.global_basis.z * 3.0
+	label.pixel_size = sv.screen_constant(1.0, label.global_position)
+	var half: Vector3 = cam.global_basis.y * (label.pixel_size * float(label.font_size) * 0.5)
+	var px: float = cam.unproject_position(label.global_position + half).distance_to(cam.unproject_position(label.global_position - half))
+	label.queue_free()
+	return px
+
+## Tree canopies (park, planters, the first street tree) and the guide marker's pose.
+static func motion_sample(game: Node) -> Array:
+	var out: Array = []
+	for i in range(mini(4, game.park_tree_canopies.size())):
+		out.append(game.park_tree_canopies[i].rotation)
+	for i in range(mini(4, game.planter_canopy_nodes.size())):
+		out.append(game.planter_canopy_nodes[i].position)
+	if game.street_tree_lower_mm != null and game.street_tree_points.size() > 0:
+		out.append(game.street_tree_lower_mm.get_instance_transform(0))
+	out.append(game.guide_marker.rotation)
+	out.append(game.guide_marker.position)
+	return out
+
+## The burst's gem rotations and orbit angles, then the ring radius, the lift and the scale of its first gem.
+static func burst_sample(game: Node) -> Array:
+	var turns: Array = []
+	for gem in game.celebration_gem_meshes:
+		turns.append([gem.rotation, snappedf(atan2(gem.position.z, gem.position.x), 1e-5)])
+	var g: Node3D = game.celebration_gem_meshes[0]
+	return [turns, Vector2(g.position.x, g.position.z).length(), g.position.y, g.scale.x]
+
+static func write_text(path: String, raw: String) -> void:
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	if f != null:
+		f.store_string(raw)
+		f.close()
+
 static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	suite.require(game.is_test_suite_mode(), "street view checks require explicit isolated test paths")
 	suite.require(not formal or suite.get_script().resource_path.ends_with("/study_test.gd"), "street view FORMAL token belongs only to full native suite")
@@ -98,6 +139,7 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 		state[key] = game.get(key)
 	var story_visible: bool = game.is_story_card_visible()
 	var saved_info: String = game.info.text
+	var requests_at_start: int = sv.capture_requests
 	var saved_announcement: String = game.last_a11y_announcement
 	var saved_seq: int = game.a11y_announcement_seq
 	var checks := 0
@@ -528,13 +570,350 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	sv.touch_screen = saved_touch_screen
 	checks += 1
 
+	# 18. Portrait FOV: the angle is vertical in landscape and horizontal in portrait, a screen-constant label at 3 m
+	# keeps its pixel size between 1100x760 and 320x667, the chosen angle applies, and exit restores keep_aspect.
+	var original_size: Vector2i = suite.root.size
+	var original_keep: int = cam.keep_aspect
+	var label_px := {}
+	for size in [Vector2i(1100, 760), Vector2i(320, 667)]:
+		suite.root.size = size
+		await suite.process_frame
+		await suite.process_frame
+		await suite.process_frame # The per-frame tick moves the angle to the other dimension on its own.
+		var portrait: bool = size.x < size.y
+		suite.require(sv.active() and cam.keep_aspect == (Camera3D.KEEP_WIDTH if portrait else Camera3D.KEEP_HEIGHT) and is_equal_approx(cam.fov, 70.0), "the 70 degree angle is %s at %dx%d" % ["horizontal" if portrait else "vertical", size.x, size.y])
+		label_px[size] = screen_label_px(game, sv)
+	var px_land: float = label_px[Vector2i(1100, 760)]
+	var px_port: float = label_px[Vector2i(320, 667)]
+	suite.require(px_land > 1.0 and absf(px_port - px_land) <= px_land * 0.1, "a screen-constant Label3D at 3 m keeps its pixel size from 1100x760 to 320x667 (%.1f vs %.1f px)" % [px_land, px_port])
+	suite.root.size = original_size
+	await suite.process_frame
+	await suite.process_frame
+	sv.street_fov = 80
+	game.update_camera()
+	suite.require(is_equal_approx(cam.fov, 80.0), "street_fov sets the eye's angle")
+	sv.street_fov = 70
+	sv.toggle()
+	await suite.process_frame
+	suite.require(not sv.active() and cam.keep_aspect == original_keep and cam.projection == Camera3D.PROJECTION_ORTHOGONAL, "leaving street view restores the map camera's keep_aspect")
+	cam.keep_aspect = Camera3D.KEEP_WIDTH # A sentinel the landscape eye would never choose.
+	sv.toggle()
+	await suite.process_frame
+	suite.require(sv.active() and cam.keep_aspect == Camera3D.KEEP_HEIGHT, "the landscape eye keeps the height")
+	sv.toggle()
+	await suite.process_frame
+	suite.require(not sv.active() and cam.keep_aspect == Camera3D.KEEP_WIDTH, "exit restores whatever keep_aspect the map camera had")
+	cam.keep_aspect = original_keep
+	game.update_camera()
+	checks += 1
+
+	# 19. Settings: the four optional keys round-trip through the v1 envelope; an untouched envelope keeps its old
+	# bytes; an old envelope and invalid values load the defaults; the system preference seeds reduced motion.
+	var settings_path: String = game.settings_path
+	var had_settings: bool = FileAccess.file_exists(settings_path)
+	var saved_settings_raw: String = FileAccess.get_file_as_string(settings_path) if had_settings else ""
+	var saved_main := {}
+	for key in ["voices_enabled", "reward_sounds_enabled", "settings_save_failed", "voices_generation", "voices_release_count", "last_voices_teardown_usec", "voices_status", "voices_error"]:
+		saved_main[key] = game.get(key)
+	var saved_voice_records: Array = game.voices_records.duplicate()
+	var saved_voices_checked: String = game.voices_checked_at
+	var saved_system_motion: bool = sv.reduced_motion_system
+	suite.require(sv.street_fov == 70 and sv.street_turn == "snap30" and not sv.street_mouselook and not sv.reduced_motion and not sv.reduced_motion_saved, "the Phase 2 settings start at their defaults")
+	game.save_godot_settings()
+	var old_bytes := JSON.stringify({"schema": "tenderloin-redux.godot.settings.v1", "version": 1, "neighborhood_voices": game.voices_enabled, "reward_sounds": game.reward_sounds_enabled})
+	suite.require(FileAccess.get_file_as_string(settings_path) == old_bytes, "an untouched settings envelope keeps its old bytes")
+	sv.street_fov = 84
+	sv.street_turn = "smooth"
+	sv.street_mouselook = true
+	sv.set_reduced_motion(true, false)
+	game.save_godot_settings()
+	var written: Variant = JSON.parse_string(FileAccess.get_file_as_string(settings_path))
+	suite.require(written is Dictionary and written.get("schema") == "tenderloin-redux.godot.settings.v1" and int(written.get("version", 0)) == 1 and int(written.get("street_fov", 0)) == 84 and written.get("street_turn") == "smooth" and written.get("street_mouselook") == true and written.get("reduced_motion") == true, "the four keys are written into the v1 envelope")
+	suite.require(not (written as Dictionary).has("street_enabled") and not (written as Dictionary).has("yaw") and not (written as Dictionary).has("pitch"), "the eye's mode and heading are never saved")
+	sv.reset_settings()
+	suite.require(sv.street_fov == 70 and sv.street_turn == "snap30" and not sv.street_mouselook and not sv.reduced_motion, "reset_settings returns the defaults")
+	game.load_godot_settings()
+	suite.require(sv.street_fov == 84 and sv.street_turn == "smooth" and sv.street_mouselook and sv.reduced_motion and sv.reduced_motion_saved, "the four keys round-trip through load_godot_settings")
+	var envelopes := [
+		{"raw": '{"schema":"tenderloin-redux.godot.settings.v1","version":1,"neighborhood_voices":false}', "what": "an old envelope without the keys"},
+		{"raw": '{"schema":"tenderloin-redux.godot.settings.v1","version":1,"neighborhood_voices":false,"reward_sounds":true,"reduced_motion":1,"street_fov":120,"street_turn":"spin","street_mouselook":"yes"}', "what": "invalid values"},
+		{"raw": '{"schema":"tenderloin-redux.godot.settings.v1","version":1,"neighborhood_voices":false,"street_fov":59,"street_turn":30}', "what": "a field of view under 60"},
+		{"raw": '{"schema":"tenderloin-redux.godot.settings.v1","version":1,"neighborhood_voices":false,"street_fov":70.5}', "what": "a fractional field of view"},
+	]
+	for e in envelopes:
+		write_text(settings_path, e.raw)
+		sv.street_fov = 84
+		sv.street_turn = "smooth"
+		sv.street_mouselook = true
+		sv.reduced_motion = true
+		sv.reduced_motion_saved = true
+		game.load_godot_settings()
+		suite.require(sv.street_fov == 70 and sv.street_turn == "snap30" and not sv.street_mouselook and not sv.reduced_motion and not sv.reduced_motion_saved, "%s loads the defaults" % e.what)
+	write_text(settings_path, '{"schema":"tenderloin-redux.godot.settings.v1","version":1,"neighborhood_voices":false,"street_fov":90,"street_turn":"snap45"}')
+	game.load_godot_settings()
+	suite.require(sv.street_fov == 90 and sv.street_turn == "snap45", "the valid edge of the range loads")
+	sv.reduced_motion_system = true
+	write_text(settings_path, '{"schema":"tenderloin-redux.godot.settings.v1","version":1,"neighborhood_voices":false}')
+	game.load_godot_settings()
+	suite.require(sv.reduced_motion and not sv.reduced_motion_saved, "with no saved choice the system preference seeds reduced motion")
+	write_text(settings_path, '{"schema":"tenderloin-redux.godot.settings.v1","version":1,"neighborhood_voices":false,"reduced_motion":false}')
+	game.load_godot_settings()
+	suite.require(not sv.reduced_motion and sv.reduced_motion_saved, "a saved choice wins over the system preference")
+	sv.use_system_motion(false)
+	suite.require(sv.reduced_motion and not sv.reduced_motion_saved and not sv.settings_fields().has("reduced_motion"), "Use system setting clears the saved choice")
+	game.clear_godot_settings()
+	suite.require(sv.street_fov == 70 and sv.street_turn == "snap30" and sv.reduced_motion == sv.reduced_motion_system and not sv.reduced_motion_saved, "clearing the settings returns the defaults")
+	sv.reduced_motion_system = saved_system_motion
+	sv.reset_settings()
+	if had_settings:
+		write_text(settings_path, saved_settings_raw)
+	elif FileAccess.file_exists(settings_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(settings_path))
+	game.voices_records = saved_voice_records
+	game.voices_checked_at = saved_voices_checked
+	for key in saved_main:
+		game.set(key, saved_main[key])
+	game.set_reward_sounds_enabled(game.reward_sounds_enabled, false)
+	checks += 1
+
+	# 20. Reduced motion, in the map view where it also applies: the button shares the opening entry's row in Info, so
+	# opening Info is no taller than before at 1100x760 or 320x667, and it cycles system, on, off and back to system.
+	# Then the tree canopies, the bubble's bob, the marker's spin and bob and the burst's gem rotation hold still across
+	# 30 frames once the bubble's 0.2 s pop is over, while the burst still widens, lifts and shrinks.
+	var saved_details: bool = game.header_details_expanded
+	var entry: Button = game.before_streets.entry
+	for size in [Vector2i(320, 667), Vector2i(1100, 760)]:
+		suite.root.size = size
+		game.set_header_details(true, false)
+		for _f in range(3):
+			await suite.process_frame
+		suite.require(entry.is_visible_in_tree() and sv.motion_btn.is_visible_in_tree() and sv.motion_btn.get_parent() == entry.get_parent(), "Info's idle row holds the opening entry and Reduced motion at %dx%d" % [size.x, size.y])
+		suite.require(sv.motion_btn.size.x >= 44 and sv.motion_btn.size.y >= 44 and is_equal_approx(sv.motion_row.size.y, entry.get_combined_minimum_size().y), "Reduced motion is a 44 px target that adds no height to Info at %dx%d (row %.1f, entry %.1f)" % [size.x, size.y, sv.motion_row.size.y, entry.get_combined_minimum_size().y])
+		game.set_header_details(false, false)
+		await suite.process_frame
+		suite.require(not sv.motion_row.visible, "closing Info hides the row")
+	suite.root.size = original_size
+	game.set_header_details(true, false)
+	await suite.process_frame
+	suite.require(sv.motion_btn.accessibility_name == "Reduced motion: System (off)", "the button names the system setting first (%s)" % sv.motion_btn.accessibility_name)
+	sv.motion_btn.pressed.emit()
+	suite.require(sv.reduced_motion and sv.reduced_motion_saved and sv.motion_btn.accessibility_name == "Reduced motion: On" and game.last_a11y_announcement == "Reduced motion on.", "a press turns reduced motion on as the player's choice and says so")
+	sv.motion_btn.pressed.emit()
+	suite.require(not sv.reduced_motion and sv.reduced_motion_saved and sv.motion_btn.accessibility_name == "Reduced motion: Off", "the next press saves off")
+	sv.motion_btn.pressed.emit()
+	suite.require(not sv.reduced_motion and not sv.reduced_motion_saved and game.last_a11y_announcement.contains("system setting") and sv.motion_btn.accessibility_name == "Reduced motion: System (off)", "the third press returns to the system setting")
+	game.set_header_details(saved_details, false)
+	await suite.process_frame
+	suite.require(not sv.active(), "the reduced-motion checks run in the map view")
+	var saved_burst := [game.celebration_burst_node.visible, game.celebration_burst_age, game.celebration_burst_timer, game.celebration_burst_node.position]
+	var samples := {}
+	for on in [false, true]:
+		sv.set_reduced_motion(on, false)
+		game.show_speech_bubble("reduced-motion-fixture", game.target + Vector3.UP * 2.0, "A short line for the reduced motion check.", 30.0)
+		game.celebration_burst_node.position = game.target
+		game.celebration_burst_node.visible = true
+		game.celebration_burst_age = 0.0
+		game.celebration_burst_timer = 60.0 # Outlasts 30 frames on a loaded machine.
+		var waited := 0
+		while game.speech_bubble_age <= 0.2 and waited < 3000 and not game.speech_bubble_deferred:
+			await suite.process_frame
+			waited += 1
+		await suite.process_frame
+		var first := motion_sample(game)
+		var bubble_first: Vector3 = game.speech_bubble_node.position
+		var age_first: float = game.speech_bubble_age
+		var burst_first: Array = burst_sample(game)
+		for _f in range(30):
+			await suite.process_frame
+		var last := motion_sample(game)
+		var bubble_last: Vector3 = game.speech_bubble_node.position
+		var burst_last: Array = burst_sample(game)
+		samples[on] = [first == last, bubble_first == bubble_last, burst_first[0] == burst_last[0], burst_last[1] > burst_first[1] and burst_last[2] > burst_first[2] and burst_last[3] < burst_first[3]]
+		suite.require(game.guide_marker.visible and not game.speech_bubble_deferred and age_first > 0.2, "the guide marker and a fitted speech bubble are up for the reduced-motion check (marker %s, deferred %s, age %.2f)" % [str(game.guide_marker.visible), str(game.speech_bubble_deferred), age_first])
+		game.hide_speech_bubble()
+	suite.require(samples[true][0] and samples[true][1] and samples[true][2], "reduced motion stills the tree canopies, the marker, the bubble's bob and the burst's gem rotation across 30 frames (%s)" % str(samples[true]))
+	suite.require(samples[true][3], "under reduced motion the burst still widens, lifts and shrinks")
+	suite.require(not samples[false][0] and not samples[false][2], "with reduced motion off the trees, the marker and the gems still move (%s)" % str(samples[false]))
+	sv.use_system_motion(false)
+	game.celebration_burst_node.visible = saved_burst[0]
+	game.celebration_burst_age = saved_burst[1]
+	game.celebration_burst_timer = saved_burst[2]
+	game.celebration_burst_node.position = saved_burst[3]
+	if had_settings:
+		write_text(settings_path, saved_settings_raw)
+	elif FileAccess.file_exists(settings_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(settings_path))
+	game.settings_save_failed = saved_main["settings_save_failed"]
+	checks += 1
+
+	# 21. Mouse look (work order 4), through the `mouse_mode_override` seam, since a headless run has no pointer lock.
+	# The toggle is an announced 44 px street control; with it off no press ever asks for the mouse. On, a left press
+	# asks: requested -> locked when the mode reports captured, or -> denied after 10 frames (toggle off, announced).
+	# Esc is taken by the capture before gameplay; motion steers the eye; frame_conversation, wide_overview, a focused
+	# activity and focus loss release it; a late grant is cancelled; nothing asks again on its own.
+	var saved_override: int = sv.mouse_mode_override
+	var saved_requests: int = sv.capture_requests
+	var saved_capture := [sv.capture_state, sv.capture_wait, sv.capture_dropped_frame]
+	var saved_rhythm_visible: bool = game.rhythm_circle.visible
+	var CAPTURED := Input.MOUSE_MODE_CAPTURED
+	var VISIBLE := Input.MOUSE_MODE_VISIBLE
+	suite.require(sv.capture_requests == requests_at_start and sv.capture_state == "released", "groups 1 to 20 pressed and dragged with mouse look off and never asked for the mouse (%d requests)" % (sv.capture_requests - requests_at_start))
+	sv.mouse_mode_override = VISIBLE
+	game.press_settle_msec = 0 # As in groups 13-17: synthetic presses must not meet the double-activation gate.
+	if not sv.active():
+		sv.toggle()
+	game.player.position = Vector3(spot.x, 0.0, spot.y)
+	sv.yaw = 0.0
+	sv.pitch = 0.0
+	game.update_camera()
+	await suite.process_frame
+	await suite.process_frame
+	var ml: Button = sv.mouselook_btn
+	var street_rect: Rect2 = sv.button.get_global_rect()
+	var ml_rect: Rect2 = ml.get_global_rect()
+	suite.require(sv.active() and sv.mouselook_visible() and ml_rect.size.x >= 44 and ml_rect.size.y >= 44 and not ml_rect.intersects(street_rect) and absf(ml_rect.position.x - street_rect.position.x) < 1.0 and ml_rect.position.y > street_rect.position.y, "the Mouse look toggle is a 44 px control under the street button (%s under %s)" % [str(ml_rect), str(street_rect)])
+	suite.require(ml.text == "Mouse look: off" and ml.accessibility_name == ml.text and not ml.button_pressed and game.is_screen_point_in_ui(ml_rect.get_center()), "the toggle starts off, names itself and counts as UI")
+	var ml_at: Vector2 = free_point(game, sv)
+	suite.require(is_finite(ml_at.x), "a free play-area point for the mouse look checks")
+	if not is_finite(ml_at.x):
+		ml_at = game.play_area_rect().get_center()
+	for _i in range(3):
+		await send(suite, mouse_left(ml_at, true))
+		await send(suite, mouse_move(ml_at + Vector2(30, 0), Vector2(30, 0)))
+		await send(suite, mouse_left(ml_at + Vector2(30, 0), false))
+	suite.require(sv.capture_requests == saved_requests and sv.capture_state == "released" and sv.mouse_mode_override == VISIBLE and absf(wrapf(sv.yaw, -PI, PI)) > 0.1, "with the toggle off, presses on the street look (yaw %.3f) and never ask for the mouse" % sv.yaw)
+	sv.yaw = 0.0
+	game.update_camera()
+	ml.pressed.emit()
+	var ml_written: Variant = JSON.parse_string(FileAccess.get_file_as_string(settings_path))
+	suite.require(sv.street_mouselook and ml.button_pressed and ml.text == "Mouse look: on" and game.last_a11y_announcement.begins_with("Mouse look on.") and sv.capture_requests == saved_requests, "pressing the toggle turns mouse look on and says so, without asking for the mouse itself")
+	suite.require(ml_written is Dictionary and ml_written.get("street_mouselook") == true, "the toggle is saved as street_mouselook")
+	await send(suite, mouse_left(ml_at, true))
+	suite.require(sv.capture_state == "requested" and sv.capture_requests == saved_requests + 1 and sv.contacts.has(sv.MOUSE_CONTACT) and sv.contacts[sv.MOUSE_CONTACT].role == "capture", "with the toggle on, a left press on the street asks for the mouse (%s, %d, %s, allowed %s, story %s)" % [sv.capture_state, sv.capture_requests - saved_requests, str(sv.contacts), str(sv.capture_allowed()), str(game.is_story_card_visible())])
+	sv.mouse_mode_override = CAPTURED # The browser's grant.
+	await suite.process_frame
+	suite.require(sv.capture_state == "locked" and game.last_a11y_announcement == "Esc releases the mouse." and ml.text == "Esc releases mouse", "requested -> locked when the mode reports captured, with the Esc hint shown and announced")
+	var taps_lock: int = sv.taps_routed
+	await send(suite, mouse_left(ml_at, false))
+	await send(suite, mouse_left(ml_at, true))
+	await send(suite, mouse_left(ml_at, false))
+	suite.require(sv.taps_routed == taps_lock and sv.capture_requests == saved_requests + 1 and sv.contacts.is_empty(), "presses while locked neither tap nor ask again")
+	var yaw_l: float = sv.yaw
+	var pitch_l: float = sv.pitch
+	var rel := InputEventMouseMotion.new()
+	rel.position = ml_at
+	rel.global_position = ml_at
+	rel.relative = Vector2(40, 20)
+	rel.screen_relative = Vector2(40, 20)
+	await send(suite, rel)
+	suite.require(absf(wrapf(sv.yaw - yaw_l, -PI, PI) + 40.0 * sv.LOOK_YAW_PER_PX) < 1e-4 and absf(sv.pitch - pitch_l + 20.0 * sv.LOOK_PITCH_PER_PX) < 1e-4 and sv.active() and game.player_xz() == spot, "screen_relative motion steers the eye while locked (yaw %.4f, pitch %.4f)" % [wrapf(sv.yaw - yaw_l, -PI, PI), sv.pitch - pitch_l])
+	game.current_path.assign([spot + Vector2(1.4, 0.0)])
+	await send(suite, key(KEY_ESCAPE, true))
+	suite.require(sv.capture_state == "released" and sv.mouse_mode_override == VISIBLE and game.last_a11y_announcement == "Mouse released." and not game.current_path.is_empty() and sv.active(), "Esc while locked releases the mouse and is taken before gameplay (the walk goes on)")
+	await send(suite, key(KEY_ESCAPE, false))
+	await send(suite, key(KEY_ESCAPE, true))
+	await send(suite, key(KEY_ESCAPE, false))
+	suite.require(game.current_path.is_empty(), "the next Esc reaches gameplay again and stops the walk")
+	game.stop_walking()
+	game.player.position = Vector3(spot.x, 0.0, spot.y)
+	sv.yaw = 0.0
+	sv.pitch = 0.0
+	game.update_camera()
+	for _f in range(15):
+		await suite.process_frame
+	suite.require(sv.capture_requests == saved_requests + 1 and sv.capture_state == "released" and sv.mouse_mode_override == VISIBLE, "after a release nothing asks for the mouse again on its own")
+	# The browser's own release (a tab switch, or its Esc) and the Esc that follows it.
+	await send(suite, mouse_left(ml_at, true))
+	await send(suite, mouse_left(ml_at, false))
+	sv.mouse_mode_override = CAPTURED
+	await suite.process_frame
+	suite.require(sv.capture_state == "locked", "a new press locks again")
+	sv.mouse_mode_override = VISIBLE
+	await suite.process_frame
+	suite.require(sv.capture_state == "released" and game.last_a11y_announcement == "Mouse released." and ml.text == "Mouse look: on", "locked -> released when the browser drops the lock, announced")
+	suite.require(sv.capture_input(key(KEY_ESCAPE, true)) and sv.capture_input(key(KEY_ESCAPE, false)) and not sv.capture_input(key(KEY_ESCAPE, true)), "the browser's Esc that dropped the lock is used once, then Esc belongs to gameplay")
+	# requested -> denied after 10 frames: the toggle turns off and says why; a grant after that is cancelled.
+	await send(suite, mouse_left(ml_at, true))
+	var waited_frames := 1
+	while sv.capture_state == "requested" and waited_frames < 30:
+		await suite.process_frame
+		waited_frames += 1
+	await send(suite, mouse_left(ml_at, false))
+	var denied_written: Variant = JSON.parse_string(FileAccess.get_file_as_string(settings_path))
+	suite.require(sv.capture_state == "denied" and waited_frames >= sv.CAPTURE_WAIT_FRAMES - 1 and waited_frames <= sv.CAPTURE_WAIT_FRAMES + 1, "requested -> denied after 10 frames without a grant (%d frames)" % waited_frames)
+	suite.require(not sv.street_mouselook and not ml.button_pressed and ml.text == "Mouse look: off" and game.last_a11y_announcement == "The browser did not allow mouse look." and denied_written is Dictionary and not (denied_written as Dictionary).has("street_mouselook"), "a refusal turns the toggle off, saves that and announces it")
+	sv.mouse_mode_override = CAPTURED
+	await suite.process_frame
+	suite.require(sv.mouse_mode_override == VISIBLE and sv.capture_state == "denied", "a grant after the refusal is cancelled at once")
+	await send(suite, mouse_left(ml_at, true))
+	await send(suite, mouse_move(ml_at + Vector2(30, 0), Vector2(30, 0)))
+	await send(suite, mouse_left(ml_at + Vector2(30, 0), false))
+	suite.require(sv.capture_requests == saved_requests + 3, "after a refusal a press asks nothing until the toggle is on again")
+	# Every suspension and focus loss releases a lock.
+	sv.street_mouselook = true
+	sv.refresh_mouselook_button()
+	var releasers := [
+		["frame_conversation", func(): game.frame_conversation(0), func(): game.end_conversation(), true],
+		["wide_overview", func(): game.wide_overview(), func(): game.frame_player_for_walking(), true],
+		["a focused activity opening", func(): game.rhythm_circle.visible = true, func(): game.rhythm_circle.visible = saved_rhythm_visible, false],
+		["focus loss", func(): game.notification(Node.NOTIFICATION_WM_WINDOW_FOCUS_OUT), func(): game.notification(Node.NOTIFICATION_WM_WINDOW_FOCUS_IN), true],
+	]
+	for r in releasers:
+		if not sv.active():
+			game.frame_player_for_walking()
+		await suite.process_frame
+		await send(suite, mouse_left(ml_at, true))
+		await send(suite, mouse_left(ml_at, false))
+		sv.mouse_mode_override = CAPTURED
+		await suite.process_frame
+		var was_locked: bool = sv.capture_state == "locked"
+		r[1].call()
+		var at_once: bool = sv.capture_state == "released" and sv.mouse_mode_override == VISIBLE # Framing calls suspend the eye (exit) at once.
+		await suite.process_frame # A focused activity suspends it on the next tick.
+		suite.require(was_locked and (at_once or not r[3]) and sv.capture_state == "released" and sv.mouse_mode_override == VISIBLE and sv.contacts.is_empty(), "%s releases the mouse (locked first: %s, at once: %s, now %s)" % [r[0], str(was_locked), str(at_once), sv.capture_state])
+		r[2].call()
+		await suite.process_frame
+		if not sv.active():
+			game.frame_player_for_walking()
+		await suite.process_frame
+	suite.require(sv.active(), "the eye is back after the release checks")
+	# A grant that lands after the player has left street view is cancelled at once.
+	await send(suite, mouse_left(ml_at, true))
+	await send(suite, mouse_left(ml_at, false))
+	suite.require(sv.capture_state == "requested", "a press asks again before the late grant check")
+	sv.toggle() # Leave street view while the request is in flight.
+	await suite.process_frame
+	sv.mouse_mode_override = CAPTURED
+	await suite.process_frame
+	suite.require(not sv.active() and sv.capture_state == "released" and sv.mouse_mode_override == VISIBLE, "a grant that arrives after leaving street view is cancelled at once")
+	var requests_end: int = sv.capture_requests
+	for _f in range(15):
+		await suite.process_frame
+	suite.require(sv.capture_requests == requests_end and sv.mouse_mode_override == VISIBLE and not sv.mouselook_visible(), "nothing asks again from the map view, where the toggle is hidden")
+	sv.street_mouselook = false
+	sv.capture_state = saved_capture[0]
+	sv.capture_wait = saved_capture[1]
+	sv.capture_dropped_frame = saved_capture[2]
+	sv.capture_requests = saved_requests
+	sv.mouse_mode_override = saved_override
+	sv.refresh_mouselook_button()
+	game.press_settle_msec = saved_settle
+	game.rhythm_circle.visible = saved_rhythm_visible
+	if had_settings:
+		write_text(settings_path, saved_settings_raw)
+	elif FileAccess.file_exists(settings_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(settings_path))
+	game.settings_save_failed = saved_main["settings_save_failed"]
+	checks += 1
+
 	# Restore the caller's state.
 	sv.enabled = false
 	sv.yaw = 0.0
 	sv.pitch = 0.0
 	sv.has_heading = false
-	sv.street_turn = "snap30"
 	sv.touch_screen = saved_touch_screen
+	sv.street_turn = "snap30"
+	sv.reset_settings()
 	sv.taps_routed = saved_taps
 	sv.clear_contacts()
 	game.press_settle_msec = saved_settle
@@ -561,4 +940,4 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	game.a11y_announcement_seq = saved_seq
 	suite.require(not sv.active() and cam.projection == Camera3D.PROJECTION_ORTHOGONAL and cam.near == map_near and cam.far == map_far, "street view checks hand back the orthographic map camera")
 	suite.require(game.player.position == original_player and game.current_path == original_path, "street view checks restore caller position and route")
-	print("STREET_VIEW_PASS:" + ("FORMAL" if formal else "PRIVATE") + " rule/eye/return-pose/suspend/resume/refit/horizon/depth/sight/pace/west/ShiftF/yaw-walk/mouse-look/touch-roles/stick/turn-step ", checks)
+	print("STREET_VIEW_PASS:" + ("FORMAL" if formal else "PRIVATE") + " rule/eye/return-pose/suspend/resume/refit/horizon/depth/sight/pace/west/ShiftF/yaw-walk/mouse-look/touch-roles/stick/turn-step/portrait-fov/settings/reduced-motion/capture ", checks)

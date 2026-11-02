@@ -4,9 +4,14 @@ extends RefCounted
 ## following the player, nothing is framed, selected or focused, and the player is on the opening
 ## block. Everything else suspends it and the elevated view renders exactly as before; `follow_player`
 ## and `frame_player_for_walking` resume it at the player's current position with the saved heading.
-## All state here is transient: nothing is saved, and every session starts in the map view.
+## The eye's state is transient: mode, heading and pitch are never saved, and every session starts in the map view.
 ## Phase 2 (docs/FIRST_PERSON_EXECUTION.md section 2): every mouse or touch contact at eye level takes a role at
 ## contact-down (look, the walk stick, or ignored); a Control under it has already taken it in the GUI.
+## Settings (work orders 5-7): the field of view, the turn step, mouse look and reduced motion are the only saved
+## state, as optional keys in the v1 settings envelope, written only when they differ from the defaults.
+## Mouse look (work order 4) is opt-in: with the "Mouse look" toggle on, a left press on the street asks for the
+## pointer lock from inside the press handler, and `capture_state` follows the browser's answer frame by frame. The
+## capture ends with every suspension (`exit`), focus loss and Esc, and is never asked for again without a new press.
 
 const EYE_M := 1.6
 const FOV_DEG := 70.0
@@ -27,6 +32,11 @@ const LOOK_PITCH_PER_PX := 0.0035
 const MOUSE_CONTACT := -2 # Touch indices start at 0.
 const TURN_STEPS := {"snap30": PI / 6.0, "snap45": PI / 4.0}
 const SMOOTH_TURN_RAD_PER_S := PI / 2.0 # 90 degrees a second on held Shift+Left/Right.
+const FOV_MIN_DEG := 60
+const FOV_MAX_DEG := 90
+const DEFAULT_TURN := "snap30"
+const CAPTURE_WAIT_FRAMES := 10 # A pointer lock not granted within this many frames counts as refused.
+const ESC_GRACE_FRAMES := 10 # The browser may drop the lock just before its Esc reaches the game.
 
 var game: Node
 var enabled := false # The player's choice; suspension is derived, never stored.
@@ -38,13 +48,31 @@ var map_near := 0.05
 var map_far := 4000.0
 var map_background := {}
 var has_heading := false
-var street_turn := "snap30" # "snap30", "snap45" or "smooth"; the settings envelope carries it from the next work order.
+var street_turn := DEFAULT_TURN # "snap30", "snap45" or "smooth"; saved as `street_turn`.
+var street_fov := int(FOV_DEG) # Degrees, 60-90: vertical in landscape, horizontal in portrait; saved as `street_fov`.
+var street_mouselook := false # Opt-in mouse capture (work order 4); saved as `street_mouselook`.
+var map_keep_aspect := Camera3D.KEEP_HEIGHT
+## Reduced motion helps the map view too: the system preference seeds it once at startup on web, and the player's
+## choice in Info is saved as an override until "Use system setting" clears it.
+var reduced_motion := false
+var reduced_motion_saved := false # True only while the player's own choice overrides the system preference.
+var reduced_motion_system := false
+var motion_row: HBoxContainer
+var motion_btn: Button
 var contacts := {} # contact id (touch index or MOUSE_CONTACT) -> {"role", "down", "last", "dragging"}
 var stick: Control
 var stick_knob: Panel
 var stick_vec := Vector2.ZERO
 var touch_screen := false
 var taps_routed := 0 # Look contacts released inside the drag threshold; read by the tests.
+var mouselook_btn: Button
+var capture_state := "released" # "requested", "locked", "denied" or "released"; transient, never saved.
+var capture_wait := 0 # Frames since the request.
+var capture_requests := 0 # Requests made this session; read by the tests, and nothing is polled before the first.
+var capture_dropped_frame := -1 # When the browser last dropped a lock, for the Esc that dropped it.
+## Tests only: when >= 0 this stands in for `Input.mouse_mode`, since a headless run has no pointer lock. A grant
+## arrives when the test sets it to captured; a release writes it at once.
+var mouse_mode_override := -1
 
 func setup(g: Node, layer: Node) -> void:
 	game = g
@@ -60,6 +88,19 @@ func setup(g: Node, layer: Node) -> void:
 	button.add_theme_font_size_override("font_size", 18)
 	button.pressed.connect(toggle)
 	layer.add_child(button)
+	mouselook_btn = Button.new()
+	mouselook_btn.name = "MouseLookToggle"
+	mouselook_btn.tooltip_text = "Mouse look: when on, click the street to steer the view with the mouse. Esc releases the mouse."
+	mouselook_btn.toggle_mode = true
+	mouselook_btn.clip_text = true
+	mouselook_btn.custom_minimum_size = BUTTON_SIZE
+	mouselook_btn.focus_mode = Control.FOCUS_ALL
+	mouselook_btn.visible = false
+	game.style_game_button(mouselook_btn)
+	mouselook_btn.add_theme_font_size_override("font_size", 14)
+	mouselook_btn.pressed.connect(func(): set_mouselook(not street_mouselook))
+	layer.add_child(mouselook_btn)
+	refresh_mouselook_button()
 	touch_screen = DisplayServer.is_touchscreen_available()
 	stick = Control.new()
 	stick.name = "StreetStick"
@@ -78,6 +119,128 @@ func setup(g: Node, layer: Node) -> void:
 	stick.add_child(stick_knob)
 	center_knob()
 	layer.add_child(stick)
+	reduced_motion_system = system_reduced_motion()
+	reduced_motion = reduced_motion_system
+
+## Read once at startup; native builds and the tests have no system preference.
+func system_reduced_motion() -> bool:
+	if not OS.has_feature("web"):
+		return false
+	var v: Variant = JavaScriptBridge.eval("try { window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (_e) { false; }", true)
+	return v is bool and bool(v)
+
+## Info's idle row: the opening revisit entry shares it with one "Reduced motion" button, so opening Info costs no
+## more height than before. The button cycles the system setting, on and off; "System" clears the saved choice.
+func setup_motion_row(entry: Button) -> void:
+	var column := entry.get_parent()
+	motion_row = HBoxContainer.new()
+	motion_row.name = "InfoIdleRow"
+	motion_row.add_theme_constant_override("separation", column.get_theme_constant("separation"))
+	motion_row.visible = entry.visible
+	column.add_child(motion_row)
+	column.move_child(motion_row, entry.get_index())
+	entry.reparent(motion_row, false)
+	motion_btn = Button.new()
+	motion_btn.name = "ReducedMotionToggle"
+	motion_btn.tooltip_text = "Reduced motion stills the swaying trees, the bobbing speech bubble, the spinning guide marker and the burst's spin. Press to cycle: system setting, on, off."
+	motion_btn.custom_minimum_size = Vector2(104, 44)
+	motion_btn.focus_mode = Control.FOCUS_ALL
+	motion_btn.add_theme_font_size_override("font_size", 12)
+	game.style_game_button(motion_btn)
+	motion_btn.pressed.connect(cycle_reduced_motion)
+	motion_row.add_child(motion_btn)
+	refresh_motion_controls()
+
+## System -> the opposite of the system -> the same as the system -> System again.
+func cycle_reduced_motion() -> void:
+	if not reduced_motion_saved:
+		set_reduced_motion(not reduced_motion_system)
+	elif reduced_motion != reduced_motion_system:
+		set_reduced_motion(reduced_motion_system)
+	else:
+		use_system_motion()
+
+func set_reduced_motion(on: bool, persist := true) -> void:
+	reduced_motion = on
+	reduced_motion_saved = true
+	refresh_motion_controls()
+	if persist:
+		game.save_godot_settings()
+		game.announce_a11y_status("Reduced motion %s." % ("on" if on else "off"))
+
+## The "System" step of the cycle: clears the saved choice.
+func use_system_motion(persist := true) -> void:
+	reduced_motion = reduced_motion_system
+	reduced_motion_saved = false
+	refresh_motion_controls()
+	if persist:
+		game.save_godot_settings()
+		game.announce_a11y_status("Reduced motion follows the system setting: %s." % ("on" if reduced_motion else "off"))
+
+func motion_state_text() -> String:
+	if not reduced_motion_saved:
+		return "System (%s)" % ("on" if reduced_motion else "off")
+	return "On" if reduced_motion else "Off"
+
+func refresh_motion_controls() -> void:
+	if motion_btn == null:
+		return
+	motion_btn.text = "Reduced motion\n%s" % motion_state_text()
+	motion_btn.accessibility_name = "Reduced motion: %s" % motion_state_text()
+
+## The row follows the opening entry it holds; called right after each place that shows or hides that entry.
+func refresh_motion_row() -> bool:
+	if motion_row == null or motion_row.get_child_count() == 0:
+		return false
+	var show: bool = (motion_row.get_child(0) as Control).visible
+	if motion_row.visible == show:
+		return false
+	motion_row.visible = show
+	return true
+
+## Optional settings keys, only those that differ from the defaults, so an untouched envelope keeps its old bytes.
+func settings_fields() -> Dictionary:
+	var out := {}
+	if reduced_motion_saved:
+		out["reduced_motion"] = reduced_motion
+	if street_fov != int(FOV_DEG):
+		out["street_fov"] = street_fov
+	if street_turn != DEFAULT_TURN:
+		out["street_turn"] = street_turn
+	if street_mouselook:
+		out["street_mouselook"] = true
+	return out
+
+## Each key is validated on its own; a missing or invalid key keeps its default.
+func apply_settings(env: Dictionary) -> void:
+	reset_settings()
+	var rm: Variant = env.get("reduced_motion", null)
+	if rm is bool:
+		reduced_motion = bool(rm)
+		reduced_motion_saved = true
+	var fov: Variant = env.get("street_fov", null)
+	if game.is_whole_json_number(fov) and float(fov) >= FOV_MIN_DEG and float(fov) <= FOV_MAX_DEG:
+		street_fov = int(roundf(float(fov)))
+	var turn_val: Variant = env.get("street_turn", null)
+	if turn_val is String and (String(turn_val) == "smooth" or TURN_STEPS.has(String(turn_val))):
+		street_turn = String(turn_val)
+	var ml: Variant = env.get("street_mouselook", null)
+	if ml is bool:
+		street_mouselook = bool(ml)
+	refresh_motion_controls()
+	refresh_mouselook_button()
+	if active():
+		game.update_camera()
+
+func reset_settings() -> void:
+	street_fov = int(FOV_DEG)
+	street_turn = DEFAULT_TURN
+	street_mouselook = false
+	reduced_motion = reduced_motion_system
+	reduced_motion_saved = false
+	refresh_motion_controls()
+	release_capture()
+	refresh_mouselook_button()
 
 func stick_style(fill: Color, radius: float, border: int) -> StyleBoxFlat:
 	var st := StyleBoxFlat.new()
@@ -116,8 +279,8 @@ func enter() -> void:
 	var cam: Camera3D = game.camera
 	map_near = cam.near
 	map_far = cam.far
+	map_keep_aspect = cam.keep_aspect
 	cam.projection = Camera3D.PROJECTION_PERSPECTIVE
-	cam.fov = FOV_DEG
 	cam.near = NEAR_M
 	cam.far = FAR_M
 	game.clear_occlusion()
@@ -134,10 +297,12 @@ func enter() -> void:
 	game.announce_a11y_status("Street view at eye level. Shift+Left and Shift+Right turn, Shift+Up and Shift+Down tilt, WASD or arrows walk. Shift+F returns to the map view." + touch_hint())
 
 func exit() -> void:
+	release_capture() # Every panel, map and activity suspends the eye, so the mouse is free before any of them.
 	var cam: Camera3D = game.camera
 	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
 	cam.near = map_near
 	cam.far = map_far
+	cam.keep_aspect = map_keep_aspect
 	cam.size = game.view_size
 	if game.player_visual != null:
 		game.player_visual.visible = true
@@ -204,15 +369,22 @@ func apply_sky(on: bool) -> void:
 	env.sky = map_background["sky"]
 	map_background = {}
 
-## The street branch of `update_camera`: eye above the player, zero roll, target kept on the player.
+## The street branch of `update_camera`: eye above the player, zero roll, target kept on the player. The chosen
+## angle is vertical in landscape and horizontal in portrait, so a phone held upright is not a 37 degree slit.
 func apply_camera() -> void:
 	var cam: Camera3D = game.camera
 	var p: Vector3 = game.player.position
+	cam.keep_aspect = eye_keep_aspect()
+	cam.fov = float(street_fov)
 	game.target = p + Vector3.UP
 	cam.size = game.view_size
 	cam.position = Vector3(p.x, p.y + EYE_M, p.z)
 	cam.rotation = Vector3(pitch, yaw, 0.0)
 	cam.force_update_transform()
+
+func eye_keep_aspect() -> Camera3D.KeepAspect:
+	var vp: Vector2 = game.bubble_viewport_size()
+	return Camera3D.KEEP_WIDTH if vp.x < vp.y else Camera3D.KEEP_HEIGHT
 
 func eye_position() -> Vector3:
 	var p: Vector3 = game.player.position
@@ -321,8 +493,9 @@ func screen_constant(px_per_unit: float, at: Vector3) -> float:
 	var cam: Camera3D = game.camera
 	var depth := (at - cam.global_position).dot(-cam.global_basis.z)
 	depth = maxf(depth, 0.5)
-	var vp_h := maxf(game.bubble_viewport_size().y, 1.0)
-	return px_per_unit * 2.0 * depth * tan(deg_to_rad(cam.fov) * 0.5) / vp_h
+	var vp: Vector2 = game.bubble_viewport_size()
+	var span := maxf(vp.x if cam.keep_aspect == Camera3D.KEEP_WIDTH else vp.y, 1.0) # The dimension the angle spans.
+	return px_per_unit * 2.0 * depth * tan(deg_to_rad(cam.fov) * 0.5) / span
 
 ## 2D line of sight against the building footprints near the segment, using the walking bins.
 func line_of_sight_clear(from_xz: Vector2, to_xz: Vector2) -> bool:
@@ -381,7 +554,12 @@ func pointer_input(event: InputEvent) -> bool:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed and (event.shift_pressed or event.alt_pressed or event.ctrl_pressed):
 			return false # The map's modifier orbit already turns the eye through `rotate_camera_by_delta`.
-		return contact_down(MOUSE_CONTACT, event.position) if event.pressed else contact_up(MOUSE_CONTACT, event.position)
+		if not event.pressed:
+			return contact_up(MOUSE_CONTACT, event.position)
+		var used := contact_down(MOUSE_CONTACT, event.position)
+		if used and contacts[MOUSE_CONTACT].role == "look" and request_capture():
+			contacts[MOUSE_CONTACT].role = "capture" # The press that asks for the lock neither looks nor taps.
+		return used
 	if event is InputEventMouseMotion:
 		return contact_move(MOUSE_CONTACT, event.position)
 	return false
@@ -441,6 +619,112 @@ func clear_contacts() -> void:
 	stick_vec = Vector2.ZERO
 	center_knob()
 
+## The "Mouse look" toggle: saved as `street_mouselook`; turning it off frees a held mouse. It only arms the next
+## press on the street; nothing is requested here.
+func set_mouselook(on: bool) -> void:
+	game.get_viewport().gui_release_focus() # As with the street button: Shift+arrows must not become focus traversal.
+	street_mouselook = on
+	if not on:
+		release_capture()
+	refresh_mouselook_button()
+	game.save_godot_settings()
+	game.announce_a11y_status("Mouse look on. Click the street to steer the view with the mouse; Esc releases it." if on else "Mouse look off.")
+
+func refresh_mouselook_button() -> void:
+	if mouselook_btn == null:
+		return
+	mouselook_btn.set_pressed_no_signal(street_mouselook)
+	mouselook_btn.text = "Esc releases mouse" if capture_state == "locked" else ("Mouse look: on" if street_mouselook else "Mouse look: off")
+	mouselook_btn.accessibility_name = mouselook_btn.text
+
+func read_mouse_mode() -> int:
+	return mouse_mode_override if mouse_mode_override >= 0 else int(Input.mouse_mode)
+
+func write_mouse_mode(mode: int) -> void:
+	if mouse_mode_override >= 0:
+		if mode != Input.MOUSE_MODE_CAPTURED:
+			mouse_mode_override = mode
+		return
+	Input.mouse_mode = mode as Input.MouseMode
+
+## A grant is only kept while the eye is active with nothing over it.
+func capture_allowed() -> bool:
+	return street_mouselook and active() and not game.is_story_card_visible()
+
+## From the left-press handler only, so the browser sees the request inside the click. True when one was made.
+func request_capture() -> bool:
+	if not capture_allowed() or capture_state == "requested" or capture_state == "locked":
+		return false
+	capture_requests += 1
+	capture_state = "requested"
+	capture_wait = 0
+	write_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	return true
+
+## Ends a request or a lock without announcing it; Esc and the browser's own release announce for themselves.
+func release_capture() -> void:
+	if capture_state != "requested" and capture_state != "locked":
+		return
+	capture_state = "released"
+	write_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+	contacts.erase(MOUSE_CONTACT)
+	refresh_mouselook_button()
+
+## Once per frame from `tick`, after the first request of the session: follows the browser's answer.
+func poll_capture() -> void:
+	var captured := read_mouse_mode() == Input.MOUSE_MODE_CAPTURED
+	match capture_state:
+		"requested":
+			if captured and capture_allowed():
+				capture_state = "locked"
+				contacts.erase(MOUSE_CONTACT)
+				refresh_mouselook_button()
+				game.announce_a11y_status("Esc releases the mouse.")
+			elif captured:
+				release_capture() # Granted after the player left the eye or opened a panel: cancelled at once.
+			else:
+				capture_wait += 1
+				if capture_wait >= CAPTURE_WAIT_FRAMES:
+					write_mouse_mode(Input.MOUSE_MODE_VISIBLE) # A grant still in flight must not land later.
+					capture_state = "denied"
+					street_mouselook = false
+					refresh_mouselook_button()
+					game.save_godot_settings()
+					game.announce_a11y_status("The browser did not allow mouse look.")
+		"locked":
+			if not captured:
+				capture_state = "released" # The browser dropped it (a tab switch, or its own Esc).
+				capture_dropped_frame = Engine.get_process_frames()
+				refresh_mouselook_button()
+				game.announce_a11y_status("Mouse released.")
+			elif not capture_allowed():
+				release_capture()
+		_:
+			if captured:
+				write_mouse_mode(Input.MOUSE_MODE_VISIBLE) # A late grant after a release or a refusal.
+
+## From the top of `_input`, before the GUI and every gameplay key: while locked, Esc releases the mouse and
+## motion steers the eye; presses do nothing until Phase 3 gives them a crosshair. True when used here.
+func capture_input(event: InputEvent) -> bool:
+	var esc: bool = event is InputEventKey and (event.keycode == KEY_ESCAPE or event.physical_keycode == KEY_ESCAPE)
+	if capture_state == "locked":
+		if esc:
+			if event.pressed and not event.echo:
+				release_capture()
+				game.announce_a11y_status("Mouse released.")
+			return true
+		if event is InputEventMouseMotion:
+			look(-event.screen_relative.x * LOOK_YAW_PER_PX, event.screen_relative.y * LOOK_PITCH_PER_PX)
+			return true
+		return event is InputEventMouseButton
+	if esc and capture_dropped_frame >= 0:
+		if Engine.get_process_frames() - capture_dropped_frame <= ESC_GRACE_FRAMES:
+			if not event.pressed:
+				capture_dropped_frame = -1 # The press and the release of the browser's Esc are both used here.
+			return true
+		capture_dropped_frame = -1
+	return false
+
 ## The walking vector for `_physics_process`: screen up is forward, deadzone 0.15, length at most 1.
 func stick_vector() -> Vector2:
 	return stick_vec if has_role("move") else Vector2.ZERO
@@ -476,13 +760,15 @@ func refresh_stick() -> void:
 			if contacts[id].role == "move":
 				drop_contact(id)
 
-## The street button and the stick, for the caption and guide-arrow `occupied` lists.
+## The street button, the stick and the Mouse look toggle, for the caption and guide-arrow `occupied` lists.
 func occupied_rects() -> Array[Rect2]:
 	var rects: Array[Rect2] = []
 	if button_visible():
 		rects.append(button.get_global_rect().grow(6.0))
 	if stick_visible():
 		rects.append(stick.get_global_rect().grow(6.0))
+	if mouselook_visible():
+		rects.append(mouselook_btn.get_global_rect().grow(6.0))
 	return rects
 
 ## Called once per frame from `_process`: region changes, the floating button and the stick.
@@ -492,11 +778,18 @@ func tick() -> void:
 		game.update_occlusion(true)
 		if not was_active:
 			game.refresh_hub_camera.call_deferred() # A hub that opened while the eye was in charge still gets its fit.
+	elif was_active and game.camera.keep_aspect != eye_keep_aspect():
+		game.update_camera() # A phone turned between portrait and landscape moves the angle to the other dimension.
+	if capture_requests > 0:
+		poll_capture()
 	refresh_button()
 	refresh_stick()
 
 func button_visible() -> bool:
 	return button != null and button.is_visible_in_tree()
+
+func mouselook_visible() -> bool:
+	return mouselook_btn != null and mouselook_btn.is_visible_in_tree()
 
 func refresh_button() -> void:
 	if button == null:
@@ -504,12 +797,17 @@ func refresh_button() -> void:
 	var show: bool = game.following_player and not game.in_overview and not game.in_wide_overview and not game.is_focused_activity_visible() and not game.is_story_card_visible() and game.selected < 0 and in_block()
 	if not show:
 		button.visible = false
+		mouselook_btn.visible = false
 		return
 	button.text = "Map view" if active() else "Street view"
 	var area: Rect2 = game.play_area_rect()
 	button.size = BUTTON_SIZE
 	button.position = Vector2(area.end.x - BUTTON_SIZE.x, area.position.y)
 	button.visible = area.size.x >= BUTTON_SIZE.x + 16.0 and area.size.y >= BUTTON_SIZE.y * 3.0
+	# Mouse look sits under the street button at eye level, for a mouse; a touchscreen has the stick and drag-look.
+	mouselook_btn.size = BUTTON_SIZE
+	mouselook_btn.position = button.position + Vector2(0.0, BUTTON_SIZE.y + 8.0)
+	mouselook_btn.visible = button.visible and active() and not touch_screen and area.size.y >= BUTTON_SIZE.y * 5.0
 
 func snapshot() -> Dictionary:
 	var cam: Camera3D = game.camera
@@ -528,6 +826,13 @@ func snapshot() -> Dictionary:
 		"button": {"visible": button_visible(), "text": button.text if button != null else "", "x": rect.position.x, "y": rect.position.y, "width": rect.size.x, "height": rect.size.y},
 		"stick": {"visible": stick_visible(), "x": stick_rect.position.x, "y": stick_rect.position.y, "width": stick_rect.size.x, "height": stick_rect.size.y},
 		"turn": street_turn,
+		"fov": street_fov,
+		"keep_aspect": int(cam.keep_aspect) if cam != null else -1,
+		"mouselook": street_mouselook,
+		"mouselook_button": game.control_snapshot(mouselook_btn).merged({"text": mouselook_btn.text if mouselook_btn != null else "", "pressed": mouselook_btn != null and mouselook_btn.button_pressed}),
+		"capture": capture_state,
+		"capture_requests": capture_requests,
+		"reduced_motion": {"on": reduced_motion, "saved": reduced_motion_saved, "system": reduced_motion_system, "visible": motion_row != null and motion_row.is_visible_in_tree(), "toggle": game.control_snapshot(motion_btn), "text": motion_btn.accessibility_name if motion_btn != null else ""},
 		"contacts": roles,
 		"taps_routed": taps_routed,
 	}

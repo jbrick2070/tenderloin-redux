@@ -4814,7 +4814,7 @@ func update_speech_bubble(delta: float) -> void:
 	refresh_speech_bubble_wrap()
 	var pop := clampf((speech_bubble_age + delta) / 0.2, 0.0, 1.0)
 	speech_bubble_node.scale = Vector3.ONE * ((0.6 + 0.4 * (1.0 - pow(1.0 - pop, 3.0))) * speech_bubble_base_scale())
-	speech_bubble_node.position = speech_bubble_anchor_pos + Vector3.UP * (sin(speech_bubble_age * 2.1) * 0.06)
+	speech_bubble_node.position = speech_bubble_anchor_pos + Vector3.UP * (0.0 if reduced_motion_on() else sin(speech_bubble_age * 2.1) * 0.06)
 	speech_bubble_node.visible = true
 	var area := play_area_rect().grow(-2.0)
 	var banner_visible := reward_banner != null and reward_banner.is_visible_in_tree()
@@ -5063,7 +5063,7 @@ func build_street_trees() -> void:
 
 func update_tree_sway(delta: float) -> void:
 	wind_clock = wrapf(wind_clock + delta, 0.0, 3600.0)
-	var gust := 0.75 + 0.25 * sin(wind_clock * 0.37)
+	var gust := 0.0 if reduced_motion_on() else 0.75 + 0.25 * sin(wind_clock * 0.37) # Reduced motion: canopies at rest.
 	for i in range(park_tree_canopies.size()):
 		var cn := park_tree_canopies[i]
 		if cn == null:
@@ -5949,14 +5949,15 @@ func update_celebration_burst(delta: float) -> void:
 		var progress := clampf(celebration_burst_age / 2.0, 0.0, 1.0)
 		var ring_r := 0.55 + progress * 1.65
 		var lift := progress * 1.75
+		var spin := 0.0 if reduced_motion_on() else 1.0 # Reduced motion: the ring still widens and lifts, without spinning.
 		for g_i in range(celebration_gem_meshes.size()):
 			var gem := celebration_gem_meshes[g_i]
 			if gem == null:
 				continue
-			var ang := TAU * float(g_i) / float(celebration_gem_meshes.size()) + celebration_burst_age * 2.8
-			var bob := sin(celebration_burst_age * 5.0 + float(g_i)) * 0.16
+			var ang := TAU * float(g_i) / float(celebration_gem_meshes.size()) + celebration_burst_age * 2.8 * spin
+			var bob := sin(celebration_burst_age * 5.0 + float(g_i)) * 0.16 * spin
 			gem.position = Vector3(cos(ang) * ring_r, lift + bob, sin(ang) * ring_r)
-			gem.rotation = Vector3(celebration_burst_age * 2.2, ang, celebration_burst_age * 1.7)
+			gem.rotation = Vector3(celebration_burst_age * 2.2 * spin, ang, celebration_burst_age * 1.7 * spin)
 			gem.scale = Vector3.ONE * clampf(1.15 - progress * 0.75, 0.25, 1.15)
 		if celebration_burst_label != null:
 			celebration_burst_label.position = Vector3(0.0, 1.25 + lift * 0.85, 0.0)
@@ -6280,8 +6281,9 @@ func update_guide_marker(obj: Dictionary = {}) -> void:
 	guide_marker_target_name = objective_target_name(obj)
 	var s := screen_constant_scale(30.0, guide_marker_target + Vector3.UP * 2.0)
 	guide_marker.scale = Vector3.ONE * s
-	guide_marker.position = guide_marker_target + Vector3.UP * (sin(ui_clock * 2.6) * 0.14 * s)
-	guide_marker.rotation.y = wrapf(ui_clock * 1.4, -PI, PI)
+	var still := reduced_motion_on()
+	guide_marker.position = guide_marker_target + Vector3.UP * (0.0 if still else sin(ui_clock * 2.6) * 0.14 * s)
+	guide_marker.rotation.y = 0.0 if still else wrapf(ui_clock * 1.4, -PI, PI)
 
 func build_talk_prompt() -> void:
 	talk_prompt_node = Node3D.new()
@@ -7738,6 +7740,8 @@ func set_header_details(expanded: bool, refit_map := true) -> void:
 		toggle.set_pressed_no_signal(expanded)
 	if before_streets != null and before_streets.entry != null:
 		before_streets.entry.visible = expanded and before_streets.idle_entry_available()
+	if street_view != null:
+		street_view.refresh_motion_row() # The opening entry's row also holds Reduced motion.
 	# Visibility updates minimum height immediately; retain width and apply that
 	# height before camera framing or overlay fitting reads the playable area.
 	header_panel.offset_bottom = header_panel.offset_top + header_panel.get_combined_minimum_size().y
@@ -7768,6 +7772,8 @@ func update_conversation_ui(delta: float) -> void:
 		var show_opening: bool = header_details_expanded and before_streets.idle_entry_available()
 		if before_streets.entry.visible != show_opening:
 			before_streets.entry.visible = show_opening
+			if street_view != null:
+				street_view.refresh_motion_row() # The entry's row (with Reduced motion) follows it.
 			header_panel.offset_bottom = header_panel.offset_top + header_panel.get_combined_minimum_size().y
 			layout_walking_controls_and_hub()
 	objective_refresh_timer -= delta
@@ -9223,6 +9229,10 @@ func panel_camera_pose() -> Array:
 
 func street_view_active() -> bool:
 	return street_view != null and street_view.active()
+
+## The reduced-motion setting (street_view.gd keeps it with the other Phase 2 settings); off unless chosen or seeded.
+func reduced_motion_on() -> bool:
+	return street_view != null and street_view.reduced_motion
 
 ## The player's screen point for the bridge. At eye level the player is the camera, so report the
 ## viewport centre instead of unprojecting a point on the camera plane.
@@ -10712,6 +10722,8 @@ func write_save_json(key: String, path: String, raw: String) -> bool:
 
 func save_godot_settings() -> bool:
 	var env := {"schema": "tenderloin-redux.godot.settings.v1", "version": 1, "neighborhood_voices": voices_enabled, "reward_sounds": reward_sounds_enabled}
+	if street_view != null:
+		env.merge(street_view.settings_fields()) # Optional Phase 2 keys, only when they differ from the defaults.
 	settings_save_failed = not write_save_json(GODOT_SETTINGS_WEB_STORAGE_KEY, settings_path, JSON.stringify(env))
 	update_objective_ui()
 	return not settings_save_failed
@@ -10719,6 +10731,8 @@ func save_godot_settings() -> bool:
 func load_godot_settings() -> bool:
 	settings_save_failed = false
 	set_reward_sounds_enabled(true, false)
+	if street_view != null:
+		street_view.reset_settings()
 	var raw_str := ""
 	if OS.has_feature("web"):
 		var web_val: Variant = JavaScriptBridge.eval("try { window.localStorage.getItem('%s') || ''; } catch (_e) { ''; }" % GODOT_SETTINGS_WEB_STORAGE_KEY, true)
@@ -10738,6 +10752,8 @@ func load_godot_settings() -> bool:
 	if String(env.get("schema", "")) != "tenderloin-redux.godot.settings.v1":
 		set_voices_enabled(false, false)
 		return false
+	if street_view != null:
+		street_view.apply_settings(env)
 	var nv_val: Variant = env.get("neighborhood_voices", false)
 	var sounds_val: Variant = env.get("reward_sounds", true)
 	if sounds_val is bool:
@@ -10752,6 +10768,8 @@ func clear_godot_settings() -> void:
 	set_reward_sounds_enabled(true, false)
 	voices_custom_json_override = ""
 	voices_simulate_error = false
+	if street_view != null:
+		street_view.reset_settings()
 	if not settings_path.is_empty() and FileAccess.file_exists(settings_path):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(settings_path))
 	if OS.has_feature("web"):
@@ -10945,6 +10963,8 @@ func resume_voices() -> bool:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_WINDOW_FOCUS_OUT or what == NOTIFICATION_APPLICATION_FOCUS_OUT:
 		cancel_map_pinch()
+		if street_view != null:
+			street_view.release_capture() # Mouse look never outlives focus.
 		close_phone_disclosure()
 		phone_primary_transition = false
 		walk_control_press_handled = false
@@ -14445,6 +14465,8 @@ func is_screen_point_in_ui(screen_pos: Vector2) -> bool:
 		return true
 	if street_view != null and street_view.button_visible() and street_view.button.get_global_rect().has_point(screen_pos):
 		return true
+	if street_view != null and street_view.mouselook_visible() and street_view.mouselook_btn.get_global_rect().has_point(screen_pos):
+		return true
 	return false
 
 func screen_to_ground_xz(screen_pos: Vector2) -> Vector2:
@@ -14811,6 +14833,9 @@ func press_settle_hook(node: Node) -> void:
 
 func _input(event: InputEvent) -> void:
 	if settle_swallows(event):
+		get_viewport().set_input_as_handled()
+		return
+	if street_view != null and street_view.capture_input(event): # A held mouse takes Esc and motion before anything else.
 		get_viewport().set_input_as_handled()
 		return
 	if is_habitat_room_visible():
@@ -16278,6 +16303,7 @@ func make_ui() -> void:
 	before_streets.entry.name = "BeforeTheseStreetsRevisit"
 	before_streets.entry.hide()
 	column.move_child(before_streets.entry,info.get_index()+1)
+	street_view.setup_motion_row(before_streets.entry) # Reduced motion shares the entry's row in Info.
 	var vp := get_viewport()
 	var resize_controls := func():
 		cancel_map_pinch()

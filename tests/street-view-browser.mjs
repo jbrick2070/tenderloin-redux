@@ -3,7 +3,9 @@ import { writeFile } from 'node:fs/promises';
 // Street view (docs/FIRST_PERSON_PLAN.md, Phase 1) in the real web build: every session starts in the
 // map view; Shift+F gives a perspective eye with sky above and street below; the button and Shift+F
 // hand back the orthographic walking view. Phase 2: a mouse or touch drag turns the eye and its release
-// never routes; the walk stick is a touchscreen control. Runs right after Start Exploring at each supported size.
+// never routes; the walk stick is a touchscreen control; the 70 degree angle is vertical in landscape and
+// horizontal in portrait, and leaving restores the map camera's keep_aspect; reduced motion starts off with no
+// saved choice and the default settings envelope gains no keys; mouse look is an off toggle that asks for nothing. Runs right after Start Exploring at each supported size.
 export async function verifyStreetView(page,{touch,size,renderedPixels,outputDir='artifacts'}) {
   const snap=()=>page.evaluate(()=>window.__tenderloinGodotA11ySnapshot);
   const settle=async()=>{const f=(await snap()).ui_frame;await page.waitForFunction(f=>window.__tenderloinGodotA11ySnapshot.ui_frame>f+3,f);};
@@ -16,6 +18,9 @@ export async function verifyStreetView(page,{touch,size,renderedPixels,outputDir
   assert.equal(before.street_view.projection,1,'the map view is orthographic');
   assert.ok(before.following_player,'the walking view follows the player before the street check');
   assert.equal(before.street_view.button.text,'Street view');
+  assert.deepEqual({on:before.street_view.reduced_motion.on,saved:before.street_view.reduced_motion.saved,fov:before.street_view.fov,turn:before.street_view.turn,mouselook:before.street_view.mouselook},{on:false,saved:false,fov:70,turn:'snap30',mouselook:false},'the Phase 2 settings start at their defaults (no reduced-motion preference in the test browser)');
+  const settingsRaw=await page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.settings.v1'));
+  if(settingsRaw)assert.deepEqual(Object.keys(JSON.parse(settingsRaw)).filter(k=>/^(reduced_motion|street_)/.test(k)),[],'an untouched settings envelope gains no Phase 2 keys');
   await page.keyboard.press('Shift+F');
   await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.street_view.active);
   await settle();
@@ -25,6 +30,8 @@ export async function verifyStreetView(page,{touch,size,renderedPixels,outputDir
   assert.ok(s.following_player&&!s.in_overview&&!s.in_wide_overview,'street view keeps following the player');
   assert.equal(s.street_view.button.text,'Map view','the button now offers the map view');
   assert.match(s.announcement,/Street view/,'entering street view is announced');
+  const portrait=before.viewport_width<before.viewport_height;
+  assert.equal(s.street_view.keep_aspect,portrait?0:1,`the 70 degree angle is ${portrait?'horizontal (KEEP_WIDTH)':'vertical (KEEP_HEIGHT)'} at ${size.width}x${size.height}`);
   // Sky above, street below: median samples across the middle of the upper and lower scene bands.
   const pixels=await renderedPixels(page,`${outputDir}/street-view-${size.width}x${size.height}-${touch?'touch':'mouse'}.png`);
   // Facades and the marker share the upper band with the sky, so count sky-coloured samples (blue over red)
@@ -52,6 +59,12 @@ export async function verifyStreetView(page,{touch,size,renderedPixels,outputDir
   assert.deepEqual(s.street_view.contacts,[],'no contact is left held after the drag');
   assert.ok(Math.abs(s.player_grounding.x-dragBefore.player_grounding.x)<1e-3&&Math.abs(s.player_grounding.z-dragBefore.player_grounding.z)<1e-3,'the drag does not move the player');
   assert.equal(s.map_pinch.active,false,'a look drag never starts the map pinch');
+  // Mouse look (work order 4) is opt-in: an off toggle under the street button for a mouse, none on a touchscreen, and
+  // no press or drag above asked for the mouse. Real pointer capture is checked by hand in headed Chrome.
+  const ml=s.street_view.mouselook_button;
+  if(touch)assert.equal(ml.visible,false,'no Mouse look toggle on a touchscreen');
+  else assert.ok(ml.visible&&ml.width>=44&&ml.height>=44&&ml.y>=s.street_view.button.y+s.street_view.button.height&&ml.text==='Mouse look: off'&&!ml.pressed,`the Mouse look toggle is an off 44 px control under the street button ${JSON.stringify(ml)}`);
+  assert.deepEqual({capture:s.street_view.capture,requests:s.street_view.capture_requests},{capture:'released',requests:0},'with mouse look off no press or drag asks for the mouse');
   const eye={...s.street_view.eye},yaw=s.street_view.yaw_deg;
   // Shift+Right snaps the heading by 30 degrees without detaching from the player.
   await page.keyboard.press('Shift+ArrowRight');await settle();s=await snap();
@@ -62,6 +75,7 @@ export async function verifyStreetView(page,{touch,size,renderedPixels,outputDir
   await page.waitForFunction(()=>!window.__tenderloinGodotA11ySnapshot.street_view.active);
   await settle();s=await snap();
   assert.equal(s.street_view.projection,1,'leaving street view restores the orthographic camera');
+  assert.equal(s.street_view.keep_aspect,before.street_view.keep_aspect,"leaving street view restores the map camera's keep_aspect");
   assert.ok(s.following_player,'leaving street view keeps following the player');
   assert.deepEqual({yaw:s.camera_pose.yaw,pitch:s.camera_pose.pitch,size:s.camera_view_size},{yaw:before.camera_pose.yaw,pitch:before.camera_pose.pitch,size:before.camera_view_size},'the walking map comes back with its own heading, pitch and zoom');
   assert.equal(s.street_view.button.text,'Street view');
