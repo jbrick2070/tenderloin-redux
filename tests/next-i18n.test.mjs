@@ -463,7 +463,8 @@ test('the Settings language row: none while only English exists; English, the sh
   assert.match(row, /if \(!codes\.length\) return '';/);
   assert.match(row, /data-settings/, 'the row carries the [data-settings] marker the async re-render checks');
   assert.match(GAME, /if \(modal\.open && body\.querySelector\('\[data-settings\]'\)\) \{ showSettings\(\);/);
-  assert.match(GAME, /<h2 id="modal-title">Your afternoon\.<\/h2>\$\{languageRowHTML\(\)\}<label class="settings-row" for="volume">/);
+  // The title is GAME_TEXT.showSettings.yourAfternoon, "Your afternoon." (docs/I18N_PLAN.md I2a).
+  assert.match(GAME, /<h2 id="modal-title">\$\{t\(GAME_TEXT\.showSettings\.yourAfternoon\)\}<\/h2>\$\{languageRowHTML\(\)\}<label class="settings-row" for="volume">/);
 });
 
 test('bootstrap strings: English for every key, and a locale without its own falls back to them', () => {

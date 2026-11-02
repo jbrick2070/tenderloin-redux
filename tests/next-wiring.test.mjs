@@ -23,6 +23,8 @@ import { createWorldVisits } from '../browser-next/visits-world.js';
 import { showBubble, spokenText } from '../browser-next/bubble.js';
 import * as sprites from '../browser-next/sprites.js';
 import { EDITION_URL, EDITION_TEXT, swapAction } from '../browser-next/edition.js';
+import { t } from '../browser-next/i18n.js';
+import { GAME_TEXT, tf } from '../browser-next/game-text.js';
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 // A macrotask: every promise the stand-in host settled, and everything queued after it, has run by then (nothing here sets a timer).
@@ -91,7 +93,7 @@ function walkGame({ blocked = () => false, length = 2 } = {}) {
   const findPath = (from, goal) => (blocked(goal) ? [] : Array.from({ length }, (_, i) => ({ x: from.x + (goal.x - from.x) * (i + 1) / length, y: from.y + (goal.y - from.y) * (i + 1) / length })));
   const arrival = LINES.find(line => /^\s+if \(!walkPath\.length\) \{ hint\(\); if \(walkOwner === 'visit'\) \{ walkOwner = null; visits\.walkEnded\(\); \}/.test(line));
   assert.ok(arrival, "renderFrame's arrival line");
-  const game = new Function('visits', 'world', 'state', 'modal', 'ways', 'findPath', 'freshTalk', 'cameraUI', 'hint', 'toast', 'interact', [
+  const game = new Function('visits', 'world', 'state', 'modal', 'ways', 'findPath', 'freshTalk', 'cameraUI', 'hint', 'toast', 'interact', 't', 'tf', 'GAME_TEXT', [
     "let talks = null, arrivedAt = null, nearAt = null, chapterNotice = '', bubble = null, routeSpeech = null;",
     "let walkTarget = null, walkPath = [], walkOwner = null, walkName = '';",
     'const banner = { reset() {} };',
@@ -99,7 +101,7 @@ function walkGame({ blocked = () => false, length = 2 } = {}) {
     `function frame() {\n  if (!modal.open && walkPath.length) {\n    state.player = walkPath.shift();\n${arrival}\n  }\n  visits.tick(0, null);\n}`,
     "function goTo(goal) { return startWalk(goal, { target: { id: 'bea' }, name: 'Bea' }); }",
     'return { resetSession, stopWalk, visitWalk, frame, goTo, walk: () => ({ owner: walkOwner, steps: walkPath.length, name: walkName }) };',
-  ].join('\n'))(visits, world, state, dialog.modal, null, findPath, () => ({}), () => {}, () => {}, () => {}, () => {});
+  ].join('\n'))(visits, world, state, dialog.modal, null, findPath, () => ({}), () => {}, () => {}, () => {}, () => {}, t, tf, GAME_TEXT);
   Object.assign(host, { walk: (goal, options) => game.visitWalk(goal, options), stopWalk: () => game.stopWalk(), walking: () => game.walk().steps > 0, player: () => ({ ...state.player }) });
   shell = createVisits(host, { createEpisodeScreens, createWorldVisits });
   return { host, io, log, dialog, state, game, visits: shell };
@@ -833,7 +835,7 @@ test('game.js swaps to the 3D edition through edition.js: the page link and a Se
   // Settings: the same link in its own row, described by its one-sentence help and guarded. Stay here draws Settings again with
   // the link focused, as Keep my afternoon does for the restart button.
   const settings = declaration('function showSettings(');
-  assert.ok(settings.includes('<div class="edition-row"><p id="swap-edition-settings-help">${EDITION_TEXT.help}</p><a id="swap-edition-settings" class="edition-link" href="${EDITION_URL}" aria-describedby="swap-edition-settings-help">${EDITION_TEXT.link}<span aria-hidden="true">↗</span></a></div>'), 'the Settings row');
+  assert.ok(settings.includes('<div class="edition-row"><p id="swap-edition-settings-help">${t(EDITION_TEXT.help)}</p><a id="swap-edition-settings" class="edition-link" href="${EDITION_URL}" aria-describedby="swap-edition-settings-help">${t(EDITION_TEXT.link)}<span aria-hidden="true">↗</span></a></div>'), 'the Settings row');
   assert.ok(settings.indexOf('id="swap-edition-settings"') < settings.indexOf('id="restart"'), 'above the restart button');
   assert.match(settings, /bindSwap\(\$\('#swap-edition-settings'\), \(\) => \{ showSettings\(\); const link = \$\('#swap-edition-settings'\); link\.focus\(\{ preventScroll: true \}\); link\.scrollIntoView\(\{ block: 'nearest' \}\); \}\);/);
 });
@@ -842,14 +844,14 @@ test('game.js swaps to the 3D edition through edition.js: the page link and a Se
 // they are asked to do, and the event records whether the browser may still follow the link.
 function swapGame({ recovery = null, held = false, sync = () => ({}) } = {}) {
   const log = [];
-  const game = new Function('swapAction', 'EDITION_TEXT', 'log', 'sync', [
+  const game = new Function('swapAction', 'EDITION_TEXT', 'log', 'sync', 't', [
     'let recovery = null, held = false;',
     "function syncStored() { const next = sync(); log.push(['sync']); if ('recovery' in next) recovery = next.recovery; if ('held' in next) held = next.held; }",
     "function offerRecovery(message) { log.push(['offer', message]); }",
     "function confirmSwap(back, origin) { log.push(['confirm', back, origin.id]); }",
     declaration('function swapEdition('),
     'return { swapEdition, set(r, h) { recovery = r; held = h; } };',
-  ].join('\n'))(swapAction, EDITION_TEXT, log, sync);
+  ].join('\n'))(swapAction, EDITION_TEXT, log, sync, t);
   game.set(recovery, held);
   const press = (init = {}) => {
     const event = { type: 'click', button: 0, currentTarget: { id: 'swap-edition' }, prevented: 0, preventDefault() { this.prevented++; }, ...init };
@@ -901,9 +903,9 @@ test('bindSwap guards a click, a modifier click and a middle click on the link, 
 function confirmGame(open) {
   const shown = [], bound = {}, focused = [], assigned = [], modal = { open };
   const el = id => ({ id, focus() { focused.push(id); } }), canvas = el('world'), origin = el('swap-edition');
-  const made = new Function('show', 'bind', '$', 'modal', 'location', 'EDITION_URL', 'EDITION_TEXT', 'canvas',
+  const made = new Function('show', 'bind', '$', 'modal', 'location', 'EDITION_URL', 'EDITION_TEXT', 'canvas', 't',
     `let modalReturnTarget = canvas;\n${declaration('function button(')}\n${declaration('function confirmSwap(')}\nreturn { confirmSwap, target: () => modalReturnTarget };`)(
-    html => { shown.push(html); modal.open = true; }, (id, fn) => { bound[id] = fn; }, selector => el(selector.slice(1)), modal, { assign: url => assigned.push(url) }, EDITION_URL, EDITION_TEXT, canvas);
+    html => { shown.push(html); modal.open = true; }, (id, fn) => { bound[id] = fn; }, selector => el(selector.slice(1)), modal, { assign: url => assigned.push(url) }, EDITION_URL, EDITION_TEXT, canvas, t);
   return { made, shown, bound, focused, assigned, origin, canvas };
 }
 
