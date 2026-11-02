@@ -1,12 +1,20 @@
 # Build status
 
-## Current: 3D street view, Phase 1 - November 2, 2026 UTC
+## Current: 3D street view, Phase 2 and the playtest fixes, deployed - November 2, 2026 UTC
+
+Phase 2 of `docs/FIRST_PERSON_EXECUTION.md` is on main and deployed to Pages at the creator's request ("Deploy now"), so it can be tried on a phone. It adds drag-look with tap routing, a touch walk stick, the `street_turn` step (30°, 45° or smooth), opt-in mouse look with pointer lock, the settings keys in the Godot v1 envelope only, reduced motion (seeded from the browser, with an Info control), and a portrait-aware field of view. It also carries every confirmed finding from two code reviews and three playtests (Codex and agy on Phase 1, Codex on Phase 2; `docs/first-person-advice/playtest-scorecard.md`). Notable rule change: walking by hand west of Taylor Street now turns street view off and says why, since suspending there flipped the camera with a held W; a tapped route to the west still suspends and resumes.
+
+Evidence: the formal Godot suite PASS on `8285794` (23 street-view groups); the street-view checks PASS on `105f841` (24 groups), each new check failing with its fix turned off; 838 Node tests and `npm run check` on the merge; the full `godot:browser` suite PASS earlier on `5dd0fb0`; the reduced-motion seed probed in Chrome both ways. Pages reruns `npm test`, the formal suite and the export before it publishes.
+
+Open: the final clean-checkout browser run on the merged tree was skipped to deploy now (a run on `ab7d1c6` failed once in an orbital timing step under load and was stopped later); agy's Phase 2 playtest was still running; no real-phone check yet; the marker and talk prompt still sit at map heights (Phase 4).
+
+## 3D street view, Phase 1 - November 2, 2026 UTC
 
 The Godot edition has an optional eye-level street view on the opening block (Shift+F or the "Street view" button; `godot/street_view.gd`, hooks in `main.gd`), per `docs/FIRST_PERSON_PLAN.md` Phase 1, after the Phase 0 spikes (`docs/first-person-advice/phase0/RESULTS.md`). Every session starts in the map view, which is unchanged when street view is off. Two outside reviews (Codex, then agy arbitrating) were checked line by line and their confirmed findings fixed. `docs/FIRST_PERSON_EXECUTION.md` is the reviewed work plan for Phases 2-7.
 
 Evidence on a clean checkout of `761e91c`: `godot:import` and `godot:export` (pck 1,489,888 bytes), `npm run check`, 838 Node tests, `npm run godot:browser` PASS (now including the street-view step at 1100x760, 390x667 and 320x667: perspective, sky above and street below, snap turn, button and Shift+F round trips, map pose kept), `next:browser`, `next:visits`, `next:ending` PASS; the formal Godot suite PASS on the working tree with 12 street-view groups. An earlier clean run on `103cb2f` failed one Power Story step (a Stop tap landing after arrival under heavy load); it passed at every size on `761e91c` and is treated as a load race.
 
-Open: not deployed; Chrome only; no phone or human playtest of street view yet (prompt for Codex and agy in `docs/first-person-advice/playtest-prompt.md`); Phase 2 (drag-look, touch stick, settings, reduced motion, opt-in mouse capture) is being built on branch `street-phase2`.
+Open at the time: not deployed; Chrome only; Phase 2 was being built on branch `street-phase2` (since merged and deployed, above).
 
 ## Current: 2D fork Phase 3, side stories, surprises and landmarks - November 1, 2026 UTC
 

@@ -4814,7 +4814,7 @@ func update_speech_bubble(delta: float) -> void:
 	refresh_speech_bubble_wrap()
 	var pop := clampf((speech_bubble_age + delta) / 0.2, 0.0, 1.0)
 	speech_bubble_node.scale = Vector3.ONE * ((0.6 + 0.4 * (1.0 - pow(1.0 - pop, 3.0))) * speech_bubble_base_scale())
-	speech_bubble_node.position = speech_bubble_anchor_pos + Vector3.UP * (sin(speech_bubble_age * 2.1) * 0.06)
+	speech_bubble_node.position = speech_bubble_anchor_pos + Vector3.UP * (0.0 if reduced_motion_on() else sin(speech_bubble_age * 2.1) * 0.06)
 	speech_bubble_node.visible = true
 	var area := play_area_rect().grow(-2.0)
 	var banner_visible := reward_banner != null and reward_banner.is_visible_in_tree()
@@ -5063,7 +5063,7 @@ func build_street_trees() -> void:
 
 func update_tree_sway(delta: float) -> void:
 	wind_clock = wrapf(wind_clock + delta, 0.0, 3600.0)
-	var gust := 0.75 + 0.25 * sin(wind_clock * 0.37)
+	var gust := 0.0 if reduced_motion_on() else 0.75 + 0.25 * sin(wind_clock * 0.37) # Reduced motion: canopies at rest.
 	for i in range(park_tree_canopies.size()):
 		var cn := park_tree_canopies[i]
 		if cn == null:
@@ -5949,14 +5949,15 @@ func update_celebration_burst(delta: float) -> void:
 		var progress := clampf(celebration_burst_age / 2.0, 0.0, 1.0)
 		var ring_r := 0.55 + progress * 1.65
 		var lift := progress * 1.75
+		var spin := 0.0 if reduced_motion_on() else 1.0 # Reduced motion: the ring still widens and lifts, without spinning.
 		for g_i in range(celebration_gem_meshes.size()):
 			var gem := celebration_gem_meshes[g_i]
 			if gem == null:
 				continue
-			var ang := TAU * float(g_i) / float(celebration_gem_meshes.size()) + celebration_burst_age * 2.8
-			var bob := sin(celebration_burst_age * 5.0 + float(g_i)) * 0.16
+			var ang := TAU * float(g_i) / float(celebration_gem_meshes.size()) + celebration_burst_age * 2.8 * spin
+			var bob := sin(celebration_burst_age * 5.0 + float(g_i)) * 0.16 * spin
 			gem.position = Vector3(cos(ang) * ring_r, lift + bob, sin(ang) * ring_r)
-			gem.rotation = Vector3(celebration_burst_age * 2.2, ang, celebration_burst_age * 1.7)
+			gem.rotation = Vector3(celebration_burst_age * 2.2 * spin, ang, celebration_burst_age * 1.7 * spin)
 			gem.scale = Vector3.ONE * clampf(1.15 - progress * 0.75, 0.25, 1.15)
 		if celebration_burst_label != null:
 			celebration_burst_label.position = Vector3(0.0, 1.25 + lift * 0.85, 0.0)
@@ -6280,8 +6281,9 @@ func update_guide_marker(obj: Dictionary = {}) -> void:
 	guide_marker_target_name = objective_target_name(obj)
 	var s := screen_constant_scale(30.0, guide_marker_target + Vector3.UP * 2.0)
 	guide_marker.scale = Vector3.ONE * s
-	guide_marker.position = guide_marker_target + Vector3.UP * (sin(ui_clock * 2.6) * 0.14 * s)
-	guide_marker.rotation.y = wrapf(ui_clock * 1.4, -PI, PI)
+	var still := reduced_motion_on()
+	guide_marker.position = guide_marker_target + Vector3.UP * (0.0 if still else sin(ui_clock * 2.6) * 0.14 * s)
+	guide_marker.rotation.y = 0.0 if still else wrapf(ui_clock * 1.4, -PI, PI)
 
 func build_talk_prompt() -> void:
 	talk_prompt_node = Node3D.new()
@@ -6352,6 +6354,8 @@ func talk_prompt_screen_rect() -> Rect2:
 	var text_size := ThemeDB.fallback_font.get_string_size(talk_prompt_label.text, HORIZONTAL_ALIGNMENT_CENTER, -1, 22)
 	var scale_px := SPEECH_BUBBLE_PIXEL * talk_prompt_node.scale.y / screen_constant_scale(1.0, talk_prompt_node.global_position)
 	var size := Vector2(text_size.x + 24.0, text_size.y + 26.0) * scale_px
+	if street_view_active() and camera.is_position_behind(talk_prompt_node.global_position):
+		return Rect2() # At eye level the prompt can sit on or behind the camera plane, which has no screen point.
 	var anchor := camera.unproject_position(talk_prompt_node.global_position)
 	return Rect2(anchor - Vector2(size.x * 0.5, size.y), size)
 
@@ -7185,18 +7189,52 @@ func play_area_rect() -> Rect2:
 	return Rect2(8.0, top, maxf(right - 8.0, 1.0), maxf(bottom - top, 1.0))
 
 ## Edge-of-screen arrow with name and distance when the next target is off-screen.
+## The guide arrow sits on the play area's inset edge; the street view controls (button, Mouse look, stick) sit
+## on that edge too. A 40 px arrow box that meets one slides along the edge to the nearer side of it.
+func clear_of_street_controls(pos: Vector2, inset: Rect2, rects: Array[Rect2]) -> Vector2:
+	var box := Rect2(pos - Vector2(20.0, 20.0), Vector2(40.0, 40.0))
+	var hit := false
+	for r in rects:
+		hit = hit or box.intersects(r)
+	if not hit:
+		return pos
+	var best := pos
+	var best_d := INF
+	for r in rects:
+		for c in [Vector2(r.position.x - 22.0, pos.y), Vector2(r.end.x + 22.0, pos.y), Vector2(pos.x, r.position.y - 22.0), Vector2(pos.x, r.end.y + 22.0)]:
+			if not inset.grow(0.5).has_point(c):
+				continue
+			var cb := Rect2(c - Vector2(20.0, 20.0), Vector2(40.0, 40.0))
+			var free := true
+			for other in rects:
+				free = free and not cb.intersects(other)
+			if free and c.distance_to(pos) < best_d:
+				best_d = c.distance_to(pos)
+				best = c
+	return best
+
 func update_guide_arrow() -> void:
 	if guide_arrow == null or camera == null:
 		return
 	if guide_marker == null or not guide_marker.visible or not speech_bubble_anchor.is_empty():
 		guide_arrow.visible = false
 		return
-	var screen := camera.unproject_position(guide_marker_target)
+	# At eye level a target on or behind the camera plane has no screen point; the heading branch below places it.
+	var eye_behind := street_view_active() and camera.is_position_behind(guide_marker_target)
+	var screen := Vector2.ZERO if eye_behind else camera.unproject_position(guide_marker_target)
 	var area := play_area_rect()
 	if area.size.x <= 24.0 or area.size.y <= 24.0:
 		guide_arrow.visible = false
 		return
-	if camera.is_position_behind(guide_marker_target):
+	if eye_behind:
+		# At eye level the marker floats above the eye, so mirroring its projection would point up for a target behind.
+		# Use the heading instead: ahead is up, behind is down (turn around), left and right are left and right.
+		var local: Vector3 = camera.global_transform.basis.inverse() * (guide_marker_target - camera.global_position)
+		var flat := Vector2(local.x, local.z)
+		if flat.length_squared() < 1e-6:
+			flat = Vector2(0.0, 1.0)
+		screen = area.get_center() + flat.normalized() * 100000.0
+	elif camera.is_position_behind(guide_marker_target):
 		# A perspective camera mirrors points behind it; point the arrow the real way, well outside the area.
 		screen = area.get_center() - (screen - area.get_center()).normalized() * 100000.0
 	if area.grow(-12.0).has_point(screen):
@@ -7211,6 +7249,8 @@ func update_guide_arrow() -> void:
 	var half := inset.size * 0.5
 	var t := minf(half.x / maxf(absf(dir.x), 1e-4), half.y / maxf(absf(dir.y), 1e-4))
 	guide_arrow.position = center + dir * t
+	if street_view != null:
+		guide_arrow.position = clear_of_street_controls(guide_arrow.position, inset, street_view.occupied_rects())
 	guide_arrow_poly.rotation = dir.angle()
 	var dist := player_xz().distance_to(Vector2(guide_marker_target.x, guide_marker_target.z))
 	var arrow_title := guide_marker_target_name
@@ -7225,8 +7265,8 @@ func update_guide_arrow() -> void:
 	lbl_global.y = clampf(lbl_global.y, area.position.y + 7.0, maxf(area.position.y + 7.0, area.end.y - lbl_size.y - 7.0))
 	# Keep the outlined objective name clear of the Talk prompt and transient UI.
 	var occupied: Array[Rect2] = []
-	if street_view != null and street_view.button_visible():
-		occupied.append(street_view.button.get_global_rect().grow(6.0))
+	if street_view != null:
+		occupied.append_array(street_view.occupied_rects())
 	if bea_invitation != null and bea_invitation.inspection_rect().has_area():
 		occupied.append(bea_invitation.inspection_rect())
 	if mural_inspection_rect().has_area(): occupied.append(mural_inspection_rect())
@@ -7738,6 +7778,8 @@ func set_header_details(expanded: bool, refit_map := true) -> void:
 		toggle.set_pressed_no_signal(expanded)
 	if before_streets != null and before_streets.entry != null:
 		before_streets.entry.visible = expanded and before_streets.idle_entry_available()
+	if street_view != null:
+		street_view.refresh_motion_row() # The opening entry's row also holds Reduced motion.
 	# Visibility updates minimum height immediately; retain width and apply that
 	# height before camera framing or overlay fitting reads the playable area.
 	header_panel.offset_bottom = header_panel.offset_top + header_panel.get_combined_minimum_size().y
@@ -7768,6 +7810,8 @@ func update_conversation_ui(delta: float) -> void:
 		var show_opening: bool = header_details_expanded and before_streets.idle_entry_available()
 		if before_streets.entry.visible != show_opening:
 			before_streets.entry.visible = show_opening
+			if street_view != null:
+				street_view.refresh_motion_row() # The entry's row (with Reduced motion) follows it.
 			header_panel.offset_bottom = header_panel.offset_top + header_panel.get_combined_minimum_size().y
 			layout_walking_controls_and_hub()
 	objective_refresh_timer -= delta
@@ -8308,7 +8352,7 @@ func resume_walking_view() -> void:
 	in_wide_overview = false
 	following_player = true
 
-func walk_step(input_dir: Vector2, delta: float) -> bool:
+func walk_step(input_dir: Vector2, delta: float, magnitude: float = 1.0) -> bool: # magnitude < 1 from the street view's touch stick
 	if power_story != null: power_story.cancel_intent()
 	if dog_story != null: dog_story.cancel_intent()
 	if lantern_procession != null: lantern_procession.cancel_intent()
@@ -8336,7 +8380,7 @@ func walk_step(input_dir: Vector2, delta: float) -> bool:
 	var dir := input_dir.normalized()
 	if player_visual != null:
 		player_visual.rotation.y = atan2(dir.x, dir.y)
-	var total_dist := WALK_SPEED_M_PER_S * delta
+	var total_dist := WALK_SPEED_M_PER_S * delta * magnitude
 	var steps := maxi(1, int(ceil(total_dist / 0.20)))
 	var step_len := total_dist / float(steps)
 	var moved := false
@@ -9223,6 +9267,10 @@ func panel_camera_pose() -> Array:
 
 func street_view_active() -> bool:
 	return street_view != null and street_view.active()
+
+## The reduced-motion setting (street_view.gd keeps it with the other Phase 2 settings); off unless chosen or seeded.
+func reduced_motion_on() -> bool:
+	return street_view != null and street_view.reduced_motion
 
 ## The player's screen point for the bridge. At eye level the player is the camera, so report the
 ## viewport centre instead of unprojecting a point on the camera plane.
@@ -10712,6 +10760,8 @@ func write_save_json(key: String, path: String, raw: String) -> bool:
 
 func save_godot_settings() -> bool:
 	var env := {"schema": "tenderloin-redux.godot.settings.v1", "version": 1, "neighborhood_voices": voices_enabled, "reward_sounds": reward_sounds_enabled}
+	if street_view != null:
+		env.merge(street_view.settings_fields()) # Optional Phase 2 keys, only when they differ from the defaults.
 	settings_save_failed = not write_save_json(GODOT_SETTINGS_WEB_STORAGE_KEY, settings_path, JSON.stringify(env))
 	update_objective_ui()
 	return not settings_save_failed
@@ -10719,6 +10769,8 @@ func save_godot_settings() -> bool:
 func load_godot_settings() -> bool:
 	settings_save_failed = false
 	set_reward_sounds_enabled(true, false)
+	if street_view != null:
+		street_view.reset_settings()
 	var raw_str := ""
 	if OS.has_feature("web"):
 		var web_val: Variant = JavaScriptBridge.eval("try { window.localStorage.getItem('%s') || ''; } catch (_e) { ''; }" % GODOT_SETTINGS_WEB_STORAGE_KEY, true)
@@ -10738,6 +10790,8 @@ func load_godot_settings() -> bool:
 	if String(env.get("schema", "")) != "tenderloin-redux.godot.settings.v1":
 		set_voices_enabled(false, false)
 		return false
+	if street_view != null:
+		street_view.apply_settings(env)
 	var nv_val: Variant = env.get("neighborhood_voices", false)
 	var sounds_val: Variant = env.get("reward_sounds", true)
 	if sounds_val is bool:
@@ -10752,6 +10806,8 @@ func clear_godot_settings() -> void:
 	set_reward_sounds_enabled(true, false)
 	voices_custom_json_override = ""
 	voices_simulate_error = false
+	if street_view != null:
+		street_view.reset_settings()
 	if not settings_path.is_empty() and FileAccess.file_exists(settings_path):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(settings_path))
 	if OS.has_feature("web"):
@@ -10945,6 +11001,8 @@ func resume_voices() -> bool:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_WINDOW_FOCUS_OUT or what == NOTIFICATION_APPLICATION_FOCUS_OUT:
 		cancel_map_pinch()
+		if street_view != null:
+			street_view.release_capture() # Mouse look never outlives focus.
 		close_phone_disclosure()
 		phone_primary_transition = false
 		walk_control_press_handled = false
@@ -14272,8 +14330,8 @@ func update_readable_scene_labels() -> void:
 			occupied.append(talk_rect.grow(4.0))
 	if is_story_card_visible():
 		occupied.append(story_card.get_global_rect())
-	if street_view != null and street_view.button_visible():
-		occupied.append(street_view.button.get_global_rect().grow(6.0))
+	if street_view != null:
+		occupied.append_array(street_view.occupied_rects())
 	var ordered := readable_scene_labels.duplicate()
 	ordered.sort_custom(func(a: Label3D, b: Label3D) -> bool: return scene_caption_priority(a) < scene_caption_priority(b))
 	for label in ordered:
@@ -14304,9 +14362,11 @@ func update_readable_scene_labels() -> void:
 			label.set_meta("caption_measure_key", measure_key)
 			label.set_meta("caption_size", ThemeDB.fallback_font.get_multiline_string_size(label.text, HORIZONTAL_ALIGNMENT_CENTER, wrap_width, label.font_size) + Vector2(20.0, 20.0))
 		var caption_size: Vector2 = label.get_meta("caption_size")
-		var caption_center := camera.unproject_position(label.global_position)
+		var caption_behind := camera.is_position_behind(label.global_position)
+		# A point on the eye's camera plane has no screen position; it is behind for this purpose.
+		var caption_center := Vector2.ZERO if caption_behind else camera.unproject_position(label.global_position)
 		var rect := Rect2(caption_center - caption_size * 0.5, caption_size)
-		label.visible = label.visible and not camera.is_position_behind(label.global_position) and play_area_rect().encloses(rect)
+		label.visible = label.visible and not caption_behind and play_area_rect().encloses(rect)
 		if label.name == "TimePortalLabel":
 			label.visible = false # Combined with the hub caption in the close view.
 		if label.has_meta("neighbor_index"):
@@ -14376,6 +14436,8 @@ func _physics_process(delta: float) -> void:
 		if (absf(yaw_dir) > 0.0 or absf(pitch_dir) > 0.0) and not street_view_active():
 			rotate_camera_by_delta(yaw_dir * delta * 1.65, pitch_dir * delta * 0.75)
 			return
+		if street_view_active():
+			street_view.hold_turn(yaw_dir, delta) # Smooth turning only; the snap settings turn on the key press.
 	var input_vec := Vector2.ZERO
 	if not shift_held:
 		if Input.is_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_D):
@@ -14395,6 +14457,10 @@ func _physics_process(delta: float) -> void:
 			input_vec.y += 1.0
 		if Input.is_key_pressed(KEY_UP):
 			input_vec.y -= 1.0
+	var walk_magnitude := 1.0
+	if street_view_active() and input_vec.length_squared() == 0.0:
+		input_vec = street_view.stick_vector() # Keys win over the touch stick.
+		walk_magnitude = input_vec.length()
 	if input_vec.length_squared() > 0.0:
 		if get_viewport().gui_get_focus_owner() != null:
 			get_viewport().gui_release_focus()
@@ -14402,7 +14468,7 @@ func _physics_process(delta: float) -> void:
 			input_vec = street_view.walk_input(input_vec)
 		elif absf(camera_yaw) > 1e-4:
 			input_vec = input_vec.rotated(-camera_yaw)
-		walk_step(input_vec, delta)
+		walk_step(input_vec, delta, walk_magnitude)
 		var p_now := player_xz()
 		if last_proximity_neighbor >= 0 and last_proximity_neighbor < neighbors.size():
 			if p_now.distance_to(neighbor_xz(last_proximity_neighbor)) > ARRIVAL_DISTANCE_M + 0.75:
@@ -14439,6 +14505,8 @@ func is_screen_point_in_ui(screen_pos: Vector2) -> bool:
 		return true
 	if street_view != null and street_view.button_visible() and street_view.button.get_global_rect().has_point(screen_pos):
 		return true
+	if street_view != null and street_view.mouselook_visible() and street_view.mouselook_btn.get_global_rect().has_point(screen_pos):
+		return true
 	return false
 
 func screen_to_ground_xz(screen_pos: Vector2) -> Vector2:
@@ -14456,6 +14524,8 @@ func screen_to_ground_xz(screen_pos: Vector2) -> Vector2:
 
 func neighbor_screen_distance(index: int, screen_pos: Vector2) -> float:
 	var base_pos: Vector3 = neighbors[index].pos
+	if street_view_active():
+		return street_view.body_screen_distance(base_pos, screen_pos)
 	var best_d := INF
 	for h_off in [0.9, 2.3, 4.1]:
 		var d := tap_screen_distance(base_pos + Vector3(0.0, h_off, 0.0), screen_pos)
@@ -14609,7 +14679,7 @@ func pan_camera_by_screen_delta(delta_px: Vector2) -> void:
 	target.z = clampf(target.z, walk_bounds.position.y, walk_bounds.end.y)
 	update_camera()
 
-func cancel_map_pinch() -> void:
+func cancel_map_pinch(keep_eye_contacts := false) -> void:
 	map_touch_contacts.clear()
 	map_pinch_active = false
 	map_pinch_blocked = false
@@ -14618,6 +14688,8 @@ func cancel_map_pinch() -> void:
 	pointer_active = false
 	pointer_dragging = false
 	orbit_dragging = false
+	if street_view != null and not keep_eye_contacts:
+		street_view.clear_contacts() # Eye-level contact roles end with every mode flip and every focus loss.
 
 func map_pinch_input(event: InputEvent) -> bool:
 	# Mouse emulation belongs to the original one-finger path until a second contact.
@@ -14805,6 +14877,9 @@ func _input(event: InputEvent) -> void:
 	if settle_swallows(event):
 		get_viewport().set_input_as_handled()
 		return
+	if street_view != null and street_view.capture_input(event): # A held mouse takes Esc and motion before anything else.
+		get_viewport().set_input_as_handled()
+		return
 	if is_habitat_room_visible():
 		habitat_room.handle_input(event)
 		return
@@ -14833,7 +14908,7 @@ func _input(event: InputEvent) -> void:
 		if phone_talking(): conv_next_btn.grab_focus()
 		get_viewport().set_input_as_handled()
 		return
-	if map_pinch_input(event):
+	if not street_view_active() and map_pinch_input(event): # Eye-level contacts take roles in street_view.pointer_input instead.
 		get_viewport().set_input_as_handled()
 		return
 	if event is InputEventKey and event.pressed and is_story_card_visible():
@@ -14927,14 +15002,16 @@ func _unhandled_input(event: InputEvent) -> void:
 			else: close_mural_workshop()
 		get_viewport().set_input_as_handled()
 		return
+	if street_view_active() and street_view.pointer_input(event):
+		return # Eye-level contacts: look, the walk stick, or a tap.
 	if event is InputEventKey and event.pressed and not event.echo:
 		var k: Key = event.keycode if event.keycode != KEY_NONE else event.physical_keycode
 		if is_story_card_visible() and not (k in [KEY_SHIFT, KEY_CTRL, KEY_ALT, KEY_META]):
 			if k == KEY_ESCAPE or k == KEY_ENTER or k == KEY_KP_ENTER or k == KEY_SPACE:
 				continue_story(k != KEY_ESCAPE)
 				return
-			if startup_story_pending and k in [KEY_W, KEY_A, KEY_S, KEY_D, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT]:
-				continue_story()
+			if startup_story_pending and (k in [KEY_W, KEY_A, KEY_S, KEY_D, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT] or (k == KEY_F and event.shift_pressed)):
+				continue_story() # Shift+F also accepts the opening card first, so street view starts with the music on.
 			else:
 				hide_story_card()
 		match k:
@@ -15422,6 +15499,9 @@ func clamp_view_size(value: float) -> float:
 
 func zoom(factor: float) -> void:
 	if street_view_active():
+		var note := "Zoom works in the map view. Shift+F returns to it."
+		if last_a11y_announcement != note:
+			announce_a11y_status(note) # The Zoom buttons stay put at eye level; say why they do nothing (once per run of presses).
 		return
 	in_overview = false
 	in_wide_overview = false
@@ -16268,9 +16348,10 @@ func make_ui() -> void:
 	before_streets.entry.name = "BeforeTheseStreetsRevisit"
 	before_streets.entry.hide()
 	column.move_child(before_streets.entry,info.get_index()+1)
+	street_view.setup_motion_row(before_streets.entry) # Reduced motion shares the entry's row in Info.
 	var vp := get_viewport()
 	var resize_controls := func():
-		cancel_map_pinch()
+		cancel_map_pinch(street_view_active()) # A held stick or look drag outlives a URL bar collapse or a rotation.
 		close_phone_disclosure()
 		if not is_instance_valid(controls) or not is_inside_tree():
 			return
