@@ -3,7 +3,7 @@ import { writeFile } from 'node:fs/promises';
 // Street view (docs/FIRST_PERSON_PLAN.md, Phase 1) in the real web build: every session starts in the
 // map view; Shift+F gives a perspective eye with sky above and street below; the button and Shift+F
 // hand back the orthographic walking view. Phase 2: a mouse or touch drag turns the eye and its release
-// never routes; the walk stick is a touchscreen control; the 70 degree angle is vertical in landscape and
+// never routes; the named walk stick is a touchscreen control at both phone sizes and walks the player; the 70 degree angle is vertical in landscape and
 // horizontal in portrait, and leaving restores the map camera's keep_aspect; reduced motion starts off with no
 // saved choice and the default settings envelope gains no keys; mouse look is an off toggle that asks for nothing. Runs right after Start Exploring at each supported size.
 export async function verifyStreetView(page,{touch,size,renderedPixels,outputDir='artifacts'}) {
@@ -44,21 +44,27 @@ export async function verifyStreetView(page,{touch,size,renderedPixels,outputDir
   assert.ok(ground.sky<=Math.floor(ground.total*0.05),`the lower band is street, not sky, at y=${groundY}: ${ground.sky}/${ground.total} sky samples`);
   // Phase 2 (docs/FIRST_PERSON_EXECUTION.md section 2): the walk stick is a touchscreen control only.
   if(!touch)assert.equal(s.street_view.stick.visible,false,'no walk stick without a touchscreen');
-  if(touch&&size.width===390&&size.height===667)assert.ok(s.street_view.stick.visible&&s.street_view.stick.width>=44&&s.street_view.stick.height>=44,`the walk stick shows on a touchscreen ${JSON.stringify(s.street_view.stick)}`);
+  if(touch)assert.ok(s.street_view.stick.visible&&s.street_view.stick.width>=44&&s.street_view.stick.height>=44&&s.street_view.stick.name==='Walk stick',`the named walk stick shows on a touchscreen at ${size.width}x${size.height} ${JSON.stringify(s.street_view.stick)}`);
   // A drag in the play area turns the eye (page.mouse on desktop, a touchscreen drag on phones) and its release never routes.
   const area=s.play_area,dragPx=Math.min(90,area.width*0.3),fromX=area.x+area.width*0.3,fromY=area.y+area.height*0.42;
   const px=canvas.x+fromX*sx,py=canvas.y+fromY*sy,toX=canvas.x+(fromX+dragPx)*sx,steps=6;
   const dragBefore=s,dragYaw=s.street_view.yaw_deg;
   if(touch){const cdp=await page.context().newCDPSession(page);try{await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:px,y:py,id:0}]});for(let i=1;i<=steps;i++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:px+(toX-px)*i/steps,y:py,id:0}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});}finally{await cdp.detach();}}
   else{await page.mouse.move(px,py);await page.mouse.down();await page.mouse.move(toX,py,{steps});await page.mouse.up();}
+  // Poll the positive outcome: the queued input has turned the eye and released its contact.
+  await page.waitForFunction(([y0,min])=>{const v=window.__tenderloinGodotA11ySnapshot.street_view;return Math.abs(((y0-v.yaw_deg)%360+540)%360-180)>min&&v.contacts.length===0;},[dragYaw,dragPx*0.0085*180/Math.PI*0.5]);
   await settle();s=await snap();
   const dragTurn=((dragYaw-s.street_view.yaw_deg)%360+540)%360-180,dragExpect=dragPx*0.0085*180/Math.PI;
-  assert.ok(dragTurn>dragExpect*0.5&&dragTurn<dragExpect*1.2,`a ${Math.round(dragPx)} px ${touch?'touch':'mouse'} drag turns the eye right by about ${dragExpect.toFixed(1)} degrees (${dragTurn.toFixed(1)})`);
+  assert.ok(dragTurn>dragExpect*0.8&&dragTurn<dragExpect*1.2,`a ${Math.round(dragPx)} px ${touch?'touch':'mouse'} drag turns the eye right by about ${dragExpect.toFixed(1)} degrees (${dragTurn.toFixed(1)})`);
   assert.ok(s.street_view.active&&s.following_player,'the drag keeps the eye on the player');
   assert.equal(s.street_view.taps_routed,dragBefore.street_view.taps_routed,'the release after a drag does not route');
   assert.deepEqual(s.street_view.contacts,[],'no contact is left held after the drag');
   assert.ok(Math.abs(s.player_grounding.x-dragBefore.player_grounding.x)<1e-3&&Math.abs(s.player_grounding.z-dragBefore.player_grounding.z)<1e-3,'the drag does not move the player');
   assert.equal(s.map_pinch.active,false,'a look drag never starts the map pinch');
+  // On a touchscreen the stick walks the player: a pull up from its centre, held until the player has moved, then released.
+  if(touch){const st=s.street_view.stick,cx=canvas.x+(st.x+st.width/2)*sx,cy=canvas.y+(st.y+st.height/2)*sy,from=s.player_grounding;const cdp=await page.context().newCDPSession(page);try{await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:cx,y:cy,id:0}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:cx,y:cy-st.height*0.4*sy,id:0}]});await page.waitForFunction(f=>{const g=window.__tenderloinGodotA11ySnapshot.player_grounding;return Math.hypot(g.x-f.x,g.z-f.z)>0.3;},from);await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});}finally{await cdp.detach();}
+    await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.street_view.contacts.length===0);await settle();s=await snap();
+    assert.ok(s.street_view.active&&s.following_player&&s.street_view.taps_routed===dragBefore.street_view.taps_routed,'the stick walks the player at eye level and its release does not tap');}
   // Mouse look (work order 4) is opt-in: an off toggle under the street button for a mouse, none on a touchscreen, and
   // no press or drag above asked for the mouse. Real pointer capture is checked by hand in headed Chrome.
   const ml=s.street_view.mouselook_button;

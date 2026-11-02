@@ -106,6 +106,7 @@ func setup(g: Node, layer: Node) -> void:
 	stick.name = "StreetStick"
 	stick.size = STICK_SIZE
 	stick.mouse_filter = Control.MOUSE_FILTER_IGNORE # Its contact is routed by role in `pointer_input`, never by the GUI.
+	stick.accessibility_name = "Walk stick"
 	stick.visible = false
 	var ring := Panel.new()
 	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -647,9 +648,15 @@ func write_mouse_mode(mode: int) -> void:
 		return
 	Input.mouse_mode = mode as Input.MouseMode
 
-## A grant is only kept while the eye is active with nothing over it.
+## A grant is only kept while the eye is active with nothing over it: no story card, and no hub, conversation,
+## mural or music panel (those open over the eye without suspending it, and their buttons need the mouse).
 func capture_allowed() -> bool:
-	return street_mouselook and active() and not game.is_story_card_visible()
+	return street_mouselook and mouselook_offered() and active() and not game.is_story_card_visible() and not game.any_side_panel_visible()
+
+## The toggle is a mouse control; a touchscreen has the stick and drag-look, so a saved `street_mouselook` asks for
+## nothing there, where the toggle that would turn it off is not shown.
+func mouselook_offered() -> bool:
+	return not touch_screen
 
 ## From the left-press handler only, so the browser sees the request inside the click. True when one was made.
 func request_capture() -> bool:
@@ -807,7 +814,7 @@ func refresh_button() -> void:
 	# Mouse look sits under the street button at eye level, for a mouse; a touchscreen has the stick and drag-look.
 	mouselook_btn.size = BUTTON_SIZE
 	mouselook_btn.position = button.position + Vector2(0.0, BUTTON_SIZE.y + 8.0)
-	mouselook_btn.visible = button.visible and active() and not touch_screen and area.size.y >= BUTTON_SIZE.y * 5.0
+	mouselook_btn.visible = button.visible and active() and mouselook_offered() and area.size.y >= BUTTON_SIZE.y * 5.0
 
 func snapshot() -> Dictionary:
 	var cam: Camera3D = game.camera
@@ -824,7 +831,7 @@ func snapshot() -> Dictionary:
 		"projection": int(cam.projection) if cam != null else -1,
 		"eye": {"x": cam.global_position.x, "y": cam.global_position.y, "z": cam.global_position.z} if cam != null else {},
 		"button": {"visible": button_visible(), "text": button.text if button != null else "", "x": rect.position.x, "y": rect.position.y, "width": rect.size.x, "height": rect.size.y},
-		"stick": {"visible": stick_visible(), "x": stick_rect.position.x, "y": stick_rect.position.y, "width": stick_rect.size.x, "height": stick_rect.size.y},
+		"stick": {"visible": stick_visible(), "name": stick.accessibility_name if stick != null else "","x": stick_rect.position.x, "y": stick_rect.position.y, "width": stick_rect.size.x, "height": stick_rect.size.y},
 		"turn": street_turn,
 		"fov": street_fov,
 		"keep_aspect": int(cam.keep_aspect) if cam != null else -1,

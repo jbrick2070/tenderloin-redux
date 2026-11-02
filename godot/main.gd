@@ -14637,7 +14637,7 @@ func pan_camera_by_screen_delta(delta_px: Vector2) -> void:
 	target.z = clampf(target.z, walk_bounds.position.y, walk_bounds.end.y)
 	update_camera()
 
-func cancel_map_pinch() -> void:
+func cancel_map_pinch(keep_eye_contacts := false) -> void:
 	map_touch_contacts.clear()
 	map_pinch_active = false
 	map_pinch_blocked = false
@@ -14646,7 +14646,7 @@ func cancel_map_pinch() -> void:
 	pointer_active = false
 	pointer_dragging = false
 	orbit_dragging = false
-	if street_view != null:
+	if street_view != null and not keep_eye_contacts:
 		street_view.clear_contacts() # Eye-level contact roles end with every mode flip and every focus loss.
 
 func map_pinch_input(event: InputEvent) -> bool:
@@ -16306,7 +16306,7 @@ func make_ui() -> void:
 	street_view.setup_motion_row(before_streets.entry) # Reduced motion shares the entry's row in Info.
 	var vp := get_viewport()
 	var resize_controls := func():
-		cancel_map_pinch()
+		cancel_map_pinch(street_view_active()) # A held stick or look drag outlives a URL bar collapse or a rotation.
 		close_phone_disclosure()
 		if not is_instance_valid(controls) or not is_inside_tree():
 			return

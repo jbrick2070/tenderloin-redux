@@ -118,6 +118,10 @@ static func burst_sample(game: Node) -> Array:
 	var g: Node3D = game.celebration_gem_meshes[0]
 	return [turns, Vector2(g.position.x, g.position.z).length(), g.position.y, g.scale.x]
 
+## What a scene tap can change: the route, the selection, the eye's rule and the follow. A routed tap changes one.
+static func tap_state(game: Node, sv) -> Array:
+	return [game.current_path.duplicate(), game.selected, game.selected_neighbor, sv.active(), game.following_player]
+
 static func write_text(path: String, raw: String) -> void:
 	var f := FileAccess.open(path, FileAccess.WRITE)
 	if f != null:
@@ -142,12 +146,14 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	var requests_at_start: int = sv.capture_requests
 	var saved_announcement: String = game.last_a11y_announcement
 	var saved_seq: int = game.a11y_announcement_seq
+	var saved_visual_rotation: Vector3 = game.player_visual.rotation # walk_step turns the body.
 	var checks := 0
 
 	# 1. After load: orthographic, street view off.
 	suite.require(cam.projection == Camera3D.PROJECTION_ORTHOGONAL and not sv.active() and not sv.enabled, "after load the camera is orthographic and street view is off")
 	var map_near: float = cam.near
 	var map_far: float = cam.far
+	var map_keep: int = cam.keep_aspect # Read in the map view, so group 18 can tell the eye's value from the map's.
 	checks += 1
 
 	# 2. The toggle gives perspective with the eye 1.6 m above the player and the target on the player.
@@ -417,17 +423,21 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 		await send(suite, mouse_move(look_at + Vector2(30, 0), Vector2(30, 0)))
 		await send(suite, mouse_move(look_at + Vector2(60, 0), Vector2(30, 0)))
 		var turned_by: float = wrapf(sv.yaw - yaw0, -PI, PI)
-		suite.require(absf(turned_by + 60.0 * sv.LOOK_YAW_PER_PX) < 1e-3 and is_equal_approx(sv.pitch, pitch0), "a 60 px left-drag to the right turns the eye right by 60 x 0.0085 rad (%.4f)" % turned_by)
+		suite.require(absf(turned_by + 60.0 * 0.0085) < 1e-3 and is_equal_approx(sv.pitch, pitch0), "a 60 px left-drag to the right turns the eye right by 60 x 0.0085 rad (%.4f)" % turned_by)
 		suite.require(sv.active() and game.following_player and game.player_xz() == spot and game.current_path.is_empty(), "the drag keeps following the player and leaves the player in place")
-		await send(suite, mouse_left(look_at + Vector2(60, 0), false))
+		var yaw_mid: float = sv.yaw
+		await send(suite, mouse_move(look_at + Vector2(60, 40), Vector2(0, 40)))
+		suite.require(sv.yaw == yaw_mid and absf(sv.pitch - (pitch0 - 40.0 * 0.0035)) < 1e-4, "a 40 px drag down tilts the eye down by 40 x 0.0035 rad (%.4f)" % (sv.pitch - pitch0))
+		await send(suite, mouse_left(look_at + Vector2(60, 40), false))
 		suite.require(sv.taps_routed == saved_taps and sv.contacts.is_empty() and game.current_path.is_empty() and sv.active(), "the release after a drag does not route")
 		sv.pitch = -PI / 6.0 # Look down so the tap lands on the street near the player.
 		game.update_camera()
+		var before_tap: Array = tap_state(game, sv)
 		await send(suite, mouse_left(look_at, true))
 		await send(suite, mouse_move(look_at + Vector2(5, 0), Vector2(5, 0)))
 		suite.require(absf(wrapf(sv.yaw - yaw0 - turned_by, -PI, PI)) < 1e-6, "a 5 px wobble does not turn the eye")
 		await send(suite, mouse_left(look_at + Vector2(5, 0), false))
-		suite.require(sv.taps_routed == saved_taps + 1, "a release inside 8 px is a tap into handle_scene_tap")
+		suite.require(sv.taps_routed == saved_taps + 1 and tap_state(game, sv) != before_tap, "a release inside 8 px is a tap into handle_scene_tap, which acts on it (%s -> %s)" % [str(before_tap), str(tap_state(game, sv))])
 	game.stop_walking()
 	if not sv.active():
 		game.end_conversation()
@@ -438,6 +448,17 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	game.update_camera()
 	await suite.process_frame
 	suite.require(sv.active(), "the eye is active again after the tap")
+	# A press on a Control is the GUI's contact: no role is taken, so it neither turns the eye nor taps the street.
+	var btn_at: Vector2 = sv.button.get_global_rect().get_center()
+	var yaw_gui: float = sv.yaw
+	var gui_taps: int = sv.taps_routed
+	var gui_used: bool = sv.pointer_input(mouse_left(btn_at, true)) or sv.pointer_input(touch(4, btn_at, true))
+	suite.require(not gui_used and sv.contacts.is_empty(), "a press on the street button takes no eye-level contact (the GUI role)")
+	sv.pointer_input(touch_drag(4, btn_at + Vector2(-40, 20), Vector2(-40, 20)))
+	sv.pointer_input(mouse_move(btn_at + Vector2(-40, 20), Vector2(-40, 20)))
+	sv.pointer_input(touch(4, btn_at, false))
+	sv.pointer_input(mouse_left(btn_at, false))
+	suite.require(sv.yaw == yaw_gui and sv.taps_routed == gui_taps and sv.contacts.is_empty(), "a GUI contact's drag and release neither turn the eye nor tap")
 	checks += 1
 
 	# 15. Touch: a look drag turns the eye, its emulated mouse never reaches the map path, a second contact neither pinches nor looks, and focus loss clears roles.
@@ -449,6 +470,12 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 		var taps0: int = sv.taps_routed
 		await send(suite, touch(0, look_at, true))
 		suite.require(sv.contacts.has(0) and sv.contacts[0].role == "look" and not game.pointer_active, "a touch at eye level is a look contact; its emulated mouse never arms the map pan")
+		var emulated := mouse_left(look_at, true)
+		emulated.device = InputEvent.DEVICE_ID_EMULATION
+		var emulated_move := mouse_move(look_at + Vector2(50, 0), Vector2(50, 0))
+		emulated_move.device = InputEvent.DEVICE_ID_EMULATION
+		var yaw_em: float = sv.yaw
+		suite.require(sv.pointer_input(emulated) and sv.pointer_input(emulated_move) and sv.contacts.size() == 1 and not sv.contacts.has(sv.MOUSE_CONTACT) and sv.yaw == yaw_em, "a touch's emulated mouse duplicate is used up without a second contact or a second turn")
 		await send(suite, touch_drag(0, look_at + Vector2(50, 0), Vector2(50, 0)))
 		suite.require(absf(wrapf(sv.yaw - yaw0, -PI, PI) + 50.0 * sv.LOOK_YAW_PER_PX) < 1e-3, "a 50 px touch drag turns the eye")
 		await send(suite, touch(1, second, true))
@@ -472,8 +499,23 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 		suite.require(sv.contacts.is_empty(), "cancel_map_pinch clears the contact roles")
 		await send(suite, touch(0, look_at, false))
 		suite.require(sv.taps_routed == taps0, "a release after cancel_map_pinch does not route")
+		sv.pitch = -PI / 6.0 # Look down so the tap lands on the street near the player.
+		game.update_camera()
+		var touch_before: Array = tap_state(game, sv)
+		await send(suite, touch(0, look_at, true))
+		await send(suite, touch_drag(0, look_at + Vector2(4, 0), Vector2(4, 0)))
+		await send(suite, touch(0, look_at + Vector2(4, 0), false))
+		suite.require(sv.taps_routed == taps0 + 1 and tap_state(game, sv) != touch_before, "a touch released inside 8 px is a tap into handle_scene_tap (%s -> %s)" % [str(touch_before), str(tap_state(game, sv))])
+		game.stop_walking()
+		if not sv.active():
+			game.end_conversation()
+			game.frame_player_for_walking()
+		game.player.position = Vector3(spot.x, 0.0, spot.y)
 	sv.yaw = 0.0
+	sv.pitch = 0.0
 	game.update_camera()
+	await suite.process_frame
+	suite.require(sv.active(), "the eye is active again after the touch tap")
 	checks += 1
 
 	# 16. The stick: only on touchscreens; its contact walks along the heading, a look contact may join in either order, keys win, release stops.
@@ -485,12 +527,22 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 		var centre: Vector2 = sv.stick.get_global_rect().get_center()
 		look_at = free_point(game, sv)
 		game.player.position = Vector3(spot.x, 0.0, spot.y)
+		sv.yaw = PI / 2.0 # Facing west, so the physics loop must turn the stick's forward with the eye.
+		game.update_camera()
 		await send(suite, touch(0, centre + Vector2(0, -45), true))
 		suite.require(sv.contacts.has(0) and sv.contacts[0].role == "move" and absf(sv.stick_vector().length() - 0.75) < 0.01, "a contact in the stick is the movement contact (%s)" % str(sv.stick_vector()))
-		for _f in range(6):
+		await suite.physics_frame
+		var held_from: Vector2 = game.player_xz()
+		var held_ticks := 6
+		for _f in range(held_ticks):
 			await suite.physics_frame
-		var walked: Vector2 = game.player_xz() - spot
-		suite.require(walked.length() > 0.1 and walked.normalized().dot(Vector2(0.0, -1.0)) > 0.99 and sv.active() and game.following_player, "holding the stick up walks forward (%s)" % str(walked))
+		var walked: Vector2 = game.player_xz() - held_from
+		var expect_m: float = game.WALK_SPEED_M_PER_S * 0.75 * float(held_ticks) / float(Engine.physics_ticks_per_second)
+		suite.require(walked.normalized().dot(Vector2(-1.0, 0.0)) > 0.99 and absf(walked.length() - expect_m) < expect_m * 0.1 and sv.active() and game.following_player, "holding the stick 0.75 up while facing west walks west at 0.75 of the walking speed (%s, expected %.3f m)" % [str(walked), expect_m])
+		game.get_viewport().size_changed.emit() # The resize handler runs, as when a phone's URL bar collapses.
+		suite.require(sv.contacts.has(0) and sv.contacts[0].role == "move" and absf(sv.stick_vector().length() - 0.75) < 0.01, "a viewport resize keeps the held stick (%s)" % str(sv.contacts))
+		sv.yaw = 0.0
+		game.update_camera()
 		if is_finite(look_at.x):
 			var yaw0: float = sv.yaw
 			await send(suite, touch(1, look_at, true))
@@ -573,9 +625,8 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	# 18. Portrait FOV: the angle is vertical in landscape and horizontal in portrait, a screen-constant label at 3 m
 	# keeps its pixel size between 1100x760 and 320x667, the chosen angle applies, and exit restores keep_aspect.
 	var original_size: Vector2i = suite.root.size
-	var original_keep: int = cam.keep_aspect
 	var label_px := {}
-	for size in [Vector2i(1100, 760), Vector2i(320, 667)]:
+	for size in [Vector2i(1100, 760), Vector2i(390, 667), Vector2i(320, 667)]:
 		suite.root.size = size
 		await suite.process_frame
 		await suite.process_frame
@@ -583,6 +634,12 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 		var portrait: bool = size.x < size.y
 		suite.require(sv.active() and cam.keep_aspect == (Camera3D.KEEP_WIDTH if portrait else Camera3D.KEEP_HEIGHT) and is_equal_approx(cam.fov, 70.0), "the 70 degree angle is %s at %dx%d" % ["horizontal" if portrait else "vertical", size.x, size.y])
 		label_px[size] = screen_label_px(game, sv)
+		if portrait:
+			sv.touch_screen = true
+			await suite.process_frame
+			suite.require(sv.stick_visible() and sv.stick.accessibility_name == "Walk stick" and game.play_area_rect().encloses(sv.stick.get_global_rect()), "the named walk stick has room at %dx%d" % [size.x, size.y])
+			sv.touch_screen = saved_touch_screen
+			await suite.process_frame
 	var px_land: float = label_px[Vector2i(1100, 760)]
 	var px_port: float = label_px[Vector2i(320, 667)]
 	suite.require(px_land > 1.0 and absf(px_port - px_land) <= px_land * 0.1, "a screen-constant Label3D at 3 m keeps its pixel size from 1100x760 to 320x667 (%.1f vs %.1f px)" % [px_land, px_port])
@@ -595,7 +652,7 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	sv.street_fov = 70
 	sv.toggle()
 	await suite.process_frame
-	suite.require(not sv.active() and cam.keep_aspect == original_keep and cam.projection == Camera3D.PROJECTION_ORTHOGONAL, "leaving street view restores the map camera's keep_aspect")
+	suite.require(not sv.active() and cam.keep_aspect == map_keep and cam.projection == Camera3D.PROJECTION_ORTHOGONAL, "leaving street view restores the map camera's keep_aspect")
 	cam.keep_aspect = Camera3D.KEEP_WIDTH # A sentinel the landscape eye would never choose.
 	sv.toggle()
 	await suite.process_frame
@@ -603,7 +660,7 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	sv.toggle()
 	await suite.process_frame
 	suite.require(not sv.active() and cam.keep_aspect == Camera3D.KEEP_WIDTH, "exit restores whatever keep_aspect the map camera had")
-	cam.keep_aspect = original_keep
+	cam.keep_aspect = map_keep
 	game.update_camera()
 	checks += 1
 
@@ -629,7 +686,7 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	game.save_godot_settings()
 	var written: Variant = JSON.parse_string(FileAccess.get_file_as_string(settings_path))
 	suite.require(written is Dictionary and written.get("schema") == "tenderloin-redux.godot.settings.v1" and int(written.get("version", 0)) == 1 and int(written.get("street_fov", 0)) == 84 and written.get("street_turn") == "smooth" and written.get("street_mouselook") == true and written.get("reduced_motion") == true, "the four keys are written into the v1 envelope")
-	suite.require(not (written as Dictionary).has("street_enabled") and not (written as Dictionary).has("yaw") and not (written as Dictionary).has("pitch"), "the eye's mode and heading are never saved")
+	suite.require(not (written as Dictionary).has("street_enabled") and not (written as Dictionary).has("yaw") and not (written as Dictionary).has("pitch") and not (written as Dictionary).has("capture_state") and not (written as Dictionary).has("capture"), "the eye's mode, heading and capture state are never saved")
 	sv.reset_settings()
 	suite.require(sv.street_fov == 70 and sv.street_turn == "snap30" and not sv.street_mouselook and not sv.reduced_motion, "reset_settings returns the defaults")
 	game.load_godot_settings()
@@ -649,6 +706,12 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 		sv.reduced_motion_saved = true
 		game.load_godot_settings()
 		suite.require(sv.street_fov == 70 and sv.street_turn == "snap30" and not sv.street_mouselook and not sv.reduced_motion and not sv.reduced_motion_saved, "%s loads the defaults" % e.what)
+	write_text(settings_path, '{"schema":"tenderloin-redux.godot.settings.v1","version":1,"neighborhood_voices":false,"reduced_motion":"on","street_fov":80,"street_turn":"spin","street_mouselook":true}')
+	game.load_godot_settings()
+	suite.require(sv.street_fov == 80 and sv.street_turn == "snap30" and sv.street_mouselook and not sv.reduced_motion_saved, "each key is validated on its own: a bad turn and reduced motion keep their defaults beside a good angle and mouse look")
+	write_text(settings_path, '{"schema":"tenderloin-redux.godot.settings.v1","version":1,"neighborhood_voices":false,"reduced_motion":true,"street_fov":91,"street_turn":"smooth"}')
+	game.load_godot_settings()
+	suite.require(sv.street_fov == 70 and sv.street_turn == "smooth" and sv.reduced_motion and sv.reduced_motion_saved and not sv.street_mouselook, "a field of view over 90 falls back alone")
 	write_text(settings_path, '{"schema":"tenderloin-redux.godot.settings.v1","version":1,"neighborhood_voices":false,"street_fov":90,"street_turn":"snap45"}')
 	game.load_godot_settings()
 	suite.require(sv.street_fov == 90 and sv.street_turn == "snap45", "the valid edge of the range loads")
@@ -706,6 +769,11 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	await suite.process_frame
 	suite.require(not sv.active(), "the reduced-motion checks run in the map view")
 	var saved_burst := [game.celebration_burst_node.visible, game.celebration_burst_age, game.celebration_burst_timer, game.celebration_burst_node.position]
+	var saved_gems: Array = []
+	for gem in game.celebration_gem_meshes:
+		saved_gems.append(gem.transform)
+	var burst_label: Node3D = game.celebration_burst_label
+	var saved_burst_label := [burst_label.position, burst_label.visible] if burst_label != null else []
 	var samples := {}
 	for on in [false, true]:
 		sv.set_reduced_motion(on, false)
@@ -728,17 +796,23 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 		var last := motion_sample(game)
 		var bubble_last: Vector3 = game.speech_bubble_node.position
 		var burst_last: Array = burst_sample(game)
-		samples[on] = [first == last, bubble_first == bubble_last, burst_first[0] == burst_last[0], burst_last[1] > burst_first[1] and burst_last[2] > burst_first[2] and burst_last[3] < burst_first[3]]
+		# Trees (every entry but the marker's last two) and the marker are compared apart, so each has its own control.
+		samples[on] = [first.slice(0, -2) == last.slice(0, -2), bubble_first == bubble_last, burst_first[0] == burst_last[0], burst_last[1] > burst_first[1] and burst_last[2] > burst_first[2] and burst_last[3] < burst_first[3], first.slice(-2) == last.slice(-2)]
 		suite.require(game.guide_marker.visible and not game.speech_bubble_deferred and age_first > 0.2, "the guide marker and a fitted speech bubble are up for the reduced-motion check (marker %s, deferred %s, age %.2f)" % [str(game.guide_marker.visible), str(game.speech_bubble_deferred), age_first])
 		game.hide_speech_bubble()
-	suite.require(samples[true][0] and samples[true][1] and samples[true][2], "reduced motion stills the tree canopies, the marker, the bubble's bob and the burst's gem rotation across 30 frames (%s)" % str(samples[true]))
+	suite.require(samples[true][0] and samples[true][1] and samples[true][2] and samples[true][4], "reduced motion stills the tree canopies, the marker, the bubble's bob and the burst's gem rotation across 30 frames (%s)" % str(samples[true]))
 	suite.require(samples[true][3], "under reduced motion the burst still widens, lifts and shrinks")
-	suite.require(not samples[false][0] and not samples[false][2], "with reduced motion off the trees, the marker and the gems still move (%s)" % str(samples[false]))
+	suite.require(not samples[false][0] and not samples[false][1] and not samples[false][2] and not samples[false][4], "with reduced motion off the trees, the bubble, the gems and the marker each still move (%s)" % str(samples[false]))
 	sv.use_system_motion(false)
 	game.celebration_burst_node.visible = saved_burst[0]
 	game.celebration_burst_age = saved_burst[1]
 	game.celebration_burst_timer = saved_burst[2]
 	game.celebration_burst_node.position = saved_burst[3]
+	for g_i in range(saved_gems.size()):
+		game.celebration_gem_meshes[g_i].transform = saved_gems[g_i]
+	if burst_label != null:
+		burst_label.position = saved_burst_label[0]
+		burst_label.visible = saved_burst_label[1]
 	if had_settings:
 		write_text(settings_path, saved_settings_raw)
 	elif FileAccess.file_exists(settings_path):
@@ -877,6 +951,49 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 			game.frame_player_for_walking()
 		await suite.process_frame
 	suite.require(sv.active(), "the eye is back after the release checks")
+	# A hub, conversation, mural or music panel opens over the eye without suspending it: a lock is released when one
+	# opens, a grant that lands after it opened is cancelled, and a press while it is open asks for nothing.
+	var saved_panel := [game.block_panel.visible, game.block_panel_mode]
+	await send(suite, mouse_left(ml_at, true))
+	await send(suite, mouse_left(ml_at, false))
+	suite.require(sv.capture_state == "requested", "a press asks before the panel checks")
+	game.block_panel.visible = true
+	sv.mouse_mode_override = CAPTURED
+	await suite.process_frame
+	suite.require(sv.active() and sv.capture_state == "released" and sv.mouse_mode_override == VISIBLE, "a grant that lands after a panel opened over the eye is cancelled at once (%s)" % sv.capture_state)
+	game.block_panel.visible = false
+	await send(suite, mouse_left(ml_at, true))
+	await send(suite, mouse_left(ml_at, false))
+	sv.mouse_mode_override = CAPTURED
+	await suite.process_frame
+	var panel_locked: bool = sv.capture_state == "locked"
+	game.block_panel.visible = true
+	await suite.process_frame
+	suite.require(panel_locked and sv.active() and sv.capture_state == "released" and sv.mouse_mode_override == VISIBLE, "a panel opening over the eye releases a held mouse (locked first: %s, now %s)" % [str(panel_locked), sv.capture_state])
+	var panel_requests: int = sv.capture_requests
+	sv.pointer_input(mouse_left(ml_at, true))
+	sv.pointer_input(mouse_move(ml_at + Vector2(30, 0), Vector2(30, 0)))
+	sv.pointer_input(mouse_left(ml_at + Vector2(30, 0), false))
+	suite.require(sv.capture_requests == panel_requests and sv.capture_state == "released", "a press on the street while a panel is open asks for nothing")
+	game.block_panel.visible = saved_panel[0]
+	game.block_panel_mode = saved_panel[1]
+	sv.yaw = 0.0
+	game.update_camera()
+	await suite.process_frame
+	# A touchscreen never shows the toggle, so a saved street_mouselook there asks for nothing.
+	sv.touch_screen = true
+	await suite.process_frame
+	var touch_requests: int = sv.capture_requests
+	sv.pointer_input(mouse_left(ml_at, true))
+	var touch_role: String = sv.contacts[sv.MOUSE_CONTACT].role if sv.contacts.has(sv.MOUSE_CONTACT) else ""
+	sv.pointer_input(mouse_move(ml_at + Vector2(30, 0), Vector2(30, 0)))
+	sv.pointer_input(mouse_left(ml_at + Vector2(30, 0), false))
+	suite.require(sv.street_mouselook and not sv.mouselook_visible() and touch_role == "look" and sv.capture_requests == touch_requests and sv.capture_state == "released", "on a touchscreen a saved mouse look neither shows the toggle nor asks for the mouse (role %s)" % touch_role)
+	sv.touch_screen = false
+	sv.yaw = 0.0
+	game.update_camera()
+	await suite.process_frame
+	suite.require(sv.active() and sv.mouselook_visible(), "the eye and the toggle are back before the late grant check")
 	# A grant that lands after the player has left street view is cancelled at once.
 	await send(suite, mouse_left(ml_at, true))
 	await send(suite, mouse_left(ml_at, false))
@@ -938,6 +1055,7 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	game.info.text = saved_info
 	game.last_a11y_announcement = saved_announcement
 	game.a11y_announcement_seq = saved_seq
+	game.player_visual.rotation = saved_visual_rotation
 	suite.require(not sv.active() and cam.projection == Camera3D.PROJECTION_ORTHOGONAL and cam.near == map_near and cam.far == map_far, "street view checks hand back the orthographic map camera")
 	suite.require(game.player.position == original_player and game.current_path == original_path, "street view checks restore caller position and route")
 	print("STREET_VIEW_PASS:" + ("FORMAL" if formal else "PRIVATE") + " rule/eye/return-pose/suspend/resume/refit/horizon/depth/sight/pace/west/ShiftF/yaw-walk/mouse-look/touch-roles/stick/turn-step/portrait-fov/settings/reduced-motion/capture ", checks)
