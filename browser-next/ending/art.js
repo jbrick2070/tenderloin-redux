@@ -167,7 +167,10 @@ export const GODOT_ART = {
     ],
   },
 };
-import { gdf, C } from './text.js';
+// The builders format drawing data, never text, so they use Godot's formatter without the catalog lookup (gdfRaw).
+import { gdfRaw as gdf, C } from './text.js';
+import { compose, ENDING_COMPOSE } from './compose.js';
+import { L } from '../i18n.js';
 import { tilePanelSVG } from '../hosting.js';
 import { filmFrameSVG } from '../film.js';
 
@@ -269,7 +272,7 @@ export function gatherBoardSVG(g, { title = '', desc = '', marks = {} } = {}) {
   for (let i = 0; i < 4; i++) {
     const r = gatherCardRect(i), p = propRect(i), id = g.order[i];
     out += `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" fill="#e7dcc0"/><rect x="${r.x + 2}" y="${r.y + 2}" width="${r.w - 4}" height="${r.h - 4}" fill="none" stroke="${i === g.step ? '#e2a04e' : '#526e65'}" stroke-width="3"/>`;
-    out += `<text x="${r.x + 7}" y="${r.y + 17}" font-size="12" fill="#182c38" font-family="sans-serif">${i + 1}. ${OWNER_BY_ID[id]}</text>`;
+    out += `<text x="${r.x + 7}" y="${r.y + 17}" font-size="12" fill="#182c38" font-family="sans-serif">${escapeXML(compose(ENDING_COMPOSE.boardOwner, { number: i + 1, owner: L(OWNER_BY_ID[id]) }))}</text>`;
     let prop;
     if (id === 'stories') prop = svgBody(beaInvitationSVG(g.copies.stories));
     else if (id === 'art') prop = svgBody(tilePanelSVG(g.copies.art));

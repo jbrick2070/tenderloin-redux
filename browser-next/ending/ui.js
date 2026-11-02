@@ -23,6 +23,8 @@ import { benchView, benchFocus, chooseForm, fitSupport, finish, benchClose, benc
 import { roomView, normalizeRoom, chooseItem, choosePlace, assist, toggleDetail, roomFocus, roomClose, roomRefusal, orbitFailed, habitatAvailable } from './habitat.js';
 import { orbitalView, openChapter, orbitAction, step, halt, moving, walkTo, recognition, depictedPlayer, depictedThanh, freshOrbit } from './orbital.js';
 import { storiesView, selectScene, changePage, editScene, sceneRefusal, sceneReceipt, sceneAnnouncement, openStoriesAnnouncement, closeStoriesAnnouncement, freshStories, paintScenesLabel, nextPalette, paletteAnnouncement } from './mural.js';
+import { ENDING_UI as U } from './compose.js';
+import { tHTML } from '../i18n.js';
 
 const esc = text => String(text).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]);
 const lines = text => String(text).split('\n').map(line => `<p>${esc(line)}</p>`).join('');
@@ -75,7 +77,7 @@ export function createEnding(host) {
   // Godot toggle_music_playback announces, then refresh(false) redraws without announcing: the music line is the last word.
   const bindMusic = rerender => bind('ending-music', async () => { const kind = stage, said = await host.music.toggle(); if (!holds(kind)) return; rerender(); focus('ending-music'); say(said); });
   function frameHTML({ kind, title, credit, picture = '', reader, tray, extra = '' }) {
-    return `<section class="ending" data-ending="${kind}"><p class="eyebrow ending-credit">${esc(credit)}</p><h2 id="modal-title" tabindex="-1">${esc(title)}</h2>${picture}<div id="ending-reader" class="ending-reader" tabindex="0" role="region" aria-label="Story text">${lines(reader)}</div>${extra}<div class="ending-tray">${tray}</div></section>`;
+    return `<section class="ending" data-ending="${kind}"><p class="eyebrow ending-credit">${esc(credit)}</p><h2 id="modal-title" tabindex="-1">${esc(title)}</h2>${picture}<div id="ending-reader" class="ending-reader" tabindex="0" role="region" aria-label="${tHTML(U.reader)}">${lines(reader)}</div>${extra}<div class="ending-tray">${tray}</div></section>`;
   }
   const img = (svg, alt, labels = '') => `<figure class="ending-picture${labels ? ' ending-labels' : ''}"><img alt="${esc(alt)}" src="${dataSVG(svg)}">${labels}</figure>`;
   // A repeated Enter or Space on the chained buttons never advances a second stage (spec §0.5; press-settle covers Enter).
@@ -86,7 +88,7 @@ export function createEnding(host) {
   function hosted(announce = true) {
     const s = state(), v = hostedView(s, visit.hostedSelected);
     stage = 'hosted';
-    const cards = `<div class="ending-cards" role="group" aria-label="Hosted contributions">${v.cards.map(c => btn({ id: `hosted-card-${c.id}`, label: c.label, name: c.name, pressed: c.pressed })).join('')}</div>`;
+    const cards = `<div class="ending-cards" role="group" aria-label="${tHTML(U.hostedCards)}">${v.cards.map(c => btn({ id: `hosted-card-${c.id}`, label: c.label, name: c.name, pressed: c.pressed })).join('')}</div>`;
     host.show(frameHTML({ kind: 'hosted', title: v.heading, credit: v.credit, picture: img(v.picture.svg, v.picture.alt), reader: v.text, extra: cards,
       tray: btn({ id: 'hosted-follow', label: v.primary.label, disabled: v.primary.disabled, primary: true }) + btn({ id: 'hosted-draft', label: v.view.label }) + btn(musicButton()) + btn({ id: 'hosted-back', label: v.back.label }) }));
     for (const c of v.cards) bind(`hosted-card-${c.id}`, () => { visit.hostedSelected = c.id; hosted(); focus(`hosted-card-${c.id}`); });
@@ -121,7 +123,7 @@ export function createEnding(host) {
     if (!v) return false;
     stage = 'screening';
     host.show(frameHTML({ kind: 'screening', title: v.title, credit: v.credit, picture: img(v.picture.svg, v.picture.alt), reader: v.text,
-      tray: `<div class="ending-tray" role="group" aria-label="Screening frames">${v.frames.map(f => btn(f)).join('')}</div>` + btn(musicButton()) + btn({ id: 'screen-back', label: v.back.label }) + btn({ id: 'screen-helper', label: v.helper.label, primary: true }) }));
+      tray: `<div class="ending-tray" role="group" aria-label="${tHTML(U.screeningFrames)}">${v.frames.map(f => btn(f)).join('')}</div>` + btn(musicButton()) + btn({ id: 'screen-back', label: v.back.label }) + btn({ id: 'screen-helper', label: v.helper.label, primary: true }) }));
     v.frames.forEach((f, i) => bind(f.id, () => { visit.screenFrame = i; screening(); focus(f.id); }));
     bind('screen-back', () => leave(screeningClose(), 'film-shoot'));
     bind('screen-helper', () => { if (!bench()) screening(); });
@@ -157,7 +159,7 @@ export function createEnding(host) {
     if (visit.orbit.visible) return orbit(focusId);
     const v = roomView(visit.room, s);
     stage = 'room';
-    const labels = v.picture.labels ? ['Entry', 'Window', 'Far wall', 'Side nook'].map((name, i) => `<span style="left:${[42, 422, 42, 422][i] / 7.2 + 0.6}%;top:${[258, 30, 30, 258][i] / 4.8 + 0.6}%">${esc(name)}</span>`).join('') : '';
+    const labels = v.picture.labels ? v.picture.names.map((name, i) => `<span style="left:${[42, 422, 42, 422][i] / 7.2 + 0.6}%;top:${[258, 30, 30, 258][i] / 4.8 + 0.6}%">${esc(name)}</span>`).join('') : '';
     host.show(frameHTML({ kind: 'room', title: v.title, credit: v.credit, picture: img(v.picture.svg, v.picture.alt, labels), reader: v.text, tray: v.buttons.map(b => btn({ ...b, primary: b.id === 'room-assist' })).join('') }));
     const run = fn => () => {
       const out = fn();
@@ -269,8 +271,8 @@ export function createEnding(host) {
   function stories(announce = null) {
     const s = state(), marks = Object.keys(s.mural || {}).length, v = storiesView(visit.stories, s.muralScenes || {}, { palette: s.palette, marks, music: host.music.on() });
     stage = 'stories';
-    const choices = `<div class="ending-cards" role="group" aria-label="Scenes">${v.choices.map(c => `<button id="${c.id}" class="secondary-button" aria-pressed="${c.pressed}" aria-label="${esc(c.name)}" title="${esc(c.title)}"><img class="ending-thumb" alt="" src="${dataSVG(c.thumbnail)}">${esc(c.label).replace(/\n/g, '<br>')}</button>`).join('')}</div>`;
-    const paper = `<figure class="ending-picture ending-paper"><img alt="${esc(v.targets.map(t => t.name.split('. Paint')[0]).join('; '))}" src="${dataSVG(v.paper)}"><div class="ending-targets">${v.targets.map(t => `<button id="${t.id}" aria-label="${esc(t.name)}" title="${esc(t.name)}">${esc(t.slot)}</button>`).join('')}</div></figure><img class="ending-signature" alt="${esc(v.signatureCredit)}" src="${dataSVG(v.signature)}">`;
+    const choices = `<div class="ending-cards" role="group" aria-label="${tHTML(U.scenes)}">${v.choices.map(c => `<button id="${c.id}" class="secondary-button" aria-pressed="${c.pressed}" aria-label="${esc(c.name)}" title="${esc(c.title)}"><img class="ending-thumb" alt="" src="${dataSVG(c.thumbnail)}">${esc(c.label).replace(/\n/g, '<br>')}</button>`).join('')}</div>`;
+    const paper = `<figure class="ending-picture ending-paper"><img alt="${esc(v.paperAlt)}" src="${dataSVG(v.paper)}"><div class="ending-targets">${v.targets.map(t => `<button id="${t.id}" aria-label="${esc(t.name)}" title="${esc(t.name)}">${esc(t.label)}</button>`).join('')}</div></figure><img class="ending-signature" alt="${esc(v.signatureCredit)}" src="${dataSVG(v.signature)}">`;
     host.show(frameHTML({ kind: 'stories', title: v.title, credit: v.attribution, picture: choices + paper, reader: v.text,
       tray: v.lifts.map(b => btn(b)).join('') + btn(v.palette) + btn(v.music) + btn(v.back) + btn(v.page) }));
     v.choices.forEach(c => bind(c.id, () => { const out = selectScene(visit.stories, c.scene); visit.stories = out.stories; stories(out.announce); focus(c.id); }));

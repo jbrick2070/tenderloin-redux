@@ -2,10 +2,13 @@
 // tests/next-ending.test.mjs reads those sources at test time: each string here must be one Godot literal of
 // its function, every long literal of a listed function must be copied here, and the constants must deep-equal.
 // Where Godot names something 2D lacks (an import, F-keys), ENDING_WEB_OVERRIDES maps the Godot literal to the
-// fork's line, and web() applies it. Nothing else changes Godot's wording.
+// fork's line, and web() applies it. Nothing else changes Godot's wording. gdf and capitalize delegate to ../i18n.js; with no
+// locale chosen they return exactly what they did before.
 //
 // Intentional rule divergence (not text): Godot refuses every ending surface while the player is walking
 // ("Finish arriving…"). 2D opens them from the afterglow and the host's stopWalk() stops the walk first.
+import { format, FLAVORS, isEnglish } from '../i18n.js';
+
 export const GODOT = {
   'hosted_afternoon.gd': {
     detail: {
@@ -425,12 +428,18 @@ export const ENDING_WEB_OVERRIDES = {
   'Saved to Godot storage.': 'Saved in this browser.',
 };
 export const web = text => Object.hasOwn(ENDING_WEB_OVERRIDES, text) ? ENDING_WEB_OVERRIDES[text] : text;
-// Godot's % formatting for %s, %d and %f, the same as story.js fmt plus %f's six decimals.
-export function gdf(template, ...args) {
+// Godot's % formatting for %s, %d and %f, the same as story.js fmt plus %f's six decimals. gdfRaw is that formatter alone, for
+// the SVG builders, whose templates are drawing data and never text.
+export function gdfRaw(template, ...args) {
   let i = 0;
   return template.replace(/%([sdf%])/g, (_, kind) => kind === '%' ? '%' : kind === 'd' ? String(Math.trunc(Number(args[i++]))) : kind === 'f' ? Number(args[i++]).toFixed(6) : String(args[i++]));
 }
-export const capitalize = text => String(text).split(/[\s_]+/).filter(Boolean).map(word => word[0].toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+// gdf: the template looked up in the active catalog first (i18n.js format, ending flavor); in English it is gdfRaw itself.
+const ENDING_FLAVOR = Object.freeze({ ...FLAVORS.ending, legacy: (template, args) => gdfRaw(template, ...args) });
+export const gdf = (template, ...args) => format(template, args, ENDING_FLAVOR);
+// Godot's String.capitalize of an id, in English only: a locale never title-cases (its display text comes from a table,
+// ending/compose.js ENDING_DISPLAY), so there the text is returned as it is.
+export const capitalize = text => !isEnglish() ? String(text) : String(text).split(/[\s_]+/).filter(Boolean).map(word => word[0].toUpperCase() + word.slice(1).toLowerCase()).join(' ');
 // Fork-only text: what 2D says where Godot has no matching moment.
 export const FORK_TEXT = {
   copiesChanged: 'The shared save changed, so this visit\'s ending started fresh. Your saved film, gathering and Listening Hour are kept.',
