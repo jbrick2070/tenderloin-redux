@@ -12,6 +12,8 @@ import { filmFrameSVG, filmCaption } from '../public/film.js';
 import { verifySharedMeal } from './shared-meal-browser.mjs';
 import { verifyHostedAfternoon } from './hosted-afternoon-browser.mjs';
 import { verifyBeforeStreets } from './before-streets-browser.mjs';
+import { verifyStreetView } from './street-view-browser.mjs';
+const streetViewChecks=[];
 import { verifyDeparture } from './departure-browser.mjs';
 const departureChecks=[];
 import { verifyOrbital } from './orbital-browser.mjs';
@@ -2431,6 +2433,7 @@ try {
     const oriented = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
     assert.equal(oriented.reward_audio_unlocked, true);
     assert.equal(oriented.music_playing, true, 'Start Exploring enables the original soundtrack');
+    streetViewChecks.push(await verifyStreetView(page,{touch:size.width<600,size,renderedPixels}));
     assert.equal(oriented.music_volume, 0.7);
     assert.match(oriented.announcement, /^You're here/);
     assert.equal(oriented.music_toggle_text, 'Music: On');
@@ -3866,7 +3869,7 @@ try {
   assert.equal(sharedMealChecks.length,3);assert.ok(sharedMealChecks.every(c=>!c.privateFixture));
   await verifyPhoneDisclosure(browser,base);
   assert.equal(phoneDisclosureChecks.length,6);
-  assert.equal(loanHomecomingChecks.length,8);assert.equal(loanWorldChecks.length,3);assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
+  assert.equal(loanHomecomingChecks.length,8);assert.equal(loanWorldChecks.length,3);assert.equal(streetViewChecks.length,3,'street view verified at every suite size');assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
   await writeFile('artifacts/godot-browser.json', JSON.stringify({ runs, sourceFingerprint, renderedPixelChecks, traceReceipts, persistenceChecks, programmeGatheringChecks, finaleChecks, orbitalChecks, departureChecks, habitatRoomChecks, helperBenchChecks, beforeStreetsChecks, hostedAfternoonChecks, sharedMealChecks, guidedWalkChecks, storyReturnChecks, storyVisitChecks, phoneDisclosureChecks, mapPinchChecks, votingStoryChecks, lanternProcessionChecks, dogStoryChecks, larkinStoryChecks, powerStoryChecks, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, communityInvitationChecks, beaInvitationChecks, quietSeatChecks, filmScreeningChecks, rhythmCircleChecks, rhythmAuditionChecks, muralStoryChecks, livingMuralChecks, errors, external, limit: 'Pixel-change, isolated Godot localStorage save/reload, opt-in browser v1 save import, Web local WAV audition, DOM aria-live status bridge, wider 188-building Tenderloin exploration, M1 keepsake/loan returns, M3 programme/hosting, M4 civic listening hour & three-shot film short, M5 default-off neighborhood voices & isolated settings, M6 original SVG generation/export & measured local performance budgets, and driver-inspected screenshots, not full canvas button DOM/screen-reader or physical-phone acceptance.' }, null, 2));
   assert.ok(queuedActivityRewardChecks > 0, 'at least one actual crowded activity exercises queued reward timer and Close delivery');
   assert.ok(shortStartClicked && shortStartTouchClicked, 'real mouse and touch Start at640x360 were exercised');

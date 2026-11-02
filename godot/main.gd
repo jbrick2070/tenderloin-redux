@@ -826,6 +826,7 @@ var bea_invitation: Node
 var table_quiet_seats: Array[Node3D] = []
 var floor_quiet_seats: Array[Node3D] = []
 var rhythm_circle
+var street_view # Optional eye-level camera (street_view.gd); off until the player chooses it.
 var film_screening
 var civic_listening
 var programme_studio
@@ -4688,6 +4689,10 @@ func speech_bubble_base_scale() -> float:
 	if camera == null:
 		return 1.0
 	var vp_h := maxf(bubble_viewport_size().y, 1.0)
+	if street_view_active():
+		# Perspective: the frustum height at the bubble's depth plays the part of the orthographic size.
+		var at: Vector3 = speech_bubble_node.global_position if (speech_bubble_node != null and is_speech_bubble_visible()) else (talk_prompt_node.global_position if talk_prompt_node != null else target)
+		return speech_bubble_screen_scale() * street_view.screen_constant(1.0, at) / SPEECH_BUBBLE_PIXEL
 	return speech_bubble_screen_scale() * camera.size / (vp_h * SPEECH_BUBBLE_PIXEL)
 
 func speech_bubble_width_px() -> float:
@@ -4710,7 +4715,7 @@ func speech_bubble_screen_rect() -> Rect2:
 	if not is_speech_bubble_visible() or camera == null:
 		return Rect2()
 	var anchor := camera.unproject_position(speech_bubble_node.global_position)
-	var s := SPEECH_BUBBLE_PIXEL * speech_bubble_node.scale.y / screen_constant_scale(1.0)
+	var s := SPEECH_BUBBLE_PIXEL * speech_bubble_node.scale.y / screen_constant_scale(1.0, speech_bubble_node.global_position)
 	return Rect2(anchor + Vector2(speech_bubble_shift - speech_bubble_box.x * 0.5 - 3.0, -speech_bubble_box.z - speech_bubble_box.y - 3.0) * s, Vector2(speech_bubble_box.x + 6.0, speech_bubble_box.y + speech_bubble_box.z + 7.2) * s)
 
 func apply_speech_bubble_shape(shift: float) -> void:
@@ -4840,7 +4845,7 @@ func update_speech_bubble(delta: float) -> void:
 			announce_speech_location("Info")
 	else:
 		var shift := fitted.position - full_position
-		speech_bubble_node.position += (camera.global_basis.x * shift.x - camera.global_basis.y * shift.y) * screen_constant_scale(1.0)
+		speech_bubble_node.position += (camera.global_basis.x * shift.x - camera.global_basis.y * shift.y) * screen_constant_scale(1.0, speech_bubble_node.global_position)
 		speech_bubble_age += delta
 	speech_bubble_timer -= delta
 	if speech_bubble_timer <= 0.0:
@@ -6207,9 +6212,13 @@ func update_objective_ui() -> void:
 		objective_label.text = "Chapter %d: %s · Next: %s" % [int(ch.num), String(ch.title), next_text]
 	update_walk_control()
 
-func screen_constant_scale(px_per_unit: float) -> float:
+## World units per `px_per_unit` pixels. The map view's orthographic size makes this uniform;
+## street view's perspective needs the point's depth, so callers pass the node position they scale.
+func screen_constant_scale(px_per_unit: float, at: Vector3 = Vector3(INF, INF, INF)) -> float:
 	if camera == null:
 		return 1.0
+	if street_view_active():
+		return street_view.screen_constant(px_per_unit, at if is_finite(at.x) else target)
 	return px_per_unit * camera.size / maxf(bubble_viewport_size().y, 1.0)
 
 ## Floating gold diamond above the current objective target (screen-constant size).
@@ -6267,7 +6276,7 @@ func update_guide_marker(obj: Dictionary = {}) -> void:
 		return
 	guide_marker_target = guide_marker_anchor(obj)
 	guide_marker_target_name = objective_target_name(obj)
-	var s := screen_constant_scale(30.0)
+	var s := screen_constant_scale(30.0, guide_marker_target + Vector3.UP * 2.0)
 	guide_marker.scale = Vector3.ONE * s
 	guide_marker.position = guide_marker_target + Vector3.UP * (sin(ui_clock * 2.6) * 0.14 * s)
 	guide_marker.rotation.y = wrapf(ui_clock * 1.4, -PI, PI)
@@ -6339,7 +6348,7 @@ func talk_prompt_screen_rect() -> Rect2:
 	if talk_prompt_node == null or not talk_prompt_node.is_visible_in_tree():
 		return Rect2()
 	var text_size := ThemeDB.fallback_font.get_string_size(talk_prompt_label.text, HORIZONTAL_ALIGNMENT_CENTER, -1, 22)
-	var scale_px := SPEECH_BUBBLE_PIXEL * talk_prompt_node.scale.y / screen_constant_scale(1.0)
+	var scale_px := SPEECH_BUBBLE_PIXEL * talk_prompt_node.scale.y / screen_constant_scale(1.0, talk_prompt_node.global_position)
 	var size := Vector2(text_size.x + 24.0, text_size.y + 26.0) * scale_px
 	var anchor := camera.unproject_position(talk_prompt_node.global_position)
 	return Rect2(anchor - Vector2(size.x * 0.5, size.y), size)
@@ -7112,7 +7121,7 @@ func player_overlay_rect() -> Rect2:
 		# Label3D is billboarded: its local glyph quad uses the camera's axes,
 		# not the character's rotated axes. Include its actual alignment/offset.
 		var quad := player_nameplate.get_aabb()
-		var pixels := player_nameplate.global_basis.get_scale().y / screen_constant_scale(1.0)
+		var pixels := player_nameplate.global_basis.get_scale().y / screen_constant_scale(1.0, player_nameplate.global_position)
 		var center := camera.unproject_position(player_nameplate.global_position)
 		var label_rect := Rect2(center + Vector2(quad.position.x, -quad.end.y) * pixels, Vector2(quad.size.x, quad.size.y) * pixels)
 		bounds = bounds.merge(label_rect.grow(float(player_nameplate.outline_size)))
@@ -9203,7 +9212,19 @@ func frame_activity_camera(panel: Control) -> void:
 	refit_panel_camera()
 
 func panel_camera_pose() -> Array:
-	return [target, view_size, camera_yaw, camera_pitch_scale]
+	return [target, view_size, camera_yaw, camera_pitch_scale, street_view_active()]
+
+func street_view_active() -> bool:
+	return street_view != null and street_view.active()
+
+## The player's screen point for the bridge. At eye level the player is the camera, so report the
+## viewport centre instead of unprojecting a point on the camera plane.
+func player_screen_point() -> Dictionary:
+	if street_view_active():
+		var centre := bubble_viewport_size() * 0.5
+		return {"x": centre.x, "y": centre.y}
+	var p := camera.unproject_position(player.position + Vector3.UP)
+	return {"x": p.x, "y": p.y}
 
 func remember_panel_framing(panel: Control, subject: Vector3) -> void:
 	panel_frame_control = panel
@@ -9230,7 +9251,7 @@ func refit_panel_after_layout() -> void:
 
 func refit_panel_camera() -> void:
 	# A changed pose means the player inspected, panned, rotated, zoomed or walked.
-	if panel_frame_control == null or not panel_frame_control.visible or (panel_frame_control == block_panel and block_panel_mode != "talk") or panel_frame_pose != panel_camera_pose() or in_overview or in_wide_overview:
+	if panel_frame_control == null or not panel_frame_control.visible or (panel_frame_control == block_panel and block_panel_mode != "talk") or panel_frame_pose != panel_camera_pose() or in_overview or in_wide_overview or street_view_active():
 		return
 	var area := play_area_rect()
 	var want := area.get_center()
@@ -11926,11 +11947,12 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"camera_view_size": view_size,
 		"map_pinch": {"active":map_pinch_active,"blocked":map_pinch_blocked,"contacts":map_touch_contacts.size(),"pending":map_pinch_pending,"refused":map_pinch_refused,"anchor_screen":{"x":camera.unproject_position(Vector3(map_pinch_ground.x,0,map_pinch_ground.y)).x,"y":camera.unproject_position(Vector3(map_pinch_ground.x,0,map_pinch_ground.y)).y}},
 		"camera_pose": {"target_x": target.x, "target_y": target.y, "target_z": target.z, "yaw": camera_yaw, "pitch": camera_pitch_scale},
+		"street_view": street_view.snapshot() if street_view != null else {"active": false},
 		"following_player": following_player,
 		"in_overview": in_overview,
 		"in_wide_overview": in_wide_overview,
 		"cutaway_additions": occluded_additions.size(),
-		"player_screen": {"x": camera.unproject_position(player.position + Vector3.UP).x, "y": camera.unproject_position(player.position + Vector3.UP).y},
+		"player_screen": player_screen_point(),
 		"player_grounding": {"x": player.position.x, "z": player.position.z, "shadow_x": contact.global_position.x if contact != null else null, "shadow_z": contact.global_position.z if contact != null else null, "shadow_y": contact.global_position.y if contact != null else null, "stride": player_stride_blend, "path_active": not current_path.is_empty(), "nearest_light_pool_distance": nearest_pool_distance, "nearest_light_pool_x": nearest_pool_center.x, "nearest_light_pool_z": nearest_pool_center.y},
 		"evening_mode": evening_mode,
 		"play_area": {"x": play_area_rect().position.x, "y": play_area_rect().position.y, "width": play_area_rect().size.x, "height": play_area_rect().size.y},
@@ -14077,6 +14099,9 @@ func get_camera_offset_vec() -> Vector3:
 	return base.rotated(Vector3.UP, camera_yaw)
 
 func rotate_camera_by_delta(delta_yaw: float, delta_pitch: float = 0.0) -> void:
+	if street_view_active():
+		street_view.look(delta_yaw, delta_pitch)
+		return
 	in_overview = false
 	in_wide_overview = false
 	camera_yaw = wrapf(camera_yaw + delta_yaw, -PI, PI)
@@ -14113,7 +14138,7 @@ func building_occludes_point(b_idx: int, focus_xz: Vector2, focus_y: float = 1.0
 	return building_record_occludes_point(data.buildings[b_idx], building_rects[b_idx], focus_xz, focus_y)
 
 func update_occlusion(force: bool = true) -> void:
-	if in_overview or in_wide_overview or selected >= 0:
+	if in_overview or in_wide_overview or selected >= 0 or street_view_active():
 		clear_occlusion()
 		return
 	var p_xz := player_xz()
@@ -14240,6 +14265,8 @@ func update_readable_scene_labels() -> void:
 			occupied.append(talk_rect.grow(4.0))
 	if is_story_card_visible():
 		occupied.append(story_card.get_global_rect())
+	if street_view != null and street_view.button_visible():
+		occupied.append(street_view.button.get_global_rect().grow(6.0))
 	var ordered := readable_scene_labels.duplicate()
 	ordered.sort_custom(func(a: Label3D, b: Label3D) -> bool: return scene_caption_priority(a) < scene_caption_priority(b))
 	for label in ordered:
@@ -14259,9 +14286,12 @@ func update_readable_scene_labels() -> void:
 			label.pixel_size = float(label.get_meta("map_pixel_size"))
 			label.visible = true
 			continue
-		label.pixel_size = screen_constant_scale(1.0) / maxf(label.global_basis.get_scale().y, 0.001)
+		label.pixel_size = screen_constant_scale(1.0, label.global_position) / maxf(label.global_basis.get_scale().y, 0.001)
 		var label_xz := Vector2(label.global_position.x, label.global_position.z)
 		label.visible = label_xz.distance_to(Vector2(target.x, target.z)) <= 55.0
+		if street_view_active():
+			# Eye level: only nearby captions with a clear line of sight past the building footprints.
+			label.visible = label.visible and street_view.caption_visible(label_xz)
 		var measure_key := "%s|%s|%d" % [label.text, wrap_width, label.font_size]
 		if label.get_meta("caption_measure_key", "") != measure_key:
 			label.set_meta("caption_measure_key", measure_key)
@@ -14294,9 +14324,11 @@ func _process(delta: float) -> void:
 	poll_web_audio()
 	apply_map_pinch()
 	refresh_phone_disclosure()
+	if street_view != null:
+		street_view.tick()
 	if player_nameplate != null and camera != null:
-		player_nameplate.pixel_size = screen_constant_scale(1.0) / player_visual.scale.y
-		player_nameplate.visible = not in_overview and not in_wide_overview
+		player_nameplate.pixel_size = screen_constant_scale(1.0, player_nameplate.global_position) / player_visual.scale.y
+		player_nameplate.visible = not in_overview and not in_wide_overview and not street_view_active()
 	if music_playing:
 		advance_music_clock(delta)
 	update_people_animation(delta)
@@ -14334,7 +14366,7 @@ func _physics_process(delta: float) -> void:
 			pitch_dir += 1.0
 		if Input.is_key_pressed(KEY_DOWN):
 			pitch_dir -= 1.0
-		if absf(yaw_dir) > 0.0 or absf(pitch_dir) > 0.0:
+		if (absf(yaw_dir) > 0.0 or absf(pitch_dir) > 0.0) and not street_view_active():
 			rotate_camera_by_delta(yaw_dir * delta * 1.65, pitch_dir * delta * 0.75)
 			return
 	var input_vec := Vector2.ZERO
@@ -14359,7 +14391,9 @@ func _physics_process(delta: float) -> void:
 	if input_vec.length_squared() > 0.0:
 		if get_viewport().gui_get_focus_owner() != null:
 			get_viewport().gui_release_focus()
-		if absf(camera_yaw) > 1e-4:
+		if street_view_active():
+			input_vec = street_view.walk_input(input_vec)
+		elif absf(camera_yaw) > 1e-4:
 			input_vec = input_vec.rotated(-camera_yaw)
 		walk_step(input_vec, delta)
 		var p_now := player_xz()
@@ -14374,7 +14408,7 @@ func _physics_process(delta: float) -> void:
 					finish_neighbor_arrival(n_i)
 				break
 	elif not current_path.is_empty():
-		advance_walk(delta * (2.2 if OS.has_feature("web") else 1.0))
+		advance_walk(delta * (2.2 if OS.has_feature("web") and not street_view_active() else 1.0))
 
 func is_screen_point_in_ui(screen_pos: Vector2) -> bool:
 	if phone_tray != null and phone_tray.is_visible_in_tree() and phone_tray.get_global_rect().has_point(screen_pos): return true
@@ -14396,14 +14430,20 @@ func is_screen_point_in_ui(screen_pos: Vector2) -> bool:
 		return true
 	if controls and controls.get_global_rect().has_point(screen_pos):
 		return true
+	if street_view != null and street_view.button_visible() and street_view.button.get_global_rect().has_point(screen_pos):
+		return true
 	return false
 
 func screen_to_ground_xz(screen_pos: Vector2) -> Vector2:
 	var origin := camera.project_ray_origin(screen_pos)
 	var normal := camera.project_ray_normal(screen_pos)
+	if camera.projection == Camera3D.PROJECTION_PERSPECTIVE and normal.y >= -1e-4:
+		return Vector2(INF, INF) # At or above the horizon: no ground hit.
 	if absf(normal.y) < 1e-6:
 		return Vector2(target.x, target.z)
 	var t := -origin.y / normal.y
+	if camera.projection == Camera3D.PROJECTION_PERSPECTIVE and t > 60.0:
+		return Vector2(INF, INF) # Just under the horizon the hit is far off the block: no walk.
 	var hit := origin + normal * t
 	return Vector2(hit.x, hit.z)
 
@@ -14450,6 +14490,8 @@ func handle_scene_tap(screen_pos: Vector2) -> bool:
 	for caption in visible_scene_captions:
 		if int(caption.eatery_index) >= 0 and (caption.rect as Rect2).has_point(screen_pos):
 			return activate_eatery(int(caption.eatery_index))
+	if not is_finite(ground_xz.x):
+		return true # Street view: a tap at or above the horizon does nothing.
 	var best_idx := -1
 	var best_screen_d := INF
 	for i in range(neighbors.size()):
@@ -14539,6 +14581,8 @@ func activate_eatery(index: int) -> bool:
 	return cycle_eatery_guide(index)
 
 func pan_camera_by_screen_delta(delta_px: Vector2) -> void:
+	if street_view_active():
+		return # Phase 1: a drag neither pans nor detaches the eye; drag-look arrives with Phase 2.
 	in_overview = false
 	in_wide_overview = false
 	following_player = false
@@ -14617,6 +14661,9 @@ func map_pinch_input(event: InputEvent) -> bool:
 
 func apply_map_pinch() -> void:
 	if not map_pinch_pending: return
+	if street_view_active():
+		map_pinch_pending = false
+		return
 	map_pinch_pending = false
 	if is_focused_activity_visible() or is_story_card_visible(): return
 	in_overview = false
@@ -15042,7 +15089,14 @@ func _unhandled_input(event: InputEvent) -> void:
 					cycle_mural_palette()
 			KEY_N, KEY_BRACKETRIGHT: choose_next_neighbor(1)
 			KEY_B, KEY_BRACKETLEFT: choose_next_neighbor(-1)
-			KEY_F: frame_player_for_walking()
+			KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN:
+				if event.shift_pressed and street_view_active():
+					street_view.key_turn(event.keycode) # Snap turn and tilt; the map's smooth orbit is skipped at eye level.
+			KEY_F:
+				if event.shift_pressed:
+					street_view.toggle()
+				else:
+					frame_player_for_walking()
 			KEY_ESCAPE, KEY_X:
 				var any_panel := (block_panel != null and block_panel.visible) or (mural_panel != null and mural_panel.visible) or (music_panel != null and music_panel.visible)
 				if current_path.is_empty() and any_panel:
@@ -15096,6 +15150,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			pointer_last_pos = event.position
 
 func update_camera() -> void:
+	if street_view != null:
+		street_view.sync()
+		if street_view.active():
+			street_view.apply_camera()
+			return
 	camera.size = view_size
 	var offset_scale := 2.2 if (in_wide_overview or view_size > 300.0) else 1.0
 	camera.position = target + get_camera_offset_vec() * offset_scale
@@ -15347,6 +15406,8 @@ func clamp_view_size(value: float) -> float:
 	return clampf(value, 24.0, maxf(900.0, overview_size * 2.5))
 
 func zoom(factor: float) -> void:
+	if street_view_active():
+		return
 	in_overview = false
 	in_wide_overview = false
 	view_size = clamp_view_size(view_size * factor)
@@ -15438,6 +15499,8 @@ func show_music_panel(visible_flag: bool) -> void:
 		refit_panel_camera()
 
 func refresh_hub_camera() -> void:
+	if street_view_active():
+		return # The eye never pans to fit a hub; the panel lays out around it.
 	# Closing the hub also restores the followed view after its controls expand.
 	if following_player:
 		update_camera()
@@ -16164,6 +16227,8 @@ func make_ui() -> void:
 	layer.add_child(rhythm_circle)
 	rhythm_circle.setup(self,layer)
 	rhythm_circle.build_world()
+	street_view = preload("res://street_view.gd").new()
+	street_view.setup(self, layer)
 	quiet_seats = preload("res://quiet_seats.gd").new()
 	add_child(quiet_seats)
 	quiet_seats.table_seats = table_quiet_seats
