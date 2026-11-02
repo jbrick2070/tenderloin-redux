@@ -249,6 +249,9 @@ const knownBy = sourceIndex => {
 // Returns { catalog, rejected, error }: catalog is null when the envelope is invalid.
 // Catalogs readCatalog made: setLocale accepts no other, so every active string passed the validator.
 const VALIDATED = new WeakSet();
+// Each catalog's serial number, for localeKey().
+const SERIALS = new WeakMap();
+let serial = 0;
 export function readCatalog(text, code, sourceIndex = null, options = {}) {
   const fail = error => ({ catalog: null, rejected: [], error });
   const meta = metaOf(code);
@@ -301,7 +304,7 @@ export function readCatalog(text, code, sourceIndex = null, options = {}) {
     address: (form, key) => addresses.get(form)?.get(key),
     keys: () => [...messages.keys()],
   });
-  VALIDATED.add(catalog);
+  VALIDATED.add(catalog); SERIALS.set(catalog, ++serial);
   return { catalog, rejected: Object.freeze(rejected), error: null };
 }
 
@@ -426,7 +429,7 @@ export function createSwitcher({ load, apply }) {
 // The active locale. English (catalog null) is the identity.
 let active = { code: 'en', meta: LOCALES.en, catalog: null, preview: false, address: null };
 const misses = new Set();
-let missHook = null, rejectedNow = Object.freeze([]);
+let missHook = null, lookupHook = null, rejectedNow = Object.freeze([]);
 const rules = new Map();
 const pluralRules = intl => { if (!rules.has(intl)) rules.set(intl, new Intl.PluralRules(intl)); return rules.get(intl); };
 const numberFormats = new Map();
@@ -444,7 +447,12 @@ export const locale = () => active.code;
 export const localeInfo = () => ({ code: active.code, html: active.meta.html, intl: active.meta.intl, dir: active.meta.dir, preview: active.preview });
 export const isEnglish = () => active.code === 'en';
 export const isRTL = () => active.meta.dir === 'rtl';
+// A cache key for text built from lookups: the locale code, the active catalog (a reload of the same locale is a new key) and the
+// address form. English is 'en'.
+export const localeKey = () => active.catalog ? `${active.code}#${SERIALS.get(active.catalog)}${active.address ? `/${active.address}` : ''}` : active.code;
 export function onMiss(fn) { missHook = typeof fn === 'function' ? fn : null; }
+// onLookup(fn): fn(english, ctx) on every catalog lookup under a locale, found or not (tests record which msgids are reachable).
+export function onLookup(fn) { lookupHook = typeof fn === 'function' ? fn : null; }
 function miss(english, ctx) {
   if (misses.size < 2000) misses.add(ctx ? `${ctx}\u0004${english}` : english);
   if (missHook) { try { missHook(english, ctx); } catch { /* a diagnostic never breaks the screen */ } }
@@ -455,7 +463,9 @@ export const diagnostics = () => ({ locale: active.code, preview: active.preview
 // The raw catalog value for an English key, or undefined.
 function lookup(english, ctx) {
   const c = active.catalog;
-  if (!c || typeof english !== 'string') return undefined;
+  if (typeof english !== 'string') return undefined;
+  if (lookupHook) { try { lookupHook(english, ctx ?? null); } catch { /* a diagnostic never breaks the screen */ } }
+  if (!c) return undefined;
   if (ctx !== undefined && ctx !== null) return c.context(ctx, english);
   if (active.address) { const own = c.address(active.address, english); if (own !== undefined) return own; }
   return c.message(english);
@@ -523,26 +533,35 @@ export function fillNamed(template, values = {}) {
     return String(values[name]);
   });
 }
+// A ratio of counts in a template: %d/%d, %d/5 or 3/%d (and {met}/5 in a named one). In RTL it is one left-to-right isolate (LRI…
+// PDI) with its numbers bare: isolating each number would leave the slash, a neutral, between two isolates, and it would take the
+// paragraph's direction (UAX #9 W4 needs a number on each side, N1 then resolves it as right-to-left), so 1/3 would read 3/1.
+const RATIO = /((?:%(?:\d+\$)?d\/(?:%(?:\d+\$)?d|\d+)|\d+\/%(?:\d+\$)?d))|%%|%(?:(\d+)\$)?(s|d|f|\.(\d+)f)/g;
+const NAMED_RATIO = /((?:\{[A-Za-z_][A-Za-z0-9_]*\}\/(?:\{[A-Za-z_][A-Za-z0-9_]*\}|\d+)|\d+\/\{[A-Za-z_][A-Za-z0-9_]*\}))|\{([A-Za-z_][A-Za-z0-9_]*)\}/g;
 function substitute(template, args, flavor) {
-  const list = Array.isArray(args) ? args : [args];
+  const list = Array.isArray(args) ? args : [args], rtl = active.meta.dir === 'rtl';
   let i = 0;
+  const arg = index => { if (index >= list.length && flavor.throws) throw Error(`Not enough arguments for ${JSON.stringify(template)}`); return list[index]; };
   const value = (index, kind, decimals) => {
-    if (index >= list.length && flavor.throws) throw Error(`Not enough arguments for ${JSON.stringify(template)}`);
-    const v = list[index];
+    const v = arg(index);
     if (kind === 'd') return isolate(String(Math.trunc(Number(v))));
     if (kind === 's') return isolate(String(v));
     return isolate(num(v, { decimals: kind === 'f' ? 6 : Number(decimals) }));
   };
-  let out = String(template).replace(/%%|%(?:(\d+)\$)?(s|d|f|\.(\d+)f)/g, (spec, pos, kind, decimals) => {
-    if (spec === '%%') return flavor.percent ? '%' : '%%';
-    return value(pos ? Number(pos) - 1 : i++, kind, decimals);
-  });
+  const spec = (whole, pos, kind, decimals) => whole === '%%' ? flavor.percent ? '%' : '%%' : value(pos ? Number(pos) - 1 : i++, kind, decimals);
+  const ratio = text => `\u2066${text.replace(/%(?:(\d+)\$)?d/g, (whole, pos) => String(Math.trunc(Number(arg(pos ? Number(pos) - 1 : i++)))))}\u2069`;
+  let out = rtl ? String(template).replace(RATIO, (whole, run, pos, kind, decimals) => run ? ratio(run) : spec(whole, pos, kind, decimals))
+    : String(template).replace(/%%|%(?:(\d+)\$)?(s|d|f|\.(\d+)f)/g, spec);
   if (flavor.name === 'named') {
     const values = list[0] ?? {};
-    out = out.replace(NAMED, (whole, name) => { if (!Object.hasOwn(values, name)) throw Error(`Missing value {${name}} for ${JSON.stringify(template)}`); return isolate(String(values[name])); });
+    const named = name => { if (!Object.hasOwn(values, name)) throw Error(`Missing value {${name}} for ${JSON.stringify(template)}`); return String(values[name]); };
+    out = rtl ? out.replace(NAMED_RATIO, (whole, run, name) => run ? `\u2066${run.replace(NAMED, (w, n) => named(n))}\u2069` : isolate(named(name)))
+      : out.replace(NAMED, (whole, name) => isolate(named(name)));
   }
   return out;
 }
+// A translated template filled as format fills it (for a narrow variant, which is no msgid of its own).
+export const fillTranslated = (template, args, flavor) => substitute(template, args, flavor);
 // The variant of a plural or select object for these arguments. The plural selector is $count, else the template's first %d;
 // in a named template ({ name } values) $count names the placeholder, else it is {count}.
 function variant(value, template, args) {

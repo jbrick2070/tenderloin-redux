@@ -25,7 +25,7 @@ import { dogsScene } from './visits/dogs.js';
 import { lanternScene } from './visits/lantern.js';
 import { electionScene } from './visits/election.js';
 import { conversationLabel, progressLabel } from './visits/surprises.js';
-import { L, compose, COMPOSE_TEXT, locale } from './visits/compose.js';
+import { L, compose, COMPOSE_TEXT, localeKey } from './visits/compose.js';
 
 const MAIN = GODOT_TEXT['main.gd'], CARD = MAIN.build_story_card, MAKE = MAIN.make_ui, HUB = MAIN.apply_hub_guidance, WALK = MAIN.update_walk_control;
 const STORY = GODOT_TEXT['power_story.gd'].setup;
@@ -388,7 +388,7 @@ export function createVisits(host, parts = {}) {
   }
   let shown = null;
   function scene() {
-    const state = host.getState() || {}, at = host.player() || {}, version = session.version, code = locale();
+    const state = host.getState() || {}, at = host.player() || {}, version = session.version, code = localeKey();
     if (shown && shown.version === version && shown.state === state && shown.x === at.x && shown.y === at.y && shown.code === code) return shown.scene;
     const s = session.stories, opened = state.opened === true, storyActive = picker.activeEpisode(s) != null;
     const value = {

@@ -9,6 +9,9 @@ import { L, compose, COMPOSE_TEXT } from './compose.js';
 import { DOG_GOALS, DOG_SEARCH, DOG_OWNERS, PIXELS_PER_METRE } from './positions.js';
 
 export const { NAMES, DESCRIPTIONS, LEADS, NOTES } = DOGS;
+// A lead's name in the active language. The third lead, the Gathering, is a place: its own context (the orbital commons'
+// Gathering is a tab; scripts/i18n.mjs CONTEXTS).
+export const leadName = i => L(LEADS[i], i === 2 ? 'visits.dogs.LEADS[2]' : undefined);
 const T = GODOT_TEXT['dog_story.gd'], C = COMPOSE_TEXT.dogs, J = COMPOSE_TEXT.joiners;
 export const TEXT = T;
 export const ID = 'dogs';
@@ -57,7 +60,7 @@ export function changeDogs(d, action, ctx = {}) {
     case 'lead': {
       const i = action.index;
       if (!d.open || !d.active || !Number.isInteger(i) || i < 0 || i > 2) return none;
-      return out({ ...d, lead: i, infoView: false, message: compose(C.chose, { lead: L(LEADS[i]) }) });
+      return out({ ...d, lead: i, infoView: false, message: compose(C.chose, { lead: leadName(i) }) });
     }
     case 'begin':
       if (!d.open || d.active || otherActive(ctx) || !available(ctx)) return none;
@@ -111,14 +114,14 @@ export function dogsView(d, ctx = {}) {
   let text = L(R.intro);
   if (d.active) {
     text = compose(C.profile, { note: L(NOTES[d.profile]), name: L(NAMES[d.profile]), description: L(DESCRIPTIONS[d.profile]) }) + '\n';
-    text += compose(C.lead, { lead: d.lead >= 0 ? L(LEADS[d.lead]) : L(R.none) }) + ' ';
+    text += compose(C.lead, { lead: d.lead >= 0 ? leadName(d.lead) : L(R.none) }) + ' ';
     if (near(d, ctx)) text += d.lead === 2 && d.found !== 3 ? L(R.noDog) : (d.lead === 2 ? L(R.ready) : compose(C.observed, { description: L(DESCRIPTIONS[d.lead]) }));
     else text += L(R.walk);
   }
   if (d.infoView) text = L(R.info);
   if (d.message) text = d.message + '\n' + text;
   text += L(R.visitOnly);
-  const labels = [NAMES[0], NAMES[1], S.info, LEADS[0], LEADS[1], LEADS[2], S.begin, S.walk, d.found === 3 && d.lead === 2 ? R.reunite : R.match, S.end, ctx.musicPlaying ? R.musicOn : R.musicOff, S.back].map(label => L(label));
+  const labels = [NAMES[0], NAMES[1], S.info, LEADS[0], LEADS[1], LEADS[2], S.begin, S.walk, d.found === 3 && d.lead === 2 ? R.reunite : R.match, S.end, ctx.musicPlaying ? R.musicOn : R.musicOff, S.back].map((label, i) => i >= 3 && i <= 5 ? leadName(i - 3) : L(label));
   const disabled = [false, false, false, !d.active, !d.active, !d.active, d.active || otherActive(ctx) || ctx.sites?.dogs === false, !d.active || d.lead < 0, !d.active || !near(d, ctx) || d.won, !d.active, false, false];
   const ids = ['pippin', 'junebug', 'info', 'lead0', 'lead1', 'lead2', 'begin', 'walk', 'match', 'end', 'music', 'back'];
   const nameOf = (label, i) => (i < 2 ? compose(J.labelDescription, { label, description: L(DESCRIPTIONS[i]) }) : (i === 10 ? compose(C.music, { label }) : label));
@@ -129,8 +132,8 @@ export const announce = (d, ctx) => { const v = dogsView(d, ctx); return compose
 
 export function objective(d, ctx = {}) {
   const O = T.objective, g = goals(ctx);
-  const status = d.won ? L(O.reunited) : gdfText(O.count, [matchedCount(d), d.lead >= 0 ? L(LEADS[d.lead]) : L(O.chooseLower)]);
-  return { id: 'dog_story', hasTarget: d.lead >= 0 && !d.won, target: d.lead >= 0 ? g[d.lead] : null, targetName: d.lead >= 0 ? L(LEADS[d.lead]) : L(O.chooseLead), text: compose(C.objective, { status }), hint: L(O.hint) };
+  const status = d.won ? L(O.reunited) : gdfText(O.count, [matchedCount(d), d.lead >= 0 ? leadName(d.lead) : L(O.chooseLower)]);
+  return { id: 'dog_story', hasTarget: d.lead >= 0 && !d.won, target: d.lead >= 0 ? g[d.lead] : null, targetName: d.lead >= 0 ? leadName(d.lead) : L(O.chooseLead), text: compose(C.objective, { status }), hint: L(O.hint) };
 }
 // Map sprites (Godot update_world): dogs at their search sites while active; with owners at the gathering when won.
 export function dogsScene(d, ctx = {}) {

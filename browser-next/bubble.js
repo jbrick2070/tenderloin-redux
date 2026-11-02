@@ -8,7 +8,7 @@
 // Units: "label px" are Godot's bubble units (24 px font, 3 px border); multiply by screenScale()
 // for CSS pixels. Godot builds the bubble with y up and its tail tip at the anchor; layout() returns
 // screen points with y down.
-import { L, isEnglish } from './i18n.js';
+import { L, isEnglish, format, FLAVORS } from './i18n.js';
 import { NEIGHBOR_NAMES } from './story.js';
 
 export const BUBBLE = {
@@ -205,8 +205,10 @@ export function bubbleLayout(text, lines, box, anchor, dx, dy, scale, pop = 1) {
 }
 // announce_speech_location: what to announce when the bubble cannot be drawn. location is
 // BUBBLE_TEXT.panel, .activity or .info. Returns null when nothing new needs saying.
+// The notice is looked up before it is filled (i18n.js format); English is its own replace, as before.
+const NOTICE = { ...FLAVORS.story, legacy: (template, args) => template.replace('%s', args[0]) };
 export function speechNotice(lastAnnouncement, bubbleText, location) {
-  const notice = BUBBLE_TEXT.notice.replace('%s', location), spoken = String(bubbleText ?? '').replace(/\n/g, ' ').trim(), last = String(lastAnnouncement ?? '');
+  const notice = format(BUBBLE_TEXT.notice, [location], NOTICE), spoken = String(bubbleText ?? '').replace(/\n/g, ' ').trim(), last = String(lastAnnouncement ?? '');
   if (last.includes(spoken)) return last.endsWith(notice) ? null : `${last} ${notice}`;
   return `${notice} ${spoken}`;
 }

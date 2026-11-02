@@ -295,7 +295,8 @@ export function chapterCard(state, opts) {
     num: chapter.num,
     title: fmt(C.title, chapter.num, L(chapter.title)),
     body: L(chapter.intro),
-    button: L(startup === true ? C.startup : C.resume),
+    // Continue: its own context (the story picker's Continue is a status; scripts/i18n.mjs CONTEXTS).
+    button: startup === true ? L(C.startup) : L(C.resume, 'story.GODOT_TEMPLATES.show_story_card.resume'),
     announcement: chapterAnnouncement(state, notice),
   };
 }

@@ -1,7 +1,7 @@
 {
   "format": 1,
   "generatedBy": "node scripts/i18n.mjs extract",
-  "count": 2398,
+  "count": 2207,
   "entries": [
     {
       "msgid": "\nAll four contributions are here. Finish gathering when you are ready.",
@@ -23,14 +23,6 @@
       "tags": [
         "save"
       ]
-    },
-    {
-      "msgid": "\nBea's copied invitation: ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].refresh.invitation"
-      ],
-      "placeholders": "",
-      "length": "label"
     },
     {
       "msgid": "\nBea's copied invitation: {title}. The original six shapes, three film pictures, seats and Listening Hour format travel as copies. {beats} No personal story or meeting notes are shown.\nStop, reading, Back and Pause stop local movement. Back reviews the departure; Pause/Escape returns to today's block while this fictional chapter waits for this visit. That is a pause, not completion of the authored return-home journey. Revisit through your film and room. Moving a room copy starts this chapter fresh. Reload clears this visit's walking and shared view; your completed film keeps the invitation, and you arrange and prepare again. No automatic reconstruction. Gather here brings everyone to your shared view; finishing that gathering offers memories, continued exploration and an authored return. Recognition stays this visit only. The street camera, Music and Sounds remain yours.",
@@ -68,15 +60,6 @@
       ],
       "placeholders": "",
       "length": "paragraph"
-    },
-    {
-      "msgid": "\nCopied order: ",
-      "paths": [
-        "ending.text.GODOT[\"programme_gathering.gd\"].description.order",
-        "ending.text.GODOT[\"programme_studio.gd\"].description.copiedOrder"
-      ],
-      "placeholders": "",
-      "length": "label"
     },
     {
       "msgid": "\nCopied order: %s. %s; %s. These are the film's original illustrations, separate from Celeste's hosted tile panel.\nThis is speculative fiction, not a present-day robot or launch claim. Assembly and display last this visit only. Reload keeps your earned invitation from the completed film, and starts this bench fresh. Music, saved work and the street camera stay yours.",
@@ -180,14 +163,6 @@
       ]
     },
     {
-      "msgid": "\nOpen place: ",
-      "paths": [
-        "ending.text.GODOT[\"habitat_room.gd\"].departure_text.open"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
       "msgid": "\nOpen place: {place}. {count} of 3 links fitted. {ready}Bea's copied title: {title}. No personal story or meeting notes are shown.\nThis is speculative fiction, not a certified access plan. All reveal panels are still and captioned; Next panel and Skip reveal reach the same final panel. Back to room keeps your arrangement. Moving a copy removes these links and readiness; selection alone does not. Keep/Escape returns to the block and retains this visit only. Reload starts fresh; your completed film keeps the invitation. Music and the street camera stay yours.",
       "paths": [
         "ending.compose.ENDING_COMPOSE.departureTail"
@@ -195,15 +170,6 @@
       "placeholders": "{count} {place} {ready} {title}",
       "length": "paragraph",
       "addressee": "player"
-    },
-    {
-      "msgid": "\nOriginal fictional Halloween procession on the modeled Turk block. ",
-      "paths": [
-        "visits.lantern.TEXT.refresh.route",
-        "visits.text.GODOT_TEXT[\"lantern_procession.gd\"].refresh.route"
-      ],
-      "placeholders": "",
-      "length": "sentence"
     },
     {
       "msgid": "\nOriginal fictional Halloween procession on the modeled Turk block. {costume} / {lantern}.",
@@ -227,27 +193,11 @@
       ]
     },
     {
-      "msgid": "\nPicture: ",
-      "paths": [
-        "ending.text.GODOT[\"programme_studio.gd\"].description.picture"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
       "msgid": "\nPicture: {picture}. Draft and Posted keep the first afternoon unchanged. Posting alone does not start another gathering. Posted offers Gather again for this visit.",
       "paths": [
         "ending.compose.ENDING_COMPOSE.picture"
       ],
       "placeholders": "{picture}",
-      "length": "paragraph"
-    },
-    {
-      "msgid": "\nPrevious reviews these still panels; Skip reaches this same final invitation. Only Home now completes the return.",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].finale_text.returnTail"
-      ],
-      "placeholders": "",
       "length": "paragraph"
     },
     {
@@ -264,14 +214,6 @@
       "msgid": "\nRemembered turn:\n",
       "paths": [
         "ending.text.GODOT[\"civic_listening.gd\"].refresh.remembered"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
-      "msgid": "\nSelected: ",
-      "paths": [
-        "ending.text.GODOT[\"habitat_room.gd\"].refresh.selected"
       ],
       "placeholders": "",
       "length": "label"
@@ -302,14 +244,6 @@
       "length": "sentence"
     },
     {
-      "msgid": "\nSpeculative future, shared imagination. No personal story or meeting notes are shown. ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].finale_text.speculative"
-      ],
-      "placeholders": "",
-      "length": "paragraph"
-    },
-    {
       "msgid": "\nSpeculative future, shared imagination. No personal story or meeting notes are shown. {beats} Recognition, gathering and memories last this visit only. Reload or moving a room copy clears them. Your completed film keeps access, but room and departure are prepared again. Pause/Escape stops this chapter without finishing a gathering or return.",
       "paths": [
         "ending.compose.ENDING_COMPOSE.speculative"
@@ -335,14 +269,6 @@
       ],
       "placeholders": "",
       "length": "paragraph"
-    },
-    {
-      "msgid": "\nThanh: Our ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].acknowledgments.thanh"
-      ],
-      "placeholders": "",
-      "length": "label"
     },
     {
       "msgid": "\nThe copied choice is unavailable. The saved gathering stays unchanged.",
@@ -406,29 +332,11 @@
       "addressee": "player"
     },
     {
-      "msgid": "\nYou: ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].finale_text.you"
-      ],
-      "placeholders": "",
-      "length": "label",
-      "addressee": "player"
-    },
-    {
       "msgid": "\nYou: {answer}",
       "paths": [
         "ending.compose.ENDING_COMPOSE.youAnswer"
       ],
       "placeholders": "{answer}",
-      "length": "label",
-      "addressee": "player"
-    },
-    {
-      "msgid": "\nYour response: ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].finale_text.response"
-      ],
-      "placeholders": "",
       "length": "label",
       "addressee": "player"
     },
@@ -440,53 +348,6 @@
       "placeholders": "{answer}",
       "length": "label",
       "addressee": "player"
-    },
-    {
-      "msgid": " , selected",
-      "paths": [
-        "hosted-text.HOSTED_GODOT_TEXT[\"bea_invitation.gd\"].update_choices.selected",
-        "hosted-text.HOSTED_GODOT_TEXT[\"quiet_seats.gd\"].update_ui.selected"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
-      "msgid": " Back to your existing chapter. Your observation stays in this opening for this visit; reload starts it fresh. Revisit through Info when idle.",
-      "paths": [
-        "visits.before-streets.TEXT.close_opening.closed",
-        "visits.text.GODOT_TEXT[\"before_streets.gd\"].close_opening.closed"
-      ],
-      "placeholders": "",
-      "length": "paragraph",
-      "addressee": "player"
-    },
-    {
-      "msgid": " Both labels fit! Return to Bea and Share your original map.",
-      "paths": [
-        "visits.election.TEXT.place_label.fit",
-        "visits.text.GODOT_TEXT[\"voting_story.gd\"].place_label.fit"
-      ],
-      "placeholders": "",
-      "length": "paragraph",
-      "addressee": "player"
-    },
-    {
-      "msgid": " Both records found! Choose Make map.",
-      "paths": [
-        "visits.election.TEXT.record_site.both",
-        "visits.text.GODOT_TEXT[\"voting_story.gd\"].record_site.both"
-      ],
-      "placeholders": "",
-      "length": "paragraph"
-    },
-    {
-      "msgid": " Celeste: ",
-      "paths": [
-        "ending.text.GODOT[\"main.gd\"].edit_mural_scene.celeste",
-        "ending.text.GODOT[\"mural_stories.gd\"].present.celeste"
-      ],
-      "placeholders": "",
-      "length": "label"
     },
     {
       "msgid": " Choose Keep welcome open to finish this gathering. Reading or leaving does not finish it.",
@@ -514,15 +375,6 @@
       "addressee": "player"
     },
     {
-      "msgid": " Follow takes you to '",
-      "paths": [
-        "ending.text.GODOT[\"civic_listening.gd\"].refresh.follow"
-      ],
-      "placeholders": "",
-      "length": "sentence",
-      "addressee": "player"
-    },
-    {
       "msgid": " Follow takes you to '{button}'; choose that action when you are ready. Your film stays as you left it. Keep exploring retains this offer with your completed progress.",
       "paths": [
         "ending.compose.ENDING_COMPOSE.civicFollow"
@@ -535,33 +387,12 @@
       ]
     },
     {
-      "msgid": " Follow this invitation visits ",
-      "paths": [
-        "visits.meal.TEXT.refresh.follow",
-        "visits.text.GODOT_TEXT[\"shared_meal.gd\"].refresh.follow"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
       "msgid": " Follow this invitation visits {cook}. Keep exploring retains it.",
       "paths": [
         "visits.compose.COMPOSE_TEXT.meal.follow"
       ],
       "placeholders": "{cook}",
       "length": "paragraph"
-    },
-    {
-      "msgid": " Listening Hour has room for another neighbor. Bea: We keep the invitation open. Gather here is a separate choice when you are ready.",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].response.seatsTail"
-      ],
-      "placeholders": "",
-      "length": "paragraph",
-      "addressee": "player",
-      "tags": [
-        "civic"
-      ]
     },
     {
       "msgid": " Listening Hour is focused. Open that button when you are ready; your plan and conversation are unchanged.",
@@ -616,15 +447,6 @@
       "length": "sentence"
     },
     {
-      "msgid": " No personal story or meeting notes are shown.\nStop, reading, Back and Pause stop local movement. Back reviews the departure; Pause/Escape returns to today's block while this fictional chapter waits for this visit. That is a pause, not completion of the authored return-home journey. Revisit through your film and room. Moving a room copy starts this chapter fresh. Reload clears this visit's walking and shared view; your completed film keeps the invitation, and you arrange and prepare again. No automatic reconstruction. Gather here brings everyone to your shared view; finishing that gathering offers memories, continued exploration and an authored return. Recognition stays this visit only. The street camera, Music and Sounds remain yours.",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].refresh.tail"
-      ],
-      "placeholders": "",
-      "length": "paragraph",
-      "addressee": "player"
-    },
-    {
       "msgid": " OK",
       "paths": [
         "visits.power.TEXT.refresh.ok",
@@ -651,39 +473,12 @@
       "length": "paragraph"
     },
     {
-      "msgid": " Recognition, gathering and memories last this visit only. Reload or moving a room copy clears them. Your completed film keeps access, but room and departure are prepared again. Pause/Escape stops this chapter without finishing a gathering or return.",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].finale_text.tail"
-      ],
-      "placeholders": "",
-      "length": "paragraph",
-      "addressee": "player"
-    },
-    {
       "msgid": " Return when ready to complete it.",
       "paths": [
         "rhythm.RHYTHM_TEXT.closeHostingTail"
       ],
       "placeholders": "",
       "length": "sentence"
-    },
-    {
-      "msgid": " Story scenes sit under the original marks on the street board. Your earlier keepsake stays as it was.",
-      "paths": [
-        "ending.text.GODOT[\"mural_stories.gd\"].present.street"
-      ],
-      "placeholders": "",
-      "length": "paragraph",
-      "addressee": "player"
-    },
-    {
-      "msgid": " That is just my example. Tell something if you want to; listening is equally welcome. No story is recorded.\" (Original fictional scene.)",
-      "paths": [
-        "hosted-text.HOSTED_GODOT_TEXT[\"bea_invitation.gd\"].explanation.close"
-      ],
-      "placeholders": "",
-      "length": "paragraph",
-      "addressee": "player"
     },
     {
       "msgid": " That painted guitar leaves room for a quiet song, too.",
@@ -738,192 +533,6 @@
       "addressee": "player"
     },
     {
-      "msgid": " address pin, not a surveyed entrance or room. The orange square is an outdoor game observation stop. North is up; scale bar 40m. Pins 1 and 2 are city address points, not doors.\nADDRESS NOTE: the existing museum scene says 398 Eddy; this polling row says Cadillac Hotel, 380 Eddy, Lobby. The park scene says 240 Eddy; its separate polling row says 246 Eddy, Meeting Room. Neither scene's entrance is a polling-door claim.\nOther entries in our retained excerpt: Faithful Fools, 234 Hyde; Glide, 330 Ellis, 2nd Floor Sanctuary. They are outside this two-stop walk. This is not a complete list or an assigned voting site. For present-day voting, consult current San Francisco Department of Elections information. The world uses the existing dated geography model, not a 2024 streetscape reconstruction. Original fictional map-making and dialogue; no real ballot, endorsement or vote.",
-      "paths": [
-        "visits.election.TEXT.source_text.tail",
-        "visits.text.GODOT_TEXT[\"voting_story.gd\"].source_text.tail"
-      ],
-      "placeholders": "",
-      "length": "paragraph",
-      "tags": [
-        "civic"
-      ]
-    },
-    {
-      "msgid": " and Celeste and Dez's volunteered fictional hands",
-      "paths": [
-        "ending.text.GODOT[\"film_screening.gd\"].description.wide"
-      ],
-      "placeholders": "",
-      "length": "sentence"
-    },
-    {
-      "msgid": " are back. You made the connection.\"",
-      "paths": [
-        "visits.power.TEXT.check_path.backOn",
-        "visits.text.GODOT_TEXT[\"power_story.gd\"].check_path.backOn"
-      ],
-      "placeholders": "",
-      "length": "sentence",
-      "addressee": "player"
-    },
-    {
-      "msgid": " colors and arrangement; nothing has been repainted.",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].response.artTail"
-      ],
-      "placeholders": "",
-      "length": "sentence"
-    },
-    {
-      "msgid": " from the October 3 published list. This outdoor stop is not its doorway.",
-      "paths": [
-        "visits.election.TEXT.record_site.list",
-        "visits.text.GODOT_TEXT[\"voting_story.gd\"].record_site.list"
-      ],
-      "placeholders": "",
-      "length": "paragraph"
-    },
-    {
-      "msgid": " from the notes. Walk there to look; a lead is not a confirmed sighting.",
-      "paths": [
-        "visits.dogs.TEXT.choose_lead.choseTail",
-        "visits.text.GODOT_TEXT[\"dog_story.gd\"].choose_lead.choseTail"
-      ],
-      "placeholders": "",
-      "length": "paragraph",
-      "tags": [
-        "pets"
-      ]
-    },
-    {
-      "msgid": " has a clue for ",
-      "paths": [
-        "visits.power.TEXT.objective.clue",
-        "visits.text.GODOT_TEXT[\"power_story.gd\"].objective.clue"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
-      "msgid": " invitation was never a finish line. You brought us together around ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].acknowledgments.never"
-      ],
-      "placeholders": "",
-      "length": "sentence",
-      "addressee": "player"
-    },
-    {
-      "msgid": " is already matched. Find the other dog, then meet both owners at the gathering.",
-      "paths": [
-        "visits.dogs.TEXT.match_dog.already",
-        "visits.text.GODOT_TEXT[\"dog_story.gd\"].match_dog.already"
-      ],
-      "placeholders": "",
-      "length": "paragraph",
-      "tags": [
-        "pets"
-      ]
-    },
-    {
-      "msgid": " is on your brush. Touch the left or right half to paint; a second placement moves it.",
-      "paths": [
-        "ending.text.GODOT[\"mural_stories.gd\"].select_scene.brush"
-      ],
-      "placeholders": "",
-      "length": "paragraph",
-      "addressee": "player"
-    },
-    {
-      "msgid": " keeps this visit's copied order and handoffs, even if you edit or repost.",
-      "paths": [
-        "ending.text.GODOT[\"programme_gathering.gd\"].back_to_studio.tail"
-      ],
-      "placeholders": "",
-      "length": "sentence",
-      "addressee": "player"
-    },
-    {
-      "msgid": " make room for a neighbor to pause and be heard.\nBea: This ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].acknowledgments.pause"
-      ],
-      "placeholders": "",
-      "length": "sentence"
-    },
-    {
-      "msgid": " matched by ears and tag, not color alone. The fictional owner has your sighting. ",
-      "paths": [
-        "visits.dogs.TEXT.match_dog.matched",
-        "visits.text.GODOT_TEXT[\"dog_story.gd\"].match_dog.matched"
-      ],
-      "placeholders": "",
-      "length": "paragraph",
-      "addressee": "player",
-      "tags": [
-        "pets"
-      ]
-    },
-    {
-      "msgid": " of 3\n",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].finale_text.of3"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
-      "msgid": " on its city address pin.",
-      "paths": [
-        "visits.election.TEXT.place_label.onPin",
-        "visits.text.GODOT_TEXT[\"voting_story.gd\"].place_label.onPin"
-      ],
-      "placeholders": "",
-      "length": "sentence"
-    },
-    {
-      "msgid": " open in our room, so the picture never has to be the whole story.\nDez: We framed ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].acknowledgments.open"
-      ],
-      "placeholders": "",
-      "length": "sentence"
-    },
-    {
-      "msgid": " palette. The room's open place was ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].finale_text.recapArtMid"
-      ],
-      "placeholders": "",
-      "length": "sentence"
-    },
-    {
-      "msgid": " paper after the gathering by ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].finale_text.return0Mid"
-      ],
-      "placeholders": "",
-      "length": "sentence"
-    },
-    {
-      "msgid": " shapes belong to all of us. You left the ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].acknowledgments.shapes"
-      ],
-      "placeholders": "",
-      "length": "sentence",
-      "addressee": "player"
-    },
-    {
-      "msgid": " | Copies | This visit only",
-      "paths": [
-        "ending.text.GODOT[\"habitat_room.gd\"].refresh.credit"
-      ],
-      "placeholders": "",
-      "length": "sentence"
-    },
-    {
       "msgid": " | Reunited!",
       "paths": [
         "visits.dogs.TEXT.refresh.headingWon",
@@ -944,22 +553,6 @@
       "length": "label"
     },
     {
-      "msgid": " · Next: ",
-      "paths": [
-        "hosted-text.HOSTED_GODOT_TEXT[\"main.gd\"].host_complete_current.next"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
-      "msgid": " — Second Afternoon Complete!",
-      "paths": [
-        "hosted-text.HOSTED_GODOT_TEXT[\"main.gd\"].host_complete_current.last"
-      ],
-      "placeholders": "",
-      "length": "sentence"
-    },
-    {
       "msgid": " — The Open Seat Complete!",
       "paths": [
         "ending.text.GODOT[\"main.gd\"].film_capture_shot.complete"
@@ -973,14 +566,6 @@
         "rhythm.RHYTHM_TEXT.pad"
       ],
       "placeholders": "%d %s",
-      "length": "label"
-    },
-    {
-      "msgid": "%d guests",
-      "paths": [
-        "rewards.CUE_REASONS.keepsake_photo"
-      ],
-      "placeholders": "%d",
       "length": "label"
     },
     {
@@ -1177,14 +762,6 @@
       "length": "sentence"
     },
     {
-      "msgid": "%s jig: left support %s; right support %s. %s",
-      "paths": [
-        "ending.text.GODOT[\"helper_bench.gd\"].description.line"
-      ],
-      "placeholders": "%s %s %s %s",
-      "length": "sentence"
-    },
-    {
       "msgid": "%s on the %s",
       "paths": [
         "characters.COMPOSITION.scene",
@@ -1314,14 +891,6 @@
       "length": "sentence"
     },
     {
-      "msgid": "%s. Original illustrated props%s.",
-      "paths": [
-        "ending.text.GODOT[\"film_screening.gd\"].description.line"
-      ],
-      "placeholders": "%s %s",
-      "length": "paragraph"
-    },
-    {
       "msgid": "%s: \"%s\"",
       "paths": [
         "characters.PANEL_TEXT.quoted",
@@ -1390,33 +959,12 @@
       "length": "paragraph"
     },
     {
-      "msgid": "'; choose that action when you are ready. Your film stays as you left it. Keep exploring retains this offer with your completed progress.",
-      "paths": [
-        "ending.text.GODOT[\"civic_listening.gd\"].refresh.followTail"
-      ],
-      "placeholders": "",
-      "length": "paragraph",
-      "addressee": "player",
-      "tags": [
-        "save"
-      ]
-    },
-    {
       "msgid": "'So What' Easter Egg",
       "paths": [
         "visits.text.GODOT_TEXT[\"main.gd\"].landmark_tour_state.soWhat"
       ],
       "placeholders": "",
       "length": "label"
-    },
-    {
-      "msgid": "'s note. Try the other profile; there is no penalty.",
-      "paths": [
-        "visits.dogs.TEXT.match_dog.differs3",
-        "visits.text.GODOT_TEXT[\"dog_story.gd\"].match_dog.differs3"
-      ],
-      "placeholders": "",
-      "length": "paragraph"
     },
     {
       "msgid": "(in English)",
@@ -1438,310 +986,6 @@
       ]
     },
     {
-      "msgid": ", selected",
-      "paths": [
-        "ending.text.GODOT[\"film_screening.gd\"].refresh.selected"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
-      "msgid": ", with its original order and framing. ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].response.filmTail"
-      ],
-      "placeholders": "",
-      "length": "sentence"
-    },
-    {
-      "msgid": ", with no people pictured",
-      "paths": [
-        "ending.text.GODOT[\"film_screening.gd\"].description.close"
-      ],
-      "placeholders": "",
-      "length": "sentence"
-    },
-    {
-      "msgid": ". %d of 3 links fitted. ",
-      "paths": [
-        "ending.text.GODOT[\"habitat_room.gd\"].departure_text.links"
-      ],
-      "placeholders": "%d",
-      "length": "paragraph"
-    },
-    {
-      "msgid": ". Celeste, Dez and Thanh leave an open place aboard the imagined neighborhood. We are taking the welcome home, not packing away that new home.",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].finale_text.return0Tail"
-      ],
-      "placeholders": "",
-      "length": "paragraph"
-    },
-    {
-      "msgid": ". Choose Ready together when you want to gather.",
-      "paths": [
-        "ending.text.GODOT[\"habitat_room.gd\"].departure_text.allTail"
-      ],
-      "placeholders": "",
-      "length": "paragraph",
-      "addressee": "player"
-    },
-    {
-      "msgid": ". Choose a half of the paper to paint or move this scene.",
-      "paths": [
-        "ending.text.GODOT[\"mural_stories.gd\"].setup.tooltip"
-      ],
-      "placeholders": "",
-      "length": "paragraph"
-    },
-    {
-      "msgid": ". Choose its matching pin; nothing was lost.",
-      "paths": [
-        "visits.election.TEXT.place_label.nothing",
-        "visits.text.GODOT_TEXT[\"voting_story.gd\"].place_label.nothing"
-      ],
-      "placeholders": "",
-      "length": "paragraph",
-      "tags": [
-        "pets"
-      ]
-    },
-    {
-      "msgid": ". Choose this film action when you are ready; your film is unchanged.",
-      "paths": [
-        "ending.text.GODOT[\"civic_listening.gd\"].follow_invitation.tail"
-      ],
-      "placeholders": "",
-      "length": "paragraph",
-      "addressee": "player"
-    },
-    {
-      "msgid": ". City EAS ",
-      "paths": [
-        "visits.election.TEXT.source_text.eas",
-        "visits.text.GODOT_TEXT[\"voting_story.gd\"].source_text.eas"
-      ],
-      "placeholders": "",
-      "length": "sentence"
-    },
-    {
-      "msgid": ". Compare with the selected profile, then Match dog.",
-      "paths": [
-        "visits.dogs.TEXT.refresh.compare",
-        "visits.text.GODOT_TEXT[\"dog_story.gd\"].refresh.compare"
-      ],
-      "placeholders": "",
-      "length": "paragraph",
-      "tags": [
-        "pets"
-      ]
-    },
-    {
-      "msgid": ". Draft and Posted keep the first afternoon unchanged. Posting alone does not start another gathering. Posted offers Gather again for this visit.",
-      "paths": [
-        "ending.text.GODOT[\"programme_studio.gd\"].description.pictureTail"
-      ],
-      "placeholders": "",
-      "length": "paragraph"
-    },
-    {
-      "msgid": ". Independent soundtrack.",
-      "paths": [
-        "visits.dogs.TEXT.refresh.soundtrack",
-        "visits.power.TEXT._process.soundtrack",
-        "visits.text.GODOT_TEXT[\"dog_story.gd\"].refresh.soundtrack",
-        "visits.text.GODOT_TEXT[\"power_story.gd\"]._process.soundtrack"
-      ],
-      "placeholders": "",
-      "length": "paragraph"
-    },
-    {
-      "msgid": ". Invite Thanh to share this view, or walk somewhere else.",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"]._process.reachedTail"
-      ],
-      "placeholders": "",
-      "length": "paragraph"
-    },
-    {
-      "msgid": ". Invite Thanh when you want to share this view.",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].walk_to.hereTail"
-      ],
-      "placeholders": "",
-      "length": "paragraph",
-      "addressee": "player"
-    },
-    {
-      "msgid": ". Keep exploring retains it.",
-      "paths": [
-        "visits.meal.TEXT.refresh.retains",
-        "visits.text.GODOT_TEXT[\"shared_meal.gd\"].refresh.retains"
-      ],
-      "placeholders": "",
-      "length": "paragraph"
-    },
-    {
-      "msgid": ". Leave a place open for the next person.",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].acknowledgments.tail"
-      ],
-      "placeholders": "",
-      "length": "paragraph"
-    },
-    {
-      "msgid": ". Listening Hour: ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].finale_text.recapSeatsMid"
-      ],
-      "placeholders": "",
-      "length": "sentence",
-      "tags": [
-        "civic"
-      ]
-    },
-    {
-      "msgid": ". No personal story or meeting notes are shown.\nThis is speculative fiction, not a certified access plan. All reveal panels are still and captioned; Next panel and Skip reveal reach the same final panel. Back to room keeps your arrangement. Moving a copy removes these links and readiness; selection alone does not. Keep/Escape returns to the block and retains this visit only. Reload starts fresh; your completed film keeps the invitation. Music and the street camera stay yours.",
-      "paths": [
-        "ending.text.GODOT[\"habitat_room.gd\"].departure_text.tail"
-      ],
-      "placeholders": "",
-      "length": "paragraph",
-      "addressee": "player"
-    },
-    {
-      "msgid": ". Our ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].response.seatsMid"
-      ],
-      "placeholders": "",
-      "length": "sentence"
-    },
-    {
-      "msgid": ". Our plan was: ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].acknowledgments.plan"
-      ],
-      "placeholders": "",
-      "length": "sentence"
-    },
-    {
-      "msgid": ". Preparation %d/5. %s.",
-      "paths": [
-        "visits.meal.TEXT.art_description.template",
-        "visits.text.GODOT_TEXT[\"shared_meal.gd\"].art_description.template"
-      ],
-      "placeholders": "%d %s",
-      "length": "paragraph"
-    },
-    {
-      "msgid": ". Progress for this visit only.",
-      "paths": [
-        "visits.picker.TEXT.refresh.entrySuffix",
-        "visits.text.GODOT_TEXT[\"story_picker.gd\"].refresh.entrySuffix"
-      ],
-      "placeholders": "",
-      "length": "paragraph",
-      "tags": [
-        "save"
-      ]
-    },
-    {
-      "msgid": ". Reload clears this visit, not the original afternoon.",
-      "paths": [
-        "ending.text.GODOT[\"programme_studio.gd\"].close_studio.gatheringTail"
-      ],
-      "placeholders": "",
-      "length": "paragraph"
-    },
-    {
-      "msgid": ". Stop or focus the reading panel to pause. Arrival does not invite anyone.",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].walk_to.walkingTail"
-      ],
-      "placeholders": "",
-      "length": "paragraph"
-    },
-    {
-      "msgid": ". That differs from ",
-      "paths": [
-        "visits.dogs.TEXT.match_dog.differs2",
-        "visits.text.GODOT_TEXT[\"dog_story.gd\"].match_dog.differs2"
-      ],
-      "placeholders": "",
-      "length": "sentence"
-    },
-    {
-      "msgid": ". The central passage stays clear.",
-      "paths": [
-        "ending.text.GODOT[\"habitat_room.gd\"].description.tail"
-      ],
-      "placeholders": "",
-      "length": "paragraph"
-    },
-    {
-      "msgid": ". The original six shapes, three film pictures, seats and Listening Hour format travel as copies. ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].refresh.copies"
-      ],
-      "placeholders": "",
-      "length": "paragraph",
-      "tags": [
-        "civic"
-      ]
-    },
-    {
-      "msgid": ". Two fictional visitors can sit together; the woven green cushion marks an open seat. Sit, stand or leave whenever you like. The sidewalk stays clear. Music is your choice; there is no timer.\"",
-      "paths": [
-        "hosted-text.HOSTED_GODOT_TEXT[\"quiet_seats.gd\"].explanation.close"
-      ],
-      "placeholders": "",
-      "length": "paragraph",
-      "addressee": "player"
-    },
-    {
-      "msgid": ". View detail enlarges the selected copy; it does not place it.",
-      "paths": [
-        "ending.text.GODOT[\"habitat_room.gd\"].refresh.selectedTail"
-      ],
-      "placeholders": "",
-      "length": "paragraph"
-    },
-    {
-      "msgid": ". We brought the way we looked, not just the things we saw. ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].acknowledgments.looked"
-      ],
-      "placeholders": "",
-      "length": "paragraph"
-    },
-    {
-      "msgid": ". We made time for one another.\nCeleste: Our ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].acknowledgments.gatheredTail"
-      ],
-      "placeholders": "",
-      "length": "paragraph"
-    },
-    {
-      "msgid": ". You are here.",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].refresh.here"
-      ],
-      "placeholders": "",
-      "length": "paragraph",
-      "addressee": "player"
-    },
-    {
-      "msgid": ". You chose what to share; we can take our time.",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].invite_thanh.joinTail"
-      ],
-      "placeholders": "",
-      "length": "paragraph",
-      "addressee": "player"
-    },
-    {
       "msgid": ". You made room for everyday creativity.",
       "paths": [
         "characters.COMPOSITION.scenesClose",
@@ -1749,16 +993,6 @@
       ],
       "placeholders": "",
       "length": "paragraph",
-      "addressee": "player"
-    },
-    {
-      "msgid": ". Your selected label is ",
-      "paths": [
-        "visits.election.TEXT.place_label.selected",
-        "visits.text.GODOT_TEXT[\"voting_story.gd\"].place_label.selected"
-      ],
-      "placeholders": "",
-      "length": "sentence",
       "addressee": "player"
     },
     {
@@ -1950,15 +1184,6 @@
       "length": "sentence"
     },
     {
-      "msgid": "246 Eddy St",
-      "paths": [
-        "visits.election.TEXT.valid_source.address1",
-        "visits.text.GODOT_TEXT[\"voting_story.gd\"].valid_source.address1"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
       "msgid": "3/3 Complete",
       "paths": [
         "characters.PANEL_TEXT.easelComplete"
@@ -1970,14 +1195,6 @@
       "msgid": "3/3 Ready",
       "paths": [
         "characters.PANEL_TEXT.muralReady"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
-      "msgid": "3/3 motifs",
-      "paths": [
-        "rewards.CUE_REASONS.mural_complete"
       ],
       "placeholders": "",
       "length": "label"
@@ -2009,15 +1226,6 @@
       "length": "sentence"
     },
     {
-      "msgid": "380 Eddy St",
-      "paths": [
-        "visits.election.TEXT.valid_source.address0",
-        "visits.text.GODOT_TEXT[\"voting_story.gd\"].valid_source.address0"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
       "msgid": "398 Eddy St (Cadillac Hotel, 1907) · Session era %d/4",
       "paths": [
         "bursts.BURST_TEXT.museum_portal.detail"
@@ -2033,22 +1241,6 @@
       ],
       "placeholders": "",
       "length": "sentence"
-    },
-    {
-      "msgid": "4 segments",
-      "paths": [
-        "rewards.CUE_REASONS.programme_published"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
-      "msgid": "4/4 hosted",
-      "paths": [
-        "rewards.CUE_REASONS.hosting_complete"
-      ],
-      "placeholders": "",
-      "length": "label"
     },
     {
       "msgid": "40 m",
@@ -2086,14 +1278,6 @@
       "length": "label"
     },
     {
-      "msgid": "80 BPM Sketch (",
-      "paths": [
-        "sketch-core.MUSIC_TEXT.sketchTag"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
       "msgid": "80 BPM Sketch (Active)",
       "paths": [
         "characters.BUTTON_TEXT.sketchActive"
@@ -2105,25 +1289,6 @@
       "msgid": "8th-floor corner bay window & 1961 Miles Davis awning",
       "paths": [
         "bursts.BURST_TEXT.so_what_egg.detail"
-      ],
-      "placeholders": "",
-      "length": "sentence"
-    },
-    {
-      "msgid": ": \"Our portable light is ready. Thanks for looking after your neighbors.\"",
-      "paths": [
-        "visits.power.TEXT.check_path.portable",
-        "visits.text.GODOT_TEXT[\"power_story.gd\"].check_path.portable"
-      ],
-      "placeholders": "",
-      "length": "sentence",
-      "addressee": "player"
-    },
-    {
-      "msgid": ": \"There it is! ",
-      "paths": [
-        "visits.power.TEXT.check_path.there",
-        "visits.text.GODOT_TEXT[\"power_story.gd\"].check_path.there"
       ],
       "placeholders": "",
       "length": "sentence"
@@ -2353,7 +1518,7 @@
         "world.PLACES[3].name"
       ],
       "placeholders": "",
-      "length": "sentence"
+      "length": "chip"
     },
     {
       "msgid": "A different order, with our original contributions.",
@@ -2446,14 +1611,6 @@
       "msgid": "A little film on the block.",
       "paths": [
         "game-text.GAME_TEXT.filmScreen.aLittleFilmOn"
-      ],
-      "placeholders": "",
-      "length": "sentence"
-    },
-    {
-      "msgid": "A little later, everyone has gathered by ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].acknowledgments.gathered"
       ],
       "placeholders": "",
       "length": "sentence"
@@ -3173,15 +2330,6 @@
       "length": "label"
     },
     {
-      "msgid": "April 21, 2017 inspired fiction | ",
-      "paths": [
-        "visits.power.TEXT.refresh.inspired",
-        "visits.text.GODOT_TEXT[\"power_story.gd\"].refresh.inspired"
-      ],
-      "placeholders": "",
-      "length": "sentence"
-    },
-    {
       "msgid": "April 21, 2017 inspired fiction | {phase}.",
       "paths": [
         "visits.compose.COMPOSE_TEXT.power.inspired"
@@ -3365,14 +2513,6 @@
       "length": "sentence"
     },
     {
-      "msgid": "Authored shared request (not sent; no names or testimony collected): ",
-      "paths": [
-        "ending.text.GODOT[\"civic_listening.gd\"].request_text.themes"
-      ],
-      "placeholders": "",
-      "length": "sentence"
-    },
-    {
       "msgid": "Authored shared request (not sent; no names or testimony collected): {request}",
       "paths": [
         "ending.compose.ENDING_COMPOSE.civicRequest"
@@ -3428,14 +2568,6 @@
       ],
       "placeholders": "",
       "length": "label"
-    },
-    {
-      "msgid": "Back to Posted. ",
-      "paths": [
-        "ending.text.GODOT[\"programme_gathering.gd\"].back_to_studio.back"
-      ],
-      "placeholders": "",
-      "length": "sentence"
     },
     {
       "msgid": "Back to Posted. {title} keeps this visit's copied order and handoffs, even if you edit or repost.",
@@ -3792,7 +2924,7 @@
         "world.NEIGHBORS[0].name"
       ],
       "placeholders": "",
-      "length": "label"
+      "length": "chip"
     },
     {
       "msgid": "Bea (fictional neighbor): \"You noticed how much time a place holds. We can take our time too. There is a place for you in our afternoon, whenever you want to join.\"",
@@ -3849,14 +2981,6 @@
       "placeholders": "",
       "length": "paragraph",
       "addressee": "player"
-    },
-    {
-      "msgid": "Bea folds our ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].finale_text.return0"
-      ],
-      "placeholders": "",
-      "length": "label"
     },
     {
       "msgid": "Bea folds our {title} paper after the gathering by {place}. Celeste, Dez and Thanh leave an open place aboard the imagined neighborhood. We are taking the welcome home, not packing away that new home.",
@@ -3950,14 +3074,6 @@
       "addressee": "player"
     },
     {
-      "msgid": "Bea's copied title: ",
-      "paths": [
-        "ending.text.GODOT[\"habitat_room.gd\"].departure_text.title"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
       "msgid": "Bea's gathering",
       "paths": [
         "visits.election.TEXT.objective.home",
@@ -3982,14 +3098,6 @@
       ],
       "placeholders": "",
       "length": "paragraph"
-    },
-    {
-      "msgid": "Bea: \"",
-      "paths": [
-        "hosted-text.HOSTED_GODOT_TEXT[\"bea_invitation.gd\"].explanation.open"
-      ],
-      "placeholders": "",
-      "length": "label"
     },
     {
       "msgid": "Bea: \"%s. %s That is just my example. Tell something if you want to; listening is equally welcome. No story is recorded.\" (Original fictional scene.)",
@@ -4231,14 +3339,6 @@
       "speaker": "Bea"
     },
     {
-      "msgid": "Bea: All three links belong together. My folded invitation keeps the middle open: ",
-      "paths": [
-        "ending.text.GODOT[\"habitat_room.gd\"].departure_text.all"
-      ],
-      "placeholders": "",
-      "length": "sentence"
-    },
-    {
       "msgid": "Bea: All three links belong together. My folded invitation keeps the middle open: {title}. Choose Ready together when you want to gather.",
       "paths": [
         "ending.compose.ENDING_COMPOSE.linksAll"
@@ -4329,15 +3429,6 @@
       "length": "label"
     },
     {
-      "msgid": "Before These Streets. ",
-      "paths": [
-        "visits.before-streets.TEXT.refresh.announce",
-        "visits.text.GODOT_TEXT[\"before_streets.gd\"].refresh.announce"
-      ],
-      "placeholders": "",
-      "length": "sentence"
-    },
-    {
       "msgid": "Before These Streets. {text}",
       "paths": [
         "visits.compose.COMPOSE_TEXT.before.announce"
@@ -4407,7 +3498,7 @@
         "world.PLACES[2].name"
       ],
       "placeholders": "",
-      "length": "label"
+      "length": "chip"
     },
     {
       "msgid": "Block Organizer · Warm & Steady",
@@ -4494,18 +3585,6 @@
       ],
       "placeholders": "",
       "length": "label"
-    },
-    {
-      "msgid": "Both found! Choose Gathering, walk there and Reunite.",
-      "paths": [
-        "visits.dogs.TEXT.match_dog.both",
-        "visits.text.GODOT_TEXT[\"dog_story.gd\"].match_dog.both"
-      ],
-      "placeholders": "",
-      "length": "paragraph",
-      "tags": [
-        "pets"
-      ]
     },
     {
       "msgid": "Both owners are ready. Choose Reunite.",
@@ -4671,7 +3750,7 @@
         "world.NEIGHBORS[1].name"
       ],
       "placeholders": "",
-      "length": "label"
+      "length": "chip"
     },
     {
       "msgid": "Celeste and Dez offer their fictional hands for these drawings. Everyone else stays out of frame. The wider table view needs a marked prop edge, still beside the route.",
@@ -4754,14 +3833,6 @@
       "length": "paragraph"
     },
     {
-      "msgid": "Celeste talk",
-      "paths": [
-        "rewards.CUE_REASONS.celeste_talk"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
       "msgid": "Celeste waits while Bea folds the paper, then sets out our panel.",
       "paths": [
         "ending.text.GODOT_CONSTS[\"programme_gathering.gd\"].HANDOFFS[\"stories>art\"][1]"
@@ -4801,14 +3872,6 @@
       ],
       "placeholders": "",
       "length": "label"
-    },
-    {
-      "msgid": "Celeste's six original shapes keep their ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].finale_text.recapArt"
-      ],
-      "placeholders": "",
-      "length": "sentence"
     },
     {
       "msgid": "Celeste's six original shapes keep their {palette} palette. The room's open place was {spare}.",
@@ -5157,18 +4220,6 @@
       ]
     },
     {
-      "msgid": "Choose Power Story to walk to and connect the next fictional light kit. ",
-      "paths": [
-        "visits.power.TEXT.objective.hint",
-        "visits.text.GODOT_TEXT[\"power_story.gd\"].objective.hint"
-      ],
-      "placeholders": "",
-      "length": "sentence",
-      "tags": [
-        "power"
-      ]
-    },
-    {
       "msgid": "Choose Power Story to walk to and connect the next fictional light kit. End story returns to your usual afternoon.",
       "paths": [
         "visits.compose.COMPOSE_TEXT.power.hintEnd"
@@ -5408,7 +4459,7 @@
     {
       "msgid": "Circle",
       "paths": [
-        "game.js:556"
+        "game.js:560"
       ],
       "placeholders": "",
       "length": "label"
@@ -5429,6 +4480,14 @@
       ],
       "placeholders": "",
       "length": "paragraph"
+    },
+    {
+      "msgid": "City boundary · only part of the district is in this game.",
+      "paths": [
+        "index.html:33"
+      ],
+      "placeholders": "",
+      "length": "sentence"
     },
     {
       "msgid": "City code, §107.3(d): designation description",
@@ -5591,7 +4650,15 @@
     {
       "msgid": "Complete",
       "paths": [
-        "ending.text.GODOT[\"programme_gathering.gd\"].refresh.complete",
+        "ending.text.GODOT[\"programme_gathering.gd\"].refresh.complete"
+      ],
+      "placeholders": "",
+      "length": "label"
+    },
+    {
+      "msgid": "Complete",
+      "ctx": "rhythm.RHYTHM_TEXT.complete",
+      "paths": [
         "rhythm.RHYTHM_TEXT.complete"
       ],
       "placeholders": "",
@@ -5612,23 +4679,6 @@
       ],
       "placeholders": "%s %d",
       "length": "sentence"
-    },
-    {
-      "msgid": "Completed %s (%d/4 hosted)%s",
-      "paths": [
-        "hosted-text.HOSTED_GODOT_TEXT[\"main.gd\"].host_complete_current.summary"
-      ],
-      "placeholders": "%s %d %s",
-      "length": "label"
-    },
-    {
-      "msgid": "Completed this visit: ",
-      "paths": [
-        "visits.picker.TEXT.refresh.completed",
-        "visits.text.GODOT_TEXT[\"story_picker.gd\"].refresh.completed"
-      ],
-      "placeholders": "",
-      "length": "label"
     },
     {
       "msgid": "Completed this visit: {stories}.",
@@ -5677,9 +4727,17 @@
     {
       "msgid": "Continue",
       "paths": [
-        "story.GODOT_TEMPLATES.show_story_card.resume",
         "visits.picker.TEXT.refresh.continue",
         "visits.text.GODOT_TEXT[\"story_picker.gd\"].refresh.continue"
+      ],
+      "placeholders": "",
+      "length": "label"
+    },
+    {
+      "msgid": "Continue",
+      "ctx": "story.GODOT_TEMPLATES.show_story_card.resume",
+      "paths": [
+        "story.GODOT_TEMPLATES.show_story_card.resume"
       ],
       "placeholders": "",
       "length": "label"
@@ -5825,14 +4883,6 @@
       "length": "label"
     },
     {
-      "msgid": "Copied invitation: ",
-      "paths": [
-        "ending.text.GODOT[\"hosted_afternoon.gd\"].detail.storiesResult"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
       "msgid": "Copied invitation: {title}.",
       "paths": [
         "ending.compose.ENDING_COMPOSE.storiesResult"
@@ -5863,14 +4913,6 @@
       ],
       "placeholders": "",
       "length": "sentence"
-    },
-    {
-      "msgid": "Copied seating: ",
-      "paths": [
-        "ending.text.GODOT[\"hosted_afternoon.gd\"].detail.pauseResult"
-      ],
-      "placeholders": "",
-      "length": "label"
     },
     {
       "msgid": "Copied seating: {title}.",
@@ -6099,14 +5141,6 @@
       "length": "sentence"
     },
     {
-      "msgid": "Detail of ",
-      "paths": [
-        "ending.text.GODOT[\"habitat_room.gd\"].refresh.detailOf"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
       "msgid": "Detail of {item}. {description}",
       "paths": [
         "ending.compose.ENDING_COMPOSE.detailOf"
@@ -6127,7 +5161,7 @@
         "world.NEIGHBORS[3].name"
       ],
       "placeholders": "",
-      "length": "label"
+      "length": "chip"
     },
     {
       "msgid": "Dez and Celeste’s art-and-music-centered Open Floor",
@@ -6203,22 +5237,6 @@
       "addressee": "player"
     },
     {
-      "msgid": "Dez's Rhythm Circle",
-      "paths": [
-        "rhythm.RHYTHM_TEXT.heading"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
-      "msgid": "Dez's Rhythm Circle - ",
-      "paths": [
-        "rhythm.RHYTHM_TEXT.headingMode"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
       "msgid": "Dez's Rhythm Circle - Hosting",
       "paths": [
         "rhythm.RHYTHM_COMPOSE.headingHosting"
@@ -6243,14 +5261,6 @@
       "length": "sentence"
     },
     {
-      "msgid": "Dez's invitation: ",
-      "paths": [
-        "ending.text.GODOT[\"civic_listening.gd\"].follow_invitation.invitation"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
       "msgid": "Dez's invitation: {button}. Choose this film action when you are ready; your film is unchanged.",
       "paths": [
         "ending.compose.ENDING_COMPOSE.civicInvitation"
@@ -6258,14 +5268,6 @@
       "placeholders": "{button}",
       "length": "paragraph",
       "addressee": "player"
-    },
-    {
-      "msgid": "Dez's three pictures remain in order: ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].finale_text.recapFilm"
-      ],
-      "placeholders": "",
-      "length": "sentence"
     },
     {
       "msgid": "Dez's three pictures remain in order: {first}, {second}, {third}. {framing}.",
@@ -6669,9 +5671,6 @@
     {
       "msgid": "Eddy Street",
       "paths": [
-        "visits.positions.EATERY_COUNTERS[2].street",
-        "visits.positions.SURPRISE_SITES.magic_carpet_chef.street",
-        "visits.positions.SURPRISE_SITES.mayor_pomp_event.street",
         "visits.power.TEXT.setup.map3",
         "visits.text.GODOT_TEXT[\"power_story.gd\"].setup.map3"
       ],
@@ -6695,36 +5694,12 @@
       "length": "label"
     },
     {
-      "msgid": "Election Walk 2024 | ",
-      "paths": [
-        "visits.election.TEXT.refresh.heading",
-        "visits.text.GODOT_TEXT[\"voting_story.gd\"].refresh.heading"
-      ],
-      "placeholders": "",
-      "length": "label",
-      "tags": [
-        "civic"
-      ]
-    },
-    {
       "msgid": "Election Walk 2024 | {status}",
       "paths": [
         "visits.compose.COMPOSE_TEXT.election.heading"
       ],
       "placeholders": "{status}",
       "length": "sentence",
-      "tags": [
-        "civic"
-      ]
-    },
-    {
-      "msgid": "Election Walk: ",
-      "paths": [
-        "visits.election.TEXT.objective.prefix",
-        "visits.text.GODOT_TEXT[\"voting_story.gd\"].objective.prefix"
-      ],
-      "placeholders": "",
-      "length": "label",
       "tags": [
         "civic"
       ]
@@ -6817,16 +5792,6 @@
       ],
       "placeholders": "",
       "length": "label"
-    },
-    {
-      "msgid": "End story returns to your usual afternoon.",
-      "paths": [
-        "visits.power.TEXT.objective.hintEnd",
-        "visits.text.GODOT_TEXT[\"power_story.gd\"].objective.hintEnd"
-      ],
-      "placeholders": "",
-      "length": "sentence",
-      "addressee": "player"
     },
     {
       "msgid": "End walk",
@@ -7123,6 +6088,14 @@
       "length": "label"
     },
     {
+      "msgid": "Finding our corner…",
+      "paths": [
+        "index.html:32"
+      ],
+      "placeholders": "",
+      "length": "sentence"
+    },
+    {
       "msgid": "Fine bulgur and lean meat dough; browned meat, onion, spices and nuts between the layers.",
       "paths": [
         "visits.meal.RECIPES[0].ingredients",
@@ -7387,14 +6360,6 @@
       "length": "sentence"
     },
     {
-      "msgid": "Frame %d of 3: %s%s",
-      "paths": [
-        "ending.text.GODOT[\"film_screening.gd\"].refresh.frame"
-      ],
-      "placeholders": "%d %s %s",
-      "length": "sentence"
-    },
-    {
       "msgid": "Frame only our original portable props. No people are pictured; a small camera footprint stays beside the route.",
       "paths": [
         "film.FILM_FRAMING.close.detail"
@@ -7519,26 +6484,9 @@
       "length": "label"
     },
     {
-      "msgid": "Gather / Finish",
-      "paths": [
-        "visits.lantern.TEXT.setup.gather",
-        "visits.text.GODOT_TEXT[\"lantern_procession.gd\"].setup.gather"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
       "msgid": "Gather again",
       "paths": [
         "ending.text.GODOT[\"programme_gathering.gd\"].title.gather"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
-      "msgid": "Gather again | ",
-      "paths": [
-        "ending.text.GODOT[\"programme_gathering.gd\"].refresh.heading"
       ],
       "placeholders": "",
       "length": "label"
@@ -7562,7 +6510,15 @@
     {
       "msgid": "Gathering",
       "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].refresh.gathering",
+        "ending.text.GODOT[\"orbital_commons.gd\"].refresh.gathering"
+      ],
+      "placeholders": "",
+      "length": "label"
+    },
+    {
+      "msgid": "Gathering",
+      "ctx": "visits.dogs.LEADS[2]",
+      "paths": [
         "visits.dogs.LEADS[2]",
         "visits.text.GODOT_CONSTANTS[\"dog_story.gd\"].LEADS[2]"
       ],
@@ -7599,7 +6555,7 @@
         "world.PLACES[0].name"
       ],
       "placeholders": "",
-      "length": "label"
+      "length": "chip"
     },
     {
       "msgid": "Gathering not started: an original copied contribution is unavailable. Your previous visit and saved afternoon stay intact.",
@@ -7694,6 +6650,14 @@
       "length": "paragraph"
     },
     {
+      "msgid": "Good things start small.",
+      "paths": [
+        "index.html:36"
+      ],
+      "placeholders": "",
+      "length": "sentence"
+    },
+    {
       "msgid": "Goodbye",
       "paths": [
         "characters.BUTTON_TEXT.byeNarrow"
@@ -7785,18 +6749,6 @@
       ],
       "placeholders": "",
       "length": "sentence"
-    },
-    {
-      "msgid": "HISTORICAL: November 5, 2024 consolidated election, including Mayor. Two entries from the City's October 3 published list; later relocations unverified.\nSELECTED: ",
-      "paths": [
-        "visits.election.TEXT.source_text.head",
-        "visits.text.GODOT_TEXT[\"voting_story.gd\"].source_text.head"
-      ],
-      "placeholders": "",
-      "length": "paragraph",
-      "tags": [
-        "civic"
-      ]
     },
     {
       "msgid": "HISTORICAL: November 5, 2024 consolidated election, including Mayor. Two entries from the City's October 3 published list; later relocations unverified.\nSELECTED: {name} - {address} - {room}. City EAS {eas} address pin, not a surveyed entrance or room. The orange square is an outdoor game observation stop. North is up; scale bar 40m. Pins 1 and 2 are city address points, not doors.\nADDRESS NOTE: the existing museum scene says 398 Eddy; this polling row says Cadillac Hotel, 380 Eddy, Lobby. The park scene says 240 Eddy; its separate polling row says 246 Eddy, Meeting Room. Neither scene's entrance is a polling-door claim.\nOther entries in our retained excerpt: Faithful Fools, 234 Hyde; Glide, 330 Ellis, 2nd Floor Sanctuary. They are outside this two-stop walk. This is not a complete list or an assigned voting site. For present-day voting, consult current San Francisco Department of Elections information. The world uses the existing dated geography model, not a 2024 streetscape reconstruction. Original fictional map-making and dialogue; no real ballot, endorsement or vote.",
@@ -8144,14 +7096,6 @@
       "addressee": "player"
     },
     {
-      "msgid": "Hosting",
-      "paths": [
-        "rhythm.RHYTHM_TEXT.hosting"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
       "msgid": "House Special",
       "paths": [
         "visits.compose.MENU_TITLES[\"house special\"]"
@@ -8329,25 +7273,9 @@
       "addressee": "player"
     },
     {
-      "msgid": "Info",
-      "paths": [
-        "bubble.BUBBLE_TEXT.info"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
       "msgid": "Invite",
       "paths": [
         "ending.text.GODOT[\"programme_gathering.gd\"]._draw.invite"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
-      "msgid": "Invite ",
-      "paths": [
-        "ending.text.GODOT[\"programme_gathering.gd\"].refresh.invite"
       ],
       "placeholders": "",
       "length": "label"
@@ -8447,15 +7375,6 @@
       "paths": [
         "visits.landmarks.EATERIES[1].street",
         "visits.text.GODOT_CONSTANTS[\"main.gd\"].NEIGHBORHOOD_EATERIES[1].street"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
-      "msgid": "Jones Street",
-      "paths": [
-        "visits.positions.EATERY_COUNTERS[1].street",
-        "visits.positions.SURPRISE_SITES.cutesy_dino.street"
       ],
       "placeholders": "",
       "length": "label"
@@ -8685,29 +7604,11 @@
       "length": "sentence"
     },
     {
-      "msgid": "Lantern Procession | ",
-      "paths": [
-        "visits.lantern.TEXT.refresh.heading",
-        "visits.text.GODOT_TEXT[\"lantern_procession.gd\"].refresh.heading"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
       "msgid": "Lantern Procession | {status}",
       "paths": [
         "visits.compose.COMPOSE_TEXT.lantern.heading"
       ],
       "placeholders": "{status}",
-      "length": "label"
-    },
-    {
-      "msgid": "Lantern Procession: ",
-      "paths": [
-        "visits.lantern.TEXT.objective.prefix",
-        "visits.text.GODOT_TEXT[\"lantern_procession.gd\"].objective.prefix"
-      ],
-      "placeholders": "",
       "length": "label"
     },
     {
@@ -8852,15 +7753,6 @@
       "length": "sentence"
     },
     {
-      "msgid": "Leavenworth Street",
-      "paths": [
-        "visits.positions.EATERY_COUNTERS[4].street",
-        "visits.positions.SURPRISE_SITES.hidden_mural_145.street"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
       "msgid": "Left",
       "paths": [
         "ending.compose.ENDING_DISPLAY.slots.left"
@@ -8995,28 +7887,6 @@
       "length": "label"
     },
     {
-      "msgid": "Listening hour",
-      "paths": [
-        "rewards.CUE_REASONS.civic_planning"
-      ],
-      "placeholders": "",
-      "length": "label",
-      "tags": [
-        "civic"
-      ]
-    },
-    {
-      "msgid": "Listening hour complete",
-      "paths": [
-        "rewards.CUE_REASONS.civic_complete"
-      ],
-      "placeholders": "",
-      "length": "label",
-      "tags": [
-        "civic"
-      ]
-    },
-    {
       "msgid": "Listening only, with no marked beats.",
       "paths": [
         "ending.text.GODOT[\"habitat_room.gd\"].departure_text.beatsNone"
@@ -9148,14 +8018,6 @@
       ],
       "placeholders": "",
       "length": "paragraph"
-    },
-    {
-      "msgid": "Local: ",
-      "paths": [
-        "sketch-core.MUSIC_TEXT.localTag"
-      ],
-      "placeholders": "",
-      "length": "label"
     },
     {
       "msgid": "Local: %s",
@@ -9637,14 +8499,6 @@
       "length": "label"
     },
     {
-      "msgid": "Memories of this visit | ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].finale_text.memories"
-      ],
-      "placeholders": "",
-      "length": "sentence"
-    },
-    {
       "msgid": "Memories of this visit | {memory}",
       "paths": [
         "ending.compose.ENDING_COMPOSE.memories"
@@ -9899,22 +8753,6 @@
       "length": "label"
     },
     {
-      "msgid": "Music",
-      "paths": [
-        "rhythm.RHYTHM_TEXT.music"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
-      "msgid": "Music\n",
-      "paths": [
-        "rhythm.RHYTHM_TEXT.musicLabel"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
       "msgid": "Music\nOff",
       "paths": [
         "rhythm.RHYTHM_COMPOSE.musicOff"
@@ -9971,14 +8809,6 @@
       "length": "sentence"
     },
     {
-      "msgid": "Music playing: %s.",
-      "paths": [
-        "sketch-core.MUSIC_TEXT.playing"
-      ],
-      "placeholders": "%s",
-      "length": "sentence"
-    },
-    {
       "msgid": "Music playing: 80 BPM Sketch (%s).",
       "paths": [
         "sketch-core.MUSIC_COMPOSE.playingSketch"
@@ -10010,14 +8840,6 @@
       ],
       "placeholders": "%d",
       "length": "sentence"
-    },
-    {
-      "msgid": "Music:\n",
-      "paths": [
-        "ending.text.GODOT[\"mural_stories.gd\"].present.musicLabel"
-      ],
-      "placeholders": "",
-      "length": "label"
     },
     {
       "msgid": "Music:\nOff",
@@ -10088,15 +8910,6 @@
       "length": "label"
     },
     {
-      "msgid": "N",
-      "paths": [
-        "visits.power.TEXT.setup.map2",
-        "visits.text.GODOT_TEXT[\"power_story.gd\"].setup.map2"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
       "msgid": "Nacho Captain Rico",
       "paths": [
         "visits.surprises.SURPRISES.bite_size_nachos.speaker",
@@ -10161,7 +8974,7 @@
         "world.PLACES[1].name"
       ],
       "placeholders": "",
-      "length": "label"
+      "length": "chip"
     },
     {
       "msgid": "Neighborhood Cocktail",
@@ -10366,15 +9179,6 @@
       ],
       "placeholders": "",
       "length": "label"
-    },
-    {
-      "msgid": "Next revealed cook. Current: ",
-      "paths": [
-        "visits.meal.TEXT.refresh.nextName",
-        "visits.text.GODOT_TEXT[\"shared_meal.gd\"].refresh.nextName"
-      ],
-      "placeholders": "",
-      "length": "sentence"
     },
     {
       "msgid": "Next revealed cook. Current: {cook}",
@@ -10588,29 +9392,11 @@
       "length": "label"
     },
     {
-      "msgid": "Observe ",
-      "paths": [
-        "visits.election.TEXT.objective.observe",
-        "visits.text.GODOT_TEXT[\"voting_story.gd\"].objective.observe"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
       "msgid": "Observe {address}",
       "paths": [
         "visits.compose.COMPOSE_TEXT.election.observe"
       ],
       "placeholders": "{address}",
-      "length": "label"
-    },
-    {
-      "msgid": "Observed here: ",
-      "paths": [
-        "visits.dogs.TEXT.refresh.observed",
-        "visits.text.GODOT_TEXT[\"dog_story.gd\"].refresh.observed"
-      ],
-      "placeholders": "",
       "length": "label"
     },
     {
@@ -10634,15 +9420,6 @@
       "length": "label"
     },
     {
-      "msgid": "Off",
-      "paths": [
-        "ending.text.GODOT[\"mural_stories.gd\"].present.off",
-        "rhythm.RHYTHM_TEXT.off"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
       "msgid": "Off. No optional cards or recordings are active.",
       "paths": [
         "game-text.GAME_TEXT.voicesUI.offNoOptionalCards"
@@ -10654,15 +9431,6 @@
       "msgid": "Olallieberry Pie",
       "paths": [
         "visits.compose.MENU_TITLES[\"olallieberry pie\"]"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
-      "msgid": "On",
-      "paths": [
-        "ending.text.GODOT[\"mural_stories.gd\"].present.on",
-        "rhythm.RHYTHM_TEXT.on"
       ],
       "placeholders": "",
       "length": "label"
@@ -10843,14 +9611,6 @@
       "addressee": "player"
     },
     {
-      "msgid": "Open-place frame. ",
-      "paths": [
-        "ending.text.GODOT[\"habitat_room.gd\"].refresh.frame"
-      ],
-      "placeholders": "",
-      "length": "sentence"
-    },
-    {
       "msgid": "Open-place frame. {description}. {status}",
       "paths": [
         "ending.compose.ENDING_COMPOSE.frameAlt"
@@ -10947,18 +9707,6 @@
       ],
       "placeholders": "%s %s",
       "length": "sentence"
-    },
-    {
-      "msgid": "Ordinary lighting and saved progress are unchanged.",
-      "paths": [
-        "visits.power.TEXT.close_story.idle",
-        "visits.text.GODOT_TEXT[\"power_story.gd\"].close_story.idle"
-      ],
-      "placeholders": "",
-      "length": "sentence",
-      "tags": [
-        "save"
-      ]
     },
     {
       "msgid": "Original 80 BPM sketch · Soundcheck: %s · Groove Stems: %s — %s",
@@ -11073,15 +9821,6 @@
       ],
       "placeholders": "",
       "length": "sentence"
-    },
-    {
-      "msgid": "Original illustration: ",
-      "paths": [
-        "visits.meal.TEXT.art_description.prefix",
-        "visits.text.GODOT_TEXT[\"shared_meal.gd\"].art_description.prefix"
-      ],
-      "placeholders": "",
-      "length": "label"
     },
     {
       "msgid": "Original illustration: {shape}. Preparation {stage}/5. {serving}.",
@@ -11322,14 +10061,6 @@
       "addressee": "player"
     },
     {
-      "msgid": "Packing loans",
-      "paths": [
-        "rewards.CUE_REASONS.epilogue_packing"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
       "msgid": "Paint Scenes",
       "paths": [
         "ending.text.GODOT[\"mural_workshop.gd\"].setup.paint"
@@ -11372,15 +10103,7 @@
     {
       "msgid": "Palette",
       "paths": [
-        "game.js:812"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
-      "msgid": "Palette:\n",
-      "paths": [
-        "ending.text.GODOT[\"mural_stories.gd\"].present.paletteLabel"
+        "game.js:816"
       ],
       "placeholders": "",
       "length": "label"
@@ -11525,6 +10248,7 @@
     },
     {
       "msgid": "Paused",
+      "ctx": "characters.PANEL_TEXT.paused",
       "paths": [
         "characters.PANEL_TEXT.paused"
       ],
@@ -11541,6 +10265,7 @@
     },
     {
       "msgid": "Pending",
+      "ctx": "characters.PANEL_TEXT.scPending",
       "paths": [
         "characters.PANEL_TEXT.scPending"
       ],
@@ -11661,15 +10386,6 @@
       "placeholders": "",
       "length": "sentence",
       "addressee": "player"
-    },
-    {
-      "msgid": "Placed ",
-      "paths": [
-        "visits.election.TEXT.place_label.placed",
-        "visits.text.GODOT_TEXT[\"voting_story.gd\"].place_label.placed"
-      ],
-      "placeholders": "",
-      "length": "label"
     },
     {
       "msgid": "Placed {address} on its city address pin.",
@@ -11805,6 +10521,7 @@
     },
     {
       "msgid": "Playing",
+      "ctx": "characters.PANEL_TEXT.playing",
       "paths": [
         "characters.PANEL_TEXT.playing"
       ],
@@ -11917,19 +10634,6 @@
       ]
     },
     {
-      "msgid": "Power Story progress stays for this visit; End story restores ordinary lighting. Reload starts fresh.",
-      "paths": [
-        "visits.power.TEXT.close_story.active",
-        "visits.text.GODOT_TEXT[\"power_story.gd\"].close_story.active"
-      ],
-      "placeholders": "",
-      "length": "paragraph",
-      "tags": [
-        "power",
-        "save"
-      ]
-    },
-    {
       "msgid": "Power Story: %s (%d/3 lights restored)",
       "paths": [
         "visits.power.TEXT.objective.text",
@@ -11946,14 +10650,6 @@
       "paths": [
         "visits.picker.TITLES[2]",
         "visits.text.GODOT_CONSTANTS[\"story_picker.gd\"].TITLES[2]"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
-      "msgid": "Practice",
-      "paths": [
-        "rhythm.RHYTHM_TEXT.practice"
       ],
       "placeholders": "",
       "length": "label"
@@ -12022,7 +10718,15 @@
     {
       "msgid": "Previous",
       "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].refresh.previous",
+        "ending.text.GODOT[\"orbital_commons.gd\"].refresh.previous"
+      ],
+      "placeholders": "",
+      "length": "label"
+    },
+    {
+      "msgid": "Previous",
+      "ctx": "ending.text.GODOT[\"programme_gathering.gd\"].setup.previous",
+      "paths": [
         "ending.text.GODOT[\"programme_gathering.gd\"].setup.previous"
       ],
       "placeholders": "",
@@ -12038,15 +10742,6 @@
       "length": "label"
     },
     {
-      "msgid": "Previous revealed cook. Current: ",
-      "paths": [
-        "visits.meal.TEXT.refresh.previousName",
-        "visits.text.GODOT_TEXT[\"shared_meal.gd\"].refresh.previousName"
-      ],
-      "placeholders": "",
-      "length": "sentence"
-    },
-    {
       "msgid": "Previous revealed cook. Current: {cook}",
       "paths": [
         "visits.compose.COMPOSE_TEXT.meal.previousName"
@@ -12059,14 +10754,6 @@
       "paths": [
         "visits.before-streets.TEXT.setup.previous",
         "visits.text.GODOT_TEXT[\"before_streets.gd\"].setup.previous"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
-      "msgid": "Programme Studio | ",
-      "paths": [
-        "ending.text.GODOT[\"programme_studio.gd\"].refresh.heading"
       ],
       "placeholders": "",
       "length": "label"
@@ -12258,20 +10945,8 @@
       "length": "label"
     },
     {
-      "msgid": "Read the other owner's note and choose your next lead.",
-      "paths": [
-        "visits.dogs.TEXT.match_dog.next",
-        "visits.text.GODOT_TEXT[\"dog_story.gd\"].match_dog.next"
-      ],
-      "placeholders": "",
-      "length": "sentence",
-      "addressee": "player",
-      "tags": [
-        "pets"
-      ]
-    },
-    {
       "msgid": "Ready",
+      "ctx": "characters.PANEL_TEXT.scReady",
       "paths": [
         "characters.PANEL_TEXT.scReady"
       ],
@@ -12293,14 +10968,6 @@
       ],
       "placeholders": "",
       "length": "sentence"
-    },
-    {
-      "msgid": "Ready to open",
-      "paths": [
-        "core.BLOCK_TEXT.ready"
-      ],
-      "placeholders": "",
-      "length": "label"
     },
     {
       "msgid": "Ready to share. Choose a serving style and place.",
@@ -12415,15 +11082,6 @@
       "length": "label"
     },
     {
-      "msgid": "Recorded ",
-      "paths": [
-        "visits.election.TEXT.record_site.recorded",
-        "visits.text.GODOT_TEXT[\"voting_story.gd\"].record_site.recorded"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
       "msgid": "Recorded {description}, {address} from the October 3 published list. This outdoor stop is not its doorway.",
       "paths": [
         "visits.compose.COMPOSE_TEXT.election.recorded"
@@ -12455,18 +11113,6 @@
       ],
       "placeholders": "",
       "length": "paragraph"
-    },
-    {
-      "msgid": "Relay %d",
-      "paths": [
-        "visits.power.TEXT.setup.relay",
-        "visits.text.GODOT_TEXT[\"power_story.gd\"].setup.relay"
-      ],
-      "placeholders": "%d",
-      "length": "label",
-      "tags": [
-        "power"
-      ]
     },
     {
       "msgid": "Relay %d%s",
@@ -12560,7 +11206,7 @@
     {
       "msgid": "Remove",
       "paths": [
-        "game.js:583"
+        "game.js:587"
       ],
       "placeholders": "",
       "length": "label"
@@ -12686,23 +11332,6 @@
       "length": "label"
     },
     {
-      "msgid": "Return",
-      "paths": [
-        "visits.before-streets.TEXT.setup.return",
-        "visits.text.GODOT_TEXT[\"before_streets.gd\"].setup.return"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
-      "msgid": "Return ",
-      "paths": [
-        "characters.ACTION_LABELS.return"
-      ],
-      "placeholders": "",
-      "length": "button"
-    },
-    {
       "msgid": "Return %s",
       "paths": [
         "characters.CHARACTER_COMPOSE.return"
@@ -12743,14 +11372,6 @@
       ],
       "placeholders": "",
       "length": "label"
-    },
-    {
-      "msgid": "Return home | Still panel ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].finale_text.returnHome"
-      ],
-      "placeholders": "",
-      "length": "sentence"
     },
     {
       "msgid": "Return home | Still panel {number} of 3\n{panel}\nPrevious reviews these still panels; Skip reaches this same final invitation. Only Home now completes the return.",
@@ -12794,14 +11415,6 @@
       ],
       "placeholders": "{name}",
       "length": "label"
-    },
-    {
-      "msgid": "Returned ",
-      "paths": [
-        "characters.ACTION_LABELS.returned"
-      ],
-      "placeholders": "",
-      "length": "button"
     },
     {
       "msgid": "Returned %s",
@@ -12909,14 +11522,6 @@
       ],
       "placeholders": "",
       "length": "label"
-    },
-    {
-      "msgid": "Reward sounds %s. Music has its own controls.",
-      "paths": [
-        "rewards.SOUNDS_TEXT.announce"
-      ],
-      "placeholders": "%s",
-      "length": "paragraph"
     },
     {
       "msgid": "Reward sounds off. Music has its own controls.",
@@ -13040,7 +11645,7 @@
         "world.NEIGHBORS[2].name"
       ],
       "placeholders": "",
-      "length": "label"
+      "length": "chip"
     },
     {
       "msgid": "Rook dialed in the corner speaker · %s",
@@ -13085,8 +11690,7 @@
     {
       "msgid": "Rook soundcheck",
       "paths": [
-        "core.BLOCK_TEXT.sound",
-        "rewards.CUE_REASONS.rook_soundcheck"
+        "core.BLOCK_TEXT.sound"
       ],
       "placeholders": "",
       "length": "label"
@@ -13286,14 +11890,6 @@
       ],
       "placeholders": "",
       "length": "label"
-    },
-    {
-      "msgid": "Room model. ",
-      "paths": [
-        "ending.text.GODOT[\"habitat_room.gd\"].refresh.roomModel"
-      ],
-      "placeholders": "",
-      "length": "sentence"
     },
     {
       "msgid": "Room model. {description}",
@@ -13576,8 +12172,8 @@
       "paths": [
         "ending.habitat.TITLES[2]",
         "ending.text.GODOT_CONSTS[\"habitat_room.gd\"].TITLES[2]",
-        "game.js:783",
-        "game.js:786",
+        "game.js:787",
+        "game.js:790",
         "gathering.GATHERING_TEXT.labels.seats"
       ],
       "placeholders": "",
@@ -13651,15 +12247,6 @@
       "placeholders": "",
       "length": "label",
       "addressee": "player"
-    },
-    {
-      "msgid": "Selected ",
-      "paths": [
-        "visits.election.TEXT.choose.selected",
-        "visits.text.GODOT_TEXT[\"voting_story.gd\"].choose.selected"
-      ],
-      "placeholders": "",
-      "length": "label"
     },
     {
       "msgid": "Selected {address}.",
@@ -14094,7 +12681,7 @@
     {
       "msgid": "Sound",
       "paths": [
-        "game.js:783"
+        "game.js:787"
       ],
       "placeholders": "",
       "length": "label"
@@ -14272,14 +12859,6 @@
       ],
       "placeholders": "",
       "length": "label"
-    },
-    {
-      "msgid": "Speculative room model | Copies | This visit only",
-      "paths": [
-        "ending.text.GODOT[\"habitat_room.gd\"].setup.credit"
-      ],
-      "placeholders": "",
-      "length": "sentence"
     },
     {
       "msgid": "Spot %s (%d/%d surprises) · Museum",
@@ -14512,14 +13091,6 @@
       "length": "sentence"
     },
     {
-      "msgid": "Step %d, %s",
-      "paths": [
-        "rhythm.RHYTHM_TEXT.padName"
-      ],
-      "placeholders": "%d %s",
-      "length": "label"
-    },
-    {
       "msgid": "Step %d, hit",
       "paths": [
         "rhythm.RHYTHM_COMPOSE.padNameHit"
@@ -14536,14 +13107,6 @@
       "length": "label"
     },
     {
-      "msgid": "Step %d: %s. %s",
-      "paths": [
-        "rhythm.RHYTHM_TEXT.toggled"
-      ],
-      "placeholders": "%d %s %s",
-      "length": "sentence"
-    },
-    {
       "msgid": "Step %d: hit. %s",
       "paths": [
         "rhythm.RHYTHM_COMPOSE.toggledHit"
@@ -14558,14 +13121,6 @@
       ],
       "placeholders": "%d %s",
       "length": "sentence"
-    },
-    {
-      "msgid": "Step cues\n",
-      "paths": [
-        "rhythm.RHYTHM_TEXT.stepCues"
-      ],
-      "placeholders": "",
-      "length": "label"
     },
     {
       "msgid": "Step cues\nOff",
@@ -15138,16 +13693,6 @@
       "length": "label"
     },
     {
-      "msgid": "Taylor Street",
-      "paths": [
-        "visits.positions.EATERY_COUNTERS[5].street",
-        "visits.positions.SURPRISE_SITES.good_donut_and_bagel.street",
-        "visits.positions.SURPRISE_SITES.impromptu_drag_show.street"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
       "msgid": "Tea & Stools Host · Generous & Calm",
       "paths": [
         "characters.NEIGHBOR_BADGES.thanh",
@@ -15259,14 +13804,6 @@
       "length": "sentence"
     },
     {
-      "msgid": "Tenderloin to the Stars | ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].refresh.heading"
-      ],
-      "placeholders": "",
-      "length": "sentence"
-    },
-    {
       "msgid": "Tenderloin to the Stars | A room for one more",
       "paths": [
         "ending.text.GODOT[\"habitat_room.gd\"].setup.title"
@@ -15278,14 +13815,6 @@
       "msgid": "Tenderloin to the Stars | Helper bench",
       "paths": [
         "ending.text.GODOT[\"helper_bench.gd\"].setup.title"
-      ],
-      "placeholders": "",
-      "length": "sentence"
-    },
-    {
-      "msgid": "Tenderloin to the Stars | Walk the commons\nSpeculative future chapter | Copies | This visit only",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].setup.heading"
       ],
       "placeholders": "",
       "length": "sentence"
@@ -15320,7 +13849,7 @@
         "world.NEIGHBORS[4].name"
       ],
       "placeholders": "",
-      "length": "label"
+      "length": "chip"
     },
     {
       "msgid": "Thanh arranged a pair and an open seat, keeping the through-route open. People could sit, stay standing or leave.",
@@ -15448,14 +13977,6 @@
       "addressee": "player"
     },
     {
-      "msgid": "Thanh's copied seats: ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].finale_text.recapSeats"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
       "msgid": "Thanh's copied seats: {seats}. Listening Hour: {format}.",
       "paths": [
         "ending.compose.ENDING_COMPOSE.recapSeats"
@@ -15470,14 +13991,6 @@
       "msgid": "Thanh's folding table",
       "paths": [
         "story.LOAN_TITLES.table"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
-      "msgid": "Thanh: \"",
-      "paths": [
-        "hosted-text.HOSTED_GODOT_TEXT[\"quiet_seats.gd\"].explanation.open"
       ],
       "placeholders": "",
       "length": "label"
@@ -15640,15 +14153,6 @@
       "addressee": "player"
     },
     {
-      "msgid": "Thanh: I will join you by ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].invite_thanh.join"
-      ],
-      "placeholders": "",
-      "length": "sentence",
-      "addressee": "player"
-    },
-    {
       "msgid": "Thanh: I will join you by {place}. You chose what to share; we can take our time.",
       "paths": [
         "ending.compose.ENDING_COMPOSE.thanhJoins"
@@ -15691,29 +14195,11 @@
       "length": "paragraph"
     },
     {
-      "msgid": "Thanh: You brought me to Celeste's six shapes. We can look at the spaces between them together. Celeste: These are our original ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].response.art"
-      ],
-      "placeholders": "",
-      "length": "paragraph",
-      "addressee": "player"
-    },
-    {
       "msgid": "Thanh: You brought me to Celeste's six shapes. We can look at the spaces between them together. Celeste: These are our original {palette} colors and arrangement; nothing has been repainted.",
       "paths": [
         "ending.compose.ENDING_COMPOSE.responseArt"
       ],
       "placeholders": "{palette}",
-      "length": "paragraph",
-      "addressee": "player"
-    },
-    {
-      "msgid": "Thanh: You brought me to our film. I can follow its three pictures at my own pace. Dez: Our copied film ends on ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].response.film"
-      ],
-      "placeholders": "",
       "length": "paragraph",
       "addressee": "player"
     },
@@ -15724,15 +14210,6 @@
       ],
       "placeholders": "{beats} {ending}",
       "length": "paragraph",
-      "addressee": "player"
-    },
-    {
-      "msgid": "Thanh: You chose a place to pause together: ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].response.seats"
-      ],
-      "placeholders": "",
-      "length": "sentence",
       "addressee": "player"
     },
     {
@@ -15787,15 +14264,6 @@
       ],
       "placeholders": "",
       "length": "paragraph"
-    },
-    {
-      "msgid": "That pin belongs to ",
-      "paths": [
-        "visits.election.TEXT.place_label.belongs",
-        "visits.text.GODOT_TEXT[\"voting_story.gd\"].place_label.belongs"
-      ],
-      "placeholders": "",
-      "length": "label"
     },
     {
       "msgid": "That pin belongs to {address}. Your selected label is {selected}. Choose its matching pin; nothing was lost.",
@@ -15974,7 +14442,6 @@
     {
       "msgid": "The Open Seat",
       "paths": [
-        "rewards.CUE_REASONS.film_planning",
         "story.STORY_CHAPTERS[4].title"
       ],
       "placeholders": "",
@@ -15983,8 +14450,7 @@
     {
       "msgid": "The Open Seat 3/3",
       "paths": [
-        "ending.text.GODOT[\"main.gd\"].film_capture_shot.cue",
-        "rewards.CUE_REASONS.film_complete"
+        "ending.text.GODOT[\"main.gd\"].film_capture_shot.cue"
       ],
       "placeholders": "",
       "length": "label"
@@ -16828,15 +15294,6 @@
       "addressee": "player"
     },
     {
-      "msgid": "This is ",
-      "paths": [
-        "visits.dogs.TEXT.match_dog.differs",
-        "visits.text.GODOT_TEXT[\"dog_story.gd\"].match_dog.differs"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
       "msgid": "This is Ramaytush homeland today. The Yelamu were the original people of what is now San Francisco; Ramaytush people continue to live today.",
       "paths": [
         "visits.before-streets.FRAME",
@@ -17186,27 +15643,6 @@
       "length": "label"
     },
     {
-      "msgid": "Turk St Gathering",
-      "paths": [
-        "rewards.CUE_REASONS.block_opened"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
-      "msgid": "Turk Street",
-      "paths": [
-        "visits.positions.EATERY_COUNTERS[0].street",
-        "visits.positions.EATERY_COUNTERS[3].street",
-        "visits.positions.SURPRISE_SITES.bite_size_nachos.street",
-        "visits.positions.SURPRISE_SITES.clown_horn_walker.street",
-        "visits.positions.SURPRISE_SITES.jeffrey_record.street",
-        "visits.positions.SURPRISE_SITES.viking_dirt_biker.street"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
       "msgid": "Turk Street Block Gathering Open!",
       "paths": [
         "bursts.BURST_TEXT.block_opened.title"
@@ -17296,18 +15732,6 @@
       ],
       "placeholders": "%d %s",
       "length": "sentence",
-      "tags": [
-        "pets"
-      ]
-    },
-    {
-      "msgid": "Two Dogs Home: ",
-      "paths": [
-        "visits.dogs.TEXT.objective.prefix",
-        "visits.text.GODOT_TEXT[\"dog_story.gd\"].objective.prefix"
-      ],
-      "placeholders": "",
-      "length": "label",
       "tags": [
         "pets"
       ]
@@ -17454,14 +15878,6 @@
       "tags": [
         "save"
       ]
-    },
-    {
-      "msgid": "View\nCircle",
-      "paths": [
-        "rhythm.RHYTHM_TEXT.viewCircle"
-      ],
-      "placeholders": "",
-      "length": "label"
     },
     {
       "msgid": "View detail",
@@ -17729,24 +16145,6 @@
       "length": "label"
     },
     {
-      "msgid": "Walk",
-      "paths": [
-        "visits.election.TEXT.setup.walk",
-        "visits.text.GODOT_TEXT[\"voting_story.gd\"].setup.walk"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
-      "msgid": "Walk / March",
-      "paths": [
-        "visits.lantern.TEXT.setup.walk",
-        "visits.text.GODOT_TEXT[\"lantern_procession.gd\"].setup.walk"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
       "msgid": "Walk a little closer to a neighbor or a marked object.",
       "paths": [
         "game-text.GAME_TEXT.page.walkALittleCloser"
@@ -17806,14 +16204,6 @@
       "tags": [
         "power"
       ]
-    },
-    {
-      "msgid": "Walk to ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].setup.walk"
-      ],
-      "placeholders": "",
-      "length": "label"
     },
     {
       "msgid": "Walk to Art",
@@ -17941,14 +16331,6 @@
       "length": "sentence"
     },
     {
-      "msgid": "Walking to ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].walk_to.walking"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
       "msgid": "Walking to %s. Stop Walking cancels. Its %s opens after arrival.",
       "paths": [
         "visits.power.TEXT.walk_to_relay.walking",
@@ -18063,7 +16445,7 @@
       "msgid": "Wave",
       "paths": [
         "bursts.BURST_DISPLAY.motifs.wave",
-        "game.js:556"
+        "game.js:560"
       ],
       "placeholders": "",
       "length": "label"
@@ -18352,15 +16734,6 @@
       ]
     },
     {
-      "msgid": "You are by ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"].walk_to.here"
-      ],
-      "placeholders": "",
-      "length": "label",
-      "addressee": "player"
-    },
-    {
       "msgid": "You are by {place}. Invite Thanh when you want to share this view.",
       "paths": [
         "ending.compose.ENDING_COMPOSE.youAreBy"
@@ -18404,16 +16777,6 @@
       ],
       "placeholders": "",
       "length": "paragraph",
-      "addressee": "player"
-    },
-    {
-      "msgid": "You chose ",
-      "paths": [
-        "visits.dogs.TEXT.choose_lead.chose",
-        "visits.text.GODOT_TEXT[\"dog_story.gd\"].choose_lead.chose"
-      ],
-      "placeholders": "",
-      "length": "label",
       "addressee": "player"
     },
     {
@@ -18595,15 +16958,6 @@
       ],
       "placeholders": "",
       "length": "paragraph",
-      "addressee": "player"
-    },
-    {
-      "msgid": "You reached ",
-      "paths": [
-        "ending.text.GODOT[\"orbital_commons.gd\"]._process.reached"
-      ],
-      "placeholders": "",
-      "length": "label",
       "addressee": "player"
     },
     {
@@ -18814,15 +17168,6 @@
       "addressee": "player"
     },
     {
-      "msgid": "Your gathering stays this visit. Open Programme Studio, Posted, then ",
-      "paths": [
-        "ending.text.GODOT[\"programme_studio.gd\"].close_studio.gathering"
-      ],
-      "placeholders": "",
-      "length": "sentence",
-      "addressee": "player"
-    },
-    {
       "msgid": "Your gathering stays this visit. Open Programme Studio, Posted, then {title}. Reload clears this visit, not the original afternoon.",
       "paths": [
         "ending.compose.ENDING_COMPOSE.gatherClose"
@@ -18971,16 +17316,6 @@
       ]
     },
     {
-      "msgid": "Your selected lead: ",
-      "paths": [
-        "visits.dogs.TEXT.refresh.lead",
-        "visits.text.GODOT_TEXT[\"dog_story.gd\"].refresh.lead"
-      ],
-      "placeholders": "",
-      "length": "label",
-      "addressee": "player"
-    },
-    {
       "msgid": "Your selected lead: {lead}.",
       "paths": [
         "visits.compose.COMPOSE_TEXT.dogs.lead"
@@ -19015,16 +17350,6 @@
       ],
       "placeholders": "",
       "length": "label",
-      "addressee": "player"
-    },
-    {
-      "msgid": "Your story visits. ",
-      "paths": [
-        "visits.picker.TEXT.open_picker.announce",
-        "visits.text.GODOT_TEXT[\"story_picker.gd\"].open_picker.announce"
-      ],
-      "placeholders": "",
-      "length": "sentence",
       "addressee": "player"
     },
     {
@@ -19178,14 +17503,6 @@
       "length": "label"
     },
     {
-      "msgid": "about %d blocks %s",
-      "paths": [
-        "story.GODOT_TEMPLATES.compass_phrase.blocks"
-      ],
-      "placeholders": "%d %s",
-      "length": "label"
-    },
-    {
       "msgid": "about %d blocks east",
       "paths": [
         "story.COMPASS_TEXT.blocks.east"
@@ -19250,14 +17567,6 @@
       "length": "label"
     },
     {
-      "msgid": "about %d m %s",
-      "paths": [
-        "story.GODOT_TEMPLATES.compass_phrase.metres"
-      ],
-      "placeholders": "%d %s",
-      "length": "label"
-    },
-    {
       "msgid": "about %d m east",
       "paths": [
         "story.COMPASS_TEXT.metres.east"
@@ -19319,14 +17628,6 @@
         "story.COMPASS_TEXT.metres.west"
       ],
       "placeholders": "%d",
-      "length": "label"
-    },
-    {
-      "msgid": "about a block %s",
-      "paths": [
-        "story.GODOT_TEMPLATES.compass_phrase.block"
-      ],
-      "placeholders": "%s",
       "length": "label"
     },
     {
@@ -19712,15 +18013,6 @@
       "length": "label"
     },
     {
-      "msgid": "repair surface",
-      "paths": [
-        "visits.power.TEXT.refresh.repairSurface",
-        "visits.text.GODOT_TEXT[\"power_story.gd\"].refresh.repairSurface"
-      ],
-      "placeholders": "",
-      "length": "label"
-    },
-    {
       "msgid": "repair view",
       "paths": [
         "visits.power.TEXT.walk_to_relay.repair",
@@ -19820,14 +18112,6 @@
       "tags": [
         "pets"
       ]
-    },
-    {
-      "msgid": "the activity instructions",
-      "paths": [
-        "bubble.BUBBLE_TEXT.activity"
-      ],
-      "placeholders": "",
-      "length": "label"
     },
     {
       "msgid": "the block",

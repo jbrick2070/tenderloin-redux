@@ -126,7 +126,7 @@ test('English: narrowLabel ignores a template, spokenText keeps the 12-unit limi
 // ------------------------------------------------------------------------------------------------ pseudo coverage
 // The catalog is i18n/source.json alone (the registry lists these tables), so a miss is a msgid the extractor does not find.
 const source = readSource();
-const MSGIDS = source.entries.filter(e => !e.ctx).map(e => e.msgid);
+const MSGIDS = source.entries; // with the context entries (scripts/i18n.mjs CONTEXTS)
 const PSEUDO = I.readCatalog(I.pseudoCatalog(MSGIDS, 'qps-ploc'), 'qps-ploc');
 const pseudoOn = () => { assert.ok(PSEUDO.catalog, PSEUDO.error); assert.deepEqual(PSEUDO.rejected, []); I.setLocale('qps-ploc', PSEUDO.catalog, { preview: true }); };
 // A run of two plain English words: what a missed string looks like among pseudo text (whose letters are all accented).

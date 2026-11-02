@@ -132,7 +132,7 @@ test('gdfText is gdf in English: same text, same %% and the same error on a miss
 // Every English key the side stories may look up is a msgid of i18n/source.json (their Godot tables as the 2D shows them, the
 // composites, the menu titles, the declared fork text, the kit's region name, the memory lines and the place file's rooms and
 // listed descriptions are all registered), so the pseudo catalog is the source alone and a miss is a msgid it lacks.
-const SOURCE = JSON.parse(read('i18n/source.json')).entries.filter(e => !e.ctx).map(e => e.msgid);
+const SOURCE = JSON.parse(read('i18n/source.json')).entries; // with the context entries (scripts/i18n.mjs CONTEXTS)
 const msgids = () => SOURCE;
 function pseudoLocale(extra = {}) {
   const json = JSON.parse(pseudoCatalog(msgids(), 'qps-ploc'));

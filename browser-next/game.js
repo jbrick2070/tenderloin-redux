@@ -329,6 +329,10 @@ function returnFocus() { return modalReturnTarget.isConnected ? modalReturnTarge
 function focusReturn() { let target = returnFocus(); if (target.hidden || target.closest?.('[hidden]') || target.disabled) target = canvas; target.focus({ preventScroll: true }); if (['civic-hour', 'film-shoot'].includes(target.id)) target.scrollIntoView({ block: 'nearest' }); }
 function close(target = canvas) { voicesHost.dismiss(); modalReturnTarget = target instanceof HTMLElement ? target : canvas; modal.close(); focusReturn(); releaseNotice(); }
 function bind(id, callback) { document.getElementById(id)?.addEventListener('click', callback); }
+// A portrait's initial: the first grapheme of the name as shown, so a name in another script keeps its whole first letter
+// (a base letter and its marks). English is name[0], as before.
+const GRAPHEMES = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+function initial(name) { const shown = t(name); return shown === name ? name[0] : escapeHTML([...GRAPHEMES.segment(shown)][0]?.segment ?? ''); }
 function button(id, label, primary = false, disabled = false) { return `<button id="${id}" class="${primary ? 'primary-button' : 'secondary-button'}" ${disabled ? 'disabled' : ''}>${label}</button>`; }
 function updateUI() {
   const p = progress(state), count = Object.values(p).filter(Boolean).length, met = metCount(state), placed = MOTIFS.filter(id => state.mural[id]).length;
@@ -552,7 +556,7 @@ function hostingScreen(message = '', focusId = '') {
   let activity = '';
   if (id === 'stories') activity = `<p>${esc(invitationHubText(draft.story))}</p><img class="host-art" alt="${tf(GAME_TEXT.hostingScreen.originalFoldedPaperInvitation, { story: esc(t(STORY_CHOICES[draft.story])) })}" src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(invitationSVG(draft.story))}"><div class="host-choices">${Object.entries(STORY_CHOICES).map(([key, label]) => `<button id="host-story-${key}" class="secondary-button" aria-pressed="${draft.story === key}">${t(label)}</button>`).join('')}</div>`;
   const BEATS = HOSTING_FORK_TEXT.beats;
-  if (id === 'beats') activity = `<p>${esc(t(BEATS.intro))}</p><div class="host-beats" aria-label="${t(GAME_TEXT.hostingScreen.eightStepVisualRhythm)}">${Array.from({ length: 8 }, (_, i) => `<button id="host-beat-${i}" aria-label="${tf(draft.pattern & 1 << i ? GAME_TEXT.hostingScreen.stepTap : GAME_TEXT.hostingScreen.stepRest, { step: i + 1 })}" aria-pressed="${!!(draft.pattern & 1 << i)}">${i + 1}<small>${draft.pattern & 1 << i ? t(GAME_TEXT.hostingScreen.tap) : 'rest'}</small></button>`).join('')}</div><p>${esc(t(BEATS.tail))} ${esc(t(draft.pattern ? BEATS.traced : BEATS.quiet))}</p>${button('host-rhythm', esc(rhythm.entryLabel()).replace(/\n/g, '<br>'))}`;
+  if (id === 'beats') activity = `<p>${esc(t(BEATS.intro))}</p><div class="host-beats" aria-label="${t(GAME_TEXT.hostingScreen.eightStepVisualRhythm)}">${Array.from({ length: 8 }, (_, i) => `<button id="host-beat-${i}" aria-label="${tf(draft.pattern & 1 << i ? GAME_TEXT.hostingScreen.stepTap : GAME_TEXT.hostingScreen.stepRest, { step: i + 1 })}" aria-pressed="${!!(draft.pattern & 1 << i)}">${i + 1}<small>${draft.pattern & 1 << i ? t(GAME_TEXT.hostingScreen.tap) : t(RHYTHM_TEXT.rest)}</small></button>`).join('')}</div><p>${esc(t(BEATS.tail))} ${esc(t(draft.pattern ? BEATS.traced : BEATS.quiet))}</p>${button('host-rhythm', esc(rhythm.entryLabel()).replace(/\n/g, '<br>'))}`;
   if (id === 'art') activity = `<p>${t(GAME_TEXT.hostingScreen.celesteBringsSixPrepared)}</p><img class="host-art" alt="${t(GAME_TEXT.hostingScreen.yourOriginalSixTile)}" src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(tilePanelSVG(draft))}"><div class="host-tiles" aria-label="${t(GAME_TEXT.hostingScreen.sixTilesLeftTo)}">${draft.tiles.map((tile, i) => `<button id="host-tile-${i}" data-rapid aria-label="${tf(GAME_TEXT.hostingScreen.tileShapes[tile], { tile: i + 1 })}" class="secondary-button">${i + 1} · ${[t('Circle'), t('Wave'), t(GAME_TEXT.hostingScreen.triangle)][tile]}</button>`).join('')}</div><div class="host-choices">${['warm', 'cool'].map(key => `<button id="host-palette-${key}" class="secondary-button" aria-pressed="${draft.palette === key}">${t(key === 'warm' ? GAME_TEXT.hostingScreen.warmPalette : GAME_TEXT.hostingScreen.coolPalette)}</button>`).join('')}</div>`;
   if (id === 'pause') activity = `<p>${esc(quietHubText(draft.quiet))}</p><div class="host-choices">${Object.entries(QUIET_CHOICES).map(([key, label]) => `<button id="host-quiet-${key}" class="secondary-button" aria-pressed="${draft.quiet === key}">${t(label)}</button>`).join('')}</div>`;
   show(`<span class="eyebrow">${tf(GAME_TEXT.hostingScreen.ourSecondAfternoonOf, { results: host.results.length + 1 })}</span><h2 id="modal-title">${t(segment(id).name)} · ${t(segment(id).owner)}</h2><ol id="hosting-order">${host.order.map((key, i) => `<li ${i === host.results.length ? 'aria-current="step"' : ''}>${i < host.results.length ? '✓ ' : ''}${t(segment(key).name)}</li>`).join('')}</ol>${message ? `<p class="grid-message">${message}</p>` : ''}${activity}<div class="button-row">${button('host-complete', gdFormat(HUB_LABELS.programmeHost, host.results.length), true)}${button('host-close', t(GAME_TEXT.hostingScreen.saveExploreTheBlock))}</div>${host.results.length ? `<details class="host-memories"><summary>${t(GAME_TEXT.hostingScreen.whatWeShared)}</summary><ol>${host.results.map(result => `<li>${esc(hostedDetail(state, result.id).split('\n').at(-1))}</li>`).join('')}</ol></details>` : ''}<p class="footnote">${t(GAME_TEXT.hostingScreen.thisGatheringKeepsThe)}</p>`);
@@ -703,7 +707,7 @@ function conversation(id, { custom = '', announce = '', speak = true } = {}) {
   // A two-line Godot label keeps its line break; its accessible name reads it as one line, as the Rhythm Circle entry's does.
   const actionHTML = actions.map((a, i) => `<button id="${a.dom}" class="${i === 0 ? 'primary-button' : 'secondary-button'}"${a.pressed === null ? '' : ` aria-pressed="${a.pressed}"`}${a.label.includes('\n') ? ` aria-label="${esc(a.label.replace(/\n/g, ' '))}"` : ''}>${esc(a.label).replace(/\n/g, '<br>')}</button>`).join('');
   const controlHTML = controls.map(b => `<button id="${b.dom}" class="secondary-button"${b.rapid ? ' data-rapid' : ''}>${esc(b.label)}</button>`).join('');
-  show(`<section class="conversation" data-conversation="${id}" style="--talk-border:${view.border}"><div class="character-heading"><span class="portrait" style="background:${n.coat}55" aria-hidden="true">${n.name[0]}</span><div><h2 id="modal-title">${t(n.name)}</h2><span class="eyebrow">${esc(t(n.role).toUpperCase())}</span></div></div><p class="talk-badge">${esc(view.badge)}</p><p id="talk-header" class="talk-header">${esc(view.header)}</p><p id="talk-line" class="talk-line">${esc(detail)}</p>${actionHTML ? `<div class="button-row talk-actions" role="group" aria-label="${tf(GAME_TEXT.conversation.thingsToDoWith, { name: t(n.name) })}">${actionHTML}</div>` : ''}<div class="button-row talk-controls" role="group" aria-label="${id === 'rook' ? t(GAME_TEXT.conversation.musicAndConversation) : t(GAME_TEXT.conversation.conversation)}">${controlHTML}</div></section>`);
+  show(`<section class="conversation" data-conversation="${id}" style="--talk-border:${view.border}"><div class="character-heading"><span class="portrait" style="background:${n.coat}55" aria-hidden="true">${initial(n.name)}</span><div><h2 id="modal-title">${t(n.name)}</h2><span class="eyebrow">${esc(t(n.role).toUpperCase())}</span></div></div><p class="talk-badge">${esc(view.badge)}</p><p id="talk-header" class="talk-header">${esc(view.header)}</p><p id="talk-line" class="talk-line">${esc(detail)}</p>${actionHTML ? `<div class="button-row talk-actions" role="group" aria-label="${tf(GAME_TEXT.conversation.thingsToDoWith, { name: t(n.name) })}">${actionHTML}</div>` : ''}<div class="button-row talk-controls" role="group" aria-label="${id === 'rook' ? t(GAME_TEXT.conversation.musicAndConversation) : t(GAME_TEXT.conversation.conversation)}">${controlHTML}</div></section>`);
   if (announce) $('#modal-status').textContent = announce;
   if (speak) say(id, custom || view.line);
   for (const a of actions) bind(a.dom, () => runConversationAction(id, a));
@@ -1061,6 +1065,11 @@ function applyLocale() {
   if (!localeBooted) return;
   clearTimeout(toastTimeout); $('#toast').classList.remove('show'); notice.textContent = ''; $('#route-status').textContent = '';
   chapterNotice = ''; bubble = null; routeSpeech = null; if (world) world.bubble = null;
+  // Everything drawn from state, in the new language: the field guide, the sound strip, the save line, the chapter line, the map
+  // controls and the city layer. A switch comes from Settings (chooseLanguage draws it again) or from the startup card's offer,
+  // which is drawn again here; no other dialog can be open then.
+  updateUI(); cameraUI(); districtUI();
+  if (modal.open && body.querySelector('[data-chapter-card] #begin')) showChapterCard(true);
 }
 const localeInfoPreview = () => i18nDiagnostics().preview;
 // index.html's text that applyDocument does not reach, keyed by its English, which is kept the first time and restored in English:
@@ -1075,6 +1084,12 @@ function applyPageText() {
     if (!node.hasAttribute('data-i18n-lead-en')) node.setAttribute('data-i18n-lead-en', text.data);
     const english = node.getAttribute('data-i18n-lead-en'), lead = /^\s*/.exec(english)[0], trail = /\s*$/.exec(english)[0];
     text.data = lead + t(english.trim()) + trail;
+  }
+  // [data-i18n-lines]: English keeps its markup (the <br>); a locale shows its text and lets it wrap. The msgid is the English
+  // text with the spaces collapsed, as scripts/i18n.mjs extracts it.
+  for (const node of document.querySelectorAll('[data-i18n-lines]')) {
+    node.dataset.i18nLinesEn ??= node.innerHTML; node.dataset.i18nLinesText ??= node.textContent.replace(/\s+/g, ' ').trim();
+    if (activeLocale() === 'en') node.innerHTML = node.dataset.i18nLinesEn; else node.textContent = t(node.dataset.i18nLinesText);
   }
   const route = $('[data-i18n-route]');
   if (route) { route.dataset.i18nRouteEn ??= route.textContent; route.textContent = activeLocale() === 'en' ? route.dataset.i18nRouteEn : tf(GAME_TEXT.indexHTML.route, { from: 'TAYLOR', to: 'HYDE' }); }
@@ -1199,7 +1214,7 @@ function stopWalk() { const visit = walkOwner === 'visit'; walkPath = []; walkTa
 function closeIfOpen() { if (modal.open) close(); }
 function neighbors() {
   if (!world) { toast(t(GAME_TEXT.neighbors.theStreetSceneIs)); return; }
-  show(`<span class="eyebrow">${t(GAME_TEXT.neighbors.aFewFamiliarFaces)}</span><h2 id="modal-title">${t(GAME_TEXT.neighbors.meetTheNeighbors)}</h2><p>${t(GAME_TEXT.neighbors.chooseSomeoneAndWalk)}</p><ul class="neighbor-directory">${NEIGHBORS.map(n => `<li><button class="secondary-button" id="neighbor-${n.id}" aria-label="${tf(GAME_TEXT.neighbors.walkTo, { name: t(n.name) })} ${t(n.role)}"><span class="portrait" style="background:${n.coat}55" aria-hidden="true">${n.name[0]}</span><span class="neighbor-description"><strong>${t(n.name)}</strong><small>${t(n.role)}</small></span><span class="walk-label">${t(GAME_TEXT.neighbors.walkOver)} ↗</span></button></li>`).join('')}</ul>${button('neighbors-close', t(STUDIO.keep))}`);
+  show(`<span class="eyebrow">${t(GAME_TEXT.neighbors.aFewFamiliarFaces)}</span><h2 id="modal-title">${t(GAME_TEXT.neighbors.meetTheNeighbors)}</h2><p>${t(GAME_TEXT.neighbors.chooseSomeoneAndWalk)}</p><ul class="neighbor-directory">${NEIGHBORS.map(n => `<li><button class="secondary-button" id="neighbor-${n.id}" aria-label="${tf(GAME_TEXT.neighbors.walkTo, { name: t(n.name) })} ${t(n.role)}"><span class="portrait" style="background:${n.coat}55" aria-hidden="true">${initial(n.name)}</span><span class="neighbor-description"><strong>${t(n.name)}</strong><small>${t(n.role)}</small></span><span class="walk-label">${t(GAME_TEXT.neighbors.walkOver)} ↗</span></button></li>`).join('')}</ul>${button('neighbors-close', t(STUDIO.keep))}`);
   for (const n of NEIGHBORS) bind(`neighbor-${n.id}`, () => goTo(n));
   bind('neighbors-close', close);
 }

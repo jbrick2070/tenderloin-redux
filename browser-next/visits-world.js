@@ -27,7 +27,7 @@
 import { VISITS_FORK_TEXT, btn, esc, frameHTML, freshSession } from './visits-kit.js';
 import { GODOT_TEXT, MAIN, web } from './visits/text.js';
 import { gdfText } from './visits/format.js';
-import { L, t, locale } from './visits/compose.js';
+import { L, t, localeKey } from './visits/compose.js';
 import { SURPRISE_IDS, SURPRISES, inspect, cycleTarget, nextIndexForNeighbor, conversationLabel, progressLabel, markers, keepsakes } from './visits/surprises.js';
 import { EATERIES, EATERY_MENU_ITEMS, initialTour, tourState, lensColor, ringAngle, inspectMuseum, inspectPark, inspectSoWhat, cycleEatery, activateEatery, visitStop, tourCompletion } from './visits/landmarks.js';
 import {
@@ -52,9 +52,10 @@ const JOURNAL = 'journal-button';
 
 // ---------- Hit-test objects (spec 3.8): the same frozen objects on every call ----------
 const visit = (id, name, p) => Object.freeze({ id, kind: 'visit', name, x: p.x, y: p.y });
+// Keyed by the active catalog (i18n.js localeKey), so a reload of the same locale rebuilds them; English keeps its own.
 const LABELS = new Map();
 function labels() {
-  const code = locale();
+  const code = localeKey();
   if (LABELS.has(code)) return LABELS.get(code);
   const museum = L(say(DECOR.museum)), park = L(say(T.build_boeddeker_park.label)), awning = L(say(DECOR.soWhatAwning)), floor = L(say(DECOR.soWhatFloor));
   const eateries = EATERIES.map(rec => gdfText(say(DECOR.eatery), [L(rec.name)]));
@@ -109,7 +110,7 @@ function boeddekerTrees() {
 // ---------- Static scene parts (spec 3.8, risk R9): one object each for every visit (and language), so sprites.js builds them once ----------
 const PARK_PARTS = new Map();
 function parkPart() {
-  const code = locale();
+  const code = localeKey();
   if (!PARK_PARTS.has(code)) PARK_PARTS.set(code, { ring: PARK_RING, path: PARK_PATH, entrance: PARK_ENTRANCE, trees: boeddekerTrees(), label: labels().park });
   return PARK_PARTS.get(code);
 }
@@ -346,8 +347,8 @@ export function createWorldVisits(kit) {
   }
   function scenePart() {
     const have = found(), tour = session.world?.tour ?? initialTour(), open = list(tour.counters), goal = tourGoal(), spotAt = goal ? markerFor(goal).scene : null;
-    // The language is part of each text part's key, so a switch redraws the labels; within a language nothing changes.
-    const code = locale(), shown = labels(), finds = `${code} ${have.join()}`, era = `${tour.museumStep} ${tour.era}`, counters = `${code} ${open.join()}`;
+    // The language (its catalog) is part of each text part's key, so a switch redraws the labels; within a language nothing changes.
+    const code = localeKey(), shown = labels(), finds = `${code} ${have.join()}`, era = `${tour.museumStep} ${tour.era}`, counters = `${code} ${open.join()}`;
     return keep('scene', [finds, era, counters, spotAt ? [spotAt.x, spotAt.y].join(' ') : ''].join(' '), () => ({
       surprises: keep('surprises', finds, () => markers(have).map(m => ({ ...m, label: shown.surprises[m.id] }))),
       keepsakes: keep('keepsakes', finds, () => keepsakes(have)),

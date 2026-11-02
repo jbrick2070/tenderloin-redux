@@ -110,7 +110,8 @@ export function gatherView(g, state) {
   const invite = { id: 'gather-choice-0', label: compose(K.inviteOwner, { owner: owner(g.order[Math.min(3, g.step + 1)]) }), hidden: !choosing, disabled: !choosing };
   const room = { id: 'gather-choice-1', label: L(r.room), hidden: !choosing, disabled: !choosing };
   if (restart) Object.assign(invite, { label: L(same(g.order, state.programme.published) ? r.newVisit : r.newPlan), hidden: false, disabled: false });
-  const previous = { id: 'gather-previous', label: L(T.setup.previous), hidden: g.step <= 0, disabled: g.step === 0 };
+  // Previous turn: its own context (the orbital commons' Previous is a panel; scripts/i18n.mjs CONTEXTS).
+  const previous = { id: 'gather-previous', label: L(T.setup.previous, 'ending.text.GODOT["programme_gathering.gd"].setup.previous'), hidden: g.step <= 0, disabled: g.step === 0 };
   const next = { id: 'gather-next', label: L(g.step < g.gestures.length ? r.next : g.completed ? r.complete : r.finish), hidden: choosing, disabled: choosing || restart };
   const back = { id: 'gather-back', label: L(T.setup.back) }, keep = { id: 'gather-keep', label: L(T.setup.keep) };
   const text = gatherDescription(g, state);

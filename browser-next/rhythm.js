@@ -194,7 +194,8 @@ export function options(session, { musicPlaying = false, auditioning = false } =
   return [
     { id: 'listen', label: L(RHYTHM_TEXT.listen) },
     { id: 'music', label: L(musicPlaying ? RHYTHM_COMPOSE.musicOn : RHYTHM_COMPOSE.musicOff) },
-    { id: 'complete', label: L(session?.practice ? RHYTHM_TEXT.resetPractice : RHYTHM_TEXT.complete) },
+    // Complete is a button here and a status in the gathering: its own context (scripts/i18n.mjs CONTEXTS).
+    { id: 'complete', label: session?.practice ? L(RHYTHM_TEXT.resetPractice) : L(RHYTHM_TEXT.complete, 'rhythm.RHYTHM_TEXT.complete') },
     { id: 'step-cues', label: L(session?.stepCues ? RHYTHM_COMPOSE.stepCuesOn : RHYTHM_COMPOSE.stepCuesOff) },
     { id: 'back', label: L(RHYTHM_TEXT.back) },
     { id: 'play-bar', label: L(auditioning ? RHYTHM_TEXT.stopBar : RHYTHM_TEXT.playBar), name: auditioning ? L(RHYTHM_TEXT.stopBarName) : rhythmText('playBarName') },

@@ -11,7 +11,7 @@ import { ENDING_COMPOSE, ENDING_DISPLAY, ENDING_UI, compose, midSentence } from 
 import { setLocale, readCatalog, pseudo, pseudoCatalog, diagnostics, isEnglish, signature, onMiss } from '../browser-next/i18n.js';
 import { FILM_SHOTS, FILM_TEXT } from '../browser-next/film.js';
 import { HOSTING_TEXT } from '../browser-next/hosting.js';
-import { readSource, isHumanText } from '../scripts/i18n.mjs';
+import { readSource, isHumanText, excludedTexts } from '../scripts/i18n.mjs';
 import { parseGodotSave } from '../browser-next/godot-save.js';
 import { initialState } from '../browser-next/core.js';
 import { GODOT_WRITTEN, PUBLISHED, hostedEnvelope, civicDoneEnvelope, filmDoneEnvelope, raw, fakeDialog } from './next-fixtures.mjs';
@@ -31,7 +31,8 @@ const flat = (value, out = []) => { if (typeof value === 'string') out.push(valu
 const entries = (value, path = '', out = []) => { if (typeof value === 'string') out.push([path, value]); else for (const [k, v] of Object.entries(value)) entries(v, path ? `${path}.${k}` : k, out); return out; };
 const english = fn => { setLocale('en'); try { return fn(); } finally { setLocale('en'); } };
 // Every msgid of i18n/source.json (the catalogs test keeps it fresh), read once before the tests run.
-const sourceMsgids = readSource().entries.filter(e => !e.ctx).map(e => e.msgid);
+// The pseudo catalog takes the context entries too; FRAGMENTS and UNSHOWN are the table strings that are no msgid.
+const sourceEntries = readSource().entries, sourceMsgids = sourceEntries.map(e => e.msgid), notMsgids = await excludedTexts();
 
 // ---------- The composites ----------
 // Godot's text as pieces: each fragment whole, and each part of a template between its % slots.
@@ -252,9 +253,9 @@ test('gdf and capitalize delegate to i18n.js: English unchanged, a locale looks 
 let catalogCache = null;
 function pseudoCatalogFor(code = 'qps-ploc') {
   if (catalogCache?.code === code) return catalogCache.catalog;
-  const godot = [...flat(G), ...flat(C)].map(web).filter(isHumanText);
+  const godot = [...flat(G), ...flat(C)].filter(text => !notMsgids.has(text)).map(web).filter(isHumanText);
   for (const text of [...godot, ...flat(ENDING_COMPOSE), ...flat(ENDING_DISPLAY), ...flat(ENDING_UI)]) assert.ok(sourceMsgids.includes(text), `extracted: ${text.slice(0, 60)}`);
-  const msgids = sourceMsgids;
+  const msgids = sourceEntries;
   const read = readCatalog(pseudoCatalog(msgids, code), code);
   assert.deepEqual(read.rejected, [], 'every pseudo entry passes the validator');
   catalogCache = { code, catalog: read.catalog };

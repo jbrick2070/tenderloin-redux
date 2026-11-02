@@ -22,7 +22,7 @@ import { FILM_SHOTS } from './film.js';
 import { loanMemory, conversationLoan } from './hosted-text.js';
 import { spokenText } from './bubble.js';
 import { GODOT_TEXT } from './visits/text.js';
-import { format, L, narrow, isEnglish, isolate, list as joinList, FLAVORS } from './i18n.js';
+import { format, L, narrow, isEnglish, list as joinList, FLAVORS, fillTranslated } from './i18n.js';
 
 export { spokenText };
 // godot/main.gd neighbors (positions are 2D's own, in world.js) and NEIGHBOR_STORY_BADGES.
@@ -574,6 +574,9 @@ export function spokenLine(state, extras, talk, id, music = {}) {
 const blockReady = s => list(s.visited).filter(id => NEIGHBOR_IDS.includes(id)).length >= NEIGHBOR_IDS.length && muralCompleted(s) && s.soundcheck === true;
 // update_block_ui / update_mural_ui / update_music_ui header for whoever is talking.
 // opts: {narrow, music: {playing, mode, localName}}.
+// Rook's status words agree with the soundcheck and the music they describe: each has its own context (scripts/i18n.mjs CONTEXTS).
+const soundcheckStatus = s => s.soundcheck === true ? L(PANEL_TEXT.scReady, 'characters.PANEL_TEXT.scReady') : L(PANEL_TEXT.scPending, 'characters.PANEL_TEXT.scPending');
+const musicStatus = playing => playing ? L(PANEL_TEXT.playing, 'characters.PANEL_TEXT.playing') : L(PANEL_TEXT.paused, 'characters.PANEL_TEXT.paused');
 export function panelHeader(state, extras, talk, id, opts = {}) {
   const s = forkState(state), narrow = opts.narrow === true, P = PANEL_TEXT, sparks = sparkCount(s, extras), turn = turnNumber(talkCount(s, talk, id)), p = person(id);
   if (!p) return '';
@@ -583,7 +586,7 @@ export function panelHeader(state, extras, talk, id, opts = {}) {
   }
   if (id === 'rook') {
     const m = opts.music ?? {}, mode = m.mode === 'local' ? gdFormat(P.local, m.localName ?? '') : L(P.sketch);
-    return narrow ? gdFormat(P.rookNarrow, turn, sparks) : gdFormat(P.rookHeader, L(NEIGHBOR_BADGES.rook), turn, L(m.playing ? P.playing : P.paused), mode, L(s.soundcheck === true ? P.scReady : P.scPending), sparks);
+    return narrow ? gdFormat(P.rookNarrow, turn, sparks) : gdFormat(P.rookHeader, L(NEIGHBOR_BADGES.rook), turn, musicStatus(m.playing), mode, soundcheckStatus(s), sparks);
   }
   const tag = L(s.opened === true ? P.openTag : blockReady(s) ? P.readyTag : P.prepareTag), met = list(s.visited).filter(i => NEIGHBOR_IDS.includes(i)).length;
   const mural = muralCompleted(s) ? L(P.muralReady) : gdFormat(P.muralCount, placedMotifs(s));
@@ -610,7 +613,7 @@ export function panelDetail(state, extras, talk, id, opts = {}) {
 export function rookMusicDetail(state, spoken, music = {}) {
   const s = forkState(state);
   if (music?.mode === 'local') return gdFormat(PANEL_TEXT.rookLocalDetail, music.localName ?? '', spoken);
-  return gdFormat(PANEL_TEXT.rookSketchDetail, L(s.soundcheck === true ? PANEL_TEXT.scReady : PANEL_TEXT.scPending), activeStemSummary(s), spoken);
+  return gdFormat(PANEL_TEXT.rookSketchDetail, soundcheckStatus(s), activeStemSummary(s), spoken);
 }
 // The three fixed conversation buttons, with Godot's narrow labels. Keep Chatting is rapid.
 export function conversationButtons(narrow = false) {
@@ -663,8 +666,8 @@ export const civicLabel = state => civicParts(forkState(state)).label;
 // screenFrame: the film screening frame being watched (session-only), 0-based.
 export const filmLabel = (state, screenFrame = 0) => filmParts(forkState(state), screenFrame).label;
 // A narrow variant filled as i18n.js format fills a translation: %s and %d in order or by position (%2$s), %% as %, each value
-// isolated in RTL.
-const fillVariant = (text, args) => { let i = 0; return String(text).replace(/%%|%(?:(\d+)\$)?([sd])/g, (spec, pos, kind) => { if (spec === '%%') return '%'; const v = args[pos ? Number(pos) - 1 : i++]; return isolate(kind === 'd' ? String(Math.trunc(Number(v))) : String(v)); }); };
+// isolated in RTL (a ratio as one run).
+const fillVariant = (text, args) => fillTranslated(text, args, FLAVORS.characters);
 // apply_block_panel_mode's narrow labels. English runs Godot's .replace chain on the label. A locale shows the catalog's narrow
 // variant of the label's template (its narrow section is keyed by the wide English template, docs/I18N_PLAN.md 2.4), filled
 // with the same arguments, else the wide label: the English rewrites never run on translated text. A label given alone is its

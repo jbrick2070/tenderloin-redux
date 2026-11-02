@@ -68,13 +68,13 @@ test("game.js holds no inline English: no text node of its markup and no quoted 
   // Quoted literals with a capitalized word or two words, outside t() and L().
   const quoted = [...GAME.matchAll(/(?<![\w$.])(t\(|L\(|)'([^'\n]*)'/g)].filter(m => !m[1]).map(m => m[2])
     .filter(s => /^[A-Z][a-z]+\b|[A-Za-z]{2,} [A-Za-z]{2,}/.test(s) && !/[<>=#[]|^\.|\.js$|^\(/.test(s));
-  const ALLOWED = ['rest', 'not saved', 'save full', 'storage unavailable', 'Optional module unavailable', 'City data unavailable', 'Not a story data file', 'Story data unavailable', 'Story data too large', 'Escape', 'INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'TAYLOR', 'HYDE'];
+  const ALLOWED = ['not saved', 'save full', 'storage unavailable', 'Optional module unavailable', 'City data unavailable', 'Not a story data file', 'Story data unavailable', 'Story data too large', 'Escape', 'INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'TAYLOR', 'HYDE'];
   assert.deepEqual([...new Set(quoted)].filter(s => !ALLOWED.includes(s)), []);
   assert.ok(quoted.includes('save full'), 'the premise: the scan reads quoted literals');
   // Godot's words without a drift table to read them from stay t() literals, which the extractor finds.
   assert.deepEqual([...new Set([...GAME.matchAll(/(?<![\w$.])t\('([^'\n]*)'\)/g)].map(m => m[1]))].sort(), ['Circle', 'Palette', 'Remove', 'Seats', 'Sound', 'Wave']);
-  // Godot's beat word 'rest' (a single lower-case word) stays as it is: the extractor keeps no such msgid (I2a report).
-  assert.match(GAME, /t\(GAME_TEXT\.hostingScreen\.tap\) : 'rest'\}<\/small>/);
+  // Godot's beat word for an unticked step is rhythm.js RHYTHM_TEXT.rest (a SHORT_TEXT msgid), looked up like the tap word.
+  assert.match(GAME, /t\(GAME_TEXT\.hostingScreen\.tap\) : t\(RHYTHM_TEXT\.rest\)\}<\/small>/);
 });
 
 test('text-keyed logic is gone: no label is lowercased, and the film label is read from its table', () => {
@@ -148,7 +148,8 @@ test("index.html: markers on its static text, its copies in GAME_TEXT.indexHTML,
   for (const kept of ['<span translate="no" lang="en">tenderloin<span class="brand-redux">redux</span></span>', 'translate="no" lang="en">© OpenStreetMap contributors · ODbL</a>', '<strong translate="no" lang="en">Transgender Cultural District</strong>', '<small translate="no" lang="en">San Francisco Planning Department']) assert.ok(HTML.includes(kept), kept);
   // A [data-i18n] node is text only: applyDocument replaces its textContent.
   for (const m of HTML.matchAll(/<(\w+)\b[^>]*\sdata-i18n(?=[\s>])[^>]*>([\s\S]*?)<\/\1>/g)) assert.doesNotMatch(m[2], /</, m[0]);
-  assert.equal([...HTML.matchAll(/\sdata-i18n(?=[\s>])/g)].length, 14);
+  // 14 at I2a, and the loading line and the district legend's note since (the I2 follow-up).
+  assert.equal([...HTML.matchAll(/\sdata-i18n(?=[\s>])/g)].length, 16);
   // Nothing sits between an id and its data-rapid (tests/next-press-settle.test.mjs reads them adjacent).
   assert.match(HTML, /id="zoom-out" data-rapid /); assert.match(HTML, /id="zoom-in" data-rapid /);
 });
@@ -175,9 +176,9 @@ export function renderScreens(source, state, { held = false, storageAvailable = 
     livingDistrict() {}, viewKeepsake() {}, programmeEditor() {}, hostingScreen() {}, civicScreen() {}, filmScreen() {}, openVoices() {}, restart() {}, photoLayout() {}, languageRowHTML: () => '', rewards: { setEnabled() {} }, saveSettings() {},
     soundsAnnouncement: () => '', music: { setVolume() {} }, setVoicesEnabled() {}, voicesUI() {}, bindSwap() {}, chooseLanguage() {},
     NEIGHBORS, PLACES, LOANS, LITTER, PHOTO_GUESTS, PHOTO_RESPONSES, BLOCK_TEXT, BLACK_HAWK: { id: 'blackhawk' }, ready, blockMissingItems, list: I.list, fmt, GATHERING_LAYOUT_TITLES, STORY_CHAPTERS, FORK_TEXT, EDITION_TEXT, EDITION_URL, SOUNDS_TEXT, soundsLabel, MAX_VOLUME,
-    SAVE_TEXT: GAME_TEXT.save, GAME_TEXT, t: I.t, L: I.L, tf, BACK: GODOT['film_screening.gd'].setup.back, STUDIO: GODOT['programme_studio.gd'].refresh, ORDER: VISIT_TEXT['story_picker.gd'].setup,
+    SAVE_TEXT: GAME_TEXT.save, GAME_TEXT, t: I.t, L: I.L, tf, escapeHTML: I.escapeHTML, BACK: GODOT['film_screening.gd'].setup.back, STUDIO: GODOT['programme_studio.gd'].refresh, ORDER: VISIT_TEXT['story_picker.gd'].setup,
   };
-  const code = [declaration(lines, 'function button('), ...SCREENS.map(name => declaration(lines, `function ${name}(`)), `return { ${SCREENS.join(', ')} };`].join('\n');
+  const code = [declaration(lines, 'const GRAPHEMES'), declaration(lines, 'function initial('), declaration(lines, 'function button('), ...SCREENS.map(name => declaration(lines, `function ${name}(`)), `return { ${SCREENS.join(', ')} };`].join('\n');
   const screens = new Function(...Object.keys(scope), code)(...Object.values(scope));
   for (const name of SCREENS) screens[name](() => {});
   return drawn;
@@ -210,7 +211,7 @@ test("game.js's screens draw the same English bytes as before I2a (Field notes, 
 test('under the pseudo-locale every moved string is looked up: the screens show no GAME_TEXT English, and tf() fills translated templates', () => {
   const entries = [...new Set(ALL.map(([, v]) => v))].filter(isHumanText);
   // With the table text of the other modules too (i18n/source.json), so a table value game.js shows unwrapped would show English.
-  const tables = JSON.parse(read('i18n/source.json')).entries.filter(e => !e.ctx).map(e => e.msgid);
+  const tables = JSON.parse(read('i18n/source.json')).entries.map(e => e.msgid);
   const loaded = I.readCatalog(I.pseudoCatalog([...new Set([...entries, ...tables])], 'qps-ploc'), 'qps-ploc');
   assert.ok(loaded.catalog, loaded.error); assert.deepEqual(loaded.rejected, []);
   I.setLocale('qps-ploc', loaded.catalog, { preview: true });

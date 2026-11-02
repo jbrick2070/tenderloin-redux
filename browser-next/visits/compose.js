@@ -14,7 +14,7 @@ import { GODOT_TEXT, POWER, MAIN } from './text.js';
 import { gdCapitalize } from './format.js';
 import { L, format, FLAVORS, fillNamed, narrow, list } from '../i18n.js';
 
-export { L, t, narrow, list, locale } from '../i18n.js';
+export { L, t, narrow, list, locale, localeKey } from '../i18n.js';
 
 const DOG = GODOT_TEXT['dog_story.gd'], LANTERN = GODOT_TEXT['lantern_procession.gd'], POWERT = GODOT_TEXT['power_story.gd'];
 const VOTE = GODOT_TEXT['voting_story.gd'], MEAL = GODOT_TEXT['shared_meal.gd'], BEFORE = GODOT_TEXT['before_streets.gd'];

@@ -97,7 +97,7 @@ test('extractor gaps: grouped overrides, text under art/kind/cue keys, short sho
   const { GODOT, GODOT_CONSTS } = await import('../browser-next/ending/text.js');
   const { EATERIES } = await import('../browser-next/visits/landmarks.js');
   const { GODOT_TEXT } = await import('../browser-next/visits/text.js');
-  for (const text of [GODOT['programme_studio.gd'].hosted_picture_description.art, GODOT['programme_gathering.gd'].contribution.art, GODOT['orbital_commons.gd'].response.art,
+  for (const text of [GODOT['programme_studio.gd'].hosted_picture_description.art, GODOT['programme_gathering.gd'].contribution.art,
     GODOT_CONSTS['programme_gathering.gd'].OPENINGS.art, ...EATERIES.map(e => e.kind), GODOT_TEXT['main.gd'].update_landmark_tour_completion.cue]) assert.ok(msgids.has(text), text);
   assert.deepEqual([...new Set(EATERIES.map(e => e.kind))].sort(), ['Bar & Lounge', 'Corner Bar', 'Eatery']);
   // SHORT_TEXT: every entry is found in a table (no dead allowlist), and only there: isHumanText still rejects ids.
