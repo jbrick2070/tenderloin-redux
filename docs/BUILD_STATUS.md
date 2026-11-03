@@ -1,6 +1,43 @@
 # Build status
 
-## Current: HUD redesign Phase 2, on main and not deployed - November 3, 2026 UTC
+## Current: HUD redesign Phase 3, on main and not deployed - November 3, 2026 UTC
+
+Phase 3 of `docs/HUD_REDESIGN_PLAN.md` is on main (merge `c0298b6`). Reading text now has one place at a time:
+
+- **The conversation sheet.** A conversation opens at half height with a 44 px `Show less` handle. `Show less` shrinks it to a strip on the bar, which shows the speaker's name and keeps `Goodbye` beside it, and the speech bubble on stage. `Show more` reads the whole line in the sheet. While the sheet is at half the bubble hides, so a line is never on screen twice. Each neighbor's height is remembered for the session, and Next Step at bar height shows the sheet more first.
+- **The status line.** A line the scene cannot place reads in one line over the bar, with `Show more` for the whole of it. So do a hint with no one near to say it, a route that cannot be walked, and a reward with no room. Its reading time runs only while it is visible, not expanded and not focused. Info no longer takes dialogue; it stays as About's latest note.
+- **Celeste's mural and Rook's music are sheets too.** Each has its own handle and its own remembered height, kept apart from a conversation with the same neighbor. A music file error shows the music panel more so it is read.
+- **Explore beside a sheet.** On landscape phones and desktop, Explore stays on the bar beside any sheet. Opening the tray shows the sheet less, its strip standing on the tray. On a tall phone, Explore under a conversation at half does nothing.
+- **Phase 2's gaps are closed.** Panels stand on the one-row bar, desktop shows Next Step once while talking, and the tray uses the bar's font.
+
+Two Sonnet QA passes found problems, each fixed with a check in `godot/tests/hud_sheet_checks.gd` that failed on the old code:
+
+- A bare "Conversation" string broke the text drift test; each panel kind now announces its own sentence.
+- `Show less` with keyboard focus held the status line's timer forever; focus now moves to Next Step.
+- A held walk stick jumped when the status line came or went; it now stays put and still moves with a rotation.
+- The mural and music shared their height with a conversation with Celeste or Rook.
+- The guide arrow drew outside a scene too small for its inset.
+- The title kept "words above the bar" after the bubble fit again.
+- Workshop focus could land on a hidden button.
+
+The clean browser run then caught one more: a reward the open mural crowded out was used up in the status line instead of waiting, whole, for `Close`. The status line now takes a reward only when no sheet is open (`dd80e6d`).
+
+Evidence on a clean checkout of `dd80e6d`, whose code the merge matches exactly: `godot:import`, `godot:export`, `npm run check`, 838 Node tests and the full `npm run godot:browser` suite PASS (1 h 35 min). The formal Godot suite PASS with no errors on `dd80e6d`. As before, the orbital frame-timing limit was loosened locally for the browser run and not committed.
+
+Decisions taken in this phase:
+
+- The save notice stays under the header.
+- Info stays as About's latest note and a test hook.
+- The story card is not a sheet mode.
+- The 2D fork keeps Info until Phase 5.
+
+Open: not deployed; no phone check yet. Known gaps:
+
+- No dedicated check for a required choice at half height.
+- A deferred line can show twice in the status-line case, kept sticky to avoid flicker.
+- Three items for Phase 4: the landscape tray with a strip on it leaves 30 to 60 px of scene, desktop sheets span the screen, and street view still hands back to the map while a sheet is at bar height.
+
+## HUD redesign Phase 2, on main and not deployed - November 3, 2026 UTC
 
 Phase 2 of `docs/HUD_REDESIGN_PLAN.md` is on main (merge `909425e`). The bottom bar has the same three buttons at every size: Next Step, the walk/talk button and Explore. It is one row, 44 px tall on landscape phones and 50 px elsewhere. Tenderloin Map, Find Me and Zoom are in the Explore tray at every size. Desktop also gets the corner column from decision 1: Map, Find Me, + and −, 44x44 each, at the scene's right edge under Street view. The bar's first button, the objective line and the conversation row now share one Next Step handler. On landscape phones and desktop, Explore stays on the bar beside an open hub, mural or music panel. Pressing it closes the panel and opens the tray, so Map is still one tap away, as it was before the bar became one row. The new checks are in `godot/tests/hud_bar_checks.gd`; each one failed on a mutation and passed restored.
 
@@ -13,7 +50,7 @@ A Sonnet QA pass and the clean browser runs found five more problems, each now f
 
 Evidence on a clean checkout of `ac19926`, whose code the merge matches exactly: `godot:import`, `godot:export` (pck about 1.52 MB), `npm run check`, 838 Node tests and the full `npm run godot:browser` suite PASS (2 h 25 min). The formal Godot suite PASS with no errors on `5417fc9`, the last commit that changed game code. As in Phase 1, the orbital frame-timing limit was loosened locally for the browser run and the change was not committed.
 
-Open: not deployed; no phone check yet. Phase 3 will close three gaps: the panels' bottom offset still assumes the old two-row bar, desktop shows Next Step twice, and the tray uses 20 px fonts. Phase 4 has a new item: on short landscape screens (520x360) the open tray covers all but about 36 px of the scene, and three columns of two rows would roughly halve its height. Phases 3 (one sheet for all reading text) and 4 (landscape dock, desktop, street view) follow. Decision 1, the desktop corner column, can still be changed.
+Open at the time: not deployed; no phone check yet. Phase 3 has since merged (above). Phase 3 was to close three gaps: the panels' bottom offset still assumes the old two-row bar, desktop shows Next Step twice, and the tray uses 20 px fonts. Phase 4 has a new item: on short landscape screens (520x360) the open tray covers all but about 36 px of the scene, and three columns of two rows would roughly halve its height. Phases 3 (one sheet for all reading text) and 4 (landscape dock, desktop, street view) follow. Decision 1, the desktop corner column, can still be changed.
 
 ## HUD redesign Phase 1, on main and not deployed - November 3, 2026 UTC
 
