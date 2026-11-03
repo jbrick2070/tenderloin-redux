@@ -69,6 +69,7 @@ func run() -> void:
 	await process_frame
 	await process_frame
 	await process_frame
+	await preload("res://tests/hud_checks.gd").verify(self,study)
 	await preload("res://tests/before_streets_checks.gd").verify(self,study,true)
 	await preload("res://tests/street_view_checks.gd").verify(self,study,true)
 	# Compare indexed queries to the original linear geometry across actual bounds and bucket edges.

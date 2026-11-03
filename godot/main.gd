@@ -7146,6 +7146,8 @@ func layout_block_action_pages() -> void:
 	block_close_btn.custom_minimum_size.x = 44.0 if narrow else 94.0
 	if paged:
 		block_label.text = "Block Actions · %d/%d · Sparks: %d" % [block_hub_page + 1, count, spark_count()]
+	elif block_label.text.begins_with("Block Actions · "):
+		block_label.text = "Block Actions · Sparks: %d" % spark_count() # A page size that grew to one page drops the stale n/m.
 	if civic_listening != null: civic_listening.fit_entry_navigation()
 	layout_walking_controls_and_hub()
 
@@ -14593,7 +14595,7 @@ func _physics_process(delta: float) -> void:
 func is_screen_point_in_ui(screen_pos: Vector2) -> bool:
 	if menu_open:
 		return true # The dimmed scene belongs to the menu.
-	if info_panel != null and info_panel.visible and info_panel.get_global_rect().has_point(screen_pos):
+	if info_panel != null and info_panel.is_visible_in_tree() and info_panel.get_global_rect().has_point(screen_pos):
 		return true
 	if phone_tray != null and phone_tray.is_visible_in_tree() and phone_tray.get_global_rect().has_point(screen_pos): return true
 	if is_focused_activity_visible() or (mural_compose_btn != null and mural_compose_btn.is_visible_in_tree() and mural_compose_btn.get_global_rect().has_point(screen_pos)):
@@ -15734,14 +15736,15 @@ func show_block_panel(visible_flag: bool, invitation_context := false) -> void:
 		block_panel_mode = "talk" if opening_conversation and talk_partner >= 0 else "hub"
 		if not was_vis:
 			last_panel_dialogue = ""
-			var suggested := hub_button_for_objective(String(current_objective().get("id", "")))
-			block_hub_page = block_hub_page_of(suggested)
 		if mural_panel != null:
 			mural_panel.visible = false
 		if music_panel != null:
 			music_panel.visible = false
 	if block_panel != null:
 		block_panel.visible = visible_flag
+		if visible_flag and not was_vis:
+			# After the panel shows: a short, wide window only docks (and pages) a visible hub, so the page size depends on it.
+			block_hub_page = block_hub_page_of(hub_button_for_objective(String(current_objective().get("id", ""))))
 		resync_street_view()
 		if visible_flag:
 			update_block_ui()
@@ -16151,7 +16154,7 @@ func make_ui() -> void:
 	info_panel.offset_left = 12
 	info_panel.offset_right = -12
 	info_panel.visible = false
-	layer.add_child(info_panel)
+	hud_holder(layer, "InfoNoteLayer").add_child(info_panel)
 	var note_column := VBoxContainer.new()
 	note_column.add_theme_constant_override("separation", 1)
 	info_panel.add_child(note_column)
@@ -16562,16 +16565,28 @@ func make_ui() -> void:
 	)
 	resize_controls.call()
 
+## A full-screen, click-through holder for HUD pieces whose visibility layout sets (the note, the menu). Focused activities
+## hide every Control in the layer and restore what they saved when they close; they save and restore this always-visible
+## holder, so a stale shown or hidden note or menu never comes back with them.
+func hud_holder(layer: CanvasLayer, holder_name: String) -> Control:
+	var holder := Control.new()
+	holder.name = holder_name
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(holder)
+	holder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	return holder
+
 ## The menu (docs/HUD_REDESIGN_PLAN.md 3): what changes once an afternoon. Music, Sounds, Reduced motion, Street view,
 ## About this place, Before These Streets and the hub's three settings are rows under the header: full width on a phone,
 ## 320 px under Menu on a desktop, and in columns on a landscape phone so every row fits without scrolling.
 func build_menu(layer: CanvasLayer) -> void:
+	var holder := hud_holder(layer, "MenuLayer")
 	menu_scrim = ColorRect.new()
 	menu_scrim.name = "MenuScrim"
 	menu_scrim.color = Color(0.02, 0.04, 0.06, 0.55)
 	menu_scrim.mouse_filter = Control.MOUSE_FILTER_STOP
 	menu_scrim.visible = false
-	layer.add_child(menu_scrim)
+	holder.add_child(menu_scrim)
 	menu_scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	# A tap on the dimmed scene closes the menu on its release: the press (mouse, emulated mouse and the touch itself) has all
 	# landed on the scrim by then, so none of them can reach a press-mode button such as Meet under the finger.
@@ -16588,7 +16603,7 @@ func build_menu(layer: CanvasLayer) -> void:
 	menu_panel.accessibility_name = "Menu, settings and sources"
 	menu_panel.add_theme_stylebox_override("panel", menu_style)
 	menu_panel.visible = false
-	layer.add_child(menu_panel)
+	holder.add_child(menu_panel)
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.follow_focus = true
@@ -16701,7 +16716,7 @@ func set_menu_open(open: bool, restore_focus := true) -> void:
 	if open:
 		refresh_menu_rows()
 		layout_menu()
-		menu_rows[0].grab_focus()
+		first_menu_row().grab_focus()
 		announce_a11y_status("Menu open: music, sounds, reduced motion, street view, about this place and sources. Escape closes it.")
 	else:
 		menu_rows.clear()
@@ -16771,7 +16786,14 @@ func refresh_menu_rows() -> void:
 		var focus_lost := get_viewport().gui_get_focus_owner() == null
 		layout_menu()
 		if focus_lost:
-			menu_rows[0].grab_focus()
+			first_menu_row().grab_focus()
+
+## Where focus starts: the first row that acts. Music is locked over the startup card, so it starts on Sounds there.
+func first_menu_row() -> Button:
+	for row in menu_rows:
+		if not row.disabled:
+			return row
+	return menu_rows[0]
 
 func visible_menu_rows() -> Array[Button]:
 	var rows: Array[Button] = []
@@ -16881,7 +16903,7 @@ func hud_bottom() -> float:
 	if header_panel == null:
 		return 0.0
 	var bottom := header_panel.get_global_rect().end.y
-	if info_panel != null and info_panel.visible:
+	if info_panel != null and info_panel.is_visible_in_tree():
 		bottom = maxf(bottom, info_panel.get_global_rect().end.y)
 	return bottom
 
