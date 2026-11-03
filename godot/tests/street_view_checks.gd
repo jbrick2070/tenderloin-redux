@@ -752,33 +752,35 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	game.set_reward_sounds_enabled(game.reward_sounds_enabled, false)
 	checks += 1
 
-	# 20. Reduced motion, in the map view where it also applies: the button shares the opening entry's row in Info, so
-	# opening Info is no taller than before at 1100x760 or 320x667, and it cycles system, on, off and back to system.
-	# Then the tree canopies, the bubble's bob, the marker's spin and bob and the burst's gem rotation hold still across
-	# 30 frames once the bubble's 0.2 s pop is over, while the burst still widens, lifts and shrinks.
-	var saved_details: bool = game.header_details_expanded
+	# 20. Reduced motion, in the map view where it also applies: the button moved with the opening entry into the menu, a
+	# 44 px row on screen there at 1100x760 and 320x667 that leaves the header one row, and it cycles system, on, off and
+	# back to system. Then the tree canopies, the bubble's bob, the marker's spin and bob and the burst's gem rotation hold
+	# still across 30 frames once the bubble's 0.2 s pop is over, while the burst still widens, lifts and shrinks.
 	var entry: Button = game.before_streets.entry
 	for size in [Vector2i(320, 667), Vector2i(1100, 760)]:
 		suite.root.size = size
-		game.set_header_details(true, false)
 		for _f in range(3):
 			await suite.process_frame
-		suite.require(entry.is_visible_in_tree() and sv.motion_btn.is_visible_in_tree() and sv.motion_btn.get_parent() == entry.get_parent(), "Info's idle row holds the opening entry and Reduced motion at %dx%d" % [size.x, size.y])
-		suite.require(sv.motion_btn.size.x >= 44 and sv.motion_btn.size.y >= 44 and is_equal_approx(sv.motion_row.size.y, entry.get_combined_minimum_size().y), "Reduced motion is a 44 px target that adds no height to Info at %dx%d (row %.1f, entry %.1f)" % [size.x, size.y, sv.motion_row.size.y, entry.get_combined_minimum_size().y])
-		game.set_header_details(false, false)
+		var bar_height: float = game.header_panel.size.y
+		game.set_menu_open(true)
+		for _f in range(3):
+			await suite.process_frame
+		suite.require(entry.is_visible_in_tree() and sv.motion_btn.is_visible_in_tree() and sv.motion_btn.get_parent() == entry.get_parent() and sv.motion_btn.get_parent() == game.menu_list, "the menu holds the opening entry and Reduced motion at %dx%d" % [size.x, size.y])
+		suite.require(sv.motion_btn.size.x >= 44 and sv.motion_btn.size.y >= 44 and Rect2(Vector2.ZERO, Vector2(size)).encloses(sv.motion_btn.get_global_rect()) and is_equal_approx(game.header_panel.size.y, bar_height), "Reduced motion is an on-screen 44 px row that adds no height to the header at %dx%d" % [size.x, size.y])
+		game.set_menu_open(false)
 		await suite.process_frame
-		suite.require(not sv.motion_row.visible, "closing Info hides the row")
+		suite.require(not sv.motion_btn.is_visible_in_tree(), "closing the menu hides the row")
 	suite.root.size = original_size
-	game.set_header_details(true, false)
+	game.set_menu_open(true)
 	await suite.process_frame
-	suite.require(sv.motion_btn.accessibility_name == "Reduced motion: System (off)", "the button names the system setting first (%s)" % sv.motion_btn.accessibility_name)
+	suite.require(sv.motion_btn.accessibility_name == "Reduced motion: System (off)" and sv.motion_btn.text == sv.motion_btn.accessibility_name, "the row names the system setting first (%s)" % sv.motion_btn.accessibility_name)
 	sv.motion_btn.pressed.emit()
 	suite.require(sv.reduced_motion and sv.reduced_motion_saved and sv.motion_btn.accessibility_name == "Reduced motion: On" and game.last_a11y_announcement == "Reduced motion on.", "a press turns reduced motion on as the player's choice and says so")
 	sv.motion_btn.pressed.emit()
 	suite.require(not sv.reduced_motion and sv.reduced_motion_saved and sv.motion_btn.accessibility_name == "Reduced motion: Off", "the next press saves off")
 	sv.motion_btn.pressed.emit()
 	suite.require(not sv.reduced_motion and not sv.reduced_motion_saved and game.last_a11y_announcement.contains("system setting") and sv.motion_btn.accessibility_name == "Reduced motion: System (off)", "the third press returns to the system setting")
-	game.set_header_details(saved_details, false)
+	game.set_menu_open(false)
 	await suite.process_frame
 	suite.require(not sv.active(), "the reduced-motion checks run in the map view")
 	var saved_burst := [game.celebration_burst_node.visible, game.celebration_burst_age, game.celebration_burst_timer, game.celebration_burst_node.position]

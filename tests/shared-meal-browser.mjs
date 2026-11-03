@@ -24,7 +24,7 @@ export async function verifySharedMeal(page,{touch,size,revealPhoneControl,rende
   async function open(){
     if(!(await snap()).block_panel_control.visible){await page.keyboard.press('KeyG');await settle();}
     for(let n=0;n<=(await snap()).block_hub_pages;n++){
-      const s=await snap(),b=s.block_hub_actions.find(b=>b.visible&&b.id===12);
+      const s=await snap(),b=s.block_hub_actions.find(b=>b.visible&&b.id===9); // Cook & Share is the tenth action since the hub's settings moved to the menu.
       if(b){await tap(b);assert.ok((await snap()).shared_meal.visible,'actual Cook & Share opens');return;}
       assert.ok(!s.block_page_next.disabled,'new action remains reachable after original twelve');await tap(s.block_page_next);
       await page.waitForFunction(p=>window.__tenderloinGodotA11ySnapshot.block_hub_page>p,s.block_hub_page,{timeout:10000}).catch(e=>{throw new Error(`hub Next did not advance from page ${s.block_hub_page}: ${e.message}`);});

@@ -125,22 +125,24 @@ export async function verifyFastZoom(page, { touch }) {
 }
 
 // Phone, finger, gate on: a rapid control repeats only while it stays put. When the short last hub page lifts the pager row,
-// the second tap of a double tap on Previous would land on a hub action (District Border is a save) and is swallowed; when
-// the row stays put both taps page back. In the Explore tray Zoom In stays put and keeps every quick tap. Call with nothing open.
+// the second tap of a double tap on Previous would land on a hub action (a save) and is swallowed; when the row stays put both
+// taps page back. A tall phone shows all ten actions on one page, so there is no pager to tap. In the Explore tray Zoom In
+// stays put and keeps every quick tap. Call with nothing open.
 export async function verifyRapidInPlace(page, { touch, size }) {
   const t = pressToolkit(page, { touch }); await gateOn(page);
   try {
     await page.keyboard.press('KeyG'); await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.block_panel_control.visible); await t.settle();
     let s = await t.snap(); assert.ok(s.block_hub_paged, `the hub is paged at ${size.width}`);
-    const rowAt = {};
-    while (s.block_hub_page < s.block_hub_pages - 1) { rowAt[s.block_hub_page] = s.block_page_previous.y; await t.press(s.block_page_next); await rest(page); s = await t.snap(); }
-    const last = s.block_hub_page, district = s.district_boundary_visible, saved = await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1'));
-    const moves = s.block_page_previous.y !== rowAt[last - 1];
-    if (moves) await t.doublePress(s.block_page_previous); else await t.repeatPress(s.block_page_previous);
-    s = await t.snap();
-    assert.equal(s.block_hub_page, last - (moves ? 1 : 2), `a double tap on Previous pages back ${moves ? 'once: the row moved' : 'twice: the row stayed'} (${size.width})`);
-    assert.equal(s.district_boundary_visible, district, 'District Border is not toggled');
-    assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), saved, 'no save is written');
+    if (s.block_hub_pages > 1) {
+      const rowAt = {};
+      while (s.block_hub_page < s.block_hub_pages - 1) { rowAt[s.block_hub_page] = s.block_page_previous.y; await t.press(s.block_page_next); await rest(page); s = await t.snap(); }
+      const last = s.block_hub_page, saved = await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1'));
+      const moves = s.block_page_previous.y !== rowAt[last - 1];
+      if (moves) await t.doublePress(s.block_page_previous); else await t.repeatPress(s.block_page_previous);
+      s = await t.snap();
+      assert.equal(s.block_hub_page, last - (moves ? 1 : 2), `a double tap on Previous pages back ${moves ? 'once: the row moved' : 'twice: the row stayed'} (${size.width})`);
+      assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), saved, 'no hub action fires and no save is written');
+    } else assert.ok(s.block_hub_actions.length === 10 && !s.block_page_previous.visible && !s.block_page_next.visible, `all ten actions on one page at ${size.width}x${size.height}`);
     await t.press(s.block_close_control); await rest(page);
     s = await t.snap(); assert.ok(!s.block_panel_control.visible && s.phone_disclosure.explore.visible, 'hub closed; Explore offered');
     await t.press(s.phone_disclosure.explore); await rest(page);

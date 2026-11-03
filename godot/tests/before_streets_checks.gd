@@ -106,11 +106,15 @@ static func verify(suite: SceneTree,game: Node,formal := false) -> void:
 		var collapsed_header: float=game.header_panel.size.y
 		game.set_header_details(true,false)
 		for frame in range(6): await suite.process_frame
-		suite.require(opening.entry.is_visible_in_tree(),"stable Info revisit exists while idle at any chapter")
-		suite.require(game.header_panel.size.y<=collapsed_header+100,"opening revisit shares the original bounded Info expansion at every supported size")
+		# Info is now the note under the one-row header: it never grows the header and still leaves real map space.
+		suite.require(is_equal_approx(game.header_panel.size.y,collapsed_header),"the Info note never grows the header at every supported size")
 		var map_area: Rect2=game.play_area_rect()
-		suite.require(map_area.size.y>=44 and not game.is_screen_point_in_ui(map_area.get_center()-Vector2(30,0)) and not game.is_screen_point_in_ui(map_area.get_center()+Vector2(30,0)),"expanded opening Info leaves real two-contact map space at every supported size")
+		suite.require(map_area.size.y>=44 and not game.is_screen_point_in_ui(map_area.get_center()-Vector2(30,0)) and not game.is_screen_point_in_ui(map_area.get_center()+Vector2(30,0)),"the Info note leaves real two-contact map space at every supported size")
 		suite.require(game.info.size.y>=ceilf(game.info.get_theme_font("normal_font").get_height(game.info.get_theme_font_size("normal_font_size"))),"short Info retains a full scrollable line")
+		# The revisit moved with Reduced motion into the menu: a 44 px row there, on screen, while idle in any chapter.
+		game.set_menu_open(true)
+		for frame in range(3): await suite.process_frame
+		suite.require(opening.entry.is_visible_in_tree() and opening.entry.size.y>=44 and Rect2(Vector2.ZERO,Vector2(size)).encloses(opening.entry.get_global_rect()) and is_equal_approx(game.header_panel.size.y,collapsed_header),"stable menu revisit exists while idle at any chapter, on screen, without growing the header")
 		await suite.phone_accept(opening.entry)
 		suite.require(opening.visible and opening.observation==1 and opening.view==1,"Info revisit retains this visit's actual observation")
 		var first_held := InputEventKey.new(); first_held.keycode=KEY_W; first_held.pressed=true; Input.parse_input_event(first_held)
@@ -130,7 +134,7 @@ static func verify(suite: SceneTree,game: Node,formal := false) -> void:
 		suite.require(opening.held_on_exit.is_empty() and game.player.position!=revisit_position,"physics resumes and fresh key moves after captured keys release")
 		fresh_key=InputEventKey.new(); fresh_key.keycode=KEY_S; fresh_key.pressed=false; Input.parse_input_event(fresh_key)
 		for frame in range(3): await suite.physics_frame
-		game.set_header_details(true,false)
+		game.set_menu_open(true)
 		for frame in range(6): await suite.process_frame
 		await suite.phone_accept(opening.entry)
 		suite.require(opening.visible,"opening can be revisited after releasing movement keys")
@@ -141,7 +145,7 @@ static func verify(suite: SceneTree,game: Node,formal := false) -> void:
 		await suite.phone_accept(opening.back)
 		for frame in range(6): await suite.process_frame
 		suite.require(game.story_card.visible and not game.startup_story_pending and game.story_continue_btn.has_focus() and game.last_a11y_announcement.begins_with("Chapter "),"deferred chapter actually arrives after return with Continue focus and announcement")
-		game.hide_story_card(); game.set_header_details(true,false)
+		game.hide_story_card(); game.set_menu_open(true)
 		for frame in range(6): await suite.process_frame
 		await suite.phone_accept(opening.entry)
 		var import_held := InputEventKey.new(); import_held.keycode=KEY_W; import_held.pressed=true; Input.parse_input_event(import_held)
@@ -155,7 +159,7 @@ static func verify(suite: SceneTree,game: Node,formal := false) -> void:
 		import_held=InputEventKey.new(); import_held.keycode=KEY_W; import_held.pressed=false; Input.parse_input_event(import_held)
 		for frame in range(3): await suite.physics_frame
 		suite.require(opening.held_on_exit.is_empty(),"release after import restores original physics")
-		game.apply_save_envelope(original); game.hide_story_card(); game.last_story_chapter=int(game.current_chapter().num); game.set_header_details(true,false)
+		game.apply_save_envelope(original); game.hide_story_card(); game.last_story_chapter=int(game.current_chapter().num); game.set_menu_open(true)
 		for frame in range(6): await suite.process_frame
 		await suite.phone_accept(opening.entry); await suite.phone_accept(opening.time_choice)
 		suite.require(game.apply_save_envelope(original) and not opening.visible and opening.observation==-1 and opening.view==0,"successful load clears only transient opening")
@@ -173,16 +177,18 @@ static func verify(suite: SceneTree,game: Node,formal := false) -> void:
 	var returned_view: float=game.view_size; var returned_target: Vector3=game.target
 	game.overview(false)
 	suite.require(is_equal_approx(game.view_size,returned_view) and game.target.is_equal_approx(returned_target),"return at new aspect equals independently recomputed overview")
-	# Visibility transitions shrink/grow Info immediately without changing speech ownership.
-	game.hide_story_card(); game.set_header_details(true,false)
+	# A panel that opens takes over from the menu, and the header keeps its one row throughout; idle again, the entry returns.
+	game.hide_story_card(); game.set_menu_open(true)
 	for frame in range(8): await suite.process_frame
-	var info_height: float=game.header_panel.size.y
+	var bar_height: float=game.header_panel.size.y
+	suite.require(opening.entry.is_visible_in_tree(),"idle menu offers the opening")
 	game.show_block_panel(true)
 	for frame in range(8): await suite.process_frame
-	suite.require(not opening.entry.visible and game.header_panel.size.y<info_height and is_equal_approx(game.header_panel.size.y,game.header_panel.get_combined_minimum_size().y),"Info shrinks when an actual panel removes opening entry")
+	suite.require(not game.menu_open and not opening.entry.is_visible_in_tree() and is_equal_approx(game.header_panel.size.y,bar_height) and is_equal_approx(game.header_panel.size.y,game.header_panel.get_combined_minimum_size().y),"an actual panel closes the menu and the header stays one row")
 	game.show_block_panel(false)
+	game.set_menu_open(true)
 	for frame in range(8): await suite.process_frame
-	suite.require(opening.entry.visible and is_equal_approx(game.header_panel.size.y,game.header_panel.get_combined_minimum_size().y),"Info grows exactly when idle entry returns")
+	suite.require(opening.entry.is_visible_in_tree() and is_equal_approx(game.header_panel.size.y,bar_height),"the entry returns to the idle menu without growing the header")
 	game.in_overview=false; game.in_wide_overview=false; game.following_player=false; game.update_camera()
 	var manual_pose: Array=[game.target,game.view_size,game.camera_yaw,game.camera_pitch_scale]
 	await suite.phone_accept(opening.entry); suite.root.size=Vector2i(390,667)

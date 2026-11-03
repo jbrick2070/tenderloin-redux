@@ -198,7 +198,7 @@ func follow_invitation() -> bool:
 	game.show_block_panel(true,true)
 	game.last_panel_dialogue=game.civic_completion_acknowledgment()
 	game.update_block_ui()
-	if game.uses_paged_block_actions(): game.block_hub_page=game.block_buttons.find(game.block_film_btn)/game.BLOCK_ACTIONS_PER_PAGE
+	if game.uses_paged_block_actions(): game.block_hub_page=game.block_hub_page_of(game.block_film_btn)
 	game.layout_block_action_pages()
 	game.block_film_btn.grab_focus()
 	game.announce_a11y_status(chapter_text+"Dez's invitation: "+game.block_film_btn.text+". Choose this film action when you are ready; your film is unchanged.")

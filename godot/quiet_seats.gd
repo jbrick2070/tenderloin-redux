@@ -117,7 +117,7 @@ func update_ui() -> void:
 		row.set_meta("activity","pause")
 		if show_choices: game.last_panel_dialogue = explanation()+" Choose the seats, then Host Activity (Z) when you are ready."
 		if not show_choices and game.block_panel.visible and game.block_panel_mode=="hub" and choices.any(func(b): return b.has_focus()):
-			game.block_hub_page = game.block_buttons.find(game.block_programme_btn) / game.BLOCK_ACTIONS_PER_PAGE
+			game.block_hub_page = game.block_hub_page_of(game.block_programme_btn)
 			game.layout_block_action_pages()
 			game.block_programme_btn.grab_focus()
 		row.visible = show_choices

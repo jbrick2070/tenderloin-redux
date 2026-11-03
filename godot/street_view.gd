@@ -58,11 +58,10 @@ var street_fov := int(FOV_DEG) # Degrees, 60-90: vertical in landscape, horizont
 var street_mouselook := false # Opt-in mouse capture (work order 4); saved as `street_mouselook`.
 var map_keep_aspect := Camera3D.KEEP_HEIGHT
 ## Reduced motion helps the map view too: the system preference seeds it once at startup on web, and the player's
-## choice in Info is saved as an override until "Use system setting" clears it.
+## choice in the menu is saved as an override until "Use system setting" clears it.
 var reduced_motion := false
 var reduced_motion_saved := false # True only while the player's own choice overrides the system preference.
 var reduced_motion_system := false
-var motion_row: HBoxContainer
 var motion_btn: Button
 var contacts := {} # contact id (touch index or MOUSE_CONTACT) -> {"role", "down", "last", "dragging"}
 var stick: Control
@@ -137,26 +136,15 @@ func system_reduced_motion() -> bool:
 	var v: Variant = JavaScriptBridge.eval("try { window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'reduce' : 'no-preference'; } catch (_e) { 'no-preference'; }", true)
 	return String(v) == "reduce"
 
-## Info's idle row: the opening revisit entry shares it with one "Reduced motion" button, so opening Info costs no
-## more height than before. The button cycles the system setting, on and off; "System" clears the saved choice.
-func setup_motion_row(entry: Button) -> void:
-	var column := entry.get_parent()
-	motion_row = HBoxContainer.new()
-	motion_row.name = "InfoIdleRow"
-	motion_row.add_theme_constant_override("separation", column.get_theme_constant("separation"))
-	motion_row.visible = entry.visible
-	column.add_child(motion_row)
-	column.move_child(motion_row, entry.get_index())
-	entry.reparent(motion_row, false)
+## Reduced motion is a menu row. It cycles the system setting, on and off; "System" clears the saved choice.
+func setup_motion_button(parent: Control) -> void:
 	motion_btn = Button.new()
 	motion_btn.name = "ReducedMotionToggle"
 	motion_btn.tooltip_text = "Reduced motion stills the swaying trees, the bobbing speech bubble, the spinning guide marker and the burst's spin. Press to cycle: system setting, on, off."
-	motion_btn.custom_minimum_size = Vector2(104, 44)
 	motion_btn.focus_mode = Control.FOCUS_ALL
-	motion_btn.add_theme_font_size_override("font_size", 12)
 	game.style_game_button(motion_btn)
 	motion_btn.pressed.connect(cycle_reduced_motion)
-	motion_row.add_child(motion_btn)
+	parent.add_child(motion_btn)
 	refresh_motion_controls()
 
 ## System -> the opposite of the system -> the same as the system -> System again.
@@ -193,18 +181,8 @@ func motion_state_text() -> String:
 func refresh_motion_controls() -> void:
 	if motion_btn == null:
 		return
-	motion_btn.text = "Reduced motion\n%s" % motion_state_text()
+	motion_btn.text = "Reduced motion: %s" % motion_state_text()
 	motion_btn.accessibility_name = "Reduced motion: %s" % motion_state_text()
-
-## The row follows the opening entry it holds; called right after each place that shows or hides that entry.
-func refresh_motion_row() -> bool:
-	if motion_row == null or motion_row.get_child_count() == 0:
-		return false
-	var show: bool = (motion_row.get_child(0) as Control).visible
-	if motion_row.visible == show:
-		return false
-	motion_row.visible = show
-	return true
 
 ## Optional settings keys, only those that differ from the defaults, so an untouched envelope keeps its old bytes.
 func settings_fields() -> Dictionary:
@@ -1001,7 +979,7 @@ func snapshot() -> Dictionary:
 		"mouselook_button": game.control_snapshot(mouselook_btn).merged({"text": mouselook_btn.text if mouselook_btn != null else "", "pressed": mouselook_btn != null and mouselook_btn.button_pressed}),
 		"capture": capture_state,
 		"capture_requests": capture_requests,
-		"reduced_motion": {"on": reduced_motion, "saved": reduced_motion_saved, "system": reduced_motion_system, "visible": motion_row != null and motion_row.is_visible_in_tree(), "toggle": game.control_snapshot(motion_btn), "text": motion_btn.accessibility_name if motion_btn != null else ""},
+		"reduced_motion": {"on": reduced_motion, "saved": reduced_motion_saved, "system": reduced_motion_system, "visible": motion_btn != null and motion_btn.is_visible_in_tree(), "toggle": game.control_snapshot(motion_btn), "text": motion_btn.accessibility_name if motion_btn != null else ""},
 		"contacts": roles,
 		"taps_routed": taps_routed,
 	}

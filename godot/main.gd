@@ -600,6 +600,33 @@ var sounds_btn: Button
 var music_toggle_btn: Button
 var progress_label: Label
 var header_details_expanded := false
+# The one-row header (docs/HUD_REDESIGN_PLAN.md 3): Menu, the objective line and the Sparks pill. Info and the save notice sit
+# in a note under it, so neither grows the header; settings, sources and the rare actions sit behind Menu.
+var header_style: StyleBoxFlat
+var menu_btn: Button
+var objective_btn: Button
+var sparks_btn: Button
+var info_panel: PanelContainer
+var info_hide_btn: Button
+var header_notice_label: Label
+var menu_scrim: ColorRect
+var menu_panel: PanelContainer
+var menu_list: GridContainer
+var menu_rows: Array[Button] = []
+var menu_street_btn: Button
+var menu_about_btn: Button
+var menu_close_btn: Button
+var menu_credit_label: Label
+var menu_about_page: VBoxContainer
+var about_label: RichTextLabel
+var about_back_btn: Button
+var about_close_btn: Button
+var menu_open := false
+var menu_open_signature: Array = []
+var story_credit_label: Label
+const MENU_CREDIT := "City: DataSF / PDDL · Streets: OSM / ODbL"
+const MENU_ROW_HEIGHT := 48.0
+const MENU_DESKTOP_WIDTH := 320.0
 var player_nameplate: Label3D
 var readable_scene_labels: Array[Label3D] = []
 var visible_scene_captions: Array[Dictionary] = []
@@ -852,7 +879,6 @@ var mural_workshop_selected := "sun"
 var mural_workshop_message := ""
 var mural_workshop_return_focus: Control
 var mural_compose_btn: Button
-const BLOCK_ACTIONS_PER_PAGE := 4
 const SIDE_HUB_MIN_WIDTH := 600.0 # Phone HUD breakpoint; short landscape panels dock at520px.
 const SIDE_ACTIVITY_MIN_WIDTH := 520.0
 const WIDE_SIDE_PANEL_MIN_WIDTH := 560.0
@@ -860,7 +886,11 @@ const SMALL_SIDE_HUB_MIN_WIDTH := 520.0
 const COMPACT_ACTIVITY_MAX_HEIGHT := 640.0
 const SIDE_HUB_MAX_HEIGHT := 560.0
 const HUB_FULL_WIDTH := 1050.0
-const BLOCK_ACTION_COUNT := 13
+# Ten actions: Local Stories, District Border and Import Web Save are settings, and live in the menu.
+const BLOCK_ACTION_COUNT := 10
+const HUB_ROW_PITCH := 48.0 # One row of 44 px hub actions and the grid's 4 px gap.
+const HUB_MIN_SCENE := 180.0 # Street a bottom hub leaves above it before it pages.
+var block_hub_page_size := 0
 var conv_buttons: Array[Button] = []
 var conv_chat_btn: Button
 var conv_next_btn: Button
@@ -6203,18 +6233,27 @@ func current_objective() -> Dictionary:
 	}
 
 func update_objective_ui() -> void:
+	var narrow := is_narrow_layout()
 	if progress_label != null:
 		progress_label.text = "Sparks: %d · Keepsakes: %d/10" % [spark_count(), discovered_surprises.size()]
 		var notice := persistence_text("")
 		if not notice.is_empty(): progress_label.text += "\n" + notice
+		# The pill is the short form ("*" is the reward banner's sparkle; the font has no star); its name says it in words.
+		sparks_btn.text = ("* %d · %d/10" if narrow else "Sparks %d · Keepsakes %d/10") % [spark_count(), discovered_surprises.size()]
+		sparks_btn.accessibility_name = "Sparks %d, Keepsakes %d of 10. Opens About this place." % [spark_count(), discovered_surprises.size()]
+		if header_notice_label.text != notice:
+			layout_header() # The save notice shows in the note under the header, never in it.
+			layout_walking_controls_and_hub()
 	if objective_label == null:
 		return
 	var ch := current_chapter()
 	var next_text := String(current_objective().get("text", ""))
-	if is_narrow_layout():
+	if narrow:
 		objective_label.text = "Ch. %d · Next: %s" % [int(ch.num), next_text]
 	else:
 		objective_label.text = "Chapter %d: %s · Next: %s" % [int(ch.num), String(ch.title), next_text]
+	objective_btn.tooltip_text = "%s (Next Step)" % objective_label.text
+	objective_btn.accessibility_name = "%s. Next Step." % objective_label.text
 	update_walk_control()
 
 ## World units per `px_per_unit` pixels. The map view's orthographic size makes this uniform;
@@ -6684,7 +6723,7 @@ func run_conversation_action_id(act_id: String) -> bool:
 		"hub":
 			block_panel_mode = "hub"
 			var suggested := hub_button_for_objective(String(current_objective().get("id", "")))
-			block_hub_page = maxi(0, block_buttons.find(suggested)) / BLOCK_ACTIONS_PER_PAGE
+			block_hub_page = block_hub_page_of(suggested)
 			show_block_panel(true)
 		_:
 			return false
@@ -6709,7 +6748,7 @@ func apply_block_panel_mode() -> void:
 			if suggested != null and suggested.is_visible_in_tree():
 				suggested.grab_focus()
 			else:
-				block_buttons[block_hub_page * BLOCK_ACTIONS_PER_PAGE].grab_focus()
+				block_buttons[block_hub_page * block_actions_per_page()].grab_focus()
 	if talk:
 		var narrow := is_narrow_layout() or uses_short_side_panels()
 		var acts := conversation_actions()
@@ -6731,7 +6770,28 @@ func apply_block_panel_mode() -> void:
 		layout_walking_controls_and_hub()
 
 func block_action_page_count() -> int:
-	return maxi(1, ceili(float(BLOCK_ACTION_COUNT) / BLOCK_ACTIONS_PER_PAGE))
+	return maxi(1, ceili(float(BLOCK_ACTION_COUNT) / block_actions_per_page()))
+
+## Paged hubs show as many rows of two actions as fit, so a tall phone shows all ten and only short screens page.
+## A bottom hub keeps HUB_MIN_SCENE of street above it; a dock runs from under the header to the screen bottom.
+## Read from the viewport and the panel's fixed parts, not its current size, so a caller can pick a page before showing it.
+func block_actions_per_page() -> int:
+	if not uses_paged_block_actions() or block_panel == null:
+		return BLOCK_ACTION_COUNT
+	var vp := bubble_viewport_size()
+	var dock := vp.x >= SMALL_SIDE_HUB_MIN_WIDTH and vp.y < SIDE_HUB_MAX_HEIGHT
+	var top := hud_bottom() + 8.0
+	var bottom := vp.y - 12.0 if dock else vp.y + controls.offset_top - 8.0 - HUB_MIN_SCENE
+	var sep := float((block_panel.get_child(0) as Container).get_theme_constant("separation"))
+	# Title, the 30 px hub reader, the nav row and their gaps; the quiet-seat choices take a row of their own.
+	var chrome := block_panel.get_theme_stylebox("panel").get_minimum_size().y + block_label.get_combined_minimum_size().y + 30.0 + maxf(44.0, block_page_nav.get_combined_minimum_size().y) + 3.0 * sep
+	if quiet_seats != null and quiet_seats.row.visible:
+		chrome += quiet_seats.row.get_combined_minimum_size().y + sep
+	var rows := floori((bottom - top - chrome + 4.0) / HUB_ROW_PITCH)
+	return clampi(rows, 1, ceili(BLOCK_ACTION_COUNT / 2.0)) * 2
+
+func block_hub_page_of(action: Button) -> int:
+	return maxi(0, block_buttons.find(action)) / block_actions_per_page()
 
 func uses_paged_block_actions() -> bool:
 	# Six long action columns need desktop space; keep the panel bounded on tablets.
@@ -6907,7 +6967,7 @@ func make_phone_disclosure(layer: CanvasLayer) -> void:
 	phone_find_control = phone_original_walk_buttons[2]
 	phone_tray = PanelContainer.new()
 	phone_tray.name = "PhoneExplore"
-	phone_tray.add_theme_stylebox_override("panel",header_panel.get_theme_stylebox("panel"))
+	phone_tray.add_theme_stylebox_override("panel",panel_bg_style)
 	phone_tray.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	phone_tray.offset_left=12; phone_tray.offset_right=-12
 	phone_tray.visible=false
@@ -6978,20 +7038,11 @@ func layout_walking_controls_and_hub() -> void:
 			size_activity_detail(detail)
 	for b in mural_buttons + music_buttons:
 		b.add_theme_font_size_override("font_size", 13 if side or narrow else 15)
-	# Info remains scrollable when deliberately opened beside a short-screen dock.
+	# The note under the header scrolls: three lines, one on a short landscape screen (its Hide button makes the row 44 px).
 	if info != null:
-		info.custom_minimum_size.y = 24.0 if compact else 90.0
-		# Share the original 90px Info budget with the optional opening entry.
-		# Short landscape keeps one full scrollable line and usable map space.
-		if before_streets != null and before_streets.entry != null and before_streets.entry.visible:
-			var line_height := ceilf(info.get_theme_font("normal_font").get_height(info.get_theme_font_size("normal_font_size")))
-			var entry_height: float = before_streets.entry.get_combined_minimum_size().y
-			var gap: float = before_streets.entry.get_parent().get_theme_constant("separation")
-			info.custom_minimum_size.y = line_height if vp.y < SIDE_HUB_MAX_HEIGHT else maxf(line_height, 90.0 - entry_height - gap)
-		if compact and not (uses_side_block_hub() or uses_compact_narrow_hub()):
-			# One complete Info line; full dialogue has its own two-line panel reader.
-			info.custom_minimum_size.y = ceilf(info.get_theme_font("normal_font").get_height(info.get_theme_font_size("normal_font_size")))
-		header_panel.offset_bottom = header_panel.offset_top + header_panel.get_combined_minimum_size().y
+		var line_height := ceilf(info.get_theme_font("normal_font").get_height(info.get_theme_font_size("normal_font_size")))
+		info.custom_minimum_size.y = line_height * (1.0 if vp.y < SIDE_HUB_MAX_HEIGHT or compact else 3.0)
+		layout_header()
 	configure_phone_disclosure()
 	for panel in [block_panel, mural_panel, music_panel]:
 		if panel == null:
@@ -7000,7 +7051,7 @@ func layout_walking_controls_and_hub() -> void:
 		var dock: bool = panel_uses_side_dock(panel) and (panel != block_panel or panel.visible)
 		if panel != block_panel:
 			panel.get_child(0).add_theme_constant_override("separation", 1 if dock or short_phone else 2)
-			if dock and panel.get_combined_minimum_size().y > vp.y - 12.0 - (header_panel.get_global_rect().end.y + 8.0):
+			if dock and panel.get_combined_minimum_size().y > vp.y - 12.0 - (hud_bottom() + 8.0):
 				# Keep every 44px action and two reader lines when Info is also open.
 				panel.get_child(0).add_theme_constant_override("separation", 0)
 		panel.anchor_left = 1.0 if dock else 0.0
@@ -7013,8 +7064,10 @@ func layout_walking_controls_and_hub() -> void:
 			panel.offset_top = panel.offset_bottom-panel.get_combined_minimum_size().y
 			continue
 		var hosting_choices: bool = panel == block_panel and hosting_choice_row_visible() and not dock
-		panel.grow_vertical = Control.GROW_DIRECTION_BEGIN if short_phone or hosting_choices else Control.GROW_DIRECTION_END
-		if hosting_choices and not short_phone:
+		# A paged hub stands on the walking controls and grows up to its rows (block_actions_per_page sized them to fit).
+		var paged_hub: bool = panel == block_panel and panel.visible and block_panel_mode == "hub" and uses_paged_block_actions() and not dock
+		panel.grow_vertical = Control.GROW_DIRECTION_BEGIN if short_phone or hosting_choices or paged_hub else Control.GROW_DIRECTION_END
+		if (hosting_choices or paged_hub) and not short_phone:
 			# Fit actual content above walking targets, including taller native fonts.
 			panel.size = Vector2(vp.x-24.0,0.0)
 			panel.offset_bottom = controls.offset_top-8.0
@@ -7023,15 +7076,19 @@ func layout_walking_controls_and_hub() -> void:
 		if short_phone:
 			panel.size = Vector2(vp.x - 24.0, 0.0)
 			panel.offset_bottom = controls.offset_top - 8.0
-			if panel != block_panel and vp.y + panel.offset_bottom - panel.get_combined_minimum_size().y < header_panel.get_global_rect().end.y + 8.0:
+			if panel != block_panel and vp.y + panel.offset_bottom - panel.get_combined_minimum_size().y < hud_bottom() + 8.0:
 				panel.get_child(0).add_theme_constant_override("separation", 0)
 			panel.offset_top = panel.offset_bottom - panel.get_combined_minimum_size().y
 			continue
-		panel.offset_top = header_panel.get_global_rect().end.y + 8.0 - vp.y if dock else ((-368.0 if narrow else -336.0) if panel == block_panel else (-396.0 if narrow else -354.0))
+		panel.offset_top = hud_bottom() + 8.0 - vp.y if dock else ((-368.0 if narrow else -336.0) if panel == block_panel else (-396.0 if narrow else -354.0))
 		if dock:
 			panel.size = Vector2(dock_width, 0.0)
 		else:
 			panel.offset_bottom = -176.0 if narrow else -130.0
+	# A page holds the rows that fit beside the walking controls and the note just placed; when that changes, re-page around
+	# the focused action.
+	if block_panel.visible and block_panel_mode == "hub" and block_actions_per_page() != block_hub_page_size:
+		layout_block_action_pages()
 
 func queue_compact_panel_layout() -> void:
 	if compact_panel_layout_busy or not uses_compact_narrow_panels():
@@ -7062,32 +7119,32 @@ func layout_block_action_pages() -> void:
 	if block_actions_grid == null:
 		return
 	var narrow := uses_paged_block_actions()
+	var per := block_actions_per_page()
 	var count := block_action_page_count()
+	# A new page size (a resize, or the note under the header coming or going) keeps the focused action on screen.
+	var owner := get_viewport().gui_get_focus_owner()
+	var focused := block_buttons.find(owner) if owner is Button else -1
+	if per != block_hub_page_size and focused >= 0 and focused < BLOCK_ACTION_COUNT:
+		block_hub_page = focused / per
+	block_hub_page_size = per
 	block_hub_page = clampi(block_hub_page, 0, count - 1)
-	var meal_had_focus := block_meal_btn != null and block_meal_btn.has_focus()
-	if block_meal_btn != null and block_page_nav != null:
-		# Wide hubs keep the original two grid rows and their useful street view.
-		# Phones/docks keep the meal on page4, never in their crowded nav row.
-		var meal_parent: Node = block_actions_grid if narrow else block_page_nav
-		if block_meal_btn.get_parent() != meal_parent:
-			block_meal_btn.reparent(meal_parent,false)
-			meal_parent.move_child(block_meal_btn,meal_parent.get_child_count()-1 if narrow else block_close_btn.get_index())
-	block_actions_grid.columns = 2 if narrow else 6
+	# Ten actions are two rows of five on a wide hub and rows of two elsewhere.
+	block_actions_grid.columns = 2 if narrow else 5
 	for i in range(mini(BLOCK_ACTION_COUNT, block_buttons.size())):
 		block_buttons[i].add_theme_font_size_override("font_size", 13 if narrow else 15)
-		block_buttons[i].visible = not narrow or i / BLOCK_ACTIONS_PER_PAGE == block_hub_page
-	if meal_had_focus and block_meal_btn.is_visible_in_tree(): block_meal_btn.grab_focus()
-	if not narrow and (block_page_prev.has_focus() or block_page_next.has_focus()):
-		block_buttons[block_hub_page * BLOCK_ACTIONS_PER_PAGE].grab_focus()
-	block_page_prev.visible = narrow
-	block_page_next.visible = narrow
+		block_buttons[i].visible = not narrow or i / per == block_hub_page
+	var paged := narrow and count > 1
+	if not paged and (block_page_prev.has_focus() or block_page_next.has_focus()):
+		block_buttons[block_hub_page * per].grab_focus()
+	block_page_prev.visible = paged
+	block_page_next.visible = paged
 	block_page_prev.disabled = block_hub_page == 0
 	block_page_next.disabled = block_hub_page == count - 1
 	block_page_prev.text = "Previous"
 	block_page_next.text = "Next %d/%d" % [mini(block_hub_page + 2, count), count]
 	block_close_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL if narrow else Control.SIZE_SHRINK_END
 	block_close_btn.custom_minimum_size.x = 44.0 if narrow else 94.0
-	if narrow:
+	if paged:
 		block_label.text = "Block Actions · %d/%d · Sparks: %d" % [block_hub_page + 1, count, spark_count()]
 	if civic_listening != null: civic_listening.fit_entry_navigation()
 	layout_walking_controls_and_hub()
@@ -7100,8 +7157,8 @@ func change_block_action_page(step: int) -> void:
 		return
 	block_hub_page = next
 	layout_block_action_pages()
-	block_buttons[block_hub_page * BLOCK_ACTIONS_PER_PAGE].grab_focus()
-	announce_a11y_status("Block actions page %d of %d. %s" % [block_hub_page + 1, block_action_page_count(), block_buttons[block_hub_page * BLOCK_ACTIONS_PER_PAGE].text])
+	block_buttons[block_hub_page * block_actions_per_page()].grab_focus()
+	announce_a11y_status("Block actions page %d of %d. %s" % [block_hub_page + 1, block_action_page_count(), block_buttons[block_hub_page * block_actions_per_page()].text])
 
 func conv_button(parent: Node, text: String, action: Callable) -> Button:
 	var control := Button.new()
@@ -7178,7 +7235,7 @@ func play_area_rect() -> Rect2:
 	var vp := bubble_viewport_size()
 	var top := 8.0
 	if header_panel != null:
-		top = header_panel.get_global_rect().end.y + 8.0
+		top = hud_bottom() + 8.0
 	var bottom := vp.y - 8.0
 	if controls != null and not phone_talking():
 		bottom = controls.get_global_rect().position.y - 8.0
@@ -7437,6 +7494,14 @@ func build_story_card(layer: CanvasLayer) -> void:
 	story_continue_btn.add_theme_font_size_override("font_size", 17)
 	story_continue_btn.pressed.connect(continue_story)
 	row.add_child(story_continue_btn)
+	# The startup card carries the credit line the header no longer shows (the menu and About have it too).
+	story_credit_label = Label.new()
+	story_credit_label.name = "StoryCredit"
+	story_credit_label.text = MENU_CREDIT
+	story_credit_label.clip_text = true
+	story_credit_label.add_theme_font_size_override("font_size", 11)
+	story_credit_label.add_theme_color_override("font_color", Color("b8c7c8"))
+	story_action_rows.add_child(story_credit_label)
 	layer.add_child(story_card)
 
 func layout_story_card() -> void:
@@ -7446,7 +7511,7 @@ func layout_story_card() -> void:
 	var w := minf(560.0, vp.x - 24.0)
 	var top := 12.0
 	if header_panel != null:
-		top = header_panel.get_global_rect().end.y + 10.0
+		top = hud_bottom() + 10.0
 	var style := story_card.get_theme_stylebox("panel")
 	var text_width := maxf(1.0, w - style.get_minimum_size().x)
 	var flags := TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE
@@ -7489,6 +7554,7 @@ func show_story_card(chapter: Dictionary, startup := false) -> void:
 	story_continue_btn.text = "Start Exploring" if startup else "Continue"
 	startup_story_pending = startup
 	story_before_btn.visible = startup
+	story_credit_label.visible = startup
 	story_card.visible = true
 	update_music_ui()
 	layout_story_card()
@@ -7777,17 +7843,12 @@ func set_header_details(expanded: bool, refit_map := true) -> void:
 		info.visible = expanded
 		if expanded:
 			info.scroll_to_line(0)
-	var toggle := header_panel.find_child("HeaderInfoToggle", true, false) as Button
-	if toggle != null:
-		toggle.set_pressed_no_signal(expanded)
-	if before_streets != null and before_streets.entry != null:
-		before_streets.entry.visible = expanded and before_streets.idle_entry_available()
-	if street_view != null:
-		street_view.refresh_motion_row() # The opening entry's row also holds Reduced motion.
-	# Visibility updates minimum height immediately; retain width and apply that
-	# height before camera framing or overlay fitting reads the playable area.
-	header_panel.offset_bottom = header_panel.offset_top + header_panel.get_combined_minimum_size().y
-	layout_walking_controls_and_hub()
+	# Info is the note under the one-row header: it never grows the header, but the scene starts below it.
+	layout_header()
+	if block_panel != null and block_panel.visible and block_panel_mode == "hub":
+		layout_block_action_pages() # The note's height can leave room for one row of actions less, or more.
+	else:
+		layout_walking_controls_and_hub()
 	if refit_map and (in_overview or in_wide_overview):
 		refit_after_layout()
 	elif following_player and block_panel != null and block_panel.visible and block_panel_mode == "hub":
@@ -7806,18 +7867,10 @@ func update_conversation_ui(delta: float) -> void:
 	if is_story_card_visible():
 		layout_story_card()
 	# Keep details available on demand while leaving room for the street.
-	if info != null:
-		var show_info := header_details_expanded
-		if info.visible != show_info:
-			info.visible = show_info
-	if before_streets != null and before_streets.entry != null:
-		var show_opening: bool = header_details_expanded and before_streets.idle_entry_available()
-		if before_streets.entry.visible != show_opening:
-			before_streets.entry.visible = show_opening
-			if street_view != null:
-				street_view.refresh_motion_row() # The entry's row (with Reduced motion) follows it.
-			header_panel.offset_bottom = header_panel.offset_top + header_panel.get_combined_minimum_size().y
-			layout_walking_controls_and_hub()
+	if info != null and info.visible != header_details_expanded:
+		info.visible = header_details_expanded
+		layout_header()
+		layout_walking_controls_and_hub()
 	objective_refresh_timer -= delta
 	if objective_refresh_timer <= 0.0:
 		objective_refresh_timer = 0.5
@@ -8682,8 +8735,11 @@ func focus_history_stop_camera(stop_id: String) -> void:
 	target = Vector3(pos.x, 1.3, pos.z)
 	view_size = 55.0
 	update_camera()
-	if get_viewport() != null and get_viewport().get_visible_rect().size.x < 600:
-		target -= camera.global_basis.y * 4.2
+	if get_viewport() != null and get_viewport().get_visible_rect().size.x < 600 and not street_view_active():
+		# On a phone the hub takes the bottom of the screen and its height follows how many rows fit: put the stop at the
+		# middle of the scene left above it.
+		var off := camera.unproject_position(target) - play_area_rect().get_center()
+		target += (camera.global_basis.x * off.x - camera.global_basis.y * off.y) * screen_constant_scale(1.0)
 		update_camera()
 	update_occlusion(true)
 
@@ -11907,6 +11963,28 @@ func mural_scenes_snapshot() -> Dictionary:
 		points.append({"x":p.x,"y":p.y})
 	return {"visible":mural_canvas_mesh.is_visible_in_tree(),"corners":points,"scenes":mural_scenes.duplicate()}
 
+## How much of the screen the HUD takes (docs/HUD_REDESIGN_PLAN.md, Phase 0), so a run can print before and after numbers.
+## play_area_share is the scene's share of the viewport height, the plan's "scene" column.
+func hud_metrics() -> Dictionary:
+	var vp := bubble_viewport_size()
+	var area := play_area_rect()
+	var bar := controls.get_global_rect() if controls != null and controls.is_visible_in_tree() else Rect2()
+	var panel := Rect2()
+	for p in [block_panel, mural_panel, music_panel]:
+		if p != null and p.is_visible_in_tree():
+			panel = (p as Control).get_global_rect()
+	return {
+		"viewport": rect_snapshot(Rect2(Vector2.ZERO, vp)),
+		"header_height": header_panel.size.y if header_panel != null and header_panel.is_visible_in_tree() else 0.0,
+		"header_bottom": header_panel.get_global_rect().end.y if header_panel != null and header_panel.is_visible_in_tree() else 0.0,
+		"note_height": info_panel.size.y if info_panel != null and info_panel.is_visible_in_tree() else 0.0,
+		"menu_open": menu_open,
+		"controls_height": bar.size.y,
+		"panel": rect_snapshot(panel),
+		"play_area": rect_snapshot(area),
+		"play_area_share": snappedf(area.size.y / maxf(vp.y, 1.0), 0.001),
+	}
+
 func get_a11y_status_snapshot() -> Dictionary:
 	var active_panel := "none"
 	if block_panel != null and block_panel.visible:
@@ -11957,8 +12035,18 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"story_start_focus": story_continue_btn != null and story_continue_btn.has_focus(),
 		"startup_pending": startup_story_pending,
 		"layout_refit_pending": layout_refit_pending,
-		"info_control": control_snapshot(header_panel.find_child("HeaderInfoToggle", true, false) as Control),
+		"info_control": control_snapshot(info_hide_btn),
+		"about_control": control_snapshot(menu_about_btn),
+		"district_control": control_snapshot(block_district_btn),
+		"local_stories_control": control_snapshot(block_voices_btn),
+		"import_control": control_snapshot(block_import_btn),
+		"menu": menu_snapshot(),
+		"objective_line": control_snapshot(objective_btn),
+		"sparks_control": control_snapshot(sparks_btn),
+		"sparks_text": sparks_btn.text if sparks_btn != null else "",
+		"sparks_name": sparks_btn.accessibility_name if sparks_btn != null else "",
 		"header_control": control_snapshot(header_panel),
+		"hud_metrics": hud_metrics(),
 		"walk_control": control_snapshot(walk_control),
 		"walk_control_text": walk_control.text if walk_control != null else "",
 		"walk_target_neighbor": int(primary.neighbor),
@@ -11973,6 +12061,7 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"block_hub_page": block_hub_page if uses_paged_block_actions() else 0,
 		"block_hub_pages": block_action_page_count() if uses_paged_block_actions() else 1,
 		"block_hub_paged": uses_paged_block_actions(),
+		"block_hub_per_page": block_actions_per_page(),
 		"block_hub_side": uses_side_block_hub(),
 		"side_panel_dock": has_side_panel_dock(),
 		"compact_narrow_activity": uses_compact_narrow_activities(),
@@ -11984,7 +12073,7 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"panel_subject_points": panel_subject_snapshots(),
 		"walking_controls": walking_control_snapshots(),
 		"phone_disclosure": {"enabled":uses_phone_disclosure(),"transition":phone_primary_transition,"all_actions":control_snapshot(phone_all_actions_control),"tray":control_snapshot(phone_tray),"explore":control_snapshot(phone_explore_control),"close":control_snapshot(phone_tray_close),"actions_open":phone_actions_open},
-		"info_reader": activity_detail_snapshot(info, header_panel, []),
+		"info_reader": activity_detail_snapshot(info, info_panel, [info_hide_btn]),
 		"block_page_previous": control_snapshot(block_page_prev),
 		"block_page_next": control_snapshot(block_page_next),
 		"block_close_control": control_snapshot(block_close_btn),
@@ -14417,6 +14506,8 @@ func _process(delta: float) -> void:
 	update_eatery_animation(delta)
 	update_landmark_tour_completion()
 	update_conversation_ui(delta)
+	if menu_open:
+		refresh_open_menu()
 	update_celebration_burst(delta)
 	update_speech_bubble(delta)
 	if reward_banner_timer > 0.0:
@@ -14471,8 +14562,10 @@ func _physics_process(delta: float) -> void:
 			input_vec.y += 1.0
 		if Input.is_key_pressed(KEY_UP):
 			input_vec.y -= 1.0
+	if menu_open:
+		input_vec = Vector2.ZERO # Held keys do not walk the dimmed scene; a route already under way carries on.
 	var walk_magnitude := 1.0
-	if street_view_active() and input_vec.length_squared() == 0.0:
+	if street_view_active() and input_vec.length_squared() == 0.0 and not menu_open:
 		input_vec = street_view.stick_vector() # Keys win over the touch stick.
 		walk_magnitude = input_vec.length()
 	if input_vec.length_squared() > 0.0:
@@ -14498,6 +14591,10 @@ func _physics_process(delta: float) -> void:
 		advance_walk(delta * (2.2 if OS.has_feature("web") and not street_view_active() else 1.0))
 
 func is_screen_point_in_ui(screen_pos: Vector2) -> bool:
+	if menu_open:
+		return true # The dimmed scene belongs to the menu.
+	if info_panel != null and info_panel.visible and info_panel.get_global_rect().has_point(screen_pos):
+		return true
 	if phone_tray != null and phone_tray.is_visible_in_tree() and phone_tray.get_global_rect().has_point(screen_pos): return true
 	if is_focused_activity_visible() or (mural_compose_btn != null and mural_compose_btn.is_visible_in_tree() and mural_compose_btn.get_global_rect().has_point(screen_pos)):
 		return true
@@ -14908,6 +15005,13 @@ func _input(event: InputEvent) -> void:
 	var mouse_activation: bool = event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_MIDDLE]
 	if key_activation or mouse_activation or (event is InputEventScreenTouch and not event.pressed):
 		reward_audio_unlocked = true
+	if menu_open:
+		# Escape closes the top-most thing: About goes back to the rows, the rows close. The scene takes no pointer.
+		if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+			if menu_about_page.visible: show_menu_about(false)
+			else: set_menu_open(false)
+			get_viewport().set_input_as_handled()
+		return
 	# A press-mode control can reveal a talk button beneath the held contact.
 	# Leave releases available to GUI state, but guard callbacks through dispatch.
 	if phone_primary_transition:
@@ -14947,6 +15051,9 @@ func _input(event: InputEvent) -> void:
 		continue_story()
 
 func _unhandled_input(event: InputEvent) -> void:
+	if menu_open:
+		get_viewport().set_input_as_handled() # The menu is modal: no shortcut, walk or tap reaches the dimmed scene.
+		return
 	if is_habitat_room_visible():
 		get_viewport().set_input_as_handled()
 		return
@@ -15628,7 +15735,7 @@ func show_block_panel(visible_flag: bool, invitation_context := false) -> void:
 		if not was_vis:
 			last_panel_dialogue = ""
 			var suggested := hub_button_for_objective(String(current_objective().get("id", "")))
-			block_hub_page = maxi(0, block_buttons.find(suggested)) / BLOCK_ACTIONS_PER_PAGE
+			block_hub_page = block_hub_page_of(suggested)
 		if mural_panel != null:
 			mural_panel.visible = false
 		if music_panel != null:
@@ -15912,21 +16019,13 @@ func update_block_ui() -> void:
 			block_film_btn.text = "Set Up Film Shot"
 		else:
 			block_film_btn.text = "Shoot Short Film"
-	if block_voices_btn != null:
-		if voices_enabled:
-			block_voices_btn.text = "Local Stories: Err" if voices_status == "error" else "Local Stories: On"
-		else:
-			block_voices_btn.text = "Read Local Stories"
 	if block_mural_btn != null:
 		block_mural_btn.text = "Mural (3/3)" if mural_completed else ("Paint w/ Celeste (%d/3)" % mural_placements.size())
 	if block_rook_btn != null:
 		block_rook_btn.text = "Soundcheck w/ Rook (OK)" if rook_soundcheck_done else "Soundcheck w/ Rook"
 	if block_west_btn != null:
 		block_west_btn.text = "Black Hawk Site (OK)" if blackhawk_discovered else "Walk to Black Hawk"
-	if block_district_btn != null:
-		block_district_btn.text = "District Border: On" if district_boundary_visible else "District Border: Off"
-	if block_import_btn != null:
-		block_import_btn.text = "Web Save Loaded" if browser_import_status == "imported" else "Import Web Save"
+	refresh_menu_rows()
 	update_objective_ui()
 	apply_block_panel_mode()
 
@@ -15979,91 +16078,120 @@ func make_ui() -> void:
 
 	var layer := CanvasLayer.new()
 	add_child(layer)
+	# One row (docs/HUD_REDESIGN_PLAN.md 3): Menu, the chapter and objective on one clipped line that does what Next Step
+	# does, and the Sparks pill, which opens About. The title, the toggles and the credit line live in the menu.
+	header_style = panel_bg_style.duplicate()
 	header_panel = PanelContainer.new()
-	header_panel.add_theme_stylebox_override("panel", panel_bg_style)
+	header_panel.name = "HeaderBar"
+	header_panel.add_theme_stylebox_override("panel", header_style)
 	header_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	header_panel.offset_left = 12
 	header_panel.offset_right = -12
 	header_panel.offset_top = 12
 	layer.add_child(header_panel)
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 1)
-	header_panel.add_child(column)
-	var title_row := HBoxContainer.new()
-	column.add_child(title_row)
-	var title_stack := VBoxContainer.new()
-	title_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title_stack.add_theme_constant_override("separation", 0)
-	title_row.add_child(title_stack)
-	var title := Label.new()
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title.text = "TENDERLOIN REDUX / Godot block walk & study"
-	title.clip_text = true
-	title.add_theme_font_size_override("font_size", 20)
-	title.add_theme_color_override("font_color", Color("ffe48f"))
-	title_stack.add_child(title)
-	music_toggle_btn = Button.new()
-	music_toggle_btn.name = "MusicToggle"
-	music_toggle_btn.custom_minimum_size = Vector2(94, 44)
-	music_toggle_btn.toggle_mode = true
-	music_toggle_btn.tooltip_text = "Background music. Starts with Start Exploring; tap to pause or resume. Volume controls are with Rook (V)."
-	music_toggle_btn.add_theme_font_size_override("font_size", 13)
-	style_game_button(music_toggle_btn)
-	music_toggle_btn.pressed.connect(toggle_music_playback)
-	title_row.add_child(music_toggle_btn)
-
-	sounds_btn = Button.new()
-	sounds_btn.name = "RewardSoundsToggle"
-	sounds_btn.custom_minimum_size = Vector2(94, 44)
-	sounds_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	sounds_btn.toggle_mode = true
-	sounds_btn.tooltip_text = "Gentle reward sounds. Music has separate controls with Rook."
-	sounds_btn.add_theme_font_size_override("font_size", 13)
-	style_game_button(sounds_btn)
-	sounds_btn.pressed.connect(toggle_reward_sounds)
-	title_row.add_child(sounds_btn)
-	set_reward_sounds_enabled(reward_sounds_enabled, false)
-	var details_btn := Button.new()
-	details_btn.name = "HeaderInfoToggle"
-	details_btn.text = "Info"
-	details_btn.custom_minimum_size = Vector2(44, 44)
-	details_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	details_btn.toggle_mode = true
-	details_btn.tooltip_text = "Show or hide details and map sources"
-	details_btn.add_theme_font_size_override("font_size", 12)
-	style_game_button(details_btn)
-	details_btn.pressed.connect(func():
-		set_header_details(details_btn.button_pressed)
-	)
-	title_row.add_child(details_btn)
-	progress_label = Label.new()
-	progress_label.name = "ProgressSummary"
-	progress_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	progress_label.add_theme_font_size_override("font_size", 12)
-	progress_label.add_theme_color_override("font_color", Color("ffe48f"))
-	column.add_child(progress_label)
+	var header_row := HBoxContainer.new()
+	header_row.add_theme_constant_override("separation", 4)
+	header_panel.add_child(header_row)
+	menu_btn = Button.new()
+	menu_btn.name = "MenuToggle"
+	menu_btn.text = "Menu"
+	menu_btn.toggle_mode = true
+	menu_btn.custom_minimum_size = Vector2(56, 44)
+	menu_btn.focus_mode = Control.FOCUS_ALL
+	menu_btn.tooltip_text = "Music, sounds, reduced motion, street view, about this place and sources"
+	menu_btn.accessibility_name = "Menu, settings and sources"
+	menu_btn.add_theme_font_size_override("font_size", 14)
+	style_game_button(menu_btn)
+	menu_btn.pressed.connect(func(): set_menu_open(not menu_open))
+	header_row.add_child(menu_btn)
+	objective_btn = Button.new()
+	objective_btn.name = "ObjectiveLine"
+	objective_btn.custom_minimum_size = Vector2(44, 44)
+	objective_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	objective_btn.focus_mode = Control.FOCUS_ALL
+	style_game_button(objective_btn)
+	objective_btn.add_theme_stylebox_override("normal", StyleBoxEmpty.new()) # Reads as a line of text; hover and focus still show.
+	objective_btn.pressed.connect(press_next_hint)
+	header_row.add_child(objective_btn)
+	# The line clips to one row; its full text is the button's name and tooltip, and the Next Step hint says it in full.
 	objective_label = Label.new()
 	objective_label.name = "ObjectiveLabel"
-	objective_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	objective_label.max_lines_visible = 2
+	objective_label.clip_text = true
+	objective_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	objective_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	objective_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	objective_label.add_theme_font_size_override("font_size", 14)
 	objective_label.add_theme_color_override("font_color", Color("9ef5e5"))
-	column.add_child(objective_label)
+	objective_btn.add_child(objective_label)
+	objective_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	objective_label.offset_left = 4
+	objective_label.offset_right = -4
+	sparks_btn = Button.new()
+	sparks_btn.name = "SparksPill"
+	sparks_btn.custom_minimum_size = Vector2(44, 44)
+	sparks_btn.focus_mode = Control.FOCUS_ALL
+	sparks_btn.tooltip_text = "Sparks and keepsakes. Opens About this place."
+	sparks_btn.add_theme_font_size_override("font_size", 13)
+	style_game_button(sparks_btn)
+	sparks_btn.add_theme_color_override("font_color", Color("ffe48f"))
+	sparks_btn.pressed.connect(func(): open_menu_about())
+	header_row.add_child(sparks_btn)
+	# The full score and save notice stay as text for the a11y snapshot and the save checks; the pill and the note show them.
+	progress_label = Label.new()
+	progress_label.name = "ProgressSummary"
+	progress_label.visible = false
+	header_row.add_child(progress_label)
+
+	# The note under the header: the save notice, and Info while a reveal or fallback is live (route trouble, a hint, a
+	# line or reward that does not fit the scene). Up to three scrolling lines, with Hide; About in the menu keeps the rest.
+	info_panel = PanelContainer.new()
+	info_panel.name = "InfoNote"
+	info_panel.add_theme_stylebox_override("panel", panel_bg_style)
+	info_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	info_panel.offset_left = 12
+	info_panel.offset_right = -12
+	info_panel.visible = false
+	layer.add_child(info_panel)
+	var note_column := VBoxContainer.new()
+	note_column.add_theme_constant_override("separation", 1)
+	info_panel.add_child(note_column)
+	header_notice_label = Label.new()
+	header_notice_label.name = "SaveNotice"
+	header_notice_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	header_notice_label.max_lines_visible = 2
+	header_notice_label.visible = false
+	header_notice_label.add_theme_font_size_override("font_size", 12)
+	header_notice_label.add_theme_color_override("font_color", Color("ffe48f"))
+	note_column.add_child(header_notice_label)
+	var note_row := HBoxContainer.new()
+	note_row.add_theme_constant_override("separation", 4)
+	note_column.add_child(note_row)
 	info = RichTextLabel.new()
+	info.name = "Info"
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	info.custom_minimum_size.y = 90
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	info.scroll_active = true
 	info.focus_mode = Control.FOCUS_ALL
 	info.text = overview_text()
 	info.visible = false
 	info.add_theme_font_size_override("normal_font_size", 12)
 	info.add_theme_color_override("default_color", Color("fff8e8"))
-	column.add_child(info)
-	var attribution := Label.new()
-	attribution.text = "City: DataSF / PDDL · Streets: OSM / ODbL"
-	attribution.add_theme_font_size_override("font_size", 10)
-	attribution.add_theme_color_override("font_color", Color("b8c7c8"))
-	column.add_child(attribution)
+	note_row.add_child(info)
+	info_hide_btn = Button.new()
+	info_hide_btn.name = "InfoHide"
+	info_hide_btn.text = "Hide"
+	info_hide_btn.accessibility_name = "Hide Info"
+	info_hide_btn.tooltip_text = "Hide this note. Menu, About this place keeps where you are, how to walk and the sources."
+	info_hide_btn.custom_minimum_size = Vector2(52, 44)
+	info_hide_btn.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	info_hide_btn.focus_mode = Control.FOCUS_ALL
+	info_hide_btn.add_theme_font_size_override("font_size", 13)
+	style_game_button(info_hide_btn)
+	info_hide_btn.pressed.connect(func():
+		set_header_details(false)
+		menu_btn.grab_focus()
+	)
+	note_row.add_child(info_hide_btn)
 
 	mural_panel = PanelContainer.new()
 	mural_panel.name = "MuralPanel"
@@ -16216,9 +16344,6 @@ func make_ui() -> void:
 		if film_phase == "done": film_screening.open_screening()
 		else: advance_film_step()
 	)
-	block_voices_btn = block_button(block_actions_grid, "Read Local Stories", func(): toggle_voices_enabled())
-	block_district_btn = block_button(block_actions_grid, "District Border: On", func(): toggle_district_boundary())
-	block_import_btn = block_button(block_actions_grid, "Import Web Save", func(): import_browser_save_from_web_storage())
 	block_meal_btn = block_button(block_actions_grid, "Cook & Share", func(): shared_meal.open_meal())
 	block_page_nav = HBoxContainer.new()
 	block_page_nav.alignment = BoxContainer.ALIGNMENT_END
@@ -16361,11 +16486,19 @@ func make_ui() -> void:
 	before_streets = preload("res://before_streets.gd").new()
 	layer.add_child(before_streets)
 	before_streets.setup(self)
-	before_streets.entry = before_streets.button(column,"Before These Streets",func(): before_streets.open_opening())
+	build_menu(layer)
+	before_streets.entry = before_streets.button(menu_list,"Before These Streets",func():
+		set_menu_open(false) # Focus returns to Menu, so leaving the opening comes back there.
+		before_streets.open_opening()
+	)
 	before_streets.entry.name = "BeforeTheseStreetsRevisit"
+	before_streets.entry.tooltip_text = "Before These Streets: the optional opening, in any chapter"
 	before_streets.entry.hide()
-	column.move_child(before_streets.entry,info.get_index()+1)
-	street_view.setup_motion_row(before_streets.entry) # Reduced motion shares the entry's row in Info.
+	menu_list.move_child(before_streets.entry, menu_about_btn.get_index() + 1)
+	street_view.setup_motion_button(menu_list)
+	menu_list.move_child(street_view.motion_btn, sounds_btn.get_index() + 1)
+	for row in menu_list.get_children():
+		fit_menu_row(row as Button)
 	var vp := get_viewport()
 	var resize_controls := func():
 		cancel_map_pinch(street_view_active()) # A held stick or look drag outlives a URL bar collapse or a rotation.
@@ -16378,19 +16511,13 @@ func make_ui() -> void:
 		if uses_paged_block_actions() and block_panel.visible and block_panel_mode == "hub":
 			var focused_index := block_buttons.find(get_viewport().gui_get_focus_owner())
 			if focused_index >= 0 and focused_index < BLOCK_ACTION_COUNT:
-				block_hub_page = focused_index / BLOCK_ACTIONS_PER_PAGE
-		title_stack.visible = not narrow
-		music_toggle_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL if narrow else Control.SIZE_SHRINK_CENTER
-		sounds_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL if narrow else Control.SIZE_SHRINK_CENTER
-		if is_instance_valid(title):
-			title.add_theme_font_size_override("font_size", 16 if narrow else 20)
-			title.text = "TL REDUX" if narrow else "TENDERLOIN REDUX"
+				block_hub_page = focused_index / block_actions_per_page()
 		if is_instance_valid(info):
 			info.add_theme_font_size_override("normal_font_size", 11 if narrow else 12)
 		if is_instance_valid(objective_label):
-			objective_label.add_theme_font_size_override("font_size", 12 if narrow else 14)
-		if is_instance_valid(progress_label):
-			progress_label.add_theme_font_size_override("font_size", 11 if narrow else 12)
+			objective_label.add_theme_font_size_override("font_size", 13 if narrow else 14)
+		update_objective_ui()
+		layout_header()
 		if is_instance_valid(mural_panel):
 			if mural_panel.visible:
 				update_mural_ui()
@@ -16404,6 +16531,8 @@ func make_ui() -> void:
 		layout_walking_controls_and_hub()
 		refit_panel_after_layout()
 		layout_reward_banner()
+		if menu_open:
+			layout_menu()
 		if in_overview or in_wide_overview:
 			refit_after_layout()
 	vp.size_changed.connect(resize_controls)
@@ -16432,6 +16561,329 @@ func make_ui() -> void:
 			vp.size_changed.disconnect(resize_controls)
 	)
 	resize_controls.call()
+
+## The menu (docs/HUD_REDESIGN_PLAN.md 3): what changes once an afternoon. Music, Sounds, Reduced motion, Street view,
+## About this place, Before These Streets and the hub's three settings are rows under the header: full width on a phone,
+## 320 px under Menu on a desktop, and in columns on a landscape phone so every row fits without scrolling.
+func build_menu(layer: CanvasLayer) -> void:
+	menu_scrim = ColorRect.new()
+	menu_scrim.name = "MenuScrim"
+	menu_scrim.color = Color(0.02, 0.04, 0.06, 0.55)
+	menu_scrim.mouse_filter = Control.MOUSE_FILTER_STOP
+	menu_scrim.visible = false
+	layer.add_child(menu_scrim)
+	menu_scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# A tap on the dimmed scene closes the menu on its release: the press (mouse, emulated mouse and the touch itself) has all
+	# landed on the scrim by then, so none of them can reach a press-mode button such as Meet under the finger.
+	menu_scrim.gui_input.connect(func(event: InputEvent):
+		menu_scrim.accept_event()
+		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
+			set_menu_open(false)
+	)
+	var menu_style: StyleBoxFlat = panel_bg_style.duplicate()
+	menu_style.content_margin_top = 8
+	menu_style.content_margin_bottom = 8
+	menu_panel = PanelContainer.new()
+	menu_panel.name = "MenuPanel"
+	menu_panel.accessibility_name = "Menu, settings and sources"
+	menu_panel.add_theme_stylebox_override("panel", menu_style)
+	menu_panel.visible = false
+	layer.add_child(menu_panel)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.follow_focus = true
+	menu_panel.add_child(scroll)
+	var pages := VBoxContainer.new()
+	pages.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pages.add_theme_constant_override("separation", 6)
+	scroll.add_child(pages)
+	menu_list = GridContainer.new()
+	menu_list.name = "MenuRows"
+	menu_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	menu_list.add_theme_constant_override("h_separation", 4)
+	menu_list.add_theme_constant_override("v_separation", 4)
+	pages.add_child(menu_list)
+	music_toggle_btn = menu_row("Music: Off", toggle_music_playback)
+	music_toggle_btn.name = "MusicToggle"
+	music_toggle_btn.toggle_mode = true
+	music_toggle_btn.tooltip_text = "Background music. Starts with Start Exploring; tap to pause or resume. Volume controls are with Rook (V)."
+	sounds_btn = menu_row("Sounds: On", toggle_reward_sounds)
+	sounds_btn.name = "RewardSoundsToggle"
+	sounds_btn.toggle_mode = true
+	sounds_btn.tooltip_text = "Gentle reward sounds. Music has separate controls with Rook."
+	set_reward_sounds_enabled(reward_sounds_enabled, false)
+	# The corner button's own action, for keyboard players; it ends a chat first, so the menu closes with it.
+	menu_street_btn = menu_row("Street view", func():
+		set_menu_open(false)
+		street_view.toggle()
+	)
+	menu_street_btn.name = "MenuStreetView"
+	menu_street_btn.tooltip_text = "Street view (Shift+F)"
+	menu_about_btn = menu_row("About this place ›", func(): show_menu_about(true))
+	menu_about_btn.name = "MenuAbout"
+	menu_about_btn.tooltip_text = "Where you are, how to walk, the latest note and the data sources"
+	# Local Stories and Import Web Save report in the hub, as their keys (/ and I) do, so the menu hands over to it.
+	block_voices_btn = menu_row("Read Local Stories", func():
+		set_menu_open(false, false)
+		toggle_voices_enabled()
+	)
+	block_district_btn = menu_row("District Border: On", func(): toggle_district_boundary())
+	block_import_btn = menu_row("Import Web Save", func():
+		set_menu_open(false, false)
+		import_browser_save_from_web_storage()
+	)
+	menu_close_btn = menu_row("Close", func(): set_menu_open(false))
+	menu_close_btn.name = "MenuClose"
+	menu_credit_label = Label.new()
+	menu_credit_label.name = "MenuCredit"
+	menu_credit_label.text = MENU_CREDIT
+	menu_credit_label.clip_text = true # One line even at 320 px wide; About has the full credit.
+	menu_credit_label.add_theme_font_size_override("font_size", 11)
+	menu_credit_label.add_theme_color_override("font_color", Color("b8c7c8"))
+	pages.add_child(menu_credit_label)
+	# About replaces the rows: what Info showed when opened (where you are, how to walk, sources) plus Info's latest note.
+	menu_about_page = VBoxContainer.new()
+	menu_about_page.name = "MenuAboutPage"
+	menu_about_page.visible = false
+	menu_about_page.add_theme_constant_override("separation", 6)
+	pages.add_child(menu_about_page)
+	about_label = make_activity_detail()
+	about_label.name = "AboutReader"
+	about_label.add_theme_font_size_override("normal_font_size", 14)
+	about_label.add_theme_color_override("default_color", Color("fff8e8"))
+	menu_about_page.add_child(about_label)
+	var about_nav := HBoxContainer.new()
+	about_nav.add_theme_constant_override("separation", 4)
+	menu_about_page.add_child(about_nav)
+	about_back_btn = menu_row("‹ Back", func(): show_menu_about(false), about_nav)
+	about_back_btn.name = "AboutBack"
+	about_back_btn.accessibility_name = "Back to the menu"
+	about_close_btn = menu_row("Close", func(): set_menu_open(false), about_nav)
+	about_close_btn.name = "AboutClose"
+
+func menu_row(text: String, action: Callable, parent: Node = null) -> Button:
+	var row := Button.new()
+	row.text = text
+	row.focus_mode = Control.FOCUS_ALL
+	style_game_button(row)
+	row.pressed.connect(action)
+	(parent if parent != null else menu_list).add_child(row)
+	fit_menu_row(row)
+	return row
+
+## Rows made elsewhere (the opening's entry, Reduced motion) get the same shape: full width, left-aligned, wrapping text.
+func fit_menu_row(row: Button) -> void:
+	row.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	row.clip_text = false
+	row.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.custom_minimum_size = Vector2(44, MENU_ROW_HEIGHT)
+	row.add_theme_font_size_override("font_size", 15)
+
+func set_menu_open(open: bool, restore_focus := true) -> void:
+	if menu_btn != null:
+		menu_btn.set_pressed_no_signal(open)
+	if open == menu_open or menu_panel == null:
+		return
+	menu_open = open
+	if open:
+		# The Explore tray and the phone steps row are the clutter the menu replaces; the note steps aside under it.
+		cancel_map_pinch()
+		close_phone_disclosure()
+		menu_open_signature = menu_signature()
+		menu_about_page.visible = false
+		menu_list.visible = true
+		menu_credit_label.visible = true
+	menu_scrim.visible = open
+	menu_panel.visible = open
+	layout_header()
+	layout_walking_controls_and_hub()
+	if open:
+		refresh_menu_rows()
+		layout_menu()
+		menu_rows[0].grab_focus()
+		announce_a11y_status("Menu open: music, sounds, reduced motion, street view, about this place and sources. Escape closes it.")
+	else:
+		menu_rows.clear()
+		if restore_focus:
+			menu_btn.grab_focus()
+		announce_a11y_status("Menu closed.")
+
+## The Sparks pill's door: the menu, straight at About.
+func open_menu_about() -> void:
+	set_menu_open(true)
+	show_menu_about(true)
+
+func show_menu_about(show: bool) -> void:
+	if not menu_open:
+		return
+	menu_about_page.visible = show
+	menu_list.visible = not show
+	menu_credit_label.visible = not show
+	if show:
+		about_label.text = about_text()
+		about_label.scroll_to_line(0)
+	layout_menu()
+	if show:
+		about_back_btn.grab_focus()
+		announce_a11y_status("About this place. " + about_label.text.replace("\n", " "))
+	else:
+		menu_about_btn.grab_focus()
+
+## Info's opened text, written for the menu: the title the header no longer shows, where you are, how to walk, Info's
+## latest note and the full credit line.
+func about_text() -> String:
+	return "TENDERLOIN REDUX · Godot block walk & study\n%s\nTap the street or use WASD/arrows to walk · T talks to people nearby · G: all block actions · Shift+F: street view\n\nLatest note:\n%s\n\n%s\nCity 2010 building survey / PDDL · Streets © OpenStreetMap contributors / ODbL" % [location_phrase(player_xz()), info.text.strip_edges(), MENU_CREDIT]
+
+## A panel, chat or chapter card that opens takes over from the menu.
+func menu_signature() -> Array:
+	return [block_panel.visible, block_panel_mode, talk_partner, mural_panel.visible, music_panel.visible, is_story_card_visible()]
+
+## Per frame while open: hand over to whatever opened, and keep the rows that come and go (the opening, street view) laid out.
+func refresh_open_menu() -> void:
+	if is_focused_activity_visible():
+		return # The activity hid the menu with the rest of the HUD and puts it back when it closes.
+	if menu_signature() != menu_open_signature:
+		set_menu_open(false, false)
+		return
+	refresh_menu_rows()
+	fit_menu_height()
+
+func refresh_menu_rows() -> void:
+	if menu_list == null:
+		return
+	if block_voices_btn != null:
+		if voices_enabled:
+			block_voices_btn.text = "Local Stories: Err" if voices_status == "error" else "Local Stories: On"
+		else:
+			block_voices_btn.text = "Read Local Stories"
+	if block_district_btn != null:
+		block_district_btn.text = "District Border: On" if district_boundary_visible else "District Border: Off"
+	if block_import_btn != null:
+		block_import_btn.text = "Web Save Loaded" if browser_import_status == "imported" else "Import Web Save"
+	if not menu_open:
+		return
+	menu_street_btn.text = street_view.button.text
+	menu_street_btn.visible = street_view.button.visible
+	if before_streets != null and before_streets.entry != null:
+		before_streets.entry.visible = before_streets.idle_entry_available()
+	if visible_menu_rows() != menu_rows:
+		var focus_lost := get_viewport().gui_get_focus_owner() == null
+		layout_menu()
+		if focus_lost:
+			menu_rows[0].grab_focus()
+
+func visible_menu_rows() -> Array[Button]:
+	var rows: Array[Button] = []
+	for child in (menu_about_page.get_child(1).get_children() if menu_about_page.visible else menu_list.get_children()):
+		if child is Button and child.visible:
+			rows.append(child)
+	return rows
+
+## Places the menu under the header and rings its focus: Tab, Shift+Tab and the arrows stay inside until Escape or Close.
+func layout_menu() -> void:
+	if menu_panel == null or not menu_open:
+		return
+	var vp := bubble_viewport_size()
+	var landscape := vp.y < SIDE_HUB_MAX_HEIGHT
+	var top := header_panel.get_global_rect().end.y + 8.0
+	var available := vp.y - 12.0 - top
+	var width := MENU_DESKTOP_WIDTH if vp.x >= SIDE_HUB_MIN_WIDTH and not landscape else vp.x - 24.0
+	var padding := menu_panel.get_theme_stylebox("panel").get_minimum_size().y
+	var gap := float(menu_list.get_theme_constant("v_separation"))
+	var fixed := 6.0 + menu_credit_label.get_combined_minimum_size().y + padding
+	# Counted from the rows rather than read from the containers, which size wrapping text at their old width. One column
+	# of 48 px rows, down to 44 px if that makes it fit; else two columns (three on a landscape phone) of 13 px text.
+	var count := visible_menu_rows().size() if not menu_about_page.visible else 0
+	var columns := 1
+	var row_height := clampf(floorf((available - fixed + gap) / maxf(count, 1.0) - gap), 44.0, MENU_ROW_HEIGHT)
+	if landscape or count * (row_height + gap) - gap + fixed > available:
+		columns = 3 if landscape and vp.x >= 480.0 else 2
+		row_height = 44.0
+	menu_list.columns = columns
+	for row in menu_list.get_children() + menu_about_page.get_child(1).get_children():
+		(row as Control).custom_minimum_size.y = row_height
+		(row as Control).add_theme_font_size_override("font_size", 15 if columns == 1 else 13)
+	var grid_rows := ceili(float(count) / columns)
+	var height := minf(available, grid_rows * (row_height + gap) - gap + fixed)
+	if menu_about_page.visible:
+		# The reader takes the room the rows had, up to 360 px, and scrolls.
+		about_label.custom_minimum_size.y = maxf(44.0, minf(360.0, available - padding - row_height - 6.0))
+		height = minf(available, about_label.custom_minimum_size.y + row_height + 6.0 + padding)
+	menu_panel.position = Vector2(12.0, top)
+	menu_panel.size = Vector2(width, height)
+	# The dim starts under the bar, so the header stays lit and Menu stays a live toggle (the bar is drawn under the menu).
+	menu_scrim.offset_top = header_panel.get_global_rect().end.y
+	menu_rows = visible_menu_rows()
+	var ring: Array[Control] = []
+	if menu_about_page.visible:
+		ring.append(about_label)
+	ring.append_array(menu_rows)
+	var step := 1 if menu_about_page.visible else columns
+	for i in range(ring.size()):
+		var here := ring[i]
+		var next := ring[posmod(i + 1, ring.size())]
+		var previous := ring[posmod(i - 1, ring.size())]
+		here.focus_next = here.get_path_to(next)
+		here.focus_previous = here.get_path_to(previous)
+		here.focus_neighbor_right = here.get_path_to(next)
+		here.focus_neighbor_left = here.get_path_to(previous)
+		here.focus_neighbor_bottom = here.get_path_to(ring[posmod(i + step, ring.size())])
+		here.focus_neighbor_top = here.get_path_to(ring[posmod(i - step, ring.size())])
+
+## Once the rows have wrapped at their real width the containers know the true height; the row count was an estimate.
+func fit_menu_height() -> void:
+	if not menu_open or menu_about_page.visible:
+		return
+	var available := bubble_viewport_size().y - 12.0 - menu_panel.position.y
+	var content := (menu_list.get_parent() as Control).get_combined_minimum_size().y + menu_panel.get_theme_stylebox("panel").get_minimum_size().y
+	var want := minf(available, content)
+	if absf(menu_panel.size.y - want) > 0.5:
+		menu_panel.size.y = want
+
+func menu_snapshot() -> Dictionary:
+	var rows: Array[Dictionary] = []
+	for row in menu_rows:
+		var entry := control_snapshot(row)
+		entry["text"] = row.text
+		entry["name"] = String(row.name)
+		var box := row.size - row.get_theme_stylebox("normal").get_minimum_size()
+		var measured := row.get_theme_font("font").get_multiline_string_size(row.text, HORIZONTAL_ALIGNMENT_LEFT, box.x, row.get_theme_font_size("font_size"), -1, TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE)
+		entry["text_fits"] = measured.x <= box.x + 1.0 and measured.y <= box.y + 1.0
+		entry["focused"] = row.has_focus()
+		rows.append(entry)
+	var credit := control_snapshot(menu_credit_label)
+	credit["text"] = menu_credit_label.text if menu_credit_label != null else ""
+	return {"open": menu_open, "button": control_snapshot(menu_btn), "button_pressed": menu_btn != null and menu_btn.button_pressed, "panel": control_snapshot(menu_panel), "scrim": control_snapshot(menu_scrim), "columns": menu_list.columns if menu_list != null else 1, "rows": rows, "credit": credit, "about_open": menu_about_page != null and menu_about_page.visible, "about": activity_detail_snapshot(about_label, menu_panel, [about_back_btn, about_close_btn])}
+
+## The header is one row; the note under it is its own panel, so neither the save notice nor Info grows the header.
+## Offsets are applied now, so camera framing and overlay fitting read the new play area in the same frame.
+func layout_header() -> void:
+	if header_panel == null or info_panel == null:
+		return
+	# A landscape phone's bar is just its 44 px buttons; elsewhere a 2 px frame makes it 48.
+	var frame := 0 if bubble_viewport_size().y < SIDE_HUB_MAX_HEIGHT else 2
+	header_style.border_width_top = frame
+	header_style.border_width_bottom = frame
+	header_style.content_margin_top = frame
+	header_style.content_margin_bottom = frame
+	header_panel.offset_bottom = header_panel.offset_top + header_panel.get_combined_minimum_size().y
+	var notice := persistence_text("")
+	header_notice_label.text = notice
+	header_notice_label.visible = not notice.is_empty()
+	info_hide_btn.get_parent().visible = info.visible
+	info_panel.visible = (info.visible or header_notice_label.visible) and not menu_open
+	info_panel.offset_top = header_panel.offset_bottom + 4.0
+	info_panel.offset_bottom = info_panel.offset_top + info_panel.get_combined_minimum_size().y
+
+## Where the scene starts: under the header, or under its note while one shows.
+func hud_bottom() -> float:
+	if header_panel == null:
+		return 0.0
+	var bottom := header_panel.get_global_rect().end.y
+	if info_panel != null and info_panel.visible:
+		bottom = maxf(bottom, info_panel.get_global_rect().end.y)
+	return bottom
 
 func style_game_button(control: Button) -> void:
 	if button_focus_style != null:

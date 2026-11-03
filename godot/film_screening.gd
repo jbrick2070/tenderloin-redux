@@ -133,7 +133,7 @@ func close_screening(announce: bool = true) -> void:
 	for c in saved_visibility:
 		if is_instance_valid(c): c.visible = saved_visibility[c]
 	if game.block_panel.visible and game.uses_paged_block_actions():
-		game.block_hub_page = game.block_buttons.find(game.block_film_btn) / game.BLOCK_ACTIONS_PER_PAGE
+		game.block_hub_page = game.block_hub_page_of(game.block_film_btn)
 		game.layout_block_action_pages()
 	game.layout_walking_controls_and_hub()
 	if is_instance_valid(return_focus) and return_focus.is_visible_in_tree(): return_focus.grab_focus()

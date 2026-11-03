@@ -360,10 +360,11 @@ static func verify(suite: SceneTree, game: Node, full: String, formal := false) 
 	meal.prepare.pressed.disconnect(on_finger)
 	meal.close_meal(false); await settle(suite)
 	cases += 1
-	# 13. Rapid controls repeat only while they stay put. On a fresh profile the short last hub page lifts the pager row: a double
-	# press on Previous pages back once and never toggles the District Border (a save) that lands under the pointer. On the full
-	# profile the row stays, so the same double press pages back twice (Previous only relabels), and mid-hub Next pages twice.
-	for size in [Vector2i(390,667),Vector2i(800,600)]:
+	# 13. Rapid controls repeat only while they stay put. A dock's short last hub page lifts the pager row: a double press on
+	# Previous pages back once and never presses the hub action that lands under the pointer (no save). A hub standing on the
+	# walking controls keeps its pager put, so the same double press pages back twice (Previous only relabels) and mid-hub
+	# Next repeats. A page holds the rows that fit (a tall phone has no pager), so 559x360 docks and 800x600 stands.
+	for size in [Vector2i(559,360),Vector2i(800,600)]:
 		var touch: bool = size.x < 600
 		for profile in ["fresh","full"]:
 			await reset(suite,game,full,size)
@@ -371,7 +372,7 @@ static func verify(suite: SceneTree, game: Node, full: String, formal := false) 
 				game.reset_mural_state_to_defaults("fresh"); await settle(suite)
 				game.hide_story_card(); game.startup_story_pending = false; game.last_story_chapter = int(game.current_chapter().num); await settle(suite)
 			game.show_block_panel(true); await settle(suite)
-			suite.require(game.uses_paged_block_actions(),"the hub is paged at %s" % size)
+			suite.require(game.uses_paged_block_actions() and game.block_action_page_count() >= 2,"the hub pages at %s" % size)
 			game.block_hub_page = 0; game.layout_block_action_pages(); await settle(suite)
 			var row := {}
 			while game.block_hub_page < game.block_action_page_count() - 1:
@@ -379,19 +380,19 @@ static func verify(suite: SceneTree, game: Node, full: String, formal := false) 
 				game.change_block_action_page(1); await settle(suite,3)
 			var last: int = game.block_hub_page; var district: bool = game.district_boundary_visible; var seq: int = game.save_seq
 			var moves: bool = game.block_page_prev.get_global_rect().position.y != row[last - 1]
-			if profile == "fresh": suite.require(moves,"precondition at %s: the fresh profile's short last page lifts the pager row" % size)
+			suite.require(moves == game.uses_side_block_hub(),"precondition at %s: a dock's short last page lifts the pager row; a hub on the controls keeps it put" % size)
 			var back: Dictionary = await double_press(suite,game,game.block_page_prev,0.06,touch)
 			if moves:
 				once(suite,"hub Previous on the lifted last page %s" % size,back)
 				suite.require(game.block_hub_page == last - 1,"Previous pages back once")
 			else:
 				suite.require(back.downs == 2 and back.swallowed == 0 and game.block_hub_page == last - 2,"Previous that stays put pages back twice: "+JSON.stringify(back))
-			suite.require(game.district_boundary_visible == district and game.save_seq == seq,"District Border and the save are untouched (%s %s)" % [profile,size])
-			if profile == "full":
+			suite.require(game.district_boundary_visible == district and game.save_seq == seq,"no hub action ran and the save is untouched (%s %s)" % [profile,size])
+			if profile == "full" and not moves:
 				await suite.create_timer(0.65).timeout
 				game.block_hub_page = 0; game.layout_block_action_pages(); await settle(suite)
 				var paging: Dictionary = await double_press(suite,game,game.block_page_next,0.06,touch)
-				suite.require(paging.downs == 2 and paging.swallowed == 0 and game.block_hub_page == 2,"a pager that stays put repeats: "+JSON.stringify(paging))
+				suite.require(paging.downs == 2 and paging.swallowed == 0 and game.block_hub_page == mini(2,game.block_action_page_count()-1),"a pager that stays put repeats: "+JSON.stringify(paging))
 			await calm(suite,game)
 	cases += 1
 	# 14. Phone conversation: Next Step opens the steps row where it stood, so a double tap opens it once and presses no step. In

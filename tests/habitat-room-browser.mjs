@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { useMenuRow } from './godot-menu-browser.mjs';
 
 // Inspect the actual raster at its drawn frame bounds. Sparse grids can miss
 // the original close-framed chair/ring strokes and alias two distinct pictures.
@@ -115,6 +116,6 @@ export async function verifyHabitatRoom(page,{touch,size,renderedPixels,outputDi
   await page.reload();await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');await settle();s=await snap();assert.ok(s.habitat_room.available&&!s.habitat_room.complete);assert.deepEqual(s.habitat_room.assigned,{});
   const loaded=await storage();assert.deepEqual(JSON.parse(loaded['tenderloin-redux.godot.save.v1']),saved);assert.equal(loaded['tenderloin-redux.save.v1'],stable['tenderloin-redux.save.v1']);
   await enter();assert.ok(!(await snap()).helper_bench.complete,'retained habitat invitation never requires rebuilding helper');await tap((await snap()).habitat_room.buttons[9]);
-  if((await snap()).music_playing!==quiet[0])await tap((await snap()).music_toggle_control);s=await snap();assert.deepEqual([s.music_playing,s.music_volume,s.reward_sounds_enabled],quiet);
+  if((await snap()).music_playing!==quiet[0])await useMenuRow(page,'music_toggle_control',tap);s=await snap();assert.deepEqual([s.music_playing,s.music_volume,s.reward_sounds_enabled],quiet);
   return {...size,touch,privateFixture,changed,roomFrames,detailEvidence,helperMovements,returnChecks,relocation,arrangement,framingBefore,copiedFilm:saved.film.result,copiedArt:hosted.art,actualReload:true,retainedInvitation:true,noWrites:true,quiet:true};
 }

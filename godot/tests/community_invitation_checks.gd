@@ -143,7 +143,7 @@ static func signature(study: Node,manual := true) -> Array:
 static func check_follow(suite: SceneTree,study: Node,before: Array,manual := true) -> void:
 	suite.require(not study.civic_listening.visible and study.block_panel.visible and study.block_panel_mode=="hub","Follow returns to actual hub without an automatic film action")
 	suite.require(study.block_film_btn.is_visible_in_tree() and study.block_film_btn.has_focus() and not study.is_story_card_visible(),"Follow reveals original film page and actual native focus without deferred chapter takeover")
-	suite.require(study.block_buttons.find(study.block_film_btn)==8 and (not study.uses_paged_block_actions() or study.block_hub_page==study.block_buttons.find(study.block_film_btn)/study.BLOCK_ACTIONS_PER_PAGE),"phone and side dock reveal film page while original id8 remains intact")
+	suite.require(study.block_buttons.find(study.block_film_btn)==8 and (not study.uses_paged_block_actions() or study.block_hub_page==study.block_hub_page_of(study.block_film_btn)),"phone and side dock reveal film page while original id8 remains intact")
 	suite.require(signature(study,manual)==before,"Follow preserves film/draft/result/captures/frame/save/quiet/rewards/navigation and manual or following camera intent")
 
 static func press_key(suite: SceneTree,code: int,held_echo := false) -> void:

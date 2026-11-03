@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { openMenu, closeMenu } from './godot-menu-browser.mjs';
 
 export async function verifyBeforeStreets(page,{touch,size,renderedPixels,mode='startup',outputDir='artifacts',privateFixture=false}) {
   const snap=()=>page.evaluate(()=>window.__tenderloinGodotA11ySnapshot);
@@ -14,7 +15,7 @@ export async function verifyBeforeStreets(page,{touch,size,renderedPixels,mode='
   }
   if(mode==='revisit'){
     if(initial.block_panel_control.visible){await page.keyboard.press('KeyG');await settle();}
-    if(!(await snap()).header_details_expanded)await tap((await snap()).info_control);
+    await openMenu(page,tap); // The revisit is a row in the menu now, beside Reduced motion.
     await tap((await snap()).before_streets.entry);
   }else await tap((await snap()).opening_control);
   let s=await snap();assert.ok(s.before_streets.visible);const pose=s.camera_pose,ground=[s.player_grounding.x,s.player_grounding.z];
@@ -60,7 +61,7 @@ export async function verifyBeforeStreets(page,{touch,size,renderedPixels,mode='
     assert.deepEqual([s.player_grounding.x,s.player_grounding.z],ground,'held revisit exit cannot walk behind the closing opening');
     await page.keyboard.up('KeyW');await settle();
     await page.waitForFunction(()=>!window.__tenderloinGodotA11ySnapshot.before_streets.release_pending,null,{timeout:5000});
-    if(s.header_details_expanded!==initial.header_details_expanded)await tap(s.info_control);
+    if(s.menu.open)await closeMenu(page);
     if(initial.block_panel_control.visible){await page.keyboard.press('KeyG');await settle();}
   }
   assert.deepEqual(await storage(),stable);s=await snap();assert.deepEqual([s.music_playing,s.music_volume,s.reward_sounds_enabled],quiet);

@@ -23,6 +23,7 @@ import { verifyProgrammeGathering } from './programme-gathering-browser.mjs';
 const programmeGatheringChecks=[];
 import { verifyPersistence } from './persistence-browser.mjs';
 import { verifyListeningDoublePress, verifyCloseThrough, verifyStudioDoublePress, verifyFastZoom, verifyRapidInPlace } from './press-settle-browser.mjs';
+import { useMenuRow as useMenuRowWith, closeMenu } from './godot-menu-browser.mjs';
 let persistenceChecks=[];
 const orbitalChecks=[];
 import { verifyHabitatRoom } from './habitat-room-browser.mjs';
@@ -31,13 +32,15 @@ import { verifyHelperBench } from './helper-bench-browser.mjs';
 const helperBenchChecks=[];
 const beforeStreetsChecks=[];
 const hostedAfternoonChecks=[];
-const HUB_ACTION_COUNT=13,HUB_ACTIONS_PER_PAGE=4;
-const hubActionCount=s=>s.block_hub_paged?Math.min(HUB_ACTIONS_PER_PAGE,HUB_ACTION_COUNT-s.block_hub_page*HUB_ACTIONS_PER_PAGE):HUB_ACTION_COUNT;
-async function waitForHub(page){await page.waitForFunction(({count,per})=>{const s=window.__tenderloinGodotA11ySnapshot;return s?.block_panel_control.visible&&!s.layout_refit_pending&&!s.compact_panel_layout_pending&&s.block_hub_actions.length===(s.block_hub_paged?Math.min(per,count-s.block_hub_page*per):count);},{count:HUB_ACTION_COUNT,per:HUB_ACTIONS_PER_PAGE});}
+// Ten actions since Local Stories, District Border and Import Web Save moved to the menu; a page holds as many rows of two
+// as fit (block_hub_per_page), so a tall phone shows all ten and short screens page.
+const HUB_ACTION_COUNT=10;
+const hubActionCount=s=>s.block_hub_paged?Math.min(s.block_hub_per_page,HUB_ACTION_COUNT-s.block_hub_page*s.block_hub_per_page):HUB_ACTION_COUNT;
+async function waitForHub(page){await page.waitForFunction(count=>{const s=window.__tenderloinGodotA11ySnapshot;return s?.block_panel_control.visible&&!s.layout_refit_pending&&!s.compact_panel_layout_pending&&s.block_hub_actions.length===(s.block_hub_paged?Math.min(s.block_hub_per_page,count-s.block_hub_page*s.block_hub_per_page):count);},HUB_ACTION_COUNT);}
 async function findHubAction(page,tap,pattern){
   await waitForHub(page);
   while((await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot)).block_hub_page>0)await tap(await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot.block_page_previous));
-  for(let n=0;n<Math.ceil(HUB_ACTION_COUNT/HUB_ACTIONS_PER_PAGE);n++){
+  for(let n=0;n<HUB_ACTION_COUNT;n++){
     const s=await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot),b=s.block_hub_actions.find(b=>b.visible&&pattern.test(b.text));
     if(b)return b;
     if(!s.block_hub_paged||s.block_hub_page===s.block_hub_pages-1)break;
@@ -251,6 +254,9 @@ async function phoneAwareMouseClick(page,b){
  await page.mouse.click(c.x+(b.x+b.width/2)*c.width/s.viewport_width,c.y+(b.y+b.height/2)*c.height/s.viewport_height);
  const f=s.ui_frame;await page.waitForFunction(f=>window.__tenderloinGodotA11ySnapshot.ui_frame>f+4,f);
 }
+
+// Menu rows (Music, Sounds, About, the hub's three settings) with a mouse press by default; the journeys pass their own tap.
+const useMenuRow=(page,key,tap=b=>phoneAwareMouseClick(page,b),opts)=>useMenuRowWith(page,key,tap,opts);
 
 async function verifyStreetSignature(page,tap,snap) {
   let s=await snap();
@@ -690,7 +696,8 @@ async function verifyMuralWorkshop(page, context, touch, originalSize, requireTa
       else{await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+10,y+4,{steps:3});await page.mouse.up();}
       await settle();s=await snap();assert.ok(!s.following_player,'real scene drag owns the camera before composing');
     }
-    if(size.width===520){await tap(s.info_control);s=await snap();assert.ok(s.header_details_expanded,'actual Info is expanded before the hidden-reward test');}
+    // No player control opens Info at will now (the note under the header is for live reveals); the queued-reward-in-Info
+    // variant is covered natively (study_test set_header_details(true) then the queued reward checks).
     const before = JSON.parse(await save()), photo = before.epilogue.photo;
     if (requireTakenPhoto) assert.equal(photo.status,'taken','later exact edits exercise an actually saved keepsake, not an empty fixture');
     const frozenPhoto = JSON.stringify(photo), pose = s.camera_pose, grounding = s.player_grounding, music = s.music_playing;
@@ -912,7 +919,7 @@ async function verifyNarrowHub(page, context, touch) {
       assert.ok(s.following_player && encloses(screen,panel) && panel.y >= s.header_control.y + s.header_control.height + 7 && !overlaps(panel,s.controls_control), 'All Actions follows the player and clears the header and walking controls');
       assert.ok(s.play_area.width >= 200 && s.play_area.height >= 100 && s.overlays.player.width > 0 && encloses(s.play_area,s.overlays.player), 'narrow hub retains the full enlarged player and YOU');
       for(const b of [s.block_page_previous,s.block_page_next,s.block_close_control,s.rhythm_circle.entry,s.civic_listening.entry,s.power_story.entry].filter(b=>b.visible)) assert.ok(b.width>=44&&b.height>=44&&encloses(panel,b),'ALL six actual navigation siblings fit inside the on-screen hub');
-      for (const b of [...s.block_hub_actions,s.block_page_previous,s.block_page_next,s.block_close_control]) assert.ok(b.width >= 44 && b.height >= 44 && encloses(panel,b), 'all narrow menu targets remain reachable');
+      for (const b of [...s.block_hub_actions,s.block_page_previous,s.block_page_next,s.block_close_control].filter(b=>b.visible)) assert.ok(b.width >= 44 && b.height >= 44 && encloses(panel,b), 'all narrow menu targets remain reachable');
       for (const b of s.block_hub_actions) { assert.ok(b.text_fits, `full narrow hub title: ${b.text}`); seen.push(b.id); fullTitles.push(b.text); }
       for (const b of s.walking_controls.filter(b=>b.visible)) assert.ok(b.width >= 44 && b.height >= 44 && b.text_fits && encloses(screen,b), 'compact walking targets fit');
       assert.equal(s.camera_view_size,conversation.camera_view_size);
@@ -946,36 +953,37 @@ async function verifyNarrowHub(page, context, touch) {
     for (let i=0;i<32;i++) { s=await snapshot(); if (s.block_detail_scroll_value+s.block_detail_scroll_page >= s.block_detail_scroll_max-1) break; await page.mouse.wheel(0,600); await settle(); }
     s=await snapshot(); assert.ok(s.block_detail_scroll_value+s.block_detail_scroll_page >= s.block_detail_scroll_max-1,'full description reaches final line');
     }
-    await tap(s.info_control); s=await snapshot();
-    assert.ok(s.header_details_expanded && s.info_reader.control.height >= 24 && encloses({x:0,y:0,width,height},s.block_panel_control) && s.block_panel_control.y >= s.header_control.y+s.header_control.height+7, 'expanded Info leaves menu and Close on-screen');
-    assert.ok(s.info_reader.scroll_max > s.info_reader.scroll_page,'narrow Info contains overflowing complete source text');
-    const ic=await page.locator('#canvas').boundingBox(), ir=s.info_reader.control;
+    // Info's reading moved to Menu, About this place: it opens over the hub without moving it, its reader takes a real wheel
+    // to its final line, and Escape steps back to the rows and closes, leaving the hub and Close where they were.
+    const hubBefore=s.block_panel_control;
+    await tap(s.menu.button); await tap((await snapshot()).about_control); s=await snapshot();
+    assert.ok(s.menu.open && s.menu.about_open && encloses({x:0,y:0,width,height},s.menu.about.control) && s.menu.about.text.includes('OpenStreetMap') && s.header_control.height<=48, 'About opens on-screen over the hub with the complete source line');
+    assert.deepEqual(s.block_panel_control,hubBefore,'the menu over the hub leaves it in place');
+    const ic=await page.locator('#canvas').boundingBox(), ir=s.menu.about.control;
     await page.mouse.move(ic.x+(ir.x+ir.width/2)*ic.width/width,ic.y+(ir.y+ir.height/2)*ic.height/height);
-    for(let i=0;i<12;i++){const r=(await snapshot()).info_reader;if(r.scroll_value+r.scroll_page>=r.scroll_max-1)break;await page.mouse.wheel(0,1200);await settle();}
-    const readInfo=(await snapshot()).info_reader;assert.ok(readInfo.scroll_value>0&&readInfo.scroll_value+readInfo.scroll_page>=readInfo.scroll_max-1,'actual wheel input reaches the complete Info final line');
-    await tap(s.info_control);
+    for(let i=0;i<12;i++){const r=(await snapshot()).menu.about;if(r.scroll_value+r.scroll_page>=r.scroll_max-1)break;await page.mouse.wheel(0,1200);await settle();}
+    const readAbout=(await snapshot()).menu.about;assert.ok(readAbout.scroll_value+readAbout.scroll_page>=readAbout.scroll_max-1,'actual wheel input reaches the final line of About');
+    await closeMenu(page); s=await snapshot();
+    assert.ok(s.block_panel_control.visible && encloses({x:0,y:0,width,height},s.block_panel_control) && encloses(s.block_panel_control,s.block_close_control),'closing the menu leaves the hub and Close on-screen');
     if(width===520){
       await settle();const before=await snapshot(),a=before.play_area,c=await page.locator('#canvas').boundingBox();
       const x=c.x+(a.x+a.width/2)*c.width/width,y=c.y+(a.y+a.height/2)*c.height/height;
       if(touch){const finger=await context.newCDPSession(page);await finger.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y,id:1}]});await finger.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+12*c.width/width,y:y+4*c.height/height,id:1}]});await finger.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await finger.detach();}
       else{await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+12*c.width/width,y+4*c.height/height,{steps:3});await page.mouse.up();}
       await settle();const manual=await snapshot();assert.ok(!manual.following_player);assert.notDeepEqual(manual.camera_pose,before.camera_pose);
-      for(const size of [{width:519,height:360},{width:559,height:360},{width:560,height:360},{width:520,height:560},{width,height}]){await page.setViewportSize(size);await settle();const r=await snapshot();assert.deepEqual(r.camera_pose,manual.camera_pose,'small hub resize preserves actual manual inspection');assert.equal(r.block_hub_page,manual.block_hub_page);if(size.width>=520&&size.height<560){assert.ok(r.block_hub_side&&encloses({x:0,y:0,...size},r.block_panel_control)&&encloses(r.block_panel_control,r.block_close_control),'reentering the small side dock keeps the complete panel and Close on-screen');}}
+      for(const size of [{width:519,height:360},{width:559,height:360},{width:560,height:360},{width:520,height:560},{width,height}]){await page.setViewportSize(size);await settle();const r=await snapshot();assert.deepEqual(r.camera_pose,manual.camera_pose,'small hub resize preserves actual manual inspection');if(r.block_hub_per_page===manual.block_hub_per_page)assert.equal(r.block_hub_page,manual.block_hub_page);if(size.width>=520&&size.height<560){assert.ok(r.block_hub_side&&encloses({x:0,y:0,...size},r.block_panel_control)&&encloses(r.block_panel_control,r.block_close_control),'reentering the small side dock keeps the complete panel and Close on-screen');}}
       await tap((await snapshot()).block_close_control);assert.deepEqual((await snapshot()).camera_pose,manual.camera_pose,'small hub Close preserves manual camera');await page.keyboard.press('KeyF');await settle();await page.keyboard.press('KeyG');await settle();
     }
     if (width === 320) {
-      // Walking the complete action list now ends on the meal's fourth page.
-      // Reach the original Film page through actual paging before testing its
-      // existing focused rotation contract; Previous focuses its first action.
-      const filmPage=Math.floor(8/HUB_ACTIONS_PER_PAGE);
-      while((await snapshot()).block_hub_page!==filmPage){
-        const current=await snapshot();await tap(current.block_hub_page>filmPage?current.block_page_previous:current.block_page_next);
-      }
+      // A page holds as many rows as fit, so the Film action's page depends on the size. Reach it through actual paging from
+      // the first page (Next focuses a page's first action) and check the focused action stays on screen through rotation.
+      const per=(await snapshot()).block_hub_per_page, filmPage=Math.floor(8/per), focusedId=filmPage*per;
+      while((await snapshot()).block_hub_page>0)await tap((await snapshot()).block_page_previous);
+      while((await snapshot()).block_hub_page<filmPage)await tap((await snapshot()).block_page_next);
       assert.ok((await snapshot()).block_hub_actions.some(b=>b.id===8),'original Film action is visible before rotating its focused page');
       for (const size of [{width:559,height:568},{width:560,height:559},{width:560,height:568},{width:599,height:639},{width:599,height:640},{width:600,height:360},{width,height}]) {
         await page.setViewportSize(size); await settle(); const r=await snapshot();
-        assert.equal(r.block_hub_page,2,'open rotation retains the later hub page');
-        assert.ok(r.block_hub_actions.some(b=>b.id===8) && encloses({x:0,y:0,...size},r.block_panel_control) && !overlaps(r.block_panel_control,r.controls_control) && r.block_panel_control.y >= r.header_control.y+r.header_control.height,'open hub breakpoint keeps focus page and controls reachable');
+        assert.ok(r.block_hub_actions.some(b=>b.id===focusedId) && encloses({x:0,y:0,...size},r.block_panel_control) && !overlaps(r.block_panel_control,r.controls_control) && r.block_panel_control.y >= r.header_control.y+r.header_control.height,'open hub breakpoint keeps the focused action and controls reachable');
         assert.ok(encloses(r.play_area,r.overlays.player),'open hub breakpoint retains full enlarged player and YOU');
       }
     }
@@ -1124,12 +1132,15 @@ async function verifyShortActivities(page, context, touch, checks, small = false
       await page.screenshot({ path: `artifacts/codex-${small && width >= 520 && width < 560 && height < 560 ? "small-landscape" : (small ? "narrow" : "short")}-activity-${kind}-${width}x${height}-${touch ? 'touch' : 'mouse'}.png` });
       await writeFile(`artifacts/codex-${small && width >= 520 && width < 560 && height < 560 ? "small-landscape" : (small ? "narrow" : "short")}-activity-${kind}-${width}x${height}-${touch ? 'touch' : 'mouse'}.json`, JSON.stringify(read, null, 2));
       checks.push({ kind, width, height, touch, scene: a, panel: p });
-      for (const expanded of [true, false]) {
-        await tap((await snapshot()).info_control);
+      // Opening and closing the menu over an open activity (where Info used to grow the header) keeps the whole dock on
+      // screen and the person and prop in the scene; the header stays one row.
+      const barHeight = (await snapshot()).header_control.height;
+      for (const open of [true, false]) {
+        if (open) await tap((await snapshot()).menu.button); else await closeMenu(page);
         const grown = await snapshot(), dock = grown[key].panel, area = grown.play_area;
-        assert.equal(grown.header_details_expanded, expanded);
-        assert.ok(dock.y >= grown.header_control.y + grown.header_control.height && dock.y + dock.height <= height - 12, 'Info growth and shrink keep the entire dock on-screen');
-        for (const point of grown.panel_subject_points) assert.ok(point.x >= area.x && point.x <= area.x + area.width && point.y >= area.y && point.y <= area.y + area.height, 'Info refit retains actual person and prop');
+        assert.equal(grown.menu.open, open);
+        assert.ok(grown.header_control.height === barHeight && dock.y >= grown.header_control.y + grown.header_control.height && dock.y + dock.height <= height - 12, 'the menu opening and closing keeps the entire dock on-screen');
+        for (const point of grown.panel_subject_points) assert.ok(point.x >= area.x && point.x <= area.x + area.width && point.y >= area.y && point.y <= area.y + area.height, 'the menu leaves the actual person and prop in the scene');
       }
       // Rotate with the activity open; automatic framing follows layout, manual pan does not.
       if (width === 640 || (small && (width === 320 || width === 520))) {
@@ -1388,7 +1399,7 @@ async function verifyPowerStory(page,touch,size,privateFixture=false){
   await page.setViewportSize(size);await settle();if((await snap()).story_detail.panel.visible){await page.keyboard.press('Escape');await settle();}
   if((await snap()).block_panel_control.visible){await page.keyboard.press('KeyG');await settle();}
   await page.keyboard.press('KeyG');await settle();
-  if(privateFixture&&size.width===520){await tap((await snap()).music_toggle_control);assert.ok((await snap()).music_playing,'one actual finger episode runs with original Music On');}
+  if(privateFixture&&size.width===520){await useMenuRow(page,'music_toggle_control',tap);assert.ok((await snap()).music_playing,'one actual finger episode runs with original Music On');}
   const before=await snap(),quiet=[before.music_playing,before.music_mode,before.music_volume,before.reward_sounds_enabled],initialLight=[before.evening_mode,before.power_story.night_glow,before.power_story.pool_alpha];
   for(const n of [before.block_page_previous,before.block_page_next,before.rhythm_circle.entry,before.civic_listening.entry,before.block_close_control,before.power_story.entry].filter(b=>b.visible))assert.ok(n.width>=44&&n.height>=44&&n.x>=0&&n.x+n.width<=size.width+1,'ALL actual navigation siblings fit, including Power/Circle without civic');
   await tap(before.power_story.entry);assert.ok((await snap()).power_story.visible,'real mouse/finger navigation entry opens optional episode');
@@ -1636,6 +1647,58 @@ async function verifyPhoneDisclosure(browser,base){
  }
 }
 
+// HUD Phase 1 (docs/HUD_REDESIGN_PLAN.md 8): the one-row header and the Menu, by real input at one size. Prints hud_metrics
+// for before/after numbers and, when shots is set, saves the idle game, the menu open and a conversation for the creator.
+const hudChecks=[];
+async function verifyHudPhase1(page,{size,touch,shots}){
+  const snap=()=>page.evaluate(()=>window.__tenderloinGodotA11ySnapshot);
+  const settle=async()=>{const f=(await snap()).ui_frame;await page.waitForFunction(f=>{const s=window.__tenderloinGodotA11ySnapshot;return s.ui_frame>f+3&&!s.layout_refit_pending;},f);};
+  const at=async(x,y)=>{const s=await snap(),c=await page.locator('#canvas').boundingBox();const px=c.x+x*c.width/s.viewport_width,py=c.y+y*c.height/s.viewport_height;if(touch)await page.touchscreen.tap(px,py);else await page.mouse.click(px,py);await settle();};
+  const tap=async b=>{assert.ok(b?.visible&&b.width>=44&&b.height>=44,'a visible 44px target');await at(b.x+b.width/2,b.y+b.height/2);};
+  const screen={x:0,y:0,...size},inside=(o,i)=>i.x>=o.x-1&&i.y>=o.y-1&&i.x+i.width<=o.x+o.width+1&&i.y+i.height<=o.y+o.height+1;
+  const name=`${size.width}x${size.height}-${touch?'touch':'mouse'}`,dir='artifacts/hud-phase1';
+  if(shots)await mkdir(dir,{recursive:true});
+  await page.keyboard.press('KeyF');await settle();
+  let s=await snap();const m=s.hud_metrics;
+  console.log(`HUD_METRICS ${name} header=${m.header_height} controls=${m.controls_height} scene=${m.play_area.height} share=${m.play_area_share}`);
+  const bar=size.height<560?44:48;
+  assert.ok(s.header_control.height<=bar&&!s.info_reader.control.visible,`one-row header of at most ${bar}px at ${name}`);
+  for(const b of [s.menu.button,s.objective_line,s.sparks_control])assert.ok(b.visible&&b.width>=44&&b.height>=44&&inside(screen,b)&&inside(s.header_control,b),'header targets are 44px and inside the bar');
+  assert.match(s.sparks_name,/^Sparks \d+, Keepsakes \d+ of 10/);assert.ok(s.objective_control_text.includes('Next:'));
+  if(shots)await page.screenshot({path:`${dir}/idle-${name}.png`});
+  // A pointer opens the menu and focuses its first row; the arrows move, Escape closes and focus returns to Menu.
+  await tap(s.menu.button);s=await snap();
+  assert.ok(s.menu.open&&s.menu.button_pressed&&s.menu.rows[0].focused&&s.menu.rows.at(-1).text==='Close'&&s.menu.credit.visible&&s.menu.credit.text.includes('DataSF'),'Menu opens with focus on its first row and the credit line');
+  for(const r of s.menu.rows)assert.ok(r.visible&&r.width>=44&&r.height>=44&&r.text_fits&&inside(screen,r)&&inside(s.menu.panel,r),`menu row ${r.text} is a whole on-screen 44px target at ${name}`);
+  for(const want of ['Music: ','Sounds: ','Reduced motion: ','About this place','Read Local Stories','District Border: ','Import Web Save'])assert.ok(s.menu.rows.some(r=>r.text.startsWith(want)),`the menu has ${want}`);
+  assert.equal(s.header_control.height,m.header_height,'opening the menu does not grow the header');
+  const menuRows=s.menu.rows.map(r=>r.text);
+  if(shots)await page.screenshot({path:`${dir}/menu-${name}.png`});
+  // Down moves to the row below: the next one in a single column, one row of columns down in a landscape grid.
+  await page.keyboard.press('ArrowDown');await settle();assert.ok((await snap()).menu.rows[Math.min(s.menu.columns,s.menu.rows.length-1)].focused,'ArrowDown moves to the row below');
+  await page.keyboard.press('Escape');await settle();s=await snap();assert.ok(!s.menu.open&&!s.menu.button_pressed&&/Menu closed/.test(s.announcement),'Escape closes the menu and says so');
+  await page.keyboard.press('Enter');await settle();s=await snap();assert.ok(s.menu.open&&s.menu.rows[0].focused,'Enter on the focused Menu reopens it at its first row');
+  // A tap on the dimmed scene beside or below the panel closes it without walking there.
+  const p=s.menu.panel,ground=[s.player_grounding.x,s.player_grounding.z];
+  const spot=size.width-(p.x+p.width)>100?[(p.x+p.width+size.width)/2,p.y+p.height/2]:size.height-(p.y+p.height)>24?[size.width/2,(p.y+p.height+size.height)/2]:null;
+  if(spot){await at(...spot);s=await snap();assert.ok(!s.menu.open&&!s.player_grounding.path_active&&s.player_grounding.x===ground[0]&&s.player_grounding.z===ground[1],'a tap on the dimmed scene closes the menu and walks nowhere');}
+  else await closeMenu(page);
+  // Menu is a toggle above the dim: a second press closes it. The Sparks pill opens About; Escape goes back, then closes.
+  await tap((await snap()).menu.button);assert.ok((await snap()).menu.open,'Menu opens');await tap((await snap()).menu.button);assert.ok(!(await snap()).menu.open,'a second press of Menu closes it');
+  await tap((await snap()).sparks_control);s=await snap();
+  assert.ok(s.menu.open&&s.menu.about_open&&inside(screen,s.menu.about.control)&&s.menu.about.text.startsWith('TENDERLOIN REDUX'),'the Sparks pill opens About with the title');
+  await closeMenu(page);
+  // A conversation: the panel reads as before under the one-row header.
+  await page.keyboard.press('Digit1');
+  await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.conversation_detail.panel.visible&&!window.__tenderloinGodotA11ySnapshot.player_grounding.path_active,null,{timeout:35000});await settle();
+  s=await snap();assert.ok(s.conversation_detail.panel.y>=s.header_control.y+s.header_control.height&&inside(screen,s.conversation_detail.panel),'the conversation sits under the one-row header and on screen');
+  for(const b of s.conversation_detail.buttons.filter(b=>b.visible))assert.ok(b.width>=44&&b.height>=44&&inside(screen,b),'conversation targets stay 44px and on screen');
+  const talk=s.hud_metrics;console.log(`HUD_METRICS ${name} talking header=${talk.header_height} panel=${talk.panel.height} scene=${talk.play_area.height} share=${talk.play_area_share}`);
+  if(shots)await page.screenshot({path:`${dir}/conversation-${name}.png`});
+  await page.keyboard.press('Escape');await settle();
+  return {size,touch,idle:m,talking:talk,menuRows};
+}
+
 const mapPinchChecks=[];
 async function verifyMapPinch(page,context,size){
   await page.setViewportSize(size);
@@ -1643,16 +1706,17 @@ async function verifyMapPinch(page,context,size){
   const settle=async()=>{const f=(await snap()).ui_frame;await page.waitForFunction(f=>{const s=window.__tenderloinGodotA11ySnapshot;return s.ui_frame>f+3&&!s.layout_refit_pending;},f);};
   await page.keyboard.press('Escape');await page.keyboard.press('KeyF');await settle();
   const originalInfo=(await snap()).header_details_expanded;
-  async function toggleInfo(){const h=await snap(),b=h.info_control,c=await page.locator('#canvas').boundingBox();await page.touchscreen.tap(c.x+(b.x+b.width/2)*c.width/h.viewport_width,c.y+(b.y+b.height/2)*c.height/h.viewport_height);await settle();}
-  if(!originalInfo)await toggleInfo();
-  const expanded=await snap();assert.ok(expanded.header_details_expanded&&expanded.before_streets.entry.visible,'real Info keeps opening revisit available');
-  assert.ok(expanded.play_area.height>=44&&expanded.play_area.y>=expanded.header_control.y+expanded.header_control.height&&expanded.play_area.y+expanded.play_area.height<=expanded.controls_control.y,'expanded opening Info leaves real map space above walking targets');
-  const infoBox=expanded.info_reader.control,infoCanvas=await page.locator('#canvas').boundingBox();
-  await page.touchscreen.tap(infoCanvas.x+(infoBox.x+infoBox.width/2)*infoCanvas.width/expanded.viewport_width,infoCanvas.y+(infoBox.y+infoBox.height/2)*infoCanvas.height/expanded.viewport_height);
-  await page.keyboard.press('End');await settle();const readInfo=(await snap()).info_reader;
-  assert.ok(Math.abs(readInfo.scroll_value-Math.max(0,readInfo.scroll_max-readInfo.scroll_page))<1,'actual End reaches full short Info text');
-  if(size.height<560)assert.ok(readInfo.scroll_max>readInfo.scroll_page,'short Info actually scrolls its complete walking hint');
-  await page.keyboard.press('Home');await settle();
+  const tapAt=async b=>{const h=await snap(),c=await page.locator('#canvas').boundingBox();await page.touchscreen.tap(c.x+(b.x+b.width/2)*c.width/h.viewport_width,c.y+(b.y+b.height/2)*c.height/h.viewport_height);await settle();};
+  // Info's deliberate reading is Menu, About this place: a real tap opens the menu with the opening revisit in it, a tap
+  // on the About reader and End reach its last line, and Escape closes. The pinch below runs under the one-row header.
+  await tapAt((await snap()).menu.button);
+  const opened=await snap();assert.ok(opened.menu.open&&opened.before_streets.entry.visible,'the real menu keeps the opening revisit available');
+  await tapAt(opened.about_control);await tapAt((await snap()).menu.about.control);
+  await page.keyboard.press('End');await settle();const readInfo=(await snap()).menu.about;
+  assert.ok(readInfo.text.includes('OpenStreetMap')&&Math.abs(readInfo.scroll_value-Math.max(0,readInfo.scroll_max-readInfo.scroll_page))<1,'actual End reaches the complete About text');
+  await page.keyboard.press('Home');await settle();await closeMenu(page);
+  const expanded=await snap();
+  assert.ok(expanded.play_area.height>=44&&expanded.play_area.y>=expanded.header_control.y+expanded.header_control.height&&expanded.play_area.y+expanded.play_area.height<=expanded.controls_control.y,'the one-row header leaves real map space above walking targets');
   const save=await page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1')),legacy=await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1'));
   const cdp=await context.newCDPSession(page),canvas=await page.locator('#canvas').boundingBox();
   let s=await snap();const rect=s.play_area,center={x:rect.x+rect.width*.5,y:rect.y+rect.height*.7};
@@ -1720,10 +1784,10 @@ async function verifyMapPinch(page,context,size){
   for(let i=0;i<7;i++){await begin(25,25);await move(25,10);await send('touchEnd',[]);await settle();maxObserved=(await snap()).camera_view_size;if(maxObserved===previous){atMaximum=true;break;}previous=maxObserved;}
   assert.ok(atMaximum&&maxObserved>=900,'actual repeated gestures reach the bounded maximum');
   await page.screenshot({path:`artifacts/map-pinch-${size.width}-after.png`});
-  const result={size,actualTwoTouch:true,expandedInfoMap:true,actualInfoEnd:true,mixedUiMap:true,before:before.camera_view_size,spread:spread.camera_view_size,closed:closed.camera_view_size,manual:manualZoom.camera_view_size,playerDelta:Math.hypot(manualZoom.player_grounding.x-before.player_grounding.x,manualZoom.player_grounding.z-before.player_grounding.z),legacyUnchanged:(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1')))===legacy,manualAnchor:manualZoom.map_pinch.anchor_screen,maxObserved};mapPinchChecks.push(result);await writeFile(`artifacts/map-pinch-${size.width}.json`,JSON.stringify(result,null,2));
+  const result={size,actualTwoTouch:true,menuRevisitMap:true,actualAboutEnd:true,mixedUiMap:true,before:before.camera_view_size,spread:spread.camera_view_size,closed:closed.camera_view_size,manual:manualZoom.camera_view_size,playerDelta:Math.hypot(manualZoom.player_grounding.x-before.player_grounding.x,manualZoom.player_grounding.z-before.player_grounding.z),legacyUnchanged:(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1')))===legacy,manualAnchor:manualZoom.map_pinch.anchor_screen,maxObserved};mapPinchChecks.push(result);await writeFile(`artifacts/map-pinch-${size.width}.json`,JSON.stringify(result,null,2));
   await page.keyboard.press('KeyF');await settle();s=await snap();const pa=s.play_area;const tx=Math.max(pa.x+10,s.player_screen.x-pa.width*.2),ty=Math.min(pa.y+pa.height-10,s.player_screen.y+pa.height*.2);
   await page.touchscreen.tap(canvas.x+tx*canvas.width/s.viewport_width,canvas.y+ty*canvas.height/s.viewport_height);await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.player_grounding.path_active,null,{timeout:4000});await page.keyboard.press('Escape');await settle();assert.equal((await snap()).player_grounding.path_active,false,'one-finger map tap starts a real route and Escape stops it after pinch/UI release');await cdp.detach();
-  if((await snap()).header_details_expanded!==originalInfo)await toggleInfo();
+  if((await snap()).header_details_expanded&&!originalInfo)await tapAt((await snap()).info_control);
 }
 
 const lanternProcessionChecks=[];
@@ -1988,7 +2052,7 @@ async function verifyCivicListening(page,touch,size,readOnly=false,privateFixtur
   await page.screenshot({path:`artifacts/community-invitation-offer-${size.width}-${touch?'finger':'mouse'}-${readOnly?'remember':'earned'}.png`});
   await tap(offerHour.buttons[9]);const followed=await snap(),filmAction=followed.block_hub_actions.find(b=>b.id===8&&b.visible);
   assert.ok(!followed.civic_listening.visible&&followed.civic_listening.film_action_focused&&filmAction?.text_fits,'actual Follow reveals the original film action with native focus');
-  assert.equal(followed.block_hub_page,followed.block_hub_paged?Math.floor(filmAction.id/HUB_ACTIONS_PER_PAGE):0,'paged handoff reaches original film page; wide snapshot exports its all-actions page as zero');
+  assert.equal(followed.block_hub_page,followed.block_hub_paged?Math.floor(filmAction.id/followed.block_hub_per_page):0,'paged handoff reaches original film page; wide snapshot exports its all-actions page as zero');
   assert.ok(!followed.story_detail.panel.visible,'deliberate Follow is not replaced by a deferred chapter card');
   assert.equal(await save(),done,'Follow never starts/holds/shoots/captures/replays saved film progress');assert.deepEqual(JSON.parse(await save()).film,filmBefore);assert.equal(followed.film_easel.frame,frameBefore);
   assert.deepEqual([followed.music_playing,followed.music_volume,followed.music_mode,followed.reward_sounds_enabled,followed.reward_sound_count,followed.reward_burst_count],quietBefore,'Follow adds no cue, burst, sound or music change');
@@ -2125,7 +2189,7 @@ async function verifyQuietSeats(page,touch,size,complete=false,worldProof=false)
   }
   const expected=await save();await page.reload();await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');await settle();assert.equal(await save(),expected,'loading active quiet seating writes nothing');assert.equal((await snap()).quiet_seats.choice,'arc');
   if(complete){await page.keyboard.press('KeyG');await settle();await tap(await findHubAction(page,tap,/Host Activity/));await settle();assert.equal((await snap()).quiet_seats.copied,true);const saved=await save();await page.reload();await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');await settle();assert.equal(await save(),saved);assert.ok((await snap()).quiet_seats.copied&&!((await snap()).quiet_seats.row.visible));}
-  if((await snap()).music_playing!==music)await tap((await snap()).music_toggle_control);
+  if((await snap()).music_playing!==music)await useMenuRow(page,'music_toggle_control',tap);
   const result={worldChange,width:size.width,height:size.height,touch,layout:initial.gathering_layout,complete,positions,images,colored,total};quietSeatChecks.push(result);await writeFile(`artifacts/quiet-seats-result-${size.width}-${touch?'finger':'mouse'}-${initial.gathering_layout}.json`,JSON.stringify(result,null,2));return result;
 }
 
@@ -2166,7 +2230,7 @@ async function verifyFilmScreening(page,context,touch,size,world=false) {
   await page.keyboard.down('KeyW');await settle();await page.keyboard.up('KeyW');await page.keyboard.press('Period');await settle();s=await snap();assert.equal(s.player_grounding.x,point.x);assert.equal(s.player_grounding.z,point.z);assert.deepEqual(s.camera_pose,pose,'watching owns no camera');assert.equal(s.music_playing,music);assert.equal(await save(),before,'watching never writes copied save, sequence or awards');
   for(const boundary of [{width:320,height:568},{width:640,height:360},size]){await page.setViewportSize(boundary);await settle();s=await snap();const f=s.film_screening,v={x:0,y:0,width:boundary.width,height:boundary.height};for(const b of [f.top,f.tray,f.picture,...f.buttons])assert.ok(encloses(v,b),'open rotation keeps art and controls on-screen');assert.ok(f.picture.height>=90);}
   assert.deepEqual((await snap()).camera_pose,pose,'open rotation preserves the owned camera pose');
-  await page.setViewportSize({width:320,height:568});await settle();await tap((await snap()).film_screening.buttons[4]);assert.ok(!(await snap()).film_screening.visible);assert.equal((await snap()).block_hub_page,2,'close after wide-to-paged rotation reveals Watch Film');
+  await page.setViewportSize({width:320,height:568});await settle();await tap((await snap()).film_screening.buttons[4]);assert.ok(!(await snap()).film_screening.visible);assert.equal((await snap()).block_hub_page,Math.floor(8/(await snap()).block_hub_per_page),'close after wide-to-paged rotation reveals Watch Film');
   await page.setViewportSize(size);await settle();assert.equal(await save(),before);assert.equal((await snap()).music_playing,music);
   await page.keyboard.press('F4');await settle();assert.ok((await snap()).film_screening.visible);await page.keyboard.press('Escape');await settle();assert.ok(!(await snap()).film_screening.visible);
   if(world){
@@ -2181,7 +2245,7 @@ async function verifyFilmScreening(page,context,touch,size,world=false) {
   }
   const inspection=(await snap()).camera_pose;await page.keyboard.press('F4');await settle();assert.ok((await snap()).film_screening.visible);await page.setViewportSize({width:559,height:360});await settle();assert.deepEqual((await snap()).camera_pose,inspection,'actual manual or followed pose survives short-width rotation');await page.setViewportSize(size);await settle();await page.reload();await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');await settle();assert.ok(!(await snap()).film_screening.visible);assert.equal(await save(),before);assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1')),legacy);
   await page.keyboard.press('F4');await settle();assert.ok((await snap()).film_screening.visible,'completed film reopens after silent startup dismissal');assert.equal((await snap()).film_screening.frame,0,'reload restores transient first frame');await page.keyboard.press('Escape');await settle();
-  if((await snap()).music_playing!==music)await tap((await snap()).music_toggle_control);assert.equal((await snap()).music_playing,music,'test context restores quiet/play intent after the explicit reload');
+  if((await snap()).music_playing!==music)await useMenuRow(page,'music_toggle_control',tap);assert.equal((await snap()).music_playing,music,'test context restores quiet/play intent after the explicit reload');
   filmScreeningChecks.push({width:size.width,height:size.height,touch,framing:parsed.film.result.framing,plan:parsed.film.result.plan,order:parsed.film.result.order,world,images:images.map(({fingerprint,...x})=>x)});
 }
 
@@ -2316,7 +2380,7 @@ try {
     assert.equal(startup.reward_sound_count, 0);
     assert.equal(startup.reward_audio_playing, false);
     assert.equal(startup.header_details_expanded, false);
-    assert.ok(startup.header_control.height <= 130, 'compact header leaves room for the game');
+    assert.ok(startup.header_control.height <= 56 && !startup.info_reader.control.visible, 'the one-row header leaves room for the game');
     await page.mouse.move(size.width / 2, 30);
     await page.mouse.wheel(0, -100);
     await page.waitForTimeout(600);
@@ -2347,14 +2411,20 @@ try {
           await page.keyboard.press('Home');
           await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.story_detail.scroll_value === 0);
         }
-        const music = before.music_toggle_control;
-        const mx = canvas.x + (music.x + music.width / 2) * canvas.width / width;
-        const my = canvas.y + (music.y + music.height / 2) * canvas.height / height;
-        if (size.width === 320) await page.touchscreen.tap(mx, my);
-        else await page.mouse.click(mx, my);
-        await page.waitForFunction(f => window.__tenderloinGodotA11ySnapshot.ui_frame > f + 3, before.ui_frame);
-        const locked = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
-        assert.ok(locked.startup_pending && locked.music_toggle_control.disabled && !locked.music_playing && !locked.music_audio_playing, 'a real tap/click cannot bypass Start through the locked Music button');
+        // Music is a menu row: a real press of Menu over the startup card, then of the locked row, cannot bypass Start, and
+        // Escape closes only the menu. Once per context, at its last reading size: the menu's own announcements follow.
+        const press = async b => { const mx = canvas.x + (b.x + b.width / 2) * canvas.width / width, my = canvas.y + (b.y + b.height / 2) * canvas.height / height; if (size.width === 320) await page.touchscreen.tap(mx, my); else await page.mouse.click(mx, my); const f = (await page.evaluate(() => window.__tenderloinGodotA11ySnapshot)).ui_frame; await page.waitForFunction(f => window.__tenderloinGodotA11ySnapshot.ui_frame > f + 3, f); };
+        const lockSize = readingSizes.at(-1);
+        if (width === lockSize[0] && height === lockSize[1]) {
+          await press(before.menu.button);
+          const menuOverCard = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+          assert.ok(menuOverCard.menu.open && menuOverCard.music_toggle_control.visible && menuOverCard.music_toggle_control.disabled, 'the menu opens over the startup card with Music locked');
+          await press(menuOverCard.music_toggle_control);
+          const locked = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
+          assert.ok(locked.startup_pending && locked.music_toggle_control.disabled && !locked.music_playing && !locked.music_audio_playing, 'a real tap/click cannot bypass Start through the locked Music button');
+          await closeMenu(page);
+          assert.ok((await page.evaluate(() => window.__tenderloinGodotA11ySnapshot)).startup_pending && (await page.evaluate(() => window.__tenderloinGodotA11ySnapshot)).story_detail.control.visible, 'Escape closes the menu, not the startup card');
+        }
         const scrolling = d.scroll_max > d.scroll_page + 1;
         if (width === 640 && height === 360) assert.ok(scrolling, 'the landscape reading test really exercises overflow');
         if (scrolling) {
@@ -2417,7 +2487,7 @@ try {
         assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), storySave);
         await page.screenshot({path:`artifacts/godot-story-${size.width}-640x360-started.png`});
         shortStartClicked = true;
-        await clickHeaderControl('music_toggle_control');
+        await useMenuRow(page, 'music_toggle_control');
         await page.reload();
         await page.locator('#status').waitFor({state:'hidden',timeout:60000});
         await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.startup_pending);
@@ -2450,11 +2520,11 @@ try {
     assert.match(oriented.progress_text, /Sparks: 0 · Keepsakes: 0\/10/);
     await page.screenshot({ path: `artifacts/godot-${size.width}-start-oriented.png` });
     // A touch-reachable header control pauses without a trip to Rook or opening a panel.
-    await clickHeaderControl('music_toggle_control');
+    await useMenuRow(page, 'music_toggle_control');
     await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.music_playing === false);
     assert.equal((await page.evaluate(() => window.__tenderloinGodotA11ySnapshot)).music_audio_playing, false);
     assert.equal((await page.evaluate(() => window.__tenderloinGodotA11ySnapshot)).reward_sounds_enabled, true);
-    await clickHeaderControl('music_toggle_control');
+    await useMenuRow(page, 'music_toggle_control');
     await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.music_playing === true);
     await page.keyboard.press('KeyK');
     await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.music_playing === false);
@@ -2476,14 +2546,14 @@ try {
     await page.keyboard.press('Shift+KeyL');
     await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.evening_mode === false);
     assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), saveBeforeLight, 'character lighting comparison leaves save untouched');
-    await clickHeaderControl('info_control');
-    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.header_details_expanded === true);
-    await page.waitForTimeout(150);
+    // Info's deliberate reading is Menu, About this place now: a real click opens it with the sources, and the header keeps
+    // its one row.
+    await useMenuRow(page, 'about_control', undefined, { keepOpen: true });
+    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.menu.about_open === true);
     const details = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
-    assert.ok(details.header_control.height <= startup.header_control.height + 100, 'expanded details stay within a bounded scroll area');
-    await page.screenshot({ path: `artifacts/godot-${size.width}-header-info.png` });
-    await clickHeaderControl('info_control');
-    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.header_details_expanded === false);
+    assert.ok(details.menu.about.text.includes('OpenStreetMap') && details.menu.about.control.visible && details.header_control.height === startup.header_control.height, 'About holds the sources and the header keeps its one row');
+    await page.screenshot({ path: `artifacts/godot-${size.width}-header-about.png` });
+    await closeMenu(page);
     await phoneAwareMouseClick(page,(await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot)).walking_controls[1]);
     await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.in_wide_overview === true);
     const before = await page.screenshot({ path: `artifacts/godot-${size.width}-overview.png` });
@@ -2495,12 +2565,12 @@ try {
     }
     await phoneAwareMouseClick(page,(await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot)).walking_controls[0]);
     await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.announcement.startsWith('Next: '));
-    // After Back to Me, a nearby speaker can deliver the hint as a bubble.
-    // Info remains deliberately reachable without requiring the old map hint layout.
-    if(mapState.phone_disclosure.enabled && !(await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot)).header_details_expanded) await clickHeaderControl('info_control');
-    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.header_details_expanded === true, null, { timeout: 5000 });
-    await clickHeaderControl('info_control');
-    await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.header_details_expanded === false);
+    // After Back to Me a nearby speaker can deliver the hint as a bubble; away from one it opens the note under the header,
+    // whose Hide closes it.
+    if((await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot)).header_details_expanded){
+      await clickHeaderControl('info_control');
+      await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.header_details_expanded === false);
+    }
     // Re-open the map after exercising the phone's direct Back to Me primary.
     if(mapState.phone_disclosure.enabled){
       await phoneAwareMouseClick(page,(await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot)).walking_controls[1]);
@@ -2996,7 +3066,7 @@ try {
     for (let found = 1; found <= 10; found++) {
       if (found === 2 || found === 3) {
         const beforeToggleSound = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.reward_sound_count);
-        await clickHeaderControl('sounds_control');
+        await useMenuRow(page, 'sounds_control');
         await page.waitForFunction(enabled => window.__tenderloinGodotA11ySnapshot?.reward_sounds_enabled === enabled, found === 3);
         await page.waitForTimeout(850);
         const afterToggleSound = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
@@ -3157,7 +3227,7 @@ try {
     assert.equal(tourRevisit.tour_count, 12);
     assert.equal(tourRevisit.reward_burst_count, tourComplete.reward_burst_count, 'Revisiting a completed tour never repeats its reward');
     const progressBeforeMute = await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1'));
-    await clickHeaderControl('sounds_control');
+    await useMenuRow(page, 'sounds_control');
     await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.reward_sounds_enabled === false);
     assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), progressBeforeMute, 'sound preference cannot mutate game progress');
     const storageBeforeReload = await page.evaluate(() => ({
@@ -3476,9 +3546,12 @@ try {
     assert.deepEqual(hubSeen, Array.from({ length: HUB_ACTION_COUNT }, (_, i) => i), 'every hub action remains reachable in order');
     assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), hubSave, 'paging does not change progress');
     if (openedHub.block_hub_paged) {
-      await clickHeaderControl('block_page_next');
-      await page.waitForTimeout(100);
-      assert.equal((await page.evaluate(() => window.__tenderloinGodotA11ySnapshot)).block_hub_page, openedHub.block_hub_pages-1, 'Next clamps at the final page');
+      // A tall phone shows all ten actions on one page, with no Previous or Next to press.
+      if (openedHub.block_hub_pages > 1) {
+        await clickHeaderControl('block_page_next');
+        await page.waitForTimeout(100);
+        assert.equal((await page.evaluate(() => window.__tenderloinGodotA11ySnapshot)).block_hub_page, openedHub.block_hub_pages-1, 'Next clamps at the final page');
+      } else assert.ok(!openedHub.block_page_next.visible && !openedHub.block_page_previous.visible, 'one page shows no paging buttons');
       while((await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot)).block_hub_page>1){const p=(await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot)).block_hub_page;await clickHeaderControl('block_page_previous');await page.waitForFunction(p=>window.__tenderloinGodotA11ySnapshot.block_hub_page===p-1,p);}
       const longDetail = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
       assert.match(longDetail.block_detail_text, /Imported browser v1 save:/, 'the real imported-save fixture supplies a long description');
@@ -3496,21 +3569,12 @@ try {
     await clickHeaderControl('block_close_control');
     await page.waitForFunction(() => !window.__tenderloinGodotA11ySnapshot?.block_panel_control.visible);
     assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')), hubSave, 'paging, reading and closing leave progress unchanged');
-    // The original district action retains index10, independent of the newly appended last page.
-    await page.keyboard.press('KeyG');
-    await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.block_panel_control.visible);
-    const reopenedHub=await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot);
-    if(reopenedHub.block_hub_paged){const target=Math.floor(10/HUB_ACTIONS_PER_PAGE);let h=await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot);while(h.block_hub_page!==target){const step=h.block_hub_page<target?1:-1;await clickHeaderControl(step>0?'block_page_next':'block_page_previous');await page.waitForFunction(p=>window.__tenderloinGodotA11ySnapshot.block_hub_page===p,h.block_hub_page+step);h=await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot);}}
+    // District Border moved from the hub to the menu: a real press of its row there toggles the boundary and saves it.
     const districtBeforeHub = await page.evaluate(() => JSON.parse(localStorage.getItem('tenderloin-redux.godot.save.v1')).district_boundary_visible);
     for (const districtWanted of [!districtBeforeHub, districtBeforeHub]) {
-      const actionSnap = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
-      const districtAction = actionSnap.block_hub_actions.find(a => a.id === 10);
-      assert.ok(districtAction?.visible, 'original district action remains visible on its unchanged page');
-      const actionCanvas = await page.locator('#canvas').boundingBox();
-      await page.mouse.click(actionCanvas.x + (districtAction.x + districtAction.width / 2) * actionCanvas.width / actionSnap.viewport_width, actionCanvas.y + (districtAction.y + districtAction.height / 2) * actionCanvas.height / actionSnap.viewport_height);
+      await useMenuRow(page, 'district_control');
       await page.waitForFunction(value => JSON.parse(localStorage.getItem('tenderloin-redux.godot.save.v1')).district_boundary_visible === value, districtWanted);
     }
-    await clickHeaderControl('block_close_control');
     await page.waitForFunction(() => !window.__tenderloinGodotA11ySnapshot?.block_panel_control.visible);
     const explorationEvidence = { activityDetailReadabilityVerified: true, activityTouchDragVerified: size.width < 600, activityKeyboardScrollVerified: true, readableHubActionsVerified: true, boundedHubDetailsVerified: true, defaultMusicOnVerified: true, runningAudioContextVerified: true, touchMusicToggleVerified: true, readableRewardAndGuideVerified: true, inspectionResumeVerified: true, walkingStopControlVerified: true, compactHeaderHeight: startup.header_control.height, compactInfoToggleVerified: true, startupOrientationVerified: true, findMeAndMapVerified: true, rewardSoundsAndMuteVerified: true, persistentProgressVerified: true, surpriseDiscoveryVerified: true, surpriseKeepsakeReloadVerified: true, chapter6ConversationVerified: true, sessionLandmarkTourVerified: true, fullSaveBytes: Buffer.byteLength(saveBeforeTour, 'utf8') };
     runs.push({ ...explorationEvidence, viewport: size, overviewBytes: before.length, selectedBytes: after.length, neighborBytes: neighbor.length, muralBytes: muralShot.length, musicBytes: musicShot.length, blockBytes: blockShot.length, blackhawkBytes: blackhawkShot.length, wideBytes: wideShot.length, keyboardActivationVerified: true, neighborWalkVerified: true, muralSaveReloadVerified: true, rookMusicAuditionVerified: true, blockCompletionVerified: true, widerTenderloinVerified: true, m1EpilogueVerified: true, m3HostingVerified: true, m4CivicFilmVerified: true, m5VoicesIsolatedVerified: true, m6KeepsakeSvgExportVerified: true, m6PerfBudgetVerified: true, perfSnapshot: perfSnap, browserSaveImportVerified: true, domA11yLiveVerified: true });
@@ -3518,7 +3582,7 @@ try {
       const sweepSave = await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1'));
       await page.keyboard.press('KeyF');
       await page.keyboard.press('KeyG');
-      let previousPaged = false;
+      let previousPaged = false, previousPer = 0;
       let sweepPlayer = null;
       let sweepZoom = null;
       for (const width of [1000, 900, 800, 700, 600, 599, 1049, 1050, 1100]) {
@@ -3528,8 +3592,8 @@ try {
         await page.waitForFunction(f => window.__tenderloinGodotA11ySnapshot?.ui_frame > f + 2, resizeFrame);
         const resized = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
         assert.equal(resized.block_hub_paged, width < 1050, 'tablet paging is independent of the phone layout');
-        if (previousPaged && resized.block_hub_paged) assert.equal(resized.block_hub_page, resized.block_hub_pages-1, 'resize keeps the focused final page visible');
-        previousPaged = resized.block_hub_paged;
+        if (previousPaged && resized.block_hub_paged && resized.block_hub_per_page === previousPer) assert.equal(resized.block_hub_page, resized.block_hub_pages-1, 'resize keeps the focused final page visible');
+        previousPaged = resized.block_hub_paged; previousPer = resized.block_hub_per_page;
         if (sweepPlayer === null) {
           sweepPlayer = resized.player_grounding;
           sweepZoom = resized.camera_view_size;
@@ -3551,7 +3615,7 @@ try {
           assert.equal(s.player_grounding.x, sweepPlayer.x);
           assert.equal(s.player_grounding.z, sweepPlayer.z);
           assert.equal(s.camera_view_size, sweepZoom, 'hub framing preserves close-view zoom');
-          for (const a of [...s.block_hub_actions, s.block_close_control, ...(s.block_hub_paged ? [s.block_page_previous, s.block_page_next] : [])]) {
+          for (const a of [...s.block_hub_actions, s.block_close_control, ...(s.block_hub_paged && s.block_hub_pages > 1 ? [s.block_page_previous, s.block_page_next] : [])]) {
             assert.ok(a.visible && a.width >= 44 && a.height >= 44);
             assert.ok(a.x >= s.block_panel_control.x && a.y >= s.block_panel_control.y && a.x + a.width <= s.block_panel_control.x + s.block_panel_control.width + 1 && a.y + a.height <= s.block_panel_control.y + s.block_panel_control.height + 1, `tablet control stays enclosed at ${width}`);
           }
@@ -3604,13 +3668,13 @@ try {
           await page.waitForFunction(f => window.__tenderloinGodotA11ySnapshot?.ui_frame > f + 2, frame);
           snap = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
           const screen = { x: 0, y: 0, ...shortSize };
-          assert.ok(snap.block_hub_side && snap.block_hub_paged && snap.block_hub_pages === Math.ceil(HUB_ACTION_COUNT/HUB_ACTIONS_PER_PAGE));
+          assert.ok(snap.block_hub_side && snap.block_hub_paged && snap.block_hub_pages === Math.ceil(HUB_ACTION_COUNT/snap.block_hub_per_page));
           assert.ok(encloses(screen, snap.block_panel_control) && snap.block_panel_control.y >= snap.header_control.y + snap.header_control.height + 7, 'short hub fits below header and inside viewport');
           assert.ok(!overlaps(snap.block_panel_control, snap.controls_control), 'side hub leaves walking controls separate');
           assert.ok(snap.play_area.width >= 240 && snap.play_area.height >= 100 && snap.overlays.player.height > 20 && encloses(snap.play_area, snap.overlays.player), 'full enlarged character and YOU retain useful scene space');
           for (const caption of snap.overlays.captions) assert.ok(!overlaps(caption, snap.overlays.player), 'side-hub world captions leave player clear');
           if (snap.overlays.guide_label.visible) assert.ok(!overlaps({ x: snap.overlays.guide_label.x - 7, y: snap.overlays.guide_label.y - 7, width: snap.overlays.guide_label.width + 14, height: snap.overlays.guide_label.height + 14 }, snap.overlays.player), 'side-hub outlined objective leaves player clear');
-          for (const action of [...snap.block_hub_actions, snap.block_page_previous, snap.block_page_next, snap.block_close_control]) {
+          for (const action of [...snap.block_hub_actions, snap.block_page_previous, snap.block_page_next, snap.block_close_control].filter(b => b.visible)) {
             assert.ok(encloses(snap.block_panel_control, action) && action.width >= 44 && action.height >= 44, 'short hub targets enclosed and tappable');
           }
           for (const action of snap.block_hub_actions) { assert.ok(action.text_fits, `short full title ${action.text}`); seen.push(action.id); }
@@ -3643,22 +3707,22 @@ try {
           await page.mouse.wheel(0, 600);
         }
         await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.block_detail_scroll_value > 0);
-        await shortTap(detail.info_control);
-        await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.header_details_expanded);
-        const infoFrame = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.ui_frame);
-        await page.waitForFunction(f => window.__tenderloinGodotA11ySnapshot?.ui_frame > f + 2, infoFrame);
+        // Info's reading is About in the menu: over the short dock it stays on screen, its reader takes a real wheel to the
+        // last line, and closing leaves the hub and Close where they were.
+        await shortTap(detail.menu.button);
+        await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.menu.open);
+        await shortTap((await page.evaluate(() => window.__tenderloinGodotA11ySnapshot)).about_control);
+        await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot?.menu.about_open);
         const withInfo = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
-        assert.ok(encloses({ x: 0, y: 0, ...shortSize }, withInfo.block_panel_control), 'Info leaves hub Close reachable');
-        assert.ok(withInfo.block_panel_control.y >= withInfo.header_control.y + withInfo.header_control.height + 7 && withInfo.info_reader.control.height >= 24, 'Info reader and dock clear each other');
-        assert.ok(withInfo.info_reader.scroll_max > withInfo.info_reader.scroll_page, 'Info really has scrollable source text');
+        assert.ok(encloses({ x: 0, y: 0, ...shortSize }, withInfo.menu.about.control) && encloses({ x: 0, y: 0, ...shortSize }, withInfo.block_panel_control) && withInfo.block_panel_control.y >= withInfo.header_control.y + withInfo.header_control.height + 7, 'About and the dock under it stay on screen');
         const infoCanvas = await page.locator('#canvas').boundingBox();
-        await page.mouse.move(infoCanvas.x + (withInfo.info_reader.control.x + withInfo.info_reader.control.width / 2) * infoCanvas.width / shortSize.width, infoCanvas.y + (withInfo.info_reader.control.y + withInfo.info_reader.control.height / 2) * infoCanvas.height / shortSize.height);
+        await page.mouse.move(infoCanvas.x + (withInfo.menu.about.control.x + withInfo.menu.about.control.width / 2) * infoCanvas.width / shortSize.width, infoCanvas.y + (withInfo.menu.about.control.y + withInfo.menu.about.control.height / 2) * infoCanvas.height / shortSize.height);
         await page.mouse.wheel(0, 1200);
-        await page.waitForFunction(() => { const d = window.__tenderloinGodotA11ySnapshot.info_reader; return d.scroll_value > 0 && Math.abs(d.scroll_value - d.scroll_max + d.scroll_page) < 1; });
-        await shortTap(withInfo.info_control);
-        await page.waitForFunction(() => !window.__tenderloinGodotA11ySnapshot.header_details_expanded);
+        await page.waitForFunction(() => { const d = window.__tenderloinGodotA11ySnapshot.menu.about; return Math.abs(d.scroll_value - Math.max(0, d.scroll_max - d.scroll_page)) < 1; });
+        await closeMenu(page);
         const collapseFrame = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.ui_frame);
         await page.waitForFunction(f => window.__tenderloinGodotA11ySnapshot?.ui_frame > f + 2, collapseFrame);
+        assert.ok(encloses({ x: 0, y: 0, ...shortSize }, (await page.evaluate(() => window.__tenderloinGodotA11ySnapshot)).block_panel_control), 'closing the menu leaves hub Close reachable');
         await shortTap((await page.evaluate(() => window.__tenderloinGodotA11ySnapshot)).block_close_control);
         await page.waitForFunction(() => !window.__tenderloinGodotA11ySnapshot.block_panel_control.visible && !window.__tenderloinGodotA11ySnapshot.block_hub_side);
         const closed = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
@@ -3676,7 +3740,7 @@ try {
       await page.keyboard.press('KeyG');
       await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.block_hub_side);
       let rotating = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
-      while (rotating.block_hub_page !== Math.floor(8/HUB_ACTIONS_PER_PAGE)) {
+      while (rotating.block_hub_page !== Math.floor(8/rotating.block_hub_per_page)) {
         // Page state can publish before Godot containers finish rearranging the
         // shared Next/Listen row. Capture the real target after composed frames.
         const pagingFrame = rotating.ui_frame;
@@ -3685,7 +3749,7 @@ try {
           return s.ui_frame > f + 2 && s.block_panel_control.visible && s.block_hub_side && !s.layout_refit_pending && !s.compact_panel_layout_pending && !s.civic_listening?.layout_pending;
         }, pagingFrame);
         rotating = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
-        const direction=rotating.block_hub_page<Math.floor(8/HUB_ACTIONS_PER_PAGE)?1:-1,target=direction>0?rotating.block_page_next:rotating.block_page_previous;
+        const direction=rotating.block_hub_page<Math.floor(8/rotating.block_hub_per_page)?1:-1,target=direction>0?rotating.block_page_next:rotating.block_page_previous;
         assert.ok(target.visible&&!target.disabled);
         await shortTap(target);
         await page.waitForFunction(p => window.__tenderloinGodotA11ySnapshot.block_hub_page === p, rotating.block_hub_page + direction);
@@ -3698,8 +3762,7 @@ try {
         await page.waitForFunction(f => window.__tenderloinGodotA11ySnapshot.ui_frame > f + 2, frame);
         rotating = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot);
         assert.equal(rotating.block_hub_side, boundary.width >= 520 && boundary.height < 560);
-        assert.equal(rotating.block_hub_page, 2, 'open rotation keeps the focused later page visible');
-        assert.ok(rotating.block_hub_actions.some(a => a.id === 8), 'the focused first action on page3 remains visible');
+        assert.ok(rotating.block_hub_actions.some(a => a.id === 8), 'the focused Film action (first on its page) stays visible through rotation');
       }
       await shortTap(rotating.walking_controls[1]);
       await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.in_wide_overview && !window.__tenderloinGodotA11ySnapshot.block_panel_control.visible);
@@ -3762,6 +3825,15 @@ try {
     context.on('request',r=>{if(!r.url().startsWith(base)&&!r.url().startsWith('data:')&&!r.url().startsWith('blob:'))external.push(r.url());});page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
     await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending&&!window.__tenderloinGodotA11ySnapshot.layout_refit_pending);await page.keyboard.press('Escape');
     await verifyCivicListening(page,touch,size,false,true);await closeTracedContext(context);
+  }
+  // HUD Phase 1 at the plan's five sizes and the creator's phone (410x892): hud_metrics, the menu by real input, and the
+  // idle / menu / conversation frames in artifacts/hud-phase1 at 410x892 and 900x380 (touch) and 1100x760 (mouse).
+  for(const [width,height,touch] of [[1100,760,false],[390,667,true],[320,667,true],[667,390,true],[900,380,true],[410,892,true]]){
+    const size={width,height},context=await newTracedContext(browser,{viewport:size,hasTouch:touch}),page=await context.newPage();latestPage=page;
+    context.on('request',r=>{if(!r.url().startsWith(base)&&!r.url().startsWith('data:')&&!r.url().startsWith('blob:'))external.push(r.url());});page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
+    await page.goto(base);await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending&&!window.__tenderloinGodotA11ySnapshot.layout_refit_pending);await page.keyboard.press('Escape');
+    hudChecks.push(await verifyHudPhase1(page,{size,touch,shots:[410,900,1100].includes(width)}));
+    await closeTracedContext(context);
   }
   // PRIVATE press-settle journeys run the shipped 450 ms gate (every other journey runs with it off): real double click / double tap.
   for(const [width,height,touch] of [[1100,760,false],[390,667,true],[320,667,true]]){
@@ -3907,7 +3979,8 @@ try {
   assert.equal(muralWorkshopChecks.length,8,'seven late and one fresh actual workshop mouse/finger cases executed');
   assert.equal(muralWorkshopChecks.filter(c=>c.photoStatus==='taken').length,7,'all seven late cases preserve a saved taken keepsake');
   assert.equal(workshopAutoAdvanceChecks,3,'a fresh mural exercises all three automatically offered contributions');
-  console.log(JSON.stringify({ runs, sourceFingerprint, renderedPixelChecks, traceReceipts, persistenceChecks, programmeGatheringChecks, finaleChecks, orbitalChecks, departureChecks, habitatRoomChecks, helperBenchChecks, beforeStreetsChecks, hostedAfternoonChecks, sharedMealChecks, guidedWalkChecks, storyReturnChecks, storyVisitChecks, phoneDisclosureChecks, mapPinchChecks, votingStoryChecks, lanternProcessionChecks, dogStoryChecks, larkinStoryChecks, powerStoryChecks, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, communityInvitationChecks, rhythmCircleChecks, rhythmAuditionChecks, livingMuralChecks, muralWorkshopChecks, workshopAutoAdvanceChecks, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, narrowActivityChecks, passiveActivityChecks, narrowHubChecks, smallHubReaderChecks, shortWalkingChecks, shortWalkingCaptionChecks, shortWalkingGuideChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
+  assert.equal(hudChecks.length,6,'the one-row header and menu ran at all five plan sizes and 410x892');
+  console.log(JSON.stringify({ hudChecks, runs, sourceFingerprint, renderedPixelChecks, traceReceipts, persistenceChecks, programmeGatheringChecks, finaleChecks, orbitalChecks, departureChecks, habitatRoomChecks, helperBenchChecks, beforeStreetsChecks, hostedAfternoonChecks, sharedMealChecks, guidedWalkChecks, storyReturnChecks, storyVisitChecks, phoneDisclosureChecks, mapPinchChecks, votingStoryChecks, lanternProcessionChecks, dogStoryChecks, larkinStoryChecks, powerStoryChecks, loanHomecomingChecks, loanWorldChecks, sharedPanelChecks, programmeStudioChecks, civicListeningChecks, communityInvitationChecks, rhythmCircleChecks, rhythmAuditionChecks, livingMuralChecks, muralWorkshopChecks, workshopAutoAdvanceChecks, queuedActivityRewardChecks, shortStoryReadChecks, shortHubChecks, shortActivityChecks, narrowActivityChecks, passiveActivityChecks, narrowHubChecks, smallHubReaderChecks, shortWalkingChecks, shortWalkingCaptionChecks, shortWalkingGuideChecks, shortStartClicked, shortStartTouchClicked, errors, external }));
 } catch (error) {
   if (latestPage && !latestPage.isClosed()) {
     await retainBrowserFailure(latestPage,error);

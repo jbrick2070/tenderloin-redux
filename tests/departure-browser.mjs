@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { useMenuRow } from './godot-menu-browser.mjs';
 
 export async function verifyDeparture(page,{touch,size,renderedPixels,outputDir='artifacts',privateFixture=false}) {
   const snap=()=>page.evaluate(()=>window.__tenderloinGodotA11ySnapshot);
@@ -49,6 +50,6 @@ export async function verifyDeparture(page,{touch,size,renderedPixels,outputDir=
   await page.keyboard.press('Escape');await settle();s=await snap();assert.deepEqual(intent(s),beforeIntent);assert.deepEqual(await storage(),stable);assert.deepEqual(s.helper_bench.world,original.helper_bench.world);
   await page.reload();await page.locator('#status').waitFor({state:'hidden',timeout:60000});await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot?.startup_pending);await page.keyboard.press('Escape');await settle();h=(await snap()).habitat_room;
   assert.ok(h.available&&!h.complete&&!h.departure.ready&&h.departure.mode==='room'&&h.departure.panel===-1);assert.deepEqual(h.assigned,{});assert.deepEqual(h.departure.links,[]);const loaded=await storage();assert.deepEqual(JSON.parse(loaded['tenderloin-redux.godot.save.v1']),saved);assert.equal(loaded['tenderloin-redux.save.v1'],stable['tenderloin-redux.save.v1']);
-  await enter();assert.ok(!(await snap()).helper_bench.complete);await tap(await button(9));s=await snap();if(s.music_playing!==original.music_playing)await tap(s.music_toggle_control);
+  await enter();assert.ok(!(await snap()).helper_bench.complete);await tap(await button(9));s=await snap();if(s.music_playing!==original.music_playing)await useMenuRow(page,'music_toggle_control',tap);
   return {...size,touch,privateFixture,spare:names[spare],arrangement,linkEvidence,linkPixels,returnChecks,stillPanels:3,skipParity:true,relocationInvalidates:true,actualReload:true,retainedInvitation:true,noWrites:true,quiet:true};
 }

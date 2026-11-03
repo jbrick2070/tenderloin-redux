@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { useMenuRow } from './godot-menu-browser.mjs';
 import {writeFile} from 'node:fs/promises';
 
 export async function verifyHelperBench(page,{touch,size,renderedPixels,outputDir='artifacts',privateFixture=false}) {
@@ -96,7 +97,7 @@ export async function verifyHelperBench(page,{touch,size,renderedPixels,outputDi
   await page.keyboard.press('Escape');await settle();s=await snap();assert.ok(s.helper_bench.available&&!s.helper_bench.complete);assert.deepEqual(s.helper_bench.fitted,[false,false]);
   const loaded=await storage();assert.deepEqual(JSON.parse(loaded['tenderloin-redux.godot.save.v1']),JSON.parse(stable['tenderloin-redux.godot.save.v1']));assert.equal(loaded['tenderloin-redux.save.v1'],stable['tenderloin-redux.save.v1']);
   await enter();assert.ok(!(await snap()).helper_bench.complete);await tap((await snap()).helper_bench.buttons[5]);
-  if((await snap()).music_playing!==quiet[0])await tap((await snap()).music_toggle_control);
+  if((await snap()).music_playing!==quiet[0])await useMenuRow(page,'music_toggle_control',tap);
   s=await snap();assert.deepEqual([s.music_playing,s.music_volume,s.reward_sounds_enabled],quiet,'test context restores original quiet/play intent after explicit reload');
   return {...size,touch,privateFixture,changed,worldInk,guideClearance,inspectionPose:pose,copiedOrder:copied.order,retainedInvitation:true,actualReload:true,noWrites:true,quiet:true};
 }

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { useMenuRow } from './godot-menu-browser.mjs';
 import {mkdir,writeFile} from 'node:fs/promises';
 
 // PRIVATE fault profiles derived from an earned full-run save. These do not
@@ -21,7 +22,7 @@ export async function verifyPersistence(browser,{base,full,output,errors,externa
   async function seed(value=null){await page.evaluate(({SAVE,SETTINGS,LEGACY,value})=>{window.__persistenceReject=[];if(value===null)localStorage.removeItem(SAVE);else localStorage.setItem(SAVE,value);localStorage.setItem(SETTINGS,JSON.stringify({schema:SETTINGS,version:1,neighborhood_voices:false,reward_sounds:true}));if(localStorage.getItem(LEGACY)===null)localStorage.setItem(LEGACY,'private-persistence-sentinel');},{SAVE,SETTINGS,LEGACY,value});await page.reload();await ready();}
   async function reject(keys){await page.evaluate(keys=>window.__persistenceReject=keys,keys);}
   async function tap(b){assert.ok(b?.visible&&!b.disabled&&b.width>=44&&b.height>=44,`actual enabled44px action at ${stage}`);assert.ok(b.x>=-1&&b.y>=-1&&b.x+b.width<=size.width+1&&b.y+b.height<=size.height+1,`action visible in viewport at ${stage}`);const s=await snap(),c=await page.locator('#canvas').boundingBox(),x=c.x+(b.x+b.width/2)*c.width/s.viewport_width,y=c.y+(b.y+b.height/2)*c.height/s.viewport_height;if(touch)await page.touchscreen.tap(x,y);else await page.mouse.click(x,y);await settle();}
-  async function sounds(){let s=await snap();if(!s.sounds_control.visible){await tap(s.info_control);s=await snap();}await tap(s.sounds_control);}
+  async function sounds(){await useMenuRow(page,'sounds_control',tap);}
   async function queue(input,expected='imported'){const seq=(await snap()).seq;await page.evaluate(raw=>window.__tenderloinQueueBrowserSaveJson(raw),JSON.stringify(input));await page.waitForFunction(({seq,expected})=>{const s=window.__tenderloinGodotA11ySnapshot;return s.seq>seq&&s.browser_import_status===expected;},{seq,expected});await settle();}
   async function capture(name){await page.screenshot({path:`${output}/${size.width}-${name}.png`});await writeFile(`${output}/${size.width}-${name}.json`,JSON.stringify({snapshot:await snap(),storage:await storage(),faults:await page.evaluate(()=>window.__persistenceFaults)},null,2));}
   function warning(s,preferences=false){assert.match(s.progress_text,preferences?/Preferences are visit-only/:/Visit-only:/);assert.match(s.announcement,preferences?/Preferences are visit-only/:/Visit-only:/);assert.ok(!s.music_playing);const r=s.header_control;assert.ok(r.y>=0&&r.y+r.height<=size.height,'warning header remains in viewport');}
