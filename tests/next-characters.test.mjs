@@ -378,7 +378,8 @@ test('drift: speech bubble numbers, colours, text and the spoken-text rule', () 
     'var full_size := Vector2(speech_bubble_box.x + 6.0, speech_bubble_box.y + speech_bubble_box.z + 7.2) * speech_bubble_screen_scale()',
     'elif banner_visible:', 'return', 'speech_bubble_age += delta', 'speech_bubble_timer -= delta', 'if speech_bubble_timer <= 0.0:', 'hide_speech_bubble()',
   ], 'update_speech_bubble');
-  has(funcBody('update_speech_bubble'), [B.BUBBLE_TEXT.panel, B.BUBBLE_TEXT.activity, B.BUBBLE_TEXT.info], 'update_speech_bubble');
+  // Godot reads a line it cannot place in the sheet since HUD Phase 3; the fork keeps its Info fallback until Phase 5.
+  has(funcBody('update_speech_bubble'), [B.BUBBLE_TEXT.panel, B.BUBBLE_TEXT.activity], 'update_speech_bubble');
   has(funcBody('announce_speech_location'), [B.BUBBLE_TEXT.notice], 'announce_speech_location');
   assert.ok(lines('fit_overlay_around_player').map(line => line.replace(/ # [^"]*$/, '')).includes(`blocked = blocked.grow(${f(X.playerGrow)})`));
   const css = c => { const [r, g, b, a] = c.split(',').map(Number); return `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${a})`; };

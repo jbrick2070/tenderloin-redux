@@ -596,7 +596,7 @@ async function verifyLivingMural(page,context,touch,size,verifyResidents=false){
   if(verifyResidents)for(const [key,phrase] of [['Digit4','painted guitar'],['Digit5','painted planter']]){
     await page.keyboard.press(key);await page.waitForFunction(phrase=>{const s=window.__tenderloinGodotA11ySnapshot;return !s.player_grounding.path_active&&s.conversation_detail.panel.visible&&s.conversation_detail.text.includes(phrase);},phrase,{timeout:35000});await settle();
     const s=await snap(),speech=s.overlays.speech;assert.ok(speech.text.includes(phrase)&&!speech.text.startsWith(key==='Digit4'?'Dez:':'Thanh:')&&!speech.text.includes('"'),'actual new resident speech is parsed without duplicate speaker/quotes');
-    if(speech.visible&&!speech.deferred&&!speech.in_info)assert.ok(fits(s.play_area,speech),'long art reaction stays in play space or uses existing complete reader fallback');
+    if(speech.visible&&!speech.deferred&&!speech.in_sheet)assert.ok(fits(s.play_area,speech),'long art reaction stays in play space or uses existing complete reader fallback');
     reactions.push(s.conversation_detail.text);await tap(s.conversation_detail.buttons.find(b=>b.visible&&b.id===2));
   }
   assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1')),legacy);
@@ -909,7 +909,7 @@ async function verifyNarrowHub(page, context, touch) {
     await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.conversation_detail.panel.visible && !window.__tenderloinGodotA11ySnapshot.player_grounding.path_active);
     await settle();
     let conversation = await snapshot(); const save = await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1'));
-    if(conversation.phone_disclosure.enabled&&!conversation.phone_disclosure.actions_open){await tap(conversation.conversation_detail.buttons[1]);conversation=await snapshot();}
+    if(conversation.phone_disclosure.enabled&&!conversation.phone_disclosure.actions_open&&conversation.conversation_detail.buttons[1].visible){await tap(conversation.conversation_detail.buttons[1]);conversation=await snapshot();}
     await tap(conversation.conversation_detail.buttons.find(b => b.visible && b.text === 'All Actions'));
     await waitForHub(page);
     let s = await snapshot();
@@ -1002,7 +1002,7 @@ async function verifyNarrowHub(page, context, touch) {
       await page.mouse.move(cv.x+(a.x+a.width/2)*cv.width/width,cv.y+(a.y+a.height/2)*cv.height/height);
       await page.mouse.down(); await page.mouse.move(cv.x+(a.x+a.width/2+12)*cv.width/width,cv.y+(a.y+a.height/2+4)*cv.height/height,{steps:3}); await page.mouse.up(); await settle();
       const manual=await snapshot(); assert.equal(manual.following_player,false); assert.notDeepEqual(manual.camera_pose,prior.camera_pose,'actual scene drag changes the camera pose');
-      if(manual.phone_disclosure.enabled&&!manual.phone_disclosure.actions_open) await tap(manual.conversation_detail.buttons[1]);
+      if(manual.phone_disclosure.enabled&&!manual.phone_disclosure.actions_open&&manual.conversation_detail.buttons[1].visible) await tap(manual.conversation_detail.buttons[1]);
       await tap((await snapshot()).conversation_detail.buttons.find(b=>b.visible&&b.text==='All Actions'));
       const hub=await snapshot(); assert.equal(hub.following_player,false); assert.deepEqual(hub.camera_pose,manual.camera_pose,'All Actions preserves manual camera inspection');
       await page.setViewportSize({width,height:600}); await settle(); assert.deepEqual((await snapshot()).camera_pose,manual.camera_pose,'manual view survives compact hub resize');
@@ -1045,7 +1045,8 @@ async function verifyShortActivities(page, context, touch, checks, small = false
       await page.waitForFunction(k => { const s = window.__tenderloinGodotA11ySnapshot; return s[k]?.panel.visible && !s.player_grounding.path_active; }, key, { timeout: 30000 });
       await settle();
       let s = await snapshot();
-      await tap(s[key].buttons.find(b => b.id === hintId));
+      // A conversation's own Next Step shows only on a tall phone (HUD Phase 3); elsewhere the bar's is the same press.
+      await tap(kind === 'conversation' ? (s[key].buttons.find(b => b.id === hintId && b.visible) ?? s.walking_controls[0]) : s[key].buttons.find(b => b.id === hintId));
       s = await snapshot();
       assert.ok(s[key].text.length > 20, 'requested hint remains visible in the reader');
       for (let chat = 0; chat < 5 && (s[key].scroll_max <= s[key].scroll_page || s[key].text.length <= 100); chat++) {
@@ -1327,7 +1328,7 @@ async function verifySharedPanel(page,touch,size,active=false){
   const settle=async()=>{const f=(await snap()).ui_frame;await page.waitForFunction(f=>{const s=window.__tenderloinGodotA11ySnapshot;return s.ui_frame>f+4&&!s.layout_refit_pending&&!s.shared_panel.layout_pending;},f);};
   async function tap(b,reading=false,disabled=false){b=await revealPhoneControl(page,b,tap);assert.ok(b&&b.visible!==false&&b.width>=44&&b.height>=(reading?1:44)&&(!b.disabled||disabled),'real reachable Shared Panel target');const s=await snap(),c=await page.locator('#canvas').boundingBox(),x=c.x+(b.x+b.width/2)*c.width/s.viewport_width,y=c.y+(b.y+b.height/2)*c.height/s.viewport_height;if(touch)await page.touchscreen.tap(x,y);else await page.mouse.click(x,y);await settle();}
   await page.setViewportSize(size);await settle();if((await snap()).story_detail.panel.visible){await page.keyboard.press('Escape');await settle();}
-  if(!active){await page.keyboard.press('4');await page.waitForFunction(()=>{const s=window.__tenderloinGodotA11ySnapshot;return /^(?:Talking with )?Dez (?:\(|\u00b7 Turn )/.test(s?.conversation_header || '')&&s.conversation_detail.panel.visible&&!s.player_grounding.path_active;},null,{timeout:90000});await settle();const s=await snap();if(s.phone_disclosure.enabled&&!s.phone_disclosure.actions_open)await tap(s.conversation_detail.buttons[1]);await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.conversation_actions.some(b=>b.id==='shared_panel'));await settle();}
+  if(!active){await page.keyboard.press('4');await page.waitForFunction(()=>{const s=window.__tenderloinGodotA11ySnapshot;return /^(?:Talking with )?Dez (?:\(|\u00b7 Turn )/.test(s?.conversation_header || '')&&s.conversation_detail.panel.visible&&!s.player_grounding.path_active;},null,{timeout:90000});await settle();const s=await snap();if(s.phone_disclosure.enabled&&!s.phone_disclosure.actions_open&&s.conversation_detail.buttons[1].visible)await tap(s.conversation_detail.buttons[1]);await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.conversation_actions.some(b=>b.id==='shared_panel'));await settle();}
   else{assert.equal((await snap()).hosting_current,'art');if(!(await snap()).block_panel_control.visible)await page.keyboard.press('KeyG');await settle();}
   // Own the camera through actual scene input before opening the art paper.
   {const s=await snap(),r=s.play_area,c=await page.locator('#canvas').boundingBox(),x=c.x+(r.x+r.width*.35)*c.width/s.viewport_width,y=c.y+(r.y+r.height*.5)*c.height/s.viewport_height,dx=Math.min(55,r.width*.25)*c.width/s.viewport_width;
@@ -3109,7 +3110,7 @@ try {
     // Read-only native control geometry; all activation remains real browser clicks.
     async function clickConversationAction(id) {
       const before=await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot);
-      if(id!=="whats_next"&&before.phone_disclosure.enabled&&!before.phone_disclosure.actions_open) await phoneAwareMouseClick(page,before.conversation_detail.buttons[1]);
+      if(id!=="whats_next"&&before.phone_disclosure.enabled&&!before.phone_disclosure.actions_open&&before.conversation_detail.buttons[1].visible) await phoneAwareMouseClick(page,before.conversation_detail.buttons[1]);
       await page.waitForFunction(actionId => window.__tenderloinGodotA11ySnapshot?.conversation_actions?.some(a => a.id === actionId), id);
       const previousFrame = await page.evaluate(() => window.__tenderloinGodotA11ySnapshot.ui_frame);
       await page.waitForFunction(frame => window.__tenderloinGodotA11ySnapshot?.ui_frame > frame, previousFrame);
