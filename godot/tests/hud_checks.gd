@@ -44,6 +44,28 @@ static func verify(suite: SceneTree, game: Node) -> void:
 	game.show_block_panel(false)
 	await frames(suite, 2)
 
+	# 2b. The page a caller sets counts even when it is the same number as before: paged on at one page size, closed,
+	# resized and reopened, the hub shows the suggested step, not the page the old anchor gives at the new size.
+	suite.root.size = Vector2i(667, 390)
+	await frames(suite, 4)
+	game.show_block_panel(true)
+	await frames(suite, 3)
+	var per_before: int = game.block_actions_per_page()
+	game.change_block_action_page(1)
+	await frames(suite, 2)
+	var paged_page: int = game.block_hub_page
+	game.show_block_panel(false)
+	await frames(suite, 2)
+	suite.root.size = Vector2i(600, 560)
+	await frames(suite, 4)
+	game.show_block_panel(true)
+	await frames(suite, 3)
+	var reopen_page: int = game.block_hub_page_of(game.block_mural_btn)
+	suite.require(paged_page == 1 and game.block_actions_per_page() < per_before and reopen_page == paged_page, "HUD fixture pages on at %d a page, then reopens at %d a page where the mural's page has the same number (%d, %d)" % [per_before, game.block_actions_per_page(), paged_page, reopen_page])
+	suite.require(game.block_hub_page == reopen_page and game.block_mural_btn.is_visible_in_tree(), "the reopened hub shows the mural on page %d (on %d)" % [reopen_page, game.block_hub_page])
+	game.show_block_panel(false)
+	await frames(suite, 2)
+
 	# 3. The note under the header costs a row of actions at 390x667: when Hide closes it the hub fits one page again,
 	# and the title drops its page count.
 	suite.root.size = Vector2i(390, 667)

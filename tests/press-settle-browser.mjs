@@ -112,11 +112,12 @@ export async function verifyStudioDoublePress(page, { touch, size }) {
   } finally { await gateOff(page); }
 }
 
-// Must-stay-fast, with the shipped gate on: Zoom In five times at one spot. Call with nothing open and Zoom In visible.
+// Must-stay-fast, with the shipped gate on: Zoom In five times at one spot. Call with nothing open and Zoom In visible: the
+// Explore tray's on a phone, desktop's corner + (HUD Phase 2: the bar holds three and the column keeps one-click zoom).
 export async function verifyFastZoom(page, { touch }) {
   const t = pressToolkit(page, { touch }); await gateOn(page);
   try {
-    const s = await t.snap(), zoom = s.walking_controls.find(b => b.text.includes('Zoom In') || b.text === 'Zoom +');
+    const s = await t.snap(), zoom = s.walking_controls.find(b => b.visible && b.text.includes('Zoom In')) || s.map_tools?.buttons.find(b => b.visible && b.name === 'Zoom In');
     assert.ok(zoom?.visible, 'Zoom In is on screen');
     await t.fastPresses(zoom, 5, 120);
     const after = await t.snap();

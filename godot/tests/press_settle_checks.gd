@@ -104,7 +104,7 @@ static func lint(suite: SceneTree, game: Node) -> void:
 	suite.require(all.size() > 150 and unhooked.is_empty(),"every BaseButton has exactly one arming connection (%d buttons, %d without: %s)" % [all.size(),unhooked.size(),unhooked.map(func(b): return String(b.get_path())).slice(0,3)])
 	var civic: Node = game.civic_listening; var studio: Node = game.programme_studio; var meal: Node = game.shared_meal; var rhythm: Node = game.rhythm_circle
 	var room: Node = game.habitat_room; var orbital: Node = room.orbital; var shop: Node = game.mural_workshop; var stories: Node = shop.stories
-	var fast: Array = [game.zoom_in_control,game.zoom_out_control,game.block_page_prev,game.block_page_next,game.mural_palette_btn,game.music_vol_btn,
+	var fast: Array = [game.zoom_in_control,game.zoom_out_control,game.map_tools_buttons[2],game.map_tools_buttons[3],game.block_page_prev,game.block_page_next,game.mural_palette_btn,game.music_vol_btn,
 		game.conv_chat_btn,studio.edits[1],studio.edits[2],meal.previous,meal.next,shop.palette_button,stories.palette_button,
 		game.story_picker.earlier,game.story_picker.later]
 	for list in [game.power_story.pads,game.shared_panel.pads]: fast.append_array(list)
@@ -113,7 +113,7 @@ static func lint(suite: SceneTree, game: Node) -> void:
 	suite.require(stray.is_empty(),"only the named repeat-in-place controls are rapid: "+str(stray.map(func(b): return b.text if b.text != "" else String(b.get_path())).slice(0,4)))
 	# Toggles, selectors and place-then-move buttons are guarded: a selector's repeat changes nothing, an on/off toggle or a rhythm
 	# pad must not undo itself, a paint or Shift Motif press must not place a motif and then move it, a canvas cell must not paint twice.
-	var slow: Array = [game.walk_control,game.map_control,game.next_hint_control,game.phone_find_control,game.conv_next_btn,game.music_toggle_btn,game.sounds_btn,
+	var slow: Array = [game.walk_control,game.map_control,game.next_hint_control,game.phone_find_control,game.map_tools_buttons[0],game.map_tools_buttons[1],game.conv_next_btn,game.music_toggle_btn,game.sounds_btn,
 		game.mural_sun_btn,game.mural_wave_btn,game.mural_rise_btn,game.mural_buttons[5],game.mural_buttons[7],rhythm.options[0],rhythm.options[1],rhythm.options[2],rhythm.options[4],rhythm.options[6],
 		game.block_close_btn,game.conv_bye_btn,game.mural_buttons[0],game.music_rook_btn,game.mural_compose_btn,game.story_continue_btn,game.story_before_btn,
 		game.phone_explore_control,game.phone_all_actions_control,game.phone_tray_close,civic.entry,civic.advance,civic.back,civic.music,studio.edits[0],studio.primary,studio.view,studio.back,
@@ -160,8 +160,11 @@ static func verify(suite: SceneTree, game: Node, full: String, formal := false) 
 		once(suite,"meal Keep exploring close-through %s" % size,await double_press(suite,game,meal.explore,0.06,touch))
 		suite.require(not meal.visible,"Keep exploring closed the meal once")
 		if not touch:
-			# Control run: with the gate off the second press reaches the HUD walk control under the pointer, so the oracle above can fail.
+			# Control run: with the gate off the second press reaches the HUD control under the pointer, so the oracle above can fail.
+			# Since the one bar (HUD Phase 2) that control is Explore, which an open hub hides, so the run reopens the meal from the
+			# street rather than over the hub (the old walk control sat there with the hub open too).
 			await suite.create_timer(0.65).timeout
+			game.show_block_panel(false); await settle(suite)
 			game.press_settle_msec = 0
 			suite.require(meal.open_meal(),"meal reopens for the control run"); await settle(suite)
 			var leak: Dictionary = await double_press(suite,game,meal.explore,0.06,touch)
@@ -328,15 +331,18 @@ static func verify(suite: SceneTree, game: Node, full: String, formal := false) 
 	suite.require(hits.prepare == before + 2,"after the window on normal frames the same spot works again")
 	meal.prepare.pressed.disconnect(on_prepare); far.pressed.disconnect(on_far)
 	meal.close_meal(false); await settle(suite)
-	# 11. The HUD zoom control is fast: five presses within about 300 ms all act.
+	# 11. The HUD zoom control is fast: five presses within about 300 ms all act. On desktop that is the corner column's +
+	# (HUD Phase 2: the bar holds three, and the tray's Zoom In is case 16's).
 	await reset(suite,game,full)
 	var zoom_downs := [0]
 	var on_zoom := func(): zoom_downs[0] += 1
-	game.zoom_in_control.button_down.connect(on_zoom)
-	var zoom_at: Vector2 = game.zoom_in_control.get_global_rect().get_center()
+	var desk_zoom: Button = game.map_tools_buttons[2]
+	suite.require(desk_zoom.is_visible_in_tree() and desk_zoom.accessibility_name == "Zoom In","desktop's corner Zoom In is on screen (bar %s, tray %s, panel %s, activity %s, card %s, scene %s, column %s)" % [game.controls.is_visible_in_tree(),game.phone_tray_open,game.any_side_panel_visible(),game.is_focused_activity_visible(),game.is_story_card_visible(),game.play_area_rect(),game.map_tools.get_global_rect()])
+	desk_zoom.button_down.connect(on_zoom)
+	var zoom_at: Vector2 = desk_zoom.get_global_rect().get_center()
 	for i in range(5):
 		await click(suite,zoom_at); await suite.create_timer(0.04).timeout
-	game.zoom_in_control.button_down.disconnect(on_zoom)
+	desk_zoom.button_down.disconnect(on_zoom)
 	suite.require(zoom_downs[0] == 5 and game.press_swallowed == 0,"Zoom In pressed five times quickly acts five times")
 	# 12. The whole window counts: a repeat 250 ms after the release is the same double press. A finger repeat 34 px away is the
 	# same tap (touch radius 36), one 44 px away is a new tap.
@@ -363,8 +369,9 @@ static func verify(suite: SceneTree, game: Node, full: String, formal := false) 
 	# 13. Rapid controls repeat only while they stay put. A dock's short last hub page lifts the pager row: a double press on
 	# Previous pages back once and never presses the hub action that lands under the pointer (no save). A hub standing on the
 	# walking controls keeps its pager put, so the same double press pages back twice (Previous only relabels) and mid-hub
-	# Next repeats. A page holds the rows that fit (a tall phone has no pager), so 559x360 docks and 800x600 stands.
-	for size in [Vector2i(559,360),Vector2i(800,600)]:
+	# Next repeats. A page holds the rows that fit (a tall phone has no pager), so 559x360 docks and 800x560 stands. (800x600
+	# had three pages above the old two-row bar; above the one-row bar it has two, too few to page back twice.)
+	for size in [Vector2i(559,360),Vector2i(800,560)]:
 		var touch: bool = size.x < 600
 		for profile in ["fresh","full"]:
 			await reset(suite,game,full,size)
@@ -439,9 +446,13 @@ static func verify(suite: SceneTree, game: Node, full: String, formal := false) 
 	for size in [Vector2i(1100,760),Vector2i(390,667)]:
 		var touch: bool = size.x < 600
 		await reset(suite,game,full,size)
+		# Phones' zooms are the tray's, side by side; desktop's are the corner column's + and −, one above the other.
+		var zin: Button = game.zoom_in_control if touch else game.map_tools_buttons[2]
+		var zout: Button = game.zoom_out_control if touch else game.map_tools_buttons[3]
 		if touch:
 			game.follow_player(); await settle(suite,4); game.press_phone_explore(); await settle(suite)
-		var ra: Rect2 = game.zoom_in_control.get_global_rect(); var rb: Rect2 = game.zoom_out_control.get_global_rect()
+		suite.require(zin.is_visible_in_tree() and zout.is_visible_in_tree(),"both zoom neighbours are on screen at %s" % size)
+		var ra: Rect2 = zin.get_global_rect(); var rb: Rect2 = zout.get_global_rect()
 		var row := absf(ra.get_center().y - rb.get_center().y) < 2.0
 		var first := ra if (ra.position.x < rb.position.x if row else ra.position.y < rb.position.y) else rb
 		var second := rb if first == ra else ra
@@ -450,7 +461,7 @@ static func verify(suite: SceneTree, game: Node, full: String, formal := false) 
 		suite.require(pa.distance_to(pb) < game.PRESS_SETTLE_RADIUS,"the facing edges are inside the radius (%.0f px)" % pa.distance_to(pb))
 		var both := [0]
 		var on_both := func(): both[0] += 1
-		for z in [game.zoom_in_control,game.zoom_out_control]: z.button_down.connect(on_both)
+		for z in [zin,zout]: z.button_down.connect(on_both)
 		var swallowed_before: int = game.press_swallowed
 		await click(suite,pa,touch); await suite.create_timer(0.06).timeout
 		await click(suite,pb,touch); await settle(suite,3)
@@ -469,7 +480,7 @@ static func verify(suite: SceneTree, game: Node, full: String, formal := false) 
 		swallowed_before = game.press_swallowed
 		await click(suite,first.get_center(),touch); await suite.create_timer(0.06).timeout
 		await click(suite,second.get_center(),touch); await settle(suite,3)
-		for z in [game.zoom_in_control,game.zoom_out_control]: z.button_down.disconnect(on_both)
+		for z in [zin,zout]: z.button_down.disconnect(on_both)
 		suite.require(both[0] == 4 and game.press_swallowed == swallowed_before,"quick presses on the two centres both act at %s: %d" % [size,both[0]])
 		await calm(suite,game)
 	cases += 1

@@ -892,7 +892,8 @@ func refresh_stick() -> void:
 			if contacts[id].role == "move":
 				drop_contact(id)
 
-## The street button, the stick and the Mouse look toggle, for the caption and guide-arrow `occupied` lists.
+## The street button, the stick, the Mouse look toggle and desktop's map tools under them, for the caption, banner and
+## guide-arrow `occupied` lists.
 func occupied_rects() -> Array[Rect2]:
 	var rects: Array[Rect2] = []
 	if button_visible():
@@ -901,6 +902,9 @@ func occupied_rects() -> Array[Rect2]:
 		rects.append(stick.get_global_rect().grow(6.0))
 	if mouselook_visible():
 		rects.append(mouselook_btn.get_global_rect().grow(6.0))
+	var tools: Rect2 = game.map_tools_rect()
+	if tools.has_area():
+		rects.append(tools.grow(6.0))
 	return rects
 
 ## Called once per frame from `_process`: region changes, the floating button and the stick.

@@ -491,6 +491,8 @@ var phone_actions_open := false
 var phone_talk_owner := -1
 var phone_hid_walking := false
 var phone_ui_signature: Array = []
+var map_tools: VBoxContainer # Desktop corner column: Map, Find Me, +, − (make_map_tools).
+var map_tools_buttons: Array[Button] = []
 var header_panel: PanelContainer
 var overview_size := 400.0
 var in_overview := true
@@ -849,7 +851,11 @@ var block_page_nav: HBoxContainer
 var block_page_prev: Button
 var block_page_next: Button
 var block_close_btn: Button
-var block_hub_page := 0
+var block_hub_page := 0:
+	set(value):
+		block_hub_page = value
+		block_hub_page_chosen = true # Any write is a choice, even of the same number; layout_block_action_pages() clears it.
+var block_hub_page_chosen := false
 var quiet_seats: Node
 var bea_invitation: Node
 var table_quiet_seats: Array[Node3D] = []
@@ -891,6 +897,7 @@ const BLOCK_ACTION_COUNT := 10
 const HUB_ROW_PITCH := 48.0 # One row of 44 px hub actions and the grid's 4 px gap.
 const HUB_MIN_SCENE := 180.0 # Street a bottom hub leaves above it before it pages.
 var block_hub_page_size := 0
+var block_hub_anchor := 0 # The first action of the page chosen last (layout_block_action_pages).
 var conv_buttons: Array[Button] = []
 var conv_chat_btn: Button
 var conv_next_btn: Button
@@ -6776,7 +6783,7 @@ func block_action_page_count() -> int:
 ## A bottom hub keeps HUB_MIN_SCENE of street above it; a dock runs from under the header to the screen bottom.
 ## Read from the viewport and the panel's fixed parts, not its current size, so a caller can pick a page before showing it.
 func block_actions_per_page() -> int:
-	if not uses_paged_block_actions() or block_panel == null:
+	if not uses_paged_block_actions() or block_panel == null or controls == null: # make_ui lays out the hub before the bar.
 		return BLOCK_ACTION_COUNT
 	var vp := bubble_viewport_size()
 	var dock := vp.x >= SMALL_SIDE_HUB_MIN_WIDTH and vp.y < SIDE_HUB_MAX_HEIGHT
@@ -6824,11 +6831,26 @@ func uses_compact_narrow_panels() -> bool:
 func uses_compact_activity_controls() -> bool:
 	return has_side_panel_dock() or uses_compact_narrow_panels()
 
-func uses_short_narrow_walking() -> bool:
-	# Keep the normal control grid stable in Map and chapter cards too.
-	# Camera fitting still requires following_player; this flag describes layout.
+## The HUD's size class (docs/HUD_REDESIGN_PLAN.md 5), read on every layout: "portrait" (narrower than 600 and taller
+## than wide), "landscape" (shorter than 560) or "desktop". It sets the bottom bar's height and font and the corner tools.
+func hud_size_class() -> String:
 	var vp := bubble_viewport_size()
-	return vp.x >= SMALL_SIDE_HUB_MIN_WIDTH and vp.x < SIDE_HUB_MIN_WIDTH and vp.y < SIDE_HUB_MAX_HEIGHT and not any_side_panel_visible()
+	if vp.x < SIDE_HUB_MIN_WIDTH and vp.y > vp.x:
+		return "portrait"
+	if vp.y < SIDE_HUB_MAX_HEIGHT:
+		return "landscape"
+	return "desktop"
+
+## The bottom bar's button height: 44 px on landscape phones, 50 px elsewhere.
+func hud_bar_height() -> float:
+	return 44.0 if hud_size_class() == "landscape" else 50.0
+
+## The bottom bar's font: 14 px portrait, 13 px landscape, 19 px desktop.
+func hud_bar_font_size() -> int:
+	match hud_size_class():
+		"portrait": return 14
+		"landscape": return 13
+	return 19
 
 func has_side_panel_dock() -> bool:
 	for panel in [block_panel, mural_panel, music_panel]:
@@ -6836,12 +6858,19 @@ func has_side_panel_dock() -> bool:
 			return true
 	return false
 
+## One bottom bar everywhere (HUD Phase 2): Next Step, the walk/talk button and Explore at every size, with Map, Find Me
+## and Zoom in the Explore tray. Kept as a function because the snapshot and the checks read it.
 func uses_phone_disclosure() -> bool:
+	return true
+
+## A tall phone's conversation: the panel stands on the screen bottom over the hidden bar and Next Step discloses the
+## steps row. Wider and shorter screens keep their talk panels until the sheet (Phase 3).
+func uses_phone_talk_rows() -> bool:
 	var vp := bubble_viewport_size()
 	return vp.x < SMALL_SIDE_HUB_MIN_WIDTH and vp.y > vp.x and vp.y >= 520.0
 
 func phone_talking() -> bool:
-	return uses_phone_disclosure() and block_panel != null and block_panel.visible and block_panel_mode == "talk" and talk_partner >= 0
+	return uses_phone_talk_rows() and block_panel != null and block_panel.visible and block_panel_mode == "talk" and talk_partner >= 0
 
 func phone_map_return() -> bool:
 	return uses_phone_disclosure() and not following_player and not any_side_panel_visible() and not is_focused_activity_visible()
@@ -6853,7 +6882,19 @@ func close_phone_disclosure(restore_focus := false) -> void:
 	if restore_focus and phone_explore_control != null and phone_explore_control.is_visible_in_tree(): phone_explore_control.grab_focus()
 	phone_ui_signature.clear()
 
+## Landscape phones and desktop kept Map, Find Me and Zoom beside an open hub, mural or music panel before the bar became one
+## row, so Explore stays on the bar beside them and closes the panel as it opens the tray. A tall phone's panels cover the
+## tray's place, and a conversation keeps its own row (both until the sheet, Phase 3).
+func explore_over_panel() -> bool:
+	if hud_size_class() == "portrait" or (block_panel != null and block_panel.visible and block_panel_mode == "talk"):
+		return false
+	return any_side_panel_visible()
+
 func press_phone_explore() -> void:
+	if not phone_tray_open and explore_over_panel():
+		if block_panel.visible: show_block_panel(false)
+		if mural_panel.visible: show_mural_panel(false)
+		if music_panel.visible: show_music_panel(false)
 	phone_tray_open = not phone_tray_open
 	phone_actions_open = false
 	cancel_map_pinch()
@@ -6862,14 +6903,15 @@ func press_phone_explore() -> void:
 	else: phone_explore_control.grab_focus()
 	announce_a11y_status("Explore: Map, Find Me, Zoom and All Actions. Close returns to the street." if phone_tray_open else "Explore closed.")
 
-func press_next_hint() -> void:
+## Next Step, wherever it is (the bar, the objective line, the conversation row): from the map it is Back to Me; otherwise
+## it gives the hint with its actions. In a tall phone's conversation the actions are the steps row, which it opens and
+## closes; elsewhere they are already on screen (the conversation row, or the walk button beside it on the bar).
+func press_next_step() -> void:
+	if phone_primary_transition: return
 	if phone_map_return():
 		close_phone_disclosure()
 		frame_player_for_walking()
-	else: ask_whats_next()
-
-func press_conversation_next() -> void:
-	if phone_primary_transition: return
+		return
 	if not phone_talking():
 		ask_whats_next()
 		return
@@ -6894,19 +6936,14 @@ func refresh_phone_disclosure() -> void:
 func configure_phone_disclosure() -> void:
 	if phone_tray == null: return
 	var enabled := uses_phone_disclosure()
-	if enabled != phone_controls_mounted:
+	if not phone_controls_mounted:
+		# Once, at build: Map, Find Me and Zoom move into the Explore tray and Explore joins the bar; callbacks stay theirs.
 		close_phone_disclosure()
-		if enabled:
-			for btn in [map_control,phone_find_control,zoom_in_control,zoom_out_control]: btn.reparent(phone_tray_grid)
-			var secondary: Array[Button] = [map_control,phone_find_control,zoom_in_control,zoom_out_control]
-			for i in range(secondary.size()): phone_tray_grid.move_child(secondary[i],i)
-			phone_explore_control.reparent(controls)
-		else:
-			for btn in phone_original_walk_buttons:
-				if btn.get_parent() != controls: btn.reparent(controls)
-			for i in range(phone_original_walk_buttons.size()): controls.move_child(phone_original_walk_buttons[i],i)
-			phone_explore_control.reparent(phone_tray.get_parent())
-		phone_controls_mounted = enabled
+		for btn in [map_control,phone_find_control,zoom_in_control,zoom_out_control]: btn.reparent(phone_tray_grid)
+		var secondary: Array[Button] = [map_control,phone_find_control,zoom_in_control,zoom_out_control]
+		for i in range(secondary.size()): phone_tray_grid.move_child(secondary[i],i)
+		phone_explore_control.reparent(controls)
+		phone_controls_mounted = true
 	var talking := phone_talking()
 	if phone_talk_owner != talk_partner:
 		phone_talk_owner = talk_partner
@@ -6916,33 +6953,39 @@ func configure_phone_disclosure() -> void:
 	var panel_open := any_side_panel_visible()
 	if not enabled or blocked or panel_open: phone_tray_open = false
 	phone_tray.visible = enabled and phone_tray_open and controls.visible and not talking and not blocked
-	phone_explore_control.visible = enabled and not panel_open and not blocked
+	# A focused activity hides the whole layer and restores it as it closes, so Explore stays set inside the bar and is back
+	# in the same frame (a press that closes the activity lands on the bar it reveals, as it did on the old walk control).
+	phone_explore_control.visible = enabled and (not panel_open or explore_over_panel()) and not is_story_card_visible()
 	if talking and current_path.is_empty():
 		if controls.visible: phone_hid_walking = true
 		controls.visible = false
 	elif phone_hid_walking and not blocked:
 		controls.visible = true
 		phone_hid_walking = false
-	if enabled:
-		controls.columns = 3
-		phone_explore_control.text = "Explore"
-		next_hint_control.text = "Back to Me" if phone_map_return() else "Next Step"
-		next_hint_control.tooltip_text = "Return to the player" if phone_map_return() else "What's Next?"
-		for btn in [next_hint_control,walk_control,phone_explore_control]:
-			btn.custom_minimum_size.y = 50
-			btn.add_theme_font_size_override("font_size",14)
-			btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			btn.clip_text = false
-		for btn in [map_control,phone_find_control,zoom_in_control,zoom_out_control]:
-			btn.custom_minimum_size.y = 50
-			btn.add_theme_font_size_override("font_size",14)
-		controls.offset_top = -maxf(50.0,controls.get_combined_minimum_size().y)-12.0
-		phone_tray.offset_bottom = controls.offset_top-8.0
-		phone_tray.offset_top = phone_tray.offset_bottom-phone_tray.get_combined_minimum_size().y
-	else:
-		for btn in [next_hint_control]:
-			btn.autowrap_mode = TextServer.AUTOWRAP_OFF
-			btn.clip_text = true
+	# The bar is one row of three: 44 px tall on landscape phones and 50 px elsewhere, taller only if a label wraps.
+	var bar_height := hud_bar_height()
+	var bar_font := hud_bar_font_size()
+	controls.columns = 3
+	phone_explore_control.text = "Explore"
+	next_hint_control.text = "Back to Me" if phone_map_return() else "Next Step"
+	next_hint_control.tooltip_text = "Return to the player" if phone_map_return() else "What's Next?"
+	for btn in [next_hint_control,walk_control,phone_explore_control]:
+		btn.custom_minimum_size.y = bar_height
+		btn.add_theme_font_size_override("font_size",bar_font)
+		btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		btn.clip_text = false
+	for btn in [map_control,phone_find_control,zoom_in_control,zoom_out_control]:
+		btn.custom_minimum_size.y = bar_height
+		btn.add_theme_font_size_override("font_size",bar_font)
+	for btn in [phone_all_actions_control,phone_tray_close]: btn.custom_minimum_size.y = bar_height
+	controls.offset_top = -maxf(bar_height,controls.get_combined_minimum_size().y)-12.0
+	# The tray stands on the bar: full width on a tall phone, at most 480 px wide over Explore on wider screens.
+	var vp := bubble_viewport_size()
+	var tray_width := vp.x-24.0 if hud_size_class() == "portrait" else minf(vp.x-24.0,480.0)
+	phone_tray.offset_left = vp.x-12.0-tray_width
+	phone_tray.offset_right = -12.0
+	phone_tray.offset_bottom = controls.offset_top-8.0
+	phone_tray.offset_top = phone_tray.offset_bottom-phone_tray.get_combined_minimum_size().y
 	walk_control.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	walk_control.clip_text = false
 	if talking:
@@ -6961,6 +7004,7 @@ func configure_phone_disclosure() -> void:
 		block_detail_label.size_flags_vertical = Control.SIZE_FILL
 	var focused := get_viewport().gui_get_focus_owner()
 	if talking and focused != null and not focused.is_visible_in_tree(): conv_next_btn.grab_focus()
+	layout_map_tools()
 
 func make_phone_disclosure(layer: CanvasLayer) -> void:
 	for child in controls.get_children(): phone_original_walk_buttons.append(child as Button)
@@ -6988,6 +7032,64 @@ func make_phone_disclosure(layer: CanvasLayer) -> void:
 	for btn in [map_control,phone_find_control]: btn.pressed.connect(func(): close_phone_disclosure(true))
 	configure_phone_disclosure()
 
+## Desktop's corner tools (docs/HUD_REDESIGN_PLAN.md decision 1): Map, Find Me, + and − at the right edge of the scene under
+## the Street view button, so a mouse keeps one-click map and zoom while the bar holds three. Same actions as the Explore
+## tray's Tenderloin Map, Find Me, Zoom In and Zoom Out; each says that name to a screen reader. Phones use the tray.
+func make_map_tools(layer: CanvasLayer) -> void:
+	map_tools = VBoxContainer.new()
+	map_tools.name = "MapTools"
+	map_tools.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	map_tools.add_theme_constant_override("separation", 4)
+	map_tools.visible = false
+	layer.add_child(map_tools)
+	map_tools_buttons.clear()
+	for spec in [["Map", "Tenderloin Map", wide_overview], ["Find Me", "Find Me", frame_player_for_walking], ["+", "Zoom In", func(): zoom(0.8)], ["−", "Zoom Out", func(): zoom(1.25)]]:
+		var tool := button(map_tools, String(spec[0]), spec[2])
+		tool.name = "MapTool" + String(spec[1]).replace(" ", "")
+		tool.custom_minimum_size = Vector2(44, 44)
+		tool.size_flags_horizontal = Control.SIZE_FILL
+		tool.clip_text = false
+		tool.add_theme_font_size_override("font_size", 22 if String(spec[0]).length() == 1 else 15)
+		tool.tooltip_text = String(spec[1])
+		tool.accessibility_name = String(spec[1])
+		map_tools_buttons.append(tool)
+
+func uses_map_tools() -> bool:
+	return hud_size_class() == "desktop"
+
+## Right edge of the scene, below the Street view button and, at eye level with a mouse, below Mouse look; below the reward
+## note while it shows there. A panel leaves it up while the scene above the panel still holds it (one-click map and zoom
+## stay beside a conversation, as on the old two-row bar); the Explore tray, the menu, a card or a focused activity hide it.
+func layout_map_tools() -> void:
+	if map_tools == null:
+		return
+	var area := play_area_rect()
+	var column := map_tools.get_combined_minimum_size()
+	var top := area.position.y + 44.0 + 8.0 # The Street view button's place, kept while the button hides (Map overview).
+	if street_view != null:
+		if street_view.button_visible(): top = maxf(top, street_view.button.get_global_rect().end.y + 8.0)
+		if street_view.mouselook_visible(): top = maxf(top, street_view.mouselook_btn.get_global_rect().end.y + 8.0)
+	var rect := Rect2(Vector2(area.end.x - column.x, top), column)
+	if reward_banner != null and reward_banner.is_visible_in_tree() and reward_banner.get_global_rect().intersects(rect):
+		rect.position.y = reward_banner.get_global_rect().end.y + 6.0
+	var show := uses_map_tools() and controls != null and controls.is_visible_in_tree() and not phone_tray_open and not menu_open
+	show = show and not is_focused_activity_visible() and not is_story_card_visible()
+	map_tools.visible = show and rect.end.y <= area.end.y and area.size.x >= column.x + 132.0 + 16.0
+	map_tools.position = rect.position
+	map_tools.size = column
+
+func map_tools_rect() -> Rect2:
+	return map_tools.get_global_rect() if map_tools != null and map_tools.is_visible_in_tree() else Rect2()
+
+func map_tools_snapshot() -> Dictionary:
+	var tools: Array[Dictionary] = []
+	for tool in map_tools_buttons:
+		var entry := control_snapshot(tool)
+		entry["text"] = tool.text
+		entry["name"] = String(tool.accessibility_name)
+		tools.append(entry)
+	return {"visible": map_tools != null and map_tools.is_visible_in_tree(), "panel": control_snapshot(map_tools), "buttons": tools}
+
 func layout_walking_controls_and_hub() -> void:
 	if controls == null or block_panel == null:
 		return
@@ -6995,28 +7097,14 @@ func layout_walking_controls_and_hub() -> void:
 	var side := has_side_panel_dock()
 	var compact := uses_compact_activity_controls()
 	var short_phone := uses_compact_narrow_panels()
-	var short_walking := uses_short_narrow_walking()
 	var vp := bubble_viewport_size()
 	# Small landscape readers share the narrow dock; wider layouts keep their width.
 	var dock_min := 280.0 if vp.x < WIDE_SIDE_PANEL_MIN_WIDTH else 312.0
 	var dock_width := clampf(vp.x * 0.52, dock_min, 440.0)
+	# The bar's row, height and fonts are configure_phone_disclosure's (one bar at every size); a docked panel takes its right.
 	controls.offset_right = -(dock_width + 20.0) if side else -12.0
-	controls.columns = 3 if compact or short_walking else (2 if narrow else 3)
-	# Two50px rows,4px separation and12px bottom margin in short phone walking.
-	controls.offset_top = -104.0 if compact else (-116.0 if short_walking else (-174.0 if narrow else -124.0))
-	var walking_buttons: Array = phone_original_walk_buttons.duplicate() if not phone_original_walk_buttons.is_empty() else controls.get_children()
-	if phone_explore_control != null: walking_buttons.append(phone_explore_control)
-	for child in walking_buttons:
-		if child is Button:
-			child.custom_minimum_size.y = 44.0 if compact else 50.0
-			child.add_theme_font_size_override("font_size", 12 if compact else (14 if narrow else 19))
-	map_control.text = "TL Map" if compact else "Tenderloin Map"
 	map_control.tooltip_text = "Tenderloin Map"
-	next_hint_control.text = ("Next" if vp.x < SIDE_HUB_MIN_WIDTH and side else "Next Step") if compact else "What's Next?"
-	next_hint_control.tooltip_text = "What's Next?"
-	zoom_in_control.text = "Zoom +" if compact else "Zoom In (+)"
 	zoom_in_control.tooltip_text = "Zoom In (+)"
-	zoom_out_control.text = "Zoom -" if compact else "Zoom Out (−)"
 	zoom_out_control.tooltip_text = "Zoom Out (−)"
 	update_walk_control()
 	block_label.add_theme_font_size_override("font_size", 13 if side or narrow else 16)
@@ -7027,7 +7115,7 @@ func layout_walking_controls_and_hub() -> void:
 	for b in conv_buttons:
 		b.add_theme_font_size_override("font_size", 13 if side or narrow else 15)
 		var owner_return := b in conv_action_btns and String(conv_action_ids[conv_action_btns.find(b)]).begins_with("return_owner:")
-		var named_phone_choice := uses_phone_disclosure() and b in conv_action_btns
+		var named_phone_choice := uses_phone_talk_rows() and b in conv_action_btns
 		b.clip_text = not compact and not owner_return and not named_phone_choice
 		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if compact or owner_return or named_phone_choice else TextServer.AUTOWRAP_OFF
 	for label in [mural_label, music_label]:
@@ -7124,10 +7212,21 @@ func layout_block_action_pages() -> void:
 	# A new page size (a resize, or the note under the header coming or going) keeps the focused action on screen.
 	var owner := get_viewport().gui_get_focus_owner()
 	var focused := block_buttons.find(owner) if owner is Button else -1
+	# Without a focused action the page keeps its first action (block_hub_anchor), so a run of page sizes, as when an open
+	# activity is resized and its note hides and shows, comes back to the page it started on. A page set by paging, by
+	# the suggested step or by a caller moves the anchor.
+	# A caller counts its page in the current page size (block_hub_page_of), so a chosen page anchors at that size.
+	var chosen := block_hub_page_size <= 0 or block_hub_page_chosen
 	if per != block_hub_page_size and focused >= 0 and focused < BLOCK_ACTION_COUNT:
 		block_hub_page = focused / per
+		block_hub_anchor = focused
+	elif chosen:
+		block_hub_anchor = block_hub_page * per
+	elif per != block_hub_page_size:
+		block_hub_page = block_hub_anchor / per
 	block_hub_page_size = per
 	block_hub_page = clampi(block_hub_page, 0, count - 1)
+	block_hub_page_chosen = false
 	# Ten actions are two rows of five on a wide hub and rows of two elsewhere.
 	block_actions_grid.columns = 2 if narrow else 5
 	for i in range(mini(BLOCK_ACTION_COUNT, block_buttons.size())):
@@ -7334,7 +7433,7 @@ func update_guide_arrow() -> void:
 		occupied.append(bea_invitation.inspection_rect())
 	if mural_inspection_rect().has_area(): occupied.append(mural_inspection_rect())
 	if helper_bench != null and helper_bench.inspection_rect().has_area(): occupied.append(helper_bench.inspection_rect())
-	if uses_compact_activity_controls() or uses_short_narrow_walking():
+	if uses_compact_activity_controls() or hud_size_class() == "landscape":
 		occupied.append(player_overlay_rect().grow(4.0))
 	if reward_banner != null and reward_banner.is_visible_in_tree():
 		occupied.append(reward_banner.get_global_rect())
@@ -7608,9 +7707,6 @@ func frame_player_for_walking() -> void:
 	target = Vector3(player.position.x, 1.0, player.position.z)
 	update_camera()
 	update_occlusion(true)
-	# Map hides/rescales YOU; refit after its billboard is visible and rebuilt.
-	if uses_short_narrow_walking():
-		refit_panel_after_layout()
 	update_guide_marker()
 	get_viewport().gui_release_focus()
 	info.text = "You're here. %s.\nFollow the gold marker or tap What's Next?" % location_phrase(player_xz())
@@ -9366,9 +9462,7 @@ func refit_panel_after_layout() -> void:
 	if generation == panel_refit_generation:
 		if is_focused_activity_visible():
 			return
-		if following_player and uses_short_narrow_walking():
-			refresh_hub_camera()
-		elif following_player and civic_listening != null and civic_listening.entry.is_visible_in_tree() and block_panel.visible and block_panel_mode=="hub":
+		if following_player and civic_listening != null and civic_listening.entry.is_visible_in_tree() and block_panel.visible and block_panel_mode=="hub":
 			# YOU's billboard can rebuild after a resize. Fit only if it now clips;
 			# already-fitted and deliberately panned views keep their exact pose.
 			var body := player_overlay_rect()
@@ -12068,12 +12162,13 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"side_panel_dock": has_side_panel_dock(),
 		"compact_narrow_activity": uses_compact_narrow_activities(),
 		"compact_narrow_hub": uses_compact_narrow_hub(),
-		"short_narrow_walking": uses_short_narrow_walking(),
 		"compact_panel_layout_pending": compact_panel_layout_pending,
 		"conversation_detail": activity_detail_snapshot(block_detail_label, block_panel, conv_buttons),
 		"panel_subject_screen": rect_snapshot(Rect2(camera.unproject_position(panel_frame_subject), Vector2.ZERO)) if panel_frame_control != null and panel_frame_control.visible else {},
 		"panel_subject_points": panel_subject_snapshots(),
 		"walking_controls": walking_control_snapshots(),
+		"map_tools": map_tools_snapshot(),
+		"hud_size_class": hud_size_class(),
 		"phone_disclosure": {"enabled":uses_phone_disclosure(),"transition":phone_primary_transition,"all_actions":control_snapshot(phone_all_actions_control),"tray":control_snapshot(phone_tray),"explore":control_snapshot(phone_explore_control),"close":control_snapshot(phone_tray_close),"actions_open":phone_actions_open},
 		"info_reader": activity_detail_snapshot(info, info_panel, [info_hide_btn]),
 		"block_page_previous": control_snapshot(block_page_prev),
@@ -14184,7 +14279,7 @@ func update_walk_control() -> void:
 	if not walking and active_story_episode() == null:
 		var choice := primary_walk_choice()
 		walk_control.text = String(choice.kind).capitalize()+" "+String(choice.name)
-		walk_control.tooltip_text = walk_control.text+". Walk to this resident; arrival uses the existing greeting."+(" N/B still cycle residents." if not uses_phone_disclosure() else "")
+		walk_control.tooltip_text = walk_control.text+". Walk to this resident; arrival uses the existing greeting."+(" N/B still cycle residents." if not uses_phone_talk_rows() else "")
 	if not walking and power_story != null and power_story.active:
 		walk_control.text="Power Story"
 		walk_control.tooltip_text="Resume the relay adventure or End story to return to your afternoon."
@@ -14222,7 +14317,7 @@ func press_walk_control() -> void:
 	if walk_control_press_handled:
 		return
 	walk_control_press_handled = true
-	if uses_phone_disclosure():
+	if uses_phone_talk_rows():
 		phone_primary_transition = true
 	activate_walk_control()
 
@@ -14419,7 +14514,7 @@ func update_readable_scene_labels() -> void:
 		occupied.append(bea_invitation.inspection_rect())
 	if mural_inspection_rect().has_area(): occupied.append(mural_inspection_rect())
 	if helper_bench != null and helper_bench.inspection_rect().has_area(): occupied.append(helper_bench.inspection_rect())
-	if uses_compact_activity_controls() or uses_short_narrow_walking():
+	if uses_compact_activity_controls() or hud_size_class() == "landscape":
 		occupied.append(player_overlay_rect().grow(4.0))
 	if reward_banner != null and reward_banner.is_visible_in_tree():
 		occupied.append(reward_banner.get_global_rect().grow(6.0))
@@ -14498,6 +14593,7 @@ func _process(delta: float) -> void:
 	refresh_phone_disclosure()
 	if street_view != null:
 		street_view.tick()
+	layout_map_tools() # After the street button and Mouse look have their place for this frame.
 	if player_nameplate != null and camera != null:
 		player_nameplate.pixel_size = screen_constant_scale(1.0, player_nameplate.global_position) / player_visual.scale.y
 		player_nameplate.visible = not in_overview and not in_wide_overview and not street_view_active()
@@ -14619,6 +14715,8 @@ func is_screen_point_in_ui(screen_pos: Vector2) -> bool:
 	if street_view != null and street_view.button_visible() and street_view.button.get_global_rect().has_point(screen_pos):
 		return true
 	if street_view != null and street_view.mouselook_visible() and street_view.mouselook_btn.get_global_rect().has_point(screen_pos):
+		return true
+	if map_tools_rect().has_point(screen_pos):
 		return true
 	return false
 
@@ -15375,9 +15473,9 @@ func update_camera() -> void:
 	camera.position = target + get_camera_offset_vec() * offset_scale
 	camera.look_at(target)
 	camera.force_update_transform()
-	# Hubs and short phone walking keep the followed character in the scene area.
+	# Hubs keep the followed character in the scene area.
 	# Keep inspection/panned views, heading and zoom under the player's control.
-	if following_player and not (is_focused_activity_visible()) and ((block_panel != null and block_panel.visible and block_panel_mode == "hub") or uses_short_narrow_walking()):
+	if following_player and not (is_focused_activity_visible()) and (block_panel != null and block_panel.visible and block_panel_mode == "hub"):
 		var focus := player.position + Vector3.UP
 		var ppm := (camera.unproject_position(target + camera.global_basis.y) - camera.unproject_position(target)).length()
 		if ppm > 1e-5:
@@ -15386,7 +15484,7 @@ func update_camera() -> void:
 			camera.position = target + get_camera_offset_vec() * offset_scale
 			camera.look_at(target)
 			camera.force_update_transform()
-			if uses_compact_narrow_hub() or (uses_side_block_hub() and is_narrow_layout()) or uses_short_narrow_walking() or (civic_listening != null and civic_listening.entry.visible):
+			if uses_compact_narrow_hub() or (uses_side_block_hub() and is_narrow_layout()) or (civic_listening != null and civic_listening.entry.visible):
 				# Focus at one meter is not the center of the enlarged body/YOU bounds.
 				# Fit those bounds after content growth without changing heading or zoom.
 				var body := player_overlay_rect()
@@ -16114,7 +16212,7 @@ func make_ui() -> void:
 	objective_btn.focus_mode = Control.FOCUS_ALL
 	style_game_button(objective_btn)
 	objective_btn.add_theme_stylebox_override("normal", StyleBoxEmpty.new()) # Reads as a line of text; hover and focus still show.
-	objective_btn.pressed.connect(press_next_hint)
+	objective_btn.pressed.connect(press_next_step)
 	header_row.add_child(objective_btn)
 	# The line clips to one row; its full text is the button's name and tooltip, and the Next Step hint says it in full.
 	objective_label = Label.new()
@@ -16315,7 +16413,7 @@ func make_ui() -> void:
 	conv_chat_btn = conv_button(c_row1, "Keep Chatting (T)", func():
 		if not phone_primary_transition: keep_chatting()
 	)
-	conv_next_btn = conv_button(c_row1, "What's Next?", press_conversation_next)
+	conv_next_btn = conv_button(c_row1, "What's Next?", press_next_step)
 	conv_bye_btn = conv_button(c_row1, "Goodbye (Esc)", func():
 		if not phone_primary_transition: end_conversation()
 	)
@@ -16371,7 +16469,7 @@ func make_ui() -> void:
 	controls.offset_top = -124
 	controls.offset_bottom = -12
 	layer.add_child(controls)
-	next_hint_control = button(controls, "What's Next?", press_next_hint)
+	next_hint_control = button(controls, "What's Next?", press_next_step)
 	map_control = button(controls, "Tenderloin Map", wide_overview)
 	button(controls, "Find Me", frame_player_for_walking)
 	zoom_in_control = button(controls, "Zoom In (+)", func(): zoom(0.8))
@@ -16382,9 +16480,11 @@ func make_ui() -> void:
 	walk_control.button_up.connect(func(): walk_control_press_handled = false)
 	# Zoom repeats in place. The rest are guarded: What's Next relabels to Back to Me on a phone map, and a double press on the
 	# walk control must not start a walk and stop it, or open a story or conversation and press inside it.
-	for zoom_control in [zoom_in_control, zoom_out_control]: zoom_control.set_meta("rapid", true)
+	# (Zoom In and Zoom Out, with desktop's corner + and −, are marked rapid after make_map_tools below.)
 	update_walk_control()
 	make_phone_disclosure(layer)
+	make_map_tools(layer)
+	for zoom_control in [zoom_in_control, zoom_out_control, map_tools_buttons[2], map_tools_buttons[3]]: zoom_control.set_meta("rapid", true)
 	guide_arrow = Control.new()
 	guide_arrow.name = "GuideArrow"
 	guide_arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -16529,7 +16629,7 @@ func make_ui() -> void:
 				update_music_ui()
 		if is_instance_valid(block_panel):
 			update_block_ui()
-			if following_player and ((block_panel.visible and block_panel_mode == "hub") or uses_short_narrow_walking()):
+			if following_player and block_panel.visible and block_panel_mode == "hub":
 				refresh_hub_camera.call_deferred()
 		layout_walking_controls_and_hub()
 		refit_panel_after_layout()
@@ -16543,7 +16643,7 @@ func make_ui() -> void:
 		panel.minimum_size_changed.connect(queue_compact_panel_layout)
 		panel.resized.connect(queue_compact_panel_layout)
 	header_panel.resized.connect(func():
-		if uses_compact_activity_controls() or uses_short_narrow_walking():
+		if uses_compact_activity_controls():
 			layout_walking_controls_and_hub.call_deferred()
 			if following_player:
 				refresh_hub_camera.call_deferred()

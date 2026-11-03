@@ -241,12 +241,16 @@ async function revealPhoneControl(page,b,tap){
  }else throw new Error('Hidden target is not a canonical map secondary; explicitly disclose its own menu first');
  assert.ok(b?.visible,'disclosure must expose the actual native target');return b;
 }
+// Zoom from the Explore tray leaves the tray open over the scene; a player closes it before looking at the street.
+async function closeExploreTray(page,snap,tap){const s=await snap();if(!s.phone_disclosure?.tray?.visible)return;await tap(s.phone_disclosure.close);await page.waitForFunction(()=>!window.__tenderloinGodotA11ySnapshot.phone_disclosure.tray.visible);}
 function namedWalkCaption(s){if(s.walk_target_kind!=='resume'&&s.objective_id==='meet')assert.equal(s.walk_target_neighbor,s.objective_neighbor,'walking suggestion agrees with independently computed objective');return ({resume:'Resume',meet:'Meet',visit:'Visit'}[s.walk_target_kind]||'')+' '+s.walk_target_name;}
 function assertWalkingCaptions(s){
  const expected=["What's Next?",'Tenderloin Map','Find Me','Zoom In (+)','Zoom Out (−)',namedWalkCaption(s)];
  if(s.phone_disclosure?.enabled){assert.ok(['Next Step','Back to Me'].includes(s.walking_controls[0].text));assert.deepEqual(s.walking_controls.slice(1).map(b=>b.text),expected.slice(1));}
  else assert.deepEqual(s.walking_controls.map(b=>b.text),expected);
 }
+// HUD Phase 2: one bar everywhere, 44 px tall on landscape phones (shorter than 560) and 50 px elsewhere.
+const barHeight=s=>s.hud_size_class==='landscape'?44:50;
 async function phoneAwareMouseClick(page,b){
  b=await revealPhoneControl(page,b,btn=>phoneAwareMouseClick(page,btn));
  const s=await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot),c=await page.locator('#canvas').boundingBox();
@@ -270,7 +274,7 @@ async function verifyStreetSignature(page,tap,snap) {
   await tap(s.mural_detail.buttons.at(-1));
   s=await snap();
   assert.equal(s.overlays.reward.remaining,0,'actual Map dismisses the transient before inspecting world ink');
-  for(let i=0;i<2;i++){const plus=s.walking_controls.find(b=>b.text.includes('Zoom')&&b.text.includes('+'));await tap(plus);s=await snap();}
+  for(let i=0;i<2;i++){const plus=s.walking_controls.find(b=>b.text.includes('Zoom')&&b.text.includes('+'));await tap(plus);s=await snap();}await closeExploreTray(page,snap,tap);s=await snap();
   {
     const q=s.mural_signature_world.corners,center={x:q.reduce((a,p)=>a+p.x,0)/4,y:q.reduce((a,p)=>a+p.y,0)/4},r=s.play_area,dx=r.x+r.width*.55-center.x,dy=r.y+r.height*.5-center.y,c=await page.locator('#canvas').boundingBox();
     const x=c.x+(r.x+r.width*.5)*c.width/s.viewport_width,y=c.y+(r.y+r.height*.25)*c.height/s.viewport_height;
@@ -513,7 +517,7 @@ async function verifyStoryStreet(page,context,touch,tap,snap,settle,asymmetric=f
     await page.keyboard.down('Shift');await page.keyboard.down('ArrowDown');
     try{await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.camera_pose.pitch===.55);}finally{await page.keyboard.up('ArrowDown');await page.keyboard.up('Shift');}await settle();
   }
-  for(let i=0;i<5;i++)await tap((await snap()).walking_controls.find(b=>b.text.includes('Zoom')&&b.text.includes('+')));
+  for(let i=0;i<5;i++)await tap((await snap()).walking_controls.find(b=>b.text.includes('Zoom')&&b.text.includes('+')));await closeExploreTray(page,snap,tap);
   let s=await snap(),q=s.mural_scenes_world.corners,r=s.play_area,c=await page.locator('#canvas').boundingBox(),cx=q.reduce((a,p)=>a+p.x,0)/4,cy=q.reduce((a,p)=>a+p.y,0)/4;
   const x=c.x+(r.x+r.width*.5)*c.width/s.viewport_width,y=c.y+(r.y+r.height*.25)*c.height/s.viewport_height,dx=(r.x+r.width*.55-cx)*c.width/s.viewport_width,dy=(r.y+r.height*.5-cy)*c.height/s.viewport_height;
   const ground=s.player_grounding,prime=16*c.width/s.viewport_width;
@@ -859,11 +863,11 @@ async function verifyShortWalking(page,context,touch) {
       await page.screenshot({path:'artifacts/codex-small-hub-walking-caption-599x480-mouse.png'});await writeFile('artifacts/codex-small-hub-walking-caption-599x480-mouse.json',JSON.stringify(arrival,null,2));
     }
     await page.keyboard.press('KeyG');await waitForHub(page);await settle();await tap((await snapshot()).block_close_control);
-    await page.waitForFunction(()=>!window.__tenderloinGodotA11ySnapshot.block_panel_control.visible&&window.__tenderloinGodotA11ySnapshot.following_player);await settle();const closed=await snapshot();assert.ok(closed.short_narrow_walking&&encloses(closed.play_area,closed.overlays.player),'hub Close alone restores the followed short walking view before Find Me');
+    await page.waitForFunction(()=>!window.__tenderloinGodotA11ySnapshot.block_panel_control.visible&&window.__tenderloinGodotA11ySnapshot.following_player);await settle();const closed=await snapshot();assert.ok(closed.hud_size_class==='landscape'&&closed.controls_control.height<=2*barHeight(closed)&&encloses(closed.play_area,closed.overlays.player),'hub Close alone restores the followed short walking view and its one-row bar before Find Me');
     await tap((await snapshot()).walking_controls[2]);let s=await snapshot();const save=await page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1'));
-    assert.ok(s.short_narrow_walking&&s.following_player&&!s.block_panel_control.visible&&s.play_area.height>=100&&s.overlays.player.width>0&&encloses(s.play_area,s.overlays.player),'Close and Find Me retain the full enlarged player and YOU in short walking space');
+    assert.ok(s.hud_size_class==='landscape'&&s.following_player&&!s.block_panel_control.visible&&s.play_area.height>=100&&s.overlays.player.width>0&&encloses(s.play_area,s.overlays.player),'Close and Find Me retain the full enlarged player and YOU in short walking space');
     assertWalkingCaptions(s);
-    for(const b of s.walking_controls.filter(b=>b.visible))assert.ok(b.text_fits&&b.height>=50&&b.width>=44&&encloses({x:0,y:0,width,height},b),'full original walking labels and50px targets fit');
+    for(const b of s.walking_controls.filter(b=>b.visible))assert.ok(b.text_fits&&b.height>=barHeight(s)&&b.width>=44&&encloses({x:0,y:0,width,height},b),'full original walking labels and the bar targets fit');
     await tap(s.walking_controls[1]);await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.in_wide_overview);await tap((await snapshot()).walking_controls[2]);
     await page.waitForFunction(()=>!window.__tenderloinGodotA11ySnapshot.in_wide_overview&&window.__tenderloinGodotA11ySnapshot.camera_view_size===45&&window.__tenderloinGodotA11ySnapshot.following_player);await settle();s=await snapshot();assert.equal(s.camera_view_size,45);assert.ok(encloses(s.play_area,s.overlays.player));assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1')),save,'Close/Map/FindMe preserve progress');
     await page.keyboard.press('KeyH');await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.player_grounding.path_active);await settle();const moving=await snapshot();
@@ -990,7 +994,7 @@ async function verifyNarrowHub(page, context, touch) {
     await tap((await snapshot()).block_close_control);
     s=await snapshot(); assert.ok(!s.block_panel_control.visible);
     assertWalkingCaptions(s);
-    for (const b of s.walking_controls.filter(b=>b.visible)) assert.ok(b.height >= 50);
+    for (const b of s.walking_controls.filter(b=>b.visible)) assert.ok(b.height >= barHeight(s));
     assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')),save,'hub reading/paging/Info/Close preserve progression');
     if (width === 320) {
       await page.keyboard.press('Digit1'); await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.conversation_detail.panel.visible); await settle();
@@ -1134,12 +1138,12 @@ async function verifyShortActivities(page, context, touch, checks, small = false
       checks.push({ kind, width, height, touch, scene: a, panel: p });
       // Opening and closing the menu over an open activity (where Info used to grow the header) keeps the whole dock on
       // screen and the person and prop in the scene; the header stays one row.
-      const barHeight = (await snapshot()).header_control.height;
+      const headerHeight = (await snapshot()).header_control.height;
       for (const open of [true, false]) {
         if (open) await tap((await snapshot()).menu.button); else await closeMenu(page);
         const grown = await snapshot(), dock = grown[key].panel, area = grown.play_area;
         assert.equal(grown.menu.open, open);
-        assert.ok(grown.header_control.height === barHeight && dock.y >= grown.header_control.y + grown.header_control.height && dock.y + dock.height <= height - 12, 'the menu opening and closing keeps the entire dock on-screen');
+        assert.ok(grown.header_control.height === headerHeight && dock.y >= grown.header_control.y + grown.header_control.height && dock.y + dock.height <= height - 12, 'the menu opening and closing keeps the entire dock on-screen');
         for (const point of grown.panel_subject_points) assert.ok(point.x >= area.x && point.x <= area.x + area.width && point.y >= area.y && point.y <= area.y + area.height, 'the menu leaves the actual person and prop in the scene');
       }
       // Rotate with the activity open; automatic framing follows layout, manual pan does not.
@@ -1179,7 +1183,7 @@ async function verifyShortActivities(page, context, touch, checks, small = false
       const closed = await snapshot();
       assert.equal(closed.controls_control.width, width - 24, 'Close restores full walking controls');
       assertWalkingCaptions(closed);
-      for (const b of closed.walking_controls.filter(b=>b.visible)) assert.ok(b.height >= 50, 'Close restores original walking target height');
+      for (const b of closed.walking_controls.filter(b=>b.visible)) assert.ok(b.height >= barHeight(closed), 'Close restores the bar target height');
     }
   }
 }
@@ -1364,7 +1368,7 @@ async function verifySharedPanel(page,touch,size,active=false){
     const pan=async(dx,dy)=>{const s=await snap(),r=s.play_area,c=await page.locator('#canvas').boundingBox(),x=c.x+(r.x+r.width*.5)*c.width/s.viewport_width,y=c.y+(r.y+r.height*.5)*c.height/s.viewport_height;await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+dx*c.width/s.viewport_width,y+dy*c.height/s.viewport_height,{steps:8});await page.mouse.up();await settle();};
     for(let phase=0;phase<2;phase++){
       for(let lap=0;lap<16;lap++){const s=await snap(),r=s.play_area,w=s.shared_panel.world,x=w.reduce((n,t)=>n+t.x,0)/6,y=w.reduce((n,t)=>n+t.y,0)/6,dx=Math.max(-r.width*.3,Math.min(r.width*.3,r.x+r.width*.5-x)),dy=Math.max(-r.height*.3,Math.min(r.height*.3,r.y+r.height*.5-y));if(Math.hypot(dx,dy)<10)break;await pan(dx,dy);}
-      if(phase===0)for(let z=0;z<5;z++)await tap((await snap()).walking_controls.find(b=>b.text.includes('Zoom In')));
+      if(phase===0){for(let z=0;z<5;z++)await tap((await snap()).walking_controls.find(b=>b.text.includes('Zoom In')));await closeExploreTray(page,snap,tap);}
     }
     const s=await snap(),c=await page.locator('#canvas').boundingBox(),pixels=await renderedPixels(page);
     for(const tile of s.shared_panel.world){const point=(u,v)=>{const a=tile.corners[1],b=tile.corners[3],d=tile.corners[0];return {x:a.x+(b.x-a.x)*u+(d.x-a.x)*v,y:a.y+(b.y-a.y)*u+(d.y-a.y)*v};},center=point(.5,.5),corner=point(.15,.15);assert.ok(center.x>=s.play_area.x&&center.x<=s.play_area.x+s.play_area.width&&center.y>=s.play_area.y&&center.y<=s.play_area.y+s.play_area.height,'deliberate manual view reaches actual tile front');const rgb=q=>pixels.pixel(c.x+q.x*c.width/s.viewport_width,c.y+q.y*c.height/s.viewport_height),fg=rgb(center),bg=rgb(corner);if(fg.reduce((n,v,i)=>n+(v-bg[i]>3?1:0),0)>=2&&fg.reduce((n,v,i)=>n+Math.abs(v-bg[i]),0)>=22)worldInk++;}
@@ -1520,7 +1524,7 @@ async function verifyLarkinStory(page,touch,size,privateFixture=false){
     let beforeWorld,worldPose,worldRect;
     if(station===0){
       await tap((await snap()).power_story.buttons[12]);await page.keyboard.press('KeyF');await settle();
-      for(let i=0;i<2;i++)await tap((await snap()).walking_controls.find(b=>b.text.includes('Zoom')&&b.text.includes('+')));
+      for(let i=0;i<2;i++)await tap((await snap()).walking_controls.find(b=>b.text.includes('Zoom')&&b.text.includes('+')));await closeExploreTray(page,snap,tap);
       const t=await snap(),r=t.play_area,c=await page.locator('#canvas').boundingBox(),x=c.x+(r.x+r.width*.45)*c.width/t.viewport_width,y=c.y+(r.y+r.height*.7)*c.height/t.viewport_height;
       if(touch){const cd=await page.context().newCDPSession(page);await cd.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y,id:0}]});for(let k=1;k<=4;k++)await cd.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+24*k/4,y,id:0}]});await cd.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await cd.detach();}
       else{await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+24,y,{steps:4});await page.mouse.up();}
@@ -1573,7 +1577,7 @@ async function verifyVotingStory(page,touch,size,privateFixture=false){
  assert.equal(await save(),before);assert.equal(s.music_playing,quiet);assert.match(s.voting_story.text,/later relocations unverified/);assert.match(s.voting_story.text,/398 Eddy/);assert.match(s.voting_story.text,/240 Eddy/);
  await page.screenshot({path:`artifacts/voting-${size.width}-${touch?'finger':'mouse'}.png`});
  const completed=s.voting_story;await tap(completed.buttons[11]);await page.keyboard.press('KeyF');await settle();
- for(let i=0;i<6;i++)await tap((await snap()).walking_controls.find(b=>b.text.includes('Zoom')&&b.text.includes('+')));
+ for(let i=0;i<6;i++)await tap((await snap()).walking_controls.find(b=>b.text.includes('Zoom')&&b.text.includes('+')));await closeExploreTray(page,snap,tap);
  await page.screenshot({path:`artifacts/voting-world-${size.width}-${touch?'finger':'mouse'}.png`});await writeFile(`artifacts/voting-world-${size.width}-${touch?'finger':'mouse'}.json`,JSON.stringify({snapshot:await snap(),sourceFingerprint},null,2));
  const inspection=(await snap()).camera_pose;await page.keyboard.press('F8');await settle();assert.deepEqual((await snap()).camera_pose,inspection);assert.ok((await snap()).voting_story.buttons[11].focused);
  await tap((await snap()).voting_story.buttons[9]);assert.ok(!(await snap()).voting_story.active);await tap((await snap()).voting_story.buttons[11]);
@@ -3678,7 +3682,7 @@ try {
             assert.ok(encloses(snap.block_panel_control, action) && action.width >= 44 && action.height >= 44, 'short hub targets enclosed and tappable');
           }
           for (const action of snap.block_hub_actions) { assert.ok(action.text_fits, `short full title ${action.text}`); seen.push(action.id); }
-          for (const action of snap.walking_controls) assert.ok(action.text_fits && encloses(screen, action) && action.width >= 44 && action.height >= 44, `short walking target ${action.text}`);
+          for (const action of snap.walking_controls.filter(b => b.visible)) assert.ok(action.text_fits && encloses(screen, action) && action.width >= 44 && action.height >= 44, `short walking target ${action.text}`);
           assert.equal(snap.camera_view_size, shortInitial.camera_view_size);
           assert.equal(snap.player_grounding.x, shortInitial.player_grounding.x);
           assert.equal(snap.player_grounding.z, shortInitial.player_grounding.z);
