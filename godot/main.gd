@@ -6882,7 +6882,19 @@ func close_phone_disclosure(restore_focus := false) -> void:
 	if restore_focus and phone_explore_control != null and phone_explore_control.is_visible_in_tree(): phone_explore_control.grab_focus()
 	phone_ui_signature.clear()
 
+## Landscape phones and desktop kept Map, Find Me and Zoom beside an open hub, mural or music panel before the bar became one
+## row, so Explore stays on the bar beside them and closes the panel as it opens the tray. A tall phone's panels cover the
+## tray's place, and a conversation keeps its own row (both until the sheet, Phase 3).
+func explore_over_panel() -> bool:
+	if hud_size_class() == "portrait" or (block_panel != null and block_panel.visible and block_panel_mode == "talk"):
+		return false
+	return any_side_panel_visible()
+
 func press_phone_explore() -> void:
+	if not phone_tray_open and explore_over_panel():
+		if block_panel.visible: show_block_panel(false)
+		if mural_panel.visible: show_mural_panel(false)
+		if music_panel.visible: show_music_panel(false)
 	phone_tray_open = not phone_tray_open
 	phone_actions_open = false
 	cancel_map_pinch()
@@ -6943,7 +6955,7 @@ func configure_phone_disclosure() -> void:
 	phone_tray.visible = enabled and phone_tray_open and controls.visible and not talking and not blocked
 	# A focused activity hides the whole layer and restores it as it closes, so Explore stays set inside the bar and is back
 	# in the same frame (a press that closes the activity lands on the bar it reveals, as it did on the old walk control).
-	phone_explore_control.visible = enabled and not panel_open and not is_story_card_visible()
+	phone_explore_control.visible = enabled and (not panel_open or explore_over_panel()) and not is_story_card_visible()
 	if talking and current_path.is_empty():
 		if controls.visible: phone_hid_walking = true
 		controls.visible = false

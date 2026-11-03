@@ -208,6 +208,32 @@ static func verify(suite: SceneTree, game: Node) -> void:
 		game.frame_player_for_walking()
 		await frames(suite, 4)
 		suite.require(game.view_size == 45.0 and game.play_area_rect().grow(1.0).encloses(game.player_overlay_rect()), "at %s Map then Find Me keeps the player and YOU in the scene" % size)
+	# 7. Beside an open hub, landscape phones and desktop still reach Map: Explore stays on the bar and closes the hub as it
+	# opens the tray. A tall phone's hub and any conversation keep Explore off the bar.
+	game.player.position = player0
+	for size in [Vector2i(640, 360), Vector2i(667, 390), Vector2i(1100, 760), Vector2i(390, 667)]:
+		suite.root.size = size
+		await frames(suite, 4)
+		game.show_block_panel(true)
+		await frames(suite, 3)
+		var beside: bool = game.hud_size_class() != "portrait"
+		suite.require(game.block_panel.visible and game.phone_explore_control.is_visible_in_tree() == beside, "at %s an open hub %s Explore on the bar" % [size, "keeps" if beside else "hides"])
+		if beside:
+			game.phone_explore_control.pressed.emit()
+			await frames(suite, 3)
+			suite.require(not game.block_panel.visible and game.phone_tray.visible and game.map_control.is_visible_in_tree(), "at %s Explore over the hub closes it and opens the tray with Map" % size)
+			game.close_phone_disclosure()
+		game.show_block_panel(false)
+		await frames(suite, 2)
+	suite.root.size = Vector2i(667, 390)
+	game.frame_player_for_walking()
+	await frames(suite, 4)
+	game.show_conversation(0)
+	await frames(suite, 4)
+	suite.require(game.block_panel.visible and game.block_panel_mode == "talk" and not game.phone_explore_control.is_visible_in_tree(), "a landscape conversation keeps Explore off the bar")
+	game.end_conversation()
+	await frames(suite, 3)
+
 	suite.require(caption_checks > 0 and guide_checks > 0, "the short walking sizes put captions and the outlined guide beside the player (%d, %d)" % [caption_checks, guide_checks])
 	print("HUD_BAR_PASS sizes=", checked, " short_walk_captions=", caption_checks, " guides=", guide_checks)
 
