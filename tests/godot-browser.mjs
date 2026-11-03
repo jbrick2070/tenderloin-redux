@@ -247,6 +247,8 @@ function assertWalkingCaptions(s){
  if(s.phone_disclosure?.enabled){assert.ok(['Next Step','Back to Me'].includes(s.walking_controls[0].text));assert.deepEqual(s.walking_controls.slice(1).map(b=>b.text),expected.slice(1));}
  else assert.deepEqual(s.walking_controls.map(b=>b.text),expected);
 }
+// HUD Phase 2: one bar everywhere, 44 px tall on landscape phones (shorter than 560) and 50 px elsewhere.
+const barHeight=s=>s.hud_size_class==='landscape'?44:50;
 async function phoneAwareMouseClick(page,b){
  b=await revealPhoneControl(page,b,btn=>phoneAwareMouseClick(page,btn));
  const s=await page.evaluate(()=>window.__tenderloinGodotA11ySnapshot),c=await page.locator('#canvas').boundingBox();
@@ -859,11 +861,11 @@ async function verifyShortWalking(page,context,touch) {
       await page.screenshot({path:'artifacts/codex-small-hub-walking-caption-599x480-mouse.png'});await writeFile('artifacts/codex-small-hub-walking-caption-599x480-mouse.json',JSON.stringify(arrival,null,2));
     }
     await page.keyboard.press('KeyG');await waitForHub(page);await settle();await tap((await snapshot()).block_close_control);
-    await page.waitForFunction(()=>!window.__tenderloinGodotA11ySnapshot.block_panel_control.visible&&window.__tenderloinGodotA11ySnapshot.following_player);await settle();const closed=await snapshot();assert.ok(closed.short_narrow_walking&&encloses(closed.play_area,closed.overlays.player),'hub Close alone restores the followed short walking view before Find Me');
+    await page.waitForFunction(()=>!window.__tenderloinGodotA11ySnapshot.block_panel_control.visible&&window.__tenderloinGodotA11ySnapshot.following_player);await settle();const closed=await snapshot();assert.ok(closed.hud_size_class==='landscape'&&closed.controls_control.height<=2*barHeight(closed)&&encloses(closed.play_area,closed.overlays.player),'hub Close alone restores the followed short walking view and its one-row bar before Find Me');
     await tap((await snapshot()).walking_controls[2]);let s=await snapshot();const save=await page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1'));
-    assert.ok(s.short_narrow_walking&&s.following_player&&!s.block_panel_control.visible&&s.play_area.height>=100&&s.overlays.player.width>0&&encloses(s.play_area,s.overlays.player),'Close and Find Me retain the full enlarged player and YOU in short walking space');
+    assert.ok(s.hud_size_class==='landscape'&&s.following_player&&!s.block_panel_control.visible&&s.play_area.height>=100&&s.overlays.player.width>0&&encloses(s.play_area,s.overlays.player),'Close and Find Me retain the full enlarged player and YOU in short walking space');
     assertWalkingCaptions(s);
-    for(const b of s.walking_controls.filter(b=>b.visible))assert.ok(b.text_fits&&b.height>=50&&b.width>=44&&encloses({x:0,y:0,width,height},b),'full original walking labels and50px targets fit');
+    for(const b of s.walking_controls.filter(b=>b.visible))assert.ok(b.text_fits&&b.height>=barHeight(s)&&b.width>=44&&encloses({x:0,y:0,width,height},b),'full original walking labels and the bar targets fit');
     await tap(s.walking_controls[1]);await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.in_wide_overview);await tap((await snapshot()).walking_controls[2]);
     await page.waitForFunction(()=>!window.__tenderloinGodotA11ySnapshot.in_wide_overview&&window.__tenderloinGodotA11ySnapshot.camera_view_size===45&&window.__tenderloinGodotA11ySnapshot.following_player);await settle();s=await snapshot();assert.equal(s.camera_view_size,45);assert.ok(encloses(s.play_area,s.overlays.player));assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.godot.save.v1')),save,'Close/Map/FindMe preserve progress');
     await page.keyboard.press('KeyH');await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.player_grounding.path_active);await settle();const moving=await snapshot();
@@ -990,7 +992,7 @@ async function verifyNarrowHub(page, context, touch) {
     await tap((await snapshot()).block_close_control);
     s=await snapshot(); assert.ok(!s.block_panel_control.visible);
     assertWalkingCaptions(s);
-    for (const b of s.walking_controls.filter(b=>b.visible)) assert.ok(b.height >= 50);
+    for (const b of s.walking_controls.filter(b=>b.visible)) assert.ok(b.height >= barHeight(s));
     assert.equal(await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1')),save,'hub reading/paging/Info/Close preserve progression');
     if (width === 320) {
       await page.keyboard.press('Digit1'); await page.waitForFunction(() => window.__tenderloinGodotA11ySnapshot.conversation_detail.panel.visible); await settle();
@@ -1179,7 +1181,7 @@ async function verifyShortActivities(page, context, touch, checks, small = false
       const closed = await snapshot();
       assert.equal(closed.controls_control.width, width - 24, 'Close restores full walking controls');
       assertWalkingCaptions(closed);
-      for (const b of closed.walking_controls.filter(b=>b.visible)) assert.ok(b.height >= 50, 'Close restores original walking target height');
+      for (const b of closed.walking_controls.filter(b=>b.visible)) assert.ok(b.height >= barHeight(closed), 'Close restores the bar target height');
     }
   }
 }

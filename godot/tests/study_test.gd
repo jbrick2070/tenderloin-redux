@@ -70,6 +70,7 @@ func run() -> void:
 	await process_frame
 	await process_frame
 	await preload("res://tests/hud_checks.gd").verify(self,study)
+	await preload("res://tests/hud_bar_checks.gd").verify(self,study)
 	await preload("res://tests/before_streets_checks.gd").verify(self,study,true)
 	await preload("res://tests/street_view_checks.gd").verify(self,study,true)
 	# Compare indexed queries to the original linear geometry across actual bounds and bucket edges.
@@ -322,7 +323,9 @@ func run() -> void:
 		require(study.building_containing_point(h_xz) == "", "history stop %s is outside all 188 building footprints" % h_id)
 		require(study.min_wall_distance(h_xz) >= 3.25, "history stop %s has >= 3.25m wall clearance" % h_id)
 		require(study.is_walkable_point(h_xz), "history stop %s position is walkable" % h_id)
-	require(study.controls.get_child_count() == 6, "6 responsive control buttons including Walk to neighbor")
+	# HUD Phase 2: one bar of three at every size; the other four keep their nodes and callbacks in the Explore tray.
+	require(study.controls.get_child_count() == 3 and study.controls.get_children() == [study.next_hint_control, study.walk_control, study.phone_explore_control], "the bottom bar is Next Step, the walk button and Explore")
+	require(study.phone_original_walk_buttons.size() == 6 and [study.map_control, study.phone_find_control, study.zoom_in_control, study.zoom_out_control].all(func(b): return b.get_parent() == study.phone_tray_grid), "Tenderloin Map, Find Me and Zoom live in the Explore tray")
 	require(is_equal_approx(study.player_height_m(), 1.72), "player model is 1.72 metres before the existing presentation scale")
 	var grounded_people: Array[Node3D] = [study.player_visual]
 	for neighbor in study.neighbor_nodes:
@@ -1843,10 +1846,21 @@ func run() -> void:
 	require(study.block_panel_mode == "hub" and study.block_next_btn.get_theme_stylebox("normal") == study.button_suggest_style and study.block_open_btn.modulate.a < 0.9 and study.block_epilogue_btn.modulate.a < 0.9 and is_equal_approx(study.block_mural_btn.modulate.a, 1.0), "the full action list highlights the suggested step and dims steps that unlock later")
 	study.show_block_panel(false)
 	require(study.mural_buttons[7].text == "What's Next?" and study.mural_buttons[8].text == "Goodbye (Esc)" and study.music_buttons[5].text == "What's Next?" and study.music_buttons[6].text == "Goodbye (Esc)", "Celeste's and Rook's panels offer What's Next? and the same Goodbye (Esc)")
+	# HUD Phase 2: the bar's first button is Next Step at every size. From the map it reads Back to Me and returns to the
+	# player (as phones did since October); from the street it gives the hint.
 	var whats_next_btn: Button = study.controls.get_child(0)
 	study.overview()
+	await process_frame
+	await process_frame
+	require(whats_next_btn == study.next_hint_control and whats_next_btn.text == "Back to Me" and whats_next_btn.tooltip_text == "Return to the player", "on the map overview the bar's Next Step reads Back to Me")
 	whats_next_btn.emit_signal("pressed")
-	require(whats_next_btn.text == "What's Next?" and (study.info.text.contains("Follow the gold marker") or study.info.text.contains("wander")), "the bottom-bar What's Next? button gives guidance from anywhere")
+	require(study.following_player and not study.in_overview and not study.in_wide_overview and study.info.text.contains("Follow the gold marker"), "Back to Me returns to the player with guidance")
+	await process_frame
+	await process_frame
+	require(whats_next_btn.text == "Next Step" and whats_next_btn.tooltip_text == "What's Next?", "back on the street the bar's button reads Next Step")
+	study.info.text = ""
+	whats_next_btn.emit_signal("pressed")
+	require(study.info.text.contains("Follow the gold marker") or study.info.text.contains("wander"), "the bottom-bar Next Step gives guidance from the street")
 	require(study.apply_save_envelope(saved_m4_json) and study.block_opened, "restore the full M1-M4 save after the fresh conversation walkthrough")
 	var later_obj: Dictionary = study.current_objective()
 	require(not String(later_obj.get("text", "")).is_empty() and String(later_obj.get("id", "")) != "meet", "after the block opens, the next step moves on to the afternoon projects")
@@ -2502,9 +2516,9 @@ func run() -> void:
 		require(study.view_size > fitted, "Zoom out from mobile overview must zoom out")
 		study.zoom(0.8)
 		require(is_equal_approx(study.view_size, fitted), "paired zoom restores fitted size")
-		if study.uses_phone_disclosure():
-			await phone_accept(study.phone_explore_control)
-			verify_phone_tray_targets(study, size)
+		# One bar at every size (HUD Phase 2): Find Me is in the Explore tray on desktop too.
+		await phone_accept(study.phone_explore_control)
+		verify_phone_tray_targets(study, size)
 		var next: Button = study.phone_find_control
 		next.grab_focus()
 		require(next.has_focus(), "keyboard focus available")
@@ -3224,7 +3238,7 @@ func run() -> void:
 		study.show_block_panel(false)
 		await process_frame
 		await process_frame
-		require(not study.uses_side_block_hub() and study.controls.offset_right == -12.0 and study.controls.get_child(1).text == "Tenderloin Map", "Close restores full walking controls")
+		require(not study.uses_side_block_hub() and study.controls.offset_right == -12.0 and study.controls.get_children() == [study.next_hint_control, study.walk_control, study.phone_explore_control] and study.map_control.text == "Tenderloin Map", "Close restores the full-width bar of three and the tray keeps Tenderloin Map")
 		require(JSON.stringify(study.build_save_envelope()) == short_hub_save and study.player.position == short_hub_position and study.view_size == 45.0, "short paging/resize/Info/Close preserve player zoom and progress")
 	root.size = Vector2i(844, 390)
 	study.show_block_panel(true)
@@ -3304,7 +3318,6 @@ func run() -> void:
 	require(study.info.visible and study.info.text.contains(solo_hint), "What's Next shows a visible answer away from neighbors")
 	study.set_header_details(false)
 	await verify_narrow_hub(study)
-	await verify_short_narrow_walking(study)
 	await verify_short_activity_panels(study)
 	await verify_short_activity_panels(study, true)
 	await verify_mural_workshop(study)
@@ -3447,11 +3460,8 @@ func verify_narrow_hub(study: Node) -> void:
 		study.show_block_panel(false)
 		for frame in range(3):
 			await process_frame
-		var short_walk: bool = hub_size.x >= study.SMALL_SIDE_HUB_MIN_WIDTH and hub_size.y < study.SIDE_HUB_MAX_HEIGHT
-		if study.uses_phone_disclosure():
-			await verify_phone_walking_restored(study,hub_size)
-		else:
-			require(study.controls.columns == (3 if short_walk else 2) and study.controls.offset_top == (-116 if short_walk else -174) and study.controls.offset_right == -12 and study.map_control.text == "Tenderloin Map", "Close restores the full narrow walking grid with two rows in short landscape")
+		# Close restores the one bar (and the tray keeps Tenderloin Map's full caption) at every hub size.
+		await verify_phone_walking_restored(study,hub_size)
 		require(JSON.stringify(study.build_save_envelope()) == save and study.view_size == zoom, "narrow hub paging reading and Info preserve progression and zoom")
 		study.show_conversation(0)
 		for frame in range(3):
@@ -3475,110 +3485,6 @@ func verify_narrow_hub(study: Node) -> void:
 	study.show_block_panel(false)
 	study.player.position = original_player
 	study.objective_refresh_timer = original_timer
-	root.size = Vector2i(1100, 760)
-	study.frame_player_for_walking()
-	await process_frame
-	await process_frame
-
-func verify_short_narrow_walking(study: Node) -> void:
-	var before_player: Vector3 = study.player.position
-	var before_timer: float = study.objective_refresh_timer
-	study.hide_story_card()
-	study.hide_speech_bubble()
-	study.current_path.clear()
-	study.set_header_details(false, false)
-	var caption_checks := 0
-	var guide_checks := 0
-	for size in [Vector2i(520, 360), Vector2i(559, 360), Vector2i(520, 559), Vector2i(559, 559), Vector2i(560, 360), Vector2i(568, 375), Vector2i(599, 360), Vector2i(599, 480), Vector2i(560, 559), Vector2i(599, 559)]:
-		root.size = size
-		if size == Vector2i(599, 480):
-			var stop: Vector2 = study.nearest_street_point(study.comptons_xz())
-			study.player.position = Vector3(stop.x, 0, stop.y)
-		var case_player: Vector3 = study.player.position
-		study.frame_player_for_walking()
-		study.objective_refresh_timer = 1000.0
-		study.objective_label.text = "Chapter 6: Explore the neighborhood · Next: Spot Jeffrey's Lost 1961 Record (0/10 surprises, Shift+D) · Museum (Shift+M)"
-		for frame in range(5):
-			await process_frame
-		var save: String = JSON.stringify(study.build_save_envelope())
-		var area: Rect2 = study.play_area_rect()
-		print("SHORT_WALK_CHECK ", size, " scene=", area, " body=", study.player_overlay_rect(), " controls=", study.controls.get_global_rect())
-		require(study.uses_short_narrow_walking() and study.controls.columns == 3 and study.controls.offset_top == -116, "short narrow walking uses two rows")
-		require(area.size.y >= 100 and area.grow(1).encloses(study.player_overlay_rect()), "short walking retains full enlarged player and YOU under a long objective")
-		for caption in study.visible_scene_captions:
-			caption_checks += 1
-			require(not caption.rect.intersects(study.player_overlay_rect()), "short walking world captions leave the real player clear")
-		if study.guide_arrow_label.is_visible_in_tree():
-			guide_checks += 1
-			require(not study.guide_arrow_label.get_global_rect().grow(7).intersects(study.player_overlay_rect()), "short walking outlined objective leaves the player clear")
-		var captions: Array = ["What's Next?", "Tenderloin Map", "Find Me", "Zoom In (+)", "Zoom Out (−)", guided_caption(study)]
-		for i in range(study.walking_control_snapshots().size()):
-			var b: Dictionary = study.walking_control_snapshots()[i]
-			require(b.text == captions[i] and b.text_fits and b.width >= 44 and b.height >= 50 and b.y + b.height <= size.y, "short walking preserves complete original labels and50px targets")
-		for kind in ["hub", "mural", "music"]:
-			if kind == "hub":
-				study.show_block_panel(true)
-			elif kind == "mural":
-				study.show_mural_panel(true)
-			else:
-				study.show_music_panel(true)
-			require(study.controls.offset_top == -104 and study.controls.columns == 3, "open panel retains its actual compact control geometry")
-			if kind == "hub":
-				study.block_close_btn.pressed.emit()
-			else:
-				study.end_conversation()
-			for frame in range(4):
-				await process_frame
-			require(study.uses_short_narrow_walking() and study.controls.columns == 3 and study.play_area_rect().grow(1).encloses(study.player_overlay_rect()), "real Close restores useful short walking space")
-		study.wide_overview()
-		for frame in range(4):
-			await process_frame
-		require(not study.player_nameplate.is_visible_in_tree(), "Map fixture actually hides the YOU billboard before Find Me")
-		study.frame_player_for_walking()
-		for frame in range(4):
-			await process_frame
-		require(not study.in_wide_overview and study.view_size == 45 and study.play_area_rect().grow(1).encloses(study.player_overlay_rect()), "Map then Find Me restores the short walking view")
-		study.pan_camera_by_screen_delta(Vector2(10, 4))
-		var manual: Array = study.panel_camera_pose()
-		for pan_size in [Vector2i(519, 360), Vector2i(599, 375)]:
-			root.size = pan_size
-			for frame in range(4):
-				await process_frame
-			require(study.panel_camera_pose() == manual and not study.following_player, "short walking resize preserves manual pan across the520 seam")
-		require(study.player.position == case_player and JSON.stringify(study.build_save_envelope()) == save, "short walking framing and Close preserve position/progress")
-		study.player.position = before_player
-	print("SHORT_WALK_OVERLAYS captions=", caption_checks, " guides=", guide_checks)
-	require(caption_checks > 0 and guide_checks > 0, "short walking clearance exercises real captions and an outlined guide")
-	for boundary in [Vector2i(519, 360), Vector2i(520, 560), Vector2i(560, 560), Vector2i(599, 560), Vector2i(599, 640), Vector2i(320, 667), Vector2i(600, 360)]:
-		root.size = boundary
-		study.frame_player_for_walking()
-		for frame in range(4):
-			await process_frame
-		require(not study.uses_short_narrow_walking() and study.controls.columns == (3 if study.uses_phone_disclosure() else (2 if boundary.x < 600 else 3)), "taller layouts restore their designated phone or original walking grid")
-	root.size = Vector2i(599, 360)
-	study.frame_player_for_walking()
-	for frame in range(4):
-		await process_frame
-	study.wide_overview()
-	require(study.in_wide_overview and not study.following_player and study.view_size != 45, "short keyboard Find Me starts in a different real Map view")
-	require(study.controls.get_child(2).text == "Find Me", "short keyboard fixture targets the actual Find Me button")
-	study.controls.get_child(2).grab_focus()
-	for pressed in [true, false]:
-		var accept := InputEventAction.new()
-		accept.action = "ui_accept"
-		accept.pressed = pressed
-		Input.parse_input_event(accept)
-		await process_frame
-	for frame in range(4):
-		await process_frame
-	require(not study.in_wide_overview and study.following_player and study.view_size == 45 and study.play_area_rect().grow(1).encloses(study.player_overlay_rect()), "real ui_accept on short Find Me frames the enlarged player")
-	study.frame_player_for_walking()
-	study.pan_camera_by_screen_delta(Vector2(10, 4)) # Before the queued Find Me refit settles.
-	var immediate_manual: Array = study.panel_camera_pose()
-	for frame in range(4):
-		await process_frame
-	require(not study.following_player and study.panel_camera_pose() == immediate_manual, "a manual pan immediately after Find Me owns the pending settled refit")
-	study.objective_refresh_timer = before_timer
 	root.size = Vector2i(1100, 760)
 	study.frame_player_for_walking()
 	await process_frame
@@ -3786,15 +3692,8 @@ func verify_short_activity_panels(study: Node, narrow_small := false) -> void:
 			await process_frame
 			await process_frame
 			require(study.controls.offset_right == -12 and study.map_control.text == "Tenderloin Map", "closing short activity restores normal walking controls")
-			var tall_phone: bool = short_size.x < 600 and (short_size.x < 520 or short_size.y >= 560)
-			if study.uses_phone_disclosure():
-				await verify_phone_walking_restored(study,short_size)
-			else:
-				require(study.controls.columns == (2 if tall_phone else 3) and study.controls.offset_top == (-174 if tall_phone else (-116 if short_size.x < 600 else -124)), "real Close restores walking grid and vertical offsets")
-				var normal_labels: Array = ["What's Next?", "Tenderloin Map", "Find Me", "Zoom In (+)", "Zoom Out (−)", guided_caption(study)]
-				for i in range(study.controls.get_child_count()):
-					var control: Button = study.controls.get_child(i)
-					require(control.text == normal_labels[i] and control.custom_minimum_size.y == 50, "real Close restores every walking caption and target size")
+			# One bar at every size: Close restores its three primaries, its class height and the tray's full captions.
+			await verify_phone_walking_restored(study,short_size)
 			for restored_panel in [study.block_panel, study.mural_panel, study.music_panel]:
 				require(restored_panel.grow_vertical == Control.GROW_DIRECTION_END, "real Close restores panel grow direction")
 	study.last_panel_dialogue = ""
@@ -6379,7 +6278,9 @@ func verify_phone_tray_targets(study: Node, size: Vector2i) -> void:
 
 func verify_phone_walking_restored(study: Node, size: Vector2i) -> void:
 	require(study.controls.is_visible_in_tree() and study.controls.columns==3 and study.controls.get_child_count()==3 and study.phone_explore_control.is_visible_in_tree(),"phone Close restores three named native primaries")
-	require(study.controls.offset_top == -maxf(50,study.controls.get_combined_minimum_size().y)-12 and study.controls.offset_right==-12,"phone primary band fits its actual native minimum")
+	require(study.controls.offset_top == -maxf(study.hud_bar_height(),study.controls.get_combined_minimum_size().y)-12 and study.controls.offset_right==-12,"phone primary band fits its actual native minimum")
+	for b in study.controls.get_children():
+		require(b.custom_minimum_size.y == study.hud_bar_height() and b.get_theme_font_size("font_size") == study.hud_bar_font_size() and b.get_global_rect().size.y >= 44,"Close restores the bar's %s px targets and %d px font at %s" % [study.hud_bar_height(),study.hud_bar_font_size(),size])
 	require(study.next_hint_control.text in ["Next Step","Back to Me"] and study.walk_control.text==guided_caption(study) and study.phone_explore_control.text=="Explore","phone Close restores objective/walking/Explore labels")
 	await phone_accept(study.phone_explore_control)
 	verify_phone_tray_targets(study,size)
@@ -6482,10 +6383,12 @@ func verify_phone_disclosure(study: Node, startup_snapshot: String, full: String
 		require(not study.phone_actions_open and String(study.conv_action_ids[0]).begins_with("return_owner:") and study.conv_action_btns[0].is_visible_in_tree(),"required owner return stays inline before NextStep")
 		require(study.block_panel.get_global_rect().position.y>=study.header_panel.get_global_rect().end.y and panel_clears_walking(study,study.block_panel),"owner-return reader and action clear header and viewport edge")
 	study.end_conversation(); study.apply_save_envelope(full); study.hide_story_card(); study.last_story_chapter=int(study.current_chapter().num)
+	# HUD Phase 2: landscape and desktop keep the same three primaries and tray parents, at the class's font.
 	for size in [Vector2i(559,360),Vector2i(599,360),Vector2i(1100,760)]:
 		root.size=size
 		for f in range(8): await process_frame
-		require(not study.uses_phone_disclosure() and study.controls.get_child_count()==6 and not study.phone_explore_control.is_visible_in_tree(),"legacy landscape/desktop restore all original control parents")
+		require(study.uses_phone_disclosure() and study.controls.get_child_count()==3 and study.phone_explore_control.is_visible_in_tree() and study.map_control.get_parent()==study.phone_tray_grid,"landscape and desktop keep the three-button bar and the Explore tray")
+		for btn in study.phone_original_walk_buttons: require(btn.get_theme_font_size("font_size")==(13 if size.y<560 else 19),"the bar and tray use %d px at %s" % [13 if size.y<560 else 19,size])
 	for btn in study.phone_original_walk_buttons: require(btn.get_theme_font_size("font_size")==19,"first completed desktop layout restores canonical original font")
 	print("PHONE_DISCLOSURE_PASS:inlineLayoutOwner/AllActionsEsc/10portraitsizes/16px96pxreader/realui_accept/talkchoicesEsc/3primaries/Explore/Zoom/Map/BackToMe/save/legacy")
 
