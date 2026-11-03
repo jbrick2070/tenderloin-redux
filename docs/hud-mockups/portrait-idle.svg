@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 410 730" width="410" height="730" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <title>Portrait phone 390x667, following an objective: one-row header, scene, three-button bar</title>
+  <rect width="410" height="730" fill="#1a1a1a"/>
+  <g transform="translate(10,10)">
+    <!-- phone screen -->
+    <rect width="390" height="667" fill="#3b4a55"/>
+    <!-- suggested isometric street -->
+    <polygon points="0,420 390,250 390,330 0,500" fill="#8a8f86"/>
+    <polygon points="0,440 390,270 390,300 0,470" fill="#f0d98a" opacity="0.5"/>
+    <rect x="0" y="130" width="130" height="200" fill="#b9975b"/>
+    <rect x="20" y="150" width="90" height="160" fill="#c9a86a"/>
+    <rect x="300" y="110" width="90" height="120" fill="#6f8a7a"/>
+    <rect x="200" y="470" width="190" height="130" fill="#8c6f5a"/>
+    <rect x="0" y="520" width="150" height="90" fill="#9c8a7a"/>
+    <!-- player -->
+    <ellipse cx="215" cy="392" rx="16" ry="6" fill="#f8cc58" opacity="0.6"/>
+    <circle cx="215" cy="372" r="9" fill="#f2e2c4"/>
+    <rect x="207" y="381" width="16" height="22" rx="4" fill="#4b7f9a"/>
+    <text x="215" y="428" text-anchor="middle" font-size="18" font-weight="bold" fill="#ffd25a" stroke="#0e171d" stroke-width="3" paint-order="stroke">YOU</text>
+    <!-- Bea nearby with Talk prompt -->
+    <circle cx="275" cy="352" r="8" fill="#f2e2c4"/>
+    <rect x="268" y="360" width="14" height="20" rx="4" fill="#a3473b"/>
+    <text x="275" y="398" text-anchor="middle" font-size="13" fill="#fff3d6" stroke="#0e171d" stroke-width="3" paint-order="stroke">Bea</text>
+    <rect x="186" y="304" width="178" height="30" rx="8" fill="#0f1a22" opacity="0.95"/>
+    <text x="275" y="324" text-anchor="middle" font-size="14" fill="#ffe48f">Talk to Bea · T or tap</text>
+    <!-- guide arrow at the scene edge -->
+    <polygon points="24,300 44,290 40,300 44,310" fill="#ffd25a"/>
+    <text x="52" y="305" font-size="14" fill="#ffe48f" stroke="#0e171d" stroke-width="3" paint-order="stroke">Thanh · 35 m</text>
+
+    <!-- header row, 48 px -->
+    <rect x="8" y="8" width="374" height="48" rx="8" fill="#0f1a22" stroke="#e0b24c" stroke-width="2"/>
+    <rect x="12" y="10" width="56" height="44" rx="6" fill="#16232e" stroke="#d9b35a" stroke-width="1.5"/>
+    <text x="40" y="37" text-anchor="middle" font-size="14" fill="#fff3d6">Menu</text>
+    <text x="76" y="37" font-size="14" fill="#9ef5e5">Ch. 1 · Next: Meet Thanh (4/5)</text>
+    <rect x="310" y="14" width="68" height="36" rx="18" fill="#16232e" stroke="#d9b35a" stroke-width="1.5"/>
+    <text x="344" y="37" text-anchor="middle" font-size="13" fill="#ffe48f">✦ 8 · 0/10</text>
+
+    <!-- street view button, top-right of the scene -->
+    <rect x="250" y="64" width="132" height="44" rx="6" fill="#16232e" stroke="#d9b35a" stroke-width="1.5"/>
+    <text x="316" y="91" text-anchor="middle" font-size="16" fill="#fff3d6">Street view</text>
+
+    <!-- bottom bar, 50 px -->
+    <rect x="8" y="605" width="119" height="50" rx="6" fill="#16232e" stroke="#d9b35a" stroke-width="1.5"/>
+    <text x="67" y="635" text-anchor="middle" font-size="14" fill="#fff3d6">Next Step</text>
+    <rect x="135" y="605" width="120" height="50" rx="6" fill="#4a3b14" stroke="#ffd25a" stroke-width="2"/>
+    <text x="195" y="635" text-anchor="middle" font-size="14" fill="#fff3d6">Meet Thanh</text>
+    <rect x="263" y="605" width="119" height="50" rx="6" fill="#16232e" stroke="#d9b35a" stroke-width="1.5"/>
+    <text x="322" y="635" text-anchor="middle" font-size="14" fill="#fff3d6">Explore</text>
+
+    <!-- dimension notes -->
+    <line x1="4" y1="64" x2="4" y2="597" stroke="#ff9fb5" stroke-width="1"/>
+    <text x="14" y="580" font-size="11" fill="#ff9fb5">scene 529 px · 79 % (today 58 to 70 %)</text>
+    <text x="14" y="124" font-size="11" fill="#ff9fb5">header 48 px (today 108 to 193)</text>
+    <text x="14" y="600" font-size="11" fill="#ff9fb5">bar 50 px, 3 targets ≥ 44</text>
+  </g>
+  <text x="10" y="700" font-size="12" fill="#d8d8d8">Portrait 390x667 · following an objective · sheet hidden · Next Step opens the hint sheet at half height</text>
+  <text x="10" y="716" font-size="12" fill="#d8d8d8">Music, Sounds, Info, Reduced motion, credits and three hub settings are behind Menu</text>
+</svg>

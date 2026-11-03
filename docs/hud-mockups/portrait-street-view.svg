@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 410 730" width="410" height="730" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <title>Portrait phone 390x667, street view while Bea talks: the bubble on stage, the sheet shrunk to a one-line bar</title>
+  <rect width="410" height="730" fill="#1a1a1a"/>
+  <g transform="translate(10,10)">
+    <!-- eye-level scene -->
+    <rect width="390" height="667" fill="#bfe3ec"/>
+    <rect x="0" y="330" width="390" height="337" fill="#d9cdb0"/>
+    <polygon points="150,667 240,667 205,340 185,340" fill="#e9dcb8"/>
+    <polygon points="190,340 200,340 195,667 195,667" fill="#fff" opacity="0.8"/>
+    <polygon points="0,120 120,220 120,420 0,520" fill="#c98a5a"/>
+    <polygon points="0,140 100,230 100,400 0,480" fill="#e0a86e" opacity="0.5"/>
+    <polygon points="390,100 250,210 250,420 390,560" fill="#8aa3b8"/>
+    <polygon points="390,130 270,220 270,400 390,520" fill="#a6bccb" opacity="0.5"/>
+    <!-- Bea at true scale, a few metres ahead -->
+    <circle cx="205" cy="262" r="12" fill="#f2e2c4"/>
+    <rect x="194" y="274" width="22" height="36" rx="5" fill="#a3473b"/>
+    <rect x="196" y="310" width="8" height="30" fill="#2f3a44"/>
+    <rect x="206" y="310" width="8" height="30" fill="#2f3a44"/>
+    <ellipse cx="205" cy="342" rx="22" ry="6" fill="#f8cc58" opacity="0.5"/>
+    <!-- speech bubble, the stage copy -->
+    <rect x="98" y="178" width="214" height="56" rx="10" fill="#0f1a22" stroke="#e0b24c" stroke-width="2"/>
+    <polygon points="195,234 215,234 205,250" fill="#0f1a22" stroke="#e0b24c" stroke-width="2"/>
+    <text font-size="14" fill="#fff3d6" text-anchor="middle">
+      <tspan x="205" y="201">Welcome to the block, neighbor.</tspan>
+      <tspan x="205" y="221">I'm Bea.</tspan>
+    </text>
+
+    <!-- header row -->
+    <rect x="8" y="8" width="374" height="48" rx="8" fill="#0f1a22" stroke="#e0b24c" stroke-width="2"/>
+    <rect x="12" y="10" width="56" height="44" rx="6" fill="#16232e" stroke="#d9b35a" stroke-width="1.5"/>
+    <text x="40" y="37" text-anchor="middle" font-size="14" fill="#fff3d6">Menu</text>
+    <text x="76" y="37" font-size="14" fill="#9ef5e5">Ch. 1 · Next: Meet Thanh (4/5)</text>
+    <rect x="310" y="14" width="68" height="36" rx="18" fill="#16232e" stroke="#d9b35a" stroke-width="1.5"/>
+    <text x="344" y="37" text-anchor="middle" font-size="13" fill="#ffe48f">✦ 8 · 0/10</text>
+
+    <!-- map view button -->
+    <rect x="250" y="64" width="132" height="44" rx="6" fill="#16232e" stroke="#d9b35a" stroke-width="1.5"/>
+    <text x="316" y="91" text-anchor="middle" font-size="16" fill="#fff3d6">Map view</text>
+
+    <!-- walk stick, bottom-left of the play area -->
+    <circle cx="68" cy="481" r="60" fill="#0f141a" opacity="0.42" stroke="#0f141a" stroke-width="2"/>
+    <circle cx="68" cy="481" r="24" fill="#fff" opacity="0.72"/>
+    <text x="68" y="556" text-anchor="middle" font-size="11" fill="#ff9fb5">walk stick (touch)</text>
+
+    <!-- the sheet at bar height, 48 px -->
+    <rect x="8" y="549" width="374" height="48" rx="8" fill="#0f1a22" stroke="#d98f7a" stroke-width="3"/>
+    <text x="20" y="579" font-size="15" fill="#ffe082">Bea</text>
+    <text x="56" y="579" font-size="14" fill="#f2ead8">· talking</text>
+    <rect x="268" y="553" width="110" height="40" rx="6" fill="#16232e" stroke="#d9b35a" stroke-width="1.5"/>
+    <text x="323" y="579" text-anchor="middle" font-size="13" fill="#fff3d6">Show more ▴</text>
+
+    <!-- bottom bar -->
+    <rect x="8" y="605" width="119" height="50" rx="6" fill="#16232e" stroke="#d9b35a" stroke-width="1.5"/>
+    <text x="67" y="635" text-anchor="middle" font-size="14" fill="#fff3d6">Next Step</text>
+    <rect x="135" y="605" width="120" height="50" rx="6" fill="#16232e" stroke="#d9b35a" stroke-width="1.5"/>
+    <text x="195" y="635" text-anchor="middle" font-size="14" fill="#fff3d6">Goodbye</text>
+    <rect x="263" y="605" width="119" height="50" rx="6" fill="#16232e" stroke="#d9b35a" stroke-width="1.5"/>
+    <text x="322" y="635" text-anchor="middle" font-size="14" fill="#fff3d6">Explore</text>
+
+    <text x="14" y="130" font-size="11" fill="#1d2a33">bar state: the bubble is the one full copy; the bar names the speaker</text>
+    <text x="14" y="146" font-size="11" fill="#1d2a33">behind a wall or off screen, the bar shows the first words instead</text>
+    <text x="14" y="540" font-size="11" fill="#1d2a33">scene 473 px · 71 % while talking</text>
+  </g>
+  <text x="10" y="700" font-size="12" fill="#d8d8d8">Portrait 390x667 · street view · Bea talking with the sheet shrunk to a bar · the middle primary reads Goodbye while a conversation is open at bar height</text>
+  <text x="10" y="716" font-size="12" fill="#d8d8d8">Show more → half sheet, bubble hidden · today's hand-back to the map when a panel opens stays until Phase 4 measures this on the phone</text>
+</svg>

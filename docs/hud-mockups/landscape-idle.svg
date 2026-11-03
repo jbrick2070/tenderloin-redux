@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 440" width="920" height="440" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <title>Landscape phone 900x380, idle: one-row header, open scene, three-button bar</title>
+  <rect width="920" height="440" fill="#1a1a1a"/>
+  <g transform="translate(10,10)">
+    <rect width="900" height="380" fill="#3b4a55"/>
+    <polygon points="0,260 900,80 900,150 0,330" fill="#8a8f86"/>
+    <polygon points="0,280 900,100 900,120 0,300" fill="#f0d98a" opacity="0.5"/>
+    <rect x="0" y="60" width="160" height="150" fill="#b9975b"/>
+    <rect x="200" y="40" width="120" height="110" fill="#c9a86a"/>
+    <rect x="700" y="30" width="200" height="140" fill="#6f8a7a"/>
+    <rect x="560" y="300" width="340" height="80" fill="#8c6f5a"/>
+    <rect x="0" y="330" width="220" height="50" fill="#9c8a7a"/>
+    <!-- player and Bea -->
+    <ellipse cx="470" cy="236" rx="16" ry="6" fill="#f8cc58" opacity="0.6"/>
+    <circle cx="470" cy="214" r="9" fill="#f2e2c4"/>
+    <rect x="462" y="223" width="16" height="22" rx="4" fill="#4b7f9a"/>
+    <text x="470" y="270" text-anchor="middle" font-size="18" font-weight="bold" fill="#ffd25a" stroke="#0e171d" stroke-width="3" paint-order="stroke">YOU</text>
+    <circle cx="530" cy="200" r="8" fill="#f2e2c4"/>
+    <rect x="523" y="208" width="14" height="20" rx="4" fill="#a3473b"/>
+    <text x="530" y="246" text-anchor="middle" font-size="13" fill="#fff3d6" stroke="#0e171d" stroke-width="3" paint-order="stroke">Bea</text>
+    <!-- guide arrow -->
+    <polygon points="300,200 320,190 316,200 320,210" fill="#ffd25a" transform="rotate(200 310 200)"/>
+    <text x="328" y="205" font-size="14" fill="#ffe48f" stroke="#0e171d" stroke-width="3" paint-order="stroke">Thanh · 35 m</text>
+
+    <!-- header row, 44 px -->
+    <rect x="12" y="12" width="876" height="44" rx="8" fill="#0f1a22" stroke="#e0b24c" stroke-width="2"/>
+    <rect x="14" y="12" width="56" height="44" rx="6" fill="#16232e" stroke="#d9b35a" stroke-width="1.5"/>
+    <text x="42" y="39" text-anchor="middle" font-size="14" fill="#fff3d6">Menu</text>
+    <text x="80" y="39" font-size="14" fill="#9ef5e5">Chapter 1: Get the Block Ready · Next: Meet Thanh (4/5 neighbors met)</text>
+    <rect x="740" y="16" width="144" height="36" rx="18" fill="#16232e" stroke="#d9b35a" stroke-width="1.5"/>
+    <text x="812" y="39" text-anchor="middle" font-size="13" fill="#ffe48f">Sparks 8 · Keepsakes 0/10</text>
+
+    <!-- street view button -->
+    <rect x="756" y="64" width="132" height="44" rx="6" fill="#16232e" stroke="#d9b35a" stroke-width="1.5"/>
+    <text x="822" y="91" text-anchor="middle" font-size="16" fill="#fff3d6">Street view</text>
+
+    <!-- bottom bar, 44 px -->
+    <rect x="12" y="324" width="288" height="44" rx="6" fill="#16232e" stroke="#d9b35a" stroke-width="1.5"/>
+    <text x="156" y="351" text-anchor="middle" font-size="15" fill="#fff3d6">Next Step</text>
+    <rect x="306" y="324" width="288" height="44" rx="6" fill="#4a3b14" stroke="#ffd25a" stroke-width="2"/>
+    <text x="450" y="351" text-anchor="middle" font-size="15" fill="#fff3d6">Meet Thanh</text>
+    <rect x="600" y="324" width="288" height="44" rx="6" fill="#16232e" stroke="#d9b35a" stroke-width="1.5"/>
+    <text x="744" y="351" text-anchor="middle" font-size="15" fill="#fff3d6">Explore</text>
+
+    <!-- dimension notes -->
+    <line x1="6" y1="64" x2="6" y2="316" stroke="#ff9fb5" stroke-width="1"/>
+    <text x="16" y="312" font-size="11" fill="#ff9fb5">scene 252 px · 66 % (today 103 px · 27 %)</text>
+    <text x="16" y="74" font-size="11" fill="#ff9fb5">header 44 px (today 117 to 175)</text>
+    <text x="620" y="318" font-size="11" fill="#ff9fb5">bar 44 px (today two rows, 112 px)</text>
+  </g>
+  <text x="10" y="412" font-size="12" fill="#d8d8d8">Landscape 900x380 (the creator's phone; 667x390 is the same layout) · idle · Explore opens the tray in the sheet: Tenderloin Map, Find Me, Zoom In, Zoom Out, All Actions, Close</text>
+  <text x="10" y="428" font-size="12" fill="#d8d8d8">The objective line never wraps: it clips to one line and the full text is in the Next Step sheet</text>
+</svg>

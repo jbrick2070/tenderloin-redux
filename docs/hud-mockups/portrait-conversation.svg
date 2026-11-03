@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 410 730" width="410" height="730" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <title>Portrait phone 390x667, talking to Bea: the sheet at half height with the disclosed steps row</title>
+  <rect width="410" height="730" fill="#1a1a1a"/>
+  <g transform="translate(10,10)">
+    <rect width="390" height="667" fill="#3b4a55"/>
+    <polygon points="0,300 390,150 390,230 0,380" fill="#8a8f86"/>
+    <rect x="0" y="100" width="120" height="150" fill="#b9975b"/>
+    <rect x="300" y="80" width="90" height="110" fill="#6f8a7a"/>
+    <!-- Bea, framed in the open scene; no bubble while the sheet is open -->
+    <circle cx="195" cy="200" r="12" fill="#f2e2c4"/>
+    <rect x="184" y="212" width="22" height="32" rx="5" fill="#a3473b"/>
+    <text x="195" y="268" text-anchor="middle" font-size="15" fill="#fff3d6" stroke="#0e171d" stroke-width="3" paint-order="stroke">Bea</text>
+    <circle cx="150" cy="250" r="8" fill="#f2e2c4"/>
+    <rect x="143" y="258" width="14" height="20" rx="4" fill="#4b7f9a"/>
+    <text x="150" y="300" text-anchor="middle" font-size="14" font-weight="bold" fill="#ffd25a" stroke="#0e171d" stroke-width="3" paint-order="stroke">YOU</text>
+
+    <!-- header row -->
+    <rect x="8" y="8" width="374" height="48" rx="8" fill="#0f1a22" stroke="#e0b24c" stroke-width="2"/>
+    <rect x="12" y="10" width="56" height="44" rx="6" fill="#16232e" stroke="#d9b35a" stroke-width="1.5"/>
+    <text x="40" y="37" text-anchor="middle" font-size="14" fill="#fff3d6">Menu</text>
+    <text x="76" y="37" font-size="14" fill="#9ef5e5">Ch. 1 · Next: Meet Thanh (4/5)</text>
+    <rect x="310" y="14" width="68" height="36" rx="18" fill="#16232e" stroke="#d9b35a" stroke-width="1.5"/>
+    <text x="344" y="37" text-anchor="middle" font-size="13" fill="#ffe48f">✦ 8 · 0/10</text>
+
+    <!-- the sheet, half height: 307 px, bottom bar hidden -->
+    <rect x="8" y="348" width="374" height="311" rx="10" fill="#0f1a22" stroke="#d98f7a" stroke-width="3"/>
+    <!-- handle strip -->
+    <rect x="10" y="350" width="370" height="44" rx="8" fill="#15222c"/>
+    <text x="22" y="378" font-size="15" fill="#ffe082">Bea · Turn 1/5</text>
+    <rect x="272" y="352" width="104" height="40" rx="6" fill="#16232e" stroke="#d9b35a" stroke-width="1.5"/>
+    <text x="324" y="378" text-anchor="middle" font-size="13" fill="#fff3d6">Show less ▾</text>
+    <!-- reader, 16 px, scrollable, at least 96 px -->
+    <text font-size="16" fill="#f2ead8">
+      <tspan x="22" y="422">Bea: "Welcome to the block, neighbor. I'm</tspan>
+      <tspan x="22" y="444">Bea. A long table, a few good stories.</tspan>
+      <tspan x="22" y="466">That's my kind of afternoon. Thanh is</tspan>
+      <tspan x="22" y="488">about a block southwest if you're heading</tspan>
+      <tspan x="22" y="510">that way."</tspan>
+    </text>
+    <rect x="372" y="406" width="4" height="108" rx="2" fill="#3a4a56"/>
+    <rect x="372" y="406" width="4" height="70" rx="2" fill="#9ef5e5" opacity="0.7"/>
+    <!-- row 1 -->
+    <rect x="18" y="528" width="114" height="44" rx="6" fill="#16232e" stroke="#d9b35a" stroke-width="1.5"/>
+    <text x="75" y="555" text-anchor="middle" font-size="14" fill="#fff3d6">Chat More</text>
+    <rect x="138" y="528" width="114" height="44" rx="6" fill="#16232e" stroke="#d9b35a" stroke-width="1.5"/>
+    <text x="195" y="555" text-anchor="middle" font-size="14" fill="#fff3d6">Hide Steps</text>
+    <rect x="258" y="528" width="114" height="44" rx="6" fill="#16232e" stroke="#d9b35a" stroke-width="1.5"/>
+    <text x="315" y="555" text-anchor="middle" font-size="14" fill="#fff3d6">Goodbye</text>
+    <!-- row 2, disclosed by Next Step -->
+    <rect x="18" y="580" width="114" height="44" rx="6" fill="#4a3b14" stroke="#ffd25a" stroke-width="2"/>
+    <text x="75" y="607" text-anchor="middle" font-size="14" fill="#fff3d6">Meet Thanh</text>
+    <rect x="138" y="580" width="114" height="44" rx="6" fill="#16232e" stroke="#d9b35a" stroke-width="1.5"/>
+    <text x="195" y="607" text-anchor="middle" font-size="14" fill="#fff3d6">Talk to Dez</text>
+    <rect x="258" y="580" width="114" height="44" rx="6" fill="#16232e" stroke="#d9b35a" stroke-width="1.5"/>
+    <text x="315" y="607" text-anchor="middle" font-size="14" fill="#fff3d6">All Actions</text>
+    <text x="22" y="646" font-size="11" fill="#ff9fb5">row 2 appears after Next Step; required choices (Long Table / Open Floor, Return gear) are there from the start</text>
+
+    <!-- dimension notes -->
+    <line x1="4" y1="64" x2="4" y2="340" stroke="#ff9fb5" stroke-width="1"/>
+    <text x="14" y="330" font-size="11" fill="#ff9fb5">scene 272 px · 41 % · bubble hidden while the sheet is open</text>
+    <text x="14" y="74" font-size="11" fill="#ff9fb5">Info never shows dialogue; the header stays 48 px</text>
+  </g>
+  <text x="10" y="700" font-size="12" fill="#d8d8d8">Portrait 390x667 · talking · sheet at half (307 px) · bottom bar hidden; the sheet carries Next Step and Goodbye</text>
+  <text x="10" y="716" font-size="12" fill="#d8d8d8">Show less → one-line bar "Bea · ▲" and the bubble returns above her · All Actions grows this same sheet to full</text>
+</svg>
