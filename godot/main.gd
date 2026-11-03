@@ -6915,7 +6915,7 @@ func sheet_width(panel: Control) -> float:
 	if sheet_kind and hud_size_class() == "desktop":
 		w = minf(w, 640.0)
 	if panel == sheet_panel() and sheet_at_bar() and phone_tray_docked():
-		w = maxf(w - phone_tray.size.x - 8.0, 120.0)
+		w = maxf(w - phone_tray.size.x - 8.0, 44.0) # At least its handle; never under the tray.
 	return w
 
 func has_side_panel_dock() -> bool:
@@ -6973,8 +6973,9 @@ func press_phone_explore() -> void:
 	phone_actions_open = false
 	cancel_map_pinch()
 	layout_walking_controls_and_hub()
-	if not phone_tray_open and sheet_panel() != null:
-		if sheet_panel() == block_panel: frame_conversation(talk_partner) # The scene the strip framed grows again.
+	if sheet_panel() != null:
+		# The scene the strip framed shrinks beside (or above) the tray as it opens, and grows again as it closes.
+		if sheet_panel() == block_panel: frame_conversation(talk_partner)
 		else: refit_panel_after_layout()
 	if phone_tray_open: map_control.grab_focus()
 	else: phone_explore_control.grab_focus()
@@ -7201,8 +7202,11 @@ func layout_walking_controls_and_hub() -> void:
 		b.add_theme_font_size_override("font_size", 13 if side or narrow else 15)
 		var owner_return := b in conv_action_btns and String(conv_action_ids[conv_action_btns.find(b)]).begins_with("return_owner:")
 		var named_phone_choice := uses_phone_talk_rows() and b in conv_action_btns
-		b.clip_text = not compact and not owner_return and not named_phone_choice
-		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if compact or owner_return or named_phone_choice else TextServer.AUTOWRAP_OFF
+		# A desktop sheet narrower than the screen wraps its actions' words ("Open Floor (Dez & Celeste)") rather than cut them.
+		var capped_choice := b in conv_action_btns and block_panel_mode == "talk" and sheet_width(block_panel) < vp.x - 24.0
+		var wraps := compact or owner_return or named_phone_choice or capped_choice
+		b.clip_text = not wraps
+		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if wraps else TextServer.AUTOWRAP_OFF
 	for label in [mural_label, music_label]:
 		if label != null:
 			label.add_theme_font_size_override("font_size", 13 if side or narrow else 16)

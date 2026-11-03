@@ -300,7 +300,7 @@ static func verify(suite: SceneTree, game: Node) -> void:
 			var sp: Control = game.sheet_panel()
 			var half: Rect2 = sp.get_global_rect()
 			suite.require(game.hud_size_class() == "desktop" and near(half.position.x, 12.0) and near(half.size.x, want), "at %s the %s sheet at half is %.0f px wide from the left (%s)" % [size, kind, want, half])
-			suite.require(near(game.play_area_rect().end.y, half.position.y - 8.0), "at %s the scene ends above the %s sheet" % [size, kind])
+			suite.require(near(game.play_area_base_rect().end.y, half.position.y - 8.0), "at %s the scene ends above the %s sheet" % [size, kind])
 			var detail: Dictionary = game.activity_detail_snapshot(game.block_detail_label, game.block_panel, game.conv_buttons) if kind == "talk" else (game.activity_detail_snapshot(game.mural_detail_label, game.mural_panel, game.mural_buttons) if kind == "mural" else game.activity_detail_snapshot(game.music_stem_label, game.music_panel, game.music_buttons))
 			var clipped: Array = []
 			for b in detail.get("buttons", []):
@@ -312,6 +312,25 @@ static func verify(suite: SceneTree, game: Node) -> void:
 			suite.require(game.sheet_at_bar() and near(bar_strip.position.x, 12.0) and near(bar_strip.size.x, want) and near(bar_strip.end.y, game.controls.get_global_rect().position.y - 8.0), "at %s the %s strip is %.0f px wide on the bar (%s)" % [size, kind, want, bar_strip])
 			game.end_conversation()
 			await frames(suite, 2)
+		if size.x >= 1050:
+			# The gathering choice is required and inline: its longest labels must read whole in the narrower sheet.
+			var visited_before: Dictionary = game.visited_neighbors.duplicate()
+			var layout_before: String = game.gathering_layout
+			for n in game.neighbors: game.visited_neighbors[String(n.get("id", ""))] = true
+			game.gathering_layout = ""
+			game.show_conversation(0)
+			await frames(suite, 3)
+			var choice_detail: Dictionary = game.activity_detail_snapshot(game.block_detail_label, game.block_panel, game.conv_buttons)
+			var cut: Array = []
+			var offered := false
+			for b in choice_detail.get("buttons", []):
+				offered = offered or String(b.text).begins_with("Open Floor")
+				if b.visible and not b.text_fits: cut.append(b.text)
+			suite.require(String(game.current_objective().get("id", "")) == "layout" and offered and cut.is_empty() and near(game.block_panel.get_global_rect().size.x, 640.0), "at %s the required Long Table and Open Floor choices read whole in the 640 px sheet (%s)" % [size, cut])
+			game.end_conversation()
+			await frames(suite, 2)
+			game.visited_neighbors = visited_before
+			game.gathering_layout = layout_before
 		game.show_block_panel(true)
 		await frames(suite, 3)
 		suite.require(game.block_panel_mode == "hub" and near(game.block_panel.get_global_rect().size.x, float(size.x) - 24.0), "at %s the hub keeps the full width (%s)" % [size, game.block_panel.get_global_rect()])
@@ -354,6 +373,8 @@ static func verify(suite: SceneTree, game: Node) -> void:
 			suite.require(game.phone_tray_docked() and near(tray.size.x, game.side_dock_width()) and near(tray.end.y, bar_top - 8.0) and near(tray.end.x, float(size.x) - 12.0), "at %s the tray stands in the right dock, on the bar (%s)" % [size, tray])
 			suite.require(near(strip.end.y, bar_top - 8.0) and near(strip.position.x, 12.0) and near(strip.end.x, tray.position.x - 8.0) and not strip.intersects(tray), "at %s the conversation's strip stands on the bar beside the docked tray (%s beside %s)" % [size, strip, tray])
 			suite.require(near(scene.end.x, tray.position.x - 8.0) and near(scene.end.y, strip.position.y - 8.0) and scene.size.y >= 150.0 and scene.size.x >= 250.0, "at %s the scene keeps %.0f x %.0f px beside the tray and above the strip" % [size, scene.size.x, scene.size.y])
+			var speaker_at: Vector2 = game.camera.unproject_position(game.neighbors[0].pos)
+			suite.require(scene.has_point(speaker_at), "at %s opening the tray re-frames the speaker into the scene beside it (%s in %s)" % [size, speaker_at, scene])
 		else:
 			suite.require(near(strip.end.y, tray.position.y - 8.0) and not strip.intersects(tray), "at %s the conversation's strip stands on the tray (%s over %s)" % [size, strip, tray])
 		game.close_phone_disclosure()
