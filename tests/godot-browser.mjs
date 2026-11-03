@@ -596,7 +596,7 @@ async function verifyLivingMural(page,context,touch,size,verifyResidents=false){
   if(verifyResidents)for(const [key,phrase] of [['Digit4','painted guitar'],['Digit5','painted planter']]){
     await page.keyboard.press(key);await page.waitForFunction(phrase=>{const s=window.__tenderloinGodotA11ySnapshot;return !s.player_grounding.path_active&&s.conversation_detail.panel.visible&&s.conversation_detail.text.includes(phrase);},phrase,{timeout:35000});await settle();
     const s=await snap(),speech=s.overlays.speech;assert.ok(speech.text.includes(phrase)&&!speech.text.startsWith(key==='Digit4'?'Dez:':'Thanh:')&&!speech.text.includes('"'),'actual new resident speech is parsed without duplicate speaker/quotes');
-    if(speech.visible&&!speech.deferred&&!speech.in_info)assert.ok(fits(s.play_area,speech),'long art reaction stays in play space or uses existing complete reader fallback');
+    if(speech.visible&&!speech.deferred&&!speech.in_sheet)assert.ok(fits(s.play_area,speech),'long art reaction stays in play space or uses existing complete reader fallback');
     reactions.push(s.conversation_detail.text);await tap(s.conversation_detail.buttons.find(b=>b.visible&&b.id===2));
   }
   assert.equal(await page.evaluate(()=>localStorage.getItem('tenderloin-redux.save.v1')),legacy);
@@ -1046,7 +1046,7 @@ async function verifyShortActivities(page, context, touch, checks, small = false
       await settle();
       let s = await snapshot();
       // A conversation's own Next Step shows only on a tall phone (HUD Phase 3); elsewhere the bar's is the same press.
-      await tap(s[key].buttons.find(b => b.id === hintId && b.visible) ?? s.walking_controls[0]);
+      await tap(kind === 'conversation' ? (s[key].buttons.find(b => b.id === hintId && b.visible) ?? s.walking_controls[0]) : s[key].buttons.find(b => b.id === hintId));
       s = await snapshot();
       assert.ok(s[key].text.length > 20, 'requested hint remains visible in the reader');
       for (let chat = 0; chat < 5 && (s[key].scroll_max <= s[key].scroll_page || s[key].text.length <= 100); chat++) {

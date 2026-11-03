@@ -877,10 +877,12 @@ func refresh_stick() -> void:
 	if stick == null:
 		return
 	var show := touch_screen and active()
+	var held := has_role("move")
 	if show:
 		var area: Rect2 = game.play_area_rect()
 		stick.size = STICK_SIZE
-		stick.position = Vector2(area.position.x, area.end.y - STICK_SIZE.y)
+		if not held: # A finger on the stick keeps it where it was pressed while the status line comes or goes.
+			stick.position = Vector2(area.position.x, area.end.y - STICK_SIZE.y)
 		# The stick sits bottom-left and the street button top-right, so they only meet in a narrow area; a short
 		# landscape phone (667x390 leaves about 140 px) still has room for the stick beside the button.
 		show = area.size.x >= STICK_SIZE.x + BUTTON_SIZE.x + 16.0 and area.size.y >= STICK_SIZE.y + 8.0

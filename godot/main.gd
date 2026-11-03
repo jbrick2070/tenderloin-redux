@@ -4908,8 +4908,11 @@ func update_speech_bubble(delta: float) -> void:
 		var shift := fitted.position - full_position
 		speech_bubble_node.position += (camera.global_basis.x * shift.x - camera.global_basis.y * shift.y) * screen_constant_scale(1.0, speech_bubble_node.global_position)
 		speech_bubble_age += delta
-	if not (speech_bubble_in_sheet and sheet_line_kind == "speech" and sheet_line_expanded):
-		speech_bubble_timer -= delta # Shown more, the line stays until it is shown less.
+	# Shown more, the line stays until it is shown less; while the tray, the menu or a card hides the status line, its
+	# reading time waits, as a reward's does.
+	var reading_held := speech_bubble_in_sheet and sheet_line_kind == "speech" and (sheet_line_expanded or not sheet_bar_visible() or sheet_line_focused())
+	if not reading_held:
+		speech_bubble_timer -= delta
 	if speech_bubble_timer <= 0.0:
 		hide_speech_bubble()
 
@@ -5954,10 +5957,13 @@ func layout_reward_banner() -> void:
 	if fitted.has_area():
 		reward_banner.position = fitted.position
 	# A short street strip has no room for the note. Its text reads in the status line instead, for its own reading
-	# time; while the line holds dialogue, or a panel is open, the reward stays queued until it fits.
+	# time; while the line holds dialogue or a line shown more, or a conversation, the menu, the tray or a card hides
+	# the status line, the reward stays queued until there is room.
 	reward_banner.visible = not in_overview and not in_wide_overview and fitted.has_area()
-	if not reward_banner.visible and not in_overview and not in_wide_overview and sheet_line_kind != "speech" and sheet_bar_can_show():
-		show_sheet_line("%s: %s" % [reward_title_label.text.trim_prefix("* "), reward_body_label.text], "reward")
+	if not reward_banner.visible and not in_overview and not in_wide_overview and sheet_line_kind != "speech" and not sheet_line_expanded and sheet_bar_can_show():
+		var reward_text := "%s: %s" % [reward_title_label.text.trim_prefix("* "), reward_body_label.text]
+		if not (sheet_line_kind == "reward" and sheet_line_text == reward_text):
+			show_sheet_line(reward_text, "reward") # A re-armed timer (the finale's) does not restart the same line.
 		reward_banner_timer = 0.0
 
 func trigger_feel_good_burst(title_str: String, detail_str: String, world_pos: Vector3, accent: Color = Color("f8cc58"), milestone := false) -> void:
@@ -6451,6 +6457,8 @@ func talk_to_nearby_neighbor(radius: float = 8.0) -> bool:
 func show_conversation(index: int) -> void:
 	if loan_homecoming != null: loan_homecoming.confirmed_owner=""
 	talk_partner = index
+	if index >= 0 and index < neighbors.size() and conversation_has_required_choice():
+		sheet_heights[String(neighbors[index].get("id", ""))] = "half" # A choice the afternoon waits on is never shown less.
 	opening_conversation = true
 	show_block_panel(true)
 	opening_conversation = false
@@ -6943,10 +6951,9 @@ func press_next_step() -> void:
 		frame_player_for_walking()
 		return
 	if talk_sheet_at_bar():
-		# The hint and its actions read in the sheet, so Next Step shows the conversation more first.
-		sheet_heights[talk_sheet_owner()] = "half"
-		apply_block_panel_mode()
-		update_block_ui()
+		set_talk_sheet_height("half") # The hint and its actions read in the sheet, so Next Step shows it more first.
+	elif phone_tray_open:
+		close_phone_disclosure() # The hint reads where the tray stood.
 	if not phone_talking():
 		ask_whats_next()
 		return
@@ -17110,6 +17117,10 @@ func show_sheet_line(text: String, kind: String, hold_sec := -1.0) -> void:
 	var body := text.strip_edges()
 	if body.is_empty() or sheet_bar == null:
 		return
+	if kind != "speech" and talk_sheet_open() and not talk_sheet_at_bar():
+		last_panel_dialogue = body # An open conversation is the reader: a hint or route message reads there, not stacked.
+		update_block_ui()
+		return
 	sheet_line_text = body
 	sheet_line_kind = kind
 	sheet_line_timer = hold_sec if hold_sec > 0.0 else clampf(4.5 + float(body.length()) * 0.055, 6.0, 14.0)
@@ -17138,8 +17149,11 @@ func show_status_line() -> void:
 func set_sheet_line_expanded(expanded: bool) -> void:
 	sheet_line_expanded = expanded and not sheet_line_text.is_empty()
 	layout_sheet_bar()
-	if sheet_bar_toggle.is_visible_in_tree():
+	# Shown more, focus stays on Show less; shown less, it goes back to Next Step, so the line's reading time resumes.
+	if sheet_line_expanded and sheet_bar_toggle.is_visible_in_tree():
 		sheet_bar_toggle.grab_focus()
+	elif not sheet_line_expanded and sheet_line_focused() and next_hint_control != null and next_hint_control.is_visible_in_tree():
+		next_hint_control.grab_focus()
 	announce_a11y_status(("Shown more. " + sheet_line_text) if sheet_line_expanded else "Shown less.")
 
 func sheet_bar_can_show() -> bool:
@@ -17148,12 +17162,21 @@ func sheet_bar_can_show() -> bool:
 func sheet_bar_visible() -> bool:
 	return sheet_bar != null and sheet_bar.is_visible_in_tree()
 
+## Keyboard focus on Show more or the reader holds the line, so it never vanishes under a reader.
+func sheet_line_focused() -> bool:
+	var focus := get_viewport().gui_get_focus_owner() if is_inside_tree() else null
+	return sheet_bar != null and focus != null and sheet_bar.is_ancestor_of(focus)
+
 ## Every frame: a shown-less line other than dialogue spends its reading time while it shows (dialogue keeps the
-## bubble's timer), then clears.
+## bubble's timer), then clears. A hint, route message or reward that something hides (a conversation, the tray, the
+## menu, a card or a focused activity) is dropped, so it never comes back stale; dialogue waits for the line instead.
 func update_sheet_line(delta: float) -> void:
 	if sheet_bar == null:
 		return
-	if not sheet_line_text.is_empty() and sheet_line_kind != "speech" and not sheet_line_expanded and sheet_bar_visible():
+	if not sheet_line_text.is_empty() and sheet_line_kind != "speech" and not sheet_bar_can_show():
+		clear_sheet_line()
+		return
+	if not sheet_line_text.is_empty() and sheet_line_kind != "speech" and not sheet_line_expanded and not sheet_line_focused() and sheet_bar_visible():
 		sheet_line_timer -= delta
 		if sheet_line_timer <= 0.0:
 			clear_sheet_line()
@@ -17227,6 +17250,14 @@ func set_talk_sheet_height(height: String) -> void:
 	announce_a11y_status("Conversation shown less: the street and %s's words show above the bar. Show more reads it here." % who if height == "bar" else "Conversation shown more.")
 
 ## The title at bar height: who is talking, or the first words of a line the scene could not place.
+## Layout and loan-return choices: the afternoon waits on them, so they are always in row 2 (docs/HUD_REDESIGN_PLAN.md 4).
+func conversation_has_required_choice() -> bool:
+	for act in conversation_actions():
+		var act_id := String(act.get("id", ""))
+		if act_id in ["layout_table", "layout_floor"] or act_id.begins_with("return_owner:"):
+			return true
+	return false
+
 func refresh_talk_sheet_title() -> void:
 	if not talk_sheet_at_bar():
 		update_block_ui()
@@ -17234,8 +17265,9 @@ func refresh_talk_sheet_title() -> void:
 	var n: Dictionary = neighbors[talk_partner]
 	var who := String(n.get("name", "Neighbor"))
 	if speech_bubble_in_sheet and not speech_bubble_text.is_empty():
+		# Only the partner's own line takes the partner's name; a host's or a docent's reads as it was said.
 		var said := speech_bubble_text.replace("\n", " ")
-		block_label.text = said if said.begins_with(who) else "%s: %s" % [who, said]
+		block_label.text = "%s: %s" % [who, said] if speech_bubble_anchor == talk_sheet_owner() and not said.begins_with(who) else said
 	else:
 		var n_turn := posmod(maxi(1, int(neighbor_talk_counts.get(String(n.get("id", "")), 1))) - 1, 5) + 1
 		block_label.text = "%s · Turn %d/5" % [who, n_turn]

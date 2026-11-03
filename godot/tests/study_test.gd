@@ -3302,7 +3302,8 @@ func run() -> void:
 	await process_frame
 	await process_frame
 	await process_frame
-	require(study.info.visible and study.info.text.contains(solo_hint), "What's Next shows a visible answer away from neighbors")
+	require(study.sheet_bar_visible() and study.sheet_line_text.contains(solo_hint) and not study.info.visible, "What's Next shows a visible answer away from neighbors, in the status line")
+	study.clear_sheet_line()
 	study.set_header_details(false)
 	await verify_narrow_hub(study)
 	await verify_short_activity_panels(study)
@@ -3682,7 +3683,9 @@ func verify_short_activity_panels(study: Node, narrow_small := false) -> void:
 			# One bar at every size: Close restores its three primaries, its class height and the tray's full captions.
 			await verify_phone_walking_restored(study,short_size)
 			for restored_panel in [study.block_panel, study.mural_panel, study.music_panel]:
-				require(restored_panel.grow_vertical == Control.GROW_DIRECTION_END, "real Close restores panel grow direction")
+				# A docked panel hangs from under the header; every other panel stands on the bar and grows up (HUD Phase 3).
+				var docked: bool = study.panel_uses_side_dock(restored_panel) and (restored_panel != study.block_panel or restored_panel.visible)
+				require(restored_panel.grow_vertical == (Control.GROW_DIRECTION_END if docked else Control.GROW_DIRECTION_BEGIN), "real Close restores panel grow direction")
 	study.last_panel_dialogue = ""
 	study.player.position = original_player
 	study.objective_refresh_timer = original_timer
