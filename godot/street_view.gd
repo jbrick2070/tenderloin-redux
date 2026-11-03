@@ -67,6 +67,7 @@ var contacts := {} # contact id (touch index or MOUSE_CONTACT) -> {"role", "down
 var stick: Control
 var stick_knob: Panel
 var stick_vec := Vector2.ZERO
+var stick_placed_for := Vector2.ZERO # The viewport the stick was last placed in.
 var touch_screen := false
 var taps_routed := 0 # Look contacts released inside the drag threshold; read by the tests.
 var mouselook_btn: Button
@@ -881,8 +882,11 @@ func refresh_stick() -> void:
 	if show:
 		var area: Rect2 = game.play_area_rect()
 		stick.size = STICK_SIZE
-		if not held: # A finger on the stick keeps it where it was pressed while the status line comes or goes.
+		# A finger on the stick keeps it where it was pressed while the status line comes or goes; a rotation still moves it.
+		var vp: Vector2 = game.bubble_viewport_size()
+		if not held or vp != stick_placed_for:
 			stick.position = Vector2(area.position.x, area.end.y - STICK_SIZE.y)
+			stick_placed_for = vp
 		# The stick sits bottom-left and the street button top-right, so they only meet in a narrow area; a short
 		# landscape phone (667x390 leaves about 140 px) still has room for the stick beside the button.
 		show = area.size.x >= STICK_SIZE.x + BUTTON_SIZE.x + 16.0 and area.size.y >= STICK_SIZE.y + 8.0

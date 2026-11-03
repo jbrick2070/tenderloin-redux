@@ -193,6 +193,31 @@ static func verify(suite: SceneTree, game: Node) -> void:
 	game.update_sheet_line(30.0)
 	game.update_celebration_burst(4.0)
 
+	# 4b. At eye level a finger on the walk stick keeps it where it was pressed while the status line comes, and it moves
+	# above the line once the finger lifts.
+	suite.root.size = Vector2i(390, 667)
+	await frames(suite, 4)
+	var sv = game.street_view
+	var touch0: bool = sv.touch_screen
+	sv.touch_screen = true
+	if not sv.enabled:
+		sv.toggle()
+	await frames(suite, 3)
+	var stick_before: Vector2 = sv.stick.position
+	suite.require(sv.active() and sv.stick_visible(), "HUD fixture stands at eye level with the touch stick")
+	sv.contacts[0] = {"role": "move", "down": sv.stick.get_global_rect().get_center(), "last": sv.stick.get_global_rect().get_center(), "dragging": false}
+	game.show_sheet_line("A route message arrives while the stick is held.", "status")
+	await frames(suite, 3)
+	suite.require(game.sheet_bar_visible() and sv.stick.position == stick_before, "a held stick stays under the finger as the status line comes (%s, was %s)" % [sv.stick.position, stick_before])
+	sv.contacts.clear()
+	await frames(suite, 3)
+	suite.require(sv.stick.position.y < stick_before.y and sv.stick.get_global_rect().end.y <= game.sheet_bar.get_global_rect().position.y, "released, the stick stands above the status line")
+	game.clear_sheet_line()
+	if sv.enabled:
+		sv.toggle()
+	sv.touch_screen = touch0
+	await frames(suite, 3)
+
 	# 5. Panels stand on the one-row bar on a desktop, where the old two-row bar left a 60 px gap.
 	suite.root.size = Vector2i(1100, 760)
 	await frames(suite, 4)
