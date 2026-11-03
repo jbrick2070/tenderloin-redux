@@ -1136,12 +1136,12 @@ async function verifyShortActivities(page, context, touch, checks, small = false
       checks.push({ kind, width, height, touch, scene: a, panel: p });
       // Opening and closing the menu over an open activity (where Info used to grow the header) keeps the whole dock on
       // screen and the person and prop in the scene; the header stays one row.
-      const barHeight = (await snapshot()).header_control.height;
+      const headerHeight = (await snapshot()).header_control.height;
       for (const open of [true, false]) {
         if (open) await tap((await snapshot()).menu.button); else await closeMenu(page);
         const grown = await snapshot(), dock = grown[key].panel, area = grown.play_area;
         assert.equal(grown.menu.open, open);
-        assert.ok(grown.header_control.height === barHeight && dock.y >= grown.header_control.y + grown.header_control.height && dock.y + dock.height <= height - 12, 'the menu opening and closing keeps the entire dock on-screen');
+        assert.ok(grown.header_control.height === headerHeight && dock.y >= grown.header_control.y + grown.header_control.height && dock.y + dock.height <= height - 12, 'the menu opening and closing keeps the entire dock on-screen');
         for (const point of grown.panel_subject_points) assert.ok(point.x >= area.x && point.x <= area.x + area.width && point.y >= area.y && point.y <= area.y + area.height, 'the menu leaves the actual person and prop in the scene');
       }
       // Rotate with the activity open; automatic framing follows layout, manual pan does not.
