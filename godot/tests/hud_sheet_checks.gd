@@ -1,5 +1,5 @@
 extends RefCounted
-## HUD Phase 3a (docs/HUD_REDESIGN_PLAN.md 4 and 8): the conversation sheet's two heights with their handle and memory,
+## HUD Phase 3 (docs/HUD_REDESIGN_PLAN.md 4 and 8): the conversation, mural and music sheets's two heights with their handle and memory,
 ## the bubble shown only while the sheet is at bar height, and the status line that reads what Info used to receive:
 ## dialogue the scene cannot place, a hint with no one to say it, route messages and a reward with no room. Also Phase 2's
 ## gaps: panels stand on the one-row bar, desktop has one Next Step while talking, and the Explore tray uses the bar's font.
@@ -230,6 +230,63 @@ static func verify(suite: SceneTree, game: Node) -> void:
 		suite.require(p.is_visible_in_tree() and near(gap, 8.0), "the desktop %s panel stands on the bar (gap %.0f px)" % [kind, gap])
 		game.end_conversation()
 		await frames(suite, 2)
+
+	# 6. Celeste's mural and Rook's music are sheets too: Show less leaves their handle on the bar with Goodbye beside it,
+	# each keeps its height for the session, and Next Step shows it more.
+	for size in [Vector2i(1100, 760), Vector2i(390, 667), Vector2i(667, 390)]:
+		suite.root.size = size
+		await frames(suite, 4)
+		for kind in ["mural", "music"]:
+			game.sheet_heights.clear()
+			if kind == "mural": game.show_mural_panel(true)
+			else: game.show_music_panel(true)
+			await frames(suite, 3)
+			var p: Control = game.mural_panel if kind == "mural" else game.music_panel
+			var handle: Button = game.sheet_handle_for(p)
+			var body: Control = p.get_meta("sheet_body")
+			var snap: Dictionary = game.sheet_snapshot()
+			suite.require(snap.mode == kind and snap.height == "half" and handle.is_visible_in_tree() and handle.text == "Show less" and body.is_visible_in_tree() and handle.get_global_rect().size.y >= 44.0, "at %s the %s panel opens at half with its Show less handle" % [size, kind])
+			handle.pressed.emit()
+			await frames(suite, 3)
+			var rect: Rect2 = p.get_global_rect()
+			suite.require(game.sheet_snapshot().height == "bar" and not body.is_visible_in_tree() and handle.text == "Show more" and handle.has_focus(), "at %s Show less leaves the %s handle alone, with focus on it" % [size, kind])
+			suite.require(game.controls.is_visible_in_tree() and near(rect.end.y, game.controls.get_global_rect().position.y - 8.0) and rect.size.y <= 64.0 and game.walk_control.text == "Goodbye", "at %s the %s strip stands on the bar beside Goodbye (%s)" % [size, kind, rect])
+			game.end_conversation()
+			await frames(suite, 2)
+			if kind == "mural": game.show_mural_panel(true)
+			else: game.show_music_panel(true)
+			await frames(suite, 3)
+			suite.require(game.sheet_snapshot().height == "bar", "at %s the %s panel reopens shown less" % [size, kind])
+			game.press_next_step()
+			await frames(suite, 3)
+			suite.require(game.sheet_snapshot().height == "half" and body.is_visible_in_tree(), "at %s Next Step shows the %s panel more" % [size, kind])
+			game.end_conversation()
+			await frames(suite, 2)
+
+	# 7. Explore beside a sheet: on landscape and desktop it stays on the bar while a conversation reads, and opening the
+	# tray shows the conversation less, its strip standing on the tray; on a tall phone the strip leaves Explore its place.
+	for size in [Vector2i(1100, 760), Vector2i(667, 390), Vector2i(390, 667)]:
+		suite.root.size = size
+		await frames(suite, 4)
+		game.sheet_heights.clear()
+		game.show_conversation(0)
+		await frames(suite, 3)
+		if game.hud_size_class() == "portrait":
+			game.sheet_handle_btn.pressed.emit()
+			await frames(suite, 3)
+		suite.require(game.phone_explore_control.is_visible_in_tree(), "at %s Explore is on the bar beside the conversation" % size)
+		game.phone_explore_control.pressed.emit()
+		await frames(suite, 3)
+		var strip: Rect2 = game.block_panel.get_global_rect()
+		var tray: Rect2 = game.phone_tray.get_global_rect()
+		suite.require(game.talk_sheet_open() and game.sheet_snapshot().height == "bar" and game.phone_tray.is_visible_in_tree() and game.map_control.is_visible_in_tree(), "at %s Explore shows the conversation less and opens the tray with Map" % size)
+		suite.require(near(strip.end.y, tray.position.y - 8.0) and not strip.intersects(tray), "at %s the conversation's strip stands on the tray (%s over %s)" % [size, strip, tray])
+		game.close_phone_disclosure()
+		await frames(suite, 3)
+		suite.require(near(game.block_panel.get_global_rect().end.y, game.controls.get_global_rect().position.y - 8.0), "at %s the strip goes back onto the bar when the tray closes" % size)
+		game.end_conversation()
+		await frames(suite, 2)
+	game.sheet_heights.clear()
 
 	suite.root.size = size0
 	await frames(suite, 4)

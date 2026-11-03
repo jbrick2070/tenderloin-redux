@@ -112,7 +112,7 @@ static func verify(suite: SceneTree, game: Node) -> void:
 		game.show_conversation(0)
 		await frames(suite, 4)
 		var col: Rect2 = game.map_tools.get_global_rect()
-		suite.require(game.block_panel.visible and not game.phone_explore_control.is_visible_in_tree(), "a conversation on desktop hides Explore at %s" % size)
+		suite.require(game.block_panel.visible and game.phone_explore_control.is_visible_in_tree(), "a conversation on desktop keeps Explore on the bar at %s (it shows the conversation less)" % size)
 		suite.require(not game.map_tools.is_visible_in_tree() or (game.play_area_rect().grow(0.5).encloses(col) and not col.intersects(game.block_panel.get_global_rect())), "at %s the column stays clear of the conversation (%s, %s)" % [size, str(col), str(game.block_panel.get_global_rect())])
 		if size == Vector2i(1100, 760):
 			suite.require(game.map_tools.is_visible_in_tree(), "at 1100x760 Map and zoom stay one click beside a conversation")
@@ -209,7 +209,7 @@ static func verify(suite: SceneTree, game: Node) -> void:
 		await frames(suite, 4)
 		suite.require(game.view_size == 45.0 and game.play_area_rect().grow(1.0).encloses(game.player_overlay_rect()), "at %s Map then Find Me keeps the player and YOU in the scene" % size)
 	# 7. Beside an open hub, landscape phones and desktop still reach Map: Explore stays on the bar and closes the hub as it
-	# opens the tray. A tall phone's hub and any conversation keep Explore off the bar.
+	# opens the tray. A tall phone's hub keeps Explore off the bar; a conversation keeps it (hud_sheet_checks 7).
 	game.player.position = player0
 	for size in [Vector2i(640, 360), Vector2i(667, 390), Vector2i(1100, 760), Vector2i(390, 667)]:
 		suite.root.size = size
@@ -230,7 +230,7 @@ static func verify(suite: SceneTree, game: Node) -> void:
 	await frames(suite, 4)
 	game.show_conversation(0)
 	await frames(suite, 4)
-	suite.require(game.block_panel.visible and game.block_panel_mode == "talk" and not game.phone_explore_control.is_visible_in_tree(), "a landscape conversation keeps Explore off the bar")
+	suite.require(game.block_panel.visible and game.block_panel_mode == "talk" and game.phone_explore_control.is_visible_in_tree(), "a landscape conversation keeps Explore on the bar (it shows the conversation less, HUD Phase 3)")
 	game.end_conversation()
 	await frames(suite, 3)
 

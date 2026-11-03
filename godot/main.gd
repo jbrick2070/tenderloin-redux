@@ -4818,8 +4818,8 @@ func hide_speech_bubble() -> void:
 	speech_bubble_activity_matched = false
 	if sheet_line_kind == "speech":
 		clear_sheet_line()
-	if was_in_sheet and talk_sheet_at_bar():
-		refresh_talk_sheet_title()
+	if was_in_sheet and sheet_at_bar():
+		refresh_sheet_title()
 
 func is_speech_bubble_visible() -> bool:
 	return speech_bubble_node != null and speech_bubble_node.visible
@@ -4848,7 +4848,7 @@ func update_speech_bubble(delta: float) -> void:
 		return
 	var activity_detail := speech_activity_detail()
 	if speech_bubble_activity_matched and activity_detail == null:
-		if talk_sheet_at_bar():
+		if sheet_at_bar():
 			speech_bubble_activity_matched = false # Shown less, the line the sheet was reading goes back on stage.
 			speech_bubble_in_activity = false
 		else:
@@ -4874,8 +4874,8 @@ func update_speech_bubble(delta: float) -> void:
 	var fitted := fit_overlay_around_player(Rect2(full_position, full_size), area, reward_rect)
 	if street_view_active() and (camera.is_position_behind(speech_bubble_node.global_position) or not street_view.line_of_sight_clear(street_view.eye_xz(), anchor_xz)):
 		fitted = Rect2() # Behind the eye or behind a wall: the line is read in the sheet instead of a mirrored bubble.
-	if activity_detail != null and activity_detail == block_detail_label:
-		fitted = Rect2() # The conversation sheet at half is the reader, so the line is not read twice; at bar the bubble shows.
+	if activity_detail != null:
+		fitted = Rect2() # The sheet at half is the reader, so the line is not read twice; at bar the bubble shows.
 	speech_bubble_deferred = not fitted.has_area()
 	var was_in_activity := speech_bubble_in_activity
 	speech_bubble_in_activity = speech_bubble_deferred and not speech_bubble_in_sheet and speech_activity_detail() != null
@@ -4894,9 +4894,9 @@ func update_speech_bubble(delta: float) -> void:
 			# The sheet is the reader: a conversation at bar height shows the first words under its handle; otherwise the
 			# status line over the bar shows the line, with Show more for all of it. Info never receives dialogue.
 			speech_bubble_in_sheet = true
-			if talk_sheet_at_bar():
-				refresh_talk_sheet_title()
-				announce_speech_location("the conversation, under Show more")
+			if sheet_at_bar():
+				refresh_sheet_title()
+				announce_speech_location("the sheet, under Show more")
 			elif talk_sheet_open():
 				last_panel_dialogue = speech_bubble_text # Someone else's line reads in the open conversation's reader.
 				update_block_ui()
@@ -6851,8 +6851,8 @@ func uses_short_side_panels() -> bool:
 	return vp.x >= SIDE_ACTIVITY_MIN_WIDTH and vp.y < SIDE_HUB_MAX_HEIGHT
 
 func panel_uses_side_dock(panel: Control) -> bool:
-	if panel == block_panel and talk_sheet_at_bar():
-		return false # At bar height the conversation is a strip on the bar, at every size.
+	if panel != null and panel == sheet_panel() and sheet_at_bar():
+		return false # At bar height a sheet is a strip on the bar, at every size.
 	return panel != null and (uses_short_side_panels() or (panel == block_panel and uses_side_block_hub()))
 
 func uses_compact_narrow_activities() -> bool:
@@ -6920,19 +6920,19 @@ func close_phone_disclosure(restore_focus := false) -> void:
 	if restore_focus and phone_explore_control != null and phone_explore_control.is_visible_in_tree(): phone_explore_control.grab_focus()
 	phone_ui_signature.clear()
 
-## Landscape phones and desktop kept Map, Find Me and Zoom beside an open hub, mural or music panel before the bar became one
-## row, so Explore stays on the bar beside them and closes the panel as it opens the tray. A tall phone's panels cover the
-## tray's place, and a conversation keeps its own row (both until the sheet, Phase 3).
+## Landscape phones and desktop kept Map, Find Me and Zoom beside an open panel before the bar became one row, so Explore
+## stays on the bar beside a hub, a conversation, the mural or the music. It closes the hub as it opens the tray and shows
+## the others less (press_phone_explore). A tall phone's panels at half cover the tray's place; shown less, they leave it.
 func explore_over_panel() -> bool:
-	if hud_size_class() == "portrait" or (block_panel != null and block_panel.visible and block_panel_mode == "talk"):
+	if hud_size_class() == "portrait" or (phone_talking()):
 		return false
 	return any_side_panel_visible()
 
 func press_phone_explore() -> void:
-	if not phone_tray_open and explore_over_panel():
+	if not phone_tray_open and sheet_panel() != null:
+		set_sheet_height("bar", false) # Opening the tray shows a conversation, the mural or the music less (plan 4).
+	elif not phone_tray_open and explore_over_panel():
 		if block_panel.visible: show_block_panel(false)
-		if mural_panel.visible: show_mural_panel(false)
-		if music_panel.visible: show_music_panel(false)
 	phone_tray_open = not phone_tray_open
 	phone_actions_open = false
 	cancel_map_pinch()
@@ -6950,8 +6950,8 @@ func press_next_step() -> void:
 		close_phone_disclosure()
 		frame_player_for_walking()
 		return
-	if talk_sheet_at_bar():
-		set_talk_sheet_height("half") # The hint and its actions read in the sheet, so Next Step shows it more first.
+	if sheet_at_bar():
+		set_sheet_height("half") # The hint and its actions read in the sheet, so Next Step shows it more first.
 	elif phone_tray_open:
 		close_phone_disclosure() # The hint reads where the tray stood.
 	if not phone_talking():
@@ -6992,7 +6992,7 @@ func configure_phone_disclosure() -> void:
 		phone_actions_open = false
 	var blocked := is_focused_activity_visible() or is_story_card_visible()
 	if not talking or blocked: phone_actions_open = false
-	var panel_open := any_side_panel_visible()
+	var panel_open := any_side_panel_visible() and not sheet_at_bar() # A sheet shown less leaves the tray its place.
 	if not enabled or blocked or panel_open: phone_tray_open = false
 	phone_tray.visible = enabled and phone_tray_open and controls.visible and not talking and not blocked
 	# A focused activity hides the whole layer and restores it as it closes, so Explore stays set inside the bar and is back
@@ -7179,24 +7179,27 @@ func layout_walking_controls_and_hub() -> void:
 	for panel in [block_panel, mural_panel, music_panel]:
 		if panel == null:
 			continue
+		apply_activity_sheet(panel)
 		# Hidden activity panels use the same geometry for focus-before-show calls.
 		var dock: bool = panel_uses_side_dock(panel) and (panel != block_panel or panel.visible)
 		if panel != block_panel:
-			panel.get_child(0).add_theme_constant_override("separation", 1 if dock or short_phone else 2)
+			set_panel_separation(panel, 1 if dock or short_phone else 2)
 			if dock and panel.get_combined_minimum_size().y > vp.y - 12.0 - (hud_bottom() + 8.0):
 				# Keep every 44px action and two reader lines when Info is also open.
-				panel.get_child(0).add_theme_constant_override("separation", 0)
+				set_panel_separation(panel, 0)
 		panel.anchor_left = 1.0 if dock else 0.0
 		panel.offset_left = -(dock_width + 12.0) if dock else 12.0
 		panel.offset_right = -12.0
 		var on_bar := controls.offset_top - 8.0 if controls.visible else -12.0
+		if phone_tray != null and phone_tray.visible:
+			on_bar = phone_tray.offset_top - 8.0 # A sheet shown less stands on the Explore tray while it is open.
 		if panel == block_panel and phone_talking():
 			panel.size = Vector2(vp.x-24.0,0)
 			panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 			panel.offset_bottom = -12.0 if current_path.is_empty() else controls.offset_top-8.0
 			panel.offset_top = panel.offset_bottom-panel.get_combined_minimum_size().y
 			continue
-		if panel == block_panel and talk_sheet_at_bar():
+		if panel == sheet_panel() and sheet_at_bar():
 			panel.size = Vector2(vp.x - 24.0, 0.0)
 			panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 			panel.offset_bottom = on_bar
@@ -7216,7 +7219,7 @@ func layout_walking_controls_and_hub() -> void:
 			panel.size = Vector2(vp.x - 24.0, 0.0)
 			panel.offset_bottom = controls.offset_top - 8.0
 			if panel != block_panel and vp.y + panel.offset_bottom - panel.get_combined_minimum_size().y < hud_bottom() + 8.0:
-				panel.get_child(0).add_theme_constant_override("separation", 0)
+				set_panel_separation(panel, 0)
 			panel.offset_top = panel.offset_bottom - panel.get_combined_minimum_size().y
 			continue
 		if dock:
@@ -14361,7 +14364,7 @@ func update_walk_control() -> void:
 	if not walking and voting_story!=null and voting_story.active:
 		walk_control.text="Election map"
 		walk_control.tooltip_text="Resume your historical polling-list map walk."
-	if not walking and talk_sheet_at_bar():
+	if not walking and sheet_at_bar():
 		walk_control.text = "Goodbye"
 		walk_control.tooltip_text = "Say goodbye and keep exploring. Escape also says goodbye."
 	walk_control.accessibility_name = walk_control.text
@@ -14369,8 +14372,8 @@ func update_walk_control() -> void:
 func activate_walk_control() -> void:
 	if not current_path.is_empty():
 		stop_walking()
-	elif talk_sheet_at_bar():
-		end_conversation() # A conversation shown less keeps Goodbye on the bar.
+	elif sheet_at_bar():
+		end_conversation() # A sheet shown less keeps Goodbye on the bar.
 	elif voting_story != null and voting_story.active:
 		voting_story.open_from_walking()
 	elif lantern_procession != null and lantern_procession.active:
@@ -16008,6 +16011,8 @@ func update_mural_ui() -> void:
 		mural_wave_btn.text = motif_button_text("wave", "Wave")
 	if mural_rise_btn != null:
 		mural_rise_btn.text = motif_button_text("rise", "Rise")
+	if sheet_at_bar() and sheet_panel() == mural_panel:
+		refresh_sheet_title() # Shown less, the title is Celeste's name or her line's first words.
 
 func update_music_ui() -> void:
 	refresh_mural_workshop()
@@ -16058,6 +16063,8 @@ func update_music_ui() -> void:
 			music_sketch_btn.text = "Sketch On" if music_mode == "sketch" else "Use Sketch"
 		music_buttons[5].text = "Hint" if short else "What's Next?"
 		music_buttons[6].text = "Close" if short else "Goodbye (Esc)"
+	if sheet_at_bar() and sheet_panel() == music_panel:
+		refresh_sheet_title() # Shown less, the title is Rook's name or his line's first words.
 
 func set_activity_detail(control: RichTextLabel, value: String) -> void:
 	# Periodic music/UI refreshes must not pull readers back to the first line.
@@ -16111,7 +16118,7 @@ func update_block_ui() -> void:
 		if is_narrow_layout() or uses_short_side_panels():
 			block_label.text = "%s · Turn %d/5 · Sparks: %d" % [String(active_n.get("name", "Neighbor")), n_turn, spark_count()]
 		if talk_sheet_at_bar():
-			refresh_talk_sheet_title()
+			refresh_sheet_title()
 	else:
 		apply_character_panel_theme(block_panel, "")
 		block_label.text = "Turk St Conversation & Actions  ·  %s  ·  %d/%d Met  ·  Mural %s  ·  %s  ·  Sparks: %d" % [open_tag, v_count, n_total, m_state, sc_state, spark_count()]
@@ -16451,6 +16458,8 @@ func make_ui() -> void:
 	music_button(m_row3, "What's Next?", func(): ask_whats_next())
 	music_button(m_row3, "Goodbye (Esc)", func(): end_conversation())
 	update_music_ui()
+	make_activity_sheet(mural_panel, mural_label)
+	make_activity_sheet(music_panel, music_label)
 
 	block_panel = PanelContainer.new()
 	block_panel.name = "BlockPanel"
@@ -16486,7 +16495,7 @@ func make_ui() -> void:
 	sheet_handle_btn.visible = false
 	style_game_button(sheet_handle_btn)
 	sheet_handle_btn.pressed.connect(func():
-		if not phone_primary_transition: set_talk_sheet_height("half" if talk_sheet_at_bar() else "bar")
+		if not phone_primary_transition: set_sheet_height("half" if sheet_at_bar() else "bar")
 	)
 	title_row.add_child(sheet_handle_btn)
 	block_detail_label = make_activity_detail()
@@ -17117,7 +17126,9 @@ func show_sheet_line(text: String, kind: String, hold_sec := -1.0) -> void:
 	var body := text.strip_edges()
 	if body.is_empty() or sheet_bar == null:
 		return
-	if kind != "speech" and talk_sheet_open() and not talk_sheet_at_bar():
+	if kind != "speech" and sheet_at_bar():
+		set_sheet_height("half", false) # A message for a sheet shown less shows it more.
+	if kind != "speech" and talk_sheet_open():
 		last_panel_dialogue = body # An open conversation is the reader: a hint or route message reads there, not stacked.
 		update_block_ui()
 		return
@@ -17157,7 +17168,7 @@ func set_sheet_line_expanded(expanded: bool) -> void:
 	announce_a11y_status(("Shown more. " + sheet_line_text) if sheet_line_expanded else "Shown less.")
 
 func sheet_bar_can_show() -> bool:
-	return sheet_bar != null and controls != null and not menu_open and not phone_tray_open and not talk_sheet_open() and not is_focused_activity_visible() and not is_story_card_visible()
+	return sheet_bar != null and controls != null and not menu_open and not phone_tray_open and not talk_sheet_open() and not sheet_at_bar() and not is_focused_activity_visible() and not is_story_card_visible()
 
 func sheet_bar_visible() -> bool:
 	return sheet_bar != null and sheet_bar.is_visible_in_tree()
@@ -17221,9 +17232,9 @@ func layout_sheet_bar() -> void:
 	sheet_bar.size = Vector2(width, sheet_bar.get_combined_minimum_size().y)
 	sheet_bar.position = Vector2(area.position.x + 4.0, area.end.y - sheet_bar.size.y)
 
-## The conversation sheet (docs/HUD_REDESIGN_PLAN.md 4): at "half" it reads the line with its rows and the bubble stays
-## hidden; at "bar" it is the handle alone, standing on the bar, so the street and the bubble show. Each neighbor's
-## conversation keeps the height it was left at for the session. The hub, mural and music panels are full.
+## The sheet (docs/HUD_REDESIGN_PLAN.md 4): a conversation, Celeste's mural or Rook's music panel. At "half" it reads the
+## line with its rows and the bubble stays hidden; at "bar" it is the handle alone, standing on the bar, so the street,
+## the easel or speaker and the bubble show. Each owner keeps the height it was left at for the session; the hub is full.
 func talk_sheet_open() -> bool:
 	return block_panel != null and block_panel.visible and block_panel_mode == "talk" and talk_partner >= 0 and talk_partner < neighbors.size()
 
@@ -17236,20 +17247,122 @@ func talk_sheet_height() -> String:
 func talk_sheet_at_bar() -> bool:
 	return talk_sheet_open() and talk_sheet_height() == "bar"
 
-func set_talk_sheet_height(height: String) -> void:
-	if not talk_sheet_open() or talk_sheet_height() == height:
-		return
-	sheet_heights[talk_sheet_owner()] = height
-	phone_actions_open = false
-	apply_block_panel_mode()
-	update_block_ui()
-	frame_conversation(talk_partner)
-	if sheet_handle_btn.is_visible_in_tree():
-		sheet_handle_btn.grab_focus()
-	var who := String(neighbors[talk_partner].get("name", "the neighbor"))
-	announce_a11y_status("Conversation shown less: the street and %s's words show above the bar. Show more reads it here." % who if height == "bar" else "Conversation shown more.")
+## The panel that has two heights while it shows: the conversation, the mural or the music panel; null otherwise.
+func sheet_panel() -> PanelContainer:
+	if talk_sheet_open():
+		return block_panel
+	if mural_panel != null and mural_panel.visible:
+		return mural_panel
+	if music_panel != null and music_panel.visible:
+		return music_panel
+	return null
 
-## The title at bar height: who is talking, or the first words of a line the scene could not place.
+func sheet_owner() -> String:
+	var panel := sheet_panel()
+	if panel == block_panel:
+		return talk_sheet_owner()
+	if panel == mural_panel:
+		return "celeste"
+	return "rook" if panel == music_panel else ""
+
+func sheet_height() -> String:
+	return String(sheet_heights.get(sheet_owner(), "half")) if sheet_panel() != null else "half"
+
+func sheet_at_bar() -> bool:
+	return sheet_panel() != null and sheet_height() == "bar"
+
+## The handle for a panel: the conversation's, or the one make_activity_sheet gave the mural or music panel.
+func sheet_handle_for(panel: Control) -> Button:
+	if panel == block_panel:
+		return sheet_handle_btn
+	return panel.get_meta("sheet_handle") if panel != null and panel.has_meta("sheet_handle") else null
+
+func sheet_title_for(panel: Control) -> Label:
+	if panel == mural_panel:
+		return mural_label
+	return music_label if panel == music_panel else block_label
+
+## Gives an activity panel the conversation's handle: its title and Show less / Show more on one row, and the rest of the
+## panel in a body that hides at bar height, so whatever the panel's own update shows or hides stays as it was.
+func make_activity_sheet(panel: PanelContainer, title: Label) -> void:
+	var column := panel.get_child(0) as VBoxContainer
+	var body := VBoxContainer.new()
+	body.name = "SheetBody"
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	body.add_theme_constant_override("separation", column.get_theme_constant("separation"))
+	for child in column.get_children():
+		if child != title:
+			child.reparent(body, false)
+	var row := HBoxContainer.new()
+	row.name = "SheetHandle"
+	row.add_theme_constant_override("separation", 6)
+	column.remove_child(title)
+	row.add_child(title)
+	column.add_child(row)
+	column.add_child(body)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	var handle := Button.new()
+	handle.name = "SheetHandleToggle"
+	handle.text = "Show less"
+	handle.accessibility_name = handle.text
+	handle.custom_minimum_size = Vector2(96, 44)
+	handle.focus_mode = Control.FOCUS_ALL
+	style_game_button(handle)
+	handle.pressed.connect(func():
+		if not phone_primary_transition: set_sheet_height("half" if sheet_at_bar() else "bar")
+	)
+	row.add_child(handle)
+	panel.set_meta("sheet_handle", handle)
+	panel.set_meta("sheet_body", body)
+
+## Both columns of a panel take the same separation (the body make_activity_sheet added, and the outer one).
+func set_panel_separation(panel: Control, separation: int) -> void:
+	panel.get_child(0).add_theme_constant_override("separation", separation)
+	if panel.has_meta("sheet_body"):
+		(panel.get_meta("sheet_body") as Control).add_theme_constant_override("separation", separation)
+
+## Shows an activity panel's body or only its handle, as its owner's height says.
+func apply_activity_sheet(panel: Control) -> void:
+	if panel == null or not panel.has_meta("sheet_body"):
+		return
+	var at_bar: bool = panel.visible and String(sheet_heights.get("celeste" if panel == mural_panel else "rook", "half")) == "bar"
+	(panel.get_meta("sheet_body") as Control).visible = not at_bar
+	var handle := sheet_handle_for(panel)
+	handle.text = "Show more" if at_bar else "Show less"
+	handle.accessibility_name = handle.text
+	handle.add_theme_font_size_override("font_size", 13 if hud_size_class() == "landscape" else 14)
+
+func set_talk_sheet_height(height: String) -> void:
+	if talk_sheet_open():
+		set_sheet_height(height)
+
+func set_sheet_height(height: String, grab_focus := true) -> void:
+	var panel := sheet_panel()
+	if panel == null or sheet_height() == height:
+		return
+	sheet_heights[sheet_owner()] = height
+	var who := ""
+	if panel == block_panel:
+		phone_actions_open = false
+		apply_block_panel_mode()
+		update_block_ui()
+		frame_conversation(talk_partner)
+		who = String(neighbors[talk_partner].get("name", "the neighbor"))
+	else:
+		apply_activity_sheet(panel)
+		if panel == mural_panel: update_mural_ui()
+		else: update_music_ui()
+		layout_walking_controls_and_hub()
+		refit_panel_after_layout()
+		who = "Celeste" if panel == mural_panel else "Rook"
+	var handle := sheet_handle_for(panel)
+	if grab_focus and handle != null and handle.is_visible_in_tree():
+		handle.grab_focus()
+	var what := "Conversation" if panel == block_panel else ("Mural" if panel == mural_panel else "Music")
+	announce_a11y_status("%s shown less: the street and %s's words show above the bar. Show more reads it here." % [what, who] if height == "bar" else "%s shown more." % what)
+
 ## Layout and loan-return choices: the afternoon waits on them, so they are always in row 2 (docs/HUD_REDESIGN_PLAN.md 4).
 func conversation_has_required_choice() -> bool:
 	for act in conversation_actions():
@@ -17259,30 +17372,41 @@ func conversation_has_required_choice() -> bool:
 	return false
 
 func refresh_talk_sheet_title() -> void:
-	if not talk_sheet_at_bar():
-		update_block_ui()
+	refresh_sheet_title()
+
+## The title at bar height: who is talking, or the first words of a line the scene could not place.
+func refresh_sheet_title() -> void:
+	var panel := sheet_panel()
+	if panel == null or not sheet_at_bar():
+		if panel == mural_panel: update_mural_ui()
+		elif panel == music_panel: update_music_ui()
+		elif panel == block_panel: update_block_ui()
 		return
-	var n: Dictionary = neighbors[talk_partner]
-	var who := String(n.get("name", "Neighbor"))
+	var owner := sheet_owner()
+	var idx := talk_partner if panel == block_panel else (celeste_index if panel == mural_panel else rook_index)
+	var who := String(neighbors[idx].get("name", "Neighbor")) if idx >= 0 and idx < neighbors.size() else owner.capitalize()
+	var title := sheet_title_for(panel)
 	if speech_bubble_in_sheet and not speech_bubble_text.is_empty():
-		# Only the partner's own line takes the partner's name; a host's or a docent's reads as it was said.
+		# Only the owner's own line takes the owner's name; a host's or a docent's reads as it was said.
 		var said := speech_bubble_text.replace("\n", " ")
-		block_label.text = "%s: %s" % [who, said] if speech_bubble_anchor == talk_sheet_owner() and not said.begins_with(who) else said
+		title.text = "%s: %s" % [who, said] if speech_bubble_anchor == owner and not said.begins_with(who) else said
 	else:
-		var n_turn := posmod(maxi(1, int(neighbor_talk_counts.get(String(n.get("id", "")), 1))) - 1, 5) + 1
-		block_label.text = "%s · Turn %d/5" % [who, n_turn]
+		var turns: int = int(neighbor_talk_counts.get(owner, 1)) if panel == block_panel else (celeste_talk_count if panel == mural_panel else rook_talk_count)
+		title.text = "%s · Turn %d/5" % [who, posmod(maxi(1, turns) - 1, 5) + 1]
 
 func sheet_snapshot() -> Dictionary:
-	var mode := "talk" if talk_sheet_open() else ("hub" if block_panel != null and block_panel.visible else "")
-	var height := talk_sheet_height() if mode == "talk" else ("full" if mode == "hub" else "")
+	var panel := sheet_panel()
+	var mode := "talk" if panel == block_panel else ("mural" if panel == mural_panel else ("music" if panel == music_panel else ("hub" if block_panel != null and block_panel.visible else "")))
+	var shown: Control = panel if panel != null else (block_panel if mode == "hub" else null)
+	var handle := sheet_handle_for(shown) if shown != null else sheet_handle_btn
 	return {
 		"mode": mode,
-		"height": height,
-		"docked": mode != "" and panel_uses_side_dock(block_panel),
-		"panel": control_snapshot(block_panel) if mode != "" else {},
-		"handle": control_snapshot(sheet_handle_btn),
-		"handle_text": sheet_handle_btn.text if sheet_handle_btn != null else "",
-		"title": block_label.text if mode != "" and block_label != null else "",
+		"height": sheet_height() if panel != null else ("full" if mode == "hub" else ""),
+		"docked": shown != null and panel_uses_side_dock(shown),
+		"panel": control_snapshot(shown) if shown != null else {},
+		"handle": control_snapshot(handle),
+		"handle_text": handle.text if handle != null else "",
+		"title": sheet_title_for(shown).text if shown != null else "",
 		"line": {"visible": sheet_bar_visible(), "kind": sheet_line_kind, "text": sheet_line_text, "expanded": sheet_line_expanded, "timer": sheet_line_timer, "panel": control_snapshot(sheet_bar), "toggle": control_snapshot(sheet_bar_toggle)},
 	}
 
