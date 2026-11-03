@@ -1,12 +1,27 @@
 # Build status
 
-## Current: HUD redesign Phase 1, on main and not deployed - November 3, 2026 UTC
+## Current: HUD redesign Phase 2, on main and not deployed - November 3, 2026 UTC
+
+Phase 2 of `docs/HUD_REDESIGN_PLAN.md` is on main (merge `909425e`). The bottom bar has the same three buttons at every size: Next Step, the walk/talk button and Explore. It is one row, 44 px tall on landscape phones and 50 px elsewhere. Tenderloin Map, Find Me and Zoom are in the Explore tray at every size. Desktop also gets the corner column from decision 1: Map, Find Me, + and −, 44x44 each, at the scene's right edge under Street view. The bar's first button, the objective line and the conversation row now share one Next Step handler. On landscape phones and desktop, Explore stays on the bar beside an open hub, mural or music panel. Pressing it closes the panel and opens the tray, so Map is still one tap away, as it was before the bar became one row. The new checks are in `godot/tests/hud_bar_checks.gd`; each one failed on a mutation and passed restored.
+
+A Sonnet QA pass and the clean browser runs found five more problems, each now fixed:
+- A page the caller set was compared across page sizes. A hub paged on at one size reopened on the wrong page after a resize, so any write to the page now anchors it.
+- Every phone-size start logged script errors because the hub was laid out before the bar existed. This bug was also on main from Phase 1.
+- The short-landscape walking checks had stopped requiring real captions and the guide arrow. They require both again.
+- The browser suite checked tray buttons that were hidden.
+- The browser suite looked at the street with the Explore tray still open.
+
+Evidence on a clean checkout of `ac19926`, whose code the merge matches exactly: `godot:import`, `godot:export` (pck about 1.52 MB), `npm run check`, 838 Node tests and the full `npm run godot:browser` suite PASS (2 h 25 min). The formal Godot suite PASS with no errors on `5417fc9`, the last commit that changed game code. As in Phase 1, the orbital frame-timing limit was loosened locally for the browser run and the change was not committed.
+
+Open: not deployed; no phone check yet. Phase 3 will close three gaps: the panels' bottom offset still assumes the old two-row bar, desktop shows Next Step twice, and the tray uses 20 px fonts. Phase 4 has a new item: on short landscape screens (520x360) the open tray covers all but about 36 px of the scene, and three columns of two rows would roughly halve its height. Phases 3 (one sheet for all reading text) and 4 (landscape dock, desktop, street view) follow. Decision 1, the desktop corner column, can still be changed.
+
+## HUD redesign Phase 1, on main and not deployed - November 3, 2026 UTC
 
 Phase 1 of `docs/HUD_REDESIGN_PLAN.md` is on main. The header is one row: a Menu button, the objective line and the Sparks pill (48 px tall, 44 on landscape phones). Music, Sounds, Reduced motion, Street view, About, Before These Streets, Read Local Stories, District Border and Import Web Save moved into the Menu, which lays out in three columns on landscape phones. Info is now a three-line note under the header with a Hide button. The block hub shows ten actions and pages by height. The idle scene's share of the screen went from 67% to 74% at 1100x760, 72% to 79% at 390x667, 36% to 50% at 667x390 and 34% to 48% at 900x380. A Sonnet QA pass found four defects, each fixed with a check that fails on the old code (`godot/tests/hud_checks.gd`): the menu opened on the locked Music row over the startup card; a short, wide window opened the docked hub on the wrong page; a hub that fit one page again kept its "n/m" title; and the note and menu came back stale after a focused activity.
 
 Evidence on a clean checkout of `73c3c21` (the uid commit `92bba93` adds no code): `godot:import`, `godot:export` (pck about 1.52 MB), `npm run check`, 838 Node tests and the full `npm run godot:browser` suite PASS; the formal Godot suite PASS with no errors. In that run the orbital walking frame-timing limit was loosened locally, and the change was not committed. On this machine, headless Chrome stalls up to about 500 ms between frames even on a blank page, so the check fails whatever the HUD does.
 
-Open: not deployed; no phone check yet. Phase 2 (the three-button bottom bar, with a desktop-only corner column for Map, Find Me, + and −) is being built on branch `hud-phase2`. Phases 3 (one sheet for all reading text) and 4 (landscape dock, desktop, street view) follow.
+Open at the time: not deployed; no phone check yet. Phase 2 has since merged (above).
 
 ## 3D street view, decluttered and deployed - November 2, 2026 UTC
 
