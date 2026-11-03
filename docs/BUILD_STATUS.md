@@ -1,6 +1,34 @@
 # Build status
 
-## Current: HUD redesign Phase 3, on main and not deployed - November 3, 2026 UTC
+## Current: HUD redesign Phase 4a, on main and not deployed - November 3, 2026 UTC
+
+The first part of Phase 4 of `docs/HUD_REDESIGN_PLAN.md` is on main (merge `22f8bc4`). Phase 3 left two gaps, and this part closes both:
+
+- **The Explore tray docks on a landscape phone.** The tray stands in the right dock, over Explore, at the same width a docked panel uses (280 to 440 px). A sheet shown less stands on the bar to its left, so the scene keeps its height beside the tray. Before, a strip on the tray left only 30 to 60 px of scene. At 667 x 390 the scene is now 292 x 210 px, and at 900 x 380 it is 432 x 200 px. Opening or closing the tray re-frames the speaker into the scene.
+- **Desktop sheets are at most 640 px wide.** A conversation, the mural and the music are left aligned with the scene, both at half height and shown less. The hub keeps its full width for its five columns. Under 664 px wide a sheet still spans the screen.
+
+A Sonnet QA pass found three problems. Each is fixed with a check in `godot/tests/hud_sheet_checks.gd` that failed on the old code:
+
+- The speaker stood under the docked tray after Explore opened it.
+- `Open Floor (Dez & Celeste)` was cut off at 640 px. Actions in a narrowed conversation now wrap their words.
+- A strip beside the docked tray could reach under it. Its floor is now its 44 px handle.
+
+Evidence on a clean checkout of `5c99fe7`, whose code the merge matches exactly:
+
+- `godot:import`, `godot:export` and `npm run check` PASS.
+- All 838 Node tests PASS.
+- The full `npm run godot:browser` suite PASS in 1 h 35 min.
+- The formal Godot suite PASS with no errors on `5c99fe7`.
+- As before, the orbital frame-timing limit was loosened locally for the browser run and not committed.
+
+Open:
+
+- Not deployed, and not yet checked on a phone.
+- Street view still hands back to the map while a sheet is open or shown less. Whether it stays at eye level is the creator's decision 6.
+- `uses_side_block_hub` and `uses_short_side_panels` are not yet replaced by one sheet placement. Landscape screens 520 to 600 px wide still dock differently from wider ones.
+- Accepted: on landscape screens 520 to 616 px wide the walk stick hides while the tray is open.
+
+## HUD redesign Phase 3, on main and not deployed - November 3, 2026 UTC
 
 Phase 3 of `docs/HUD_REDESIGN_PLAN.md` is on main (merge `c0298b6`). Reading text now has one place at a time:
 
@@ -35,7 +63,7 @@ Open: not deployed; no phone check yet. Known gaps:
 
 - No dedicated check for a required choice at half height.
 - A deferred line can show twice in the status-line case, kept sticky to avoid flicker.
-- Three items for Phase 4: the landscape tray with a strip on it leaves 30 to 60 px of scene, desktop sheets span the screen, and street view still hands back to the map while a sheet is at bar height.
+- Three items for Phase 4, the first two since closed by Phase 4a (above): the landscape tray with a strip on it leaves 30 to 60 px of scene, desktop sheets span the screen, and street view still hands back to the map while a sheet is at bar height.
 
 ## HUD redesign Phase 2, on main and not deployed - November 3, 2026 UTC
 
