@@ -1,6 +1,14 @@
 # Build status
 
-## Current: 3D street view, Phase 2 and the playtest fixes, deployed - November 2, 2026 UTC
+## Current: 3D street view, decluttered - November 2, 2026 UTC (on main, not deployed)
+
+After the creator's iPhone run of the deployed Phase 2 ("sometimes seems cluttered"), street view hands the block hub, Celeste's mural panel and Rook's music panel back to the map view while they are open (quietly, in the same call, resuming the same view on close); draws street banners about 18 px tall, only within 45 m, giving way to the Talk prompt, speech, captions, controls and nearer banners; puts speech and the Talk prompt at 2.05 m and the gold marker and mural caption at 2.4 m (Phase 4 work orders 3-4, pulled forward; map heights unchanged); keeps nameplates whole past poles (line of sight still hides them behind buildings); and moves the street button below a showing reward note. agy's Phase 2 fixes (`10d8fa0`: a walk stick on landscape phones, a Mouse look hint that fits) are on main too.
+
+Evidence on `7fac5db`: the formal Godot suite PASS (25 street-view groups, each new check failing with its change turned off), 838 Node tests, and phone-size (410x892, touch) screenshots of the export with no console errors.
+
+Open: not deployed (needs the creator's OK); no clean-checkout browser run since `5dd0fb0`.
+
+## 3D street view, Phase 2 and the playtest fixes, deployed - November 2, 2026 UTC
 
 Phase 2 of `docs/FIRST_PERSON_EXECUTION.md` is on main and deployed to Pages at the creator's request ("Deploy now"), so it can be tried on a phone. It adds drag-look with tap routing, a touch walk stick, the `street_turn` step (30°, 45° or smooth), opt-in mouse look with pointer lock, the settings keys in the Godot v1 envelope only, reduced motion (seeded from the browser, with an Info control), and a portrait-aware field of view. It also carries every confirmed finding from two code reviews and three playtests (Codex and agy on Phase 1, Codex on Phase 2; `docs/first-person-advice/playtest-scorecard.md`). Notable rule change: walking by hand west of Taylor Street now turns street view off and says why, since suspending there flipped the camera with a held W; a tapped route to the west still suspends and resumes.
 
