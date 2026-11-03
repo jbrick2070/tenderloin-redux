@@ -851,7 +851,11 @@ var block_page_nav: HBoxContainer
 var block_page_prev: Button
 var block_page_next: Button
 var block_close_btn: Button
-var block_hub_page := 0
+var block_hub_page := 0:
+	set(value):
+		block_hub_page = value
+		block_hub_page_chosen = true # Any write is a choice, even of the same number; layout_block_action_pages() clears it.
+var block_hub_page_chosen := false
 var quiet_seats: Node
 var bea_invitation: Node
 var table_quiet_seats: Array[Node3D] = []
@@ -6779,7 +6783,7 @@ func block_action_page_count() -> int:
 ## A bottom hub keeps HUB_MIN_SCENE of street above it; a dock runs from under the header to the screen bottom.
 ## Read from the viewport and the panel's fixed parts, not its current size, so a caller can pick a page before showing it.
 func block_actions_per_page() -> int:
-	if not uses_paged_block_actions() or block_panel == null:
+	if not uses_paged_block_actions() or block_panel == null or controls == null: # make_ui lays out the hub before the bar.
 		return BLOCK_ACTION_COUNT
 	var vp := bubble_viewport_size()
 	var dock := vp.x >= SMALL_SIDE_HUB_MIN_WIDTH and vp.y < SIDE_HUB_MAX_HEIGHT
@@ -7199,16 +7203,18 @@ func layout_block_action_pages() -> void:
 	# Without a focused action the page keeps its first action (block_hub_anchor), so a run of page sizes, as when an open
 	# activity is resized and its note hides and shows, comes back to the page it started on. A page set by paging, by
 	# the suggested step or by a caller moves the anchor.
-	var chosen := block_hub_page_size <= 0 or block_hub_page != block_hub_anchor / block_hub_page_size
+	# A caller counts its page in the current page size (block_hub_page_of), so a chosen page anchors at that size.
+	var chosen := block_hub_page_size <= 0 or block_hub_page_chosen
 	if per != block_hub_page_size and focused >= 0 and focused < BLOCK_ACTION_COUNT:
 		block_hub_page = focused / per
 		block_hub_anchor = focused
 	elif chosen:
-		block_hub_anchor = block_hub_page * per # A page a caller chose, counted in the page size it was chosen for.
+		block_hub_anchor = block_hub_page * per
 	elif per != block_hub_page_size:
 		block_hub_page = block_hub_anchor / per
 	block_hub_page_size = per
 	block_hub_page = clampi(block_hub_page, 0, count - 1)
+	block_hub_page_chosen = false
 	# Ten actions are two rows of five on a wide hub and rows of two elsewhere.
 	block_actions_grid.columns = 2 if narrow else 5
 	for i in range(mini(BLOCK_ACTION_COUNT, block_buttons.size())):

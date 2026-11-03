@@ -3680,7 +3680,7 @@ try {
             assert.ok(encloses(snap.block_panel_control, action) && action.width >= 44 && action.height >= 44, 'short hub targets enclosed and tappable');
           }
           for (const action of snap.block_hub_actions) { assert.ok(action.text_fits, `short full title ${action.text}`); seen.push(action.id); }
-          for (const action of snap.walking_controls) assert.ok(action.text_fits && encloses(screen, action) && action.width >= 44 && action.height >= 44, `short walking target ${action.text}`);
+          for (const action of snap.walking_controls.filter(b => b.visible)) assert.ok(action.text_fits && encloses(screen, action) && action.width >= 44 && action.height >= 44, `short walking target ${action.text}`);
           assert.equal(snap.camera_view_size, shortInitial.camera_view_size);
           assert.equal(snap.player_grounding.x, shortInitial.player_grounding.x);
           assert.equal(snap.player_grounding.z, shortInitial.player_grounding.z);

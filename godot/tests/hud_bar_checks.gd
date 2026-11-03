@@ -172,11 +172,15 @@ static func verify(suite: SceneTree, game: Node) -> void:
 	# 6. Short landscape walking without its own refit: Find Me, a hub's Close and Map then Find Me keep the enlarged player
 	# and YOU inside the scene above the 44 px bar, and captions and the outlined guide leave the player clear.
 	var caption_checks := 0
+	var guide_checks := 0
 	for size in [Vector2i(520, 360), Vector2i(559, 360), Vector2i(599, 360), Vector2i(599, 480), Vector2i(599, 559), Vector2i(667, 375), Vector2i(900, 380)]:
 		suite.root.size = size
 		if size == Vector2i(599, 480):
 			var stop: Vector2 = game.nearest_street_point(game.comptons_xz()) # Compton's caption stands by the player.
 			game.player.position = Vector3(stop.x, 0.0, stop.y)
+		elif size == Vector2i(667, 375) or size == Vector2i(900, 380):
+			var west: Vector2 = game.nearest_street_point(Vector2(player0.x - 40.0, player0.z)) # Bea is off screen, so the outlined guide shows.
+			game.player.position = Vector3(west.x, 0.0, west.y)
 		else:
 			game.player.position = player0
 		game.frame_player_for_walking()
@@ -188,7 +192,11 @@ static func verify(suite: SceneTree, game: Node) -> void:
 		for caption in game.visible_scene_captions:
 			caption_checks += 1
 			suite.require(not caption.rect.intersects(game.player_overlay_rect()), "at %s world captions leave the player clear" % size)
+		for entry in game.walking_control_snapshots():
+			if entry.visible:
+				suite.require(entry.text_fits, "at %s the bar's '%s' fits its label" % [size, entry.text])
 		if game.guide_arrow_label.is_visible_in_tree():
+			guide_checks += 1
 			suite.require(not game.guide_arrow_label.get_global_rect().grow(7.0).intersects(game.player_overlay_rect()), "at %s the outlined objective leaves the player clear" % size)
 		game.show_block_panel(true)
 		await frames(suite, 4)
@@ -200,7 +208,8 @@ static func verify(suite: SceneTree, game: Node) -> void:
 		game.frame_player_for_walking()
 		await frames(suite, 4)
 		suite.require(game.view_size == 45.0 and game.play_area_rect().grow(1.0).encloses(game.player_overlay_rect()), "at %s Map then Find Me keeps the player and YOU in the scene" % size)
-	print("HUD_BAR_PASS sizes=", checked, " short_walk_captions=", caption_checks)
+	suite.require(caption_checks > 0 and guide_checks > 0, "the short walking sizes put captions and the outlined guide beside the player (%d, %d)" % [caption_checks, guide_checks])
+	print("HUD_BAR_PASS sizes=", checked, " short_walk_captions=", caption_checks, " guides=", guide_checks)
 
 	game.info.text = info0
 	suite.root.size = size0
