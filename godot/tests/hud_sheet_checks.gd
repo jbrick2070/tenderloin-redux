@@ -256,12 +256,26 @@ static func verify(suite: SceneTree, game: Node) -> void:
 			if kind == "mural": game.show_mural_panel(true)
 			else: game.show_music_panel(true)
 			await frames(suite, 3)
-			suite.require(game.sheet_snapshot().height == "bar", "at %s the %s panel reopens shown less" % [size, kind])
+			rect = p.get_global_rect()
+			suite.require(game.sheet_snapshot().height == "bar" and not body.is_visible_in_tree() and handle.text == "Show more" and near(rect.end.y, game.controls.get_global_rect().position.y - 8.0), "at %s the %s panel reopens shown less, as a strip on the bar" % [size, kind])
+			var owner_name := "Celeste" if kind == "mural" else "Rook"
+			suite.require(game.sheet_title_for(p).text.begins_with(owner_name + " · Turn"), "at %s the %s strip's title is %s's name ('%s')" % [size, kind, owner_name, game.sheet_title_for(p).text])
 			game.press_next_step()
 			await frames(suite, 3)
 			suite.require(game.sheet_snapshot().height == "half" and body.is_visible_in_tree(), "at %s Next Step shows the %s panel more" % [size, kind])
 			game.end_conversation()
 			await frames(suite, 2)
+
+	# 6b. A conversation with Celeste or Rook keeps its own height, apart from their panel's.
+	suite.root.size = Vector2i(1100, 760)
+	await frames(suite, 4)
+	game.sheet_heights.clear()
+	game.sheet_heights[String(game.neighbors[game.celeste_index].get("id", ""))] = "bar"
+	game.show_mural_panel(true)
+	await frames(suite, 3)
+	suite.require(game.sheet_snapshot().height == "half", "Celeste's conversation shown less leaves her mural panel at half")
+	game.end_conversation()
+	await frames(suite, 2)
 
 	# 7. Explore beside a sheet: on landscape and desktop it stays on the bar while a conversation reads, and opening the
 	# tray shows the conversation less, its strip standing on the tray; on a tall phone the strip leaves Explore its place.
@@ -286,6 +300,28 @@ static func verify(suite: SceneTree, game: Node) -> void:
 		suite.require(near(game.block_panel.get_global_rect().end.y, game.controls.get_global_rect().position.y - 8.0), "at %s the strip goes back onto the bar when the tray closes" % size)
 		game.end_conversation()
 		await frames(suite, 2)
+	suite.root.size = Vector2i(1100, 760)
+	await frames(suite, 4)
+	game.sheet_heights.clear()
+	game.show_mural_panel(true)
+	await frames(suite, 3)
+	game.phone_explore_control.pressed.emit()
+	await frames(suite, 3)
+	var mural_strip: Rect2 = game.mural_panel.get_global_rect()
+	suite.require(game.mural_panel.visible and game.sheet_snapshot().height == "bar" and game.phone_tray.is_visible_in_tree() and near(mural_strip.end.y, game.phone_tray.get_global_rect().position.y - 8.0), "Explore beside the mural shows it less, its strip standing on the tray (%s)" % mural_strip)
+	game.end_conversation()
+	game.close_phone_disclosure()
+	await frames(suite, 2)
+	suite.root.size = Vector2i(390, 667)
+	await frames(suite, 4)
+	game.sheet_heights.clear()
+	game.show_conversation(0)
+	await frames(suite, 3)
+	game.press_phone_explore()
+	await frames(suite, 2)
+	suite.require(game.phone_talking() and not game.phone_tray_open and game.sheet_snapshot().height == "half", "Explore pressed under a tall phone's conversation at half changes nothing")
+	game.end_conversation()
+	await frames(suite, 2)
 	game.sheet_heights.clear()
 
 	suite.root.size = size0

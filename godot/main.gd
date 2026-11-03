@@ -679,7 +679,7 @@ var block_panel: PanelContainer
 var block_label: Label
 var block_detail_label: RichTextLabel
 var sheet_handle_btn: Button
-var sheet_heights: Dictionary = {} # Neighbor id -> "bar" or "half": the height each conversation was left at, this session.
+var sheet_heights: Dictionary = {} # Owner -> "bar" or "half", this session: a neighbor id, "celeste:mural" or "rook:music".
 # The sheet at bar height for a line with no panel to read it in (docs/HUD_REDESIGN_PLAN.md 4): a line the scene cannot
 # place, a hint, a route message or a reward that does not fit. One line over the bar; Show more reads the whole of it.
 var sheet_bar: PanelContainer
@@ -4905,6 +4905,9 @@ func update_speech_bubble(delta: float) -> void:
 				show_sheet_line(speech_bubble_text, "speech", speech_bubble_timer)
 				announce_speech_location("the line above the bar")
 	else:
+		if speech_bubble_in_sheet and sheet_at_bar():
+			speech_bubble_in_sheet = false # On stage again: the handle's title goes back to the name.
+			refresh_sheet_title()
 		var shift := fitted.position - full_position
 		speech_bubble_node.position += (camera.global_basis.x * shift.x - camera.global_basis.y * shift.y) * screen_constant_scale(1.0, speech_bubble_node.global_position)
 		speech_bubble_age += delta
@@ -6914,21 +6917,29 @@ func phone_map_return() -> bool:
 	return uses_phone_disclosure() and not following_player and not any_side_panel_visible() and not is_focused_activity_visible()
 
 func close_phone_disclosure(restore_focus := false) -> void:
+	var was_open := phone_tray_open
 	phone_tray_open = false
 	phone_actions_open = false
 	if phone_tray != null: phone_tray.visible = false
 	if restore_focus and phone_explore_control != null and phone_explore_control.is_visible_in_tree(): phone_explore_control.grab_focus()
 	phone_ui_signature.clear()
+	if was_open and sheet_panel() != null:
+		# The strip stood on the tray; the scene it framed grows again (HUD Phase 3).
+		layout_walking_controls_and_hub()
+		if sheet_panel() == block_panel: frame_conversation(talk_partner)
+		else: refit_panel_after_layout()
 
 ## Landscape phones and desktop kept Map, Find Me and Zoom beside an open panel before the bar became one row, so Explore
 ## stays on the bar beside a hub, a conversation, the mural or the music. It closes the hub as it opens the tray and shows
 ## the others less (press_phone_explore). A tall phone's panels at half cover the tray's place; shown less, they leave it.
 func explore_over_panel() -> bool:
-	if hud_size_class() == "portrait" or (phone_talking()):
+	if hud_size_class() == "portrait":
 		return false
 	return any_side_panel_visible()
 
 func press_phone_explore() -> void:
+	if phone_talking():
+		return # A tall phone's conversation at half covers the bar; Explore is not on it.
 	if not phone_tray_open and sheet_panel() != null:
 		set_sheet_height("bar", false) # Opening the tray shows a conversation, the mural or the music less (plan 4).
 	elif not phone_tray_open and explore_over_panel():
@@ -6937,6 +6948,9 @@ func press_phone_explore() -> void:
 	phone_actions_open = false
 	cancel_map_pinch()
 	layout_walking_controls_and_hub()
+	if not phone_tray_open and sheet_panel() != null:
+		if sheet_panel() == block_panel: frame_conversation(talk_partner) # The scene the strip framed grows again.
+		else: refit_panel_after_layout()
 	if phone_tray_open: map_control.grab_focus()
 	else: phone_explore_control.grab_focus()
 	announce_a11y_status("Explore: Map, Find Me, Zoom and All Actions. Close returns to the street." if phone_tray_open else "Explore closed.")
@@ -7452,8 +7466,8 @@ func update_guide_arrow() -> void:
 	var eye_behind := street_view_active() and camera.is_position_behind(guide_marker_target)
 	var screen := Vector2.ZERO if eye_behind else camera.unproject_position(guide_marker_target)
 	var area := play_area_rect()
-	if area.size.x <= 24.0 or area.size.y <= 24.0:
-		guide_arrow.visible = false
+	if area.size.x <= 56.0 or area.size.y <= 56.0:
+		guide_arrow.visible = false # Too little scene for its 27 px inset on each side.
 		return
 	if eye_behind:
 		# At eye level the marker floats above the eye, so mirroring its projection would point up for a target behind.
@@ -11652,18 +11666,22 @@ func is_plausible_ogg_vorbis(raw_bytes: PackedByteArray) -> bool:
 	var second_page := raw_bytes.slice(58, raw_bytes.size()).get_string_from_ascii().find("OggS")
 	return second_page >= 0
 
+## A file error reads in Rook's panel, so a panel shown less shows it more first.
+func show_music_error(message: String) -> void:
+	music_error = message
+	if sheet_panel() == music_panel and sheet_at_bar():
+		set_sheet_height("half", false)
+	update_music_ui()
+	announce_a11y_status(message)
+
 func load_local_music_bytes(file_name: String, raw_bytes: PackedByteArray) -> bool:
 	var clean_name := file_name.get_file().strip_edges()
 	var ext := clean_name.get_extension().to_lower()
 	if clean_name.is_empty() or not (ext in ["mp3", "wav", "ogg"]):
-		music_error = MUSIC_FILE_ERROR
-		update_music_ui()
-		announce_a11y_status(MUSIC_FILE_ERROR)
+		show_music_error(MUSIC_FILE_ERROR)
 		return false
 	if raw_bytes.is_empty() or raw_bytes.size() > MUSIC_MAX_LOCAL_BYTES:
-		music_error = MUSIC_FILE_ERROR
-		update_music_ui()
-		announce_a11y_status(MUSIC_FILE_ERROR)
+		show_music_error(MUSIC_FILE_ERROR)
 		return false
 	var stream: AudioStream = null
 	if ext == "wav":
@@ -11682,9 +11700,7 @@ func load_local_music_bytes(file_name: String, raw_bytes: PackedByteArray) -> bo
 				ogg.loop = true
 				stream = ogg
 	if stream == null:
-		music_error = MUSIC_DECODE_ERROR
-		update_music_ui()
-		announce_a11y_status(MUSIC_DECODE_ERROR)
+		show_music_error(MUSIC_DECODE_ERROR)
 		return false
 	if local_audio_player != null:
 		local_audio_player.stream = stream
@@ -12429,9 +12445,7 @@ func poll_web_audio() -> void:
 	var err := String(err_var) if err_var is String else ""
 	var raw: PackedByteArray = raw_var if raw_var is PackedByteArray else PackedByteArray()
 	if not err.is_empty() or raw.is_empty():
-		music_error = MUSIC_FILE_ERROR
-		update_music_ui()
-		announce_a11y_status(MUSIC_FILE_ERROR)
+		show_music_error(MUSIC_FILE_ERROR)
 		return
 	load_local_music_bytes(fname, raw)
 
@@ -12597,6 +12611,8 @@ func close_mural_workshop() -> void:
 		mural_workshop_return_focus.grab_focus()
 	elif mural_compose_btn.visible:
 		mural_compose_btn.grab_focus()
+	elif sheet_at_bar() and sheet_panel() == mural_panel:
+		sheet_handle_for(mural_panel).grab_focus()
 	else:
 		mural_buttons[0].grab_focus()
 	layout_reward_banner()
@@ -17126,8 +17142,8 @@ func show_sheet_line(text: String, kind: String, hold_sec := -1.0) -> void:
 	var body := text.strip_edges()
 	if body.is_empty() or sheet_bar == null:
 		return
-	if kind != "speech" and sheet_at_bar():
-		set_sheet_height("half", false) # A message for a sheet shown less shows it more.
+	if kind != "speech" and talk_sheet_at_bar():
+		set_sheet_height("half", false) # A message during a conversation shown less shows it more, to read there.
 	if kind != "speech" and talk_sheet_open():
 		last_panel_dialogue = body # An open conversation is the reader: a hint or route message reads there, not stacked.
 		update_block_ui()
@@ -17262,8 +17278,8 @@ func sheet_owner() -> String:
 	if panel == block_panel:
 		return talk_sheet_owner()
 	if panel == mural_panel:
-		return "celeste"
-	return "rook" if panel == music_panel else ""
+		return "celeste:mural"
+	return "rook:music" if panel == music_panel else ""
 
 func sheet_height() -> String:
 	return String(sheet_heights.get(sheet_owner(), "half")) if sheet_panel() != null else "half"
@@ -17327,16 +17343,12 @@ func set_panel_separation(panel: Control, separation: int) -> void:
 func apply_activity_sheet(panel: Control) -> void:
 	if panel == null or not panel.has_meta("sheet_body"):
 		return
-	var at_bar: bool = panel.visible and String(sheet_heights.get("celeste" if panel == mural_panel else "rook", "half")) == "bar"
+	var at_bar: bool = panel.visible and String(sheet_heights.get("celeste:mural" if panel == mural_panel else "rook:music", "half")) == "bar"
 	(panel.get_meta("sheet_body") as Control).visible = not at_bar
 	var handle := sheet_handle_for(panel)
 	handle.text = "Show more" if at_bar else "Show less"
 	handle.accessibility_name = handle.text
 	handle.add_theme_font_size_override("font_size", 13 if hud_size_class() == "landscape" else 14)
-
-func set_talk_sheet_height(height: String) -> void:
-	if talk_sheet_open():
-		set_sheet_height(height)
 
 func set_sheet_height(height: String, grab_focus := true) -> void:
 	var panel := sheet_panel()
@@ -17356,12 +17368,15 @@ func set_sheet_height(height: String, grab_focus := true) -> void:
 		else: update_music_ui()
 		layout_walking_controls_and_hub()
 		refit_panel_after_layout()
-		who = "Celeste" if panel == mural_panel else "Rook"
 	var handle := sheet_handle_for(panel)
 	if grab_focus and handle != null and handle.is_visible_in_tree():
 		handle.grab_focus()
-	var what := "Conversation" if panel == block_panel else ("Mural" if panel == mural_panel else "Music")
-	announce_a11y_status("%s shown less: the street and %s's words show above the bar. Show more reads it here." % [what, who] if height == "bar" else "%s shown more." % what)
+	if panel == block_panel:
+		announce_a11y_status("Conversation shown less: the street and %s's words show above the bar. Show more reads it here." % who if height == "bar" else "Conversation shown more.")
+	elif panel == mural_panel:
+		announce_a11y_status("Mural shown less: the easel and Celeste's words show above the bar. Show more reads it here." if height == "bar" else "Mural shown more.")
+	else:
+		announce_a11y_status("Music shown less: the speaker and Rook's words show above the bar. Show more reads it here." if height == "bar" else "Music shown more.")
 
 ## Layout and loan-return choices: the afternoon waits on them, so they are always in row 2 (docs/HUD_REDESIGN_PLAN.md 4).
 func conversation_has_required_choice() -> bool:
@@ -17370,9 +17385,6 @@ func conversation_has_required_choice() -> bool:
 		if act_id in ["layout_table", "layout_floor"] or act_id.begins_with("return_owner:"):
 			return true
 	return false
-
-func refresh_talk_sheet_title() -> void:
-	refresh_sheet_title()
 
 ## The title at bar height: who is talking, or the first words of a line the scene could not place.
 func refresh_sheet_title() -> void:
@@ -17383,13 +17395,14 @@ func refresh_sheet_title() -> void:
 		elif panel == block_panel: update_block_ui()
 		return
 	var owner := sheet_owner()
+	var speaker_id := owner.get_slice(":", 0) # The neighbor id a bubble is anchored to.
 	var idx := talk_partner if panel == block_panel else (celeste_index if panel == mural_panel else rook_index)
 	var who := String(neighbors[idx].get("name", "Neighbor")) if idx >= 0 and idx < neighbors.size() else owner.capitalize()
 	var title := sheet_title_for(panel)
 	if speech_bubble_in_sheet and not speech_bubble_text.is_empty():
 		# Only the owner's own line takes the owner's name; a host's or a docent's reads as it was said.
 		var said := speech_bubble_text.replace("\n", " ")
-		title.text = "%s: %s" % [who, said] if speech_bubble_anchor == owner and not said.begins_with(who) else said
+		title.text = "%s: %s" % [who, said] if speech_bubble_anchor == speaker_id and not said.begins_with(who) else said
 	else:
 		var turns: int = int(neighbor_talk_counts.get(owner, 1)) if panel == block_panel else (celeste_talk_count if panel == mural_panel else rook_talk_count)
 		title.text = "%s · Turn %d/5" % [who, posmod(maxi(1, turns) - 1, 5) + 1]

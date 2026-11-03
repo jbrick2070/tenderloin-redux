@@ -104,7 +104,7 @@ static func verify(suite: SceneTree, game: Node) -> void:
 	game.map_tools_buttons[3].pressed.emit()
 	suite.require(is_equal_approx(game.view_size, z), "− zooms back out")
 	suite.require(game.press_is_rapid(game.map_tools_buttons[2]) and game.press_is_rapid(game.map_tools_buttons[3]) and not game.press_is_rapid(map_tool) and not game.press_is_rapid(game.map_tools_buttons[1]), "+ and − repeat in place; Map and Find Me are guarded")
-	# A conversation hides Explore; the column stays beside it while the scene above the panel holds it, and never meets it.
+	# A conversation keeps Explore beside it (HUD Phase 3); the column stays beside it while the scene above the panel holds it, and never meets it.
 	for size in [Vector2i(1100, 760), Vector2i(600, 560)]:
 		suite.root.size = size
 		game.frame_player_for_walking()
