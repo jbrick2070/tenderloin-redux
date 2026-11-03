@@ -71,6 +71,7 @@ func run() -> void:
 	await process_frame
 	await preload("res://tests/hud_checks.gd").verify(self,study)
 	await preload("res://tests/hud_bar_checks.gd").verify(self,study)
+	await preload("res://tests/hud_sheet_checks.gd").verify(self,study)
 	await preload("res://tests/before_streets_checks.gd").verify(self,study,true)
 	await preload("res://tests/street_view_checks.gd").verify(self,study,true)
 	# Compare indexed queries to the original linear geometry across actual bounds and bucket edges.
@@ -534,7 +535,7 @@ func run() -> void:
 	var failed_view_target: Vector3 = study.target
 	var failed_view_size: float = study.view_size
 	require(not study.walk_to_point(Vector2(-350.0, -350.0)), "invalid detached street request fails")
-	require(not study.following_player and study.target == failed_view_target and study.view_size == failed_view_size and study.header_details_expanded, "failure preserves inspection and reveals diagnostic")
+	require(not study.following_player and study.target == failed_view_target and study.view_size == failed_view_size and study.sheet_line_kind == "status", "failure preserves inspection and reveals diagnostic")
 	require(study.walk_to_neighbor(4) and study.view_size == 45.0, "valid retry after rejection still restores close framing")
 	# Isolate an A* start without changing surveyed geometry, then restore its cache.
 	study.stop_walking()
@@ -551,7 +552,7 @@ func run() -> void:
 	var blocked_resume_save: String = JSON.stringify(study.build_save_envelope())
 	var blocked_resume_target: Vector3 = study.target
 	require(not study.walk_to_point(study.blackhawk_xz()) and study.last_astar_expanded_cells == 1, "isolated A* start exhausts actual path search")
-	require(not study.following_player and study.target == blocked_resume_target and study.view_size == 55.0 and study.header_details_expanded, "path search failure preserves detached camera and explains rejection")
+	require(not study.following_player and study.target == blocked_resume_target and study.view_size == 55.0 and study.sheet_line_kind == "status", "path search failure preserves detached camera and explains rejection")
 	require(JSON.stringify(study.build_save_envelope()) == blocked_resume_save and study.player_xz() == study.neighbor_xz(4), "failed search preserves save and player position")
 	study.cell_walkable_cache = saved_resume_cache
 	require(study.walk_to_point(study.blackhawk_xz()) and study.following_player and study.view_size == 45.0, "same route retries successfully after search failure")
@@ -1040,7 +1041,7 @@ func run() -> void:
 	require(study.handle_scene_tap(wide_street_screen) and study.selected_neighbor == -1 and not study.current_path.is_empty(), "zoomed-out wide_overview tap ~23m from Bea routes to street point rather than selecting neighbor (world_d <= 8.5 bound)")
 	require(not study.walk_to_point(Vector2(-350.0, -350.0)) and study.current_path.is_empty(), "unreachable point far from any street is rejected without routing back to PLAYER_START")
 	require(study.walk_control.text == guided_caption(study), "rejected route restores the normal walking action")
-	require(study.header_details_expanded and study.info.visible and study.info.text.begins_with("No walkable"), "blocked navigation reveals its explanation in the compact header")
+	require(study.sheet_bar_visible() and study.sheet_line_kind == "status" and study.sheet_line_text.begins_with("No walkable") and not study.header_details_expanded, "blocked navigation explains itself in the status line, not Info")
 	study.set_header_details(false)
 	study.wide_overview()
 	await process_frame
@@ -1050,7 +1051,7 @@ func run() -> void:
 	await process_frame
 	await process_frame
 	await process_frame
-	require(study.info.visible and study.info.text.begins_with("No walkable") and study.last_a11y_announcement.begins_with("No walkable"), "map layout cannot overwrite the visible route failure after deferred frames")
+	require(study.sheet_bar_visible() and study.sheet_line_text.begins_with("No walkable") and study.last_a11y_announcement.begins_with("No walkable"), "map layout cannot overwrite the visible route failure after deferred frames")
 	study.set_header_details(false)
 
 	# Round 7: M1 Afternoon Keepsake & Loan Returns + M3 Second Afternoon Programme Planning & Hosting
@@ -2334,23 +2335,20 @@ func run() -> void:
 			study.update_readable_scene_labels()
 			verify_scene_overlay_bounds(study, "%s stop %d during reward" % [overlay_size, e_i])
 			var reading_time: float = study.speech_bubble_timer
-			if study.speech_bubble_deferred and not study.speech_bubble_in_info:
+			if study.speech_bubble_deferred and not study.speech_bubble_in_sheet:
 				study.update_speech_bubble(0.5)
 				require(is_equal_approx(study.speech_bubble_timer, reading_time), "hidden host speech retains its full reading time")
 			var order_before_overlay: int = int(study.eatery_order_counts.get(String(study.NEIGHBORHOOD_EATERIES[e_i].id), 0))
 			if study.reward_banner.visible:
 				require(not study.handle_scene_tap(study.reward_banner.get_global_rect().get_center()), "reward banner cannot click through to the scene")
 			else:
-				require(study.reward_banner_timer > 0.0, "crowded scene retains its reward")
-				study.set_header_details(true, false)
-				study.layout_reward_banner()
-				require(study.info.text.contains(study.reward_title_label.text), "queued reward is complete in deliberately opened Info")
+				require(study.reward_banner_timer > 0.0 or (study.sheet_line_kind == "reward" and study.sheet_line_text.contains(study.reward_title_label.text.trim_prefix("* "))), "crowded scene keeps its reward, queued or complete in the status line")
 			study.update_celebration_burst(4.0)
-			if study.header_details_expanded and not study.speech_opened_info:
-				study.set_header_details(false, false)
+			if study.sheet_line_kind == "reward":
+				study.clear_sheet_line() # Its reading time, spent.
 			study.update_speech_bubble(0.4)
 			study.update_readable_scene_labels()
-			require((study.is_speech_bubble_visible() or (study.speech_bubble_in_info and study.info.text.contains(study.speech_bubble_text))) and study.speech_bubble_text.contains("(fictional)"), "complete host speech appears in scene or Info after reward at %s stop %d" % [overlay_size, e_i])
+			require((study.is_speech_bubble_visible() or (study.speech_bubble_in_sheet and study.sheet_line_text == study.speech_bubble_text and not study.header_details_expanded)) and study.speech_bubble_text.contains("(fictional)"), "complete host speech appears in scene or the status line after reward at %s stop %d" % [overlay_size, e_i])
 			verify_scene_overlay_bounds(study, "%s stop %d after reward" % [overlay_size, e_i])
 			if study.is_speech_bubble_visible():
 				require(not study.handle_scene_tap(study.speech_bubble_screen_rect().get_center()), "host speech cannot click through to the scene")
@@ -2398,12 +2396,12 @@ func run() -> void:
 	require(study.speech_bubble_label.width < wide_wrap and study.speech_bubble_text == original_speech and study.play_area_rect().encloses(study.speech_bubble_screen_rect()), "resizing active dialogue rewraps its full text at the same font size")
 	study.update_celebration_burst(4.0)
 	study.show_conversation(0)
-	study.show_speech_bubble("long-dialogue-fixture", study.target, "A complete line for the bounded Info panel. ".repeat(25), 20.0)
+	study.show_speech_bubble("long-dialogue-fixture", study.target, "A complete line for the bounded conversation reader. ".repeat(25), 20.0)
 	study.announce_a11y_status("Keepsake: a new memory. Neighbor says: " + study.speech_bubble_text)
 	await process_frame
 	await process_frame
-	require(study.speech_bubble_in_info and study.header_details_expanded and study.info.text.begins_with(study.speech_bubble_text), "dialogue too tall for the scene remains complete in scrollable Info")
-	require(study.last_a11y_announcement.contains("Keepsake:") and study.last_a11y_announcement.ends_with("Full dialogue in Info."), "Info fallback retains the earned-progress live announcement alongside the dialogue location")
+	require(study.speech_bubble_in_sheet and study.block_detail_label.text == study.speech_bubble_text and not study.header_details_expanded, "dialogue too tall for the scene remains complete in the conversation's scrollable reader, never Info")
+	require(study.last_a11y_announcement.contains("Keepsake:") and study.last_a11y_announcement.ends_with("Full dialogue in the conversation panel."), "the sheet fallback retains the earned-progress live announcement alongside the dialogue location")
 	study.trigger_feel_good_burst("Progress while reading", "Saved progress stays visible above.", study.target)
 	require(study.reward_banner.visible and study.play_area_rect().encloses(study.reward_banner.get_global_rect()),"reduced phone chrome leaves usable room for a normal short reward")
 	await constrain_reward_headroom_fixture(study)
@@ -2411,23 +2409,25 @@ func run() -> void:
 	await process_frame
 	study.update_celebration_burst(0.0)
 	var queued_reward_time: float = study.reward_banner_timer
-	print("PHONE_REWARD_DIAG queued area=",study.play_area_rect()," header=",study.header_panel.get_global_rect()," panel=",study.block_panel.get_global_rect()," controls_visible=",study.controls.is_visible_in_tree()," banner=",study.reward_banner.get_global_rect()," visible=",study.reward_banner.visible," speech_owns=",study.speech_opened_info," info=",study.header_details_expanded)
-	require(not study.reward_banner.visible and queued_reward_time > 0.0, "reward queues when expanded Info leaves insufficient room")
+	print("PHONE_REWARD_DIAG queued area=",study.play_area_rect()," header=",study.header_panel.get_global_rect()," panel=",study.block_panel.get_global_rect()," controls_visible=",study.controls.is_visible_in_tree()," banner=",study.reward_banner.get_global_rect()," visible=",study.reward_banner.visible," line=",study.sheet_line_kind," info=",study.header_details_expanded)
+	require(not study.reward_banner.visible and queued_reward_time > 0.0, "a reward with no room waits while a conversation reads")
 	study.update_celebration_burst(1.0)
 	require(is_equal_approx(queued_reward_time, study.reward_banner_timer), "queued reward retains its display time")
 	study.update_speech_bubble(30.0)
-	print("PHONE_REWARD_DIAG expired anchor=",study.speech_bubble_anchor," age=",study.speech_bubble_age," timer=",study.speech_bubble_timer," speech_owns=",study.speech_opened_info," info=",study.header_details_expanded)
-	require(not study.header_details_expanded, "speech expiry automatically releases only its owned Info")
+	print("PHONE_REWARD_DIAG expired anchor=",study.speech_bubble_anchor," age=",study.speech_bubble_age," timer=",study.speech_bubble_timer," line=",study.sheet_line_kind," info=",study.header_details_expanded)
+	require(study.speech_bubble_anchor.is_empty() and not study.header_details_expanded, "speech expiry leaves Info closed")
+	study.end_conversation()
 	await process_frame
 	await process_frame
 	study.update_celebration_burst(0.0)
-	require(study.reward_banner.visible and study.play_area_rect().encloses(study.reward_banner.get_global_rect()), "queued reward appears fully after Info closes")
+	require(not study.reward_banner.visible and study.reward_banner_timer <= 0.0 and study.sheet_line_kind == "reward" and study.sheet_line_text.contains("Progress while reading") and study.sheet_line_text.contains("Saved progress stays visible above."), "with the conversation closed, the reward with no room reads complete in the status line")
+	study.clear_sheet_line()
 	root.size=Vector2i(320,667)
 	for f in range(4): await process_frame
 	study.update_celebration_burst(4.0)
-	study.show_speech_bubble("long-replacement-fixture", study.target, "A line kept in Info for replacement. ".repeat(25), 20.0)
+	study.show_speech_bubble("long-replacement-fixture", study.target, "A line kept in the status line for replacement. ".repeat(25), 20.0)
 	study.update_speech_bubble(0.1)
-	require(study.speech_opened_info, "oversized dialogue owns only automatically opened Info")
+	require(study.speech_bubble_in_sheet and study.sheet_line_kind == "speech" and study.sheet_bar_visible() and not study.header_details_expanded, "oversized dialogue reads in the status line and Info stays closed")
 	study.cycle_eatery_guide(5)
 	await process_frame
 	await process_frame
@@ -2437,28 +2437,15 @@ func run() -> void:
 	var replacement_visible := false
 	for caption in study.visible_scene_captions:
 		replacement_visible = replacement_visible or int(caption.eatery_index) == 5
-	require(not study.header_details_expanded and replacement_visible, "replacement releases Info before framing its readable eatery caption")
-	study.show_speech_bubble("explicit-info-fixture", study.target, "A full line while Info is chosen. ".repeat(25), 20.0)
+	require(study.sheet_line_kind == "" and replacement_visible, "replacement clears the status line before framing its readable eatery caption")
+	study.show_speech_bubble("dismiss-fixture", study.target, "A full line that can be shown more. ".repeat(25), 20.0)
 	study.update_speech_bubble(0.1)
-	study.set_header_details(true, false) # A user/route/hint request takes ownership.
-	study.hide_speech_bubble()
-	require(study.header_details_expanded, "explicit Info request survives speech cleanup")
-	study.trigger_feel_good_burst("Progress in Info", "One more friendly stop.", study.target)
-	await constrain_reward_headroom_fixture(study)
-	print("PHONE_REWARD_DIAG explicit area=",study.play_area_rect()," header=",study.header_panel.get_global_rect()," panel=",study.block_panel.get_global_rect()," banner=",study.reward_banner.get_global_rect()," visible=",study.reward_banner.visible," speech_owns=",study.speech_opened_info)
-	study.update_celebration_burst(0.1)
-	require(not study.reward_banner.visible and study.info.text.contains("Progress in Info") and study.info.text.contains("One more friendly stop."), "deliberately expanded Info displays the full reward without covering controls")
-	study.show_speech_bubble("shared-info-fixture", study.target, "Full host words sharing Info with a reward. ".repeat(25), 20.0)
-	study.update_speech_bubble(0.1)
-	study.layout_reward_banner()
-	require(study.info.text.count("Progress in Info") == 1 and study.info.text.contains(study.speech_bubble_text), "simultaneous reward and full speech share Info without repeating the reward")
-	study.set_header_details(false, false)
-	study.update_celebration_burst(4.0)
-	study.show_speech_bubble("dismiss-info-fixture", study.target, "A full line that can be dismissed. ".repeat(25), 20.0)
-	study.update_speech_bubble(0.1)
-	study.set_header_details(false, false)
-	study.update_speech_bubble(0.1)
-	require(study.speech_bubble_anchor.is_empty(), "closing Info explicitly dismisses its oversized speech")
+	study.sheet_bar_toggle.pressed.emit()
+	study.update_speech_bubble(30.0)
+	require(not study.speech_bubble_anchor.is_empty() and study.sheet_line_expanded, "an oversized line shown more keeps its reading time")
+	study.sheet_bar_toggle.pressed.emit()
+	study.update_speech_bubble(30.0)
+	require(study.speech_bubble_anchor.is_empty() and study.sheet_line_kind == "", "shown less, the oversized line expires and the status line clears")
 	study.end_conversation()
 	root.size=Vector2i(320,667)
 	for f in range(4): await process_frame
@@ -4527,7 +4514,6 @@ func verify_film_screening(study: Node, full_profile: String) -> void:
 	study.in_overview=false
 	study.following_player=false
 	study.set_header_details(true)
-	study.speech_opened_info=false
 	study.trigger_progress_cue("film_shot","Screening reward retention fixture")
 	require(study.reward_banner_timer>0 and study.reward_banner.visible,"reward retention fixture actually starts a visible earned cue")
 	var reward_time: float = study.reward_banner_timer

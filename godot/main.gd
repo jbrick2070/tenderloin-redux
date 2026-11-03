@@ -678,6 +678,18 @@ var blackhawk_discovered := false
 var block_panel: PanelContainer
 var block_label: Label
 var block_detail_label: RichTextLabel
+var sheet_handle_btn: Button
+var sheet_heights: Dictionary = {} # Neighbor id -> "bar" or "half": the height each conversation was left at, this session.
+# The sheet at bar height for a line with no panel to read it in (docs/HUD_REDESIGN_PLAN.md 4): a line the scene cannot
+# place, a hint, a route message or a reward that does not fit. One line over the bar; Show more reads the whole of it.
+var sheet_bar: PanelContainer
+var sheet_bar_label: Label
+var sheet_bar_reader: RichTextLabel
+var sheet_bar_toggle: Button
+var sheet_line_text := ""
+var sheet_line_kind := "" # "speech", "hint", "status" or "reward".
+var sheet_line_timer := 0.0
+var sheet_line_expanded := false
 var block_buttons: Array[Button] = []
 var block_next_btn: Button
 var block_mural_btn: Button
@@ -966,10 +978,9 @@ var speech_bubble_age := 0.0
 var speech_bubble_box := Vector3(200.0, 60.0, 16.0)
 var speech_bubble_shift := 0.0
 var speech_bubble_deferred := false
-var speech_bubble_in_info := false
+var speech_bubble_in_sheet := false # Deferred into the status line, or the first words on a conversation sheet at bar height.
 var speech_bubble_in_activity := false
 var speech_bubble_activity_matched := false
-var speech_opened_info := false
 var storefront_light_spots: Array[Dictionary] = []
 var light_pool_centers: Array[Vector2] = []
 var light_pool_material: StandardMaterial3D
@@ -1035,7 +1046,6 @@ var reward_title_label: Label
 var reward_body_label: Label
 var reward_banner_timer := 0.0
 var reward_banner_milestone := false
-var reward_info_prefix := ""
 var reward_burst_count := 0
 var last_reward_title := ""
 var celebration_burst_node: Node3D
@@ -4787,7 +4797,7 @@ func show_speech_bubble(anchor_id: String, world_pos: Vector3, text: String, hol
 	speech_bubble_node.visible = true
 	speech_bubble_age = 0.0
 	speech_bubble_deferred = false
-	speech_bubble_in_info = false
+	speech_bubble_in_sheet = false
 	speech_bubble_timer = hold_sec if hold_sec > 0.0 else clampf(4.5 + float(body.length()) * 0.055, 6.0, 14.0)
 
 func show_neighbor_speech(index: int, line: String) -> void:
@@ -4796,28 +4806,27 @@ func show_neighbor_speech(index: int, line: String) -> void:
 	var n_pos: Vector3 = neighbors[index].pos
 	show_speech_bubble(String(neighbors[index].get("id", "")), n_pos + Vector3.UP * speech_lift_m(), spoken_text_from_line(line))
 
-func release_speech_info() -> void:
-	if speech_opened_info:
-		speech_opened_info = false
-		set_header_details(false, false)
-
 func hide_speech_bubble() -> void:
 	if speech_bubble_node != null:
 		speech_bubble_node.visible = false
+	var was_in_sheet := speech_bubble_in_sheet
 	speech_bubble_anchor = ""
 	speech_bubble_timer = 0.0
 	speech_bubble_deferred = false
-	speech_bubble_in_info = false
+	speech_bubble_in_sheet = false
 	speech_bubble_in_activity = false
 	speech_bubble_activity_matched = false
-	release_speech_info()
+	if sheet_line_kind == "speech":
+		clear_sheet_line()
+	if was_in_sheet and talk_sheet_at_bar():
+		refresh_talk_sheet_title()
 
 func is_speech_bubble_visible() -> bool:
 	return speech_bubble_node != null and speech_bubble_node.visible
 
 func speech_activity_detail() -> RichTextLabel:
 	var details: Array = [mural_detail_label, music_stem_label]
-	if uses_compact_activity_controls() and block_panel != null and block_panel.visible and block_panel_mode == "talk":
+	if talk_sheet_open() and not talk_sheet_at_bar():
 		details.append(block_detail_label)
 	for detail in details:
 		if detail != null and detail.is_visible_in_tree() and not speech_bubble_text.is_empty() and detail.text.contains(speech_bubble_text):
@@ -4837,14 +4846,15 @@ func announce_speech_location(location: String) -> void:
 func update_speech_bubble(delta: float) -> void:
 	if speech_bubble_node == null or speech_bubble_anchor.is_empty():
 		return
-	if speech_bubble_in_info and not header_details_expanded:
-		hide_speech_bubble() # Explicitly closing Info dismisses its dialogue.
-		return
 	var activity_detail := speech_activity_detail()
 	if speech_bubble_activity_matched and activity_detail == null:
-		# New activity instructions supersede a line already available there.
-		hide_speech_bubble()
-		return
+		if talk_sheet_at_bar():
+			speech_bubble_activity_matched = false # Shown less, the line the sheet was reading goes back on stage.
+			speech_bubble_in_activity = false
+		else:
+			# New activity instructions supersede a line already available there.
+			hide_speech_bubble()
+			return
 	speech_bubble_activity_matched = speech_bubble_activity_matched or activity_detail != null
 	var anchor_xz := Vector2(speech_bubble_anchor_pos.x, speech_bubble_anchor_pos.z)
 	if in_overview or in_wide_overview or Vector2(target.x, target.z).distance_to(anchor_xz) > SPEECH_BUBBLE_HIDE_TARGET_DIST_M:
@@ -4863,10 +4873,12 @@ func update_speech_bubble(delta: float) -> void:
 	var full_position := camera.unproject_position(speech_bubble_node.global_position) + Vector2(speech_bubble_shift - speech_bubble_box.x * 0.5 - 3.0, -speech_bubble_box.z - speech_bubble_box.y - 3.0) * speech_bubble_screen_scale()
 	var fitted := fit_overlay_around_player(Rect2(full_position, full_size), area, reward_rect)
 	if street_view_active() and (camera.is_position_behind(speech_bubble_node.global_position) or not street_view.line_of_sight_clear(street_view.eye_xz(), anchor_xz)):
-		fitted = Rect2() # Behind the eye or behind a wall: the line is read in Info instead of a mirrored bubble.
+		fitted = Rect2() # Behind the eye or behind a wall: the line is read in the sheet instead of a mirrored bubble.
+	if activity_detail != null and activity_detail == block_detail_label:
+		fitted = Rect2() # The conversation sheet at half is the reader, so the line is not read twice; at bar the bubble shows.
 	speech_bubble_deferred = not fitted.has_area()
 	var was_in_activity := speech_bubble_in_activity
-	speech_bubble_in_activity = speech_bubble_deferred and not speech_bubble_in_info and speech_activity_detail() != null
+	speech_bubble_in_activity = speech_bubble_deferred and not speech_bubble_in_sheet and speech_activity_detail() != null
 	if speech_bubble_deferred:
 		speech_bubble_node.visible = false
 		if speech_bubble_in_activity:
@@ -4876,19 +4888,28 @@ func update_speech_bubble(delta: float) -> void:
 				announce_speech_location("the conversation panel" if speech_activity_detail() == block_detail_label else "the activity instructions")
 		elif banner_visible:
 			return # Its complete reading time starts when the reward has cleared.
-		elif not speech_bubble_in_info and info != null:
-			speech_bubble_in_info = true
-			var reward_prefix := reward_info_prefix if reward_banner_timer > 0.0 and info.text.begins_with(reward_info_prefix) else ""
-			info.text = reward_prefix + speech_bubble_text + "\n\n" + info.text.trim_prefix(reward_prefix)
-			var was_collapsed := not header_details_expanded
-			set_header_details(true, false)
-			speech_opened_info = was_collapsed
-			announce_speech_location("Info")
+		elif sheet_line_kind == "reward" and sheet_line_timer > 0.0:
+			return # A reward is reading in the status line; the line's reading time starts after it.
+		elif not speech_bubble_in_sheet:
+			# The sheet is the reader: a conversation at bar height shows the first words under its handle; otherwise the
+			# status line over the bar shows the line, with Show more for all of it. Info never receives dialogue.
+			speech_bubble_in_sheet = true
+			if talk_sheet_at_bar():
+				refresh_talk_sheet_title()
+				announce_speech_location("the conversation, under Show more")
+			elif talk_sheet_open():
+				last_panel_dialogue = speech_bubble_text # Someone else's line reads in the open conversation's reader.
+				update_block_ui()
+				announce_speech_location("the conversation panel")
+			else:
+				show_sheet_line(speech_bubble_text, "speech", speech_bubble_timer)
+				announce_speech_location("the line above the bar")
 	else:
 		var shift := fitted.position - full_position
 		speech_bubble_node.position += (camera.global_basis.x * shift.x - camera.global_basis.y * shift.y) * screen_constant_scale(1.0, speech_bubble_node.global_position)
 		speech_bubble_age += delta
-	speech_bubble_timer -= delta
+	if not (speech_bubble_in_sheet and sheet_line_kind == "speech" and sheet_line_expanded):
+		speech_bubble_timer -= delta # Shown more, the line stays until it is shown less.
 	if speech_bubble_timer <= 0.0:
 		hide_speech_bubble()
 
@@ -5932,17 +5953,12 @@ func layout_reward_banner() -> void:
 	var fitted := fit_overlay_around_player(reward_banner.get_global_rect(), area)
 	if fitted.has_area():
 		reward_banner.position = fitted.position
-	# Expanded Info can leave a very short street strip. Keep the reward queued
-	# until it fits, instead of covering dialogue controls or spending its timer.
+	# A short street strip has no room for the note. Its text reads in the status line instead, for its own reading
+	# time; while the line holds dialogue, or a panel is open, the reward stays queued until it fits.
 	reward_banner.visible = not in_overview and not in_wide_overview and fitted.has_area()
-	if not reward_banner.visible and header_details_expanded and not speech_opened_info and not in_overview and not in_wide_overview:
-		# Respect deliberately opened Info. Show the complete reward there while
-		# preserving the requested explanation and sources below it.
-		var prefix := "%s\n%s\n\n" % [reward_title_label.text, reward_body_label.text]
-		if not info.text.begins_with(prefix):
-			info.text = prefix + info.text.trim_prefix(reward_info_prefix)
-			info.scroll_to_line(0)
-		reward_info_prefix = prefix
+	if not reward_banner.visible and not in_overview and not in_wide_overview and sheet_line_kind != "speech" and sheet_bar_can_show():
+		show_sheet_line("%s: %s" % [reward_title_label.text.trim_prefix("* "), reward_body_label.text], "reward")
+		reward_banner_timer = 0.0
 
 func trigger_feel_good_burst(title_str: String, detail_str: String, world_pos: Vector3, accent: Color = Color("f8cc58"), milestone := false) -> void:
 	if suppress_feel_good_burst:
@@ -5975,7 +5991,7 @@ func trigger_feel_good_burst(title_str: String, detail_str: String, world_pos: V
 func update_celebration_burst(delta: float) -> void:
 	if reward_banner != null and reward_banner_timer > 0.0:
 		layout_reward_banner()
-		if not is_focused_activity_visible() and (reward_banner.visible or (header_details_expanded and not speech_opened_info)):
+		if not is_focused_activity_visible() and reward_banner.visible:
 			reward_banner_timer -= delta
 		if reward_banner_timer <= 0.45:
 			reward_banner.modulate = Color(1.0, 1.0, 1.0, clampf(reward_banner_timer / 0.45, 0.0, 1.0))
@@ -6112,7 +6128,7 @@ func visit_next_landmark() -> bool:
 
 ## Keep inspected landmarks above an open conversation panel, including on phones.
 func frame_landmark_view() -> void:
-	release_speech_info()
+
 	update_camera()
 	var focus := target
 	var area := play_area_rect()
@@ -6444,7 +6460,7 @@ func show_conversation(index: int) -> void:
 func frame_conversation(index: int) -> void:
 	if camera == null or index < 0 or index >= neighbors.size() or in_wide_overview:
 		return
-	release_speech_info()
+
 	var n_pos: Vector3 = neighbors[index].pos
 	var focus := Vector3(n_pos.x, 1.0 if uses_compact_activity_controls() else 2.2, n_pos.z)
 	in_overview = false
@@ -6522,7 +6538,7 @@ func ask_whats_next() -> String:
 		var way := "Follow the gold marker · tap the street or use WASD to walk" if bool(obj.get("has_target", false)) else "No marker needed: wander and explore"
 		info.text = "%s\n%s\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [line, way]
 		if not any_side_panel_visible() and (speaker < 0 or in_overview or in_wide_overview):
-			set_header_details(true, false)
+			show_sheet_line(line, "hint") # No one on screen to say it: the status line reads it.
 	announce_a11y_status("Next: %s. %s" % [String(obj.get("text", "")), hint])
 	return line
 
@@ -6738,10 +6754,20 @@ func run_conversation_action_id(act_id: String) -> bool:
 
 func apply_block_panel_mode() -> void:
 	var talk := block_panel_mode == "talk" and talk_partner >= 0
+	var at_bar := talk and talk_sheet_at_bar()
 	var prior_focus := get_viewport().gui_get_focus_owner()
 	for r in conv_rows:
 		if r != null:
-			r.visible = talk
+			r.visible = talk and not at_bar
+	if block_detail_label != null:
+		block_detail_label.visible = not at_bar
+	if sheet_handle_btn != null:
+		sheet_handle_btn.visible = talk
+		sheet_handle_btn.text = "Show more" if at_bar else "Show less"
+		sheet_handle_btn.accessibility_name = sheet_handle_btn.text
+		sheet_handle_btn.add_theme_font_size_override("font_size", 13 if hud_size_class() == "landscape" else 14)
+		if at_bar and prior_focus != null and not prior_focus.is_visible_in_tree():
+			sheet_handle_btn.grab_focus()
 	if block_actions_grid != null:
 		block_actions_grid.visible = not talk
 	if block_page_nav != null:
@@ -6772,6 +6798,8 @@ func apply_block_panel_mode() -> void:
 			conv_chat_btn.text = "Chat More" if narrow else "Keep Chatting (T)"
 		if conv_next_btn != null:
 			conv_next_btn.text = "Next Step" if narrow else "What's Next?"
+			# The bar's Next Step is the same press; only a tall phone hides the bar while the sheet reads.
+			conv_next_btn.visible = uses_phone_talk_rows()
 		if conv_bye_btn != null:
 			conv_bye_btn.text = "Goodbye" if narrow else "Goodbye (Esc)"
 		layout_walking_controls_and_hub()
@@ -6815,6 +6843,8 @@ func uses_short_side_panels() -> bool:
 	return vp.x >= SIDE_ACTIVITY_MIN_WIDTH and vp.y < SIDE_HUB_MAX_HEIGHT
 
 func panel_uses_side_dock(panel: Control) -> bool:
+	if panel == block_panel and talk_sheet_at_bar():
+		return false # At bar height the conversation is a strip on the bar, at every size.
 	return panel != null and (uses_short_side_panels() or (panel == block_panel and uses_side_block_hub()))
 
 func uses_compact_narrow_activities() -> bool:
@@ -6870,7 +6900,7 @@ func uses_phone_talk_rows() -> bool:
 	return vp.x < SMALL_SIDE_HUB_MIN_WIDTH and vp.y > vp.x and vp.y >= 520.0
 
 func phone_talking() -> bool:
-	return uses_phone_talk_rows() and block_panel != null and block_panel.visible and block_panel_mode == "talk" and talk_partner >= 0
+	return uses_phone_talk_rows() and talk_sheet_open() and not talk_sheet_at_bar()
 
 func phone_map_return() -> bool:
 	return uses_phone_disclosure() and not following_player and not any_side_panel_visible() and not is_focused_activity_visible()
@@ -6912,6 +6942,11 @@ func press_next_step() -> void:
 		close_phone_disclosure()
 		frame_player_for_walking()
 		return
+	if talk_sheet_at_bar():
+		# The hint and its actions read in the sheet, so Next Step shows the conversation more first.
+		sheet_heights[talk_sheet_owner()] = "half"
+		apply_block_panel_mode()
+		update_block_ui()
 	if not phone_talking():
 		ask_whats_next()
 		return
@@ -6977,7 +7012,9 @@ func configure_phone_disclosure() -> void:
 	for btn in [map_control,phone_find_control,zoom_in_control,zoom_out_control]:
 		btn.custom_minimum_size.y = bar_height
 		btn.add_theme_font_size_override("font_size",bar_font)
-	for btn in [phone_all_actions_control,phone_tray_close]: btn.custom_minimum_size.y = bar_height
+	for btn in [phone_all_actions_control,phone_tray_close]:
+		btn.custom_minimum_size.y = bar_height
+		btn.add_theme_font_size_override("font_size",bar_font)
 	controls.offset_top = -maxf(bar_height,controls.get_combined_minimum_size().y)-12.0
 	# The tray stands on the bar: full width on a tall phone, at most 480 px wide over Explore on wider screens.
 	var vp := bubble_viewport_size()
@@ -7145,11 +7182,18 @@ func layout_walking_controls_and_hub() -> void:
 		panel.anchor_left = 1.0 if dock else 0.0
 		panel.offset_left = -(dock_width + 12.0) if dock else 12.0
 		panel.offset_right = -12.0
+		var on_bar := controls.offset_top - 8.0 if controls.visible else -12.0
 		if panel == block_panel and phone_talking():
 			panel.size = Vector2(vp.x-24.0,0)
 			panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 			panel.offset_bottom = -12.0 if current_path.is_empty() else controls.offset_top-8.0
 			panel.offset_top = panel.offset_bottom-panel.get_combined_minimum_size().y
+			continue
+		if panel == block_panel and talk_sheet_at_bar():
+			panel.size = Vector2(vp.x - 24.0, 0.0)
+			panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+			panel.offset_bottom = on_bar
+			panel.offset_top = panel.offset_bottom - panel.get_combined_minimum_size().y
 			continue
 		var hosting_choices: bool = panel == block_panel and hosting_choice_row_visible() and not dock
 		# A paged hub stands on the walking controls and grows up to its rows (block_actions_per_page sized them to fit).
@@ -7168,11 +7212,16 @@ func layout_walking_controls_and_hub() -> void:
 				panel.get_child(0).add_theme_constant_override("separation", 0)
 			panel.offset_top = panel.offset_bottom - panel.get_combined_minimum_size().y
 			continue
-		panel.offset_top = hud_bottom() + 8.0 - vp.y if dock else ((-368.0 if narrow else -336.0) if panel == block_panel else (-396.0 if narrow else -354.0))
 		if dock:
+			panel.offset_top = hud_bottom() + 8.0 - vp.y
 			panel.size = Vector2(dock_width, 0.0)
 		else:
-			panel.offset_bottom = -176.0 if narrow else -130.0
+			# On the one-row bar: the heights the panels had over the old two- and three-row bars, taller if their
+			# content needs it, growing up.
+			var tall := (192.0 if narrow else 206.0) if panel == block_panel else (220.0 if narrow else 224.0)
+			panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+			panel.offset_bottom = on_bar
+			panel.offset_top = on_bar - maxf(tall, panel.get_combined_minimum_size().y)
 	# A page holds the rows that fit beside the walking controls and the note just placed; when that changes, re-page around
 	# the focused action.
 	if block_panel.visible and block_panel_mode == "hub" and block_actions_per_page() != block_hub_page_size:
@@ -7332,7 +7381,15 @@ func fit_overlay_around_player(wanted: Rect2, area: Rect2, extra_blocked: Rect2 
 	return best
 
 ## The 3D view between the header and whatever panel or controls sit at the bottom.
+## The scene's free rectangle: under the header, above the bar and the status line, beside a docked panel.
 func play_area_rect() -> Rect2:
+	var area := play_area_base_rect()
+	if sheet_bar != null and sheet_bar.is_visible_in_tree():
+		area.size.y = maxf(minf(area.end.y, sheet_bar.get_global_rect().position.y - 8.0) - area.position.y, 1.0)
+	return area
+
+## The same rectangle without the status line, which stands on its bottom edge.
+func play_area_base_rect() -> Rect2:
 	var vp := bubble_viewport_size()
 	var top := 8.0
 	if header_panel != null:
@@ -7935,7 +7992,6 @@ func layout_memory_line(n_id: String) -> String:
 	return ""
 
 func set_header_details(expanded: bool, refit_map := true) -> void:
-	speech_opened_info = false # Explicit Info, route and hint requests take ownership.
 	header_details_expanded = expanded
 	if info != null:
 		info.visible = expanded
@@ -8652,7 +8708,7 @@ func walk_to_neighbor(index: int) -> bool:
 		selected_neighbor = -1
 		update_route_ribbon(true)
 		info.text = "No walkable route to %s\nWASD/Arrows or tap street to walk\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % n.name
-		set_header_details(true, false)
+		show_status_line()
 		announce_a11y_status("No walkable route to %s." % n.name)
 		return false
 	resume_walking_view()
@@ -8697,7 +8753,7 @@ func walk_to_mural() -> bool:
 		walking_to_mural = false
 		update_route_ribbon(true)
 		info.text = "No walkable route to Portable Mural Board\nWASD/Arrows or tap street to walk\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL"
-		set_header_details(true, false)
+		show_status_line()
 		announce_a11y_status("No walkable route to Portable Mural Board.")
 		return false
 	resume_walking_view()
@@ -8742,7 +8798,7 @@ func walk_to_speaker() -> bool:
 		walking_to_speaker = false
 		update_route_ribbon(true)
 		info.text = "No walkable route to Rook's Speaker\nWASD/Arrows or tap street to walk\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL"
-		set_header_details(true, false)
+		show_status_line()
 		announce_a11y_status("No walkable route to Rook's Speaker.")
 		return false
 	resume_walking_view()
@@ -8792,7 +8848,7 @@ func walk_to_history_stop(stop_id: String) -> bool:
 		walking_to_history_stop = ""
 		update_route_ribbon(true)
 		info.text = "No walkable route to %s\nWASD/Arrows or tap street to walk\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % title_str
-		set_header_details(true, false)
+		show_status_line()
 		announce_a11y_status("No walkable route to %s." % title_str)
 		return false
 	resume_walking_view()
@@ -9017,7 +9073,7 @@ func walk_to_point(goal_xz: Vector2) -> bool:
 		current_path.clear()
 		update_route_ribbon(true)
 		info.text = "No walkable street point near (%.1f, %.1f) m\nTap a street corridor or use WASD/Arrows\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [goal_xz.x, goal_xz.y]
-		set_header_details(true, false)
+		show_status_line()
 		announce_a11y_status("No walkable street point here.")
 		return false
 	selected_neighbor = -1
@@ -9042,7 +9098,7 @@ func walk_to_point(goal_xz: Vector2) -> bool:
 	if current_path.is_empty():
 		update_route_ribbon(true)
 		info.text = "No walkable route to point (%.1f, %.1f) m\nWASD/Arrows or tap street to walk\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [safe_goal.x, safe_goal.y]
-		set_header_details(true, false)
+		show_status_line()
 		announce_a11y_status("No walkable route to street point.")
 		return false
 	resume_walking_view()
@@ -12017,7 +12073,7 @@ func scene_overlay_snapshot() -> Dictionary:
 	var speech := rect_snapshot(speech_bubble_screen_rect())
 	speech["visible"] = is_speech_bubble_visible()
 	speech["deferred"] = speech_bubble_deferred
-	speech["in_info"] = speech_bubble_in_info
+	speech["in_sheet"] = speech_bubble_in_sheet
 	speech["in_activity"] = speech_bubble_in_activity
 	speech["anchor"] = speech_bubble_anchor
 	speech["text"] = speech_bubble_text
@@ -12171,6 +12227,7 @@ func get_a11y_status_snapshot() -> Dictionary:
 		"hud_size_class": hud_size_class(),
 		"phone_disclosure": {"enabled":uses_phone_disclosure(),"transition":phone_primary_transition,"all_actions":control_snapshot(phone_all_actions_control),"tray":control_snapshot(phone_tray),"explore":control_snapshot(phone_explore_control),"close":control_snapshot(phone_tray_close),"actions_open":phone_actions_open},
 		"info_reader": activity_detail_snapshot(info, info_panel, [info_hide_btn]),
+		"sheet": sheet_snapshot(),
 		"block_page_previous": control_snapshot(block_page_prev),
 		"block_page_next": control_snapshot(block_page_next),
 		"block_close_control": control_snapshot(block_close_btn),
@@ -14221,7 +14278,7 @@ func advance_walk(delta: float) -> bool:
 				pending_rook_talk = false
 				update_route_ribbon(true)
 				info.text = "Route blocked to %s (%.1f m remaining)\nUse WASD/Arrows or tap another street point\nCity 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % [dest_name, dist_after]
-				set_header_details(true, false)
+				show_status_line()
 				announce_a11y_status("Route blocked to %s." % dest_name)
 	elif current_path.is_empty():
 		update_route_ribbon(true)
@@ -14295,11 +14352,16 @@ func update_walk_control() -> void:
 	if not walking and voting_story!=null and voting_story.active:
 		walk_control.text="Election map"
 		walk_control.tooltip_text="Resume your historical polling-list map walk."
+	if not walking and talk_sheet_at_bar():
+		walk_control.text = "Goodbye"
+		walk_control.tooltip_text = "Say goodbye and keep exploring. Escape also says goodbye."
 	walk_control.accessibility_name = walk_control.text
 
 func activate_walk_control() -> void:
 	if not current_path.is_empty():
 		stop_walking()
+	elif talk_sheet_at_bar():
+		end_conversation() # A conversation shown less keeps Goodbye on the bar.
 	elif voting_story != null and voting_story.active:
 		voting_story.open_from_walking()
 	elif lantern_procession != null and lantern_procession.active:
@@ -14608,6 +14670,7 @@ func _process(delta: float) -> void:
 		refresh_open_menu()
 	update_celebration_burst(delta)
 	update_speech_bubble(delta)
+	update_sheet_line(delta)
 	if reward_banner_timer > 0.0:
 		layout_reward_banner() # Speech may have opened or released Info this frame.
 	update_readable_scene_labels()
@@ -14693,6 +14756,7 @@ func is_screen_point_in_ui(screen_pos: Vector2) -> bool:
 		return true # The dimmed scene belongs to the menu.
 	if info_panel != null and info_panel.is_visible_in_tree() and info_panel.get_global_rect().has_point(screen_pos):
 		return true
+	if sheet_bar != null and sheet_bar.is_visible_in_tree() and sheet_bar.get_global_rect().has_point(screen_pos): return true
 	if phone_tray != null and phone_tray.is_visible_in_tree() and phone_tray.get_global_rect().has_point(screen_pos): return true
 	if is_focused_activity_visible() or (mural_compose_btn != null and mural_compose_btn.is_visible_in_tree() and mural_compose_btn.get_global_rect().has_point(screen_pos)):
 		return true
@@ -16037,6 +16101,8 @@ func update_block_ui() -> void:
 		block_label.text = "Talking with %s (%s · %s · Turn %d/5)  ·  %s  ·  %d/%d Met  ·  Mural %s  ·  Sparks: %d" % [String(active_n.get("name", "Neighbor")), String(active_n.get("role", "Neighbor")), n_badge, n_turn, open_tag, v_count, n_total, m_state, spark_count()]
 		if is_narrow_layout() or uses_short_side_panels():
 			block_label.text = "%s · Turn %d/5 · Sparks: %d" % [String(active_n.get("name", "Neighbor")), n_turn, spark_count()]
+		if talk_sheet_at_bar():
+			refresh_talk_sheet_title()
 	else:
 		apply_character_panel_theme(block_panel, "")
 		block_label.text = "Turk St Conversation & Actions  ·  %s  ·  %d/%d Met  ·  Mural %s  ·  %s  ·  Sparks: %d" % [open_tag, v_count, n_total, m_state, sc_state, spark_count()]
@@ -16293,6 +16359,7 @@ func make_ui() -> void:
 		menu_btn.grab_focus()
 	)
 	note_row.add_child(info_hide_btn)
+	build_sheet_bar(layer)
 
 	mural_panel = PanelContainer.new()
 	mural_panel.name = "MuralPanel"
@@ -16389,11 +16456,30 @@ func make_ui() -> void:
 	var block_vbox := VBoxContainer.new()
 	block_vbox.add_theme_constant_override("separation", 2)
 	block_panel.add_child(block_vbox)
+	# The handle: the title, and in a conversation Show less / Show more, the first thing the keyboard reaches.
+	var title_row := HBoxContainer.new()
+	title_row.name = "SheetHandle"
+	title_row.add_theme_constant_override("separation", 6)
+	block_vbox.add_child(title_row)
 	block_label = Label.new()
 	block_label.clip_text = true
+	block_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	block_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	block_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	block_label.add_theme_font_size_override("font_size", 16)
 	block_label.add_theme_color_override("font_color", Color("ffe082"))
-	block_vbox.add_child(block_label)
+	title_row.add_child(block_label)
+	sheet_handle_btn = Button.new()
+	sheet_handle_btn.name = "SheetHandleToggle"
+	sheet_handle_btn.text = "Show less"
+	sheet_handle_btn.custom_minimum_size = Vector2(96, 44)
+	sheet_handle_btn.focus_mode = Control.FOCUS_ALL
+	sheet_handle_btn.visible = false
+	style_game_button(sheet_handle_btn)
+	sheet_handle_btn.pressed.connect(func():
+		if not phone_primary_transition: set_talk_sheet_height("half" if talk_sheet_at_bar() else "bar")
+	)
+	title_row.add_child(sheet_handle_btn)
 	block_detail_label = make_activity_detail()
 	block_detail_label.custom_minimum_size.y = 30
 	block_detail_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -16980,6 +17066,192 @@ func menu_snapshot() -> Dictionary:
 
 ## The header is one row; the note under it is its own panel, so neither the save notice nor Info grows the header.
 ## Offsets are applied now, so camera framing and overlay fitting read the new play area in the same frame.
+## The status line: the sheet at bar height when no panel reads the text (docs/HUD_REDESIGN_PLAN.md 4). One line standing
+## on the bar (on the screen bottom while the bar hides), Show more for the whole text in a scrolling reader.
+func build_sheet_bar(layer: CanvasLayer) -> void:
+	sheet_bar = PanelContainer.new()
+	sheet_bar.name = "SheetBar"
+	sheet_bar.add_theme_stylebox_override("panel", panel_bg_style)
+	sheet_bar.visible = false
+	hud_holder(layer, "SheetBarLayer").add_child(sheet_bar)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	sheet_bar.add_child(row)
+	sheet_bar_label = Label.new()
+	sheet_bar_label.name = "SheetLine"
+	sheet_bar_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sheet_bar_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	sheet_bar_label.clip_text = true
+	sheet_bar_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	sheet_bar_label.add_theme_color_override("font_color", Color("fff8e8"))
+	row.add_child(sheet_bar_label)
+	sheet_bar_reader = RichTextLabel.new()
+	sheet_bar_reader.name = "SheetReader"
+	sheet_bar_reader.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sheet_bar_reader.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	sheet_bar_reader.scroll_active = true
+	sheet_bar_reader.focus_mode = Control.FOCUS_ALL
+	sheet_bar_reader.visible = false
+	sheet_bar_reader.add_theme_color_override("default_color", Color("fff8e8"))
+	row.add_child(sheet_bar_reader)
+	sheet_bar_toggle = Button.new()
+	sheet_bar_toggle.name = "SheetLineToggle"
+	sheet_bar_toggle.custom_minimum_size = Vector2(96, 44)
+	sheet_bar_toggle.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	sheet_bar_toggle.focus_mode = Control.FOCUS_ALL
+	style_game_button(sheet_bar_toggle)
+	sheet_bar_toggle.pressed.connect(func(): set_sheet_line_expanded(not sheet_line_expanded))
+	row.add_child(sheet_bar_toggle)
+
+## Puts a line in the status line for its reading time (the bubble's formula), shown less.
+func show_sheet_line(text: String, kind: String, hold_sec := -1.0) -> void:
+	var body := text.strip_edges()
+	if body.is_empty() or sheet_bar == null:
+		return
+	sheet_line_text = body
+	sheet_line_kind = kind
+	sheet_line_timer = hold_sec if hold_sec > 0.0 else clampf(4.5 + float(body.length()) * 0.055, 6.0, 14.0)
+	sheet_line_expanded = false
+	layout_sheet_bar()
+
+func clear_sheet_line() -> void:
+	var focus := get_viewport().gui_get_focus_owner() if is_inside_tree() else null
+	var had_focus := sheet_bar != null and focus != null and sheet_bar.is_ancestor_of(focus)
+	sheet_line_text = ""
+	sheet_line_kind = ""
+	sheet_line_timer = 0.0
+	sheet_line_expanded = false
+	layout_sheet_bar()
+	if had_focus and next_hint_control != null and next_hint_control.is_visible_in_tree():
+		next_hint_control.grab_focus()
+
+## A route or path message just written to Info, as one status line: its lines without the sources line.
+func show_status_line() -> void:
+	var parts: Array[String] = []
+	for line in info.text.split("\n"):
+		if not line.strip_edges().is_empty() and not line.contains("©"):
+			parts.append(line.strip_edges())
+	show_sheet_line(" · ".join(parts), "status")
+
+func set_sheet_line_expanded(expanded: bool) -> void:
+	sheet_line_expanded = expanded and not sheet_line_text.is_empty()
+	layout_sheet_bar()
+	if sheet_bar_toggle.is_visible_in_tree():
+		sheet_bar_toggle.grab_focus()
+	announce_a11y_status(("Shown more. " + sheet_line_text) if sheet_line_expanded else "Shown less.")
+
+func sheet_bar_can_show() -> bool:
+	return sheet_bar != null and controls != null and not menu_open and not phone_tray_open and not talk_sheet_open() and not is_focused_activity_visible() and not is_story_card_visible()
+
+func sheet_bar_visible() -> bool:
+	return sheet_bar != null and sheet_bar.is_visible_in_tree()
+
+## Every frame: a shown-less line other than dialogue spends its reading time while it shows (dialogue keeps the
+## bubble's timer), then clears.
+func update_sheet_line(delta: float) -> void:
+	if sheet_bar == null:
+		return
+	if not sheet_line_text.is_empty() and sheet_line_kind != "speech" and not sheet_line_expanded and sheet_bar_visible():
+		sheet_line_timer -= delta
+		if sheet_line_timer <= 0.0:
+			clear_sheet_line()
+			return
+	layout_sheet_bar()
+
+## On the bottom edge of the scene (the bar's top, or a bottom panel's), the scene's width on a phone and at most 640 px
+## on a desktop; shown more, the reader holds the whole text up to the sheet's half height.
+func layout_sheet_bar() -> void:
+	if sheet_bar == null:
+		return
+	var show := not sheet_line_text.is_empty() and sheet_bar_can_show()
+	if sheet_bar.visible != show:
+		sheet_bar.visible = show
+	if not show:
+		return
+	var vp := bubble_viewport_size()
+	var area := play_area_base_rect()
+	var size_class := hud_size_class()
+	var font := 16 if size_class == "desktop" else 14
+	sheet_bar_label.add_theme_font_size_override("font_size", font)
+	sheet_bar_reader.add_theme_font_size_override("normal_font_size", font)
+	sheet_bar_toggle.add_theme_font_size_override("font_size", 13 if size_class == "landscape" else 14)
+	sheet_bar_label.visible = not sheet_line_expanded
+	sheet_bar_reader.visible = sheet_line_expanded
+	if sheet_bar_label.text != sheet_line_text:
+		sheet_bar_label.text = sheet_line_text
+	if sheet_bar_reader.text != sheet_line_text:
+		sheet_bar_reader.text = sheet_line_text
+		sheet_bar_reader.scroll_to_line(0)
+	sheet_bar_toggle.text = "Show less" if sheet_line_expanded else "Show more"
+	sheet_bar_toggle.accessibility_name = sheet_bar_toggle.text
+	var width := area.size.x - 8.0
+	if size_class == "desktop":
+		width = minf(width, 640.0)
+	if sheet_line_expanded:
+		var half := 300.0 if size_class == "desktop" else minf(vp.y * 0.46, 360.0)
+		var margins := sheet_bar.get_theme_stylebox("panel").get_minimum_size().y
+		var cap := maxf(44.0, minf(half, area.size.y - 40.0) - margins)
+		sheet_bar_reader.custom_minimum_size.y = clampf(float(sheet_bar_reader.get_content_height()), 44.0, cap)
+	sheet_bar.size = Vector2(width, 0.0)
+	sheet_bar.size = Vector2(width, sheet_bar.get_combined_minimum_size().y)
+	sheet_bar.position = Vector2(area.position.x + 4.0, area.end.y - sheet_bar.size.y)
+
+## The conversation sheet (docs/HUD_REDESIGN_PLAN.md 4): at "half" it reads the line with its rows and the bubble stays
+## hidden; at "bar" it is the handle alone, standing on the bar, so the street and the bubble show. Each neighbor's
+## conversation keeps the height it was left at for the session. The hub, mural and music panels are full.
+func talk_sheet_open() -> bool:
+	return block_panel != null and block_panel.visible and block_panel_mode == "talk" and talk_partner >= 0 and talk_partner < neighbors.size()
+
+func talk_sheet_owner() -> String:
+	return String(neighbors[talk_partner].get("id", "")) if talk_partner >= 0 and talk_partner < neighbors.size() else ""
+
+func talk_sheet_height() -> String:
+	return String(sheet_heights.get(talk_sheet_owner(), "half")) if talk_sheet_open() else "half"
+
+func talk_sheet_at_bar() -> bool:
+	return talk_sheet_open() and talk_sheet_height() == "bar"
+
+func set_talk_sheet_height(height: String) -> void:
+	if not talk_sheet_open() or talk_sheet_height() == height:
+		return
+	sheet_heights[talk_sheet_owner()] = height
+	phone_actions_open = false
+	apply_block_panel_mode()
+	update_block_ui()
+	frame_conversation(talk_partner)
+	if sheet_handle_btn.is_visible_in_tree():
+		sheet_handle_btn.grab_focus()
+	var who := String(neighbors[talk_partner].get("name", "the neighbor"))
+	announce_a11y_status("Conversation shown less: the street and %s's words show above the bar. Show more reads it here." % who if height == "bar" else "Conversation shown more.")
+
+## The title at bar height: who is talking, or the first words of a line the scene could not place.
+func refresh_talk_sheet_title() -> void:
+	if not talk_sheet_at_bar():
+		update_block_ui()
+		return
+	var n: Dictionary = neighbors[talk_partner]
+	var who := String(n.get("name", "Neighbor"))
+	if speech_bubble_in_sheet and not speech_bubble_text.is_empty():
+		var said := speech_bubble_text.replace("\n", " ")
+		block_label.text = said if said.begins_with(who) else "%s: %s" % [who, said]
+	else:
+		var n_turn := posmod(maxi(1, int(neighbor_talk_counts.get(String(n.get("id", "")), 1))) - 1, 5) + 1
+		block_label.text = "%s · Turn %d/5" % [who, n_turn]
+
+func sheet_snapshot() -> Dictionary:
+	var mode := "talk" if talk_sheet_open() else ("hub" if block_panel != null and block_panel.visible else "")
+	var height := talk_sheet_height() if mode == "talk" else ("full" if mode == "hub" else "")
+	return {
+		"mode": mode,
+		"height": height,
+		"docked": mode != "" and panel_uses_side_dock(block_panel),
+		"panel": control_snapshot(block_panel) if mode != "" else {},
+		"handle": control_snapshot(sheet_handle_btn),
+		"handle_text": sheet_handle_btn.text if sheet_handle_btn != null else "",
+		"title": block_label.text if mode != "" and block_label != null else "",
+		"line": {"visible": sheet_bar_visible(), "kind": sheet_line_kind, "text": sheet_line_text, "expanded": sheet_line_expanded, "timer": sheet_line_timer, "panel": control_snapshot(sheet_bar), "toggle": control_snapshot(sheet_bar_toggle)},
+	}
+
 func layout_header() -> void:
 	if header_panel == null or info_panel == null:
 		return

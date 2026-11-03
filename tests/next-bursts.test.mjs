@@ -113,7 +113,7 @@ test('drift: update_celebration_burst counts down only while shown and unfocused
   const f = gdNum(B.BANNER.fade);
   inOrder(codeLines(funcBody('update_celebration_burst')), [
     'if reward_banner != null and reward_banner_timer > 0.0:', 'layout_reward_banner()',
-    'if not is_focused_activity_visible() and (reward_banner.visible or (header_details_expanded and not speech_opened_info)):',
+    'if not is_focused_activity_visible() and reward_banner.visible:',
     'reward_banner_timer -= delta',
     `if reward_banner_timer <= ${f}:`, `reward_banner.modulate = Color(1.0, 1.0, 1.0, clampf(reward_banner_timer / ${f}, 0.0, 1.0))`,
     'if reward_banner_timer <= 0.0 or in_overview or in_wide_overview:', 'reward_banner.visible = false', 'reward_banner_timer = 0.0',
