@@ -1,12 +1,12 @@
 # Build status
 
-## Current: 3D street view, decluttered - November 2, 2026 UTC (on main, not deployed)
+## Current: 3D street view, decluttered and deployed - November 2, 2026 UTC
 
 After the creator's iPhone run of the deployed Phase 2 ("sometimes seems cluttered"), street view hands the block hub, Celeste's mural panel and Rook's music panel back to the map view while they are open (quietly, in the same call, resuming the same view on close); draws street banners about 18 px tall, only within 45 m, giving way to the Talk prompt, speech, captions, controls and nearer banners; puts speech and the Talk prompt at 2.05 m and the gold marker and mural caption at 2.4 m (Phase 4 work orders 3-4, pulled forward; map heights unchanged); keeps nameplates whole past poles (line of sight still hides them behind buildings); and moves the street button below a showing reward note. agy's Phase 2 fixes (`10d8fa0`: a walk stick on landscape phones, a Mouse look hint that fits) are on main too.
 
 Evidence on `7fac5db`: the formal Godot suite PASS (25 street-view groups, each new check failing with its change turned off), 838 Node tests, and phone-size (410x892, touch) screenshots of the export with no console errors.
 
-Open: not deployed (needs the creator's OK); no clean-checkout browser run since `5dd0fb0`.
+Deployed at the creator's OK from `843a10f` (live pck 1,507,192 bytes, the tested export). Open: no clean-checkout browser run since `5dd0fb0`; a second iPhone look.
 
 ## 3D street view, Phase 2 and the playtest fixes, deployed - November 2, 2026 UTC
 
