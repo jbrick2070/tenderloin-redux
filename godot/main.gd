@@ -5961,9 +5961,10 @@ func layout_reward_banner() -> void:
 		reward_banner.position = fitted.position
 	# A short street strip has no room for the note. Its text reads in the status line instead, for its own reading
 	# time; while the line holds dialogue or a line shown more, or a conversation, the menu, the tray or a card hides
-	# the status line, the reward stays queued until there is room.
+	# the status line, the reward stays queued until there is room. An open sheet keeps it queued too: the mural or the
+	# music crowding the note out delivers it whole when it closes, as before.
 	reward_banner.visible = not in_overview and not in_wide_overview and fitted.has_area()
-	if not reward_banner.visible and not in_overview and not in_wide_overview and sheet_line_kind != "speech" and not sheet_line_expanded and sheet_bar_can_show():
+	if not reward_banner.visible and not in_overview and not in_wide_overview and sheet_line_kind != "speech" and not sheet_line_expanded and sheet_panel() == null and sheet_bar_can_show():
 		var reward_text := "%s: %s" % [reward_title_label.text.trim_prefix("* "), reward_body_label.text]
 		if not (sheet_line_kind == "reward" and sheet_line_text == reward_text):
 			show_sheet_line(reward_text, "reward") # A re-armed timer (the finale's) does not restart the same line.

@@ -192,6 +192,24 @@ static func verify(suite: SceneTree, game: Node) -> void:
 	suite.require(not game.reward_banner.visible and line.kind == "reward" and String(line.text).contains("Sheet fixture reward") and String(line.text).contains("Saved progress") and not game.header_details_expanded, "a reward with no room reads in the status line (%s, area %.0f)" % [line.kind, game.play_area_rect().size.y])
 	game.update_sheet_line(30.0)
 	game.update_celebration_burst(4.0)
+	# 4a. A reward crowded out by an open mural waits, its whole reading time, and is delivered when the mural closes.
+	game.sheet_heights.clear()
+	game.show_mural_panel(true)
+	await frames(suite, 3)
+	game.trigger_feel_good_burst("Sheet fixture reward", "Saved progress waits for the mural.", game.target)
+	await frames(suite, 3)
+	var queued_for: float = game.reward_banner_timer
+	game.update_sheet_line(0.0)
+	line = game.sheet_snapshot().line
+	suite.require(game.sheet_panel() == game.mural_panel and not game.reward_banner.visible and queued_for > 2.5 and line.kind != "reward", "a reward crowded out by the open mural waits for it, not in the status line (%s, %.1f s)" % [line.kind, queued_for])
+	game.update_celebration_burst(1.0)
+	suite.require(is_equal_approx(game.reward_banner_timer, queued_for), "the waiting reward keeps its whole reading time beside the mural")
+	game.end_conversation()
+	await frames(suite, 3)
+	line = game.sheet_snapshot().line
+	suite.require(game.reward_banner.visible or (line.kind == "reward" and String(line.text).contains("waits for the mural")), "closing the mural delivers the waiting reward (%s)" % line.kind)
+	game.update_sheet_line(30.0)
+	game.update_celebration_burst(4.0)
 
 	# 4b. At eye level a finger on the walk stick keeps it where it was pressed while the status line comes, and it moves
 	# above the line once the finger lifts.
