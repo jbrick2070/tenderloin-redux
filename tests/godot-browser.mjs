@@ -241,6 +241,8 @@ async function revealPhoneControl(page,b,tap){
  }else throw new Error('Hidden target is not a canonical map secondary; explicitly disclose its own menu first');
  assert.ok(b?.visible,'disclosure must expose the actual native target');return b;
 }
+// Zoom from the Explore tray leaves the tray open over the scene; a player closes it before looking at the street.
+async function closeExploreTray(page,snap,tap){const s=await snap();if(!s.phone_disclosure?.tray?.visible)return;await tap(s.phone_disclosure.close);await page.waitForFunction(()=>!window.__tenderloinGodotA11ySnapshot.phone_disclosure.tray.visible);}
 function namedWalkCaption(s){if(s.walk_target_kind!=='resume'&&s.objective_id==='meet')assert.equal(s.walk_target_neighbor,s.objective_neighbor,'walking suggestion agrees with independently computed objective');return ({resume:'Resume',meet:'Meet',visit:'Visit'}[s.walk_target_kind]||'')+' '+s.walk_target_name;}
 function assertWalkingCaptions(s){
  const expected=["What's Next?",'Tenderloin Map','Find Me','Zoom In (+)','Zoom Out (−)',namedWalkCaption(s)];
@@ -272,7 +274,7 @@ async function verifyStreetSignature(page,tap,snap) {
   await tap(s.mural_detail.buttons.at(-1));
   s=await snap();
   assert.equal(s.overlays.reward.remaining,0,'actual Map dismisses the transient before inspecting world ink');
-  for(let i=0;i<2;i++){const plus=s.walking_controls.find(b=>b.text.includes('Zoom')&&b.text.includes('+'));await tap(plus);s=await snap();}
+  for(let i=0;i<2;i++){const plus=s.walking_controls.find(b=>b.text.includes('Zoom')&&b.text.includes('+'));await tap(plus);s=await snap();}await closeExploreTray(page,snap,tap);s=await snap();
   {
     const q=s.mural_signature_world.corners,center={x:q.reduce((a,p)=>a+p.x,0)/4,y:q.reduce((a,p)=>a+p.y,0)/4},r=s.play_area,dx=r.x+r.width*.55-center.x,dy=r.y+r.height*.5-center.y,c=await page.locator('#canvas').boundingBox();
     const x=c.x+(r.x+r.width*.5)*c.width/s.viewport_width,y=c.y+(r.y+r.height*.25)*c.height/s.viewport_height;
@@ -515,7 +517,7 @@ async function verifyStoryStreet(page,context,touch,tap,snap,settle,asymmetric=f
     await page.keyboard.down('Shift');await page.keyboard.down('ArrowDown');
     try{await page.waitForFunction(()=>window.__tenderloinGodotA11ySnapshot.camera_pose.pitch===.55);}finally{await page.keyboard.up('ArrowDown');await page.keyboard.up('Shift');}await settle();
   }
-  for(let i=0;i<5;i++)await tap((await snap()).walking_controls.find(b=>b.text.includes('Zoom')&&b.text.includes('+')));
+  for(let i=0;i<5;i++)await tap((await snap()).walking_controls.find(b=>b.text.includes('Zoom')&&b.text.includes('+')));await closeExploreTray(page,snap,tap);
   let s=await snap(),q=s.mural_scenes_world.corners,r=s.play_area,c=await page.locator('#canvas').boundingBox(),cx=q.reduce((a,p)=>a+p.x,0)/4,cy=q.reduce((a,p)=>a+p.y,0)/4;
   const x=c.x+(r.x+r.width*.5)*c.width/s.viewport_width,y=c.y+(r.y+r.height*.25)*c.height/s.viewport_height,dx=(r.x+r.width*.55-cx)*c.width/s.viewport_width,dy=(r.y+r.height*.5-cy)*c.height/s.viewport_height;
   const ground=s.player_grounding,prime=16*c.width/s.viewport_width;
@@ -1366,7 +1368,7 @@ async function verifySharedPanel(page,touch,size,active=false){
     const pan=async(dx,dy)=>{const s=await snap(),r=s.play_area,c=await page.locator('#canvas').boundingBox(),x=c.x+(r.x+r.width*.5)*c.width/s.viewport_width,y=c.y+(r.y+r.height*.5)*c.height/s.viewport_height;await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+dx*c.width/s.viewport_width,y+dy*c.height/s.viewport_height,{steps:8});await page.mouse.up();await settle();};
     for(let phase=0;phase<2;phase++){
       for(let lap=0;lap<16;lap++){const s=await snap(),r=s.play_area,w=s.shared_panel.world,x=w.reduce((n,t)=>n+t.x,0)/6,y=w.reduce((n,t)=>n+t.y,0)/6,dx=Math.max(-r.width*.3,Math.min(r.width*.3,r.x+r.width*.5-x)),dy=Math.max(-r.height*.3,Math.min(r.height*.3,r.y+r.height*.5-y));if(Math.hypot(dx,dy)<10)break;await pan(dx,dy);}
-      if(phase===0)for(let z=0;z<5;z++)await tap((await snap()).walking_controls.find(b=>b.text.includes('Zoom In')));
+      if(phase===0){for(let z=0;z<5;z++)await tap((await snap()).walking_controls.find(b=>b.text.includes('Zoom In')));await closeExploreTray(page,snap,tap);}
     }
     const s=await snap(),c=await page.locator('#canvas').boundingBox(),pixels=await renderedPixels(page);
     for(const tile of s.shared_panel.world){const point=(u,v)=>{const a=tile.corners[1],b=tile.corners[3],d=tile.corners[0];return {x:a.x+(b.x-a.x)*u+(d.x-a.x)*v,y:a.y+(b.y-a.y)*u+(d.y-a.y)*v};},center=point(.5,.5),corner=point(.15,.15);assert.ok(center.x>=s.play_area.x&&center.x<=s.play_area.x+s.play_area.width&&center.y>=s.play_area.y&&center.y<=s.play_area.y+s.play_area.height,'deliberate manual view reaches actual tile front');const rgb=q=>pixels.pixel(c.x+q.x*c.width/s.viewport_width,c.y+q.y*c.height/s.viewport_height),fg=rgb(center),bg=rgb(corner);if(fg.reduce((n,v,i)=>n+(v-bg[i]>3?1:0),0)>=2&&fg.reduce((n,v,i)=>n+Math.abs(v-bg[i]),0)>=22)worldInk++;}
@@ -1522,7 +1524,7 @@ async function verifyLarkinStory(page,touch,size,privateFixture=false){
     let beforeWorld,worldPose,worldRect;
     if(station===0){
       await tap((await snap()).power_story.buttons[12]);await page.keyboard.press('KeyF');await settle();
-      for(let i=0;i<2;i++)await tap((await snap()).walking_controls.find(b=>b.text.includes('Zoom')&&b.text.includes('+')));
+      for(let i=0;i<2;i++)await tap((await snap()).walking_controls.find(b=>b.text.includes('Zoom')&&b.text.includes('+')));await closeExploreTray(page,snap,tap);
       const t=await snap(),r=t.play_area,c=await page.locator('#canvas').boundingBox(),x=c.x+(r.x+r.width*.45)*c.width/t.viewport_width,y=c.y+(r.y+r.height*.7)*c.height/t.viewport_height;
       if(touch){const cd=await page.context().newCDPSession(page);await cd.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y,id:0}]});for(let k=1;k<=4;k++)await cd.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+24*k/4,y,id:0}]});await cd.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await cd.detach();}
       else{await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+24,y,{steps:4});await page.mouse.up();}
@@ -1575,7 +1577,7 @@ async function verifyVotingStory(page,touch,size,privateFixture=false){
  assert.equal(await save(),before);assert.equal(s.music_playing,quiet);assert.match(s.voting_story.text,/later relocations unverified/);assert.match(s.voting_story.text,/398 Eddy/);assert.match(s.voting_story.text,/240 Eddy/);
  await page.screenshot({path:`artifacts/voting-${size.width}-${touch?'finger':'mouse'}.png`});
  const completed=s.voting_story;await tap(completed.buttons[11]);await page.keyboard.press('KeyF');await settle();
- for(let i=0;i<6;i++)await tap((await snap()).walking_controls.find(b=>b.text.includes('Zoom')&&b.text.includes('+')));
+ for(let i=0;i<6;i++)await tap((await snap()).walking_controls.find(b=>b.text.includes('Zoom')&&b.text.includes('+')));await closeExploreTray(page,snap,tap);
  await page.screenshot({path:`artifacts/voting-world-${size.width}-${touch?'finger':'mouse'}.png`});await writeFile(`artifacts/voting-world-${size.width}-${touch?'finger':'mouse'}.json`,JSON.stringify({snapshot:await snap(),sourceFingerprint},null,2));
  const inspection=(await snap()).camera_pose;await page.keyboard.press('F8');await settle();assert.deepEqual((await snap()).camera_pose,inspection);assert.ok((await snap()).voting_story.buttons[11].focused);
  await tap((await snap()).voting_story.buttons[9]);assert.ok(!(await snap()).voting_story.active);await tap((await snap()).voting_story.buttons[11]);
