@@ -12155,9 +12155,11 @@ func get_a11y_status_snapshot() -> Dictionary:
 			if btn.is_visible_in_tree():
 				var rect := btn.get_global_rect()
 				action_controls.append({"id": conv_action_ids[i], "label": btn.text, "x": rect.position.x, "y": rect.position.y, "width": rect.size.x, "height": rect.size.y})
-		if conv_next_btn != null and conv_next_btn.is_visible_in_tree():
-			var rect := conv_next_btn.get_global_rect()
-			action_controls.append({"id": "whats_next", "label": conv_next_btn.text, "x": rect.position.x, "y": rect.position.y, "width": rect.size.x, "height": rect.size.y})
+		# Next Step is the conversation's own on a tall phone and the bar's elsewhere (one press, HUD Phase 3).
+		var next_btn: Button = conv_next_btn if conv_next_btn != null and conv_next_btn.is_visible_in_tree() else next_hint_control
+		if next_btn != null and next_btn.is_visible_in_tree():
+			var rect := next_btn.get_global_rect()
+			action_controls.append({"id": "whats_next", "label": next_btn.text, "x": rect.position.x, "y": rect.position.y, "width": rect.size.x, "height": rect.size.y})
 	var vp := bubble_viewport_size()
 	var contact := player_visual.get_node_or_null("ContactShadow") as MeshInstance3D
 	var nearest_pool_distance := INF
