@@ -6894,6 +6894,30 @@ func hud_bar_font_size() -> int:
 		"landscape": return 13
 	return 19
 
+## The right dock's width on short landscape screens, for a docked panel and the docked Explore tray: about half the
+## screen, 280 to 440 px (312 from 560 wide, so wider readers keep their width).
+func side_dock_width() -> float:
+	var vp := bubble_viewport_size()
+	return clampf(vp.x * 0.52, 280.0 if vp.x < WIDE_SIDE_PANEL_MIN_WIDTH else 312.0, 440.0)
+
+## On a landscape phone the Explore tray stands in the right dock, over Explore, so the scene keeps its height beside it
+## and a sheet shown less stands on the bar to its left (HUD Phase 4). Elsewhere the tray stands on the bar.
+func phone_tray_docked() -> bool:
+	return phone_tray != null and phone_tray.visible and hud_size_class() == "landscape"
+
+## A sheet's width when it is not docked: on desktop a conversation, the mural or the music is at most 640 px wide, left
+## aligned with the scene (docs/HUD_REDESIGN_PLAN.md 5); the hub keeps the width its five columns need. Beside a docked
+## tray a sheet shown less takes the rest of the bar.
+func sheet_width(panel: Control) -> float:
+	var vp := bubble_viewport_size()
+	var w := vp.x - 24.0
+	var sheet_kind := panel == mural_panel or panel == music_panel or (panel == block_panel and block_panel_mode == "talk")
+	if sheet_kind and hud_size_class() == "desktop":
+		w = minf(w, 640.0)
+	if panel == sheet_panel() and sheet_at_bar() and phone_tray_docked():
+		w = maxf(w - phone_tray.size.x - 8.0, 120.0)
+	return w
+
 func has_side_panel_dock() -> bool:
 	for panel in [block_panel, mural_panel, music_panel]:
 		if panel != null and panel.visible and panel_uses_side_dock(panel):
@@ -7038,9 +7062,13 @@ func configure_phone_disclosure() -> void:
 		btn.custom_minimum_size.y = bar_height
 		btn.add_theme_font_size_override("font_size",bar_font)
 	controls.offset_top = -maxf(bar_height,controls.get_combined_minimum_size().y)-12.0
-	# The tray stands on the bar: full width on a tall phone, at most 480 px wide over Explore on wider screens.
+	# The tray stands on the bar: full width on a tall phone, the dock's width on a landscape phone, at most 480 px wide
+	# over Explore on desktop.
 	var vp := bubble_viewport_size()
-	var tray_width := vp.x-24.0 if hud_size_class() == "portrait" else minf(vp.x-24.0,480.0)
+	var tray_width := vp.x-24.0
+	match hud_size_class():
+		"landscape": tray_width = minf(vp.x-24.0,side_dock_width()) # In the dock, beside the scene and a sheet shown less.
+		"desktop": tray_width = minf(vp.x-24.0,480.0)
 	phone_tray.offset_left = vp.x-12.0-tray_width
 	phone_tray.offset_right = -12.0
 	phone_tray.offset_bottom = controls.offset_top-8.0
@@ -7157,9 +7185,7 @@ func layout_walking_controls_and_hub() -> void:
 	var compact := uses_compact_activity_controls()
 	var short_phone := uses_compact_narrow_panels()
 	var vp := bubble_viewport_size()
-	# Small landscape readers share the narrow dock; wider layouts keep their width.
-	var dock_min := 280.0 if vp.x < WIDE_SIDE_PANEL_MIN_WIDTH else 312.0
-	var dock_width := clampf(vp.x * 0.52, dock_min, 440.0)
+	var dock_width := side_dock_width()
 	# The bar's row, height and fonts are configure_phone_disclosure's (one bar at every size); a docked panel takes its right.
 	controls.offset_right = -(dock_width + 20.0) if side else -12.0
 	map_control.tooltip_text = "Tenderloin Map"
@@ -7204,9 +7230,9 @@ func layout_walking_controls_and_hub() -> void:
 				set_panel_separation(panel, 0)
 		panel.anchor_left = 1.0 if dock else 0.0
 		panel.offset_left = -(dock_width + 12.0) if dock else 12.0
-		panel.offset_right = -12.0
+		panel.offset_right = -12.0 if dock else -(vp.x - 12.0 - sheet_width(panel))
 		var on_bar := controls.offset_top - 8.0 if controls.visible else -12.0
-		if phone_tray != null and phone_tray.visible:
+		if phone_tray != null and phone_tray.visible and not phone_tray_docked():
 			on_bar = phone_tray.offset_top - 8.0 # A sheet shown less stands on the Explore tray while it is open.
 		if panel == block_panel and phone_talking():
 			panel.size = Vector2(vp.x-24.0,0)
@@ -7215,7 +7241,7 @@ func layout_walking_controls_and_hub() -> void:
 			panel.offset_top = panel.offset_bottom-panel.get_combined_minimum_size().y
 			continue
 		if panel == sheet_panel() and sheet_at_bar():
-			panel.size = Vector2(vp.x - 24.0, 0.0)
+			panel.size = Vector2(sheet_width(panel), 0.0)
 			panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 			panel.offset_bottom = on_bar
 			panel.offset_top = panel.offset_bottom - panel.get_combined_minimum_size().y
@@ -7226,7 +7252,7 @@ func layout_walking_controls_and_hub() -> void:
 		panel.grow_vertical = Control.GROW_DIRECTION_BEGIN if short_phone or hosting_choices or paged_hub else Control.GROW_DIRECTION_END
 		if (hosting_choices or paged_hub) and not short_phone:
 			# Fit actual content above walking targets, including taller native fonts.
-			panel.size = Vector2(vp.x-24.0,0.0)
+			panel.size = Vector2(sheet_width(panel),0.0)
 			panel.offset_bottom = controls.offset_top-8.0
 			panel.offset_top = panel.offset_bottom-panel.get_combined_minimum_size().y
 			continue
@@ -7422,8 +7448,10 @@ func play_area_base_rect() -> Rect2:
 	var bottom := vp.y - 8.0
 	if controls != null and not phone_talking():
 		bottom = controls.get_global_rect().position.y - 8.0
-	if phone_tray != null and phone_tray.is_visible_in_tree(): bottom = minf(bottom,phone_tray.get_global_rect().position.y-8.0)
 	var right := vp.x - 8.0
+	if phone_tray != null and phone_tray.is_visible_in_tree():
+		if phone_tray_docked(): right = phone_tray.get_global_rect().position.x - 8.0
+		else: bottom = minf(bottom,phone_tray.get_global_rect().position.y-8.0)
 	for p in [block_panel, mural_panel, music_panel]:
 		if p != null and p.visible:
 			if panel_uses_side_dock(p):
