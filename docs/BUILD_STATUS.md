@@ -1,6 +1,14 @@
 # Build status
 
-## Current: 3D street view, decluttered and deployed - November 2, 2026 UTC
+## Current: HUD redesign Phase 1, on main and not deployed - November 3, 2026 UTC
+
+Phase 1 of `docs/HUD_REDESIGN_PLAN.md` is on main. The header is one row: a Menu button, the objective line and the Sparks pill (48 px tall, 44 on landscape phones). Music, Sounds, Reduced motion, Street view, About, Before These Streets, Read Local Stories, District Border and Import Web Save moved into the Menu, which lays out in three columns on landscape phones. Info is now a three-line note under the header with a Hide button. The block hub shows ten actions and pages by height. The idle scene's share of the screen went from 67% to 74% at 1100x760, 72% to 79% at 390x667, 36% to 50% at 667x390 and 34% to 48% at 900x380. A Sonnet QA pass found four defects, each fixed with a check that fails on the old code (`godot/tests/hud_checks.gd`): the menu opened on the locked Music row over the startup card; a short, wide window opened the docked hub on the wrong page; a hub that fit one page again kept its "n/m" title; and the note and menu came back stale after a focused activity.
+
+Evidence on a clean checkout of `73c3c21` (the uid commit `92bba93` adds no code): `godot:import`, `godot:export` (pck about 1.52 MB), `npm run check`, 838 Node tests and the full `npm run godot:browser` suite PASS; the formal Godot suite PASS with no errors. In that run the orbital walking frame-timing limit was loosened locally, and the change was not committed. On this machine, headless Chrome stalls up to about 500 ms between frames even on a blank page, so the check fails whatever the HUD does.
+
+Open: not deployed; no phone check yet. Phase 2 (the three-button bottom bar, with a desktop-only corner column for Map, Find Me, + and −) is being built on branch `hud-phase2`. Phases 3 (one sheet for all reading text) and 4 (landscape dock, desktop, street view) follow.
+
+## 3D street view, decluttered and deployed - November 2, 2026 UTC
 
 After the creator's iPhone run of the deployed Phase 2 ("sometimes seems cluttered"), street view hands the block hub, Celeste's mural panel and Rook's music panel back to the map view while they are open (quietly, in the same call, resuming the same view on close); draws street banners about 18 px tall, only within 45 m, giving way to the Talk prompt, speech, captions, controls and nearer banners; puts speech and the Talk prompt at 2.05 m and the gold marker and mural caption at 2.4 m (Phase 4 work orders 3-4, pulled forward; map heights unchanged); keeps nameplates whole past poles (line of sight still hides them behind buildings); and moves the street button below a showing reward note. agy's Phase 2 fixes (`10d8fa0`: a walk stick on landscape phones, a Mouse look hint that fits) are on main too.
 
