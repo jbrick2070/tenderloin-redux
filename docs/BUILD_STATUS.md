@@ -1,6 +1,6 @@
 # Build status
 
-## Current: street view steps back near a neighbor and the required choices check, on main and not deployed - November 4, 2026 UTC
+## Current: HUD Phase 4b, the street-view step-back and the choices check, deployed - November 4, 2026 UTC
 
 Two more items from the creator's phone run are on main (merge `83d7c20`), after HUD Phase 4b below:
 
@@ -11,7 +11,7 @@ Evidence on a clean checkout of `9241de2`, whose code the merge matches exactly:
 
 Open:
 
-- Not deployed. Phases 1 to 4a are live on Pages; Phase 4b and these two are not.
+- Deployed at the creator's OK ("Yes, deploy") from `df848df` (live pck 1,538,744 bytes, under the 2 MiB cap). Phases 1 to 4a were deployed the day before.
 - Not yet checked on a phone (key hints, the taller readers, the stepped-back eye).
 - Street view still hands back to the map while a sheet is open: decision 6 is the creator's.
 - A short reader line still gets its blank lines (the reader height does not follow the text length).
