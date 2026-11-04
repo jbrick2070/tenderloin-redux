@@ -1,6 +1,27 @@
 # Build status
 
-## Current: HUD redesign Phases 1 to 4a, deployed - November 3, 2026 UTC
+## Current: HUD redesign Phase 4b (from the creator's phone run), on main and not deployed - November 4, 2026 UTC
+
+The creator's iPhone video of the deployed Phases 1 to 4a (`IMG_1849.mp4`) showed four things, fixed in merge `853017c`:
+
+- **A touch screen names no key.** `phone_text()` leaves out or rewrites the hints a phone cannot use: `(M)`, `(R / K)`, `(Esc)`, `(Shift+D)`, `(Click Bea or press T ...)`, `press Shift+D`, `WASD/Arrows`, `Press Esc to stop` (now `Tap Stop Walking to stop`), and the Talk prompt (`Tap to talk to Bea`). It runs on the objective line, the status line, the conversation text and buttons, the speech bubble, the Info note, About and the 3D labels. A device with a touch screen and a keyboard shows keys again from the first key press.
+- **A phone's reader takes the lines its panel has.** A landscape phone's docked conversation reads up to five lines and a tall phone's mural or music sheet at half up to four, instead of two with scrolling. Desktop is unchanged.
+- **The bar closes its gap.** With Explore hidden beside a panel, the two remaining buttons share the whole row instead of leaving a blank third.
+- **The tests follow.** Checks in `godot/tests/hud_sheet_checks.gd` failed on the old code. Three older tests assumed a two-line reader (`study_test.gd` and two assertions in `tests/godot-browser.mjs`) and now accept up to five lines, scrolling only a line that still overflows.
+
+Reviewed by a Sonnet QA pass, which found more key hints (Shift+letter hints, WASD wording, Info notes, the 3D labels); all are covered.
+
+Evidence on a clean checkout of `d30f637`, whose code the merge matches exactly: `godot:import`, `godot:export`, `npm run check`, 838 Node tests and the full `npm run godot:browser` suite PASS (2 h 28 min on a busy machine). The formal Godot suite PASS with no errors on `26a3375`; the later commits changed only the objective line's form (same text) and tests. The orbital frame-timing limit was loosened locally for the browser run and not committed.
+
+Open:
+
+- Not deployed. Phases 1 to 4a are live on Pages; this phase is not.
+- Not yet checked on a phone. The key-hint list is long, so some hint may still show.
+- Branch `street-shoulder` (the eye steps back up to a metre when a neighbor stands close ahead, so Bea is not a wall of body) and branch `hud-choices-check` (required choices at half height) are written, not yet tested or merged.
+- Street view still hands back to the map while a sheet is open: decision 6 is the creator's.
+- A short reader line still gets its blank lines (the reader height does not follow the text length).
+
+## HUD redesign Phases 1 to 4a, deployed - November 3, 2026 UTC
 
 The first part of Phase 4 of `docs/HUD_REDESIGN_PLAN.md` is on main (merge `22f8bc4`). Phase 3 left two gaps, and this part closes both:
 
