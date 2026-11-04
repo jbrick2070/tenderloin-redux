@@ -1169,6 +1169,8 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	var near_back: float = sv.shoulder_back_m()
 	var cam_flat := Vector2(cam.global_position.x, cam.global_position.z)
 	suite.require(near_back > 0.2 and near_back <= sv.SHOULDER_MAX_M + 0.001 and cam_flat.distance_to(bea_xz) > game.player_xz().distance_to(bea_xz) + near_back - 0.05, "up close the eye steps back over the shoulder (%.2f m) so Bea is not a wall of body" % near_back)
+	var cam_xz := Vector2(cam.global_position.x, cam.global_position.z)
+	suite.require(game.is_walkable_point(cam_xz, 0.29), "the stepped-back eye stands clear of every facade")
 	var yaw_front: float = sv.yaw
 	sv.yaw = yaw_front + PI
 	suite.require(is_zero_approx(sv.shoulder_back_m()), "with Bea behind the eye does not step back")

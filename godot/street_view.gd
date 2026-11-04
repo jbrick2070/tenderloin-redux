@@ -459,7 +459,12 @@ func apply_camera() -> void:
 	game.target = p + Vector3.UP
 	cam.size = game.view_size
 	var back := shoulder_back_m()
-	cam.position = Vector3(p.x - (-sin(yaw)) * back, p.y + EYE_M, p.z - (-cos(yaw)) * back)
+	var ahead := Vector2(-sin(yaw), -cos(yaw))
+	# Never behind a wall: the step shortens until the camera stands 0.3 m clear of every facade.
+	while back > 0.05 and not game.is_walkable_point(Vector2(p.x, p.z) - ahead * back, 0.3):
+		back -= 0.1
+	back = maxf(back, 0.0)
+	cam.position = Vector3(p.x - ahead.x * back, p.y + EYE_M, p.z - ahead.y * back)
 	cam.rotation = Vector3(pitch, yaw, 0.0)
 	cam.force_update_transform()
 
@@ -473,7 +478,7 @@ func shoulder_back_m() -> float:
 	for i in range(game.neighbors.size()):
 		var to_neighbor: Vector2 = game.neighbor_xz(i) - here
 		var dist := to_neighbor.length()
-		if dist < 0.01 or dist >= SHOULDER_RANGE_M:
+		if dist < game.PLAYER_RADIUS_M or dist >= SHOULDER_RANGE_M: # Inside the body radius the direction is not steady.
 			continue
 		var facing := clampf((to_neighbor.normalized().dot(ahead) - 0.3) / 0.4, 0.0, 1.0)
 		back = maxf(back, (SHOULDER_RANGE_M - dist) * facing)
