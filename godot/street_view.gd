@@ -241,9 +241,10 @@ func stick_style(fill: Color, radius: float, border: int) -> StyleBoxFlat:
 
 ## The single rule. Any framing function that detaches from the player suspends street view.
 func active() -> bool:
-	# A hub, mural or music panel suspends the eye while it is open (it resumes when the panel closes), so its
-	# buttons, the walk stick and the eye-level labels never pile up on one screen.
-	return enabled and game.following_player and not game.in_overview and not game.in_wide_overview and game.selected < 0 and not game.is_focused_activity_visible() and not game.any_side_panel_visible() and in_block()
+	# The hub suspends the eye while it is open (it resumes when the panel closes), so its buttons, the walk stick and the
+	# eye-level labels never pile up on one screen. A conversation, the mural and the music keep it while the scene above
+	# or beside their sheet is still readable (eye_yields_to_panel).
+	return enabled and game.following_player and not game.in_overview and not game.in_wide_overview and game.selected < 0 and not game.is_focused_activity_visible() and not game.eye_yields_to_panel() and in_block()
 
 func in_block() -> bool:
 	if game.player == null or game.player.position.x < WEST_LIMIT_X:
@@ -526,6 +527,14 @@ func toggle() -> void:
 	if active():
 		game.announce_a11y_status(goodbye + "Street view. Facing %s. %s. Shift+Left and Shift+Right turn, Shift+Up and Shift+Down tilt, WASD or arrows walk. Shift+F returns to the map view." % [heading_text(), game.location_phrase(eye_xz())] + touch_hint())
 	refresh_button()
+
+## Turns the eye to a point on the ground, as a conversation, the mural or the music begins: the person or prop is ahead.
+func face_xz(point: Vector2) -> void:
+	var d := point - eye_xz()
+	if d.length() < 0.05:
+		return
+	yaw = atan2(-d.x, -d.y)
+	pitch = 0.0
 
 ## Entering from the map faces the gold marker (or Bea) so the first view is down the street, not a wall.
 func face_objective() -> void:

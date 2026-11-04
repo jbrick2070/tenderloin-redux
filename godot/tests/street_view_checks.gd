@@ -236,10 +236,29 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	suite.require(cam.projection == Camera3D.PROJECTION_PERSPECTIVE and sv.active(), "Find Me resumes street view")
 	checks += 1
 
-	# 5. frame_conversation(0) suspends; ending the conversation resumes.
+	# 5. Decision 6: frame_conversation(0) keeps the eye and turns it to the speaker while the scene beside the sheet is readable;
+	# on a screen too small for that it suspends to the map, and ending the conversation resumes street view.
 	game.frame_conversation(0)
 	await suite.process_frame
-	suite.require(cam.projection == Camera3D.PROJECTION_ORTHOGONAL and not sv.active(), "framing a conversation suspends to the map view")
+	var to_bea5: Vector2 = (game.neighbor_xz(0) - sv.eye_xz()).normalized()
+	var ahead5 := Vector2(-sin(sv.yaw), -cos(sv.yaw))
+	suite.require(cam.projection == Camera3D.PROJECTION_PERSPECTIVE and sv.active() and game.following_player and ahead5.dot(to_bea5) > 0.99, "framing a conversation keeps the eye and turns it to the speaker (%.3f)" % ahead5.dot(to_bea5))
+	game.show_conversation(0)
+	await suite.process_frame
+	await suite.process_frame
+	var bea_screen: Vector2 = cam.unproject_position(game.neighbors[0].pos + Vector3.UP * 1.45)
+	suite.require(sv.active() and game.talk_sheet_open() and not cam.is_position_behind(game.neighbors[0].pos) and game.play_area_rect().has_point(bea_screen), "with the conversation sheet open the street stays at eye level and Bea is in the scene above it (%s in %s)" % [str(bea_screen), str(game.play_area_rect())])
+	game.end_conversation()
+	await suite.process_frame
+	var size5: Vector2i = suite.root.size
+	suite.root.size = Vector2i(320, 260)
+	await suite.process_frame
+	await suite.process_frame
+	game.frame_conversation(0)
+	await suite.process_frame
+	suite.require(cam.projection == Camera3D.PROJECTION_ORTHOGONAL and not sv.active() and game.play_area_base_rect().size.y < 150.0, "on a screen too small to read the street beside a conversation it hands back to the map (%s)" % str(game.play_area_base_rect()))
+	suite.root.size = size5
+	await suite.process_frame
 	game.end_conversation()
 	await suite.process_frame
 	suite.require(game.following_player and sv.active() and cam.projection == Camera3D.PROJECTION_PERSPECTIVE, "ending the conversation resumes street view")
@@ -946,7 +965,7 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	sv.street_mouselook = true
 	sv.refresh_mouselook_button()
 	var releasers := [
-		["frame_conversation", func(): game.frame_conversation(0), func(): game.end_conversation(), true],
+		["a conversation opening", func(): game.show_conversation(0), func(): game.end_conversation(), false],
 		["wide_overview", func(): game.wide_overview(), func(): game.frame_player_for_walking(), true],
 		["a focused activity opening", func(): game.rhythm_circle.visible = true, func(): game.rhythm_circle.visible = saved_rhythm_visible, false],
 		["focus loss", func(): game.notification(Node.NOTIFICATION_WM_WINDOW_FOCUS_OUT), func(): game.notification(Node.NOTIFICATION_WM_WINDOW_FOCUS_IN), true],
@@ -1473,7 +1492,7 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 				clash = String(b.name)
 		taken.append(rect)
 	suite.require(talk25.has_area() and clash == "", "beside Bea at 410x892 no street banner overlaps the Talk prompt, the street controls or another banner (talk %s, %d shown, clash '%s')" % [str(talk25), shown25, clash])
-	# Celeste's and Rook's panels suspend the eye like the hub, at 1100x760 and at 390x667.
+	# Celeste's and Rook's panels keep the eye (decision 6; only the hub hands back), at 1100x760 and at 390x667.
 	var g25_panels: Array = []
 	for size in [g25_size, Vector2i(390, 667)]:
 		suite.root.size = size
@@ -1487,7 +1506,7 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 				game.show_mural_panel(true)
 			else:
 				game.show_music_panel(true)
-			var off: bool = not sv.active() and game.camera.projection == Camera3D.PROJECTION_ORTHOGONAL
+			var off: bool = sv.active() and game.camera.projection == Camera3D.PROJECTION_PERSPECTIVE # Decision 6: the eye stays.
 			await suite.process_frame
 			if which == "mural":
 				game.show_mural_panel(false)
@@ -1501,7 +1520,7 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	var g25_panels_ok := true
 	for r in g25_panels:
 		g25_panels_ok = g25_panels_ok and r[2] and r[3]
-	suite.require(g25_panels_ok, "Celeste's and Rook's panels suspend the eye at once and closing them resumes it, at 1100 and 390 wide (%s)" % str(g25_panels))
+	suite.require(g25_panels_ok, "Celeste's and Rook's panels keep the eye open and after closing it is still there, at 1100 and 390 wide (%s)" % str(g25_panels))
 	suite.root.size = g25_size
 	await suite.process_frame
 	await suite.process_frame
