@@ -431,6 +431,8 @@ static func verify(suite: SceneTree, game: Node) -> void:
 			if kind == "talk":
 				game.last_panel_dialogue = ""
 				game.show_conversation(0)
+				game.last_panel_dialogue = "Bea: \"" + "Boeddeker Park is about a block northwest, if you ever want a bench and some trees. ".repeat(3) + "\""
+				game.update_block_ui()
 			else:
 				game.show_music_panel(true)
 			await frames(suite, 3)
@@ -457,7 +459,9 @@ static func verify(suite: SceneTree, game: Node) -> void:
 
 	# 8. A touch screen has no keyboard: what it reads leaves out the key hints, and keys keep them. A key press turns them back on.
 	game.touch_ui_override = 1
-	for pair in [["Portable Mural (M)", "Portable Mural"], ["Rook's Speaker (R / K)", "Rook's Speaker"], ["Return Thanh's folding table (Y) · 1/3 returned", "Return Thanh's folding table · 1/3 returned"], ["Open the block party with Bea (O)", "Open the block party with Bea"], ["Tenant circle (Q) and neighborhood short film (.) unlocked", "Tenant circle and neighborhood short film unlocked"], ["Hello  (Click Bea or press T to keep chatting)", "Hello"], ["Goodbye (Esc)", "Goodbye"], ["Spot Surprise (3/10)", "Spot Surprise (3/10)"], ["Walk up to any neighbor (1–5) to talk!", "Walk up to any neighbor to talk!"], ["Walking to Bea · Press Esc to stop", "Walking to Bea · Tap Stop Walking to stop"]]:
+	for pair in [["Portable Mural (M)", "Portable Mural"], ["Rook's Speaker (R / K)", "Rook's Speaker"], ["Return Thanh's folding table (Y) · 1/3 returned", "Return Thanh's folding table · 1/3 returned"], ["Open the block party with Bea (O)", "Open the block party with Bea"], ["Tenant circle (Q) and neighborhood short film (.) unlocked", "Tenant circle and neighborhood short film unlocked"], ["Hello  (Click Bea or press T to keep chatting)", "Hello"], ["Goodbye (Esc)", "Goodbye"], ["Spot Surprise (3/10)", "Spot Surprise (3/10)"], ["Walk up to any neighbor (1–5) to talk!", "Walk up to any neighbor to talk!"], ["Walking to Bea · Press Esc to stop", "Walking to Bea · Tap Stop Walking to stop"], ["Spot Pip (2/10 surprises, Shift+D) · Museum (Shift+M)", "Spot Pip (2/10 surprises) · Museum"], ["[*] Small Cutesy Dinosaur (Tap / Shift+D)", "[*] Small Cutesy Dinosaur"], ["Dez: \"Out along Turk, press Shift+D!\"", "Dez: \"Out along Turk!\""], ["Tap the street or use WASD/arrows to walk · T talks to people nearby · G: all block actions", "Tap the street to walk · tap a neighbor to talk"], ["Route blocked
+Use WASD/Arrows or tap another street point", "Route blocked
+Tap another street point"], ["Compose Mural (F2 or tap the easel) opens", "Compose Mural (tap the easel) opens"]]:
 		suite.require(game.phone_text(pair[0]) == pair[1], "on a touch screen '%s' reads '%s' (got '%s')" % [pair[0], pair[1], game.phone_text(pair[0])])
 	game.touch_ui_override = 0
 	suite.require(game.phone_text("Portable Mural (M)") == "Portable Mural (M)" and game.phone_text("Goodbye (Esc)") == "Goodbye (Esc)", "with keys the hints stay")
