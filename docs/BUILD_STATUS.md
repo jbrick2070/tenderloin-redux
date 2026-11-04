@@ -1,6 +1,23 @@
 # Build status
 
-## Current: HUD Phase 4b, the street-view step-back and the choices check, deployed - November 4, 2026 UTC
+## Current: street view decision 6, a conversation keeps the eye, on main and not deployed - November 4, 2026 UTC
+
+The creator's decision 6 ("stay at eye level in a conversation unless it becomes hard to read; I am fine with the switch like an old Ultima game") is on main (merge `0a455fd`, tree identical to the tested `4a80de8`):
+
+- **A conversation, Celeste's mural and Rook's music keep street view.** The eye turns to the speaker (or the mural or the speaker prop) and the street stays on screen above or beside the sheet. The sheet, Show less and Show more, the status line and Goodbye work as before.
+- **They hand back to the map in two cases:** the block hub (too big to read over the street), and a screen where the scene beside the sheet would be under 200 x 150 px. The Map view button also leaves eye level with a conversation open; the open sheet is then framed on the map. Resizing a window under the readable size while a sheet is open does the same.
+- **Mouse look** is not offered beside an open sheet (a sheet takes no mouse lock).
+
+Reviewed by a Sonnet QA pass: the eye stays only while the map camera follows the player; Map view and a too-small screen frame the open sheet on the map; mouse look hides beside a sheet. Not fixed, as low severity: opening a sheet turns the eye back to the speaker (a heading turned by hand is replaced), and one frame of the map camera may show while a sheet's layout settles.
+
+Evidence on a clean checkout of `4a80de8`: `godot:import`, `godot:export`, `npm run check`, 838 Node tests and the full `npm run godot:browser` suite PASS (2 h 2 min). The formal Godot suite PASS with no errors on `4a80de8`. Older street-view checks that assumed the hand-back were rewritten (`godot/tests/street_view_checks.gd`), and new ones check the eye turning to Bea, Bea in the scene above the open sheet, the tiny-screen hand-back and the Map view and resize framing.
+
+Open:
+
+- Not deployed. Not yet checked on a phone. Phase 4b and the step-back are already live; only decision 6 is new since the last deploy.
+- Landscape dock rule (one placement for docked panels), Phase 5 (the 2D fork) and translations remain.
+
+## HUD Phase 4b, the street-view step-back and the choices check, deployed - November 4, 2026 UTC
 
 Two more items from the creator's phone run are on main (merge `83d7c20`), after HUD Phase 4b below:
 
