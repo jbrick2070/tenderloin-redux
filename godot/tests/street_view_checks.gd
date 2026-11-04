@@ -250,6 +250,31 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	suite.require(sv.active() and game.talk_sheet_open() and not cam.is_position_behind(game.neighbors[0].pos) and game.play_area_rect().has_point(bea_screen), "with the conversation sheet open the street stays at eye level and Bea is in the scene above it (%s in %s)" % [str(bea_screen), str(game.play_area_rect())])
 	game.end_conversation()
 	await suite.process_frame
+	# The Map view button with the conversation open frames the speaker on the map; a screen shrunk under the readable size does the same.
+	game.show_conversation(0)
+	await suite.process_frame
+	await suite.process_frame
+	sv.toggle()
+	await suite.process_frame
+	await suite.process_frame
+	var bea_map: Vector2 = cam.unproject_position(game.neighbors[0].pos)
+	suite.require(not sv.active() and cam.projection == Camera3D.PROJECTION_ORTHOGONAL and game.talk_sheet_open() and game.play_area_rect().has_point(bea_map), "Map view with a conversation open frames Bea on the map (%s in %s)" % [str(bea_map), str(game.play_area_rect())])
+	game.end_conversation()
+	await suite.process_frame
+	sv.toggle()
+	await suite.process_frame
+	game.show_conversation(0)
+	await suite.process_frame
+	await suite.process_frame
+	var size5b: Vector2i = suite.root.size
+	suite.root.size = Vector2i(320, 260)
+	for _f in range(6):
+		await suite.process_frame
+	suite.require(not sv.active() and cam.projection == Camera3D.PROJECTION_ORTHOGONAL and game.panel_frame_control == game.block_panel, "a screen shrunk below the readable street frames the open conversation on the map")
+	suite.root.size = size5b
+	await suite.process_frame
+	game.end_conversation()
+	await suite.process_frame
 	var size5: Vector2i = suite.root.size
 	suite.root.size = Vector2i(320, 260)
 	await suite.process_frame
