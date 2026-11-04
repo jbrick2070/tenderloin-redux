@@ -1097,11 +1097,16 @@ async function verifyShortActivities(page, context, touch, checks, small = false
       for (const point of s.panel_subject_points) assert.ok(!point.behind && point.x >= a.x && point.x <= a.x + a.width && point.y >= a.y && point.y <= a.y + a.height, 'actual person and prop both remain visible');
       for (const b of d.buttons.filter(b => b.visible)) assert.ok(b.width >= 44 && b.height >= 44 && b.text_fits && b.x >= p.x && b.y >= p.y && b.x + b.width <= p.x + p.width + 1 && b.y + b.height <= p.y + p.height + 1, `complete short action fits: ${b.text}`);
       for (const b of s.walking_controls.filter(b=>b.visible)) assert.ok(b.width >= 44 && b.height >= 44 && b.text_fits && (side ? b.x + b.width <= p.x : b.y >= p.y + p.height), 'walking controls remain clear of the activity');
-      assert.ok(d.scroll_max > d.scroll_page && d.text.length > 100, 'real requested hint or Chat line exercises complete scrolling');
+      // A phone's reader takes the lines its panel has (HUD Phase 4b), so a real line may now read whole; one that still
+      // overflows is scrolled by touch, wheel and keys, and one that fits must not scroll at all.
+      const canScroll = d.scroll_max > d.scroll_page;
+      assert.ok(canScroll || d.text.length > 20, 'the requested hint or Chat line shows in the reader');
+      if (!canScroll) assert.ok(d.scroll_max <= d.scroll_page + 1, 'a line that fits whole needs no scrolling');
       const save = await page.evaluate(() => localStorage.getItem('tenderloin-redux.godot.save.v1'));
       const canvas = await page.locator('#canvas').boundingBox();
       const x = canvas.x + (d.control.x + d.control.width / 2) * canvas.width / width;
       const y = canvas.y + (d.control.y + d.control.height - 4) * canvas.height / height;
+      if (canScroll) {
       if (touch) {
         const cdp = await context.newCDPSession(page), travel = (d.control.height - 8) * canvas.height / height;
         await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 0 }] });
@@ -1127,6 +1132,7 @@ async function verifyShortActivities(page, context, touch, checks, small = false
       await page.keyboard.press('PageDown');
       await page.waitForFunction(({key,up})=>window.__tenderloinGodotA11ySnapshot[key].scroll_value>up,{key,up},{timeout:10000});
       await settle();
+      }
       const read = await snapshot();
       assert.equal(read[key].text, d.text);
       assert.deepEqual(read.camera_pose, s.camera_pose, 'reading never pans or rotates');
@@ -2327,12 +2333,12 @@ try {
         assert.ok(d.text.includes(s.overlays.speech.text), 'the complete deferred dialogue remains in the existing activity instructions');
         assert.equal(s.header_details_expanded, false, 'repeated activity dialogue does not expand Info over the player');
       }
-      assert.ok(d.control.visible && d.control.height >= d.min_height - 1 && d.control.height <= 50, 'description has a bounded two-line reading area at its actual font size');
+      assert.ok(d.control.visible && d.control.height >= d.min_height - 1 && d.control.height <= 110, 'description has a bounded reading area at its actual font size (two lines, and up to five where its panel has the room)');
       assert.ok(d.panel.y >= s.header_control.y + s.header_control.height && d.panel.y + d.panel.height <= s.controls_control.y, 'activity stays between header and walking controls');
       assert.ok(d.control.x >= d.panel.x && d.control.y >= d.panel.y && d.control.x + d.control.width <= d.panel.x + d.panel.width + 1 && d.control.y + d.control.height <= d.panel.y + d.panel.height + 1);
       for (const b of d.buttons) assert.ok(b.visible && b.width >= 44 && b.height >= 44 && b.text_fits, `full activity title: ${b.text}`);
-      if (size.width < 600 && stage === 'mural') {
-        assert.ok(d.scroll_max > d.scroll_page, 'narrow mural instructions must exercise scrolling');
+      // The taller reader (HUD Phase 4b) may show the narrow mural's instructions whole; if they still overflow they scroll.
+      if (size.width < 600 && stage === 'mural' && d.scroll_max > d.scroll_page) {
         const canvas = await page.locator('#canvas').boundingBox();
         const x = canvas.x + (d.control.x + d.control.width / 2) * canvas.width / s.viewport_width;
         const y = canvas.y + (d.control.y + d.control.height - 4) * canvas.height / s.viewport_height;
