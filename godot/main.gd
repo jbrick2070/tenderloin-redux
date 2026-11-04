@@ -9560,10 +9560,23 @@ func street_view_active() -> bool:
 ## turned to the speaker, for as long as the scene above or beside their sheet is readable (200 x 150 px). Where it is not,
 ## they hand back to the map for the panel's time, as an old Ultima's dialogue screen would; the hub always does.
 func eye_keeps_scene_with_sheet() -> bool:
-	if street_view == null or not street_view.enabled or not street_view.in_block() or in_overview or in_wide_overview or selected >= 0:
+	if street_view == null or not street_view.enabled or not following_player or not street_view.in_block() or in_overview or in_wide_overview or selected >= 0:
 		return false
 	var area := play_area_base_rect()
 	return area.size.x >= 200.0 and area.size.y >= 150.0
+
+## A sheet that stayed with the eye is framed on the map when the eye leaves it (the Map view button, or a screen that no
+## longer shows the street beside the sheet): the speaker, the mural or the speaker, as the sheet opened them on the map.
+func reframe_sheet_for_map() -> void:
+	if street_view == null or not following_player or street_view_active() or eye_keeps_scene_with_sheet():
+		return
+	var panel := sheet_panel()
+	if panel == block_panel and talk_partner >= 0:
+		frame_conversation(talk_partner)
+	elif panel == mural_panel:
+		focus_mural_camera()
+	elif panel == music_panel:
+		focus_speaker_camera()
 
 func eye_yields_to_panel() -> bool:
 	if not any_side_panel_visible():
@@ -9605,6 +9618,9 @@ func refit_panel_after_layout() -> void:
 	await get_tree().process_frame
 	if generation == panel_refit_generation:
 		if is_focused_activity_visible():
+			return
+		if street_view != null and street_view.enabled and sheet_panel() != null and following_player and not street_view_active():
+			reframe_sheet_for_map() # A resize took the street beside the sheet below readable: the map takes over, framed.
 			return
 		if following_player and civic_listening != null and civic_listening.entry.is_visible_in_tree() and block_panel.visible and block_panel_mode=="hub":
 			# YOU's billboard can rebuild after a resize. Fit only if it now clips;

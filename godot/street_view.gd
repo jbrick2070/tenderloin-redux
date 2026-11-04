@@ -501,6 +501,7 @@ func toggle() -> void:
 	if active():
 		enabled = false
 		game.update_camera()
+		game.reframe_sheet_for_map() # A conversation open at eye level is framed on the map the player chose.
 		game.update_occlusion(true)
 		game.update_guide_marker()
 		refresh_button()
@@ -997,7 +998,7 @@ func refresh_button() -> void:
 	# Mouse look sits under the street button at eye level, for a mouse; a touchscreen has the stick and drag-look.
 	mouselook_btn.size = BUTTON_SIZE
 	mouselook_btn.position = button.position + Vector2(0.0, BUTTON_SIZE.y + 8.0)
-	mouselook_btn.visible = button.visible and active() and mouselook_offered() and mouselook_room()
+	mouselook_btn.visible = button.visible and active() and mouselook_offered() and mouselook_room() and not game.any_side_panel_visible() # A sheet beside the eye takes no mouse lock.
 
 func snapshot() -> Dictionary:
 	var cam: Camera3D = game.camera
