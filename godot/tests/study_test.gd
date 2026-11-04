@@ -2916,7 +2916,7 @@ func run() -> void:
 			require(study.play_area_rect().size.y >= 140, "activity descriptions leave a useful scene area")
 			var activity_font: Font = detail.get_theme_font("normal_font")
 			var two_line_height: float = activity_font.get_height(detail.get_theme_font_size("normal_font_size")) * 2.0 + detail.get_theme_constant("line_separation") + detail.get_theme_stylebox("normal").get_minimum_size().y
-			require(detail.size.y >= two_line_height and detail.size.y <= 50 and activity_rect.encloses(detail.get_global_rect()), "two real font lines fit without unbounded description growth")
+			require(detail.size.y >= two_line_height and detail.size.y <= two_line_height + 3.0 * (activity_font.get_height(detail.get_theme_font_size("normal_font_size")) + detail.get_theme_constant("line_separation")) and activity_rect.encloses(detail.get_global_rect()), "two real font lines fit, and a panel with room adds at most three more, without unbounded description growth")
 			var activity_snapshot: Dictionary = study.activity_detail_snapshot(detail, activity_panel, activity_buttons)
 			for activity_button in activity_snapshot.buttons:
 				require(bool(activity_button.text_fits) and activity_button.width >= 44 and activity_button.height >= 44, "full activity button title fits at %d: %s" % [activity_width, activity_button.text])

@@ -16197,7 +16197,7 @@ func reader_label_for(panel: Control) -> RichTextLabel:
 ## scrolling: up to five lines in the dock (the height beside the scene), four in a sheet at half (about 55 % of the screen).
 func fit_reader_lines(panel: Control) -> void:
 	var label := reader_label_for(panel)
-	if label == null or panel == null or not panel.visible or hud_size_class() == "desktop":
+	if label == null or panel == null or hud_size_class() == "desktop":
 		return
 	if panel == sheet_panel() and sheet_at_bar():
 		return
@@ -16210,8 +16210,6 @@ func fit_reader_lines(panel: Control) -> void:
 	var font_size := label.get_theme_font_size("normal_font_size")
 	var line := ceilf(label.get_theme_font("normal_font").get_height(font_size)) + float(label.get_theme_constant("line_separation"))
 	var extra := clampi(int(floorf((room - panel.get_combined_minimum_size().y) / line)), 0, 3 if docked else 2)
-	var chars_per_line := maxf(8.0, (sheet_width(panel) - 24.0) / (float(font_size) * 0.55))
-	extra = mini(extra, maxi(0, int(ceilf(float(label.text.length()) / chars_per_line)) - 2)) # No blank lines under a short note.
 	label.custom_minimum_size.y += float(extra) * line
 
 func make_activity_detail() -> RichTextLabel:
