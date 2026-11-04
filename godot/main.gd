@@ -2816,7 +2816,7 @@ func build_mural_board() -> void:
 	celeste_dino_tail_node.rotation_degrees = Vector3(58.0, -35.0, 0.0)
 	mural_node.add_child(celeste_dino_figurine_node)
 	surprise_keepsake_nodes["cutesy_dino"] = celeste_dino_figurine_node
-	mural_node.add_child(make_label_3d("MuralBoardLabel", "Portable Mural (M)", Vector3(0.0, 4.1, 0.0), Color("ffe394"), 0.012, 22))
+	mural_node.add_child(make_label_3d("MuralBoardLabel", phone_text("Portable Mural (M)"), Vector3(0.0, 4.1, 0.0), Color("ffe394"), 0.012, 22))
 	add_child(mural_node)
 	update_mural_3d()
 
@@ -2891,7 +2891,7 @@ func build_rook_speaker() -> void:
 	rook_clown_horn_bulb_mesh = add_prop_mesh(rook_clown_horn_node, prop_sphere(0.052), Vector3(-0.02, -0.04, -0.04), mural_material(Color("ff5252")), "MiniRedHornBulb")
 	speaker_node.add_child(rook_clown_horn_node)
 	surprise_keepsake_nodes["clown_horn_walker"] = rook_clown_horn_node
-	speaker_node.add_child(make_label_3d("RookSpeakerLabel", "Rook's Speaker (R / K)", Vector3(0.0, 2.25, 0.0), Color("9ef5e5"), 0.012, 22))
+	speaker_node.add_child(make_label_3d("RookSpeakerLabel", phone_text("Rook's Speaker (R / K)"), Vector3(0.0, 2.25, 0.0), Color("9ef5e5"), 0.012, 22))
 	add_child(speaker_node)
 	update_speaker_3d()
 
@@ -6282,9 +6282,9 @@ func update_objective_ui() -> void:
 	var ch := current_chapter()
 	var next_text := String(current_objective().get("text", ""))
 	if narrow:
-		objective_label.text = "Ch. %d · Next: %s" % [int(ch.num), next_text]
+		objective_label.text = "Ch. %d · Next: %s" % [int(ch.num), phone_text(next_text)]
 	else:
-		objective_label.text = "Chapter %d: %s · Next: %s" % [int(ch.num), String(ch.title), next_text]
+		objective_label.text = "Chapter %d: %s · Next: %s" % [int(ch.num), String(ch.title), phone_text(next_text)]
 	objective_btn.tooltip_text = "%s (Next Step)" % objective_label.text
 	objective_btn.accessibility_name = "%s. Next Step." % objective_label.text
 	update_walk_control()
@@ -6413,7 +6413,7 @@ func update_talk_prompt() -> void:
 		return
 	if idx != talk_prompt_neighbor:
 		talk_prompt_neighbor = idx
-		var prompt := "Talk to %s · T or tap" % String(neighbors[idx].name)
+		var prompt := ("Tap to talk to %s" if touch_ui() else "Talk to %s · T or tap") % String(neighbors[idx].name)
 		talk_prompt_label.text = prompt
 		var font: Font = ThemeDB.fallback_font
 		var sz := font.get_string_size(prompt, HORIZONTAL_ALIGNMENT_CENTER, -1, 22)
@@ -6807,13 +6807,13 @@ func apply_block_panel_mode() -> void:
 					lbl = lbl.replace("Go Meet ", "Meet ").replace("All Block Actions", "All Actions").replace("Spot Surprise (", "Find ").replace("/10)", "/10").replace("Visit the Museum", "Museum").replace("Visit the Park", "Park").replace("Order at Next Stop", "Order Next").replace("Visit Eateries", "Eateries").replace(" with Celeste", "").replace(" with Rook", "").replace(" (Bea)", "").replace(" (Dez & Celeste)", "")
 				conv_action_btns[s].text = lbl
 		if conv_chat_btn != null:
-			conv_chat_btn.text = "Chat More" if narrow else "Keep Chatting (T)"
+			conv_chat_btn.text = "Chat More" if narrow else phone_text("Keep Chatting (T)")
 		if conv_next_btn != null:
 			conv_next_btn.text = "Next Step" if narrow else "What's Next?"
 			# The bar's Next Step is the same press; only a tall phone hides the bar while the sheet reads.
 			conv_next_btn.visible = uses_phone_talk_rows()
 		if conv_bye_btn != null:
-			conv_bye_btn.text = "Goodbye" if narrow else "Goodbye (Esc)"
+			conv_bye_btn.text = "Goodbye" if narrow else phone_text("Goodbye (Esc)")
 		layout_walking_controls_and_hub()
 
 func block_action_page_count() -> int:
@@ -7047,7 +7047,11 @@ func configure_phone_disclosure() -> void:
 	# The bar is one row of three: 44 px tall on landscape phones and 50 px elsewhere, taller only if a label wraps.
 	var bar_height := hud_bar_height()
 	var bar_font := hud_bar_font_size()
-	controls.columns = 3
+	# The visible buttons share the row: with Explore hidden beside a panel, two buttons are not left with a blank third.
+	var bar_buttons := 0
+	for btn in [next_hint_control, walk_control, phone_explore_control]:
+		if btn.visible: bar_buttons += 1
+	controls.columns = maxi(1, bar_buttons)
 	phone_explore_control.text = "Explore"
 	next_hint_control.text = "Back to Me" if phone_map_return() else "Next Step"
 	next_hint_control.tooltip_text = "Return to the player" if phone_map_return() else "What's Next?"
@@ -7225,6 +7229,7 @@ func layout_walking_controls_and_hub() -> void:
 		if panel == null:
 			continue
 		apply_activity_sheet(panel)
+		fit_reader_lines(panel)
 		# Hidden activity panels use the same geometry for focus-before-show calls.
 		var dock: bool = panel_uses_side_dock(panel) and (panel != block_panel or panel.visible)
 		if panel != block_panel:
@@ -15210,6 +15215,8 @@ func press_settle_hook(node: Node) -> void:
 		if not node.pressed.is_connected(arm): node.pressed.connect(arm)
 
 func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not keyboard_seen:
+		keyboard_seen = true
 	if settle_swallows(event):
 		get_viewport().set_input_as_handled()
 		return
@@ -15855,8 +15862,31 @@ func zoom(factor: float) -> void:
 	update_camera()
 	update_occlusion(true)
 
+## A touch screen with no key pressed yet: no keyboard to press T on. A device with both flips to keys on the first key
+## press. Tests set touch_ui_override to 1 (touch) or 0 (keys).
+var touch_ui_override := -1
+var keyboard_seen := false
+var key_hint_regex: RegEx
+
+func touch_ui() -> bool:
+	if touch_ui_override >= 0:
+		return touch_ui_override == 1
+	return DisplayServer.is_touchscreen_available() and not keyboard_seen
+
+## Text for a touch screen: the key hints a phone cannot use, "(M)", "(R / K)", "(Esc)", "(Click Bea or press T ...)" and
+## "WASD/Arrows or tap street", are left out. Keys stay on a keyboard.
+func phone_text(text: String) -> String:
+	if not touch_ui():
+		return text
+	if key_hint_regex == null:
+		key_hint_regex = RegEx.create_from_string("\\s*\\((?:Click [^)]*press T[^)]*|Esc|F2|[A-Z0-9.](?: / [A-Z0-9.])*)\\)")
+	var out := key_hint_regex.sub(text, "", true)
+	out = out.replace("WASD/Arrows or tap street to walk", "Tap the street to walk").replace("Press Esc to stop", "Tap Stop Walking to stop")
+	out = out.replace(" (1–5)", "").replace("; Z keeps the quick path", "")
+	return out
+
 func overview_text() -> String:
-	if DisplayServer.is_touchscreen_available() and is_narrow_layout():
+	if touch_ui():
 		return "Tap a neighbor to walk over and talk\nDrag pans · pinch or Zoom +/- zooms · What's Next? offers a hint\n%d city footprints · 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % data.buildings.size()
 	return "Tap a neighbor to walk over and talk · T talks · Esc says goodbye\nWASD/arrows walk · drag pans · right-drag rotates · scroll zooms · G: all block actions\n%d city footprints · 2010 survey / PDDL · Streets © OpenStreetMap / ODbL" % data.buildings.size()
 
@@ -16051,7 +16081,7 @@ func update_mural_ui() -> void:
 		mural_buttons[5].text = "Move" if short else "Shift Motif"
 		mural_buttons[6].text = "Clear" if short else "Clear Board"
 		mural_buttons[7].text = "Hint" if short else "What's Next?"
-		mural_buttons[8].text = "Close" if short else "Goodbye (Esc)"
+		mural_buttons[8].text = "Close" if short else phone_text("Goodbye (Esc)")
 	if mural_palette_btn != null:
 		mural_palette_btn.text = "Palette: %s" % mural_palette.capitalize()
 	if mural_sun_btn != null:
@@ -16111,7 +16141,7 @@ func update_music_ui() -> void:
 			music_rook_btn.text = "Chat w/ Rook" if rook_soundcheck_done else "Check Sound"
 			music_sketch_btn.text = "Sketch On" if music_mode == "sketch" else "Use Sketch"
 		music_buttons[5].text = "Hint" if short else "What's Next?"
-		music_buttons[6].text = "Close" if short else "Goodbye (Esc)"
+		music_buttons[6].text = "Close" if short else phone_text("Goodbye (Esc)")
 	if sheet_at_bar() and sheet_panel() == music_panel:
 		refresh_sheet_title() # Shown less, the title is Rook's name or his line's first words.
 
@@ -16126,6 +16156,32 @@ func size_activity_detail(control: RichTextLabel) -> void:
 	control.add_theme_font_size_override("normal_font_size", font_size)
 	var font := control.get_theme_font("normal_font")
 	control.custom_minimum_size.y = ceilf(font.get_height(font_size) * 2.0 + control.get_theme_constant("line_separation") + control.get_theme_stylebox("normal").get_minimum_size().y)
+
+## The reader a sheet or docked panel shows: a conversation's line, the mural's note or the music's stems.
+func reader_label_for(panel: Control) -> RichTextLabel:
+	if panel == block_panel and block_panel_mode == "talk": return block_detail_label
+	if panel == mural_panel: return mural_detail_label
+	if panel == music_panel: return music_stem_label
+	return null
+
+## A phone's reader gets the room its panel has over two lines, so a line of speech or a music note reads without
+## scrolling: up to five lines in the dock (the height beside the scene), four in a sheet at half (about 55 % of the screen).
+func fit_reader_lines(panel: Control) -> void:
+	var label := reader_label_for(panel)
+	if label == null or panel == null or not panel.visible or hud_size_class() == "desktop":
+		return
+	if panel == sheet_panel() and sheet_at_bar():
+		return
+	if panel == block_panel and phone_talking():
+		return # A tall phone's conversation sizes its own line.
+	size_activity_detail(label)
+	var vp := bubble_viewport_size()
+	var docked := panel_uses_side_dock(panel)
+	var room := (vp.y - 12.0 - (hud_bottom() + 8.0)) if docked else vp.y * 0.55
+	var font_size := label.get_theme_font_size("normal_font_size")
+	var line := ceilf(label.get_theme_font("normal_font").get_height(font_size)) + float(label.get_theme_constant("line_separation"))
+	var extra := clampi(int(floorf((room - panel.get_combined_minimum_size().y) / line)), 0, 3 if docked else 2)
+	label.custom_minimum_size.y += float(extra) * line
 
 func make_activity_detail() -> RichTextLabel:
 	var control := RichTextLabel.new()
@@ -16197,7 +16253,7 @@ func update_block_ui() -> void:
 				base_detail += " Cook & Share offers an optional meal with fictional neighbors, for this visit."
 		else:
 			base_detail = "Walk up to any neighbor (1–5) to talk! Still needed to open the block party: %s" % get_block_missing_summary()
-		var detail := base_detail if browser_import_message.is_empty() else ("%s · %s" % [base_detail, browser_import_message])
+		var detail := phone_text(base_detail if browser_import_message.is_empty() else ("%s · %s" % [base_detail, browser_import_message]))
 		if block_detail_label.text != detail:
 			block_detail_label.text = detail
 			block_detail_label.scroll_to_line(0)
@@ -17172,7 +17228,7 @@ func build_sheet_bar(layer: CanvasLayer) -> void:
 
 ## Puts a line in the status line for its reading time (the bubble's formula), shown less.
 func show_sheet_line(text: String, kind: String, hold_sec := -1.0) -> void:
-	var body := text.strip_edges()
+	var body := phone_text(text).strip_edges()
 	if body.is_empty() or sheet_bar == null:
 		return
 	if kind != "speech" and talk_sheet_at_bar():

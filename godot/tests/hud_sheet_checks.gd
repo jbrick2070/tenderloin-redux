@@ -420,6 +420,70 @@ static func verify(suite: SceneTree, game: Node) -> void:
 	await frames(suite, 2)
 	game.sheet_heights.clear()
 
+	# 9. A phone's reader has more than two lines when its panel has the room: Bea's line beside the scene on a landscape
+	# phone and Rook's note over a tall phone's bar; and with Explore hidden beside a panel the bar's two buttons share its row.
+	for size in [Vector2i(667, 390), Vector2i(900, 380), Vector2i(390, 667)]:
+		suite.root.size = size
+		await frames(suite, 4)
+		game.sheet_heights.clear()
+		var kinds: Array = ["talk", "music"] if size.x < size.y else ["talk"]
+		for kind in kinds:
+			if kind == "talk":
+				game.last_panel_dialogue = ""
+				game.show_conversation(0)
+			else:
+				game.show_music_panel(true)
+			await frames(suite, 3)
+			var reader: RichTextLabel = game.reader_label_for(game.sheet_panel())
+			var font_size: int = reader.get_theme_font_size("normal_font_size")
+			var two_lines := ceilf(reader.get_theme_font("normal_font").get_height(font_size) * 2.0 + float(reader.get_theme_constant("line_separation")) + reader.get_theme_stylebox("normal").get_minimum_size().y)
+			var sheet: Rect2 = game.sheet_panel().get_global_rect()
+			var inside := sheet.position.y >= 0.0 and sheet.end.y <= float(size.y) - 11.0
+			if game.phone_talking():
+				suite.require(reader.custom_minimum_size.y >= 90.0 and inside, "at %s a tall phone's conversation keeps its reader (%.0f px) on screen" % [size, reader.custom_minimum_size.y])
+			else:
+				suite.require(reader.custom_minimum_size.y > two_lines + 1.0 and inside, "at %s the %s reader has %.0f px, more than its two lines (%.0f), and the sheet stays on screen (%s)" % [size, kind, reader.custom_minimum_size.y, two_lines, sheet])
+				if size.x < size.y:
+					suite.require(sheet.size.y <= float(size.y) * 0.62, "at %s the %s sheet at half leaves the scene its top (%.0f px of %d)" % [size, kind, sheet.size.y, size.y])
+			if kind == "music":
+				var shown: Array = []
+				for b in [game.next_hint_control, game.walk_control, game.phone_explore_control]:
+					if b.visible: shown.append(b)
+				var row: Rect2 = game.controls.get_global_rect()
+				suite.require(game.controls.columns == shown.size() and near(shown[shown.size() - 1].get_global_rect().end.x, row.end.x, 2.0) and near(shown[0].get_global_rect().position.x, row.position.x, 2.0), "at %s with Explore hidden the bar's %d buttons share its row (%d columns)" % [size, shown.size(), game.controls.columns])
+			game.end_conversation()
+			await frames(suite, 2)
+		game.sheet_heights.clear()
+
+	# 8. A touch screen has no keyboard: what it reads leaves out the key hints, and keys keep them. A key press turns them back on.
+	game.touch_ui_override = 1
+	for pair in [["Portable Mural (M)", "Portable Mural"], ["Rook's Speaker (R / K)", "Rook's Speaker"], ["Return Thanh's folding table (Y) · 1/3 returned", "Return Thanh's folding table · 1/3 returned"], ["Open the block party with Bea (O)", "Open the block party with Bea"], ["Tenant circle (Q) and neighborhood short film (.) unlocked", "Tenant circle and neighborhood short film unlocked"], ["Hello  (Click Bea or press T to keep chatting)", "Hello"], ["Goodbye (Esc)", "Goodbye"], ["Spot Surprise (3/10)", "Spot Surprise (3/10)"], ["Walk up to any neighbor (1–5) to talk!", "Walk up to any neighbor to talk!"], ["Walking to Bea · Press Esc to stop", "Walking to Bea · Tap Stop Walking to stop"]]:
+		suite.require(game.phone_text(pair[0]) == pair[1], "on a touch screen '%s' reads '%s' (got '%s')" % [pair[0], pair[1], game.phone_text(pair[0])])
+	game.touch_ui_override = 0
+	suite.require(game.phone_text("Portable Mural (M)") == "Portable Mural (M)" and game.phone_text("Goodbye (Esc)") == "Goodbye (Esc)", "with keys the hints stay")
+	game.touch_ui_override = 1
+	for size in [Vector2i(667, 390), Vector2i(390, 667), Vector2i(1100, 760)]:
+		suite.root.size = size
+		await frames(suite, 4)
+		game.last_panel_dialogue = ""
+		game.show_conversation(0)
+		await frames(suite, 3)
+		var spoken: String = game.block_detail_label.text
+		suite.require(not spoken.contains("press T") and not spoken.contains("(Click") and not game.conv_chat_btn.text.contains("(T)") and not game.conv_bye_btn.text.contains("(Esc)"), "at %s a touch screen's conversation names no key (%s | %s | %s)" % [size, spoken, game.conv_chat_btn.text, game.conv_bye_btn.text])
+		game.end_conversation()
+		await frames(suite, 2)
+	game.show_sheet_line("Walking to Bea · Press Esc to stop", "status")
+	suite.require(game.sheet_line_text == "Walking to Bea · Tap Stop Walking to stop", "a touch screen's status line says what to tap, not Esc (%s)" % game.sheet_line_text)
+	game.clear_sheet_line()
+	game.touch_ui_override = -1
+	game.keyboard_seen = false
+	var key_event := InputEventKey.new()
+	key_event.keycode = KEY_F13
+	key_event.pressed = true
+	game._input(key_event)
+	suite.require(game.keyboard_seen, "a key press marks the keyboard as in use")
+	game.keyboard_seen = false
+
 	suite.root.size = size0
 	await frames(suite, 4)
 	for key in state:
