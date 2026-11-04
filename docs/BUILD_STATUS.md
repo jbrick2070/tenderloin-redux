@@ -1,6 +1,6 @@
 # Build status
 
-## Current: HUD redesign Phase 4a, on main and not deployed - November 3, 2026 UTC
+## Current: HUD redesign Phases 1 to 4a, deployed - November 3, 2026 UTC
 
 The first part of Phase 4 of `docs/HUD_REDESIGN_PLAN.md` is on main (merge `22f8bc4`). Phase 3 left two gaps, and this part closes both:
 
@@ -23,7 +23,7 @@ Evidence on a clean checkout of `5c99fe7`, whose code the merge matches exactly:
 
 Open:
 
-- Not deployed, and not yet checked on a phone.
+- Deployed at the creator's OK ("deploy") from `add4c03`, so Phases 1 to 4a can be checked on a phone. The live pck is 1,535,800 bytes. Not yet checked on a phone.
 - Street view still hands back to the map while a sheet is open or shown less. Whether it stays at eye level is the creator's decision 6.
 - `uses_side_block_hub` and `uses_short_side_panels` are not yet replaced by one sheet placement. Landscape screens 520 to 600 px wide still dock differently from wider ones.
 - Accepted: on landscape screens 520 to 616 px wide the walk stick hides while the tray is open.
