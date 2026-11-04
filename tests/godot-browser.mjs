@@ -2333,12 +2333,12 @@ try {
         assert.ok(d.text.includes(s.overlays.speech.text), 'the complete deferred dialogue remains in the existing activity instructions');
         assert.equal(s.header_details_expanded, false, 'repeated activity dialogue does not expand Info over the player');
       }
-      assert.ok(d.control.visible && d.control.height >= d.min_height - 1 && d.control.height <= 50, 'description has a bounded two-line reading area at its actual font size');
+      assert.ok(d.control.visible && d.control.height >= d.min_height - 1 && d.control.height <= 110, 'description has a bounded reading area at its actual font size (two lines, and up to five where its panel has the room)');
       assert.ok(d.panel.y >= s.header_control.y + s.header_control.height && d.panel.y + d.panel.height <= s.controls_control.y, 'activity stays between header and walking controls');
       assert.ok(d.control.x >= d.panel.x && d.control.y >= d.panel.y && d.control.x + d.control.width <= d.panel.x + d.panel.width + 1 && d.control.y + d.control.height <= d.panel.y + d.panel.height + 1);
       for (const b of d.buttons) assert.ok(b.visible && b.width >= 44 && b.height >= 44 && b.text_fits, `full activity title: ${b.text}`);
-      if (size.width < 600 && stage === 'mural') {
-        assert.ok(d.scroll_max > d.scroll_page, 'narrow mural instructions must exercise scrolling');
+      // The taller reader (HUD Phase 4b) may show the narrow mural's instructions whole; if they still overflow they scroll.
+      if (size.width < 600 && stage === 'mural' && d.scroll_max > d.scroll_page) {
         const canvas = await page.locator('#canvas').boundingBox();
         const x = canvas.x + (d.control.x + d.control.width / 2) * canvas.width / s.viewport_width;
         const y = canvas.y + (d.control.y + d.control.height - 4) * canvas.height / s.viewport_height;
