@@ -1166,6 +1166,14 @@ static func verify(suite: SceneTree, game: Node, formal := false) -> void:
 	sv.pitch = 0.0
 	game.update_camera()
 	await suite.process_frame
+	var near_back: float = sv.shoulder_back_m()
+	var cam_flat := Vector2(cam.global_position.x, cam.global_position.z)
+	suite.require(near_back > 0.2 and near_back <= sv.SHOULDER_MAX_M + 0.001 and cam_flat.distance_to(bea_xz) > game.player_xz().distance_to(bea_xz) + near_back - 0.05, "up close the eye steps back over the shoulder (%.2f m) so Bea is not a wall of body" % near_back)
+	var yaw_front: float = sv.yaw
+	sv.yaw = yaw_front + PI
+	suite.require(is_zero_approx(sv.shoulder_back_m()), "with Bea behind the eye does not step back")
+	sv.yaw = yaw_front
+	game.update_camera()
 	var bea_face: Vector2 = cam.unproject_position(game.neighbors[0].pos + Vector3.UP * 1.45)
 	suite.require(sv.active() and is_zero_approx(sv.body_screen_distance(game.neighbors[0].pos, bea_face)), "at eye level Bea's face is on her body for taps (%s, %.1f px)" % [str(bea_face), sv.body_screen_distance(game.neighbors[0].pos, bea_face)])
 	game.last_a11y_announcement = ""
