@@ -6474,6 +6474,10 @@ func frame_conversation(index: int) -> void:
 		return
 
 	var n_pos: Vector3 = neighbors[index].pos
+	if eye_keeps_scene_with_sheet():
+		street_view.face_xz(Vector2(n_pos.x, n_pos.z)) # At eye level the speaker is ahead; the camera stays with the player.
+		update_camera()
+		return
 	var focus := Vector3(n_pos.x, 1.0 if uses_compact_activity_controls() else 2.2, n_pos.z)
 	in_overview = false
 	following_player = false
@@ -9503,6 +9507,10 @@ func rook_dialogue_text() -> String:
 	return options[posmod(maxi(1, rook_talk_count) - 1, options.size())]
 
 func focus_mural_camera() -> void:
+	if eye_keeps_scene_with_sheet():
+		street_view.face_xz(mural_xz())
+		update_camera()
+		return
 	in_overview = false
 	in_wide_overview = false
 	following_player = false
@@ -9517,6 +9525,10 @@ func focus_mural_camera() -> void:
 	update_occlusion(true)
 
 func focus_speaker_camera() -> void:
+	if eye_keeps_scene_with_sheet():
+		street_view.face_xz(speaker_xz())
+		update_camera()
+		return
 	in_overview = false
 	in_wide_overview = false
 	following_player = false
@@ -9543,6 +9555,20 @@ func panel_camera_pose() -> Array:
 
 func street_view_active() -> bool:
 	return street_view != null and street_view.active()
+
+## Decision 6, the creator's: at eye level a conversation, Celeste's mural and Rook's music keep the street view, the eye
+## turned to the speaker, for as long as the scene above or beside their sheet is readable (200 x 150 px). Where it is not,
+## they hand back to the map for the panel's time, as an old Ultima's dialogue screen would; the hub always does.
+func eye_keeps_scene_with_sheet() -> bool:
+	if street_view == null or not street_view.enabled or not street_view.in_block() or in_overview or in_wide_overview or selected >= 0:
+		return false
+	var area := play_area_base_rect()
+	return area.size.x >= 200.0 and area.size.y >= 150.0
+
+func eye_yields_to_panel() -> bool:
+	if not any_side_panel_visible():
+		return false
+	return sheet_panel() == null or not eye_keeps_scene_with_sheet()
 
 ## The reduced-motion setting (street_view.gd keeps it with the other Phase 2 settings); off unless chosen or seeded.
 ## Speech bubbles and the talk prompt float above the speaker: high for the map's 2.15-scale figures, just above
