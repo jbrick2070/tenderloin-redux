@@ -16,6 +16,8 @@ extends RefCounted
 const EYE_M := 1.6
 const FOV_DEG := 70.0
 const NEAR_M := 0.1
+const SHOULDER_RANGE_M := 2.0 # Nearer than this, a neighbor ahead has the eye step back over the shoulder.
+const SHOULDER_MAX_M := 1.0
 const FAR_M := 250.0
 const SNAP_TURN_RAD := PI / 6.0 # 30 degrees per Shift+Left/Right press
 const PITCH_STEP_RAD := PI / 12.0 # 15 degrees per Shift+Up/Down press
@@ -456,9 +458,31 @@ func apply_camera() -> void:
 	cam.fov = float(street_fov)
 	game.target = p + Vector3.UP
 	cam.size = game.view_size
-	cam.position = Vector3(p.x, p.y + EYE_M, p.z)
+	var back := shoulder_back_m()
+	var ahead := Vector2(-sin(yaw), -cos(yaw))
+	# Never behind a wall: the step shortens until the camera stands 0.3 m clear of every facade.
+	while back > 0.05 and not game.is_walkable_point(Vector2(p.x, p.z) - ahead * back, 0.3):
+		back -= 0.1
+	back = maxf(back, 0.0)
+	cam.position = Vector3(p.x - ahead.x * back, p.y + EYE_M, p.z - ahead.y * back)
 	cam.rotation = Vector3(pitch, yaw, 0.0)
 	cam.force_update_transform()
+
+## How far the camera steps back along its view when a neighbor stands close ahead: walking up to someone stops at a
+## metre or so, where their body would fill the whole view. Up to a metre, smoothly, and only for a neighbor in front;
+## the player, the walking logic and every test of the eye stay where they are.
+func shoulder_back_m() -> float:
+	var here := eye_xz()
+	var ahead := Vector2(-sin(yaw), -cos(yaw))
+	var back := 0.0
+	for i in range(game.neighbors.size()):
+		var to_neighbor: Vector2 = game.neighbor_xz(i) - here
+		var dist := to_neighbor.length()
+		if dist < game.PLAYER_RADIUS_M or dist >= SHOULDER_RANGE_M: # Inside the body radius the direction is not steady.
+			continue
+		var facing := clampf((to_neighbor.normalized().dot(ahead) - 0.3) / 0.4, 0.0, 1.0)
+		back = maxf(back, (SHOULDER_RANGE_M - dist) * facing)
+	return minf(back, SHOULDER_MAX_M)
 
 func eye_keep_aspect() -> Camera3D.KeepAspect:
 	var vp: Vector2 = game.bubble_viewport_size()

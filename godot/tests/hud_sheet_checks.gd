@@ -457,6 +457,36 @@ static func verify(suite: SceneTree, game: Node) -> void:
 			await frames(suite, 2)
 		game.sheet_heights.clear()
 
+	# 10. A required choice (the gathering's Long Table and Open Floor) stays on screen, whole and tappable, in the conversation at
+	# half height at each size class: it is the one thing the sheet may never push out.
+	var visited_choice: Dictionary = game.visited_neighbors.duplicate()
+	var layout_choice: String = game.gathering_layout
+	for n in game.neighbors: game.visited_neighbors[String(n.get("id", ""))] = true
+	game.gathering_layout = ""
+	for size in [Vector2i(667, 390), Vector2i(900, 380), Vector2i(390, 667), Vector2i(1100, 760)]:
+		suite.root.size = size
+		await frames(suite, 4)
+		game.sheet_heights.clear()
+		game.last_panel_dialogue = ""
+		game.show_conversation(0)
+		await frames(suite, 3)
+		var choice_detail: Dictionary = game.activity_detail_snapshot(game.block_detail_label, game.block_panel, game.conv_buttons)
+		var offered: Array = []
+		var choice_cut: Array = []
+		var choice_off: Array = []
+		var choice_panel: Rect2 = game.block_panel.get_global_rect()
+		for b in choice_detail.get("buttons", []):
+			if b.visible and (String(b.text).begins_with("Long Table") or String(b.text).begins_with("Open Floor")):
+				offered.append(b.text)
+				if not b.text_fits: choice_cut.append(b.text)
+				if b.width < 44.0 or b.height < 44.0 or not choice_panel.grow(1.0).encloses(Rect2(b.x, b.y, b.width, b.height)): choice_off.append(b.text)
+		suite.require(game.sheet_snapshot().height == "half" and offered.size() == 2 and choice_cut.is_empty() and choice_off.is_empty(), "at %s the required Long Table and Open Floor choices show whole, 44 px and inside the half sheet (%s, cut %s, off %s)" % [size, offered, choice_cut, choice_off])
+		game.end_conversation()
+		await frames(suite, 2)
+	game.visited_neighbors = visited_choice
+	game.gathering_layout = layout_choice
+	game.sheet_heights.clear()
+
 	# 8. A touch screen has no keyboard: what it reads leaves out the key hints, and keys keep them. A key press turns them back on.
 	game.touch_ui_override = 1
 	for pair in [["Portable Mural (M)", "Portable Mural"], ["Rook's Speaker (R / K)", "Rook's Speaker"], ["Return Thanh's folding table (Y) · 1/3 returned", "Return Thanh's folding table · 1/3 returned"], ["Open the block party with Bea (O)", "Open the block party with Bea"], ["Tenant circle (Q) and neighborhood short film (.) unlocked", "Tenant circle and neighborhood short film unlocked"], ["Hello  (Click Bea or press T to keep chatting)", "Hello"], ["Goodbye (Esc)", "Goodbye"], ["Spot Surprise (3/10)", "Spot Surprise (3/10)"], ["Walk up to any neighbor (1–5) to talk!", "Walk up to any neighbor to talk!"], ["Walking to Bea · Press Esc to stop", "Walking to Bea · Tap Stop Walking to stop"], ["Spot Pip (2/10 surprises, Shift+D) · Museum (Shift+M)", "Spot Pip (2/10 surprises) · Museum"], ["[*] Small Cutesy Dinosaur (Tap / Shift+D)", "[*] Small Cutesy Dinosaur"], ["Dez: \"Out along Turk, press Shift+D!\"", "Dez: \"Out along Turk!\""], ["Tap the street or use WASD/arrows to walk · T talks to people nearby · G: all block actions", "Tap the street to walk · tap a neighbor to talk"], ["Route blocked
