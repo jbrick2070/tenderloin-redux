@@ -6280,11 +6280,11 @@ func update_objective_ui() -> void:
 	if objective_label == null:
 		return
 	var ch := current_chapter()
-	var next_text := String(current_objective().get("text", ""))
+	var next_text := phone_text(String(current_objective().get("text", "")))
 	if narrow:
-		objective_label.text = "Ch. %d · Next: %s" % [int(ch.num), phone_text(next_text)]
+		objective_label.text = "Ch. %d · Next: %s" % [int(ch.num), next_text]
 	else:
-		objective_label.text = "Chapter %d: %s · Next: %s" % [int(ch.num), String(ch.title), phone_text(next_text)]
+		objective_label.text = "Chapter %d: %s · Next: %s" % [int(ch.num), String(ch.title), next_text]
 	objective_btn.tooltip_text = "%s (Next Step)" % objective_label.text
 	objective_btn.accessibility_name = "%s. Next Step." % objective_label.text
 	update_walk_control()
