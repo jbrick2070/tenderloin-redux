@@ -1,6 +1,22 @@
 # Build status
 
-## Current: HUD redesign Phase 4b (from the creator's phone run), on main and not deployed - November 4, 2026 UTC
+## Current: street view steps back near a neighbor and the required choices check, on main and not deployed - November 4, 2026 UTC
+
+Two more items from the creator's phone run are on main (merge `83d7c20`), after HUD Phase 4b below:
+
+- **The eye steps back near a neighbor.** In the video, walking up to Bea put the camera inside her body (she filled the screen). At eye level the camera now steps back along its view, up to a metre, when a neighbor stands within 2 m ahead; the step is smooth in distance and in turning, and it shortens until the camera stands 0.3 m clear of every facade (a Sonnet review found it could otherwise end inside a wall). The player, the walking logic and the line-of-sight checks stay where they were. Checks in `godot/tests/street_view_checks.gd`.
+- **Required choices at half height.** A check in `godot/tests/hud_sheet_checks.gd` holds that Long Table and Open Floor show whole, 44 px and inside the conversation at half height at 667 x 390, 900 x 380, 390 x 667 and 1100 x 760.
+
+Evidence on a clean checkout of `9241de2`, whose code the merge matches exactly: `godot:import`, `godot:export`, `npm run check`, the Node tests and the full `npm run godot:browser` suite PASS (2 h 27 min on a busy machine). The formal Godot suite PASS with no errors on `9241de2` too.
+
+Open:
+
+- Not deployed. Phases 1 to 4a are live on Pages; Phase 4b and these two are not.
+- Not yet checked on a phone (key hints, the taller readers, the stepped-back eye).
+- Street view still hands back to the map while a sheet is open: decision 6 is the creator's.
+- A short reader line still gets its blank lines (the reader height does not follow the text length).
+
+## HUD redesign Phase 4b (from the creator's phone run), on main and not deployed - November 4, 2026 UTC
 
 The creator's iPhone video of the deployed Phases 1 to 4a (`IMG_1849.mp4`) showed four things, fixed in merge `853017c`:
 
@@ -17,7 +33,7 @@ Open:
 
 - Not deployed. Phases 1 to 4a are live on Pages; this phase is not.
 - Not yet checked on a phone. The key-hint list is long, so some hint may still show.
-- Branch `street-shoulder` (the eye steps back up to a metre when a neighbor stands close ahead, so Bea is not a wall of body) and branch `hud-choices-check` (required choices at half height) are written, not yet tested or merged.
+- (Both street-shoulder and hud-choices-check have since merged; see above.)
 - Street view still hands back to the map while a sheet is open: decision 6 is the creator's.
 - A short reader line still gets its blank lines (the reader height does not follow the text length).
 
