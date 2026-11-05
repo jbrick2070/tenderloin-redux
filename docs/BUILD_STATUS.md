@@ -1,6 +1,6 @@
 # Build status
 
-## Current: street view decision 6, a conversation keeps the eye, on main and not deployed - November 4, 2026 UTC
+## Current: street view decision 6, a conversation keeps the eye, deployed - November 4, 2026 UTC
 
 The creator's decision 6 ("stay at eye level in a conversation unless it becomes hard to read; I am fine with the switch like an old Ultima game") is on main (merge `0a455fd`, tree identical to the tested `4a80de8`):
 
@@ -14,7 +14,7 @@ Evidence on a clean checkout of `4a80de8`: `godot:import`, `godot:export`, `npm 
 
 Open:
 
-- Not deployed. Not yet checked on a phone. Phase 4b and the step-back are already live; only decision 6 is new since the last deploy.
+- Deployed at the creator's OK ("Yes, deploy") from `d315e49` (live pck 1,540,456 bytes, under the 2 MiB cap). Not yet checked on a phone.
 - Landscape dock rule (one placement for docked panels), Phase 5 (the 2D fork) and translations remain.
 
 ## HUD Phase 4b, the street-view step-back and the choices check, deployed - November 4, 2026 UTC
